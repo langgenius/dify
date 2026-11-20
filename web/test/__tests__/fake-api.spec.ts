@@ -330,6 +330,28 @@ describe('installFakeApi', () => {
     )
   })
 
+  it('matches custom-method paths that put a parameter and a literal in one segment', async () => {
+    const fake = installFakeApi({
+      console: {
+        enterprise: {
+          appDeploy: {
+            deploymentService: { precheckWorkflowDeployment: () => ({ unsupported_nodes: [] }) },
+          },
+        },
+      },
+    })
+    const params = { app_id: 'app-1', workflow_id: 'workflow-1' }
+
+    await consoleClient.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment({
+      params,
+    })
+
+    expect(
+      fake.console.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment,
+    ).toHaveBeenCalledWith({ params })
+    fake()
+  })
+
   it('records exactly the request parts the client sent', async () => {
     const fake = installFakeApi({
       console: {

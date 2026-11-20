@@ -2,7 +2,7 @@ import type { consoleRouterContract } from '@dify/contracts/console'
 import type { AnyContractProcedure, InferSchemaInput, InferSchemaOutput } from '@orpc/contract'
 import type { Mock } from 'vite-plus/test'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
-import { ValidationError } from '@orpc/contract'
+import { ContractProcedure, ValidationError } from '@orpc/contract'
 import { SmartCoercionPlugin } from '@orpc/json-schema'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { implement, ORPCError } from '@orpc/server'
@@ -242,6 +242,29 @@ function collectLeaves(tree: HandlerTree, path: string[] = []): Array<[string[],
   )
 }
 
+// Custom-method paths such as `/workflows/{workflow_id}:precheck` put a parameter and a literal in
+// one segment, which oRPC's router cannot match. Move the `:method` suffix into its own segment on
+// both the contract and the request; real IDs never contain a colon.
+const customMethodSegment = /:([\w-]+)$/
+
+function splitCustomMethods(path: string) {
+  return path
+    .split('/')
+    .map((segment) => segment.replace(customMethodSegment, '/~$1'))
+    .join('/')
+}
+
+function withSplitCustomMethods(procedure: AnyContractProcedure): AnyContractProcedure {
+  const def = procedure['~orpc']
+  const path = def.route.path
+  if (!path || !path.split('/').some((segment) => customMethodSegment.test(segment)))
+    return procedure
+  return new ContractProcedure({
+    ...def,
+    route: { ...def.route, path: splitCustomMethods(path) as `/${string}` },
+  })
+}
+
 function sentParts(input: unknown) {
   const parts = { ...(input as Record<string, unknown> | undefined) }
   delete parts.headers
@@ -274,9 +297,9 @@ function implementLeaves(
     // Without an input schema oRPC passes the raw decoded request (transport headers, empty
     // parts); record only what the client actually sent so spies can be asserted exactly.
     const hasInput = Boolean((procedure as AnyContractProcedure)['~orpc'].inputSchema)
-    node[path.at(-1)!] = implement(procedure as AnyContractProcedure).handler(
-      ({ input }: { input: unknown }) => handler(hasInput ? input : sentParts(input)),
-    )
+    node[path.at(-1)!] = implement(
+      withSplitCustomMethods(procedure as AnyContractProcedure),
+    ).handler(({ input }: { input: unknown }) => handler(hasInput ? input : sentParts(input)))
   }
   return router
 }
@@ -444,6 +467,14 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
   }
 }
 
+function splitRequestCustomMethods(request: Request) {
+  const url = new URL(request.url)
+  const pathname = splitCustomMethods(url.pathname)
+  if (pathname === url.pathname) return request
+  url.pathname = pathname
+  return new Request(url, request)
+}
+
 async function readBody(request: Request): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined
   const type = request.headers.get('content-type') ?? ''
@@ -548,16 +579,22 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       const context: RequestContext = {}
       const { matched, response } = await (
         await getConsoleHandler()
-      ).handle(restoreIndexedArrays(request.clone()), { prefix: prefixPath('console'), context })
+      ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone())), {
+        prefix: prefixPath('console'),
+        context,
+      })
       if (context.networkFailed) throw networkError()
       if (matched) return response!
     }
     if (base === 'marketplace' && leavesOf('marketplace').length) {
       const context: RequestContext = {}
-      const { matched, response } = await getMarketplaceHandler().handle(request.clone(), {
-        prefix: prefixPath('marketplace'),
-        context,
-      })
+      const { matched, response } = await getMarketplaceHandler().handle(
+        splitRequestCustomMethods(request.clone()),
+        {
+          prefix: prefixPath('marketplace'),
+          context,
+        },
+      )
       if (context.networkFailed) throw networkError()
       if (matched) return response!
     }
