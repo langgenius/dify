@@ -9,7 +9,7 @@ import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { uniqueId } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { VarType } from '@/app/components/workflow/types'
@@ -59,6 +59,29 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
   }, [data])
   const stringValue = keyValueBodyTypes.includes(type) ? '' : bodyPayload[0]?.value || ''
 
+  // Mirror the latest emitted body so handlers never build on a stale prop when
+  // several updates fire within one event — e.g. typing into the trailing row
+  // emits the new value and immediately appends a row, and the append would
+  // otherwise resurrect the previous body and drop what was just typed.
+  const payloadRef = useRef(payload)
+  useEffect(() => {
+    payloadRef.current = payload
+  }, [payload])
+
+  const commitPayload = useCallback(
+    (next: Body) => {
+      payloadRef.current = next
+      onChange(next)
+    },
+    [onChange],
+  )
+  const updatePayload = useCallback(
+    (updater: (draft: Body) => void) => {
+      commitPayload(produce(payloadRef.current, updater))
+    },
+    [commitPayload],
+  )
+
   const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
@@ -74,7 +97,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
       ]
 
       const hasKeyValue = keyValueBodyTypes.includes(newType)
-      onChange({
+      commitPayload({
         type: newType,
         data: hasKeyValue
           ? [
@@ -88,11 +111,11 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
           : [],
       })
     },
-    [onChange],
+    [commitPayload],
   )
 
   const handleAddBody = useCallback(() => {
-    const newPayload = produce(payload, (draft) => {
+    updatePayload((draft) => {
       ;(draft.data as BodyPayload).push({
         id: uniqueId(UNIQUE_ID_PREFIX),
         type: BodyPayloadValueType.text,
@@ -100,17 +123,15 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
         value: '',
       })
     })
-    onChange(newPayload)
-  }, [onChange, payload])
+  }, [updatePayload])
 
   const handleBodyPayloadChange = useCallback(
     (newList: KeyValueType[]) => {
-      const newPayload = produce(payload, (draft) => {
+      updatePayload((draft) => {
         draft.data = newList as BodyPayload
       })
-      onChange(newPayload)
     },
-    [onChange, payload],
+    [updatePayload],
   )
 
   const filterOnlyFileVariable = (varPayload: Var) => {
@@ -121,7 +142,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
 
   const handleBodyValueChange = useCallback(
     (value: string) => {
-      const newBody = produce(payload, (draft: Body) => {
+      updatePayload((draft: Body) => {
         if ((draft.data as BodyPayload).length === 0) {
           ;(draft.data as BodyPayload).push({
             id: uniqueId(UNIQUE_ID_PREFIX),
@@ -132,14 +153,13 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
         }
         ;(draft.data as BodyPayload)[0]!.value = value
       })
-      onChange(newBody)
     },
-    [onChange, payload],
+    [updatePayload],
   )
 
   const handleFileChange = useCallback(
     (value: ValueSelector | string) => {
-      const newBody = produce(payload, (draft: Body) => {
+      updatePayload((draft: Body) => {
         if ((draft.data as BodyPayload).length === 0) {
           ;(draft.data as BodyPayload).push({
             id: uniqueId(UNIQUE_ID_PREFIX),
@@ -148,9 +168,8 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
         }
         ;(draft.data as BodyPayload)[0]!.file = value as ValueSelector
       })
-      onChange(newBody)
     },
-    [onChange, payload],
+    [updatePayload],
   )
 
   return (
