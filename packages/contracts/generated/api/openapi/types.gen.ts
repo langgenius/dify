@@ -2022,6 +2022,7 @@ export type WorkflowNotActiveError = ErrorBody & {
 }
 
 export type WorkflowRunData = {
+  completion_tokens?: number | null
   created_at?: number | null
   elapsed_time?: number | null
   error?: string | null
@@ -2030,6 +2031,7 @@ export type WorkflowRunData = {
   outputs?: {
     [key: string]: unknown
   }
+  prompt_tokens?: number | null
   status: string
   total_steps?: number | null
   total_tokens?: number | null
