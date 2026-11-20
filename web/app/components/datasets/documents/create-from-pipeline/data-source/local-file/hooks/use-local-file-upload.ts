@@ -84,6 +84,7 @@ export const useLocalFileUpload = ({
     onPreview,
     supportBatchUpload,
     allowedExtensions,
+    enforceDatasetExtensions: false,
   })
 
   return {

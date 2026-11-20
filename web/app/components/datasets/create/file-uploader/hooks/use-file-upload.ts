@@ -31,6 +31,12 @@ type UseFileUploadOptions = {
    * Overrides the supported extensions from the API, including an empty list.
    */
   allowedExtensions?: string[]
+  /**
+   * Send `?source=datasets` so the API enforces the DOCUMENT_EXTENSIONS allowlist.
+   * Pipeline local-file uploads accept non-document types (images, PPTX...) and
+   * must set this to false (#46121).
+   */
+  enforceDatasetExtensions?: boolean
 }
 
 type UseFileUploadReturn = {
@@ -67,6 +73,7 @@ export const useFileUpload = ({
   onPreview,
   supportBatchUpload = false,
   allowedExtensions,
+  enforceDatasetExtensions = true,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation(['common', 'datasetCreation'])
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -169,7 +176,7 @@ export const useFileUpload = ({
         },
         false,
         undefined,
-        '?source=datasets',
+        enforceDatasetExtensions ? '?source=datasets' : undefined,
       )
         .then((res) => {
           const completeFile = {
@@ -194,7 +201,7 @@ export const useFileUpload = ({
         })
         .finally()
     },
-    [onFileUpdate, t],
+    [enforceDatasetExtensions, onFileUpdate, t],
   )
 
   const uploadBatchFiles = useCallback(

@@ -102,3 +102,15 @@ it('marks a failed upload without losing existing documents', async () => {
   expect(store.getState().localFileList[0]).toEqual(existing)
   expect(store.getState().localFileList[1]?.file.name).toBe('New.pdf')
 })
+
+it('uploads pipeline local files without the dataset source param (#46121)', async () => {
+  const user = userEvent.setup()
+  upload.mockImplementationOnce(() => Promise.resolve({ id: 'server-new', name: 'New.pdf' }))
+  setup()
+  await user.upload(
+    screen.getByLabelText('Upload documents'),
+    new File(['new'], 'New.pdf', { type: 'application/pdf' }),
+  )
+  const [, , , searchParams] = upload.mock.lastCall!
+  expect(searchParams).toBeUndefined()
+})
