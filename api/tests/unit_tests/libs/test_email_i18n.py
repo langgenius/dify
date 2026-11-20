@@ -570,7 +570,9 @@ class TestEmailI18nIntegration:
         monkeypatch.setattr(ext_mail, "mail", gateway)
         monkeypatch.setattr(ext_mail, "dify_config", DifyConfig(MAIL_TYPE="rasket", RASKET_API_KEY="rk_test_key"))
 
-        app = Flask(__name__)
+        from dify_app import DifyApp
+
+        app = DifyApp(__name__)
         ext_mail.init_app(app)
 
         assert email_i18n.mail is gateway
