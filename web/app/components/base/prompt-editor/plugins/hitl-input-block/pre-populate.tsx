@@ -6,8 +6,8 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { isTextVarType } from '@/app/components/workflow/nodes/_base/components/variable/text-var-types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { VarType } from '@/app/components/workflow/types'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
@@ -91,10 +91,7 @@ const PrePopulate: FC<Props> = ({
     value: valueSelector || [],
     onChange: onValueSelectorChange!,
     readonly: false,
-    filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
-      return textVariableTypes.includes(varPayload.type)
-    },
+    filterVar: (varPayload: Var) => isTextVarType(varPayload.type),
   }
 
   const isShowPlaceholder =

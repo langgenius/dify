@@ -28,7 +28,6 @@ import { ToolDateRangePicker } from '@/app/components/tools/parameters/tool-date
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -47,6 +46,7 @@ import {
 } from './form-input-item.helpers'
 import { JsonEditorField, MultiSelectField } from './form-input-item.sections'
 import FormInputTypeSwitch from './form-input-type-switch'
+import { isTextVarType } from './variable/text-var-types'
 
 type Props = Readonly<{
   readOnly: boolean
@@ -122,11 +122,7 @@ const FormInputItem: FC<Props> = ({
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) => {
-      const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
-
-      return textVariableTypes.includes(varPayload.type)
-    },
+    filterVar: (varPayload: Var) => isTextVarType(varPayload.type),
   })
 
   // Fetch dynamic options hook for tools

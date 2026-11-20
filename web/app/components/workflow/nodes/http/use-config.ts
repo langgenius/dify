@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
-import { VarType } from '../../types'
+import { isTextVarType } from '../_base/components/variable/text-var-types'
 import useVarList from '../_base/hooks/use-var-list'
 import useKeyValueList from './hooks/use-key-value-list'
 import { BodyType } from './types'
@@ -130,11 +130,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     [inputs, setInputs],
   )
 
-  const filterVar = useCallback((varPayload: Var) => {
-    const textVariableTypes: readonly VarType[] = [VarType.string, VarType.number, VarType.secret]
-
-    return textVariableTypes.includes(varPayload.type)
-  }, [])
+  const filterVar = useCallback((varPayload: Var) => isTextVarType(varPayload.type), [])
 
   const handleCurlImport = useCallback(
     (newNode: HttpNodeType) => {

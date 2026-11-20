@@ -1,6 +1,7 @@
 import type { HttpNodeType } from '../types'
+import type { Var } from '@/app/components/workflow/types'
 import { act, waitFor } from '@testing-library/react'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { parseCurl } from '../components/curl-parser'
 import { APIType, AuthorizationType, BodyPayloadValueType, BodyType, Method } from '../types'
@@ -107,6 +108,12 @@ describe('http/use-config', () => {
       })
     },
   )
+  it('offers integer variables for the request text fields', () => {
+    const { result } = renderConfig()
+    expect(result.current.config.filterVar({ type: VarType.integer } as Var)).toBe(true)
+    expect(result.current.config.filterVar({ type: VarType.number } as Var)).toBe(true)
+    expect(result.current.config.filterVar({ type: VarType.object } as Var)).toBe(false)
+  })
   it('keeps request edits while the real key-value helpers serialize headers and params', () => {
     const { result } = renderConfig()
     act(() => result.current.config.handleMethodChange(Method.delete))
