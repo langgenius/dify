@@ -37,9 +37,11 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { CodeLanguage } from '../../nodes/code/types'
+import { LogicalOperator } from '../../nodes/if-else/types'
 import llmDefault from '../../nodes/llm/default'
 import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
+import { initialNodes } from '../../utils/workflow-init'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
@@ -345,6 +347,26 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain(
       'workflow.errorMsg.fieldRequired:{"field":"workflow.errorMsg.fields.model"}',
     )
+  })
+
+  it.each([
+    {
+      data: { type: BlockEnum.QuestionClassifier, model: { provider: 'openai' } },
+      field: 'workflow.nodes.questionClassifiers.inputVars',
+    },
+    {
+      data: { type: BlockEnum.ParameterExtractor },
+      field: 'workflow.nodes.parameterExtractor.inputVar',
+    },
+  ])('reports a missing input for an imported $data.type', ({ data, field }) => {
+    const importedNode = createNode({ id: 'imported', data })
+    const edges = [createEdge({ source: 'start', target: importedNode.id })]
+    const nodes = initialNodes([createInputNode(), importedNode], edges)
+
+    const { result } = renderChecklist(nodes, edges)
+
+    const warning = result.current.find((item) => item.id === importedNode.id)
+    expect(warning?.errorMessages).toContain(`workflow.errorMsg.fieldRequired:{"field":"${field}"}`)
   })
 
   it('reports an unavailable strategy for legacy Agent nodes', async () => {
@@ -676,6 +698,33 @@ describe('useChecklist', () => {
 })
 
 describe('useChecklistBeforePublish', () => {
+  it.each([
+    { name: 'ELSE-only', cases: [], sourceHandle: 'false', canPublish: true },
+    {
+      name: 'unconfigured IF',
+      cases: [{ case_id: 'true', logical_operator: LogicalOperator.and, conditions: [] }],
+      sourceHandle: 'true',
+      canPublish: false,
+    },
+  ])('validates an imported $name branch', async ({ cases, sourceHandle, canPublish }) => {
+    const { nodes } = buildConnectedGraph()
+    const branch = createNode({ id: 'branch', data: { type: BlockEnum.IfElse, cases } })
+    const edges = [
+      createEdge({ source: 'start', target: 'code' }),
+      createEdge({ source: 'code', target: branch.id }),
+      createEdge({ source: branch.id, sourceHandle, target: 'end' }),
+    ]
+    const { wrapper } = createChecklistWrapper({
+      nodes: initialNodes([...nodes, branch], edges),
+      edges,
+    })
+    const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
+
+    await act(async () => {
+      expect(await result.current.handleCheckBeforePublish()).toBe(canPublish)
+    })
+  })
+
   it('rejects an invalid legacy Agent using the real catalog and graph', async () => {
     const graph = buildLegacyAgentGraph()
     const { wrapper } = createChecklistWrapper(graph)

@@ -192,6 +192,26 @@ describe('initialNodes', () => {
     },
   )
 
+  it.each([{}, { cases: null, conditions: null }, { cases: 'invalid' }])(
+    'keeps the legacy IF handle when cases or conditions need defaults (%j)',
+    (legacyFields) => {
+      const node = createNode({ id: 'if', data: { type: BlockEnum.IfElse, ...legacyFields } })
+      const destination = createNode({ id: 'destination' })
+      const edge = createEdge({ source: node.id, target: destination.id, sourceHandle: 'true' })
+
+      const [result] = initialNodes([node, destination], [edge])
+
+      expect(result?.data).toMatchObject({
+        cases: [{ case_id: 'true', logical_operator: 'and', conditions: [] }],
+        _targetBranches: [
+          { id: 'true', name: 'IF' },
+          { id: 'false', name: 'ELSE' },
+        ],
+        _connectedSourceHandleIds: ['true'],
+      })
+    },
+  )
+
   it('preserves explicit empty IfElse cases and exposes only the ELSE branch', () => {
     const node = createNode({
       data: {

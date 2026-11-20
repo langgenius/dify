@@ -247,16 +247,14 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 
       if (!Array.isArray(nodeData.cases)) {
         const { cases, conditions, logical_operator } = nodeData
-        nodeData.cases =
-          cases == null && Array.isArray(conditions)
-            ? [
-                {
-                  case_id: 'true',
-                  logical_operator: logical_operator ?? LogicalOperator.and,
-                  conditions,
-                },
-              ]
-            : []
+        // Only an explicit empty case list represents an ELSE-only node.
+        nodeData.cases = [
+          {
+            case_id: 'true',
+            logical_operator: logical_operator ?? LogicalOperator.and,
+            conditions: cases == null && Array.isArray(conditions) ? conditions : [],
+          },
+        ]
       }
       nodeData._targetBranches = branchNameCorrect([
         ...nodeData.cases.map((item) => ({ id: item.case_id, name: '' })),
@@ -271,7 +269,13 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     if (node.data.type === BlockEnum.QuestionClassifier) {
       const nodeData = node.data as QuestionClassifierNodeType
       if (!Array.isArray(nodeData.classes)) nodeData.classes = []
+      if (!Array.isArray(nodeData.query_variable_selector)) nodeData.query_variable_selector = []
       nodeData._targetBranches = [...nodeData.classes]
+    }
+
+    if (node.data.type === BlockEnum.ParameterExtractor) {
+      const nodeData = node.data as ParameterExtractorNodeType
+      if (!Array.isArray(nodeData.query)) nodeData.query = []
     }
 
     if (node.data.type === BlockEnum.KnowledgeBase) {

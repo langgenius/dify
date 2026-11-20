@@ -4437,11 +4437,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/if-else/node.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
