@@ -326,7 +326,7 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
-        Invoke large language model
+        Invoke text embedding model
 
         :param texts: texts to embed
         :param input_type: input type
@@ -351,7 +351,7 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
-        Invoke large language model
+        Invoke multimodal embedding model
 
         :param multimodel_documents: multimodel documents to embed
         :param input_type: input type
@@ -465,7 +465,7 @@ class ModelInstance:
 
     def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
         """
-        Invoke large language model
+        Invoke speech-to-text model
 
         :param file: audio file
         :return: text for given audio file

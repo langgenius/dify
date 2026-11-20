@@ -13,10 +13,12 @@ import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine as _workflow_agent_preview_identity_Engine
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, update
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine as _workflow_service_Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql.elements import ClauseElement
+from typing_extensions import TypedDict
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -90,7 +92,7 @@ from services.workflow_service import (
 )
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -103,6 +105,89 @@ This test suite covers:
 - Version management
 - Execution triggering
 """
+
+
+class _SessionPolicyGraph(TypedDict):
+    nodes: list[dict[str, object]]
+    edges: list[dict[str, object]]
+
+
+def test_publish_locks_and_refreshes_the_latest_draft_graph(
+    sqlite_session: Session, sqlite_engine: _workflow_service_Engine, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    account = make_account()
+    old_graph: _SessionPolicyGraph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "Before policy save"}}],
+        "edges": [],
+    }
+    new_graph: _SessionPolicyGraph = {
+        "nodes": [{"id": "start", "data": {"type": "start", "title": "After policy save"}}],
+        "edges": [],
+    }
+    draft = make_workflow(workflow_id="draft-locked", graph=old_graph)
+    sqlite_session.add_all([app, account, draft])
+    sqlite_session.commit()
+    assert draft.graph_dict == old_graph
+    sqlite_session.execute(
+        update(Workflow)
+        .where(Workflow.id == draft.id)
+        .values(graph=json.dumps(new_graph))
+        .execution_options(synchronize_session=False)
+    )
+    assert draft.graph_dict == old_graph
+    locking_reads: list[str] = []
+
+    def record_workflow_lock(state: ORMExecuteState) -> None:
+        if state.is_select and isinstance(state.statement, ClauseElement):
+            statement = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
+                locking_reads.append(statement)
+
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
+    try:
+        # This test owns the publication transaction, not process-global signal
+        # subscribers that other suites may import with their own Flask bindings.
+        with workflow_service_module.app_published_workflow_was_updated.muted():
+            published = service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
+    assert published.graph_dict == new_graph
+    assert draft.graph_dict == new_graph
+    assert len(locking_reads) == 1
+
+
+def test_restore_locks_both_the_source_and_destination_draft(
+    sqlite_session: Session, sqlite_engine: _workflow_service_Engine
+) -> None:
+    service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    account = make_account()
+    source = make_workflow(workflow_id="restore-source", version="published", graph={"nodes": [], "edges": []})
+    draft = make_workflow(workflow_id="restore-draft")
+    sqlite_session.add_all([app, account, source, draft])
+    sqlite_session.commit()
+    locking_reads: list[str] = []
+
+    def record_workflow_lock(state: ORMExecuteState) -> None:
+        if state.is_select and isinstance(state.statement, ClauseElement):
+            statement = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
+                locking_reads.append(statement)
+
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
+    try:
+        with workflow_service_module.app_draft_workflow_was_synced.muted():
+            restored = service.restore_published_workflow_to_draft(
+                app_model=app, workflow_id=source.id, account=account, session=sqlite_session
+            )
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
+    assert restored.id == draft.id
+    assert restored.graph_dict == source.graph_dict
+    assert len(locking_reads) == 2
 
 
 class TestWorkflowAssociatedDataFactory:

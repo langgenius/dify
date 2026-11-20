@@ -38,7 +38,7 @@ from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
-from services.entities.account_activation_entities import InvitationToken
+from services.entities.account_activation_entities import InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
 from services.errors.billing import BillingError, LegacyCreditPoolManagedByTokenerError
@@ -174,17 +174,26 @@ class WorkspaceInvitationGateway:
         if features.workspace_members.enabled and not features.workspace_members.is_available(1):
             raise WorkspaceMemberLicenseQuotaError()
 
-    def check_capacity(self, workspace_id: str, *, current_members: int, new_members: int, new_accounts: int) -> None:
+    def check_capacity(
+        self,
+        workspace_id: str,
+        *,
+        current_members: int,
+        pending_invitations: int,
+        new_members: int,
+        new_accounts: int,
+    ) -> None:
+        """Admit a batch when joined members, live invitations and the batch fit the member limit."""
         if dify_config.DEPLOYMENT_EDITION not in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}:
             return
         features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             quota = features.workspace_members
-            if quota.enabled and not quota.is_available(new_members):
+            if quota.enabled and not quota.is_available(pending_invitations + new_members):
                 raise WorkspaceMemberLicenseQuotaError()
             if new_accounts and not SystemFeatureService.get_license().seats.is_available(new_accounts):
                 raise WorkspaceInvitationQuotaError(seats=True)
-        elif 0 < features.members.limit < current_members + new_members:
+        elif 0 < features.members.limit < current_members + pending_invitations + new_members:
             raise WorkspaceInvitationQuotaError()
 
     def ensure_allowed(self, workspace_id: str) -> None:
@@ -194,7 +203,22 @@ class WorkspaceInvitationGateway:
             raise NoPermissionError(error.description) from error
 
     def create(self, invitation: InvitationToken) -> str:
+        """Issue an indexed invitation link.
+
+        Raises:
+            RedisError: The link could not be issued together with its index entry.
+        """
         return self._tokens.create(invitation)
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
+        """List the outstanding invitation links indexed for this workspace."""
+        return self._tokens.list_pending(workspace_id)
+
+    def revoke_pending(self, workspace_id: str, email: str, *, account_id: str | None, keep_token: str | None) -> None:
+        self._tokens.revoke_pending(workspace_id, email, account_id=account_id, keep_token=keep_token)
+
+    def discard(self, workspace_id: str, token: str) -> None:
+        self._tokens.discard(workspace_id, token)
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None:
         send_invite_member_mail_task.delay(
@@ -204,6 +228,28 @@ class WorkspaceInvitationGateway:
             inviter_name=inviter_name,
             workspace_name=workspace_name,
         )
+
+
+class WorkspaceMemberCapacityGateway:
+    """Admit invitation acceptances only while the workspace has a free member seat."""
+
+    def __init__(self, *, workspaces: WorkspaceRepository, redis: RedisClientWrapper) -> None:
+        self._workspaces = workspaces
+        self._redis = redis
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        return self._redis.lock(f"workspace_member_invite:{workspace_id}", timeout=60)
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        if dify_config.DEPLOYMENT_EDITION not in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}:
+            return True
+        if self._workspaces.member_role(workspace_id, account_id) is not None:
+            return True
+        features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+            quota = features.workspace_members
+            return not quota.enabled or quota.is_available(1)
+        return not 0 < features.members.limit <= self._workspaces.count_members(workspace_id)
 
 
 class DeploymentWorkspaceMemberAccessGateway:
@@ -296,8 +342,6 @@ class DeploymentWorkspaceMemberAccessGateway:
             )
 
     def member_removed(self, workspace_id: str, removal: WorkspaceMemberRemoval) -> None:
-        if removal.account_deleted:
-            logger.info("Deleted orphaned pending account: account_id=%s, email=%s", removal.account_id, removal.email)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(workspace_id)
         from services.enterprise.account_deletion_sync import sync_workspace_member_removal
