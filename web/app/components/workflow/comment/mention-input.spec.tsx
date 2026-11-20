@@ -95,6 +95,29 @@ describe('MentionInput', () => {
     })
   })
 
+  it('lets Tab leave the input when no mention matches and Shift+Tab leave without inserting', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before</button>
+        <ControlledMentionInput onSubmit={vi.fn()} />
+      </>,
+      mentionUsers,
+    )
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@zzz')
+    await user.tab()
+    expect(textarea).not.toHaveFocus()
+
+    await user.clear(textarea)
+    await user.type(textarea, '@Ali')
+    expect(await screen.findByRole('listbox')).toBeInTheDocument()
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Before' })).toHaveFocus()
+    expect(textarea).toHaveValue('@Ali')
+  })
+
   it('uses cached users and trims the saved reply in editing mode', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()

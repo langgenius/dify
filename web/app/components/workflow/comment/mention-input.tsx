@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -31,6 +30,8 @@ import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state
 import { consoleClient } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useStore, useWorkflowStore } from '../store'
+import { CommentComposerActions } from './comment-composer'
+import { highlightMentions } from './mention-highlight'
 
 type MentionInputProps = {
   value: string
@@ -102,59 +103,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       return uniqueNames
     }, [mentionUsers])
 
-    const highlightedValue = useMemo<ReactNode>(() => {
-      if (!value) return ''
-
-      if (mentionNameList.length === 0) return value
-
-      const segments: ReactNode[] = []
-      let cursor = 0
-      let hasMention = false
-
-      while (cursor < value.length) {
-        let nextMatchStart = -1
-        let matchedName = ''
-
-        for (const name of mentionNameList) {
-          const searchStart = value.indexOf(`@${name}`, cursor)
-          if (searchStart === -1) continue
-
-          const previousChar = searchStart > 0 ? value[searchStart - 1] : ''
-          if (searchStart > 0 && !/\s/.test(previousChar!)) continue
-
-          if (
-            nextMatchStart === -1 ||
-            searchStart < nextMatchStart ||
-            (searchStart === nextMatchStart && name.length > matchedName.length)
-          ) {
-            nextMatchStart = searchStart
-            matchedName = name
-          }
-        }
-
-        if (nextMatchStart === -1) break
-
-        if (nextMatchStart > cursor)
-          segments.push(<span key={`text-${cursor}`}>{value.slice(cursor, nextMatchStart)}</span>)
-
-        const mentionEnd = nextMatchStart + matchedName.length + 1
-        segments.push(
-          <span key={`mention-${nextMatchStart}`} className="text-text-accent">
-            {value.slice(nextMatchStart, mentionEnd)}
-          </span>,
-        )
-
-        hasMention = true
-        cursor = mentionEnd
-      }
-
-      if (!hasMention) return value
-
-      if (cursor < value.length)
-        segments.push(<span key={`text-${cursor}`}>{value.slice(cursor)}</span>)
-
-      return segments
-    }, [value, mentionNameList])
+    const highlightedValue = useMemo(
+      () => highlightMentions(value, mentionNameList),
+      [value, mentionNameList],
+    )
 
     const loadMentionableUsers = useCallback(async () => {
       if (!appId) return
@@ -346,7 +298,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
         // Ignore key events during IME composition (e.g., Chinese, Japanese input)
         if (e.nativeEvent.isComposing) return
 
-        if (showMentionDropdown) {
+        if (isMentionMenuOpen) {
           if (e.key === 'ArrowDown') {
             e.preventDefault()
             setSelectedMentionIndex((prev) =>
@@ -357,7 +309,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
             setSelectedMentionIndex((prev) =>
               prev > 0 ? prev - 1 : filteredMentionUsers.length - 1,
             )
-          } else if (e.key === 'Enter' || e.key === 'Tab') {
+          } else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             e.preventDefault()
             if (filteredMentionUsers[selectedMentionIndex])
               insertMention(filteredMentionUsers[selectedMentionIndex])
@@ -370,18 +322,12 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           }
         }
 
-        if (e.key === 'Enter' && !e.shiftKey && !showMentionDropdown) {
+        if (e.key === 'Enter' && !e.shiftKey && !isMentionMenuOpen) {
           e.preventDefault()
           handleSubmit()
         }
       },
-      [
-        showMentionDropdown,
-        filteredMentionUsers,
-        selectedMentionIndex,
-        insertMention,
-        handleSubmit,
-      ],
+      [isMentionMenuOpen, filteredMentionUsers, selectedMentionIndex, insertMention, handleSubmit],
     )
 
     const resetMentionState = useCallback(() => {
@@ -461,36 +407,13 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           )}
 
           {!isEditing && (
-            <div className="flex shrink-0 items-center gap-2 self-end">
-              <IconButton
-                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
-                size="lg"
-                disabled={shouldDisableMentionButton}
-                className="transition-opacity data-disabled:opacity-40"
-                onClick={handleMentionButtonClick}
-              >
-                <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
-              </IconButton>
-              <IconButton
-                aria-label={t(($) => $['operation.send'], { ns: 'common' })}
-                size="lg"
-                variant="primary"
-                disabled={!value.trim() || disabled || loading}
-                onClick={handleSubmit}
-              >
-                {loading ? (
-                  <span
-                    aria-hidden
-                    className="i-ri-loader-2-line size-4 animate-spin text-components-button-primary-text"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="i-ri-arrow-up-line size-4 text-components-button-primary-text"
-                  />
-                )}
-              </IconButton>
-            </div>
+            <CommentComposerActions
+              canSend={Boolean(value.trim()) && !disabled}
+              sending={loading}
+              onSend={handleSubmit}
+              mentionDisabled={shouldDisableMentionButton}
+              onMention={handleMentionButtonClick}
+            />
           )}
 
           {isEditing && (
