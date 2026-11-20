@@ -10,14 +10,16 @@ per module. Existing code and Git-detected file renames retain their baseline;
 copies, changed decisions and moves out of exempt modules do not. Import
 formatting and alias renames do not introduce a new dependency.
 
-ast-grep locates candidate syntax. Python AST filtering resolves imports and
-direct assignment aliases in the same file, without interprocedural analysis
-or resolving shadowed names. Dynamic imports and reflection are not analyzed.
+ast-grep locates candidate syntax. Python AST filtering resolves imports in the
+same file and direct assignment aliases outside function and lambda bodies.
+It does not resolve shadowed names, dynamic imports or reflection.
 
 Run from the repository root with Git and ast-grep available. --staged checks
 the index against HEAD; --base-rev checks committed HEAD against that revision.
 Without either, inspect working and untracked files against the main merge
-base. Exit 0 on success, 1 for violations, or 2 when the check cannot run.
+base. For a local rename, use git mv or stage both paths after mv so Git can
+detect the rename. An untracked destination is checked as a new file.
+Exit 0 on success, 1 for violations, or 2 when the check cannot run.
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ import argparse
 import ast
 import copy
 import sys
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import override
@@ -88,7 +90,7 @@ def _contains_edition(node: ast.AST, bindings: dict[str, str]) -> bool:
 
 
 def _source_bindings(tree: ast.Module) -> dict[str, str]:
-    """Precondition: tree is a complete source file. Postcondition: collect import and direct edition alias bindings."""
+    """Precondition: tree is a parsed module. Postcondition: map imports and edition aliases outside function bodies."""
     bindings: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -103,7 +105,17 @@ def _source_bindings(tree: ast.Module) -> dict[str, str]:
                     bindings["DeploymentEdition"] = "enums.DeploymentEdition"
                 elif alias.name != "*":
                     bindings[alias.asname or alias.name] = f"{module}.{alias.name}"
-    for node in ast.walk(tree):
+    pending = deque(ast.iter_child_nodes(tree))
+    while pending:
+        node = pending.popleft()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            # Defaults and decorators are evaluated in the enclosing scope.
+            pending.extend(child for child in ast.iter_child_nodes(node) if not isinstance(child, ast.stmt))
+        elif isinstance(node, ast.Lambda):
+            pending.append(node.args)
+        else:
+            pending.extend(ast.iter_child_nodes(node))
+
         if (
             isinstance(node, ast.Assign)
             and _is_edition_reference(node.value, bindings)

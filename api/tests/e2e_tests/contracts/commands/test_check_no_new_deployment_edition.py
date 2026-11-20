@@ -107,6 +107,22 @@ def test_allows_feature_policies_and_unrelated_syntax(repo: Path, source: str) -
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        'def check():\n    edition = dify_config.DEPLOYMENT_EDITION\n    return edition == "CLOUD"\n',
+        'async def check():\n    edition: str = dify_config.DEPLOYMENT_EDITION\n    return edition == "CLOUD"\n',
+        'check = lambda: ((edition := dify_config.DEPLOYMENT_EDITION), edition == "CLOUD")\n',
+    ],
+)
+def test_ignores_assignment_aliases_inside_functions(repo: Path, source: str) -> None:
+    """Precondition: a comparison uses a function-local edition alias. Postcondition: the guard passes."""
+    write_source(repo, source)
+    git(repo, "add", ".")
+    result = run_guard(repo, "--staged")
+    assert result.returncode == 0, result.stderr
+
+
 @pytest.mark.parametrize("source", [IMPORT, CHECK])
 @pytest.mark.parametrize("mode", ["staged", "base"])
 @pytest.mark.parametrize("change", ["unchanged", "duplicate", "different", "copy"])
@@ -164,6 +180,7 @@ def test_does_not_exempt_stubs_or_similarly_named_modules(repo: Path, path: str)
     ("source", "decision"),
     [
         ("from enums import DeploymentEdition as Edition\n", "enabled = edition == Edition.CLOUD\n"),
+        ("def check():\n    from enums import DeploymentEdition as Edition\n", "    return edition == Edition.CLOUD\n"),
         ("import enums as constants\n", "enabled = edition == constants.DeploymentEdition.CLOUD\n"),
         (IMPORT, "match edition:\n    case DeploymentEdition.CLOUD:\n        enable()\n"),
         (IMPORT, "Alias = DeploymentEdition\nCLOUD = Alias.CLOUD\nenabled = edition == CLOUD\n"),
