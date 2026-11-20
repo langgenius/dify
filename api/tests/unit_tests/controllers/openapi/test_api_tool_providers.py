@@ -21,9 +21,9 @@ from controllers.openapi.api_tool_providers import ApiToolProviderApi, ApiToolPr
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ApiToolProviderNotFoundError
-from graphon.model_runtime.entities.common_entities import I18nObject
 from libs.oauth_bearer import AuthContext
 from services.tools.api_tools_manage_service import ApiToolManageService
 from tests.helpers.unit.model_factories import make_account, make_tenant
@@ -72,7 +72,7 @@ def _provider_dict(credentials: dict[str, object] | None = None) -> dict[str, ob
     return {
         "schema_type": "openapi",
         "schema": '{"openapi": "3.0.0"}',
-        "tools": [{"name": "forecast"}, {"name": "current"}],
+        "tools": [{"operation_id": "forecast"}, {"operation_id": "current"}, {"operation_id": None}],
         "icon": dict(_ICON),
         "description": "Weather tools",
         "credentials": credentials if credentials is not None else {"auth_type": "none"},
@@ -125,7 +125,7 @@ def test_describe_masks_credentials(app: Flask, monkeypatch: pytest.MonkeyPatch,
     assert isinstance(response, ApiToolProviderResponse)
     assert response.credentials["api_key_value"] == "****abc"
     assert "s3cr3t" not in str(response.model_dump(mode="json"))
-    assert (response.tools, response.name) == (["forecast", "current"], _NAME)
+    assert (response.tools, response.name) == (["forecast", "current", "default_tool"], _NAME)
 
 
 def test_describe_answers_404_for_an_unknown_provider(

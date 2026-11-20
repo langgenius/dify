@@ -76,7 +76,7 @@ def _row(provider: ToolProviderApiEntity) -> ApiToolProviderRow:
     return ApiToolProviderRow(
         name=provider.name,
         icon=dict(provider.icon) if isinstance(provider.icon, dict) else provider.icon,
-        description=getattr(provider.description, "en_US", None) or None,
+        description=provider.description.en_US or None,
         labels=list(provider.labels),
         tools=[tool.name for tool in provider.tools],
     )
