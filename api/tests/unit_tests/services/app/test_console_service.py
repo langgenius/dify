@@ -442,6 +442,15 @@ def test_export_rejects_invalid_or_unpaid_version_before_exporting(ports: Ports)
         service.export(CONTEXT, "app", AppExportOptions())
 
 
+def test_export_rejects_unpaid_workflow_version_before_exporting(ports: Ports) -> None:
+    service, _, access, transfers, _ = ports
+    access.paid = False
+    with pytest.raises(AppExportPaidPlanRequiredError):
+        service.export(CONTEXT, "app", AppExportOptions(format="yaml", workflow_id="workflow"))
+    assert transfers.calls == []
+    assert service.export(CONTEXT, "app", AppExportOptions(format="yaml")) == "app: example"
+
+
 @pytest.mark.parametrize("mode", ["chat", "workflow", "agent"])
 def test_publish_orders_package_upload_authorization_and_redirect_without_secrets(ports: Ports, mode: str) -> None:
     service, apps, _, transfers, creators = ports

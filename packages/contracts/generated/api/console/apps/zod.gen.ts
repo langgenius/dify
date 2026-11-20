@@ -637,6 +637,18 @@ export const zAppExportResponse = z.object({
 })
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * RosterAgentPackageExportFailedError
  *
  * The Roster Agent package could not be exported.
@@ -779,18 +791,6 @@ export const zNetworkAccessUnsupportedAccessPointsError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_unsupported_access_points'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 

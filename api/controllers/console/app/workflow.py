@@ -50,6 +50,7 @@ from controllers.console.wraps import (
     model_validate,
     rbac_permission_required,
     setup_required,
+    version_restore_plan_required,
     with_current_tenant_id,
     with_current_user,
 )
@@ -1687,6 +1688,7 @@ class DraftWorkflowRestoreApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()))
+    @version_restore_plan_required
     def post(self, current_user: Account, app_model: App, workflow_id: str):
         workflow_service = WorkflowService()
 

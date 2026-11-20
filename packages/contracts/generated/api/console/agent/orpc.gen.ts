@@ -27,6 +27,7 @@ import {
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
+  zPaidPlanRequiredError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -1722,6 +1723,7 @@ export const post22 = oc
   .errors({
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   })
 
 export const restore = {

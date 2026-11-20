@@ -370,6 +370,14 @@ const zTracingRetryNotAllowedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 export const get2Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const postErrors = {
@@ -670,6 +678,7 @@ export const get32Errors = {
 export const post22Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
 export const get33Errors = {

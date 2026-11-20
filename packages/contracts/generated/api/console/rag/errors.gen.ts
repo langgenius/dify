@@ -50,6 +50,14 @@ const zRateLimitError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 export const post2Errors = {
   dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
 }
@@ -146,7 +154,10 @@ export const post19Errors = {
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
 
-export const post20Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
+export const post20Errors = {
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+}
 
 export const delete5Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 

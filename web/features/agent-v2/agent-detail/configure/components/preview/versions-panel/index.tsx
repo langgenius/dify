@@ -3,7 +3,6 @@
 import type { AgentVersionFilter } from './filter'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +13,6 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { AgentVersionRestore } from '../../version-restore'
 import { CurrentDraftItem } from './current-draft-item'
@@ -50,24 +48,24 @@ export function AgentPreviewVersionsPanel({
   })
   const { agentQuery, canImportExportDSL } = useAgentPermissions(agentId)
   const { exportAppDsl, isExporting } = useExportAppDsl()
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: versionRestore } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.billing.subscription.plan,
+      select: ({ version_restore_enabled, version_restore_upgrade_available }) => ({
+        version_restore_enabled,
+        version_restore_upgrade_available,
+      }),
     }),
   )
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
-  const shouldShowUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
-  const exportDisabled =
-    isExporting || (deploymentEdition === 'CLOUD' && plan === undefined) || !agentQuery.data?.app_id
+  const exportDisabled = isExporting || !versionRestore || !agentQuery.data?.app_id
   const handleExport = (versionId: string) => {
     const agent = agentQuery.data
     if (!canImportExportDSL || exportDisabled || !agent?.app_id) return
-    if (shouldShowUpgrade) {
+    if (versionRestore?.version_restore_upgrade_available) {
       void setPricing('open')
       return
     }
+    if (!versionRestore?.version_restore_enabled) return
     void exportAppDsl({ appId: agent.app_id, appName: agent.name, versionId })
   }
   const [filterValue, setFilterValue] = useState<AgentVersionFilter>('all')
@@ -160,7 +158,7 @@ export function AgentPreviewVersionsPanel({
                     onRestore={restore.canRestore ? restore.requestRestore : undefined}
                     restoreDisabled={restore.disabled}
                     exportDisabled={exportDisabled}
-                    showUpgrade={shouldShowUpgrade}
+                    showUpgrade={versionRestore?.version_restore_upgrade_available ?? false}
                   />
                 ))}
               </div>

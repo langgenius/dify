@@ -132,6 +132,8 @@ export const zFeatureModel = z.object({
     reset_date: 0,
     usage: 0,
   }),
+  version_restore_enabled: z.boolean().default(false),
+  version_restore_upgrade_available: z.boolean().default(false),
   webapp_copyright_enabled: z.boolean().default(false),
   workflow_collaboration_enabled: z.boolean().default(false),
   workflow_collaboration_upgrade_available: z.boolean().default(false),

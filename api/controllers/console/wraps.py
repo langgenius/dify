@@ -208,6 +208,35 @@ def evaluation_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R
     return document_errors(evaluation_plan_decorated, PaidPlanRequiredError)
 
 
+def require_version_restore(tenant_id: str) -> None:
+    """Raise unless the workspace may restore or export a published version.
+
+    Shares ``FeatureService.can_use_version_restore`` with the ``version_restore_enabled`` feature flag.
+    Cloud Sandbox raises 403 ``paid_plan_required``; billing failures raise 503.
+    """
+    try:
+        allowed = FeatureService.can_use_version_restore(tenant_id)
+    except BillingError as exc:
+        raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+    if not allowed:
+        raise PaidPlanRequiredError()
+
+
+def version_restore_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Admit an authenticated version restore only when the workspace may restore published versions.
+
+    The caller must authenticate and initialize the account first.
+    """
+
+    @wraps(view)
+    def version_restore_decorated(*args: P.args, **kwargs: P.kwargs):
+        _, tenant_id = current_account_with_tenant()
+        require_version_restore(tenant_id)
+        return view(*args, **kwargs)
+
+    return document_errors(version_restore_decorated, PaidPlanRequiredError)
+
+
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):

@@ -8,7 +8,7 @@ from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
-from controllers.common.errors import InvalidArgumentError
+from controllers.common.errors import InvalidArgumentError, PaidPlanRequiredError
 from controllers.common.fields import TextFileResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -31,6 +31,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     model_validate,
     rbac_permission_required,
+    require_version_restore,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -46,6 +47,7 @@ from fields.snippet_fields import (
     snippet_list_item_responses,
     snippet_response,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -314,6 +316,7 @@ class CustomizedSnippetDetailApi(Resource):
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>/export")
 class CustomizedSnippetExportApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("export_customized_snippet")
     @console_ns.doc(description="Export snippet configuration as DSL")
     @console_ns.doc(params={"snippet_id": "Snippet ID to export"})
@@ -340,6 +343,8 @@ class CustomizedSnippetExportApi(Resource):
 
         # Get include_secret parameter
         query = SnippetExportQuery.model_validate(request.args.to_dict())
+        if query.workflow_id:
+            require_version_restore(current_tenant_id)
 
         export_service = SnippetDslService(session)
         try:

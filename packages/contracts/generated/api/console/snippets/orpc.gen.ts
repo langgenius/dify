@@ -11,6 +11,7 @@ import {
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
   zInvalidComposerConfigError,
+  zPaidPlanRequiredError,
   zPlaintextSecretNotAllowedError,
 } from './zod.gen.ts'
 import {
@@ -912,6 +913,7 @@ export const post12 = oc
   })
   .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const restore = {
   post: post12,

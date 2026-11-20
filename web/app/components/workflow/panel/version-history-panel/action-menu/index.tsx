@@ -8,7 +8,6 @@ import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
@@ -26,14 +25,11 @@ const useActionMenu = (props: ActionMenuProps) => {
   const { workflowId, isNamedVersion, canImportExportDSL } = props
   const { t } = useTranslation(['app', 'common', 'workflow', 'workflowHistory'])
   const resourceKind = useAtomValue(editorResourceKindAtom)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: restoreUpgradeAvailable } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.billing.subscription.plan,
+      select: (features) => features.version_restore_upgrade_available,
     }),
   )
-  const shouldShowUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -45,8 +41,8 @@ const useActionMenu = (props: ActionMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.restore,
         name: t(($) => $['common.restore'], { ns: 'workflow' }),
-        disabled: deploymentEdition === 'CLOUD' && plan === undefined,
-        ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
+        disabled: restoreUpgradeAvailable === undefined,
+        ...(restoreUpgradeAvailable ? { showUpgrade: true } : {}),
       },
       isNamedVersion
         ? {
@@ -63,8 +59,8 @@ const useActionMenu = (props: ActionMenuProps) => {
             {
               key: VersionHistoryContextMenuOptions.exportDSL,
               name: t(($) => $.exportApp, { ns: 'app' }),
-              disabled: deploymentEdition === 'CLOUD' && plan === undefined,
-              ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
+              disabled: restoreUpgradeAvailable === undefined,
+              ...(restoreUpgradeAvailable ? { showUpgrade: true } : {}),
             },
           ]
         : []),
@@ -74,16 +70,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         description: workflowId,
       },
     ]
-  }, [
-    deploymentEdition,
-    plan,
-    canImportExportDSL,
-    isNamedVersion,
-    resourceKind,
-    shouldShowUpgrade,
-    t,
-    workflowId,
-  ])
+  }, [restoreUpgradeAvailable, canImportExportDSL, isNamedVersion, resourceKind, t, workflowId])
 
   return {
     deleteOperation,

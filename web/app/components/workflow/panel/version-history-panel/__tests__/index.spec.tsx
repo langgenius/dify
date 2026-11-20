@@ -1,4 +1,3 @@
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { screen, waitFor } from '@testing-library/react'
@@ -25,8 +24,12 @@ const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }))
-let mockPlanType: CloudPlan = 'professional'
-let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+const restoreEnabled = { version_restore_enabled: true, version_restore_upgrade_available: false }
+const restoreUpgradeAvailable = {
+  version_restore_enabled: false,
+  version_restore_upgrade_available: true,
+}
+let versionRestoreAccess = restoreEnabled
 let mockPublishedEnvironments: FetchWorkflowDraftResponse['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
@@ -147,8 +150,7 @@ describe('VersionHistoryPanel', () => {
     mockRestoreWorkflow.mockResolvedValue(undefined)
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
-    mockPlanType = 'professional'
-    deploymentEdition = 'CLOUD'
+    versionRestoreAccess = restoreEnabled
     mockPublishedEnvironments = undefined
     mockHasNextPage = false
     mockIsFetching = false
@@ -224,9 +226,9 @@ describe('VersionHistoryPanel', () => {
     })
   })
 
-  it('should show plan upgrade modal instead of restore confirmation for sandbox users', async () => {
+  it('should show plan upgrade modal instead of restore confirmation when restore requires an upgrade', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = 'sandbox'
+    versionRestoreAccess = restoreUpgradeAvailable
 
     render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
@@ -239,9 +241,9 @@ describe('VersionHistoryPanel', () => {
     expect(mockRestoreWorkflow).not.toHaveBeenCalled()
   })
 
-  it('should show plan upgrade modal instead of exporting DSL for sandbox users', async () => {
+  it('should show plan upgrade modal instead of exporting DSL when export requires an upgrade', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = 'sandbox'
+    versionRestoreAccess = restoreUpgradeAvailable
 
     render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
@@ -350,8 +352,7 @@ describe('VersionHistoryPanel', () => {
 
 function render(ui: ReactElement) {
   const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: deploymentEdition },
-    features: { billing: { subscription: { plan: mockPlanType } } },
+    features: versionRestoreAccess,
   })
   const rendered = renderWorkflowComponent(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     queryClient,

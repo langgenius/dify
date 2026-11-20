@@ -1,13 +1,11 @@
 """Composition of the Agent App console use cases."""
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
@@ -52,13 +50,6 @@ class AgentAppServices:
     collection: AgentAppCollectionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
-
-
-def _can_restore_version(
-    tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan | None]
-) -> bool:
-    """Require a paid plan for Cloud restores; other editions do not query billing."""
-    return edition != DeploymentEdition.CLOUD or ((plan := get_plan(tenant_id)) is not None and plan.is_paid)
 
 
 def build_agent_app_services(
@@ -106,9 +97,7 @@ def build_agent_version_service(*, database_client: sessionmaker[Session]) -> Ag
     """Wire roster version history with tenant-scoped storage and Cloud plan checks."""
     return AgentVersionService(
         store=SQLAlchemyAgentVersionRepository(session_factory=database_client),
-        restore_allowed=lambda tenant_id: _can_restore_version(
-            tenant_id, edition=dify_config.DEPLOYMENT_EDITION, get_plan=FeatureService.get_workspace_plan
-        ),
+        restore_allowed=FeatureService.can_use_version_restore,
     )
 
 

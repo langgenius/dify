@@ -82,6 +82,14 @@ const zAgentVersionConflictError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 export const get7Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
 }
@@ -133,3 +141,5 @@ export const get15Errors = {
 export const post10Errors = {
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
+
+export const post12Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }

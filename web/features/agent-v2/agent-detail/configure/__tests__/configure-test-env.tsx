@@ -237,6 +237,7 @@ export function createEnvironment({
     features: {
       agent_preview_enabled: previewEnabled,
       billing: { subscription: { plan: 'professional' } },
+      version_restore_enabled: true,
     },
   })
   queryClient.setDefaultOptions({

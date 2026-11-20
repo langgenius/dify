@@ -43,6 +43,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
     validate_request,
+    version_restore_plan_required,
     with_current_tenant_id,
     with_current_user,
     with_current_user_id,
@@ -1073,6 +1074,64 @@ class TestBillingPaidPlanRequired:
 
         assert response.status_code == 403
         assert response.json["code"] == "paid_plan_required"
+
+
+class TestVersionRestorePlanRequired:
+    @staticmethod
+    def _call(plan: str | None = None, side_effect: Exception | None = None):
+        @version_restore_plan_required
+        def restore_view() -> str:
+            return "allowed"
+
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch(
+                "controllers.console.wraps.FeatureService.get_workspace_plan",
+                return_value=CloudPlan(plan) if plan else None,
+                side_effect=side_effect,
+            ) as get_workspace_plan,
+        ):
+            return restore_view(), get_workspace_plan
+
+    @pytest.mark.parametrize("plan", ["professional", "team"])
+    def test_allows_cloud_paid_plan(self, config_overrides: Callable[..., None], plan: str) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        result, get_workspace_plan = self._call(plan)
+
+        assert result == "allowed"
+        get_workspace_plan.assert_called_once_with("tenant123")
+
+    def test_rejects_cloud_sandbox(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        with pytest.raises(PaidPlanRequiredError) as exc_info:
+            self._call("sandbox")
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.error_code == "paid_plan_required"
+
+    @pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+    def test_skips_billing_outside_cloud(
+        self, config_overrides: Callable[..., None], edition: DeploymentEdition
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+
+        result, get_workspace_plan = self._call(side_effect=AssertionError("no billing"))
+
+        assert result == "allowed"
+        get_workspace_plan.assert_not_called()
+
+    def test_fails_closed_on_billing_error(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._call(side_effect=BillingUpstreamUnavailableError("billing unavailable"))
+
+        assert exc_info.value.code == 503
 
 
 class TestBillingResourceLimits:

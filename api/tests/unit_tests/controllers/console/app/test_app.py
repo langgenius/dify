@@ -23,8 +23,9 @@ from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, ServiceUnavailable
 
+from controllers.common.errors import PaidPlanRequiredError
 from controllers.console import flask_admission
 from controllers.console.app import (
     annotation as annotation_module,
@@ -120,6 +121,7 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import Import, ImportStatus
+from services.errors.billing import BillingUpstreamUnavailableError
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """Unit coverage for console app controller contracts and response mapping."""
@@ -1555,6 +1557,18 @@ class TestConsoleAppApiCases:
         assert archive.closed
 
     @staticmethod
+    @pytest.mark.parametrize("query", ["workflow_id=workflow-1", "version_id=00000000-0000-4000-8000-000000000001"])
+    def test_version_export_returns_503_when_billing_is_unavailable(
+        app: Flask, boundary: AppBoundary, monkeypatch: pytest.MonkeyPatch, query: str
+    ) -> None:
+        def fail(*_args: object, **_kwargs: object) -> None:
+            raise BillingUpstreamUnavailableError("billing unavailable")
+
+        monkeypatch.setattr(boundary, "export", fail)
+        with app.test_request_context(f"/?{query}"), pytest.raises(ServiceUnavailable):
+            invoke(controller.AppExportApi, controller.AppExportApi.get, app_id=_CONSOLE_APP_API_APP_ID)
+
+    @staticmethod
     def test_publish_delegates_and_delete_has_no_body(app: Flask, boundary: AppBoundary) -> None:
         with app.test_request_context("/"):
             assert invoke(
@@ -1576,7 +1590,7 @@ class TestConsoleAppApiCases:
         [
             (ConsoleAppNotFoundError(), AppNotFoundError),
             (InvalidAppExportError("invalid version"), BadRequest),
-            (AppExportPaidPlanRequiredError("paid plan required"), Forbidden),
+            (AppExportPaidPlanRequiredError("paid plan required"), PaidPlanRequiredError),
         ],
     )
     def test_application_errors_are_translated_at_transport_boundary(

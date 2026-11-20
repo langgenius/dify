@@ -4710,6 +4710,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }

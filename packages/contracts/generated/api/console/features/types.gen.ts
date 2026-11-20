@@ -25,6 +25,8 @@ export type FeatureModel = {
   members: LimitationModel
   model_load_balancing_enabled: boolean
   trigger_event: Quota
+  version_restore_enabled: boolean
+  version_restore_upgrade_available: boolean
   webapp_copyright_enabled: boolean
   workflow_collaboration_enabled: boolean
   workflow_collaboration_upgrade_available: boolean

@@ -14,7 +14,6 @@ import { editorResourceAtom } from '@/app/components/workflow/editor-resource/st
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteWorkflow,
@@ -64,14 +63,14 @@ export const VersionHistoryPanel = ({
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: versionRestore } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.billing.subscription.plan,
+      select: ({ version_restore_enabled, version_restore_upgrade_available }) => ({
+        version_restore_enabled,
+        version_restore_upgrade_available,
+      }),
     }),
   )
-  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -156,11 +155,12 @@ export const VersionHistoryPanel = ({
       setOperatedItem(item)
       switch (operation) {
         case VersionHistoryContextMenuOptions.restore:
-          if (isPlanUnavailable) return
-          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
+          if (!versionRestore) return
+          if (versionRestore.version_restore_upgrade_available) {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
+          if (!versionRestore.version_restore_enabled) return
           setRestoreConfirmOpen(true)
           break
         case VersionHistoryContextMenuOptions.edit:
@@ -176,17 +176,17 @@ export const VersionHistoryPanel = ({
           )
           break
         case VersionHistoryContextMenuOptions.exportDSL:
-          if (isPlanUnavailable) return
-          if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
+          if (!versionRestore) return
+          if (versionRestore.version_restore_upgrade_available) {
             setIsRestorePlanUpgradeModalOpen(true)
             break
           }
-          if (!canImportExportDSL) return
+          if (!versionRestore.version_restore_enabled || !canImportExportDSL) return
           handleExportDSL?.(false, item.id)
           break
       }
     },
-    [isPlanUnavailable, deploymentEdition, plan, canImportExportDSL, t, handleExportDSL],
+    [versionRestore, canImportExportDSL, t, handleExportDSL],
   )
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {

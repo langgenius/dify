@@ -7,8 +7,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from enums import CloudPlan, DeploymentEdition
-from extensions.application_services.agent import _can_restore_version
 from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -25,6 +23,7 @@ from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from services.agent.version_service import AgentVersionService
 from services.agent.version_store import AgentVersionPlanRequiredError
+from services.errors.billing import BillingUpstreamUnavailableError
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
@@ -205,7 +204,7 @@ def test_restore_plan_rejection_returns_forbidden_without_changing_the_draft(har
         )
     response = harness.client.post(f"/console/api/agent/{agent_id}/versions/{first}/restore", headers=harness.headers)
     assert response.status_code == HTTPStatus.FORBIDDEN
-    assert response.get_json()["message"] == "This feature requires a paid plan."
+    assert response.get_json()["code"] == "paid_plan_required"
     with harness.sessions() as session:
         assert session.scalar(select(AgentConfigDraft.id).where(AgentConfigDraft.agent_id == agent_id)) is None
 
@@ -236,22 +235,24 @@ def test_archived_roster_agent_retains_version_history_and_restore(harness: Harn
         assert draft.base_snapshot_id == first
 
 
-@pytest.mark.parametrize(
-    ("edition", "plan", "allowed", "reads_billing"),
-    [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, False),
-        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
-    ],
-)
-def test_restore_plan_policy(edition: DeploymentEdition, plan: CloudPlan, allowed: bool, reads_billing: bool) -> None:
-    reads: list[str] = []
+def test_restore_returns_503_when_billing_is_unavailable(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent()
+    first, _, _ = _seed_history(harness, agent_id)
+    app = harness.client.application
 
-    def get_plan(tenant_id: str) -> CloudPlan:
-        reads.append(tenant_id)
-        return plan
+    def billing_unavailable(_tenant: str) -> bool:
+        raise BillingUpstreamUnavailableError("billing unavailable")
 
-    assert _can_restore_version("tenant", edition=edition, get_plan=get_plan) is allowed
-    assert reads == (["tenant"] if reads_billing else [])
+    with app.app_context():
+        services = application_services()
+        app.extensions["application_services"] = replace(
+            services,
+            agent_versions=AgentVersionService(
+                store=SQLAlchemyAgentVersionRepository(session_factory=harness.sessions),
+                restore_allowed=billing_unavailable,
+            ),
+        )
+    response = harness.client.post(f"/console/api/agent/{agent_id}/versions/{first}/restore", headers=harness.headers)
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft.id).where(AgentConfigDraft.agent_id == agent_id)) is None

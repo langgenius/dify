@@ -6,6 +6,7 @@ import {
   zDatasetNameDuplicateError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
+  zPaidPlanRequiredError,
   zPipelineNotFoundError,
   zRateLimitError,
 } from './zod.gen.ts'
@@ -1285,7 +1286,10 @@ export const post20 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
+  .errors({
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
+  })
 
 export const restore = {
   post: post20,

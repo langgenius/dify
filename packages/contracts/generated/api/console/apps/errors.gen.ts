@@ -218,6 +218,14 @@ const zAppSuggestedQuestionsAfterAnswerDisabledError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zRosterAgentPackageExportFailedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -295,14 +303,6 @@ const zNetworkAccessUnsupportedAccessPointsError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('network_access_unsupported_access_points'),
       status: z.literal(400),
-    }),
-  ))()
-
-const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('paid_plan_required'),
-      status: z.literal(403),
     }),
   ))()
 
@@ -813,6 +813,7 @@ export const get30Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const post24Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get31Errors = {
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
 }
 
@@ -1276,7 +1277,10 @@ export const get86Errors = {
   webhook_trigger_not_found: { status: 404, data: zWebhookTriggerNotFoundError },
 }
 
-export const post69Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post69Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const delete14Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 

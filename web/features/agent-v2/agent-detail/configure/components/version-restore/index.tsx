@@ -13,13 +13,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { toast } from '@/app/notifications'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -46,18 +44,17 @@ export function AgentVersionRestore({
   const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
   const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const { data: plan } = useQuery(
+  const { data: versionRestore } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.billing.subscription.plan,
+      select: ({ version_restore_enabled, version_restore_upgrade_available }) => ({
+        version_restore_enabled,
+        version_restore_upgrade_available,
+      }),
     }),
   )
   const [stage, setStage] = useState<'closed' | 'upgrade' | 'confirm'>('closed')
   const [version, setVersion] = useState<AgentConfigSnapshotSummaryResponse | null>(null)
-  const showUpgrade = deploymentEdition === 'CLOUD' && plan === 'sandbox'
-  const disabled =
-    externallyDisabled || !canRestore || (deploymentEdition === 'CLOUD' && plan === undefined)
+  const disabled = externallyDisabled || !canRestore || !versionRestore
   const mutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions({
       context: { silent: true },
@@ -92,20 +89,22 @@ export function AgentVersionRestore({
 
   const requestRestore = (selectedVersion: AgentConfigSnapshotSummaryResponse) => {
     if (disabled || mutation.isPending) return
-    if (showUpgrade) {
+    if (versionRestore?.version_restore_upgrade_available) {
       setStage('upgrade')
       return
     }
+    if (!versionRestore?.version_restore_enabled) return
     setVersion(selectedVersion)
     setStage('confirm')
   }
 
   const confirmRestore = () => {
     if (!version || disabled || mutation.isPending) return
-    if (showUpgrade) {
+    if (versionRestore?.version_restore_upgrade_available) {
       setStage('upgrade')
       return
     }
+    if (!versionRestore?.version_restore_enabled) return
     mutation.mutate({ params: { agent_id: agentId, version_id: version.id } })
   }
 
