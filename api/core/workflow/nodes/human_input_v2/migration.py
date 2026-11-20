@@ -12,15 +12,17 @@ from dataclasses import dataclass
 
 from core.human_input_v2.entities import DebugChannel
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail
-from core.workflow.human_input_adapter import (
+from models.human_input_delivery import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     ExternalRecipient,
     MemberRecipient,
-    WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
+from models.human_input_delivery import (
+    InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod,
+)
+from models.human_input_entities import HumanInputNodeDataFull
 
 from .entities import (
     HUMAN_INPUT_NODE_TYPE,

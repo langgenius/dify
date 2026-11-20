@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
+from enums.human_input import HumanInputFormKind
 from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from libs.datetime_utils import naive_utc_now

@@ -3,8 +3,8 @@ from datetime import timedelta
 import pytest
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Initiator
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account

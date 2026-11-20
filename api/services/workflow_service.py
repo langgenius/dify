@@ -19,11 +19,7 @@ from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_adapter import (
-    DeliveryChannelConfig,
-    adapt_human_input_node_data_for_graph,
-    parse_human_input_delivery_methods,
-)
+from core.workflow.human_input_adapter import adapt_human_input_node_data_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     LLMEnvironmentVariable,
     parse_llm_model_selector,
@@ -45,8 +41,6 @@ from core.workflow.nodes.human_input.callback import (
     render_form_content_before_submission,
     resolve_default_values,
 )
-from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -60,6 +54,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
+from enums.human_input import HumanInputFormKind, RecipientType
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -91,7 +86,9 @@ from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from libs.helper import escape_like_pattern
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputFormRecipient
+from models.human_input_delivery import DeliveryChannelConfig
+from models.human_input_entities import FormInputConfig, HumanInputNodeData
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import (
@@ -2225,7 +2222,7 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from core.workflow.nodes.human_input.entities import HumanInputNodeData
+        from models.human_input_entities import HumanInputNodeData
 
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))

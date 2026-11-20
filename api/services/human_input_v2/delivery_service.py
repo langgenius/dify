@@ -34,10 +34,10 @@ from core.human_input_v2.im_integration.adapters.entities import (
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared.values import ContactId, IMBindingId
-from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError
 from extensions.ext_key_provider import key_provider_manager
+from models.human_input_delivery import EmailDeliveryConfig
 from models.model import EndUser
 from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.delivery_attempt_repository import (

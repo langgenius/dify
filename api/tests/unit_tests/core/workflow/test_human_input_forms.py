@@ -13,7 +13,8 @@ from core.workflow.human_input_policy import (
     HumanInputSurface,
     disposition_for_surface,
 )
-from models.human_input import ApprovalChannel, HumanInputFormRecipient, RecipientType
+from enums.human_input import ApprovalChannel, RecipientType
+from models.human_input import HumanInputFormRecipient
 
 TABLES = (HumanInputFormRecipient,)
 

@@ -13,7 +13,6 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
     P2CardActionTriggerResponse,
 )
 
-from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -35,6 +34,7 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
 )
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
+from enums.human_input import ButtonStyle
 
 _FIXTURE_DIRECTORY = Path(__file__).resolve().parents[5] / "unit_tests/core/human_input_v2/im_provider/fixtures"
 _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_webhook.json"

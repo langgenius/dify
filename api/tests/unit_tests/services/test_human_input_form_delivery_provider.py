@@ -4,12 +4,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-)
+from enums.human_input import DeliveryMethodType, RecipientType
 from graphon.runtime import VariablePool
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -18,9 +13,9 @@ from models.human_input import (
     HumanInputForm,
     HumanInputFormRecipient,
     InstantMessageRecipientPayload,
-    RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
 from services import human_input_form_delivery_provider as provider_module
 from services.human_input_form_delivery_provider import (
     EmailHumanInputFormDeliveryProvider,

@@ -8,9 +8,9 @@ from sqlalchemy import delete, event
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+from enums.human_input import HumanInputFormStatus
 from models.enums import ConversationFromSource
 from models.execution_extra_content import HumanInputContent
-from models.human_input import HumanInputFormStatus
 from models.model import Message
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository

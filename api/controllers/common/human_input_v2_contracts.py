@@ -33,12 +33,12 @@ from core.human_input_v2.entities import (
     IMSyncRunStatus,
     OrganizationCandidateId,
 )
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
 from libs.helper import EmailStr
+from models.human_input_entities import FormInputConfig, UserActionConfig
 
 
 class _NoExtraModel(BaseModel):

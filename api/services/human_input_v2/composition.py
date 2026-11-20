@@ -26,6 +26,7 @@ from .email_client import build_email_client
 from .form_service import AccountInitiator, EndUserInitiator, FormExecutionContext, HumanInputFormService
 from .node_data_migration import HumanInputNodeDataMigrationService
 from .runtime import DifyHumanInputRuntime
+from .workspace_member_contact_lookup import SQLAlchemyWorkspaceMemberContactLookup
 
 
 def build_human_input_delivery_service(
@@ -41,8 +42,9 @@ def build_human_input_node_data_migration_service() -> HumanInputNodeDataMigrati
     """Compose the read-only migration service for one Console request."""
 
     return HumanInputNodeDataMigrationService(
-        session_factory=session_factory.create_session,
-        contact_repository_factory=SQLAlchemyContactRepository,
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(
+            session_factory.create_session, SQLAlchemyContactRepository
+        ),
     )
 
 

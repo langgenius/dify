@@ -18,12 +18,7 @@ from pydantic import (
 from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, PydanticCustomError
 
-from core.workflow.human_input_adapter import (
-    EmailDeliveryMethod,
-    WebAppDeliveryMethod,
-    adapt_human_input_node_data_for_graph,
-)
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
+from core.workflow.human_input_adapter import adapt_human_input_node_data_for_graph
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
     LegacyNodeDataPreflight,
@@ -31,6 +26,13 @@ from core.workflow.nodes.human_input_v2.migration import (
 )
 from graphon.entities.base_node_data import DefaultValue
 from graphon.entities.exc import DefaultValueTypeError
+from models.human_input_delivery import (
+    EmailDeliveryMethod,
+)
+from models.human_input_delivery import (
+    InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod,
+)
+from models.human_input_entities import HumanInputNodeDataFull
 
 
 class LegacyHITLv1NodeData(RootModel[LegacyNodeDataPreflight]):

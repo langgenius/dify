@@ -815,9 +815,10 @@ def test_pat_can_read_and_submit_a_valid_form_started_by_another_account(
     """Given two forms and a PAT, submit the shared form and deny access to its run history."""
     import json
 
+    from enums.human_input import RecipientType
     from graphon.enums import WorkflowExecutionStatus
     from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-    from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+    from models.human_input import HumanInputForm, HumanInputFormRecipient
     from models.model import AppMode
     from models.workflow import WorkflowRun, WorkflowType
     from services.human_input_service import resume_app_execution

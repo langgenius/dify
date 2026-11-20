@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
-from sqlalchemy.orm import Session
-
-from core.human_input_v2.shared import AccountId, TenantId
-from core.workflow.human_input_adapter import EmailDeliveryMethod, MemberRecipient
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
+from core.human_input_v2.shared import TenantId
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
@@ -17,10 +14,17 @@ from core.workflow.nodes.human_input_v2.migration import (
     MemberContactSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
-    ResolvedMemberContact,
     convert_legacy_human_input_node_data,
 )
-from repositories.human_input_v2.contact import ContactRepository, ContactType
+from models.human_input_delivery import EmailDeliveryMethod, MemberRecipient
+from models.human_input_entities import HumanInputNodeDataFull
+
+
+class WorkspaceMemberContactLookup(Protocol):
+    """Read existing Contact identities within the requested workspace."""
+
+    def find_member_contacts(self, tenant_id: TenantId, member_ids: Sequence[str]) -> MemberContactSnapshot: ...
+
 
 type NodeDataConverter = Callable[
     [HumanInputNodeDataFull, MemberContactSnapshot],
@@ -90,22 +94,20 @@ class HumanInputNodeDataMigrationService:
     def __init__(
         self,
         *,
-        session_factory: Callable[[], Session],
-        contact_repository_factory: Callable[[Session], ContactRepository],
+        member_contact_lookup: WorkspaceMemberContactLookup,
         converter: NodeDataConverter = convert_legacy_human_input_node_data,
     ) -> None:
-        self._session_factory = session_factory
-        self._contact_repository_factory = contact_repository_factory
+        self._member_contact_lookup = member_contact_lookup
         self._converter = converter
 
     def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> NodeDataMigrationOutcome:
         """Convert validated nodes using one current workspace Contact snapshot.
 
-        Own the read Session and close it before conversion. Return the complete
+        Load the workspace Contact snapshot before conversion. Return the complete
         ordered batch or all blockers; never write workflow or Contact state.
         """
         member_ids = self._collect_member_ids(nodes)
-        member_contact_snapshot = self._member_contact_snapshot(tenant_id, member_ids)
+        member_contact_snapshot = self._member_contact_lookup.find_member_contacts(tenant_id, member_ids)
 
         migrated_nodes: list[MigratedNode] = []
         blockers: list[NodeDataMigrationBlocker] = []
@@ -118,22 +120,6 @@ class HumanInputNodeDataMigrationService:
         if blockers:
             return NodeDataMigrationFailure(tuple(blockers))
         return NodeDataMigrationSuccess(tuple(migrated_nodes))
-
-    def _member_contact_snapshot(self, tenant_id: TenantId, member_ids: Sequence[str]) -> MemberContactSnapshot:
-        """Read existing workspace member identities once; never provision them."""
-        if not member_ids:
-            return MemberContactSnapshot()
-        with self._session_factory() as session, session.no_autoflush:
-            contacts = self._contact_repository_factory(session).get_contacts_by_account_ids(
-                tenant_id, tuple(AccountId(member_id) for member_id in member_ids)
-            )
-        return MemberContactSnapshot(
-            tuple(
-                ResolvedMemberContact(member_id, contact.id)
-                for member_id in member_ids
-                if (contact := contacts.get(AccountId(member_id))) is not None and contact.type == ContactType.WORKSPACE
-            )
-        )
 
     @staticmethod
     def _ordered_node_blockers(

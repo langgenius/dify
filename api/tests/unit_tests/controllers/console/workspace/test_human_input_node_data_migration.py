@@ -25,8 +25,6 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
 )
 from core.human_input_v2.shared.values import ContactId, TenantId
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import FormInputType, ValueSourceType
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
 from core.workflow.nodes.human_input_v2.migration import (
@@ -34,10 +32,12 @@ from core.workflow.nodes.human_input_v2.migration import (
     MigrationBlockerCode,
     convert_legacy_human_input_node_data,
 )
+from enums.human_input import FormInputType, ValueSourceType
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayStringSegment
 from models.account import Account, TenantAccountRole
+from models.human_input_entities import HumanInputNodeDataFull
 from repositories.human_input_v2.contact import Contact, ContactRepository, ContactType
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
@@ -47,6 +47,7 @@ from services.human_input_v2.node_data_migration import (
     NodeDataMigrationFailure,
     NodeDataMigrationSuccess,
 )
+from services.human_input_v2.workspace_member_contact_lookup import SQLAlchemyWorkspaceMemberContactLookup
 
 _CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
 
@@ -65,8 +66,7 @@ def _migration_service() -> HumanInputNodeDataMigrationService:
         for account_id in account_ids
     }
     return HumanInputNodeDataMigrationService(
-        session_factory=Session,
-        contact_repository_factory=lambda _session: repository,
+        member_contact_lookup=SQLAlchemyWorkspaceMemberContactLookup(Session, lambda _session: repository),
     )
 
 
