@@ -66,7 +66,7 @@ class Mail:
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
                 )
             case "rasket":
-                from libs.rasket import RasketClient
+                from extensions.rasket import RasketClient
 
                 if not dify_config.RASKET_API_KEY:
                     raise ValueError("RASKET_API_KEY is required for Rasket mail type")

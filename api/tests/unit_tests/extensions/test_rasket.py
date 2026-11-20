@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from core.helper import ssrf_proxy
-from libs.rasket import RasketClient
+from extensions.rasket import RasketClient
 
 
 @pytest.mark.parametrize("status_code", [200, 202, 400, 401, 403, 429, 500])
