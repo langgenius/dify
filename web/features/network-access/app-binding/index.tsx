@@ -627,20 +627,7 @@ function AccessControlSession({
                   },
                 },
                 {
-                  onSuccess: (data) => {
-                    queryClient.setQueryData(
-                      consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions()
-                        .queryKey,
-                      (current) => {
-                        if (!current) return current
-                        if (current.groups.some((group) => group.id === data.group.id))
-                          return current
-                        return {
-                          ...current,
-                          groups: [...current.groups, data.group],
-                        }
-                      },
-                    )
+                  onSuccess: () => {
                     if (policyDialogSessionRef.current !== session) return
                     setPolicyFormSession(null)
                     setView('config')

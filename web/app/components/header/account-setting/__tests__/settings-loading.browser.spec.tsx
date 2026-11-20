@@ -11,6 +11,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
+import { consoleQuery } from '@/service/console'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -105,7 +106,7 @@ function Settings({ initialTab }: { initialTab: AccountSettingTab }) {
   )
 }
 
-function renderSettings(
+async function renderSettings(
   initialTab: AccountSettingTab = ACCOUNT_SETTING_TAB.MEMBERS,
   systemFeatures: ConsoleQueryTestOptions['systemFeatures'] = {},
 ) {
@@ -117,7 +118,7 @@ function renderSettings(
     systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true, ...systemFeatures },
     features: { billing: { subscription: { plan: 'team' } } },
   })
-  return render(
+  await render(
     <Wrapper>
       <I18nClientProvider locale="en-US" resource={structuredClone(resources)}>
         <NuqsTestingAdapter>
@@ -128,6 +129,7 @@ function renderSettings(
       </I18nClientProvider>
     </Wrapper>,
   )
+  return queryClient
 }
 
 function deferNamespace(namespace: string) {
@@ -160,9 +162,11 @@ describe('Settings content loading', () => {
     vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     const { finishLoading } = deferNamespace('deployments')
     const groups = createDeferred<NetworkAccessGroupListResponse>()
+    const staleGroups = createDeferred<NetworkAccessGroupListResponse>()
+    const emptyList = { tenant_id: 'workspace-1', entitled: true, groups: [] }
     mocks.loadGroups.mockReturnValue(groups.promise)
     try {
-      await renderSettings(ACCOUNT_SETTING_TAB.IP_POLICIES)
+      const queryClient = await renderSettings(ACCOUNT_SETTING_TAB.IP_POLICIES)
       const settings = page.getByRole('dialog', { name: 'Settings' })
       await expect.element(settings.getByRole('heading', { name: 'IP Policies' })).toBeVisible()
       await expect.poll(() => mocks.loadGroups.mock.calls.length).toBe(1)
@@ -173,7 +177,7 @@ describe('Settings content loading', () => {
       const create = settings.getByRole('button', { name: 'Create an IP policy' })
       await expect.element(create).not.toBeInTheDocument()
 
-      groups.resolve({ tenant_id: 'workspace-1', entitled: true, groups: [] })
+      groups.resolve(emptyList)
       await expect.element(create).toBeVisible()
       await expect
         .element(settings.getByRole('progressbar', { name: 'Loading' }))
@@ -199,19 +203,34 @@ describe('Settings content loading', () => {
 
       const group = createNetworkAccessGroupFixture({ name: 'Office network' })
       mocks.createPolicy.mockResolvedValue({ group })
-      mocks.loadGroups.mockResolvedValue({
-        tenant_id: 'workspace-1',
-        entitled: true,
-        groups: [group],
-      })
+      mocks.loadGroups.mockReturnValue(staleGroups.promise)
+      const queryKey = consoleQuery.workspaces.current.networkAccessGroups.get.queryKey()
+      const refresh = queryClient.refetchQueries({ queryKey })
+      await expect.poll(() => mocks.loadGroups.mock.calls.length).toBe(2)
       await name.fill(group.name)
       await editor.getByPlaceholder('10.0.0.0/8').fill('10.0.0.0/8')
       await editor.getByRole('button', { name: 'Create', exact: true }).click()
       await expect.element(editor).not.toBeInTheDocument()
-      await expect.element(settings.getByRole('button', { name: 'Add', exact: true })).toHaveFocus()
+      const add = settings.getByRole('button', { name: 'Add', exact: true })
+      const created = settings.getByRole('button', { name: group.name, exact: true })
+      await expect.element(add).toHaveFocus()
+      staleGroups.resolve(emptyList)
+      await refresh
+      await expect.element(created).toBeVisible()
+
+      mocks.loadGroups.mockRejectedValueOnce(new Error('Could not refresh IP policies'))
+      await expect(
+        queryClient.refetchQueries({ queryKey }, { throwOnError: true }),
+      ).rejects.toThrow('Could not refresh IP policies')
+      await expect.element(add).toHaveFocus()
+      await expect.element(created).toBeVisible()
       expect(mocks.createPolicy).toHaveBeenCalledTimes(1)
       expect(mocks.loadResource).not.toHaveBeenCalledWith('en-US', 'deployments')
+      await add.click()
+      await expect.element(editor).toBeVisible()
+      await expect.element(name).toHaveValue('')
     } finally {
+      staleGroups.resolve(emptyList)
       finishLoading()
     }
   })

@@ -193,6 +193,44 @@ it('restores edit focus to the opener or the heading if its row disappears', asy
   }
 })
 
+it('shows a saved edit and restores row focus without refreshing the list', async () => {
+  const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+  try {
+    const originalRequest = request.getMockImplementation()
+    request.mockClear()
+    const group = groups[0]!
+    const savedGroup = { ...group, name: 'Updated Office Network', version: group.version + 1 }
+    request.mockImplementation((path) => {
+      if (path === 'workspaces.current.networkAccessGroups.byGroupId.put')
+        return { group: savedGroup }
+      return originalRequest?.(path)
+    })
+
+    await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
+    await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+    const editor = screen.getByRole('dialog', { name: 'Edit IP Policy' })
+    await editor.getByRole('textbox', { name: 'Name', exact: true }).fill(savedGroup.name)
+    await editor.getByRole('button', { name: 'Save', exact: true }).click()
+
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: `More actions for ${savedGroup.name}` }))
+      .toHaveFocus()
+    await expect
+      .element(screen.getByRole('button', { name: group.name, exact: true }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: 'Engineering Office', exact: true }))
+      .toBeVisible()
+    expect(request.mock.calls.map(([path]) => path)).not.toContain(
+      'workspaces.current.networkAccessGroups.get',
+    )
+  } finally {
+    await screen.unmount()
+    queryClient.clear()
+  }
+})
+
 it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   try {

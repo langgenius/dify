@@ -686,19 +686,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           networkAccessGroups: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, _variables, _result, context) => {
-                  if (error) return
-                  return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
-                },
+                onSuccess: ({ group }, _variables, _result, context) =>
+                  syncSavedNetworkAccessGroup(consoleQuery, context.client, group),
               },
             },
             byGroupId: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
-                    if (error) return
-                    return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
-                  },
+                  onSuccess: ({ group }, _variables, _result, context) =>
+                    syncSavedNetworkAccessGroup(consoleQuery, context.client, group),
                 },
               },
               delete: {
@@ -3398,6 +3394,43 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+async function syncSavedNetworkAccessGroup(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  group: Awaited<
+    ReturnType<ConsoleClient['workspaces']['current']['networkAccessGroups']['post']>
+  >['group'],
+) {
+  const listKey = query.workspaces.current.networkAccessGroups.get.queryKey()
+  const currentList = client.getQueryData(listKey)
+  if (currentList && currentList.tenant_id !== group.tenant_id) return
+
+  if (currentList) await client.cancelQueries({ queryKey: listKey, exact: true })
+  const list = client.setQueryData(listKey, (current) => {
+    if (!current || current.tenant_id !== group.tenant_id) return undefined
+
+    const existing = current.groups.find((item) => item.id === group.id)
+    if (existing && existing.version > group.version) return current
+    return {
+      ...current,
+      groups: existing
+        ? current.groups.map((item) => (item.id === group.id ? group : item))
+        : [...current.groups, group],
+    }
+  })
+
+  if (list) {
+    // Refresh on the next normal read without coupling this save to another list request.
+    void client.invalidateQueries({ queryKey: listKey, exact: true, refetchType: 'none' })
+  } else {
+    void client.invalidateQueries({ queryKey: listKey, exact: true })
+  }
+  void invalidateQueryKeys(client, [
+    query.workspaces.current.networkAccessGroups.byGroupId.key(),
+    query.apps.byAppId.networkAccessGroup.key(),
+  ])
 }
 
 function invalidateNetworkAccessGroupQueries(

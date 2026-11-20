@@ -20,7 +20,7 @@ import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useId, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -160,11 +160,13 @@ export default function IpPoliciesPage() {
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeletePolicyPayload>())
   const [policyDialog] = useState(() => createDialogHandle<PolicyDialogPayload>())
   const [recovery, setRecovery] = useState<PolicyRecovery>()
-  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const emptyCreateButtonRef = useRef<HTMLButtonElement>(null)
+  const addButtonRef = useRef<HTMLButtonElement>(null)
   const formAnalyticsRef = useRef<IpPolicyFormSession | null>(null)
-  const savedCreateSessionRef = useRef<IpPolicyFormSession | null>(null)
+  const closeCreateOnAddMountRef = useRef<(() => void) | null>(null)
   const groups = data?.groups ?? []
-  const isEmpty = !isPending && !isError && groups.length === 0
+  const isLoadError = isError && !data
+  const isEmpty = !isPending && !isLoadError && groups.length === 0
   const entitled = data?.entitled === true
   const canMutate = canManagePolicies && entitled
   const isSaving = createGroup.isPending || updateGroup.isPending
@@ -175,14 +177,13 @@ export default function IpPoliciesPage() {
     trackNetworkAccessEvent('ip_policy_interaction', { action: 'settings_tab_viewed' })
   }, [canReadPolicies])
 
-  useEffect(() => {
-    const session = savedCreateSessionRef.current
-    if (!session || !createGroup.isSuccess) return
-    // Refetch settles before the list commits its new Add button.
-    if (data !== queryClient.getQueryData(groupsQuery.queryKey)) return
-    savedCreateSessionRef.current = null
-    if (formAnalyticsRef.current === session && createDialog.isOpen) createDialog.close()
-  }, [createDialog, createGroup.isSuccess, data, groupsQuery.queryKey, queryClient])
+  const attachAddButton = useCallback((button: HTMLButtonElement | null) => {
+    addButtonRef.current = button
+    if (!button) return
+    const closeCreate = closeCreateOnAddMountRef.current
+    closeCreateOnAddMountRef.current = null
+    closeCreate?.()
+  }, [])
 
   const refreshGroupsAfterConflict = async (groupId: string, session: IpPolicyFormSession) => {
     if (formAnalyticsRef.current !== session) return
@@ -222,7 +223,10 @@ export default function IpPoliciesPage() {
       return
     }
     if (open) setRecovery(undefined)
-    else formAnalyticsRef.current = null
+    else {
+      formAnalyticsRef.current = null
+      closeCreateOnAddMountRef.current = null
+    }
   }
 
   const renderCreateButton = (source: 'list_add_button' | 'list_empty_state') => {
@@ -253,7 +257,13 @@ export default function IpPoliciesPage() {
       <DialogTrigger
         handle={createDialog}
         onClick={() => handleFormOpen({ mode: 'create', source })}
-        render={<Button variant="primary" size={size} ref={createButtonRef} />}
+        render={
+          <Button
+            variant="primary"
+            size={size}
+            ref={isEmptyAction ? emptyCreateButtonRef : attachAddButton}
+          />
+        }
       >
         {content}
       </DialogTrigger>
@@ -265,7 +275,14 @@ export default function IpPoliciesPage() {
     payload: IpPolicyDialogSubmit,
   ) => {
     const formSession = formAnalyticsRef.current
-    if (!formSession || !canMutate || isSaving || (recovery && recovery.status !== 'ready')) return
+    if (
+      !formSession ||
+      !canMutate ||
+      isSaving ||
+      closeCreateOnAddMountRef.current ||
+      (recovery && recovery.status !== 'ready')
+    )
+      return
     const { mode } = formSession.context
     const dialog = selectedGroup ? policyDialog : createDialog
     if (!dialog.isOpen || mode === 'view') return
@@ -326,8 +343,22 @@ export default function IpPoliciesPage() {
           },
         },
         {
-          onSuccess: () => {
-            savedCreateSessionRef.current = formSession
+          onSuccess: ({ group }) => {
+            const closeCreate = () => {
+              if (formAnalyticsRef.current === formSession && createDialog.isOpen)
+                createDialog.close()
+            }
+            const savedList = queryClient.getQueryData(groupsQuery.queryKey)
+            if (
+              !addButtonRef.current &&
+              savedList?.entitled &&
+              savedList.groups.some((item) => item.id === group.id)
+            ) {
+              // The first save replaces the empty-state trigger. Close when Add can receive focus.
+              closeCreateOnAddMountRef.current = closeCreate
+            } else {
+              closeCreate()
+            }
           },
         },
       )
@@ -367,13 +398,12 @@ export default function IpPoliciesPage() {
         </div>
         {canManagePolicies &&
           !isPending &&
-          !isError &&
           groups.length > 0 &&
           renderCreateButton('list_add_button')}
       </div>
 
       {isPending && <IpPoliciesListSkeleton />}
-      {!isPending && isError && (
+      {isLoadError && (
         <p className="py-10 text-center system-sm-regular text-text-tertiary">
           <Suspense fallback={null}>
             <IpPoliciesStatusMessage reason="error" />
@@ -463,7 +493,11 @@ export default function IpPoliciesPage() {
             handleDialogOpenChange(open, details, createGroup.isPending)
           }
         >
-          <IpPolicyDialogContent finalFocus={() => createButtonRef.current ?? titleRef.current}>
+          <IpPolicyDialogContent
+            finalFocus={() =>
+              addButtonRef.current ?? emptyCreateButtonRef.current ?? titleRef.current
+            }
+          >
             <IpPolicyForm
               mode="create"
               isPending={createGroup.isPending}
