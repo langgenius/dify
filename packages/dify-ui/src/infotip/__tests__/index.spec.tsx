@@ -74,4 +74,24 @@ describe('Infotip composition', () => {
       expect(edge).toBe(trigger)
     },
   )
+
+  it('keeps the pointer target when a caller positions the trigger absolutely', async () => {
+    const screen = await render(
+      <div className="relative m-6 h-8 w-32">
+        <Infotip>
+          <InfotipTrigger
+            aria-label="Details"
+            className="absolute end-1 top-1/2 -translate-y-1/2"
+            openOnHover={false}
+          />
+          <InfotipContent aria-label="Details">Explanation</InfotipContent>
+        </Infotip>
+      </div>,
+    )
+    const trigger = screen.getByRole('button', { name: 'Details' }).element()
+    expect(getComputedStyle(trigger).position).toBe('absolute')
+    const rect = trigger.getBoundingClientRect()
+    expect(document.elementFromPoint(rect.right + 3, rect.top + rect.height / 2)).toBe(trigger)
+    expect(document.elementFromPoint(rect.left + rect.width / 2, rect.top - 3)).toBe(trigger)
+  })
 })
