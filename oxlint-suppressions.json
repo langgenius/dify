@@ -3957,16 +3957,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/node-resizer.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/output-vars.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -4156,11 +4146,6 @@
   },
   "web/app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
     "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/node-sections.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
   },
@@ -5583,11 +5568,6 @@
   "web/app/components/workflow/workflow-generator/index.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/workflow-preview/components/node-handle.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/workflow-preview/components/nodes/constants.ts": {
