@@ -57,20 +57,30 @@ just like other provider failures. The runtime cannot prove that an arbitrary
 provider's validation error occurred before any provider-side effect and never
 refunds uncertain execution.
 
-The HTTP server stores reservations inside the existing Redis run record using
-one Lua transaction, including run/cancellation checks and duplicate-call
-rejection. Reservations share the run's retention and survive reconstruction
-of the storage adapter. Missing storage or uncertain admission fails closed.
-A reservation is never refunded, including a process interruption before the
-HTTP dispatch is confirmed; this is a conservative invocation limit, not a
-guarantee of exactly-once business execution. Native in-process callers use an
-event-loop-local store by default and must supply a durable store themselves
-if they implement recovery.
+Each native run owns an independent in-memory counter store through its Deps
+and runner. Checking allowance, deduplicating native call IDs and reserving a
+slot contain no await, so parallel tool tasks on the same event loop cannot
+overbook the final slot. Counters are not kept in server-lifespan Services,
+Redis quota keys or live run-record fields. Borrowing the same clients or
+restoring a session snapshot does not share allowance with a new run.
 
-Current scheduling has no public pause/resume or crash-recovery endpoint.
-The quota store preserves usage for the same retained run ID; passing a
-session history snapshot into a newly created run gives that new run its own
-quota. Session snapshots do not carry counters across user messages.
+The scheduler closes tool admission as soon as its local owner observes a
+cancellation intent, observer failure or server shutdown. The same owner closes
+admission at its run timeout deadline, even if a tool suppresses cancellation. Cleanup cannot reserve
+another slot even if a tool catches cancellation. Already admitted calls remain
+charged. Cancellation intents still use the normal Redis channel: a remote
+cancel has a propagation interval before the owner observes it, so admission is
+not atomic with writing that Redis marker. After native cleanup the owner seals
+a detached reservation snapshot and drops its live state before writing a
+terminal event. Late tasks cannot reserve or mutate the sealed summary.
+
+Redis continues to persist ordinary run status, event streams, cancellation
+intents and idempotent admission. Repeating an accepted create-run key returns
+the original run and never starts a second runner or reconstructs counters.
+Current scheduling has no pause/resume, cross-process handoff or crash recovery;
+a process crash loses its active run and in-memory counters. A reservation is a
+conservative invocation limit, not an exactly-once external execution guarantee.
+Session snapshots carry conversation state, never counters across user messages.
 
 Existing native `function_tool_result` records carry application metadata:
 
@@ -101,11 +111,12 @@ remain `3/3` on the fourth request. Neither the projector nor the runtime
 infers execution from model-written text.
 
 Successful, failed and cancelled terminal events also carry a top-level
-`tool_call_limits` summary. Redis copies it from the run record in the same
-atomic transaction that seals the event stream. Each summary contains the
-operation identity, frozen limit, total usage and a map from hashed native
-call IDs to reservation ordinals. Original event JSON, including empty snapshot
-objects, is preserved. Callers cannot override this authoritative summary.
+`tool_call_limits` summary. The run owner supplies its sealed in-memory
+snapshot to the existing terminal compare-and-set write. Each summary contains
+the operation identity, frozen limit, total usage and a map from hashed native
+call IDs to reservation ordinals. Storage preserves the original typed event
+JSON, including empty snapshot objects and exact large integers; it does not
+read or calculate live quota. The terminal transition and event remain atomic.
 The API retains it in Agent run metadata and fills missing usage on existing
 unfinished tool records. Such records use `execution_status: "unconfirmed"`;
 their reservation consumed allowance, but no external execution is claimed.
@@ -167,7 +178,9 @@ path. This App thought projection does not synthesize thought rows for the
 Workflow-source Agent Logs entries, which remain separate execution records.
 
 Deploy the updated Agent server fleet before sending the new configuration
-field from the API. Older tool DTOs reject unknown fields, and older server
-record DTOs do not read records with private quota state. Drain retained
-limited runs before rolling the Agent server back. There is no database schema
-migration; missing limits and old run records retain their previous behavior.
+field from the API: older tool DTOs reject unknown fields. Drain active runs
+before replacing a process, because running tasks and counters are process-local.
+Retained old run records drop the obsolete private quota field on reads without
+restarting execution; historical terminal snapshots remain readable, including
+legacy decimal-text limits. There is no database migration. Missing limits
+retain unlimited dispatch, and empty terminal summaries are omitted.

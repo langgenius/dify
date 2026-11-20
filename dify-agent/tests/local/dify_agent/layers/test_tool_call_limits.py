@@ -1,7 +1,6 @@
 """Quota guards preserve operation identity and native tool-return contracts."""
 
 import asyncio
-from dataclasses import replace
 import json
 from typing import cast
 
@@ -148,7 +147,7 @@ def test_other_provider_operations_have_independent_limits_and_only_explicit_lim
             standalone = ToolCallLimitGuard.for_tool(deps, plugin_tool(tool_name="standalone", max_calls_per_run=9))
             assert standalone is not None and standalone.limit == 9
             assert (await guard.reserve(context(deps))).allowed
-            new_run = replace(deps, run_id="run-b")
+            new_run = Deps(layers=deps.layers, services=deps.services, run_id="run-b")
             assert await guard.available(context(new_run))
 
     asyncio.run(scenario())
@@ -163,7 +162,7 @@ def test_guard_needs_a_real_call_identifier_before_it_reserves() -> None:
             assert guard is not None
             with pytest.raises(ValueError, match="stable native tool call id"):
                 await guard.reserve(context(deps, None))
-            assert await deps.services.tool_call_limit_store.usage(
+            assert await deps.tool_call_limit_store.usage(
                 run_id=deps.run_id, tool_identity=guard.identity, limit=guard.limit
             ) == ToolCallUsage(0, 5)
 
@@ -204,7 +203,7 @@ def test_invalid_parameters_cannot_consume_quota(
                     arguments,
                 )
                 await guard.reserve(context(deps))
-            assert await deps.services.tool_call_limit_store.usage(
+            assert await deps.tool_call_limit_store.usage(
                 run_id=deps.run_id, tool_identity=guard.identity, limit=guard.limit
             ) == ToolCallUsage(0, guard.limit)
 

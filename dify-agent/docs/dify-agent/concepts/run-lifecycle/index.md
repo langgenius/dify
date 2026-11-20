@@ -36,3 +36,20 @@ Known legacy names map to their meaningful State and removed AskHuman slots are
 discarded. Their unanswered tool calls are marked interrupted so native history
 repair closes them before the first new user turn. All runs use the native runner.
 Unknown legacy names and malformed state are rejected.
+
+Limited Dify operations keep live reservation counters in the owning native
+run's Deps. Reserving and deduplicating a native call ID never yields on the
+owner's event loop. The scheduler closes admission before cancelling the native
+runner when it observes user cancellation, an observer error or shutdown. This
+happens after any propagation delay from a remote Redis cancellation request.
+After cleanup the runner seals a detached final reservation summary; success,
+failure, timeout and cancellation persist it in their normal terminal event.
+A missing tool result leaves its reservation unconfirmed rather than refunded.
+Late tasks cannot change the sealed summary or reserve again.
+
+The supervisor releases its runner and counter store on exit; there is no
+server-wide counter registry. A new run receives fresh counters even when it
+restores conversation history. Redis retains normal run status, events, cancel
+intents and idempotent create-run claims. A replay returns the existing record
+without restarting execution. Process crashes do not recover active runs or
+counters, and rolling deployment must drain active runs first.
