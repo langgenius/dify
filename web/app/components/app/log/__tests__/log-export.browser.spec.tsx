@@ -75,7 +75,7 @@ const conversations: ConversationWithSummary[] = [
 
 async function openExport(
   hasExistingTask = false,
-  mode: 'advanced-chat' | 'completion' = 'advanced-chat',
+  mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'advanced-chat',
 ) {
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
@@ -188,6 +188,25 @@ function observeDownloads() {
   onTestFinished(() => followLink.mockRestore())
   return downloadPaths
 }
+
+it.each([
+  ['chat', 'previewConversationDescription'],
+  ['agent-chat', 'previewConversationDescription'],
+  ['advanced-chat', 'previewChatflowDescription'],
+  ['completion', 'previewCompletionDescription'],
+] as const)('explains the export scope and CSV contents for %s', async (mode, descriptionKey) => {
+  const { trigger, dialog } = await openExport(false, mode)
+  await trigger.click()
+  const scope = dialog.getByRole('combobox', { name: 'appLog.export.scope' })
+  await expect.element(scope).toHaveAccessibleDescription('appLog.export.currentHint')
+  await expect
+    .element(dialog.getByText(`appLog.export.${descriptionKey}`, { exact: true }))
+    .toBeVisible()
+
+  await scope.click()
+  await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  await expect.element(scope).toHaveAccessibleDescription('appLog.export.allHint')
+})
 
 it('previews CSV rows and submits a Completion export with the selected identity', async () => {
   const { trigger, dialog, lastExport, requests } = await openExport(false, 'completion')

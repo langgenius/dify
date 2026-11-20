@@ -1,4 +1,5 @@
 import type {
+  AppDetailWithSite,
   ConversationLogExportLatestTaskResponse,
   GetAppsByAppIdConversationLogExportsPreviewData,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -29,7 +30,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { API_PREFIX } from '@/config'
@@ -63,17 +64,20 @@ const exportsApi = consoleQuery.apps.byAppId.conversationLogExports
 
 function ExportSelect<T extends string>({
   label,
+  description,
   value,
   options,
   onChange,
   disabled,
 }: {
   label: string
+  description?: string
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
   disabled: boolean
 }) {
+  const descriptionId = useId()
   return (
     <Select
       value={value}
@@ -83,9 +87,14 @@ function ExportSelect<T extends string>({
     >
       <div className="flex flex-col gap-1.5">
         <SelectLabel>{label}</SelectLabel>
-        <SelectTrigger>
+        <SelectTrigger aria-describedby={description ? descriptionId : undefined}>
           <SelectValue />
         </SelectTrigger>
+        {description && (
+          <p id={descriptionId} className="system-sm-regular text-text-tertiary">
+            {description}
+          </p>
+        )}
       </div>
       <SelectContent>
         {options.map((option) => (
@@ -186,14 +195,14 @@ function LastLogExport({
 export function LogExportDialog({
   appId,
   appName,
-  isCompletion,
+  appMode,
   currentFilters,
   identityOptions,
   planState,
 }: {
   appId: string
   appName: string
-  isCompletion: boolean
+  appMode: AppDetailWithSite['mode']
   currentFilters: LogExportFilters
   identityOptions: LogIdentity[]
   planState: CloudSandboxPlanState
@@ -203,6 +212,7 @@ export function LogExportDialog({
   const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(defaultSelection)
   const { scope, period, startDate, endDate, identityMode, identities } = selection
+  const isCompletion = appMode === 'completion'
   const customDates = scope === 'all' && period === 'custom'
   const filterIdentities = scope === 'all' && identityMode === 'selected'
   const validDates = !customDates || Boolean(startDate && endDate && startDate <= endDate)
@@ -274,6 +284,7 @@ export function LogExportDialog({
   else if (retryStatus) actionLabel = t(($) => $['operation.retry'], { ns: 'common' })
 
   let summary
+  let previewDescription
   if (exporting) summary = actionLabel
   else if (preview.isPending) summary = t(($) => $['detail.loading'], { ns: 'appLog' })
   else if (counts) {
@@ -284,6 +295,14 @@ export function LogExportDialog({
           conversations: counts.conversation_count,
           rows: counts.message_count,
         })
+    if (!noMatches) {
+      const descriptionKey = isCompletion
+        ? 'export.previewCompletionDescription'
+        : appMode === 'advanced-chat'
+          ? 'export.previewChatflowDescription'
+          : 'export.previewConversationDescription'
+      previewDescription = t(($) => $[descriptionKey], { ns: 'appLog' })
+    }
   } else summary = t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error
@@ -347,6 +366,12 @@ export function LogExportDialog({
               <fieldset disabled={filtersLocked} className="space-y-4">
                 <ExportSelect
                   label={t(($) => $['export.scope'], { ns: 'appLog' })}
+                  description={t(
+                    ($) => $[scope === 'current' ? 'export.currentHint' : 'export.allHint'],
+                    {
+                      ns: 'appLog',
+                    },
+                  )}
                   value={scope}
                   options={[
                     { value: 'current', label: t(($) => $['export.current'], { ns: 'appLog' }) },
@@ -432,12 +457,10 @@ export function LogExportDialog({
                 )}
               </fieldset>
               {!taskInProgress && (busy || (validFilters && !retryStatus)) && (
-                <p
-                  role="status"
-                  className="rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary"
-                >
-                  {summary}
-                </p>
+                <div className="space-y-1 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
+                  <p role="status">{summary}</p>
+                  {previewDescription && <p>{previewDescription}</p>}
+                </div>
               )}
               {error && (
                 <p role="alert" className="system-sm-regular text-text-destructive">

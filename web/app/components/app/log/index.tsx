@@ -153,7 +153,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 key={appDetail.id}
                 appId={appDetail.id}
                 appName={appDetail.name}
-                isCompletion={!isChatMode}
+                appMode={appDetail.mode}
                 currentFilters={toFilters(effectiveQueryParams)}
                 identityOptions={getLogIdentities(logs?.data ?? [])}
                 planState={cloudSandboxPlanState}
