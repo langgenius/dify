@@ -80,7 +80,7 @@ export function FileTreeNameInput({
   }
 
   return (
-    <div data-skill-file-tree-item className="flex h-6 min-w-0 items-center gap-0.5 px-2 pr-1.5">
+    <div data-skill-file-tree-item className="flex h-6 min-w-0 items-center gap-0.5 px-2 pe-1.5">
       <span
         aria-hidden
         className={cn(
@@ -159,7 +159,7 @@ function FileActionMenuItems({
           >
             <span aria-hidden className="i-ri-scissors-cut-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.cutFile'])}</span>
-            <KbdGroup className="ml-auto">
+            <KbdGroup className="ms-auto">
               {formatForDisplay(skillFileHotkeys.cut.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
@@ -174,7 +174,7 @@ function FileActionMenuItems({
           >
             <span aria-hidden className="i-ri-file-copy-line size-4 text-text-tertiary" />
             <span>{t(($) => $['skillManagement.detail.copyFile'])}</span>
-            <KbdGroup className="ml-auto">
+            <KbdGroup className="ms-auto">
               {formatForDisplay(skillFileHotkeys.copy.command, { parts: true }).map((keycap) => (
                 <Kbd key={keycap}>{keycap}</Kbd>
               ))}
@@ -590,7 +590,7 @@ export function FileTreeItem({
               data-skill-file-tree-item
               draggable={!readonly}
               className={cn(
-                'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
+                'group flex h-6 w-full min-w-0 items-center rounded-md pe-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
                 isDropTarget && 'bg-state-accent-hover ring-1 ring-state-accent-solid ring-inset',
                 isSelected && 'bg-state-accent-hover text-text-accent',
                 isDragging && 'opacity-30',
@@ -604,7 +604,7 @@ export function FileTreeItem({
             >
               <button
                 type="button"
-                className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-start system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 title={node.path}
                 onClick={(event) => onItemSelect(node, event)}
                 onDoubleClick={() => onToggleFolder(node.path)}
@@ -633,7 +633,7 @@ export function FileTreeItem({
           )
         )}
         {(childCreateAction || (!isCollapsed && node.children && node.children.length > 0)) && (
-          <ul className="ml-4 min-w-0 space-y-px border-l border-divider-subtle pl-1">
+          <ul className="ms-4 min-w-0 space-y-px border-s border-divider-subtle ps-1">
             {childCreateAction && (
               <FileTreeNameInput
                 loading={inlineActionLoading}
@@ -707,7 +707,7 @@ export function FileTreeItem({
           data-skill-file-tree-item
           draggable={!readonly}
           className={cn(
-            'group flex h-6 w-full min-w-0 items-center rounded-md pr-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
+            'group flex h-6 w-full min-w-0 items-center rounded-md pe-1.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary',
             (selectedPath === node.path || isSelected) && 'bg-state-accent-hover text-text-accent',
             isDragging && 'opacity-30',
           )}
@@ -720,7 +720,7 @@ export function FileTreeItem({
         >
           <button
             type="button"
-            className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex h-full w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-start system-xs-regular outline-hidden transition-colors group-hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             title={node.path}
             onClick={(event) => {
               onItemSelect(node, event)

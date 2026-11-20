@@ -125,6 +125,24 @@ export const Controlled: Story = {
   },
 }
 
+export const Sizes: Story = {
+  render: () => (
+    <div className="flex flex-col gap-2 system-xs-regular text-text-secondary">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <div key={size} className="flex items-center gap-1">
+          <span>{size}</span>
+          <Infotip>
+            <InfotipTrigger aria-label={`${size} details`} size={size} />
+            <InfotipContent aria-label={`${size} details`}>
+              Every size keeps a 24px pointer target.
+            </InfotipContent>
+          </Infotip>
+        </div>
+      ))}
+    </div>
+  ),
+}
+
 export const LongText: Story = {
   render: () => (
     <Infotip>

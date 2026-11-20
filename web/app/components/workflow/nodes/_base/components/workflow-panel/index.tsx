@@ -488,7 +488,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   if (logParams.showSpecialResultPanel) {
     return (
-      <div className={cn('relative mr-1 h-full')}>
+      <div className={cn('relative me-1 h-full')}>
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
@@ -546,7 +546,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     ) : null
 
     return (
-      <div className={cn('relative mr-1 h-full')}>
+      <div className={cn('relative me-1 h-full')}>
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
@@ -601,9 +601,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   return (
     <div
       className={cn(
-        'relative mr-1 h-full',
+        'relative me-1 h-full',
         messageLogItem &&
-          'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+          'absolute z-0 me-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {
@@ -621,7 +621,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         label={t(($) => $['panel.nodePanel'], { ns: 'workflow' })}
         controls={panelId}
         onResize={handleResize}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
+        className="absolute -inset-s-1 top-0 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </ResizeHandle>
@@ -645,7 +645,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
-              <BlockIcon className="mr-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
+              <BlockIcon className="me-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
             )}
             {isStartPlaceholderPanel ? (
               <StartPlaceholderPanelTitle />
@@ -653,7 +653,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
               <TitleInput value={data.title || ''} onBlur={handleTitleBlur} />
             )}
             {viewingUsers.length > 0 && (
-              <div className="ml-3 shrink-0">
+              <div className="ms-3 shrink-0">
                 <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
               </div>
             )}
@@ -664,7 +664,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                     render={
                       <IconButton
                         aria-label={singleRunActionLabel}
-                        className="mr-1"
+                        className="me-1"
                         onClick={() => {
                           if (isSingleRunning) handleStop()
                           else handleSingleRun()
@@ -718,7 +718,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                     detail: currToolCollection as any,
                   }}
                 >
-                  <div className="flex items-center justify-between pr-3 pl-4">
+                  <div className="flex items-center justify-between ps-4 pe-3">
                     {panelTabs}
                     <AuthorizedInNode
                       pluginPayload={{
@@ -738,7 +738,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   onJumpToDataSourcePage={handleJumpToDataSourcePage}
                   isAuthorized={currentDataSource.is_authorized}
                 >
-                  <div className="flex items-center justify-between pr-3 pl-4">
+                  <div className="flex items-center justify-between ps-4 pe-3">
                     {panelTabs}
                     <AuthorizedInDataSourceNode
                       onJumpToDataSourcePage={handleJumpToDataSourcePage}
@@ -756,7 +756,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 </TriggerSubscription>
               )}
               {!needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-                <div className="flex items-center justify-between pr-3 pl-4">{panelTabs}</div>
+                <div className="flex items-center justify-between ps-4 pe-3">{panelTabs}</div>
               )}
               <Split />
             </>

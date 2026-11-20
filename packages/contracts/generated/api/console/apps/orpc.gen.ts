@@ -71,6 +71,7 @@ import {
   zTracingRetryNotAllowedError,
   zTracingRunNotFoundError,
   zTracingSourceNotFoundError,
+  zTriggerNodeLimitExceededError,
   zUnsupportedAudioTypeError,
   zUnsupportedTracingProviderError,
   zWebhookTriggerNotFoundError,
@@ -5135,6 +5136,7 @@ export const post69 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    trigger_node_limit_exceeded: { status: 403, data: zTriggerNodeLimitExceededError },
   })
 
 export const publish = {

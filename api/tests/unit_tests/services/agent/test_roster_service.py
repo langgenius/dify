@@ -39,6 +39,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVersionManifest
@@ -48,10 +49,8 @@ from repositories.agent_roster_queries import load_reference_counts_by_agent_id
 from repositories.agent_roster_repository import list_invite_options_in_session
 from repositories.agent_version_queries import visible_version_operations
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
-from repositories.app.agent_app_queries import load_app_backing_agents_by_app_id
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent import composer_service, roster_service
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -4180,42 +4179,6 @@ def test_active_config_is_published_skips_empty_agent_ids(sqlite_session: Sessio
         )
         == {}
     )
-
-
-def test_load_app_backing_agents_skips_empty_agent_ids(sqlite_session: Session):
-    session = sqlite_session
-    valid_agent = Agent(
-        id="agent-1",
-        tenant_id="tenant-1",
-        name="Valid",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        app_id="app-1",
-        status=AgentStatus.ACTIVE,
-    )
-    empty_id_agent = Agent(
-        id="",
-        tenant_id="tenant-1",
-        name="Broken",
-        description="",
-        agent_kind=AgentKind.DIFY_AGENT,
-        scope=AgentScope.ROSTER,
-        source=AgentSource.AGENT_APP,
-        app_id="app-2",
-        status=AgentStatus.ACTIVE,
-    )
-
-    session.add_all([valid_agent, empty_id_agent])
-    session.commit()
-    result = load_app_backing_agents_by_app_id(
-        session,
-        tenant_id="tenant-1",
-        app_ids=["app-1", "app-2"],
-    )
-
-    assert result == {"app-1": valid_agent}
 
 
 def test_published_references_include_app_display_fields_and_sort_by_updated_at(sqlite_session: Session):

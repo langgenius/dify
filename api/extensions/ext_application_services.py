@@ -164,6 +164,7 @@ from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
+from services.evaluation_service import EvaluationService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -739,7 +740,10 @@ def build_application_services(
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
-            owners=AgentAppRepository(session_factory=database_client),
+            owners=AgentAppRepository(
+                session_factory=database_client,
+                stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+            ),
             settings=apps.console,
             configs=tracing_configs,
         ),
