@@ -37,6 +37,14 @@ class ExternalTraceContentSource:
     auth_type: ExternalAuthType | None
 
 
+@dataclass(frozen=True, slots=True)
+class ExternalTraceContentProjection:
+    """Projected content plus factual budget suppression, without retaining raw values."""
+
+    value: JsonValue
+    budget_exceeded: bool
+
+
 def admitted_trace_parts(value: object) -> tuple[JsonObject, ...] | None:
     """Validate the stored admitted-parts profile without resolving file references.
 
@@ -210,11 +218,25 @@ def safe_trace_content(value: object, *, limits: TraceLimits, secrets: Sequence[
     are available. Postconditions: valid zero, false and empty JSON values remain
     present; only explicit None is absent. This function performs no I/O.
     """
+    return project_trace_content(value, limits=limits, secrets=secrets).value
+
+
+def project_trace_content(
+    value: object, *, limits: TraceLimits, secrets: Sequence[str]
+) -> ExternalTraceContentProjection:
+    """Project authorized JSON while retaining the finite reason for budget loss.
+
+    Preconditions: the same frozen permission/redaction requirements as
+    safe_trace_content hold. Postconditions: no raw values are added to status
+    evidence; invalid/absent content is distinct from a byte-budget rejection.
+    """
     try:
         if len(json.dumps(value, ensure_ascii=False, allow_nan=False).encode()) > limits.max_bytes:
-            return None
+            return ExternalTraceContentProjection(None, True)
     except (TypeError, ValueError, RecursionError):
-        return None
+        return ExternalTraceContentProjection(None, False)
     stripped = _without_file_authority(value, limits=limits, secrets=secrets)
     result = TypeAdapter(JsonValue).validate_python(redact_trace_data(stripped, limits=limits, secrets=secrets))
-    return result if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode()) <= limits.max_bytes else None
+    if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode()) > limits.max_bytes:
+        return ExternalTraceContentProjection(None, True)
+    return ExternalTraceContentProjection(result, False)

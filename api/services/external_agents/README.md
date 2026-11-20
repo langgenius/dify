@@ -161,6 +161,21 @@ canonical Trace must fit its byte budget or falls back to metadata-only. Missing
 empty JSON values remain present. Child input uses only specified tool parameters or agent requests (including the
 supported Python-sample fields); Traceability v1 does not define child output, so none is invented. Existing frozen
 deliveries and retry payloads are never backfilled or re-exported just to add content.
+
+An App can authorize content capture independently of its own tracing destination:
+`POST /apps/{id}/trace` accepts `enabled=false`, `tracing_provider=null` and
+`capture_content=true`. App-origin External Agent calls still require the asset
+destination's content permission. Granting App consent neither activates an App
+provider nor changes already dispatched calls.
+
+`GET /apps/{app_id}/external-agent-invocations/{invocation_id}/trace-capture`
+reports the invocation's frozen target policy and actual prepared-payload status
+under the same App/run read permission and retention fences. Payload content and
+provider delivery state are separate facts. Source/target denial, unreadable
+redaction facts and budget suppression have bounded reason codes. Historical
+targets have nullable gate snapshots; missing evidence is never reconstructed
+from current settings. These reads select metadata rather than credentials or
+retained request/response bodies.
 Known credentials in raw observation keys are masked before the ingestion key bound. Already-retained keys exactly
 at that old bound are ambiguous and exported with a de-identified key rather than exposing a possible token prefix.
 

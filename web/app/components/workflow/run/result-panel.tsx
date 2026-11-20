@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalAgentCaptureSource } from './external-agent-capture-row'
 import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { ExternalAgentInvocationTraceDetails } from '@/features/agent-v2/external-agent/invocation-trace'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { ExternalAgentCaptureRow } from './external-agent-capture-row'
 import { ExternalTraceRow } from './external-trace-row'
 import MetaData from './meta'
 import StatusPanel from './status'
@@ -43,6 +45,7 @@ export type ResultPanelProps = {
   isListening?: boolean
   workflowRunId?: string
   externalTrace?: ExternalTraceSource
+  externalAgentCaptureSource?: ExternalAgentCaptureSource
   externalInvocationId?: string
   external_wait?: boolean
   human_input_wait?: boolean
@@ -75,6 +78,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   isListening = false,
   workflowRunId,
   externalTrace,
+  externalAgentCaptureSource,
   externalInvocationId,
   external_wait,
   human_input_wait,
@@ -199,6 +203,12 @@ const ResultPanel: FC<ResultPanelProps> = ({
           preserveUnknownTokens={Boolean(externalInvocationId)}
         >
           {externalTrace && <ExternalTraceRow source={externalTrace} />}
+          {externalAgentCaptureSource && (
+            <ExternalAgentCaptureRow
+              key={`${externalAgentCaptureSource.appId}:${externalAgentCaptureSource.invocationId}`}
+              source={externalAgentCaptureSource}
+            />
+          )}
         </MetaData>
       </div>
     </div>

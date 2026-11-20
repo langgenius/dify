@@ -77,7 +77,10 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads(tmp_path: Pa
         assert expected <= set(inspector.get_table_names())
         for name in expected:
             current = TypeBase.metadata.tables[name]
-            assert {column["name"] for column in inspector.get_columns(name)} == set(current.c.keys())
+            # c3056 adds capture evidence later; the historical base migration
+            # must remain unchanged and is tested against its original columns.
+            later_columns = {"capture_policy"} if name == "external_agent_trace_targets" else set()
+            assert {column["name"] for column in inspector.get_columns(name)} == set(current.c.keys()) - later_columns
             assert {
                 (index["name"], tuple(index["column_names"]), index["unique"]) for index in inspector.get_indexes(name)
             } == {(index.name, tuple(index.columns.keys()), index.unique) for index in current.indexes}
@@ -121,11 +124,21 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads(tmp_path: Pa
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
     scripts = ScriptDirectory(str(API / "migrations"))
-    assert scripts.get_heads() == ["b3025merge1119"]
+    assert scripts.get_heads() == ["c3056dev1120"]
+    dev_merge = scripts.get_revision("c3056dev1120")
+    assert dev_merge is not None
+    assert dev_merge.down_revision == ("b3025merge1119", "c3056merge1120")
+    capture_merge = scripts.get_revision("c3056merge1120")
+    assert capture_merge is not None
+    assert capture_merge.down_revision == ("c3051merge1117", "c3056cap1120")
+    capture_policy = scripts.get_revision("c3056cap1120")
+    assert capture_policy is not None
+    assert capture_policy.down_revision == "c3025dflt1112"
     head = scripts.get_revision("b3025merge1119")
     assert head is not None
     assert head.down_revision == ("b6b0741cf19d", "c3051merge1117")
-    revisions = {rev.revision for rev in scripts.iterate_revisions(head.revision, "base")}
+    revisions = {rev.revision for rev in scripts.iterate_revisions("c3056dev1120", "base")}
+    assert {"b3025merge1119", "c3056cap1120", "c3056merge1120", "c3056dev1120"} <= revisions
     assert {
         "d3025a2a1112",
         "d3046fe1115",
@@ -219,7 +232,8 @@ def test_static_new_tables_compile_for_supported_server_dialects(
     assert len(tables) == 17
     for table in tables:
         current = TypeBase.metadata.tables[table.name]
-        assert set(table.c.keys()) == set(current.c.keys())
+        later_columns = {"capture_policy"} if table.name == "external_agent_trace_targets" else set()
+        assert set(table.c.keys()) == set(current.c.keys()) - later_columns
         assert {(index.name, tuple(index.columns.keys()), index.unique) for index in table.indexes} == {
             (index.name, tuple(index.columns.keys()), index.unique) for index in current.indexes
         }

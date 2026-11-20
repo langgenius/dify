@@ -100,6 +100,21 @@ def test_config_lifecycle_is_persisted_by_owned_transactions(
         assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == _APP_ID)) is None
 
 
+def test_source_capture_permission_does_not_require_own_export_provider(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """The independent App consent write persists while its own exporter stays disabled."""
+    _persist_app(sqlite_session)
+    writer = _repository(sqlite_session_factory)
+    consent = AppTraceSettings(enabled=False, tracing_provider=None, capture_content=True, capture_agent=True)
+    writer.set_trace(workspace_id=_WORKSPACE_ID, app_id=_APP_ID, settings=consent, expected=None)
+    with sqlite_session_factory() as session:
+        app = session.get(App, _APP_ID)
+        assert app is not None
+        assert trace_settings_from_column(app.tracing) == consent
+        assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == _APP_ID)) is None
+
+
 @pytest.mark.parametrize(
     ("workspace_id", "make_unaddressable"),
     [pytest.param(_OTHER_WORKSPACE_ID, None, id="other-workspace")]

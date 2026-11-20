@@ -145,6 +145,8 @@ class ExternalAgentTraceTarget(TypeBase, kw_only=True):
     config_revision: Mapped[str] = mapped_column(sa.String(64))
     encrypted_config: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON(), repr=False)
     capture_content: Mapped[bool] = mapped_column(sa.Boolean)
+    # Null identifies targets frozen before per-gate evidence was recorded.
+    capture_policy: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON(), default=None)
 
 
 class ExternalAgentDataTombstone(TypeBase, kw_only=True):

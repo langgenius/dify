@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
-import { RiLoader2Line } from '@remixicon/react'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -17,6 +16,24 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { isNotFoundError } from '@/service/http-error'
 import { useLastRun } from '@/service/use-workflow'
 import NoData from './no-data'
+
+function getExternalInvocationId(processData: unknown): string | undefined {
+  if (typeof processData === 'string') {
+    try {
+      processData = JSON.parse(processData)
+    } catch {
+      return undefined
+    }
+  }
+  if (processData === null || typeof processData !== 'object' || Array.isArray(processData))
+    return undefined
+  if (!('external_invocation_id' in processData)) return undefined
+  const invocationId = processData.external_invocation_id
+  return typeof invocationId === 'string' &&
+    /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i.test(invocationId)
+    ? invocationId
+    : undefined
+}
 
 type Props = Readonly<{
   nodeId: string
@@ -96,6 +113,9 @@ const LastRun: FC<Props> = ({
     {}
   const lastRunNode = runResult as Partial<NodeTracing>
   const externalInvocationId = getExternalAgentInvocationId(lastRunNode)
+  const invocationId = getExternalInvocationId(lastRunNode.process_data)
+  const externalAgentCaptureSource =
+    resource.kind === 'app' && invocationId ? { appId: resource.appId, invocationId } : undefined
   const externalTrace =
     resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
       ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
@@ -187,7 +207,7 @@ const LastRun: FC<Props> = ({
   if (isFetching && !isRunAfterSingleRun && !hasExternalLastRun) {
     return (
       <div className="flex h-0 grow flex-col items-center justify-center">
-        <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
+        <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary" />
       </div>
     )
   }
@@ -214,6 +234,7 @@ const LastRun: FC<Props> = ({
         showSteps={false}
         externalTrace={externalTrace}
         externalInvocationId={externalInvocationId}
+        externalAgentCaptureSource={externalAgentCaptureSource}
       />
     </div>
   )
