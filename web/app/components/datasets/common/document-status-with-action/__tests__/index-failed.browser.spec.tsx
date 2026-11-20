@@ -1,12 +1,11 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import RetryButton from '../index-failed'
-
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 
 const document = (id: string): DocumentStatusResponse => ({
   id,
@@ -29,7 +28,7 @@ async function renderRetryButton() {
   const { wrapper: ConsoleQuery } = createConsoleQueryWrapper()
   return render(
     <ConsoleQuery>
-      <RetryButton datasetId={DATASET_ID} />
+      <RetryButton datasetId={TEST_DATASET_ID} />
     </ConsoleQuery>,
   )
 }
@@ -66,7 +65,7 @@ it('reveals settled failures, blocks repeated native activation and disappears a
   await userEvent.keyboard('{Enter}')
   await expect.poll(() => fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledOnce()
   expect(fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledExactlyOnceWith({
-    params: { dataset_id: DATASET_ID },
+    params: { dataset_id: TEST_DATASET_ID },
     body: { document_ids: ['doc1', 'doc2'] },
   })
 

@@ -3,11 +3,12 @@ import type {
   SnippetListItemResponse,
   SnippetResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import { TEST_SNIPPET_ID } from '@/test/console/ids'
 
 export const createSnippetListItemFixture = (
   overrides: Partial<SnippetListItemResponse> = {},
 ): SnippetListItemResponse => ({
-  id: 'snippet-1',
+  id: TEST_SNIPPET_ID,
   name: 'Tone Rewriter',
   description: 'Rewrites rough drafts.',
   type: 'node',
@@ -41,7 +42,7 @@ export const createSnippetImportResponseFixture = (
 ): SnippetImportResponse => ({
   id: 'import-1',
   status: 'completed',
-  snippet_id: 'snippet-1',
+  snippet_id: TEST_SNIPPET_ID,
   current_dsl_version: '1.0.0',
   imported_dsl_version: '1.0.0',
   error: '',

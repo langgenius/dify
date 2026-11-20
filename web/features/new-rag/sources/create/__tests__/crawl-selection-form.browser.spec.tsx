@@ -324,25 +324,27 @@ describe('CrawlSelectionForm', () => {
     await expect.element(dialog).not.toBeInTheDocument()
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
+    await expect
+      .poll(
+        () => fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      )
+      .toHaveBeenCalledWith({
+        body: {
+          kind: 'crawl-preview-selection',
+          pageIds: ['page-1'],
+          previewWorkflowId: 'run-1',
+          syncPolicy: {
+            customIntervalSeconds: 21600,
+            enabled: true,
+            mode: 'custom',
+          },
+        },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      })
     await vi.waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
-    expect(
-      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
-    ).toHaveBeenCalledWith({
-      body: {
-        kind: 'crawl-preview-selection',
-        pageIds: ['page-1'],
-        previewWorkflowId: 'run-1',
-        syncPolicy: {
-          customIntervalSeconds: 21600,
-          enabled: true,
-          mode: 'custom',
-        },
-      },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', source_id: 'source-1' },
-    })
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
       .toHaveTextContent('run-1: queued')

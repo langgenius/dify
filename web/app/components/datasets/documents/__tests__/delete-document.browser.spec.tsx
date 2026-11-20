@@ -3,6 +3,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
@@ -13,11 +14,10 @@ import Documents from '../index'
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/documents',
-  useParams: () => ({ datasetId: '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f' }),
+  useParams: () => ({ datasetId: TEST_DATASET_ID }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -84,7 +84,7 @@ async function setup(ids: string[]) {
           }}
         >
           <div className="isolate h-screen">
-            <Documents datasetId={DATASET_ID} />
+            <Documents datasetId={TEST_DATASET_ID} />
           </div>
         </DatasetDetailContext.Provider>
       </NuqsTestingAdapter>

@@ -1,16 +1,8 @@
 import type { Role } from '@/models/access-control'
 import { userEvent } from 'vite-plus/test/browser'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
-import {
-  builtinRole as builtinRoleFixture,
-  customRole as customRoleFixture,
-  renderRolePage,
-  rolePage,
-} from './role-page-fixture'
+import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
-// Role routes take UUID path parameters.
-const customRole = { ...customRoleFixture, id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d' }
-const builtinRole = { ...builtinRoleFixture, id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e' }
 let roles: Role[]
 const fake = setupFakeApi(() => ({
   console: {

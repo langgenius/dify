@@ -23,6 +23,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -333,7 +334,7 @@ describe('shared knowledge binding dialog', () => {
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       expect(snapshot().knowledge.sets[0]).toMatchObject({
         name: 'Test Dataset',
-        datasets: [{ id: 'dataset-1' }],
+        datasets: [{ id: TEST_DATASET_ID }],
         query: { mode: 'generated_query' },
       })
       expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
@@ -347,7 +348,7 @@ describe('shared knowledge binding dialog', () => {
 
   it('discards Classic selections and advanced edits on cancel', async () => {
     const user = userEvent.setup()
-    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] })
+    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: TEST_DATASET_ID }] })
     let dialog = await open(user)
     await advanced(user, dialog)
     const name = within(dialog).getByRole('textbox', { name: /dialog.nameLabel/ })
@@ -369,7 +370,7 @@ describe('shared knowledge binding dialog', () => {
     setupClassic({
       id: 'docs',
       name: 'Product manual',
-      datasetRefs: [{ id: 'dataset-1' }, { id: 'dataset-2' }],
+      datasetRefs: [{ id: TEST_DATASET_ID }, { id: 'dataset-2' }],
       queryMode: 'custom',
       customQuery: 'original question',
       metadataFilterMode: MetadataFilteringModeEnum.manual,
@@ -544,7 +545,7 @@ describe('shared knowledge binding dialog', () => {
       formState: {
         ...defaultAgentSoulConfigFormState,
         knowledgeRetrievals: [
-          { id: 'classic', name: 'Imported search', datasetRefs: [{ id: 'dataset-1' }] },
+          { id: 'classic', name: 'Imported search', datasetRefs: [{ id: TEST_DATASET_ID }] },
         ],
       },
     })
@@ -870,11 +871,11 @@ describe('shared knowledge binding dialog', () => {
   it('retains Classic bindings when dataset lookup fails and supports retry', async () => {
     const user = userEvent.setup()
     getDataset.mockRejectedValue(new ORPCError('FORBIDDEN', { status: 403 }))
-    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: 'dataset-1' }] })
+    setupClassic({ id: 'classic', name: 'Saved search', datasetRefs: [{ id: TEST_DATASET_ID }] })
     const dialog = await open(user)
     await advanced(user, dialog)
     expect(await within(dialog).findByRole('alert')).toBeVisible()
-    expect(snapshot().knowledge.sets[0].datasets).toEqual([{ id: 'dataset-1' }])
+    expect(snapshot().knowledge.sets[0].datasets).toEqual([{ id: TEST_DATASET_ID }])
     getDataset.mockResolvedValue(createDatasetFixture())
     await user.click(within(dialog).getByRole('button', { name: /operation.retry/ }))
     expect(await within(dialog).findByRole('radio', { name: /dialog.query.agent$/ })).toBeVisible()
@@ -1281,7 +1282,7 @@ describe('shared knowledge binding dialog', () => {
     const user = userEvent.setup()
     getDatasets.mockResolvedValue(
       datasetPage([
-        createDatasetFixture({ id: 'dataset-1', name: 'Alpha' }),
+        createDatasetFixture({ id: TEST_DATASET_ID, name: 'Alpha' }),
         createDatasetFixture({ id: 'dataset-2', name: 'Beta' }),
         createDatasetFixture({ id: 'dataset-3', name: 'Gamma' }),
       ]),
@@ -1372,7 +1373,7 @@ describe('KnowledgeFS composer interaction', () => {
 
   it('limits Agent Knowledge Bases to 10 while retaining a Classic binding', async () => {
     const user = userEvent.setup()
-    setup([{ id: 'classic', name: 'Classic Docs', datasetRefs: [{ id: 'dataset-1' }] }], {
+    setup([{ id: 'classic', name: 'Classic Docs', datasetRefs: [{ id: TEST_DATASET_ID }] }], {
       spaces: Array.from({ length: 11 }, (_, index) =>
         space(
           `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,

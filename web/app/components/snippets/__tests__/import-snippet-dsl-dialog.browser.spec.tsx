@@ -5,6 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import SnippetCreateButton from '@/app/components/snippet-list/components/snippet-create-button'
 import { manager, toast } from '@/app/notifications'
+import { TEST_SNIPPET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { createSnippetImportResponseFixture } from '@/test/fixtures/snippet'
@@ -81,7 +82,7 @@ it('imports a DSL URL from the creation menu and navigates after the dialog clos
       body: { mode: 'yaml-url', yaml_url: 'https://example.com/snippet.yml' },
     }),
   )
-  expect(router.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-1/orchestrate')
+  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${TEST_SNIPPET_ID}/orchestrate`)
 })
 
 it('reads the uploaded YAML and waits for version confirmation before navigating', async () => {

@@ -12,6 +12,7 @@ import common from '@/i18n/locales/en-US/common.json'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
 import fileScan from '@/i18n/locales/en-US/file-scan.json'
 import { consoleQuery } from '@/service/console'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
@@ -19,13 +20,12 @@ import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
 
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 vi.unmock('react-i18next')
 // boundary: routing is outside the settings journey; keep the real dataset layout and refetch owner.
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/settings',
   useRouter: () => ({ replace: vi.fn() }),
-  useParams: () => ({ datasetId: '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f' }),
+  useParams: () => ({ datasetId: TEST_DATASET_ID }),
 }))
 
 const scanPolicyOff = {
@@ -83,7 +83,7 @@ async function setup(
   { fileScanEnabled = false }: { fileScanEnabled?: boolean } = {},
 ) {
   const dataset = createDatasetFixture({
-    id: DATASET_ID,
+    id: TEST_DATASET_ID,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
   })
@@ -117,7 +117,7 @@ async function setup(
       <I18nextProvider i18n={i18n}>
         <NuqsTestingAdapter>
           <div className="flex h-screen flex-col">
-            <DatasetDetailLayout datasetId={DATASET_ID}>
+            <DatasetDetailLayout datasetId={TEST_DATASET_ID}>
               <div className="h-full overflow-auto">
                 <Form />
               </div>
@@ -149,7 +149,7 @@ it('saves edited basic information once while pending and refreshes the dataset 
   await expect.poll(() => fake.console.datasets.byDatasetId.patch).toHaveBeenCalledOnce()
   expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
-      params: { dataset_id: DATASET_ID },
+      params: { dataset_id: TEST_DATASET_ID },
       body: expect.objectContaining({
         name: 'Updated Dataset',
         description: 'Updated description',
@@ -268,7 +268,7 @@ it('saves the file scan policy with the page Save button', async () => {
   expect(fake.console.datasets.byDatasetId.fileScanPolicy.put.mock.calls.at(-1)?.[0]).toMatchObject(
     {
       body: { ...scanPolicyOff, enabled: true, provider_id: 'scanner-1' },
-      params: { dataset_id: DATASET_ID },
+      params: { dataset_id: TEST_DATASET_ID },
     },
   )
   expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledTimes(1)

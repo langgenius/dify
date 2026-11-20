@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createDeferred } from '@/test/deferred'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import { DocumentPicker } from '../index'
@@ -55,7 +56,6 @@ const createDocument = (
   ...overrides,
 })
 
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 const CUSTOM_DATASET_ID = '8e0d2a4f-5b2c-4d3e-9f4a-2b3c4d5e6f70'
 
 const initialDocuments = [
@@ -76,7 +76,7 @@ async function renderDocumentPicker(
   return render(
     <QueryClientProvider client={queryClient}>
       <DocumentPicker
-        datasetId={DATASET_ID}
+        datasetId={TEST_DATASET_ID}
         currentDocument={createDocument({ id: 'doc-1', name: 'Document 1' })}
         {...props}
       />
@@ -119,11 +119,13 @@ it('shows the current document contract and links every available document', asy
   await trigger.click()
 
   const current = screen.getByRole('menuitem', { name: 'Document 1' })
-  await expect.element(current).toHaveAttribute('href', `/datasets/${DATASET_ID}/documents/doc-1`)
+  await expect
+    .element(current)
+    .toHaveAttribute('href', `/datasets/${TEST_DATASET_ID}/documents/doc-1`)
   await expect.element(current).toHaveAttribute('aria-current', 'page')
   await expect
     .element(screen.getByRole('menuitem', { name: 'Document 2' }))
-    .toHaveAttribute('href', `/datasets/${DATASET_ID}/documents/doc-2`)
+    .toHaveAttribute('href', `/datasets/${TEST_DATASET_ID}/documents/doc-2`)
 })
 
 it('shows only settled search results while keeping native keyboard focus in the menu', async () => {

@@ -9,6 +9,7 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import common from '@/i18n/locales/en-US/common.json'
 import datasetDocuments from '@/i18n/locales/en-US/dataset-documents.json'
 import datasetMessages from '@/i18n/locales/en-US/dataset.json'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -35,14 +36,13 @@ const fields = [
     value: 1759780800,
   },
 ]
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 const DOCUMENT_ID = '9f1e3b5d-6c3d-4e4f-8a5b-3c4d5e6f7081'
 
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ datasetId: DATASET_ID, documentId: DOCUMENT_ID }),
-  usePathname: () => `/datasets/${DATASET_ID}/documents/${DOCUMENT_ID}`,
+  useParams: () => ({ datasetId: TEST_DATASET_ID, documentId: DOCUMENT_ID }),
+  usePathname: () => `/datasets/${TEST_DATASET_ID}/documents/${DOCUMENT_ID}`,
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -95,7 +95,7 @@ const renderDocumentDetail = async () => {
     workspacePermissionKeys: [],
   })
   const dataset = createDatasetFixture({
-    id: DATASET_ID,
+    id: TEST_DATASET_ID,
     embedding_available: true,
     permission_keys: [DatasetACLPermission.Edit],
   })
@@ -106,7 +106,7 @@ const renderDocumentDetail = async () => {
         <DatasetDetailContext.Provider value={{ dataset }}>
           <EventEmitterContextProvider>
             <div className="isolate h-screen">
-              <DocumentDetail datasetId={DATASET_ID} documentId={DOCUMENT_ID} />
+              <DocumentDetail datasetId={TEST_DATASET_ID} documentId={DOCUMENT_ID} />
             </div>
           </EventEmitterContextProvider>
         </DatasetDetailContext.Provider>

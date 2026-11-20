@@ -8,6 +8,7 @@ import { render } from 'vitest-browser-react'
 import { ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { setupFakeApi } from '@/test/fake-api'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
@@ -27,7 +28,6 @@ vi.mock('@/next/link', () => ({
     </a>
   ),
 }))
-const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 const document = zDocumentResponse.parse({
   id: 'document-1',
   name: 'report.pdf',
@@ -99,7 +99,7 @@ async function setup({
     features: { billing: { subscription: { plan } } },
   })
   const documentOptions = consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
-    input: { params: { dataset_id: DATASET_ID } },
+    input: { params: { dataset_id: TEST_DATASET_ID } },
   })
   if (showDocumentSummary)
     queryClient.setQueryData(documentOptions.queryKey, {
@@ -116,7 +116,7 @@ async function setup({
   return render(
     <Providers>
       <EmbeddingProcess
-        datasetId={DATASET_ID}
+        datasetId={TEST_DATASET_ID}
         batchId="batch-1"
         documents={[document]}
         indexingType={indexingType}
@@ -243,7 +243,7 @@ it('links to the real API reference and refreshes subscribed documents on naviga
   const summary = screen.getByRole('status', { name: 'Documents in knowledge' })
   await expect.element(summary).toHaveTextContent('1')
   const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
-  await expect.element(link).toHaveAttribute('href', `/datasets/${DATASET_ID}/documents`)
+  await expect.element(link).toHaveAttribute('href', `/datasets/${TEST_DATASET_ID}/documents`)
   await link.click()
   await expect.element(summary).toHaveTextContent('2')
 })
