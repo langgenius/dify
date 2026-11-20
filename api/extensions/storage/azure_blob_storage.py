@@ -2,6 +2,9 @@ from collections.abc import Generator
 from datetime import timedelta
 from typing import override
 
+from azure.core.exceptions import AzureError, HttpResponseError, ResourceExistsError, ResourceNotFoundError
+from azure.core.pipeline.transport import HttpResponse
+from azure.core.rest import HttpResponse as RestHttpResponse
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 
@@ -9,6 +12,12 @@ from configs import dify_config
 from extensions.ext_redis import redis_client
 from extensions.storage.base_storage import BaseStorage
 from libs.datetime_utils import naive_utc_now
+
+
+def _has_error_code(error: HttpResponseError, code: str) -> bool:
+    """Read the service code from either public synchronous Azure response API."""
+    response = error.response
+    return isinstance(response, (HttpResponse, RestHttpResponse)) and response.headers.get("x-ms-error-code") == code
 
 
 class AzureBlobStorage(BaseStorage):
@@ -37,14 +46,37 @@ class AzureBlobStorage(BaseStorage):
         blob_container.upload_blob(filename, data)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require a configured container; publish one block blob with the SDK's atomic no-overwrite condition."""
+        if not self.bucket_name:
+            raise OSError("Azure container is not configured")
+        try:
+            container = self._sync_client().get_container_client(container=self.bucket_name)
+            container.upload_blob(filename, data, overwrite=False)
+        except ResourceExistsError as error:
+            if _has_error_code(error, "BlobAlreadyExists"):
+                return False
+            raise OSError("Azure atomic creation failed") from None
+        except AzureError:
+            raise OSError("Azure atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
-            raise FileNotFoundError("Azure bucket name is not configured.")
+            raise OSError("Azure container is not configured")
 
-        client = self._sync_client()
-        blob = client.get_container_client(container=self.bucket_name)
-        blob = blob.get_blob_client(blob=filename)
-        data = blob.download_blob().readall()
+        try:
+            client = self._sync_client()
+            blob = client.get_container_client(container=self.bucket_name)
+            blob = blob.get_blob_client(blob=filename)
+            data = blob.download_blob().readall()
+        except ResourceNotFoundError as error:
+            if _has_error_code(error, "BlobNotFound"):
+                raise FileNotFoundError("File not found") from None
+            raise OSError("Azure read failed") from None
+        except AzureError:
+            raise OSError("Azure read failed") from None
         if not isinstance(data, bytes):
             raise TypeError(f"Expected bytes from blob.readall(), got {type(data).__name__}")
         return data

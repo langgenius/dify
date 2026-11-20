@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from cryptography.fernet import Fernet
 from flask import Blueprint
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from dify_app import DifyApp
 from extensions import ext_blueprints
 from extensions.ext_key_provider import KeyProviderManager
 from graphon.enums import WorkflowExecutionStatus
+from libs.credential_cipher import BoundCredentialCipher, CredentialKeyUnavailableError
 from libs.datetime_utils import naive_utc_now
 from libs.key_providers.base import BaseKeyProvider
 from models.account import Account, AccountStatus, TenantAccountJoin
@@ -55,7 +57,11 @@ from repositories.human_input_v2.recipient_repository import ContactRecipientSub
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelWriter,
+    WorkspaceIMChannelWriter,
+)
+from services import deployment_credential_composition
 from services.human_input_v2.form_service import AccountInitiator, CreatedForm
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
@@ -93,7 +99,14 @@ def binding_scope() -> str:
 
 
 @pytest.fixture
-def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: str) -> tuple[str, IMChannelId]:
+def deployment_owned() -> bool:
+    return False
+
+
+@pytest.fixture
+def approval(
+    context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: str, deployment_owned: bool
+) -> tuple[str, IMChannelId]:
     from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 
     key_provider = create_autospec(BaseKeyProvider, instance=True)
@@ -132,9 +145,22 @@ def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: s
         signing_secret=_SIGNING_SECRET,
         bot_token="xoxb-test",
     )
-    cipher = TenantBoundCredentialCipher(key_provider, str(created.form.tenant_id))
+    cipher: BoundCredentialCipher
+    if deployment_owned:
+        fernet = Fernet(Fernet.generate_key())
+        cipher = create_autospec(BoundCredentialCipher, instance=True)
+        cipher.encrypt.side_effect = lambda text: fernet.encrypt(text.encode())
+        cipher.decrypt.side_effect = lambda ciphertext: fernet.decrypt(ciphertext).decode()
+        monkeypatch.setattr(deployment_credential_composition, "build_deployment_credential_cipher", lambda **_: cipher)
+    else:
+        cipher = TenantBoundCredentialCipher(key_provider, str(created.form.tenant_id))
     with context.sessions.begin() as session:
-        WorkspaceIMChannelWriter(session, created.form.tenant_id, initiator.account_id).create(
+        writer = (
+            DeploymentIMChannelWriter(session)
+            if deployment_owned
+            else WorkspaceIMChannelWriter(session, created.form.tenant_id, initiator.account_id)
+        )
+        writer.create(
             IMChannel(
                 id=channel_id,
                 created_at=now,
@@ -264,6 +290,7 @@ def test_url_verification_returns_provider_response_without_persisting_or_publis
         assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageEvent)) == 0
 
 
+@pytest.mark.parametrize("deployment_owned", [False, True])
 def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(
     context: Context,
     approval: tuple[str, IMChannelId],
@@ -299,6 +326,26 @@ def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(
     with context.sessions() as session:
         assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
     assert resumed == [context.execution.workflow_run_id]
+
+
+@pytest.mark.parametrize("deployment_owned", [True])
+def test_deployment_callback_without_provisioned_key_does_not_admit_event(
+    context: Context, callback_app: tuple[DifyApp, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def unavailable_key(**_kwargs: object) -> BoundCredentialCipher:
+        raise CredentialKeyUnavailableError("Deployment key is missing")
+
+    monkeypatch.setattr(deployment_credential_composition, "build_deployment_credential_cipher", unavailable_key)
+    app, published = callback_app
+    body = _request_body()
+
+    response = app.test_client().post(_PATH, data=body, headers=_headers(body))
+
+    assert response.status_code == 503
+    assert response.data == b""
+    assert published == []
+    with context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageEvent)) == 0
 
 
 def test_additive_callback_roundtrip_preserves_the_persisted_payload(

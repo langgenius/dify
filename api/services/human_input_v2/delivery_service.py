@@ -18,12 +18,11 @@ from urllib.parse import quote
 import httpx
 import sqlalchemy as sa
 from pydantic import SecretStr, ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.helper import encrypter
 from core.human_input_v2.entities import DebugChannel
-from core.human_input_v2.im_integration.adapters import factory as im_adapter_factory_module
 from core.human_input_v2.im_integration.adapters.entities import (
     CorrelationToken,
     DynamicCardMessagingError,
@@ -33,11 +32,10 @@ from core.human_input_v2.im_integration.adapters.entities import (
 )
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
-from core.human_input_v2.shared.values import ContactId, IMBindingId
+from core.human_input_v2.shared.values import ContactId, DirectoryScope, IMBindingId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import Initiator
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError
-from extensions.ext_key_provider import key_provider_manager
 from models.model import EndUser
 from repositories.human_input_v2.contact import Contact, ContactType
 from repositories.human_input_v2.delivery_attempt_repository import (
@@ -68,16 +66,15 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
-    DeploymentIMChannelReader,
-    WorkspaceIMChannelReader,
-)
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from services.feature_service import FeatureService
 from services.human_input_v2.email_client import EmailClient
-from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
-from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
+from services.human_input_v2.im_channel_runtime import (
+    build_im_channel_adapter,
+    read_current_im_channel,
+    workspace_runtime_im_scope,
+)
+from services.human_input_v2.im_credential_codec import IMCredentialError
 
 logger = logging.getLogger(__name__)
 _CONSOLE_FORM_PAGE_PATH = "/human-input"
@@ -123,6 +120,7 @@ class _EmailTarget:
 @dataclass(frozen=True, slots=True)
 class _IMTarget:
     channel: IMChannel
+    owner_scope: DirectoryScope
     binding_id: IMBindingId
     user_id: ProviderUserId
 
@@ -150,13 +148,13 @@ class HumanInputDeliveryService:
     def __init__(
         self,
         *,
-        session_factory: Callable[[], Session],
+        session_factory: sessionmaker[Session],
         email_client: EmailClient | None,
         im_adapter_factory: Callable[[IMChannel], IMProviderAdapter] | None = None,
     ) -> None:
         """Use a tenant-bound email client; None means no email channel is available.
 
-        An EE owner may also supply its credential-bound IM adapter factory.
+        A supplied IM adapter factory replaces the default owner-bound adapter construction.
         """
         self._session_factory = session_factory
         self._email_client = email_client
@@ -325,12 +323,8 @@ class HumanInputDeliveryService:
         """
         if not contact_ids:
             return {}
-        # TODO(QuantumGhost): maybe the channel creation logic below should be unified?
-        channel = (
-            DeploymentIMChannelReader(session).get()
-            if FeatureService.is_im_centrally_managed()
-            else WorkspaceIMChannelReader(session, form.tenant_id).get()
-        )
+        owner_scope = workspace_runtime_im_scope(form.tenant_id)
+        channel = read_current_im_channel(session, owner_scope)
         if channel is None or channel.status != IMChannelStatus.CONNECTED:
             return {}
         bindings = SQLAlchemyIMBindingRepository(session, channel.id).get_effective_many(form.tenant_id, contact_ids)
@@ -342,7 +336,7 @@ class HumanInputDeliveryService:
         }
         return {
             binding.contact_id: _IMTarget(
-                channel, binding.id, ProviderUserId(identities[binding.identity_id].provider_user_id)
+                channel, owner_scope, binding.id, ProviderUserId(identities[binding.identity_id].provider_user_id)
             )
             for binding in bindings
             if binding.identity_id in identities
@@ -437,18 +431,14 @@ class HumanInputDeliveryService:
     def _deliver_im(
         self, context: _RecipientContext, target: _IMTarget, template: ResolvedMessageTemplate
     ) -> DeliveryAttempt | None:
+        """Send using the credentials of the owner that supplied the current target."""
         channel = target.channel
         user_id = target.user_id
         try:
             if self._im_adapter_factory is not None:
                 adapter = self._im_adapter_factory(channel)
             else:
-                if FeatureService.is_im_centrally_managed():
-                    # TODO(QuantumGhost): Dify EE Adapter creation.
-                    raise IMCredentialError("The deployment's credential-bound adapter factory is required")
-                cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(context.form.tenant_id))
-                credentials = IMCredentialCodec(cipher).load(channel.provider, channel.encrypted_credentials)
-                adapter = im_adapter_factory_module.build_im_provider_adapter(credentials)
+                adapter = build_im_channel_adapter(channel, target.owner_scope, session_maker=self._session_factory)
         except IMCredentialError:
             self._warn(context, "im_credentials_unavailable")
             return None

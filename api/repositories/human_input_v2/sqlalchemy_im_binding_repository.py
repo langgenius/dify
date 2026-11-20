@@ -118,12 +118,15 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
         return _default_binding_from_record(record) if record is not None else None
 
     @override
-    def list_all(self) -> tuple[IMBinding, ...]:
+    def list_all(self, *, contact_ids: Sequence[ContactId] | None = None) -> tuple[IMBinding, ...]:
+        """Read bound-Channel defaults; apply an optional Contact selection before materializing rows."""
+        if contact_ids is not None and not contact_ids:
+            return ()
+        statement = sa.select(HumanInputIMBinding).where(HumanInputIMBinding.channel_id == str(self._channel_id))
+        if contact_ids is not None:
+            statement = statement.where(HumanInputIMBinding.contact_id.in_(tuple(dict.fromkeys(contact_ids))))
         records = self._session.scalars(
-            sa.select(HumanInputIMBinding)
-            .where(HumanInputIMBinding.channel_id == str(self._channel_id))
-            .order_by(HumanInputIMBinding.id)
-            .execution_options(autoflush=False)
+            statement.order_by(HumanInputIMBinding.id).execution_options(autoflush=False)
         ).all()
         return tuple(_default_binding_from_record(record) for record in records)
 

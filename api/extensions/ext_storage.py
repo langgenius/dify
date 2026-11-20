@@ -88,6 +88,10 @@ class Storage:
     def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
 
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require backend atomic creation; preserve existing bytes and return whether this call created them."""
+        return self.storage_runner.save_if_absent(filename, data)
+
     @overload
     def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
 

@@ -32,6 +32,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
 )
 from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.shared import AccountId, TenantId
+from libs.credential_cipher import BoundCredentialCipher
 from libs.datetime_utils import naive_utc_now
 from libs.key_providers.base import BaseKeyProvider
 from libs.uuid_utils import uuidv7
@@ -47,6 +48,8 @@ from repositories.human_input_v2.im_channel_repository import (
     WebhookId,
 )
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelReader,
+    DeploymentIMChannelWriter,
     WorkspaceIMChannelReader,
     WorkspaceIMChannelWriter,
 )
@@ -447,4 +450,33 @@ class WorkspaceIMChannelService(IMChannelService):
         return WorkspaceIMChannelWriter(session, self._tenant_id, self._account_id)
 
 
-__all__ = ["IMChannelService", "IMChannelView", "WorkspaceIMChannelService"]
+class DeploymentIMChannelService(IMChannelService):
+    """Reuse Channel business rules with an explicitly injected deployment cipher."""
+
+    def __init__(
+        self, sessions: sessionmaker[Session], cipher: BoundCredentialCipher, event_transport_mode: IMEventTransportMode
+    ) -> None:
+        super().__init__(sessions, IMCredentialCodec(cipher), event_transport_mode)
+
+    @override
+    def _prepare_configuration(self, credentials: IMProviderCredentials) -> _PreparedIMChannelConfiguration:
+        """Require a usable deployment key before provider I/O; persist only after provider confirmation."""
+        encrypted = self._credential_codec.seal(credentials)
+        tested = self._test_credentials(credentials)
+        return _PreparedIMChannelConfiguration(
+            provider=tested.provider,
+            provider_tenant_id=tested.provider_tenant_id,
+            encrypted_credentials=encrypted,
+            app_identifier=self._app_identifier(credentials),
+        )
+
+    @override
+    def _new_reader(self, session: Session) -> IMChannelReader:
+        return DeploymentIMChannelReader(session)
+
+    @override
+    def _new_writer(self, session: Session) -> IMChannelWriter:
+        return DeploymentIMChannelWriter(session)
+
+
+__all__ = ["DeploymentIMChannelService", "IMChannelService", "IMChannelView", "WorkspaceIMChannelService"]

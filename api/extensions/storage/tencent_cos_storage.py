@@ -2,6 +2,7 @@ from collections.abc import Generator
 from typing import override
 
 from qcloud_cos import CosConfig, CosS3Client
+from qcloud_cos.cos_exception import CosClientError, CosServiceError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -36,7 +37,14 @@ class TencentCosStorage(BaseStorage):
 
     @override
     def load_once(self, filename: str) -> bytes:
-        data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()
+        try:
+            data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()
+        except CosServiceError as error:
+            if error.get_error_code() == "NoSuchKey":
+                raise FileNotFoundError("File not found") from None
+            raise OSError("COS read failed") from None
+        except CosClientError:
+            raise OSError("COS read failed") from None
         return data
 
     @override

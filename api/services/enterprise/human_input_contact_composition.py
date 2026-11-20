@@ -10,7 +10,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import Deploym
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.contact_service import ContactManagementService
 
-from .human_input_contact_service import EnterpriseContactManagementService, EnterpriseOrganizationContactReader
+from .human_input_contact_service import EnterpriseContactManagementService
 
 
 def build_enterprise_contact_management_service(session: Session) -> EnterpriseContactManagementService:
@@ -21,11 +21,7 @@ def build_enterprise_contact_management_service(session: Session) -> EnterpriseC
         SQLAlchemyContactIMBindingRepository(session, channel),
         SQLAlchemyIMIdentityRepository(session, channel.id) if channel is not None else None,
     )
-    return EnterpriseContactManagementService(repository, repository, contact_queries)
+    return EnterpriseContactManagementService(repository, contact_queries)
 
 
-def build_enterprise_organization_contact_reader(session: Session) -> EnterpriseOrganizationContactReader:
-    return EnterpriseOrganizationContactReader(SQLAlchemyContactRepository(session))
-
-
-__all__ = ["build_enterprise_contact_management_service", "build_enterprise_organization_contact_reader"]
+__all__ = ["build_enterprise_contact_management_service"]

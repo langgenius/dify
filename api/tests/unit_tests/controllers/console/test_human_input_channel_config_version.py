@@ -9,7 +9,7 @@ from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
 def _config_version_module() -> ModuleType:
-    return importlib.import_module("controllers.console.human_input_v2.config_version")
+    return importlib.import_module("controllers.common.human_input_v2.config_version")
 
 
 def test_email_config_version_round_trips_the_owner_native_snapshot() -> None:

@@ -10,7 +10,7 @@ from typing import Protocol
 from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMBindingScope, IMProvider
-from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId
+from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, IMBindingId, IMIdentityId, TenantId
 
 
 class ContactType(StrEnum):
@@ -65,7 +65,13 @@ _DEFAULT_CONTACT_QUERY = ContactQuery()
 
 
 class ContactRepository(Protocol):
-    """Tenant-scoped current Contact queries and lifecycle writes."""
+    """Own Contact reads and lifecycle writes across both directories and all editions.
+
+    Workspace queries resolve membership, Platform visibility and External ownership.
+    Organization queries return only available Account-backed Contacts in the
+    resolved Tenant or deployment boundary. Repositories do not decide edition
+    permissions and use the caller's Session and transaction.
+    """
 
     def count_contact(self, tenant_id: TenantId, query: ContactQuery = _DEFAULT_CONTACT_QUERY) -> int: ...
 
@@ -121,39 +127,55 @@ class ContactRepository(Protocol):
         emails: Sequence[str],
     ) -> Sequence[Contact]: ...
 
+    def list_organization_contacts(
+        self,
+        organization_scope: DirectoryScope,
+        page: int,
+        limit: int,
+        keyword: str = "",
+    ) -> Sequence[OrganizationContact]:
+        """Require validated pagination and a resolved Organization; return its available Account-backed Contacts.
 
-CandidateId = ContactId
+        DeploymentScope selects the EE Organization. WorkspaceScope selects
+        the Tenant forming a CE/SaaS Organization. External Contacts are excluded.
+        List and count use the same keyword and admission predicates.
+        """
+        ...
+
+    def count_organization_contacts(self, organization_scope: DirectoryScope, keyword: str) -> int: ...
+
+    def get_organization_contact(
+        self,
+        organization_scope: DirectoryScope,
+        contact_id: ContactId,
+        *,
+        for_update: bool = False,
+    ) -> OrganizationContact | None: ...
+
+    def create_platform_entry(
+        self,
+        tenant_id: TenantId,
+        contact_id: ContactId,
+        added_by_account_id: AccountId,
+    ) -> None: ...
+
+    def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
-class OrganizationCandidate:
+class OrganizationContact:
+    """Account-backed Organization Directory entry shared by management and candidate queries.
+
+    created_at belongs to the Contact identity; joined_at belongs to its Account.
+    Member/Platform classification exists only in a Workspace Directory projection.
+    """
+
     id: ContactId
     name: str
     email: str | None
     avatar_file_id: str | None
     created_at: NaiveDatetime
-
-
-class EnterpriseContactRepository(Protocol):
-    """EE-only candidate queries and Platform visibility mutations."""
-
-    def list_organization_candidates(
-        self,
-        page: int,
-        limit: int,
-        keyword: str = "",
-    ) -> Sequence[OrganizationCandidate]: ...
-
-    def count_organization_candidates(self, keyword: str = "") -> int: ...
-
-    def create_platform_entry(
-        self,
-        tenant_id: TenantId,
-        candidate_id: ContactId,
-        added_by_account_id: AccountId,
-    ) -> None: ...
-
-    def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None: ...
+    joined_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,7 +190,9 @@ class IMBinding:
 
 
 class ContactIMBindingRepository(Protocol):
-    """Tenant-scoped read-only port for Contact IM bindings."""
+    """Read-only Contact-facing Organization defaults and effective workspace bindings."""
+
+    def get_organization_im_bindings(self, contact_ids: Sequence[ContactId]) -> Sequence[IMBinding]: ...
 
     def get_im_bindings(
         self,
@@ -193,7 +217,6 @@ class ContactError(RuntimeError):
 
 
 __all__ = [
-    "CandidateId",
     "Contact",
     "ContactError",
     "ContactErrorCode",
@@ -201,9 +224,8 @@ __all__ = [
     "ContactQuery",
     "ContactRepository",
     "ContactType",
-    "EnterpriseContactRepository",
     "ExternalContact",
     "IMBinding",
-    "OrganizationCandidate",
+    "OrganizationContact",
     "Page",
 ]

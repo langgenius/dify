@@ -63,8 +63,12 @@ class IMBindingRepository(Protocol):
         """Return the Contact's default Binding in the bound Channel, ignoring overrides."""
         ...
 
-    def list_all(self) -> tuple[IMBinding, ...]:
-        """Return all default Bindings in the bound Channel."""
+    def list_all(self, *, contact_ids: Sequence[ContactId] | None = None) -> tuple[IMBinding, ...]:
+        """Return bound-Channel defaults, optionally restricted to a Contact selection.
+
+        None selects all defaults for reconciliation; an empty selection returns
+        none. Workspace overrides never participate.
+        """
         ...
 
     def create(
