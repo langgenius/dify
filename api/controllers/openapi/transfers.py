@@ -22,6 +22,8 @@ from controllers.openapi._contract import Example, Kind, endpoint, multipart_hea
 from controllers.openapi._errors import OpenApiError, UploadNotOneFile
 from controllers.openapi._models import UploadCommands, UploadPrepared, UploadPreparePayload, UploadReceived
 from controllers.openapi._transfer import (
+    CONTENT_DISPOSITION_HEADER,
+    DEFAULT_MIME_TYPE,
     TOKEN_PARAM,
     TRANSFER_BYTES_ENDPOINT,
     hold_slot,
@@ -40,7 +42,6 @@ PREPARE_UPLOAD_OP: Final = "prepare.upload"
 UPLOAD_EVENT: Final = "file_transfer.upload"
 DOWNLOAD_EVENT: Final = "file_transfer.download"
 NEXT_STEP: Final = "Put this id in the file field of the operation you call next."
-_DEFAULT_MIME_TYPE: Final = "application/octet-stream"
 _ONE_PART: Final = 1
 
 # One template per (folder, shell); {url} is the upload link.
@@ -149,9 +150,9 @@ class TransferBytesApi(Resource):
         _log(DOWNLOAD_EVENT, transfer, file)
         return Response(
             content,
-            mimetype=_DEFAULT_MIME_TYPE,
+            mimetype=DEFAULT_MIME_TYPE,
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file.name)}",
+                CONTENT_DISPOSITION_HEADER: f"attachment; filename*=UTF-8''{quote(file.name)}",
                 "X-Content-Type-Options": "nosniff",
             },
         )
@@ -175,7 +176,7 @@ def _one_file() -> IncomingFile:
         raise UploadNotOneFile()
     return IncomingFile(
         name=part.filename,
-        mime_type=part.mimetype or _DEFAULT_MIME_TYPE,
+        mime_type=part.mimetype or DEFAULT_MIME_TYPE,
         content=part.stream.read(),
     )
 

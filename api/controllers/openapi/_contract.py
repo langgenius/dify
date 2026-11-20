@@ -35,6 +35,7 @@ from controllers.openapi._files import end_read_transaction
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
+from controllers.openapi._transfer import answers_file_as_transfer
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
@@ -290,6 +291,8 @@ def endpoint(
         decorated = view
         if kind is Kind.LIST:
             decorated = paginated(op)(decorated)
+        if kind is Kind.FILE:
+            decorated = answers_file_as_transfer(decorated)
         if query is not None or body is not None:
             decorated = accepts(query=query, body=body)(decorated)
         for return_spec in reversed(return_specs):

@@ -6,15 +6,18 @@ A leaf of the transport: ``transfers.py`` and ``_contract.py`` import it, so it 
 
 from __future__ import annotations
 
-from functools import singledispatch
+from collections.abc import Callable
+from enum import StrEnum
+from functools import singledispatch, wraps
 from http import HTTPStatus
 from io import BytesIO
-from typing import Final
+from typing import Any, Final
 
-from flask import Response, after_this_request, g, url_for
+from flask import Response, after_this_request, current_app, g, request, url_for
 from werkzeug.datastructures import FileStorage
+from werkzeug.http import parse_options_header
 
-from constants import BYTES_PER_MIB
+from constants import BYTES_PER_MIB, HEADER_NAME_FILE_RESULT
 from controllers.openapi._errors import (
     DownloadLinkExpired,
     OpenApiError,
@@ -27,6 +30,7 @@ from controllers.openapi._errors import (
     UploadNotReceived,
     UploadTooLarge,
 )
+from controllers.openapi._models import FileResultResponse, TransferredFile
 from extensions.ext_application_services import application_services
 from libs.oauth_bearer import get_auth_ctx
 from services.file_transfer import (
@@ -39,11 +43,22 @@ from services.file_transfer import (
     TransferNotAZipError,
     TransferNotFoundError,
     TransferNotReceivedError,
+    TransferTicket,
     TransferTooLargeError,
 )
 
+
+class FileResult(StrEnum):
+    """Values of the file-result header: how a file operation answers."""
+
+    TRANSFER = "transfer"
+
+
 TRANSFER_BYTES_ENDPOINT: Final = "openapi_transfer_bytes"
 TOKEN_PARAM: Final = "token"
+CONTENT_DISPOSITION_HEADER: Final = "Content-Disposition"
+DEFAULT_MIME_TYPE: Final = "application/octet-stream"
+_FILENAME_OPTION: Final = "filename"
 _SLOT_HELD: Final = "file_transfer_slot_held"
 
 
@@ -78,6 +93,58 @@ def hold_slot() -> None:
     def free_on_close(response: Response) -> Response:
         response.call_on_close(transfers.free_slot)
         return response
+
+
+def answers_file_as_transfer(view: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a file operation so a request with ``X-Dify-File-Result: transfer`` gets its file parked.
+
+    Postcondition: without that header value, the view's result untouched. With it, a result of status 300 or
+    above untouched; any other is read whole, its response closed (so its close callbacks run), and the file
+    parked for the caller: 200 with ``FileResultResponse``. Holds this request's slot while the bytes are held;
+    a file above the transfer limit is refused with that limit.
+    """
+
+    @wraps(view)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        result = view(*args, **kwargs)
+        if request.headers.get(HEADER_NAME_FILE_RESULT) != FileResult.TRANSFER:
+            return result
+        response = current_app.make_response(result)
+        if response.status_code >= HTTPStatus.MULTIPLE_CHOICES:
+            return response
+        hold_slot()
+        response.direct_passthrough = False
+        content = response.get_data()
+        response.close()
+        _, options = parse_options_header(response.headers.get(CONTENT_DISPOSITION_HEADER))
+        transfers = application_services().file_transfers
+        try:
+            ticket = transfers.park(
+                transfer_owner_id(),
+                name=options.get(_FILENAME_OPTION, ""),
+                mime_type=response.mimetype or DEFAULT_MIME_TYPE,
+                content=content,
+            )
+        except FileTransferError as error:
+            raise refusal_of(error) from None
+        return FileResultResponse(file=_transferred(ticket)), HTTPStatus.OK
+
+    return wrapper
+
+
+def _transferred(ticket: TransferTicket) -> TransferredFile:
+    transfer = ticket.transfer
+    file = transfer.file
+    assert file is not None, "a parked transfer always holds its file"
+    return TransferredFile(
+        id=transfer.id,
+        name=file.name,
+        size=file.size,
+        sha256=file.sha256,
+        download_url=transfer_url(transfer.id, ticket.token),
+        download_before=ticket.link_expires_at,
+        expires_at=transfer.expires_at,
+    )
 
 
 def parts_of(transfer_id: str, *, field: str) -> FileStorage | dict[str, FileStorage]:

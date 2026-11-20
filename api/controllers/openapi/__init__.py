@@ -75,6 +75,7 @@ from controllers.openapi._models import (
     DslIssueRow,
     EnvVariableListResponse,
     EnvVariableSetPayload,
+    FileResultResponse,
     FileUploadPayload,
     FormSubmitResponse,
     HealthResponse,
@@ -168,6 +169,7 @@ from controllers.openapi._models import (
     ToolListResponse,
     ToolProviderDetailResponse,
     ToolProviderRow,
+    TransferredFile,
     UploadCommands,
     UploadPrepared,
     UploadPreparePayload,
@@ -233,7 +235,9 @@ api = _OpenApi(
     bp,
     version="1.0",
     title="OpenAPI",
-    description="User-scoped programmatic API (bearer auth)",
+    description="User-scoped programmatic API (bearer auth). A file operation called with the header "
+    "X-Dify-File-Result: transfer parks its file and answers JSON with a transfer id and a short-lived "
+    "download link instead of the bytes. Without the header it answers the file itself.",
     error_body_formatter=OpenApiErrorFormatter(),
 )
 
@@ -358,6 +362,8 @@ register_response_schema_models(
     UploadCommands,
     UploadPrepared,
     UploadReceived,
+    TransferredFile,
+    FileResultResponse,
     FormSubmitResponse,
     HumanInputFormDefinitionResponse,
     DeviceCodeResponse,

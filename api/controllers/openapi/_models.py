@@ -511,6 +511,20 @@ class UploadReceived(BaseModel):
     next: str
 
 
+class TransferredFile(BaseModel):
+    id: str = Field(description="Pass this id to another operation's file field until expires_at")
+    name: str = Field(description="The file name the operation gave its file; empty when it gave none")
+    size: int
+    sha256: str
+    download_url: str = Field(description="GET the file here, without a login, until download_before")
+    download_before: datetime
+    expires_at: datetime
+
+
+class FileResultResponse(BaseModel):
+    file: TransferredFile
+
+
 class DeviceCodeRequest(BaseModel):
     client_id: str
     device_label: str
