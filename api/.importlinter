@@ -1699,7 +1699,7 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:agent-app-repository-boundary]
-name = Agent App persistence adds no dependencies on Agent services
+name = Agent App persistence depends on Agent contracts rather than service implementations
 type = forbidden
 source_modules =
     repositories.app.agent_app_repository
@@ -1708,6 +1708,8 @@ forbidden_modules =
     services.agent
 allow_indirect_imports = True
 ignore_imports =
+    # This neutral store port is covered by the application boundary below.
+    repositories.app.agent_app_repository -> services.agent.build_session_store
     repositories.app.agent_app_repository -> services.agent.errors
     repositories.app.agent_app_repository -> services.agent.roster_service
 
@@ -1715,8 +1717,8 @@ ignore_imports =
 name = Agent Build session use cases and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
-    services.app.agent_build_session_service
-    services.app.agent_build_session_store
+    services.agent.build_session_service
+    services.agent.build_session_store
 forbidden_modules =
     celery
     configs

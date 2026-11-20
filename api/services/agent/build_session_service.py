@@ -3,7 +3,7 @@
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.app.agent_build_session_store import AgentBuildDraft, AgentBuildSessionStore
+from services.agent.build_session_store import AgentBuildDraft, AgentBuildSessionStore
 
 
 class AgentBuildResourceCollector(Protocol):

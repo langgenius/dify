@@ -14,6 +14,7 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
@@ -27,7 +28,6 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
-from services.app.agent_build_session_service import AgentBuildSessionService
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
