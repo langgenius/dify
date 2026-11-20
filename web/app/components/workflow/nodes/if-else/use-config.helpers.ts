@@ -3,12 +3,13 @@ import type { CaseItem, Condition, IfElseNodeType } from './types'
 import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import { VarType } from '../../types'
+import { isNumberVarType } from '../_base/components/variable/utils'
 import { LogicalOperator } from './types'
 import { branchNameCorrect, getOperators } from './utils'
 
 export const filterAllVars = () => true
 
-export const filterNumberVars = (varPayload: Var) => varPayload.type === VarType.number
+export const filterNumberVars = (varPayload: Var) => isNumberVarType(varPayload.type)
 
 export const getVarsIsVarFileAttribute = (
   cases: IfElseNodeType['cases'],

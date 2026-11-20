@@ -25,6 +25,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isNumberVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from '../../types'
@@ -322,7 +323,7 @@ const ConditionItem = ({
         </div>
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
-          condition.varType !== VarType.number &&
+          !isNumberVarType(condition.varType) &&
           condition.varType !== VarType.boolean && (
             <div className="max-h-25 overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
@@ -344,7 +345,7 @@ const ConditionItem = ({
           )}
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
-          condition.varType === VarType.number && (
+          isNumberVarType(condition.varType) && (
             <div className="border-t border-t-divider-subtle px-2 py-1 pt-0.75">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
