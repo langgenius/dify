@@ -26,12 +26,6 @@ point. Local forms and interactions remain with their mounted owner.
 - [KnowledgeFS] service contracts own shared reads, including citation resolution;
   `new-rag` owns knowledge editing workflows.
 
-The `dify/feature-boundaries` check enforces the migrated Agent editor, Skills,
-and tag entry points, keeps shared Marketplace and tag capabilities independent
-of consumer UI, and prevents Skills from depending on Agent-specific file helpers.
-It checks static imports, re-exports, and literal dynamic imports, including
-relative paths. Tests may import internal owners to verify their contracts.
-
 ## Existing application capabilities
 
 `theme`, `system-features`, and `account-profile` also contain application-wide
