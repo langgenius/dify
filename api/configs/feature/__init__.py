@@ -250,6 +250,14 @@ class AsyncWorkflowConfig(BaseSettings):
     )
 
 
+class TokenerSignupBillingCandidate(StrEnum):
+    """Finite private agent-dev Billing targets; an empty value disables routing."""
+
+    DISABLED = ""
+    SIGNUP = "http://tokener-signup-billing-candidate:8081"
+    HOSTED_SIGNUP = "http://tokener-hosted-billing-candidate:8081"
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -404,10 +412,8 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
-    TOKENER_SIGNUP_VALIDATION_BILLING_API_URL: Literal[
-        "", "http://tokener-signup-billing-candidate:8081", "http://tokener-hosted-billing-candidate:8081"
-    ] = Field(
-        default="",
+    TOKENER_SIGNUP_VALIDATION_BILLING_API_URL: TokenerSignupBillingCandidate = Field(
+        default=TokenerSignupBillingCandidate.DISABLED,
         description="Agent dev only: private Billing candidate for workspaces created by the signup intent flow",
     )
 
