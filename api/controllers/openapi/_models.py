@@ -1448,8 +1448,11 @@ class AppApiKeyListResponse(BaseModel):
     data: list[AppApiKeyRow]
 
 
-ModelConfigFrom = Literal["predefined-model", "custom-model"]
-"""Which credential table a model's load-balancing entries point at, as the console's config_from."""
+class ModelConfigFrom(StrEnum):
+    """Which credential table a model's load-balancing entries point at, as the console's config_from."""
+
+    PREDEFINED_MODEL = "predefined-model"
+    CUSTOM_MODEL = "custom-model"
 
 
 class ModelRefQuery(ModelRef):
