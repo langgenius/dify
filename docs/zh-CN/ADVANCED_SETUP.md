@@ -62,3 +62,9 @@
 ### 使用 Sealos 部署
 
 通过 [Sealos App Store](https://sealos.io/products/app-store/dify/) 一键部署 Dify
+
+## 以代码方式管理 Dify 资源
+
+以代码方式管理工作区资源 —— 应用（DSL）、模型/工具凭据、插件和应用 API key —— 并将相同配置应用到多个环境。
+
+- [@wylswz 的非官方 Terraform Provider](https://github.com/wylswz/dify-unofficial-terraform-provider)

@@ -55,3 +55,9 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 ### Sealos ব্যবহার করে ডিপ্লয়
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/) ব্যবহার করে Dify-কে এক ক্লিকে ডিপ্লয় করুন
+
+## কোড হিসেবে Dify রিসোর্স পরিচালনা
+
+ওয়ার্কস্পেস রিসোর্স — অ্যাপ (DSL), মডেল/টুল ক্রেডেনশিয়াল, প্লাগইন এবং অ্যাপ API কী — কোড হিসেবে পরিচালনা করুন এবং একই কনফিগারেশন একাধিক এনভায়রনমেন্টে প্রয়োগ করুন।
+
+- [@wylswz-এর অনানুষ্ঠানিক Terraform Provider](https://github.com/wylswz/dify-unofficial-terraform-provider)

@@ -55,3 +55,9 @@ Déployez Dify sur AKS en un clic en utilisant [Azure Devops Pipeline Helm Chart
 ### Déploiement avec Sealos
 
 Déployez Dify en un clic depuis le [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## Gérer les ressources Dify en tant que code
+
+Gérez les ressources de l'espace de travail — applications (DSL), identifiants modèle/outil, plugins et clés API d'application — en tant que code, et appliquez la même configuration sur plusieurs environnements.
+
+- [Provider Terraform non officiel par @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)
