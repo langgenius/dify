@@ -3359,6 +3359,27 @@ Export application configuration as DSL
 | 500 | Internal Server Error | **application/json**: [RosterAgentPackageExportFailedError](#rosteragentpackageexportfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/external-agent-invocations/{invocation_id}/trace-capture
+**Return only App-bound evidence after tenant, lifecycle and run-read admission**
+
+Preconditions: Console admitted the account and parsed both path UUIDs.
+Postconditions: the response validates the public capture DTO; application
+denials retain the existing observation error translation.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Frozen capture permissions and actual immutable payload state | **application/json**: [ExternalTraceCaptureResponse](#externaltracecaptureresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/feedbacks
 Create or update message feedback (like/dislike)
 
@@ -28446,6 +28467,36 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | state | string |  | Yes |
 | statistics | [ExternalTestStatisticsResponse](#externalteststatisticsresponse) |  | Yes |
 
+#### ExternalTraceCapturePolicy
+
+Dispatch-frozen gates. A null source gate means there was no source App.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| source_app_capture_content | boolean |  | Yes |
+| target_capture_content | boolean |  | Yes |
+| version | integer |  | Yes |
+
+#### ExternalTraceCaptureReason
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalTraceCaptureReason | string |  |  |
+
+#### ExternalTraceCaptureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invocation_id | string |  | Yes |
+| targets | [ [ExternalTraceTargetCaptureResponse](#externaltracetargetcaptureresponse) ] |  | Yes |
+| targets_frozen | boolean |  | Yes |
+
+#### ExternalTraceCaptureStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalTraceCaptureStatus | string |  |  |
+
 #### ExternalTraceDeliveryListResponse
 
 | Name | Type | Description | Required |
@@ -28509,6 +28560,27 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | total_tokens | integer |  | Yes |
 | trace_id | string |  | Yes |
 | trace_path | [ string ] |  | Yes |
+
+#### ExternalTraceTargetCaptureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| capture_content | boolean | Dispatch-frozen permission; not proof that a payload contains content | Yes |
+| capture_policy | [ExternalTraceCapturePolicy](#externaltracecapturepolicy) | Null means per-gate historical evidence is unavailable | Yes |
+| config_revision | string |  | Yes |
+| delivery_state | string | Null means no payload delivery exists; pending is not provider acceptance | Yes |
+| payload_revision | integer |  | Yes |
+| provider | string |  | Yes |
+| reasons | [ [ExternalTraceCaptureReason](#externaltracecapturereason) ] |  | Yes |
+| status | [ExternalTraceCaptureStatus](#externaltracecapturestatus) |  | Yes |
+| target_id | string |  | Yes |
+| target_kind | [ExternalTraceTargetKind](#externaltracetargetkind) |  | Yes |
+
+#### ExternalTraceTargetKind
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalTraceTargetKind | string |  |  |
 
 #### ExternalTracingConfigEnvelopeResponse
 

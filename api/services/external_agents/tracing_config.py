@@ -34,7 +34,23 @@ from services.external_agents.observability import (
 )
 
 from .contracts import ExternalAuthType
-from .trace_content import ExternalTraceContentSource, operation_trace_input, root_trace_inputs, safe_trace_content
+from .trace_capture import (
+    ExternalTraceCaptureDecision,
+    ExternalTraceCapturePolicy,
+    ExternalTraceCaptureReason,
+    ExternalTraceCaptureResult,
+    ExternalTraceCaptureSnapshot,
+    ExternalTraceCaptureStatus,
+    capture_decision_attributes,
+    projected_capture_decision,
+)
+from .trace_content import (
+    ExternalTraceContentProjection,
+    ExternalTraceContentSource,
+    operation_trace_input,
+    project_trace_content,
+    root_trace_inputs,
+)
 from .traceability import TraceLimits
 
 logger = logging.getLogger(__name__)
@@ -90,6 +106,8 @@ class FrozenExternalTraceTarget:
     config_revision: str
     encrypted_config: Mapping[str, Any]
     capture_content: bool
+    capture_policy: ExternalTraceCapturePolicy | None = None
+    """None identifies legacy targets without per-gate dispatch evidence."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +146,14 @@ class ExternalTraceExportBundle:
 
 
 class ExternalTracingStore(Protocol):
+    def capture_snapshot(self, *, tenant_id: str, invocation_id: str, now: datetime) -> ExternalTraceCaptureSnapshot:
+        """Read fenced owner, frozen policies and bounded payload markers only.
+
+        Recheck retention/tombstones. Never load retained content, credentials or
+        entire delivery payloads, and never infer old gates from current config.
+        """
+        ...
+
     def configured_provider_states(
         self, context: RequestContext, *, agent_id: str
     ) -> Sequence[ExternalTracingProviderState]:
@@ -342,6 +368,27 @@ def build_external_trace(
     pinned credential-redaction facts; None secrets means metadata-only. Empty
     secrets is valid only for a positively identified no-auth connection.
     """
+    return _build_external_trace(
+        owner, snapshot, target, content=content, secrets=secrets, limits=limits, budget_restricted=False
+    )
+
+
+def _build_external_trace(
+    owner: InvocationObservationOwner,
+    snapshot: TraceSnapshot,
+    target: FrozenExternalTraceTarget,
+    *,
+    content: ExternalTraceContentSource,
+    secrets: Sequence[str] | None,
+    limits: TraceLimits,
+    budget_restricted: bool,
+) -> Trace | None:
+    """Project a bounded trace, making at most one metadata-only budget retry.
+
+    Preconditions: inputs are a retained fenced source and frozen target.
+    Postconditions: markers describe the actual projected body, including budget
+    suppression; no valid bounded canonical trace means no delivery is created.
+    """
     if owner.started_at is None or owner.ended_at is None or owner.ended_at < owner.started_at:
         return None
     root_id = span_id_for(f"external:{owner.id}")
@@ -358,8 +405,19 @@ def build_external_trace(
         "a2a.reported_call_total_tokens": snapshot.call_total_tokens,
         "dify.external.usage_revision": snapshot.usage_revision,
     }
-    capture = target.capture_content and secrets is not None
+    capture = target.capture_content and secrets is not None and not budget_restricted
     redaction_values = () if secrets is None else secrets
+    root_inputs = (
+        project_trace_content(root_trace_inputs(content), limits=limits, secrets=redaction_values)
+        if capture
+        else ExternalTraceContentProjection(None, False)
+    )
+    root_outputs = (
+        project_trace_content(content.outputs, limits=limits, secrets=redaction_values)
+        if capture
+        else ExternalTraceContentProjection(None, False)
+    )
+    projections = [root_inputs, root_outputs]
     spans = [
         Span(
             span_id=root_id,
@@ -370,10 +428,8 @@ def build_external_trace(
             end_time=aware_utc(owner.ended_at),
             status=status,
             attributes=attributes,
-            inputs=safe_trace_content(root_trace_inputs(content), limits=limits, secrets=redaction_values)
-            if capture
-            else None,
-            outputs=safe_trace_content(content.outputs, limits=limits, secrets=redaction_values) if capture else None,
+            inputs=root_inputs.value,
+            outputs=root_outputs.value,
         )
     ]
     admitted: set[str] = {root_id}
@@ -412,8 +468,20 @@ def build_external_trace(
                         "a2a.reported_total_tokens": step.total_tokens,
                     }
                     step_error = (
-                        safe_trace_content(step.error, limits=limits, secrets=redaction_values) if capture else None
+                        project_trace_content(step.error, limits=limits, secrets=redaction_values)
+                        if capture
+                        else ExternalTraceContentProjection(None, False)
                     )
+                    step_inputs = (
+                        project_trace_content(
+                            operation_trace_input(step.raw_data, kind=step.kind),
+                            limits=limits,
+                            secrets=redaction_values,
+                        )
+                        if capture
+                        else ExternalTraceContentProjection(None, False)
+                    )
+                    projections.extend((step_error, step_inputs))
                     spans.append(
                         Span(
                             span_id=identifier,
@@ -425,21 +493,45 @@ def build_external_trace(
                             status=SpanStatus.ERROR
                             if step.error or step.status in {"error", "failed"}
                             else SpanStatus.OK,
-                            error=step_error if isinstance(step_error, str) else None,
+                            error=step_error.value if isinstance(step_error.value, str) else None,
                             attributes=step_attributes,
-                            inputs=safe_trace_content(
-                                operation_trace_input(step.raw_data, kind=step.kind),
-                                limits=limits,
-                                secrets=redaction_values,
-                            )
-                            if capture
-                            else None,
+                            inputs=step_inputs.value,
                         )
                     )
                     admitted.add(identifier)
             consumed = {step.key for step in ready}
             pending = [step for step in pending if step.key not in consumed]
     digest = hashlib.sha256(f"external:{owner.id}:{target.kind}:{target.owner_id}".encode()).hexdigest()
+    decision = (
+        ExternalTraceCaptureDecision(
+            ExternalTraceCaptureStatus.METADATA_ONLY, (ExternalTraceCaptureReason.PAYLOAD_BUDGET_EXCEEDED,)
+        )
+        if budget_restricted
+        else projected_capture_decision(
+            capture_content=target.capture_content,
+            policy=target.capture_policy,
+            redaction_available=secrets is not None,
+            body_included=any(
+                span.inputs is not None or span.outputs is not None or span.error is not None for span in spans
+            ),
+            budget_exceeded=any(projection.budget_exceeded for projection in projections),
+        )
+    )
+    # These bounded markers are part of the frozen canonical payload, not a
+    # promise inferred later from mutable permission settings.
+    root = spans[0]
+    spans[0] = Span(
+        span_id=root.span_id,
+        parent_span_id=root.parent_span_id,
+        name=root.name,
+        kind=root.kind,
+        start_time=root.start_time,
+        end_time=root.end_time,
+        status=root.status,
+        attributes={**attributes, **capture_decision_attributes(decision)},
+        inputs=root.inputs,
+        outputs=root.outputs,
+    )
     trace = Trace(
         trace_id=trace_id_for(digest),
         external_trace_id=None,
@@ -452,7 +544,9 @@ def build_external_trace(
         # The full canonical payload, not just each field, owns this budget.
         # At most one metadata-only reconstruction is attempted.
         return (
-            build_external_trace(owner, snapshot, target, content=content, secrets=None, limits=limits)
+            _build_external_trace(
+                owner, snapshot, target, content=content, secrets=secrets, limits=limits, budget_restricted=True
+            )
             if capture
             else None
         )
@@ -608,6 +702,23 @@ class ExternalTraceDeliveryService:
         ).owner
         self._access.trace_read(context, owner)
         return tuple(self._store.delivery_statuses(tenant_id=context.active_workspace_id, invocation_id=invocation_id))
+
+    def capture_status(
+        self, context: RequestContext, app_id: str, invocation_id: str, *, now: datetime
+    ) -> ExternalTraceCaptureResult:
+        """Read App-bound frozen capture evidence under the source run permission.
+
+        Preconditions: Console has admitted context; path IDs are untrusted.
+        Postconditions: another App/tenant, expired/deleted source or denied run
+        cannot reveal status. This read never decrypts or exports content.
+        """
+        snapshot = self._store.capture_snapshot(
+            tenant_id=context.active_workspace_id, invocation_id=invocation_id, now=now
+        )
+        if snapshot.owner.app_id != app_id:
+            raise ObservationNotFoundError("external_invocation_not_found")
+        self._access.trace_read(context, snapshot.owner)
+        return ExternalTraceCaptureResult(invocation_id, snapshot.targets_frozen, snapshot.targets)
 
     def retry(
         self,

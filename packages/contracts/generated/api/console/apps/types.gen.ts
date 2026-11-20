@@ -662,6 +662,12 @@ export type RosterAgentPackageExportFailedError = ErrorResponse & {
   status: 500
 }
 
+export type ExternalTraceCaptureResponse = {
+  invocation_id: string
+  targets: Array<ExternalTraceTargetCaptureResponse>
+  targets_frozen: boolean
+}
+
 export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
@@ -2101,6 +2107,19 @@ export type ConversationVariableResponse = {
   value_type: string
 }
 
+export type ExternalTraceTargetCaptureResponse = {
+  capture_content: boolean
+  capture_policy: ExternalTraceCapturePolicy | null
+  config_revision: string
+  delivery_state: string | null
+  payload_revision: number | null
+  provider: string
+  reasons: Array<ExternalTraceCaptureReason>
+  status: ExternalTraceCaptureStatus
+  target_id: string
+  target_kind: ExternalTraceTargetKind
+}
+
 export type AgentThought = {
   answer?: string | null
   chain_id?: string | null
@@ -3203,6 +3222,28 @@ export type SimpleMessageDetail = {
   message: string
   query: string
 }
+
+export type ExternalTraceCapturePolicy = {
+  source_app_capture_content: boolean | null
+  target_capture_content: boolean
+  version: 1
+}
+
+export type ExternalTraceCaptureReason =
+  | 'content_not_available'
+  | 'legacy_snapshot_unavailable'
+  | 'payload_budget_exceeded'
+  | 'redaction_unavailable'
+  | 'source_app_disabled'
+  | 'target_content_disabled'
+
+export type ExternalTraceCaptureStatus =
+  | 'content_included'
+  | 'metadata_only'
+  | 'pending'
+  | 'unknown'
+
+export type ExternalTraceTargetKind = 'app' | 'asset'
 
 export type SimpleAccount = {
   email: string
@@ -6717,6 +6758,30 @@ export type GetAppsByAppIdExportResponses = {
 
 export type GetAppsByAppIdExportResponse =
   GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureData = {
+  body?: never
+  path: {
+    app_id: string
+    invocation_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/external-agent-invocations/{invocation_id}/trace-capture'
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureError =
+  GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors[keyof GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureErrors]
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses = {
+  200: ExternalTraceCaptureResponse
+}
+
+export type GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponse =
+  GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses[keyof GetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponses]
 
 export type PostAppsByAppIdFeedbacksData = {
   body: AppMessageFeedbackPayload

@@ -33,6 +33,7 @@ from controllers.console.agent.external import (
     ExternalAgentVerifyApi,
 )
 from controllers.console.agent.external_observability import (
+    AppExternalAgentTraceCaptureApi,
     ExternalAgentInvocationTraceApi,
     ExternalAgentInvocationTraceRawApi,
     ExternalAgentMonitoringApi,
@@ -47,6 +48,7 @@ from models.agent import Agent, AgentKind, AgentScope, AgentSource
 from models.external_agent import ExternalAgentConnectionRevision, ExternalAgentHead, ExternalAgentInvocation
 from repositories.external_agents.asset_repository import ExternalAssetRepository
 from services.external_agents.contracts import VerificationEvidence
+from tests.helpers.unit.model_factories import make_app
 
 
 @runtime_checkable
@@ -410,6 +412,30 @@ def test_observation_routes_keep_empty_and_missing_data_distinct(endpoint_domain
         invoke(endpoint_domain, ExternalAgentTracingConfigApi, "get", agent_id=UUID(agent), provider="phoenix")
     )
     assert config == {"configuration": None}
+
+
+def test_app_bound_capture_status_returns_only_owned_frozen_evidence(endpoint_domain: EndpointDomain) -> None:
+    """Actual transport projection validates App identity before exposing frozen target state."""
+    _, context, _, _, sessions = endpoint_domain
+    identifier = seed_observation(endpoint_domain)
+    app_id = uuid4()
+    with sessions.begin() as session:
+        session.add(make_app(app_id=str(app_id), tenant_id=context.active_workspace_id, created_by=context.account_id))
+        invocation = session.get(ExternalAgentInvocation, str(identifier))
+        assert invocation is not None
+        invocation.app_id = str(app_id)
+    result = wire(
+        invoke(
+            endpoint_domain,
+            AppExternalAgentTraceCaptureApi,
+            "get",
+            app_id=app_id,
+            invocation_id=identifier,
+        )
+    )
+    assert result == {"invocation_id": str(identifier), "targets_frozen": False, "targets": []}
+    with pytest.raises(NotFound):
+        invoke(endpoint_domain, AppExternalAgentTraceCaptureApi, "get", app_id=uuid4(), invocation_id=identifier)
 
 
 def test_monitoring_transport_omits_app_details_only_for_aggregate_role(endpoint_domain: EndpointDomain) -> None:

@@ -152,14 +152,14 @@ describe('Tracing overview panel', () => {
       const { client } = renderPanel({ mode })
       const user = await openConfiguredPanel()
       await expandCapture(user)
-      const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+      const content = screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' })
       const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
       expect(content).not.toBeChecked()
       expect(agent).toBeChecked()
       expect(screen.getByRole('group', { name: 'app.tracing.captureTitle' })).toContainElement(
-        content,
+        agent,
       )
-      expect(content).toHaveAccessibleDescription('app.tracing.captureContentDescription')
+      expect(content).toHaveAccessibleDescription('app.tracing.appContentAuthorizationDescription')
       await user.click(content)
       await waitFor(() => expect(client.isMutating()).toBe(0))
       await user.click(agent)
@@ -206,7 +206,7 @@ describe('Tracing overview panel', () => {
       renderPanel({ mode })
       await openConfiguredPanel()
       expect(
-        screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
+        screen.queryByRole('switch', { name: 'app.tracing.appContentAuthorization' }),
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('switch', { name: 'app.tracing.captureAgent' }),
@@ -247,7 +247,7 @@ describe('Tracing overview panel', () => {
     renderPanel({ readOnly: true, mode: 'workflow' })
     const user = await openConfiguredPanel()
     await expandCapture(user)
-    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const content = screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' })
     const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
     await user.click(content)
     await user.click(agent)
@@ -274,7 +274,7 @@ describe('Tracing overview panel', () => {
     const { client } = renderPanel({ mode: 'workflow' })
     const user = await openConfiguredPanel()
     await expandCapture(user)
-    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const content = screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' })
     const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
     await user.click(content)
     await user.click(agent)
@@ -312,7 +312,7 @@ describe('Tracing overview panel', () => {
     const user = await openConfiguredPanel()
     await expandCapture(user)
     expect(await screen.findByRole('alert')).toHaveTextContent('app.tracing.capabilitiesLoadFailed')
-    await user.click(screen.getByRole('switch', { name: 'app.tracing.captureContent' }))
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' }))
     await waitFor(() => expect(client.isMutating()).toBe(0))
     expect(writes).toHaveLength(1)
     failCapabilities = false
@@ -323,7 +323,7 @@ describe('Tracing overview panel', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('keeps Workflow capture settings collapsed until they are opened', async () => {
+  it('keeps Native Agent internals collapsed while showing App content authorization', async () => {
     mockServer()
     renderPanel({ mode: 'workflow' })
     await openConfiguredPanel()
@@ -332,7 +332,10 @@ describe('Tracing overview panel', () => {
       'false',
     )
     expect(
-      screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
+      screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('switch', { name: 'app.tracing.captureAgent' }),
     ).not.toBeInTheDocument()
   })
 
@@ -411,7 +414,9 @@ describe('Tracing overview panel', () => {
     renderPanel({ mode: 'workflow' })
     await openConfiguredPanel()
 
-    expect(await screen.findByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
+    expect(await screen.findByRole('note')).toHaveTextContent(
+      'app.tracing.appAgentTracingUnavailable',
+    )
     expect(
       screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
     ).not.toBeInTheDocument()
@@ -431,7 +436,8 @@ describe('Tracing overview panel', () => {
         await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
       ).toBeInTheDocument()
       if (enabled) expect(screen.queryByRole('note')).not.toBeInTheDocument()
-      else expect(screen.getByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
+      else
+        expect(screen.getByRole('note')).toHaveTextContent('app.tracing.appAgentTracingUnavailable')
       expect(
         screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
       ).not.toBeInTheDocument()

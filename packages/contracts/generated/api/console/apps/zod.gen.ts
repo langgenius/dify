@@ -3495,6 +3495,69 @@ export const zSimpleMessageDetail = z.object({
 })
 
 /**
+ * ExternalTraceCapturePolicy
+ *
+ * Dispatch-frozen gates. A null source gate means there was no source App.
+ */
+export const zExternalTraceCapturePolicy = z.object({
+  source_app_capture_content: z.boolean().nullable(),
+  target_capture_content: z.boolean(),
+  version: z.literal(1),
+})
+
+/**
+ * ExternalTraceCaptureReason
+ */
+export const zExternalTraceCaptureReason = z.enum([
+  'content_not_available',
+  'legacy_snapshot_unavailable',
+  'payload_budget_exceeded',
+  'redaction_unavailable',
+  'source_app_disabled',
+  'target_content_disabled',
+])
+
+/**
+ * ExternalTraceCaptureStatus
+ */
+export const zExternalTraceCaptureStatus = z.enum([
+  'content_included',
+  'metadata_only',
+  'pending',
+  'unknown',
+])
+
+/**
+ * ExternalTraceTargetKind
+ */
+export const zExternalTraceTargetKind = z.enum(['app', 'asset'])
+
+/**
+ * ExternalTraceTargetCaptureResponse
+ */
+export const zExternalTraceTargetCaptureResponse = z.object({
+  capture_content: z.boolean(),
+  capture_policy: zExternalTraceCapturePolicy.nullable(),
+  config_revision: z.string(),
+  delivery_state: z.string().nullable(),
+  payload_revision: z.int().nullable(),
+  provider: z.string(),
+  reasons: z.array(zExternalTraceCaptureReason),
+  status: zExternalTraceCaptureStatus,
+  target_id: z.string(),
+  target_kind: zExternalTraceTargetKind,
+})
+
+/**
+ * ExternalTraceCaptureResponse
+ */
+export const zExternalTraceCaptureResponse = z.object({
+  invocation_id: z.string(),
+  targets: z.array(zExternalTraceTargetCaptureResponse),
+  targets_frozen: z.boolean(),
+})
+
+/**
  * SimpleAccount
  */
 export const zSimpleAccount = z.object({
@@ -7565,6 +7628,17 @@ export const zGetAppsByAppIdExportResponse = z.union([
   zAppExportResponse,
   z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 ])
+
+export const zGetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCapturePath = z.object({
+  app_id: z.uuid(),
+  invocation_id: z.uuid(),
+})
+
+/**
+ * Frozen capture permissions and actual immutable payload state
+ */
+export const zGetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponse =
+  zExternalTraceCaptureResponse
 
 export const zPostAppsByAppIdFeedbacksBody = zAppMessageFeedbackPayload
 

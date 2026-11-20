@@ -23,7 +23,7 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, defer, sessionmaker
 
 from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
@@ -81,6 +81,13 @@ from services.external_agents.retention import ExternalDeletionScope, TestFileCl
 from services.external_agents.runtime_contracts import Invocation, RuntimeScope
 from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
 from services.external_agents.test_service import ExternalTestStatistics
+from services.external_agents.trace_capture import (
+    ExternalTraceCapturePolicy,
+    ExternalTraceCaptureSnapshot,
+    ExternalTraceTargetCapture,
+    read_capture_policy,
+    stored_capture_decision,
+)
 from services.external_agents.trace_content import ExternalTraceContentSource, admitted_trace_parts
 from services.external_agents.traceability import (
     ExternalTraceStep,
@@ -301,10 +308,31 @@ class ExternalObservabilityRepository:
         now: datetime,
         lock: bool = False,
         ingest: bool = False,
+        metadata_only: bool = False,
     ) -> ExternalAgentInvocation:
+        """Load a scoped source and enforce lifecycle fences in the caller session.
+
+        Preconditions: session has the caller's bounded transaction scope.
+        Postconditions: expired/deleted/unowned sources raise without revealing
+        content; metadata_only defers raw JSON with lazy reads forbidden.
+        """
         stmt = select(ExternalAgentInvocation).where(
             ExternalAgentInvocation.tenant_id == tenant_id, ExternalAgentInvocation.id == invocation_id
         )
+        if metadata_only:
+            stmt = stmt.options(
+                *(
+                    defer(column, raiseload=True)
+                    for column in (
+                        ExternalAgentInvocation.request_payload,
+                        ExternalAgentInvocation.runtime_snapshot,
+                        ExternalAgentInvocation.job_config,
+                        ExternalAgentInvocation.response_payload,
+                        ExternalAgentInvocation.outputs,
+                        ExternalAgentInvocation.asset_snapshot,
+                    )
+                )
+            )
         row = session.scalar(stmt.with_for_update() if lock else stmt)
         if row is None or row.deleted_at is not None or self._tombstoned(session, row):
             raise ObservationNotFoundError("external_invocation_not_found")
@@ -1063,6 +1091,7 @@ class ExternalObservabilityRepository:
             row.config_revision,
             dict(row.encrypted_config),
             row.capture_content,
+            read_capture_policy(row.capture_policy),
         )
 
     @staticmethod
@@ -1080,6 +1109,12 @@ class ExternalObservabilityRepository:
     def freeze_targets(
         self, *, tenant_id: str, invocation_id: str, now: datetime
     ) -> Sequence[FrozenExternalTraceTarget]:
+        """Freeze destination and per-gate consent evidence atomically before dispatch.
+
+        Preconditions: the Invocation is live and has not been dispatched unless
+        already frozen. Postconditions: retries reuse the original snapshots,
+        later config changes cannot broaden consent, and failures roll back.
+        """
         with self._sessions.begin() as session:
             invocation = self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now, lock=True)
             record = session.scalar(
@@ -1124,6 +1159,11 @@ class ExternalObservabilityRepository:
                         config_revision=str(asset_config.revision),
                         encrypted_config=dict(asset_config.encrypted_config),
                         capture_content=source_content and asset_config.capture_content,
+                        capture_policy=ExternalTraceCapturePolicy(
+                            version=1,
+                            source_app_capture_content=source_content if invocation.app_id is not None else None,
+                            target_capture_content=asset_config.capture_content,
+                        ).model_dump(mode="json"),
                     )
                 )
             if (
@@ -1156,6 +1196,11 @@ class ExternalObservabilityRepository:
                             config_revision=revision,
                             encrypted_config=dict(app_config.tracing_config),
                             capture_content=source_content,
+                            capture_policy=ExternalTraceCapturePolicy(
+                                version=1,
+                                source_app_capture_content=source_content,
+                                target_capture_content=True,
+                            ).model_dump(mode="json"),
                         )
                     )
             session.flush()
@@ -1435,6 +1480,80 @@ class ExternalObservabilityRepository:
                     row.lease_until = current + timedelta(seconds=120)
                     result.append((row.tenant_id, row.id))
             return tuple(result)
+
+    def capture_snapshot(self, *, tenant_id: str, invocation_id: str, now: datetime) -> ExternalTraceCaptureSnapshot:
+        """Read frozen gate evidence and newest immutable payload markers only.
+
+        Preconditions: IDs are tenant-scoped but still require service RBAC.
+        Postconditions: source lifecycle fences are honored; neither Invocation
+        bodies, target credentials nor complete delivery payloads are selected.
+        No mutable App/asset policy is used to explain historical execution.
+        """
+        with self._sessions() as session:
+            owner = self._owner_value(
+                self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now, metadata_only=True)
+            )
+            frozen = session.scalar(
+                select(ExternalAgentTraceRecord.targets_frozen).where(
+                    ExternalAgentTraceRecord.tenant_id == tenant_id,
+                    ExternalAgentTraceRecord.invocation_id == invocation_id,
+                )
+            )
+            target = ExternalAgentTraceTarget
+            newest_delivery = (
+                select(DeliveryRow.id)
+                .where(
+                    DeliveryRow.tenant_id == tenant_id,
+                    DeliveryRow.invocation_id == invocation_id,
+                    DeliveryRow.target_kind == target.target_kind,
+                    DeliveryRow.target_id == target.target_id,
+                    DeliveryRow.config_revision == target.config_revision,
+                )
+                .order_by(DeliveryRow.payload_revision.desc(), DeliveryRow.created_at.desc(), DeliveryRow.id.desc())
+                .limit(1)
+                .correlate(target)
+                .scalar_subquery()
+            )
+            rows = session.execute(
+                select(
+                    target.target_kind,
+                    target.target_id,
+                    target.provider,
+                    target.config_revision,
+                    target.capture_content,
+                    target.capture_policy,
+                    DeliveryRow.id,
+                    DeliveryRow.state,
+                    DeliveryRow.payload_revision,
+                    DeliveryRow.trace_payload["spans"][0]["attributes"],
+                )
+                .outerjoin(DeliveryRow, DeliveryRow.id == newest_delivery)
+                .where(target.tenant_id == tenant_id, target.invocation_id == invocation_id)
+                .order_by(target.target_kind, target.target_id, target.id)
+            )
+            targets: list[ExternalTraceTargetCapture] = []
+            for row in rows:
+                kind, identifier, provider, revision, allowed, policy, delivery_id, state, payload_revision, markers = (
+                    row
+                )
+                decision = stored_capture_decision(
+                    capture_content=allowed, has_delivery=delivery_id is not None, attributes=markers
+                )
+                targets.append(
+                    ExternalTraceTargetCapture(
+                        kind,
+                        identifier,
+                        provider,
+                        revision,
+                        allowed,
+                        read_capture_policy(policy),
+                        decision.status,
+                        decision.reasons,
+                        state,
+                        payload_revision,
+                    )
+                )
+            return ExternalTraceCaptureSnapshot(owner, frozen is True, tuple(targets))
 
     def delivery_statuses(self, *, tenant_id: str, invocation_id: str) -> Sequence[ExternalTraceDeliveryStatus]:
         with self._sessions() as session:

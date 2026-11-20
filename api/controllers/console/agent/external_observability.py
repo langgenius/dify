@@ -26,6 +26,12 @@ from services.external_agents.observability import (
     ObservationNotFoundError,
     TraceQuery,
 )
+from services.external_agents.trace_capture import (
+    ExternalTraceCapturePolicy,
+    ExternalTraceCaptureReason,
+    ExternalTraceCaptureStatus,
+)
+from services.external_agents.tracing_config import ExternalTraceTargetKind
 
 
 class ExternalTraceStepResponse(ResponseModel):
@@ -136,6 +142,29 @@ class ExternalTraceDeliveryListResponse(ResponseModel):
     data: tuple[ExternalTraceDeliveryStatusResponse, ...]
 
 
+class ExternalTraceTargetCaptureResponse(ResponseModel):
+    target_kind: ExternalTraceTargetKind
+    target_id: str
+    provider: str
+    config_revision: str
+    capture_content: bool = Field(description="Dispatch-frozen permission; not proof that a payload contains content")
+    capture_policy: ExternalTraceCapturePolicy | None = Field(
+        description="Null means per-gate historical evidence is unavailable"
+    )
+    status: ExternalTraceCaptureStatus
+    reasons: tuple[ExternalTraceCaptureReason, ...]
+    delivery_state: str | None = Field(
+        description="Null means no payload delivery exists; pending is not provider acceptance"
+    )
+    payload_revision: int | None
+
+
+class ExternalTraceCaptureResponse(ResponseModel):
+    invocation_id: str
+    targets_frozen: bool
+    targets: tuple[ExternalTraceTargetCaptureResponse, ...]
+
+
 class ExternalTraceRetryPayload(BaseModel):
     acknowledge_possible_duplicates: bool = False
 
@@ -159,6 +188,7 @@ register_response_schema_models(
     ExternalTracingConfigEnvelopeResponse,
     ExternalTracingProviderOverviewResponse,
     ExternalTraceDeliveryListResponse,
+    ExternalTraceCaptureResponse,
 )
 
 
@@ -286,6 +316,30 @@ class ExternalAgentTracingConfigApi(Resource):
             )
         )
         return "", 204
+
+
+@console_ns.route("/apps/<uuid:app_id>/external-agent-invocations/<uuid:invocation_id>/trace-capture")
+class AppExternalAgentTraceCaptureApi(Resource):
+    @console_ns.doc("app_external_agent_invocation_trace_capture")
+    @console_ns.response(
+        200,
+        "Frozen capture permissions and actual immutable payload state",
+        console_ns.models[ExternalTraceCaptureResponse.__name__],
+    )
+    @console_account_admission()
+    def get(self, context: RequestContext, app_id: UUID, invocation_id: UUID):
+        """Return only App-bound evidence after tenant, lifecycle and run-read admission.
+
+        Preconditions: Console admitted the account and parsed both path UUIDs.
+        Postconditions: the response validates the public capture DTO; application
+        denials retain the existing observation error translation.
+        """
+        result = _call(
+            lambda: application_services().external_agents.trace_delivery.capture_status(
+                context, str(app_id), str(invocation_id), now=datetime.now(UTC)
+            )
+        )
+        return dump_response(ExternalTraceCaptureResponse, result)
 
 
 @console_ns.route("/external-agent-invocations/<uuid:invocation_id>/trace-deliveries")

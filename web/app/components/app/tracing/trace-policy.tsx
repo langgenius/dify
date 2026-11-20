@@ -22,10 +22,12 @@ const policyFields = [
 /** Capture settings of the resource that owns the Agent trace pipeline, collapsed until opened. */
 export function TracePolicy({
   policy,
+  resourceKind,
   readOnly,
   onChange,
 }: {
   policy?: AppTraceResponse
+  resourceKind: 'app' | 'agent'
   readOnly: boolean
   onChange: (changes: Partial<AppTracePayload>) => Promise<void>
 }) {
@@ -43,27 +45,62 @@ export function TracePolicy({
       <CollapsiblePanel>
         <Fieldset className="pt-1">
           <FieldsetLegend className="sr-only">{title}</FieldsetLegend>
-          {policyFields.map(({ name, label, description }) => (
-            <Field key={name} className="flex flex-row items-center justify-between gap-4 py-1.5">
-              <div className="min-w-0">
-                <FieldLabel className="system-sm-regular text-text-secondary">
-                  {t(($) => $[label], { ns: 'app' })}
-                </FieldLabel>
-                <FieldDescription className="system-xs-regular text-text-tertiary">
-                  {t(($) => $[description], { ns: 'app' })}
-                </FieldDescription>
-              </div>
-              <Switch
-                readOnly={readOnly}
-                checked={values[name]}
-                onCheckedChange={(checked) => {
-                  void onChange({ [name]: checked }).catch(() => {})
-                }}
-              />
-            </Field>
-          ))}
+          {policyFields
+            .filter(({ name }) => resourceKind === 'agent' || name !== 'capture_content')
+            .map(({ name, label, description }) => (
+              <Field key={name} className="flex flex-row items-center justify-between gap-4 py-1.5">
+                <div className="min-w-0">
+                  <FieldLabel className="system-sm-regular text-text-secondary">
+                    {t(($) => $[label], { ns: 'app' })}
+                  </FieldLabel>
+                  <FieldDescription className="system-xs-regular text-text-tertiary">
+                    {t(($) => $[description], { ns: 'app' })}
+                  </FieldDescription>
+                </div>
+                <Switch
+                  readOnly={readOnly}
+                  checked={values[name]}
+                  onCheckedChange={(checked) => {
+                    void onChange({ [name]: checked }).catch(() => {})
+                  }}
+                />
+              </Field>
+            ))}
         </Fieldset>
       </CollapsiblePanel>
     </Collapsible>
+  )
+}
+
+/** App consent also gates external Agent destinations, independently of the App's own exporter. */
+export function AppContentAuthorization({
+  policy,
+  readOnly,
+  onChange,
+}: {
+  policy?: AppTraceResponse
+  readOnly: boolean
+  onChange: (changes: Partial<AppTracePayload>) => Promise<void>
+}) {
+  const { t } = useTranslation(['app'])
+  return (
+    <Field className="flex flex-row items-start justify-between gap-4 py-1.5">
+      <div className="min-w-0">
+        <FieldLabel className="system-sm-medium text-text-secondary">
+          {t(($) => $['tracing.appContentAuthorization'])}
+        </FieldLabel>
+        <FieldDescription className="mt-1 system-xs-regular text-text-tertiary">
+          {t(($) => $['tracing.appContentAuthorizationDescription'])}
+        </FieldDescription>
+      </div>
+      <Switch
+        className="mt-0.5 shrink-0"
+        readOnly={readOnly}
+        checked={policy?.capture_content ?? false}
+        onCheckedChange={(checked) => {
+          void onChange({ capture_content: checked }).catch(() => {})
+        }}
+      />
+    </Field>
   )
 }
