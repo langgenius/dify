@@ -465,16 +465,26 @@ it('requires a deletion-impact response and retains reachable focus after server
     .toHaveFocus()
 })
 
-it('opens the external page without requesting Dify data and preserves each tabâ€™s filters', async () => {
+it('loads only the active roster and removes outgoing filters from the URL on tab changes', async () => {
   const { onUrlUpdate } = await setup({
     pageOwner: true,
     searchParams:
-      '?agent_type=external&keyword=internal&filter=drafts&created_by_me=true&sort_by=earliest_created',
+      '?agent_type=external&external_keyword=Contract&external_status=enabled' +
+      '&external_connected_by_me=true&external_sort_by=earliest_created' +
+      '&keyword=internal&filter=drafts&created_by_me=true&sort_by=earliest_created&utm_source=blog',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
   expect(requests.difyList).not.toHaveBeenCalled()
-  await page.getByRole('radio', { name: 'Disabled 1', exact: true }).click()
+  const urlParams = () => Object.fromEntries(onUrlUpdate.mock.lastCall?.[0].searchParams ?? [])
+
   await page.getByRole('tab', { name: 'Dify agents', exact: true }).click()
+  await expect.poll(urlParams).toEqual({
+    keyword: 'internal',
+    filter: 'drafts',
+    created_by_me: 'true',
+    sort_by: 'earliest_created',
+    utm_source: 'blog',
+  })
   await expect.poll(() => requests.difyList.mock.calls).toHaveLength(1)
   expect(requests.difyList).toHaveBeenCalledWith({
     query: {
@@ -486,8 +496,8 @@ it('opens the external page without requesting Dify data and preserves each tabâ
       sort_by: 'earliest_created',
     },
   })
-  const params = onUrlUpdate.mock.lastCall?.[0].searchParams
-  expect(params?.get('external_status')).toBe('disabled')
-  expect(params?.get('keyword')).toBe('internal')
-  expect(params?.get('filter')).toBe('drafts')
+
+  await page.getByRole('tab', { name: 'External agents', exact: true }).click()
+  await expect.poll(urlParams).toEqual({ agent_type: 'external', utm_source: 'blog' })
+  await expect.element(card('Vendor Screening Agent')).toBeVisible()
 })

@@ -1,27 +1,47 @@
 'use client'
 
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useQueryState } from 'nuqs'
+import { defaultRateLimit, useQueryStates } from 'nuqs'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { DifyRoster } from './dify-roster'
 import { ExternalRoster } from './external-roster'
-import { rosterQueryParamNames, rosterTypeQueryParser } from './query-params'
+import { rosterTabQueryParsers } from './query-params'
 
 export default function RosterPage() {
   const { t } = useTranslation(['agentRoster'])
   const docLink = useDocLink()
-  const [type, setType] = useQueryState(rosterQueryParamNames.type, rosterTypeQueryParser)
+  const [tabQuery, setTabQuery] = useQueryStates(rosterTabQueryParsers)
+  const type = tabQuery.agent_type
   const titleId = useId()
   const title = t(($) => $['roster.title'])
   useDocumentTitle(title)
 
+  function handleTabChange(value: unknown) {
+    if (value === type || (value !== 'dify' && value !== 'external')) return
+
+    const clearedFilters =
+      type === 'dify'
+        ? { keyword: null, filter: null, created_by_me: null, sort_by: null }
+        : {
+            external_keyword: null,
+            external_status: null,
+            external_connected_by_me: null,
+            external_sort_by: null,
+          }
+    // Cancel any pending Dify keyword write when clearing it during the switch.
+    void setTabQuery(
+      { agent_type: value, ...clearedFilters },
+      { limitUrlUpdates: defaultRateLimit },
+    )
+  }
+
   return (
     <Tabs
       value={type}
-      onValueChange={(value) => void setType(value)}
+      onValueChange={handleTabChange}
       className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body max-md:overflow-y-auto"
     >
       <div className="shrink-0 px-2 pt-4 sm:px-8">
