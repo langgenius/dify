@@ -1,4 +1,4 @@
-import { cn } from '@langgenius/dify-ui/cn'
+import { Button } from '@langgenius/dify-ui/button'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -33,22 +33,19 @@ export function ServiceApi({ apiBaseUrl, apiReferenceUrl }: ServiceApiProps) {
         <Popover>
           <PopoverTrigger
             ref={triggerRef}
-            render={(props) => (
-              <button
-                {...props}
-                type="button"
-                className={cn(
-                  'relative flex h-6 w-full cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md border-none bg-transparent px-1.5 py-1 text-left text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
-                  props.className,
-                )}
-              >
-                <StatusDot className="shrink-0" status={apiBaseUrl ? 'success' : 'warning'} />
-                <div className="px-0.5 system-xs-medium">
-                  {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
-                </div>
-              </button>
-            )}
-          />
+            render={
+              <Button
+                variant="ghost"
+                size="small"
+                className="text-text-tertiary data-popup-open:bg-components-button-ghost-bg-hover"
+              />
+            }
+          >
+            <StatusDot className="shrink-0" status={apiBaseUrl ? 'success' : 'warning'} />
+            <span className="system-xs-medium">
+              {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
+            </span>
+          </PopoverTrigger>
           <PopoverContent
             side="top"
             align="start"
