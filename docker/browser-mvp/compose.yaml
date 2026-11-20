@@ -1,0 +1,61 @@
+# Overlay on ../docker-compose.yaml. Only explicitly selected services are started.
+services:
+  api:
+    image: dify-browser-mvp-api:${MVP_SOURCE_TAG:?}
+    ports: ["127.0.0.1:${MVP_API_PORT:-15011}:5001"]
+    mem_limit: 2g
+    cpus: 2
+  agent_backend:
+    image: dify-browser-mvp-agent:${MVP_SOURCE_TAG:?}
+    mem_limit: 1g
+    cpus: 2
+  local_sandbox:
+    image: dify-browser-mvp-sandbox:${MVP_SOURCE_TAG:?}
+    build:
+      context: ..
+      dockerfile: docker/browser-mvp/sandbox/Dockerfile
+    volumes:
+      - ./browser-mvp/state/browser.json:/etc/dify-browser.json:ro
+    networks:
+      - agent_sandbox_network
+      - local_sandbox_proxy_network
+      - browser_control
+    mem_limit: 1g
+    cpus: 2
+  browser:
+    image: dify-browser-mvp-browser:${MVP_BROWSER_VARIANT:-headless}
+    build:
+      context: ..
+      dockerfile: docker/browser-mvp/browser/Dockerfile
+      target: ${MVP_BROWSER_VARIANT:-headless}
+    environment:
+      BROWSER_START_URL: http://fixture:16081
+      BROWSER_PROXY_SERVER: http://agent_ssrf_proxy:3128
+      BROWSER_PROXY_BYPASS: fixture
+    security_opt:
+      - seccomp=./browser-mvp/browser/seccomp.json
+    networks: [browser_control, browser_web, local_sandbox_proxy_network]
+    shm_size: 512m
+    mem_limit: 1536m
+    cpus: 2
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9222/json/version"]
+      interval: 5s
+      retries: 12
+    restart: unless-stopped
+  fixture:
+    image: dify-browser-mvp-fixture:local
+    build:
+      context: ..
+      dockerfile: docker/browser-mvp/fixture/Dockerfile
+    environment:
+      DEMO_VERIFICATION_CODE: ${DEMO_VERIFICATION_CODE:?}
+    networks: [browser_web, fixture_access]
+    ports: ["127.0.0.1:${MVP_FIXTURE_PORT:-16091}:16081"]
+    mem_limit: 128m
+networks:
+  browser_control:
+    internal: true
+  browser_web:
+    internal: true
+  fixture_access: {}

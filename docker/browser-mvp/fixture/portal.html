@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>维修工单 · 本地演示</title>
+<style>*{box-sizing:border-box}body{font:16px system-ui,sans-serif;background:#f3f5f8;color:#182337;margin:0}header{background:#16283f;color:white;padding:24px 40px}header small{color:#bdd4ed}main{max-width:1080px;margin:28px auto;padding:0 24px}section{background:white;border:1px solid #dce2ea;border-radius:12px;padding:28px;margin:20px 0}h1{margin:0 0 8px;font-size:26px}h2{font-size:21px;margin-top:0}.note{padding:14px;background:#fff5d9;border-radius:8px;line-height:1.7}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}label{display:block;font-weight:600}input,select,textarea{width:100%;font:inherit;padding:10px;border:1px solid #b4bdca;border-radius:6px;margin:8px 0}textarea{height:100px}button{font:inherit;background:#145be0;color:white;border:0;border-radius:7px;padding:12px 22px;cursor:pointer}button:disabled{opacity:.4}#status{color:#145be0;font-weight:600}#error{color:#a52121}.muted{color:#657185}pre{white-space:pre-wrap;line-height:1.6}#events{line-height:1.8}.full{grid-column:1/-1}</style>
+<header><h1>航空发动机维修工单</h1><small>虚构企业 · 本地验证系统 · 不连接 SAP 或任何生产系统</small></header>
+<main><div class="note">验证路径：人工输入测试验证码 → Agent 根据附件预填 → 人工核对修改 → 人工 Submit。验证码仅模拟交接步骤，不代表真实 CAPTCHA 集成。</div>
+<section id="login"><h2>第一步 · 人工登录验证</h2><p>请由操作者在可视化浏览器里输入测试说明中的验证码。Agent 应在此等待，不尝试识别、猜测或填写。</p><form id="loginForm"><label>人工测试验证码<input id="code" autocomplete="off" required placeholder="由操作者输入六位测试码"></label><button>进入工单系统</button></form></section>
+<section id="work" hidden><h2>第二步 · 维修工单预填</h2><p id="status">尚未提交 · 等待填写</p><form id="ticketForm"><div class="grid">
+<label>客户名称<input name="customer" required></label><label>发动机序列号<input name="engine" required></label>
+<label>部件编号<input name="part" required></label><label>期望完成日期<input name="date" type="date" required></label>
+<label>优先级<select name="priority" required><option value="">请选择</option><option>常规</option><option>加急</option></select></label><label>联系人邮箱<input name="contact" type="email" required></label>
+<label class="full">故障描述<textarea name="issue" required></textarea></label><label class="full">业务人员复核备注<input name="review" placeholder="请由业务人员填写，例如：已核对，安排周二收件"></label>
+</div><p class="note">Agent：填写后停止，不点击 Submit。操作者：确认全部字段后，亲自点击下方按钮。此处仅创建虚构演示记录。</p><label style="margin:18px 0"><input id="checked" type="checkbox" required style="width:auto"> 我已核对，确认提交此虚构工单</label><button id="submit">Submit · 创建演示工单</button></form></section>
+<section id="receipt" hidden><h2>已提交 · 服务器回执</h2><pre id="record"></pre></section><p id="error"></p><section><h2>现场状态</h2><p class="muted">下方记录服务器登录与提交事件；字段输入次数仅表示页面发生变化，不用于判断操作者身份。</p><div id="events">尚未登录，未创建工单。</div><p id="changes"></p></section></main>
+<script>
+const $=id=>document.getElementById(id);let changes=0;
+function show(s){$('login').hidden=!!s.authenticated;$('work').hidden=!s.authenticated||!!s.ticket;$('receipt').hidden=!s.ticket;if(s.ticket)$('record').textContent=JSON.stringify(s.ticket,null,2);if(s.events)$('events').replaceChildren(...s.events.map(e=>{const p=document.createElement('div');p.textContent=e.time+' — '+e.action;return p}));}
+async function post(path,data){$('error').textContent='';const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const s=await r.json();if(!r.ok){$('error').textContent=s.error;return}show(s)}
+$('loginForm').onsubmit=e=>{e.preventDefault();post('/login',{code:$('code').value})};
+$('ticketForm').oninput=()=>{$('status').textContent='草稿已填写 · 尚未提交';$('changes').textContent='本页字段变化次数：'+(++changes)};
+$('ticketForm').onsubmit=e=>{e.preventDefault();post('/submit',Object.fromEntries(new FormData(e.target)))};
+fetch('/state').then(r=>r.json()).then(show);
+</script></html>

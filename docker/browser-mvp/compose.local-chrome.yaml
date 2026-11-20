@@ -1,0 +1,19 @@
+# No Chrome or noVNC server in this service: a fixed-upstream authenticated relay.
+services:
+  browser:
+    image: dify-browser-mvp-host-gateway:local
+    build: !override
+      context: ..
+      dockerfile: docker/browser-mvp/gateway/Dockerfile
+    command: ["--upstream", "http://host.docker.internal:${MVP_HOST_CDP_PORT:-19223}", "--port", "9223", "--upstream-token", "/run/secrets/host-token"]
+    environment: !reset {}
+    healthcheck: !reset null
+    security_opt: !reset []
+    networks: !override [browser_control, host_chrome_access]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./browser-mvp/state/host-token:/run/secrets/host-token:ro
+    mem_limit: 128m
+
+networks:
+  host_chrome_access: {}

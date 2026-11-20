@@ -1,0 +1,7 @@
+*
+!docker/
+!docker/browser-mvp/
+!docker/browser-mvp/fixture/
+!docker/browser-mvp/fixture/**
+**/__pycache__/
+**/*.pyc

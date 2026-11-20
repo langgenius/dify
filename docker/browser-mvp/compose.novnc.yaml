@@ -1,0 +1,13 @@
+services:
+  browser:
+    image: dify-browser-mvp-browser:novnc
+    build:
+      target: novnc
+    environment:
+      BROWSER_MODE: novnc
+    networks: [browser_viewer_access]
+    ports: ["127.0.0.1:${MVP_NOVNC_PORT:-16090}:6080"]
+    volumes:
+      - ./browser-mvp/state/vnc-password:/run/secrets/vnc_password:ro
+networks:
+  browser_viewer_access: {}

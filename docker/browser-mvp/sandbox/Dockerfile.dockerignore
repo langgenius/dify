@@ -1,0 +1,7 @@
+*
+!docker/
+!docker/browser-mvp/
+!docker/browser-mvp/sandbox/
+!docker/browser-mvp/sandbox/**
+**/__pycache__/
+**/*.pyc
