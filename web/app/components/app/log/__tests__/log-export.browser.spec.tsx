@@ -75,8 +75,9 @@ const conversations: ConversationWithSummary[] = [
 
 async function openExport(
   hasExistingTask = false,
-  mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'advanced-chat',
+  mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'chat',
 ) {
+  const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
   let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
@@ -100,8 +101,20 @@ async function openExport(
     const route = url.pathname.split(`/apps/${appId}/`)[1]
     switch (route) {
       case 'chat-conversations':
-      case 'completion-conversations':
-        return Response.json({ data: conversations, total: 38, page: 2, limit: 10, has_more: true })
+      case 'completion-conversations': {
+        listQueries.push(url.searchParams)
+        const endUserIds = url.searchParams.getAll('end_user_ids')
+        const accountIds = url.searchParams.getAll('account_ids')
+        const data =
+          endUserIds.length || accountIds.length
+            ? conversations.filter(
+                (log) =>
+                  endUserIds.includes(log.from_end_user_id ?? '') ||
+                  accountIds.includes(log.from_account_id ?? ''),
+              )
+            : conversations
+        return Response.json({ data, total: 38, page: 2, limit: 10, has_more: true })
+      }
       case 'chat-conversations/identity-options':
         return Response.json({
           data: url.searchParams.get('keyword') === '42' ? [olderEndUser] : [],
@@ -175,7 +188,15 @@ async function openExport(
     )
     return { screen, trigger: screen.getByRole('button', { name: 'appLog.export.title' }) }
   }
-  return { ...(await renderLogs()), dialog, lastExport, previews, requests, renderLogs }
+  return {
+    ...(await renderLogs()),
+    dialog,
+    lastExport,
+    listQueries,
+    previews,
+    requests,
+    renderLogs,
+  }
 }
 
 function observeDownloads() {
@@ -192,7 +213,6 @@ function observeDownloads() {
 it.each([
   ['chat', 'previewConversationDescription'],
   ['agent-chat', 'previewConversationDescription'],
-  ['advanced-chat', 'previewChatflowDescription'],
   ['completion', 'previewCompletionDescription'],
 ] as const)('explains the export scope and CSV contents for %s', async (mode, descriptionKey) => {
   const { trigger, dialog } = await openExport(false, mode)
@@ -372,4 +392,122 @@ it('shows an inline identity list and previews selections beyond the visible Log
   await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
   expect(previews.at(-1)?.has('end')).toBe(false)
+})
+
+it('shares the Chatflow list filters with export while keeping a separate export draft', async () => {
+  const { screen, dialog, listQueries, previews, requests } = await openExport(
+    false,
+    'advanced-chat',
+  )
+  const identityLabel = 'appLog.table.header.endUser'
+  const listIdentity = screen.getByRole('combobox', { name: identityLabel })
+  const listSearch = screen.getByPlaceholder('common.operation.search')
+  const identitySearch = page
+    .getByRole('dialog', { name: identityLabel })
+    .getByRole('combobox', { name: 'common.operation.search' })
+  const listFieldHeight = () => listIdentity.element().getBoundingClientRect().height
+  const endUserOption = page.getByRole('option', { name: 'user-1024' })
+  const accountOption = page.getByRole('option', { name: 'Mia Chen' })
+  const firstTwoIdentities = 'user-1024, Mia Chen'
+
+  await expect.element(listIdentity).toHaveAttribute('type', 'button')
+  const initialHeight = listFieldHeight()
+  await expect.element(identitySearch).not.toBeInTheDocument()
+  await listIdentity.click()
+  await identitySearch.fill('1024')
+  await endUserOption.click()
+  await expect.element(listIdentity).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(identitySearch).toHaveValue('1024')
+  await identitySearch.fill('')
+  await accountOption.click()
+  await expect.element(listIdentity).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(listIdentity.getByText(firstTwoIdentities, { exact: true })).toBeVisible()
+  expect(listFieldHeight()).toBe(initialHeight)
+  expect(listQueries.at(-1)?.has('end_user_ids')).toBe(false)
+  expect(listQueries.at(-1)?.has('account_ids')).toBe(false)
+
+  await accountOption.click()
+  await screen.getByText('appLog.title', { exact: true }).click()
+  await expect.poll(() => listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  await expect
+    .element(screen.getByText('Change the email on my account', { exact: true }))
+    .not.toBeInTheDocument()
+
+  await listSearch.fill('refund')
+  await expect.poll(() => listQueries.at(-1)?.get('keyword')).toBe('refund')
+  await screen.getByRole('button', { name: /common.sorting.sortBy/ }).click()
+  await page.getByRole('menuitemradio', { name: 'appLog.table.header.updatedTime' }).click()
+  await expect.poll(() => listQueries.at(-1)?.get('sort_by')).toBe('-updated_at')
+
+  await listIdentity.click()
+  await accountOption.click()
+  await expect.element(listIdentity).toHaveAttribute('aria-expanded', 'true')
+  expect(listQueries.at(-1)?.has('account_ids')).toBe(false)
+  await screen.getByText('appLog.export.title', { exact: true }).click()
+  await expect.poll(() => listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
+  expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  const exportIdentity = dialog.getByRole('combobox', { name: identityLabel })
+  await expect.element(exportIdentity).toBeVisible()
+  const exportFieldHeight = () => exportIdentity.element().getBoundingClientRect().height
+  const initialExportHeight = exportFieldHeight()
+  const twoVisibleIdentities = exportIdentity.getByText(firstTwoIdentities, { exact: true })
+  await expect.element(twoVisibleIdentities).toBeVisible()
+  await expect.element(dialog.getByPlaceholder('common.operation.search')).not.toBeInTheDocument()
+  await expect
+    .element(dialog.getByRole('button', { name: /common.sorting.sortBy/ }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(dialog.getByText('appLog.export.previewChatflowDescription', { exact: true }))
+    .toBeVisible()
+  expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
+  expect(previews.at(-1)?.has('keyword')).toBe(false)
+  expect(previews.at(-1)?.get('sort_by')).toBe('-updated_at')
+
+  await exportIdentity.click()
+  await identitySearch.fill('42')
+  await page.getByRole('option', { name: olderEndUser.label }).click()
+  await expect
+    .poll(() => previews.at(-1)?.getAll('end_user_ids'))
+    .toEqual([endUserId, olderEndUser.id])
+  const allIdentities = exportIdentity.getByText('user-1024, Mia Chen, customer-42', {
+    exact: true,
+  })
+  await expect.element(allIdentities).toBeVisible()
+  expect(exportFieldHeight()).toBe(initialExportHeight)
+  expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  await userEvent.keyboard('{Escape}')
+  await expect.element(exportIdentity).toHaveAttribute('aria-expanded', 'false')
+
+  const { innerWidth, innerHeight } = window
+  await page.viewport(280, innerHeight)
+  await expect.element(twoVisibleIdentities).toBeVisible()
+  await expect.element(exportIdentity.getByText('+1', { exact: true }).first()).toBeVisible()
+  expect(exportFieldHeight()).toBe(initialExportHeight)
+  await page.viewport(innerWidth, innerHeight)
+  await expect.element(allIdentities).toBeVisible()
+
+  await dialog.getByRole('combobox', { name: 'appLog.export.timeRange' }).click()
+  await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
+  await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
+  expect(listQueries.at(-1)?.has('start')).toBe(true)
+
+  await dialog.getByRole('combobox', { name: 'appAnnotation.title' }).click()
+  await page.getByRole('option', { name: 'appLog.filter.annotation.not_annotated' }).click()
+  await expect.poll(() => previews.at(-1)?.get('annotation_status')).toBe('not_annotated')
+  expect(listQueries.at(-1)?.get('annotation_status')).toBe('all')
+
+  const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
+  await expect.element(submit).toBeEnabled()
+  await submit.click()
+  await expect
+    .poll(() => requests)
+    .toEqual([
+      {
+        annotation_status: 'not_annotated',
+        end_user_ids: [endUserId, olderEndUser.id],
+        account_ids: [accountId],
+        sort_by: '-updated_at',
+      },
+    ])
 })

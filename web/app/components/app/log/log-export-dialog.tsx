@@ -4,7 +4,7 @@ import type {
   GetAppsByAppIdConversationLogExportsPreviewData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
-import type { LogIdentity } from './log-filters'
+import type { LogFilterOptions, LogIdentity, QueryParam } from './log-filters'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -37,8 +37,8 @@ import { API_PREFIX } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
-import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING } from './log-filters'
-import { LogIdentityPicker } from './log-identity-picker'
+import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING, toLogFilters } from './log-filters'
+import { LogIdentityField, LogIdentityPicker } from './log-identity-picker'
 
 type LogExportFilters = NonNullable<GetAppsByAppIdConversationLogExportsPreviewData['query']>
 
@@ -196,21 +196,28 @@ export function LogExportDialog({
   appId,
   appName,
   appMode,
-  currentFilters,
+  currentQueryParams,
+  shareFilters,
+  filterOptions,
   identityOptions,
   planState,
 }: {
   appId: string
   appName: string
   appMode: AppDetailWithSite['mode']
-  currentFilters: LogExportFilters
+  currentQueryParams: QueryParam
+  shareFilters: boolean
+  filterOptions: LogFilterOptions
   identityOptions: LogIdentity[]
   planState: CloudSandboxPlanState
 }) {
-  const { t } = useTranslation(['appLog', 'common', 'time'])
+  const { t } = useTranslation(['appLog', 'common', 'time', 'appAnnotation'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(defaultSelection)
+  const [sharedSelection, setSharedSelection] = useState<
+    Pick<QueryParam, 'period' | 'annotation_status' | 'identities' | 'sort_by'>
+  >({ period: '2' })
   const { scope, period, startDate, endDate, identityMode, identities } = selection
   const isCompletion = appMode === 'completion'
   const customDates = scope === 'all' && period === 'custom'
@@ -223,9 +230,10 @@ export function LogExportDialog({
   if (customDates) dates = { start: `${startDate} 00:00`, end: `${endDate} 23:59` }
   else if (scope === 'all' && period !== '9' && period !== 'custom')
     dates = logDateRange(TIME_PERIOD_MAPPING[period]!.value)
-  const filters: LogExportFilters =
-    scope === 'current'
-      ? currentFilters
+  const filters: LogExportFilters = shareFilters
+    ? toLogFilters(sharedSelection, planState)
+    : scope === 'current'
+      ? toLogFilters(currentQueryParams, planState)
       : {
           sort_by: '-created_at',
           ...dates,
@@ -320,7 +328,10 @@ export function LogExportDialog({
       onOpenChange={(next) => {
         if (!next && create.isPending) return
         if (next) {
-          setSelection(defaultSelection)
+          if (shareFilters) {
+            const { period, annotation_status, identities, sort_by } = currentQueryParams
+            setSharedSelection({ period, annotation_status, identities, sort_by })
+          } else setSelection(defaultSelection)
           create.reset()
         }
         setOpen(next)
@@ -364,23 +375,57 @@ export function LogExportDialog({
           >
             <DialogBody className="space-y-4">
               <fieldset disabled={filtersLocked} className="space-y-4">
-                <ExportSelect
-                  label={t(($) => $['export.scope'], { ns: 'appLog' })}
-                  description={t(
-                    ($) => $[scope === 'current' ? 'export.currentHint' : 'export.allHint'],
-                    {
-                      ns: 'appLog',
-                    },
-                  )}
-                  value={scope}
-                  options={[
-                    { value: 'current', label: t(($) => $['export.current'], { ns: 'appLog' }) },
-                    { value: 'all', label: t(($) => $['export.all'], { ns: 'appLog' }) },
-                  ]}
-                  onChange={(scope) => setSelection((previous) => ({ ...previous, scope }))}
-                  disabled={filtersLocked}
-                />
-                {scope === 'all' && (
+                {shareFilters && (
+                  <>
+                    <ExportSelect
+                      label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
+                      value={sharedSelection.period}
+                      options={filterOptions.periods}
+                      onChange={(period) =>
+                        setSharedSelection((previous) => ({ ...previous, period }))
+                      }
+                      disabled={filtersLocked}
+                    />
+                    <ExportSelect
+                      label={t(($) => $.title, { ns: 'appAnnotation' })}
+                      value={sharedSelection.annotation_status ?? 'all'}
+                      options={filterOptions.annotations}
+                      onChange={(annotation_status) =>
+                        setSharedSelection((previous) => ({ ...previous, annotation_status }))
+                      }
+                      disabled={filtersLocked || !filterOptions.hasAnnotationCount}
+                    />
+                    <LogIdentityField
+                      appId={appId}
+                      options={identityOptions}
+                      value={sharedSelection.identities ?? []}
+                      onChange={(identities) =>
+                        setSharedSelection((previous) => ({ ...previous, identities }))
+                      }
+                      disabled={filtersLocked}
+                      showLabel
+                    />
+                  </>
+                )}
+                {!shareFilters && (
+                  <ExportSelect
+                    label={t(($) => $['export.scope'], { ns: 'appLog' })}
+                    description={t(
+                      ($) => $[scope === 'current' ? 'export.currentHint' : 'export.allHint'],
+                      {
+                        ns: 'appLog',
+                      },
+                    )}
+                    value={scope}
+                    options={[
+                      { value: 'current', label: t(($) => $['export.current'], { ns: 'appLog' }) },
+                      { value: 'all', label: t(($) => $['export.all'], { ns: 'appLog' }) },
+                    ]}
+                    onChange={(scope) => setSelection((previous) => ({ ...previous, scope }))}
+                    disabled={filtersLocked}
+                  />
+                )}
+                {!shareFilters && scope === 'all' && (
                   <>
                     <ExportSelect
                       label={identityLabel}
