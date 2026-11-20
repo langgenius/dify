@@ -35,6 +35,10 @@ describe('getPlaybackFrame', () => {
     expect(getPlaybackFrame(6.2)).toEqual(getPlaybackFrame(6.2))
   })
 
+  it('moves the typing collaborator to the reply bar', () => {
+    expect(getPlaybackFrame(12).sam).toMatchObject({ from: 'reply', to: 'reply' })
+  })
+
   it('shows Sam on the nodes being changed', () => {
     expect(getPlaybackFrame(6).samViewing).toBe('checkOrder')
     expect(getPlaybackFrame(9).samViewing).toBe('generateReply')
@@ -42,6 +46,9 @@ describe('getPlaybackFrame', () => {
   })
 
   it('jumps cursors to their destination under reduced motion', () => {
-    expect(getPlaybackFrame(0.5, true).alex).toEqual(demoCommentPosition)
+    expect(getPlaybackFrame(0.5, true).alex).toMatchObject({
+      to: demoCommentPosition,
+      progress: 1,
+    })
   })
 })
