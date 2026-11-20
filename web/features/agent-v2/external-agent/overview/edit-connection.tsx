@@ -25,6 +25,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { ExternalConnectionFeedback } from '../../roster/components/external-connection-feedback'
@@ -47,6 +48,8 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const [submitted, setSubmitted] = useState<ExternalAgentConnectionPayload>()
   const [saveUnknown, setSaveUnknown] = useState(false)
   const [saveError, setSaveError] = useState<string>()
+  const [conflicted, setConflicted] = useState(false)
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const [latestEndpoint, setLatestEndpoint] = useState<string>()
   const endpointRef = useRef<HTMLInputElement>(null)
   const submitLabelId = useId()
@@ -55,6 +58,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     consoleQuery.externalAgents.byAgentId.get.queryOptions({
       input: { params: { agent_id: overview.asset.id } },
       enabled: false,
+      retry: false,
     }),
   )
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
@@ -94,6 +98,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     setSaveUnknown(false)
     setSaveError(undefined)
     setLatestEndpoint(undefined)
+    setConflicted(false)
     invalidateVerification()
     resetSave()
   }, [invalidateVerification, resetSave])
@@ -122,6 +127,27 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       setSettings({ endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' })
     })
   }
+  function savedAudit(connection: ExternalAgentOverview) {
+    const name =
+      connection.connectionSavedBy?.name?.trim() || connection.connectionSavedBy?.id || '—'
+    return connection.connectionSavedAt
+      ? t(($) => $['external.connection.conflict.savedBy'], {
+          name,
+          time: formatTimeFromNow(Date.parse(connection.connectionSavedAt)),
+        })
+      : t(($) => $['external.connection.conflict.savedByOnly'], { name })
+  }
+  function showConflict() {
+    verification.invalidate()
+    setSettings((current) => current && { ...current, token: '' })
+    setReview(undefined)
+    setSubmitted(undefined)
+    setSaveUnknown(false)
+    setSaveError(undefined)
+    setLatestEndpoint(undefined)
+    setConflicted(true)
+    void detail.refetch()
+  }
   function loadLatest(keepEdits: boolean) {
     verification.invalidate()
     const scope = verification.scope
@@ -142,6 +168,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           : { endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' },
       )
       setLatestEndpoint(keepEdits ? loaded.endpoint : undefined)
+      setConflicted(false)
       setReview(undefined)
       setSubmitted(undefined)
       setSaveUnknown(false)
@@ -196,8 +223,8 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           )
           if (!unknown) {
             setSubmitted(undefined)
-            if (status === 400 || status === 409) verification.invalidate()
-            if (status === 409) void detail.refetch()
+            if (status === 400) verification.invalidate()
+            if (status === 409) showConflict()
           }
         },
       },
@@ -226,9 +253,8 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     setReview(undefined)
     setSaveError(undefined)
     save.reset()
-    verification.verify(draft, setReview)
+    verification.verify(draft, setReview, showConflict)
   }
-  const conflicted = getHttpErrorStatus(save.error) === 409
   const latest =
     conflicted && detail.data && !detail.isError ? toExternalAgentOverview(detail.data) : undefined
 
@@ -280,7 +306,10 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               <EditConnectionConflict
                 settings={settings}
                 latest={latest}
+                latestSavedAudit={latest && savedAudit(latest)}
                 loading={detail.isFetching}
+                loadFailed={detail.isError}
+                onRetry={() => void detail.refetch()}
               />
             </DialogBody>
             <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
@@ -289,14 +318,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               </Button>
               <Button
                 variant="secondary"
-                disabled={detail.isFetching}
+                disabled={detail.isFetching || !latest}
                 onClick={() => loadLatest(false)}
               >
                 {t(($) => $['external.connection.useLatest'])}
               </Button>
               <Button
                 variant="primary"
-                disabled={detail.isFetching}
+                disabled={detail.isFetching || !latest}
                 onClick={() => loadLatest(true)}
               >
                 {t(($) => $['external.connection.keepMyEdits'])}
@@ -318,9 +347,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
                 hasCredential={base.authentication === 'bearer' && base.hasCredential}
                 endpointDescription={
                   latestEndpoint
-                    ? t(($) => $['external.connection.conflict.latestEndpoint'], {
-                        endpoint: latestEndpoint,
-                      })
+                    ? `${t(($) => $['external.connection.conflict.latestEndpoint'], { endpoint: latestEndpoint })} · ${savedAudit(base)}`
                     : undefined
                 }
                 onChange={updateSettings}

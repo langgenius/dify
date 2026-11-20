@@ -27,6 +27,8 @@ export type ExternalAgentOverview = {
   authentication: 'none' | 'bearer'
   hasCredential: boolean
   connectionRevisionId: string
+  connectionSavedBy: ExternalAgentDetailResponse['connection']['saved_by'] | null
+  connectionSavedAt: ExternalAgentDetailResponse['connection']['saved_at'] | null
   authCheck: string
   protocol: string
   verifiedAt: string | null
@@ -104,6 +106,7 @@ export function toExternalAgentOverview(
   detail: ExternalAgentDetailResponse,
 ): ExternalAgentOverview {
   const { asset, connection } = detail
+  const savedBy = asRecord(connection.saved_by)
   const card = asRecord(connection.card)
   const capabilities = asRecord(connection.capabilities)
   const provider = asRecord(card.provider)
@@ -141,6 +144,14 @@ export function toExternalAgentOverview(
     authentication: connection.auth_type === 'bearer' ? 'bearer' : 'none',
     hasCredential: connection.has_credential === true,
     connectionRevisionId: stringValue(connection.revision_id),
+    connectionSavedBy:
+      typeof savedBy.id === 'string' && savedBy.id
+        ? { id: savedBy.id, name: typeof savedBy.name === 'string' ? savedBy.name : null }
+        : null,
+    connectionSavedAt:
+      typeof connection.saved_at === 'string' && Number.isFinite(Date.parse(connection.saved_at))
+        ? connection.saved_at
+        : null,
     authCheck: stringValue(connection.auth_check),
     protocol: protocolVersion ? `A2A ${protocolVersion}` : stringValue(connection.profile),
     verifiedAt: typeof connection.verified_at === 'string' ? connection.verified_at : null,
