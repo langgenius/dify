@@ -7,6 +7,7 @@ from uuid import uuid4
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities import PluginCredentialType
+from core.entities.provider_entities import TokenerHostedModelCredentials
 from core.helper import encrypter
 from core.helper.credential_utils import runtime_check_credential_policy_compliance
 from core.plugin.entities.plugin_daemon import (
@@ -33,7 +34,6 @@ from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.provider_ids import ModelProviderID
 from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))

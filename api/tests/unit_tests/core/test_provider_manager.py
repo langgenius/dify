@@ -1683,6 +1683,7 @@ def test_tokener_profile_reuses_hosted_catalog_without_legacy_credits(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from core.entities.provider_entities import TokenerHostedModelCredentials
     from core.errors.error import ModelCurrentlyNotSupportError
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.plugin_service import PluginService
@@ -1690,7 +1691,6 @@ def test_tokener_profile_reuses_hosted_catalog_without_legacy_credits(
     from models.account import Tenant
     from models.model_billing import TenantModelBillingProfile
     from services.entities.feature_entities import FeatureModel
-    from services.entities.hosted_model_routing import TokenerHostedModelCredentials
     from services.feature_service import FeatureService
     from tests.helpers.unit.config_override import apply_config_overrides
 

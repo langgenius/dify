@@ -7,13 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.entities.provider_entities import TokenerHostedModelCredentials
 from core.plugin.impl import model as plugin_model
 from enums.model_billing import TenantTokenerIntegrationStatus
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.provider import ProviderCredential
 from models.tokener import TenantTokenerIntegration
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 SOURCE = "langgenius/openai/openai"
@@ -65,11 +65,16 @@ def test_hosted_dispatch_preserves_source_model_parameters_and_uses_only_bound_t
     coerced = ModelConfigWithCredentialsEntity.model_validate(arguments)
     assert coerced.credentials is marker
     assert coerced.model_dump()["credentials"] == {}
+    copied_credentials = coerced.credentials.copy()
+    assert copied_credentials is not marker
+    assert isinstance(copied_credentials, TokenerHostedModelCredentials)
+    assert copied_credentials
+    assert dict(copied_credentials) == {}
     original = {
         "provider": "openai",
         "model": MODEL,
         "model_type": "llm",
-        "credentials": marker,
+        "credentials": copied_credentials,
         "model_parameters": {"opaque": {"nullable": None, "precision": 9007199254740993}, "max_tokens": 9},
         "prompt_messages": [{"role": "user", "content": [{"type": "image", "url": "https://example.com/image"}]}],
         "tools": [{"name": "test", "opaque": ["literal", False]}],
@@ -143,6 +148,12 @@ def test_managed_route_fails_closed_on_cross_tenant_or_unready_binding(
         select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant_id)
     ).one()
     integration.status = TenantTokenerIntegrationStatus.CONFIGURING_PROVIDER
+    sqlite_session.commit()
+    with pytest.raises(ValueError, match="temporarily unavailable"):
+        client._prepare_request(f"plugin/{tenant_id}/dispatch/llm/invoke", SOURCE_HEADERS, data, None, None)
+
+    integration.status = TenantTokenerIntegrationStatus.READY
+    integration.plugin_unique_identifier = "langgenius/openai:0.4.4@" + "b" * 64
     sqlite_session.commit()
     with pytest.raises(ValueError, match="temporarily unavailable"):
         client._prepare_request(f"plugin/{tenant_id}/dispatch/llm/invoke", SOURCE_HEADERS, data, None, None)

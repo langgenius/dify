@@ -17,11 +17,11 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.provider_entities import TokenerHostedModelCredentials
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
-from services.entities.hosted_model_routing import TokenerHostedModelCredentials
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
 

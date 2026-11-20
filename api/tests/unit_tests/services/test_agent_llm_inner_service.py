@@ -3,7 +3,6 @@
 from collections.abc import Callable, Generator
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
@@ -16,7 +15,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
-from core.entities.provider_entities import ModelSettings, ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import (
+    ModelSettings,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    SystemConfiguration,
+)
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -37,7 +42,7 @@ from services.agent_llm_inner_service import (
 )
 from services.billing_client import billing
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
-from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 
 def _request() -> AgentLLMInvokeRequest:
@@ -685,19 +690,24 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     model_instance, _ = _model_instance()
     model_instance.provider_model_bundle.configuration.tenant_id = request.caller.tenant_id
     prepared = _prepare(service, request, model_instance)
-    provider_configuration = SimpleNamespace(
-        using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
-            current_quota_type=ProviderQuotaType.TRIAL,
-            quota_configurations=[
-                SimpleNamespace(
-                    quota_type=ProviderQuotaType.TRIAL,
-                    quota_unit=QuotaUnit.CREDITS,
-                    quota_limit=100,
-                )
-            ],
-        ),
+    model_config = make_model_config(provider=model_instance.provider, model=model_instance.model_name, mode="chat")
+    provider_configuration = model_config.provider_model_bundle.configuration
+    provider_configuration.tenant_id = request.caller.tenant_id
+    provider_configuration.preferred_provider_type = ProviderType.SYSTEM
+    provider_configuration.using_provider_type = ProviderType.SYSTEM
+    provider_configuration.provider.models = [model_config.model_schema]
+    provider_configuration.system_configuration = SystemConfiguration(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.TRIAL,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=100,
+                quota_used=0,
+                is_valid=True,
+            )
+        ],
     )
     reservations_by_request: dict[str, str] = {}
     committed_reservations: set[str] = set()
