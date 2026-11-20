@@ -14,16 +14,19 @@ from dataclasses import dataclass, replace
 import pytest
 from flask import Flask, g, request
 
-from controllers.openapi import _mcp_call
+from constants import HEADER_NAME_FILE_RESULT
+from controllers.openapi import _mcp_call, _transfer
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for, op_registry
+from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._mcp_call import (
-    FileInputUnsupported,
     OpCall,
     RouteMismatch,
     UnknownOp,
     UnsafePathValue,
     call_op,
 )
+from controllers.openapi._transfer import FileResult
+from extensions.ext_application_services import ApplicationServices
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _BEARER = "Bearer dfoa_admitted"
@@ -33,6 +36,7 @@ _CALLER_ADDR = "203.0.113.7"
 _OUTER_HOST_URL = "https://dify.example.com:8443/"
 _LONE_SURROGATE = "\ud800"
 _INNER = "inner"
+_UNKNOWN_UPLOAD = "00000000-0000-4000-8000-000000000000"
 
 _marker: ContextVar[str] = ContextVar("mcp_call_test_marker")
 
@@ -44,6 +48,7 @@ class _SeenRequest:
     headers: dict[str, str]
     remote_addr: str | None
     host_url: str
+    body: object
 
 
 @pytest.fixture
@@ -61,6 +66,7 @@ def inner_requests(openapi_app: Flask) -> list[_SeenRequest]:
                 headers=dict(request.headers),
                 remote_addr=request.remote_addr,
                 host_url=request.host_url,
+                body=request.get_json(silent=True),
             )
         )
         g.mcp_call_marker = _INNER
@@ -224,14 +230,28 @@ def test_an_op_error_body_comes_back_unchanged(
     assert result.body == direct.get_json()
 
 
-def test_a_file_bound_input_is_refused(
-    admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
+def test_a_file_bound_key_goes_into_the_json_body(
+    admitted_bearer: AdmittedWorld,
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    with openapi_app.test_request_context():
-        with pytest.raises(FileInputUnsupported):
-            _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": "upload-id"})
+    monkeypatch.setattr(_transfer, "application_services", lambda: account_application_services)
 
-    assert inner_requests == []
+    with openapi_app.test_request_context():
+        result = _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": _UNKNOWN_UPLOAD})
+
+    assert inner_requests[0].body == {"file": _UNKNOWN_UPLOAD}
+    assert (result.status, result.body["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_the_inner_request_asks_for_a_transfer(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
+    with openapi_app.test_request_context():
+        _call("get.workspace", {})
+
+    assert inner_requests[0].headers[HEADER_NAME_FILE_RESULT] == FileResult.TRANSFER
 
 
 @pytest.mark.usefixtures("admitted_bearer")
