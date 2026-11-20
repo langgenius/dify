@@ -14,6 +14,14 @@ validated models are copies, so mutations require explicit
 `entry["state"] = state.model_dump(mode="json")` writeback. Stateful tools that
 read and modify across awaits execute sequentially.
 
+Limited Dify operations reserve from one event-loop-local counter store owned by
+that native run, not lifespan Services or Redis. The owner closes admission when
+it observes cancellation and seals a detached reservation summary after native
+cleanup. Only this final summary enters terminal events for logs and history;
+session snapshots never restore or share counters. Redis still owns ordinary
+run/events/cancellation/idempotency persistence. Active execution and counters
+have no crash-recovery or cross-process handoff contract.
+
 `deps.services` borrows lifespan clients and server settings. `deps.resources`
 holds only operation leases, shell sessions and temporary credentials. The
 capability that acquires a resource releases it in `wrap_run` using `finally`,

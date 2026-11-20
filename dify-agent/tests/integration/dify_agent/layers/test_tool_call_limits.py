@@ -56,7 +56,7 @@ def test_unlimited_plugin_preserves_dev_transport_exception_behavior() -> None:
             with pytest.raises(httpx.ReadTimeout, match="unconfigured transport timed out"):
                 await Agent(FunctionModel(model), deps_type=Deps, toolsets=toolsets).run("research", deps=deps)
             assert len(dispatched) == 1
-            assert await deps.services.tool_call_limit_store.usage(
+            assert await deps.tool_call_limit_store.usage(
                 run_id=deps.run_id, tool_identity=tool_identity(config), limit=1
             ) == ToolCallUsage(0, 1)
 
@@ -228,7 +228,7 @@ def test_invalid_model_arguments_do_not_consume_the_remaining_dispatch(transport
             assert "validation error" in str(invalid.content)
             valid = next(part for part in records if part.tool_call_id == "valid")
             assert limit_metadata(valid).used == 1
-            assert await deps.services.tool_call_limit_store.usage(
+            assert await deps.tool_call_limit_store.usage(
                 run_id=deps.run_id, tool_identity=tool_identity(config), limit=1
             ) == ToolCallUsage(1, 1)
 
@@ -419,7 +419,7 @@ def test_invalid_schema_is_a_nonexecuted_parameter_error_without_network_or_quot
             record = tool_returns(result.all_messages())[0]
             assert "validation error" in record.content
             assert record.metadata == {TOOL_VALIDATION_FAILED_METADATA_KEY: True}
-            assert await deps.services.tool_call_limit_store.usage(
+            assert await deps.tool_call_limit_store.usage(
                 run_id=deps.run_id, tool_identity=tool_identity(config), limit=1
             ) == ToolCallUsage(0, 1)
 
