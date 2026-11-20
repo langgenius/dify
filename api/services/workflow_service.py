@@ -100,7 +100,7 @@ from models.workflow import (
     resolve_workflow_kind,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.legacy_retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService

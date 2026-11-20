@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Protocol, Self
+from typing import TYPE_CHECKING, Any, Protocol, Self
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -10,6 +12,37 @@ from core.plugin.entities.plugin import PluginDependency
 from core.tools.entities.tool_entities import EmojiIconDict, WorkflowToolParameterConfiguration
 from libs.helper import alphanumeric, uuid_value
 from models.model import App, AppMode, IconType
+
+if TYPE_CHECKING:
+    from services.workflow.contracts import WorkflowSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class AppDslOverwriteTarget:
+    """Persistence-neutral overwrite facts; ``workflow=None`` means the App has no draft.
+
+    Workflow variables remain encrypted so loading a target never requires key I/O.
+    """
+
+    mode: AppMode
+    workflow: WorkflowSnapshot | None
+
+
+class AppDslOverwriteStore(Protocol):
+    def snapshot(
+        self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool
+    ) -> AppDslOverwriteTarget | None:
+        """Authorize the target and materialize its encrypted draft in a short read session."""
+        ...
+
+    def load(self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool) -> AppDslOverwriteTarget | None:
+        """Recheck the scoped target using the supplied RBAC verdict in the enclosing import transaction.
+
+        Return immutable facts, or None for a missing/non-normal App in the tenant; raise
+        NoPermissionError if neither RBAC nor maintainership permits overwriting. ORM state
+        stays inside the repository, and this read never commits or rolls back the import.
+        """
+        ...
 
 
 class ImportMode(StrEnum):
@@ -127,7 +160,7 @@ class AppImportPackage(Protocol):
         self, *, tenant_id: str, account_id: str
     ) -> tuple[dict[str, Any], list[DslImportWarning]]: ...
 
-    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> "AppImportPackage": ...
+    def open_workflow_tool(self, tool: PackagedWorkflowTool) -> AppImportPackage: ...
 
     def close(self) -> None: ...
 
