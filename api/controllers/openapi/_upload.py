@@ -37,12 +37,19 @@ UploadPart = Annotated[FileStorage, _UploadPartType()]
 UploadParts = dict[str, UploadPart | list[UploadPart]]
 
 
+def is_binary_leaf(node: Mapping[str, Any]) -> bool:
+    """Postcondition: True for the schema of one file part, ``{"type": "string", "format": "binary"}``."""
+    if node.get("type") != "string":
+        return False
+    return node.get("format") == "binary"
+
+
 def has_binary_leaf(node: Any) -> bool:
     if isinstance(node, list):
         return any(has_binary_leaf(item) for item in node)
     if not isinstance(node, Mapping):
         return False
-    if node.get("type") == "string" and node.get("format") == "binary":
+    if is_binary_leaf(node):
         return True
     return any(has_binary_leaf(value) for value in node.values())
 
@@ -92,4 +99,11 @@ def describe_multipart_bodies(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-__all__ = ["UploadPart", "UploadParts", "describe_multipart_bodies", "file_fields", "has_binary_leaf"]
+__all__ = [
+    "UploadPart",
+    "UploadParts",
+    "describe_multipart_bodies",
+    "file_fields",
+    "has_binary_leaf",
+    "is_binary_leaf",
+]
