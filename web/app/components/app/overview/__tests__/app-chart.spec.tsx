@@ -12,7 +12,7 @@ vi.mock('echarts-for-react/esm/core', () => ({
   },
 }))
 
-const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
+const { request } = vi.hoisted(() => ({ request: vi.fn<(url: string) => Promise<Response>>() }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
@@ -137,4 +137,25 @@ it('retains loaded charts when a background statistics refresh fails', async () 
   expect(screen.getAllByRole('img', { name: 'Chart' })).toHaveLength(4)
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it.each([
+  { source: 'a preset', end: '2026-11-09 23:59' },
+  { source: 'a custom end date', end: '2026-11-09 00:00' },
+])('requests statistics through the whole selected end date from $source', async ({ end }) => {
+  request.mockImplementation(async () => Response.json({ data: [] }))
+  render(
+    <AppCharts
+      id="app-1"
+      appMode="chat"
+      period={{ name: 'Nov 3 - Nov 9', query: { start: '2026-11-03 00:00', end } }}
+    />,
+  )
+
+  await waitFor(() => expect(request).toHaveBeenCalled())
+  for (const [url] of request.mock.calls) {
+    const params = new URL(url, 'http://localhost').searchParams
+    expect(params.get('start')).toBe('2026-11-03 00:00')
+    expect(params.get('end')).toBe('2026-11-10 00:00')
+  }
 })
