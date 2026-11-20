@@ -80,9 +80,9 @@ it('submits with Enter and replaces the form with the sign-in destination', asyn
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith(
-      expect.objectContaining({ body: { email: 'test@example.com' } }),
-    ),
+    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith({
+      body: { email: 'test@example.com' },
+    }),
   )
   await expect
     .element(screen.getByRole('link', { name: /login\.backToSignIn/ }))

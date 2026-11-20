@@ -93,14 +93,12 @@ it.each(['empty list', 'selector'] as const)(
     await dialog.getByLabelText(/API Key/).fill('secret-key')
     await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
-    expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        body: {
-          name: 'API One',
-          settings: { endpoint: 'https://api1.com', api_key: 'secret-key' },
-        },
-      }),
-    )
+    expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith({
+      body: {
+        name: 'API One',
+        settings: { endpoint: 'https://api1.com', api_key: 'secret-key' },
+      },
+    })
     const selector = screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' })
     if (entry === 'empty list') await expect.element(selector).toHaveTextContent('API One')
     else {

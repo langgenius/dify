@@ -89,7 +89,7 @@ it('returns focus after deleting a member with Contacts enabled, using the suppo
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
   expect(fake.console.workspaces.current.members.byMemberId.delete).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ params: { member_id: memberId('Alpha') } }),
+    { params: { member_id: memberId('Alpha') } },
   )
 })
 

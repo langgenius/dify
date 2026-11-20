@@ -85,15 +85,14 @@ it('creates trimmed values and saves the draft before navigating, blocking dupli
     .toBeDisabled()
   await expect.poll(() => saveDraft.mock.calls.length).toBe(1)
   const graph = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }
-  expect(createSnippet).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      // The contract fills the default snippet type.
-      body: { name: 'My Snippet', description: 'Useful snippet description', graph, type: 'node' },
-    }),
-  )
-  expect(saveDraft).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ params: { snippet_id: snippetId }, body: { graph } }),
-  )
+  expect(createSnippet).toHaveBeenCalledExactlyOnceWith({
+    // The contract fills the default snippet type.
+    body: { name: 'My Snippet', description: 'Useful snippet description', graph, type: 'node' },
+  })
+  expect(saveDraft).toHaveBeenCalledExactlyOnceWith({
+    params: { snippet_id: snippetId },
+    body: { graph },
+  })
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
   expect(createSnippet).toHaveBeenCalledOnce()
   expect(router.push).not.toHaveBeenCalled()

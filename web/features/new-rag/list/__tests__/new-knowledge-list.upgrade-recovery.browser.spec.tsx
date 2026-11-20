@@ -83,9 +83,9 @@ describe('NewKnowledgeList upgrade recovery', () => {
       await expect
         .element(card.getByRole('button', { name: 'common.operation.retry' }))
         .toBeInTheDocument()
-      expect(fake.console.datasets.get).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.objectContaining({ ids: [datasetId] }) }),
-      )
+      expect(fake.console.datasets.get).toHaveBeenCalledWith({
+        query: expect.objectContaining({ ids: [datasetId] }),
+      })
     })
 
     it('batches legacy dataset lookups and bounds failed-job recovery', async () => {
@@ -150,9 +150,9 @@ describe('NewKnowledgeList upgrade recovery', () => {
       await setup()
 
       await expect.poll(() => upgradeCards('Support knowledge').elements().length).toBe(2)
-      expect(fake.console.datasets.get).toHaveBeenCalledWith(
-        expect.objectContaining({ query: expect.objectContaining({ ids: [datasetId] }) }),
-      )
+      expect(fake.console.datasets.get).toHaveBeenCalledWith({
+        query: expect.objectContaining({ ids: [datasetId] }),
+      })
     })
 
     it('offers retry for an older failure after a newer migration succeeds', async () => {

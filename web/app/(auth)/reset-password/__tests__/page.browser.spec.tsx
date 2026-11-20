@@ -47,9 +47,9 @@ it('submits the labelled email form with Enter and preserves the reset session',
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith(
-      expect.objectContaining({ body: { email: 'user@example.com', language: 'en-US' } }),
-    ),
+    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith({
+      body: { email: 'user@example.com', language: 'en-US' },
+    }),
   )
   await vi.waitFor(() => expect(navigation.push).toHaveBeenCalled())
   expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))

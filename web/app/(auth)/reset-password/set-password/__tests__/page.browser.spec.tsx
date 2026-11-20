@@ -93,15 +93,13 @@ it('reveals the native password input and submits the form with Enter', async ()
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(fake.console.forgotPassword.resets.post).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: {
-          token: 'reset-token',
-          new_password: validPassword,
-          password_confirm: validPassword,
-        },
-      }),
-    ),
+    expect(fake.console.forgotPassword.resets.post).toHaveBeenCalledWith({
+      body: {
+        token: 'reset-token',
+        new_password: validPassword,
+        password_confirm: validPassword,
+      },
+    }),
   )
   await expect
     .element(screen.getByRole('heading', { level: 1, name: 'login.passwordChangedTip' }))

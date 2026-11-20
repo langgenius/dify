@@ -264,11 +264,9 @@ it('pages app resources and preserves selections across search and load more', a
   await expect.element(dialog.getByRole('status')).toHaveTextContent('All results shown')
   const resources = fake.console.account.personalAccessTokenResources.get
   expect(resources.mock.calls.every(([input]) => input?.query?.resource_type === 'app')).toBe(true)
-  expect(resources).toHaveBeenCalledWith(
-    expect.objectContaining({
-      query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' },
-    }),
-  )
+  expect(resources).toHaveBeenCalledWith({
+    query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' },
+  })
   await expect.element(builtIn).toBeChecked()
   await expect.element(dialog.getByRole('checkbox', { name: 'Staging' })).toBeChecked()
 })

@@ -141,18 +141,16 @@ it('creates the named app and keeps submission busy until navigation replaces th
   await nameInput().fill('My App')
   await createButton().click()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
-  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      body: {
-        name: 'My App',
-        description: '',
-        icon_type: 'emoji',
-        icon: '🤖',
-        icon_background: '#FFEAD5',
-        mode: 'advanced-chat',
-      },
-    }),
-  )
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'My App',
+      description: '',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#FFEAD5',
+      mode: 'advanced-chat',
+    },
+  })
   await expect.element(dialog()).toBeVisible()
   await expect.element(createButton()).toHaveAttribute('aria-disabled', 'true')
   const bounds = createButton().element().getBoundingClientRect()
@@ -239,18 +237,16 @@ it('creates a beginner chat app with the selected icon color through the scoped 
   await nameInput().click()
   await submitShortcut()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/chat-app/configuration']])
-  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      body: {
-        name: 'Keyboard App',
-        description: 'Created from shortcut',
-        icon_type: 'emoji',
-        icon: '🤖',
-        icon_background: '#F3FEE7',
-        mode: 'chat',
-      },
-    }),
-  )
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'Keyboard App',
+      description: 'Created from shortcut',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#F3FEE7',
+      mode: 'chat',
+    },
+  })
 })
 
 it('restores keyboard creation after closing and reopening the outer dialog with the icon picker open', async () => {
@@ -263,9 +259,9 @@ it('restores keyboard creation after closing and reopening the outer dialog with
   await nameInput().fill('Reopened App')
   await submitShortcut()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
-  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ body: expect.objectContaining({ name: 'Reopened App' }) }),
-  )
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: expect.objectContaining({ name: 'Reopened App' }),
+  })
 })
 
 it('keeps creation unavailable without a name', async () => {

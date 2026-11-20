@@ -134,14 +134,12 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   refresh.resolve({ ...response, data: saved, total: saved.length })
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
-  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      body: {
-        name: 'Product knowledge',
-        settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
-      },
-    }),
-  )
+  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'Product knowledge',
+      settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
+    },
+  })
   await expect
     .element(screen.getByRole('button', { name: /common.operation.edit Product knowledge/ }))
     .toBeVisible()

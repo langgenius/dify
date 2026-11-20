@@ -293,9 +293,7 @@ it('shows the bound tag after the real list refreshes', async () => {
   await page.getByRole('option', { name: 'Sales', exact: true }).click()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('combobox', { name: 'Sales: Tone Rewriter' })).toBeVisible()
-  expect(fake.console.tagBindings.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      body: { tag_ids: ['tag-1'], target_id: snippetId, type: 'snippet' },
-    }),
-  )
+  expect(fake.console.tagBindings.post).toHaveBeenCalledExactlyOnceWith({
+    body: { tag_ids: ['tag-1'], target_id: snippetId, type: 'snippet' },
+  })
 })

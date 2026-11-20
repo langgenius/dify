@@ -65,12 +65,10 @@ it('reveals settled failures, blocks repeated native activation and disappears a
   await expect.element(retry).toBeDisabled()
   await userEvent.keyboard('{Enter}')
   await expect.poll(() => fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledOnce()
-  expect(fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({
-      params: { dataset_id: DATASET_ID },
-      body: { document_ids: ['doc1', 'doc2'] },
-    }),
-  )
+  expect(fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledExactlyOnceWith({
+    params: { dataset_id: DATASET_ID },
+    body: { document_ids: ['doc1', 'doc2'] },
+  })
 
   retryResponse.resolve()
   await expect.element(retry).not.toBeInTheDocument()

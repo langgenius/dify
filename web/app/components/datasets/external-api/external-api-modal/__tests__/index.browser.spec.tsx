@@ -85,9 +85,9 @@ it('submits the entered settings and returns the saved API before closing', asyn
   await save(screen).click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(screen.getByText('Saved Product API')).toBeVisible()
-  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ body: data }),
-  )
+  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith({
+    body: data,
+  })
 })
 
 it('preserves entered settings after a failed creation and lets the user retry', async () => {

@@ -86,17 +86,15 @@ it('submits the real locale and browser timezone through the native password for
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(fake.console.emailRegister.post).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: {
-          token: 'register-token',
-          new_password: validPassword,
-          password_confirm: validPassword,
-          language: 'en-US',
-          timezone: 'Asia/Shanghai',
-        },
-      }),
-    ),
+    expect(fake.console.emailRegister.post).toHaveBeenCalledWith({
+      body: {
+        token: 'register-token',
+        new_password: validPassword,
+        password_confirm: validPassword,
+        language: 'en-US',
+        timezone: 'Asia/Shanghai',
+      },
+    }),
   )
 })
 

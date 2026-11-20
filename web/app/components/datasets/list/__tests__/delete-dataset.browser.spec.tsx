@@ -128,9 +128,9 @@ describe('Classic dataset deletion', () => {
     await earlier.promise
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    expect(fake.console.datasets.byDatasetId.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ params: { dataset_id: datasetId('Beta') } }),
-    )
+    expect(fake.console.datasets.byDatasetId.delete).toHaveBeenCalledWith({
+      params: { dataset_id: datasetId('Beta') },
+    })
     await expect.element(screen.getByRole('link', { name: 'Alpha', exact: true })).toBeVisible()
   })
 

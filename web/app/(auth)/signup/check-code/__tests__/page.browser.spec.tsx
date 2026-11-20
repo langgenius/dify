@@ -70,15 +70,13 @@ it('focuses the one-time code field and submits the native form with Enter', asy
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(fake.console.emailRegister.validity.post).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: {
-          code: '123456',
-          email: 'user@example.com',
-          token: 'signup-token',
-        },
-      }),
-    ),
+    expect(fake.console.emailRegister.validity.post).toHaveBeenCalledWith({
+      body: {
+        code: '123456',
+        email: 'user@example.com',
+        token: 'signup-token',
+      },
+    }),
   )
   expect(fake.console.emailRegister.validity.post).toHaveBeenCalledTimes(1)
   await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledTimes(1))
