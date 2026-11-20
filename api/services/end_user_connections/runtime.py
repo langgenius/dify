@@ -2,19 +2,21 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from constants.end_user_connections import ConnectionCredentialStatus, NodeConnectionStatus
 from services.end_user_connections.contracts import ConnectionCredentialChecks
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionCheckSnapshot,
+    ConnectionMutationGuard,
     NodeConnectionSelection,
     ToolConnectionTarget,
     WebConnectionContext,
 )
 from services.end_user_connections.errors import (
     ConnectionConflictError,
+    ConnectionIdentityError,
     ConnectionInvalidCredentialsError,
     ConnectionReauthorizationRequiredError,
 )
@@ -33,8 +35,20 @@ class ResolvedConnectionCredentials:
     credentials: Mapping[str, Any] = field(repr=False)
 
 
+class ConnectionRuntimeStore(ConnectionStore, Protocol):
+    def record_guest_use(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
+        """Atomically verify current Guest owner/revision and advance activity, or reject use.
+
+        The write serializes with expiry and Claim. It neither mutates the grant
+        revision nor touches defaults, selections or the Run.
+        """
+        ...
+
+
 class ConnectionRuntimeService:
-    def __init__(self, *, store: ConnectionStore, checks: ConnectionCredentialChecks, cipher: ConnectionCipher) -> None:
+    def __init__(
+        self, *, store: ConnectionRuntimeStore, checks: ConnectionCredentialChecks, cipher: ConnectionCipher
+    ) -> None:
         self._store = store
         self._checks = checks
         self._cipher = cipher
@@ -99,3 +113,14 @@ class ConnectionRuntimeService:
             ConnectionChanges(name=None, encrypted_credentials=None, credential_status=None, touch_activity=False),
         )
         return ResolvedConnectionCredentials(access=latest, credentials=credentials)
+
+    def record_guest_use(self, context: WebConnectionContext, connection: ConnectionAccessRecord) -> None:
+        """Fence actual dispatch using an already resolved Guest grant, not a new selection.
+
+        If ownership, the credential revision, or the Connection changed since
+        resolution, reject dispatch. Parameter discovery and checks never call this.
+        """
+        if context.account_id is not None:
+            raise ConnectionIdentityError()
+        require_personal_connection_access(context)
+        self._store.record_guest_use(context, connection_mutation_guard(context, connection))

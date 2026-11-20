@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
 
+import httpx
 import pytest
 import sqlalchemy as sa
 from pytest_mock import MockerFixture
@@ -13,6 +14,7 @@ from configs import dify_config
 from constants.end_user_connections import ConnectionCredentialStatus
 from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.plugin.impl import base as plugin_client
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolParameter
 from core.tools.tool_manager import ToolManager
@@ -29,6 +31,7 @@ from models.workflow import Workflow
 from services import end_user_connection_runtime_adapters as adapters
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import UpdateConnectionInput
+from services.end_user_connections.errors import ConnectionConflictError
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -241,6 +244,63 @@ def test_guest_owned_connection_can_execute(harness: OAuthHarness, monkeypatch: 
     with pytest.raises(ToolRuntimeResolutionError, match="Sign in to use personal connections"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
     assert harness.base.auth.calls == []
+
+
+@pytest.mark.parametrize("expiry_wins", [False, True])
+def test_guest_activity_is_recorded_only_at_dispatch_with_the_fixed_credential(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, expiry_wins: bool
+) -> None:
+    """Metadata resolution does not touch activity; an expired ID cannot dispatch or fall back."""
+    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
+    base = harness.base
+    with base.sessions.begin() as session:
+        user = session.get(EndUser, base.context.end_user_id)
+        assert user is not None
+        user.account_id = None
+    base.context = replace(base.context, account_id=None)
+    selected = base.service.create_api_key(base.context, base.command())
+    base.service.create_api_key(base.context, base.command("another-credential"))
+    old_activity = datetime(2000, 1, 1)
+    cutoff = datetime(2001, 1, 1)
+    with base.sessions.begin() as session:
+        row = session.get(EndUserConnection, selected.id)
+        assert row is not None
+        row.last_active_at = old_activity
+    (candidate,) = base.repository.inactive_guests(before=cutoff, after=None, limit=1)
+    loader = runtime(harness, selected.id)
+    handle = loader.get_runtime(
+        node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
+    )
+    tool = loader._tool_from_handle(handle)
+    loader.get_runtime_parameters(tool_runtime=handle)
+    before = base.repository.find(base.context, selected.id)
+    assert before is not None
+    assert before.summary.last_active_at == old_activity
+    dispatched = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/dispatch/tool/invoke")
+        dispatched.append(json.loads(request.content)["data"]["credentials"])
+        at_dispatch = base.repository.find(base.context, selected.id)
+        assert at_dispatch is not None
+        assert at_dispatch.summary.last_active_at != old_activity
+        assert at_dispatch.access.revision == before.access.revision
+        assert at_dispatch.summary.updated_at == before.summary.updated_at
+        return httpx.Response(200, text="")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client, base.sessions() as session:
+        monkeypatch.setattr(plugin_client, "_httpx_client", client)
+        if expiry_wins:
+            removed = base.repository.expire_guest(candidate, before=cutoff)
+            assert removed is not None
+            assert removed.access.id == selected.id
+            with pytest.raises(ConnectionConflictError):
+                list(tool.invoke(session, base.context.end_user_id, {}))
+            assert dispatched == []
+        else:
+            list(tool.invoke(session, base.context.end_user_id, {}))
+            assert dispatched == [{"api_key": "original-secret"}]
+            assert base.repository.expire_guest(candidate, before=cutoff) is None
 
 
 def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness: OAuthHarness) -> None:

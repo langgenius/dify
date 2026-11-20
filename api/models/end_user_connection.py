@@ -104,8 +104,9 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     """An Account owns credentials across Apps within their tenant namespace.
 
     Guest and service identities own credentials through their App-scoped EndUser.
-    Neither queries nor checks automatically extend last_active_at. Credential
-    mutation services must condition writes on owner and revision after external I/O.
+    last_active_at records creation, explicit authorization and edits, and actual
+    Guest tool invocation. Reads, checks, and automatic token refresh do not extend it.
+    Credential mutations must condition writes on owner and revision after external I/O.
     """
 
     __tablename__ = "end_user_connections"
