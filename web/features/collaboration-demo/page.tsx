@@ -7,6 +7,7 @@ import { DemoCanvasCorner, DemoHeader, DemoToolbar } from './components/demo-edi
 import { DemoPlayback } from './components/demo-playback'
 import { DemoStepGuide } from './components/demo-step-guide'
 import { createDemoGraph } from './demo-graph'
+import { useDemoOutcome } from './use-demo-outcome'
 import { useExitDemo } from './use-exit-demo'
 
 type Step = 'members' | 'comment' | 'playing'
@@ -14,6 +15,7 @@ type Step = 'members' | 'comment' | 'playing'
 export default function CollaborationDemoPage() {
   const { t } = useTranslation(['collaborationDemo'])
   const exitDemo = useExitDemo()
+  const endState = useDemoOutcome()
   const [step, setStep] = useState<Step>('members')
   const [membersTarget, setMembersTarget] = useState<HTMLElement | null>(null)
   const [commentTarget, setCommentTarget] = useState<HTMLButtonElement | null>(null)
@@ -43,7 +45,7 @@ export default function CollaborationDemoPage() {
         interactive={false}
       >
         <DemoCanvasCorner />
-        {step === 'playing' && <DemoPlayback />}
+        {step === 'playing' && <DemoPlayback endState={endState} />}
       </WorkflowPreview>
       <DemoStepGuide
         step={step}

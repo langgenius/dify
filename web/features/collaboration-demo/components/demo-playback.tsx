@@ -1,5 +1,6 @@
 'use client'
 
+import type { DemoEndState } from '../end-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
@@ -14,7 +15,7 @@ import { DemoEndPanel } from './demo-end-panel'
 
 const focusOnMount = (element: HTMLElement | null) => element?.focus()
 
-export function DemoPlayback() {
+export function DemoPlayback({ endState }: { endState: DemoEndState }) {
   const { t } = useTranslation(['collaborationDemo'])
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
   const playback = usePlayback(demoDuration)
@@ -63,15 +64,13 @@ export function DemoPlayback() {
         threadCloseRef={focusReopenedThread}
       />
       {playback.finished ? (
-        <>
-          <div className="pointer-events-none absolute inset-0 z-20 bg-background-overlay-alt motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0" />
-          <DemoEndPanel
-            onReplay={() => {
-              setThreadOpen(true)
-              playback.restart()
-            }}
-          />
-        </>
+        <DemoEndPanel
+          state={endState}
+          onReplay={() => {
+            setThreadOpen(true)
+            playback.restart()
+          }}
+        />
       ) : (
         <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <Button

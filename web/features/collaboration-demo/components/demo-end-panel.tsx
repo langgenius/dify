@@ -1,9 +1,8 @@
 'use client'
 
+import type { DemoEndState } from '../end-state'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
-import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,50 +11,19 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
-import { currentWorkspaceAtom } from '@/context/workspace-state'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
-import { canEditApps, getDemoEndState, pickLatestApp } from '../end-state'
 import { useExitDemo } from '../use-exit-demo'
 
-function useLatestApp(enabled: boolean) {
-  const query = (mode: 'workflow' | 'advanced-chat') =>
-    consoleQuery.apps.get.queryOptions({
-      input: { query: { page: 1, limit: 1, mode, sort_by: 'last_modified' } },
-      enabled,
-    })
-  const workflows = useQuery(query('workflow'))
-  const chatflows = useQuery(query('advanced-chat'))
-  if (workflows.isError || chatflows.isError) return { status: 'error' } as const
-  if (!workflows.data || !chatflows.data) return { status: 'pending' } as const
-  return {
-    status: 'success',
-    latest: pickLatestApp(workflows.data.data[0], chatflows.data.data[0]),
-  } as const
+type DemoEndPanelProps = {
+  state: DemoEndState
+  onReplay: () => void
 }
 
-export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
+export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
   const { t } = useTranslation(['collaborationDemo'])
   const router = useRouter()
   const exitDemo = useExitDemo()
-  const role = useAtomValue(currentWorkspaceAtom).role
-  const features = useQuery(consoleQuery.features.get.queryOptions())
-  const collaborationEnabled = features.data?.workflow_collaboration_enabled === true
-  const apps = useLatestApp(collaborationEnabled && canEditApps(role))
-  const state = getDemoEndState({
-    features: features.data
-      ? {
-          status: 'success',
-          collaborationEnabled,
-          upgradeAvailable: features.data.workflow_collaboration_upgrade_available === true,
-        }
-      : features.isError
-        ? { status: 'error' }
-        : { status: 'pending' },
-    role,
-    apps,
-  })
   const headingRef = useRef<HTMLHeadingElement>(null)
   const upgradeRef = useRef<HTMLButtonElement>(null)
   const [pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
@@ -122,7 +90,7 @@ export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
     <section
       aria-labelledby="collaboration-demo-end-title"
       aria-describedby="collaboration-demo-end-description"
-      className="pointer-events-auto absolute inset-0 z-30 m-auto h-fit w-100 max-w-[calc(100%-32px)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-5 shadow-xl motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
+      className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto w-100 max-w-[calc(100%-32px)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-5 shadow-xl motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
     >
       <h2
         id="collaboration-demo-end-title"
