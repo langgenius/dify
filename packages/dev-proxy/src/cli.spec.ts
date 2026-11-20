@@ -120,8 +120,11 @@ const spawnCli = (args: readonly string[], cwd: string) => {
 const stopChildProcess = async (child: DevProxyCliProcess) => {
   if (child.exitCode !== null || child.signalCode !== null) return
 
-  child.kill('SIGTERM')
-  await once(child, 'exit')
+  const exited = once(child, 'exit')
+  // These tests exercise serving and reloading. Terminate the fixture even if
+  // the CLI's graceful shutdown is still waiting for watchers or HTTP requests.
+  child.kill('SIGKILL')
+  await exited
 }
 
 const closeHttpServer = async (server: Server) => {
@@ -132,6 +135,7 @@ const closeHttpServer = async (server: Server) => {
       if (error) reject(error)
       else resolve()
     })
+    server.closeAllConnections()
   })
 }
 
@@ -216,7 +220,7 @@ describe('dev proxy CLI', () => {
   })
 
   // Scenario: editing the configured env file should reload route targets without restarting the CLI process.
-  it.each(['edit', 'replace', 'recreate', 'symlink'])(
+  it.each(['edit', 'replace', 'recreate', 'symlink', 'symlink chunked write'])(
     'should reload proxy config after an env file %s',
     async (operation) => {
       // Arrange
@@ -225,9 +229,10 @@ describe('dev proxy CLI', () => {
       const firstTarget = await startTextServer('first target')
       const secondTarget = await startTextServer('second target')
 
-      const envPath = path.join(tempDir, operation === 'symlink' ? '.env.target' : '.env.proxy')
+      const isSymlink = operation.startsWith('symlink')
+      const envPath = path.join(tempDir, isSymlink ? '.env.target' : '.env.proxy')
       await fs.writeFile(envPath, `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`)
-      if (operation === 'symlink') await fs.symlink(envPath, path.join(tempDir, '.env.proxy'))
+      if (isSymlink) await fs.symlink(envPath, path.join(tempDir, '.env.proxy'))
       await fs.writeFile(
         path.join(tempDir, 'dev-proxy.config.ts'),
         `
@@ -265,14 +270,18 @@ describe('dev proxy CLI', () => {
         await fs.rename(`${envPath}.tmp`, envPath)
       } else {
         if (operation === 'recreate') await fs.unlink(envPath)
+        if (operation === 'symlink chunked write') {
+          // Let the watcher observe truncation before the replacement contents arrive.
+          await fs.writeFile(envPath, '')
+          await new Promise((resolve) => setTimeout(resolve, 25))
+        }
         await fs.writeFile(envPath, nextEnv)
       }
       await waitForOutput(child, () => output, '[dev-proxy] reloaded env file changes')
-      const secondResponse = await fetchTextWithRetry(proxyUrl)
 
       // Assert
       expect(firstResponse).toBe('first target')
-      expect(secondResponse).toBe('second target')
+      await expect.poll(() => fetchTextWithRetry(proxyUrl), { timeout: 3000 }).toBe('second target')
       expect(child.exitCode).toBeNull()
       expect(child.signalCode).toBeNull()
     },

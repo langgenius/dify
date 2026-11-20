@@ -36,6 +36,7 @@ from services.app.console_gateway import (
     notify_app_deleted,
 )
 from services.app_service import AppService
+from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
 from services.model_provider.service import ModelProviderService
@@ -56,16 +57,20 @@ class AgentAppServices:
     build_session: AgentBuildSessionService
 
 
-def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
+def _can_restore_version(
+    tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan | None]
+) -> bool:
     """Require a paid plan for Cloud restores; other editions do not query billing."""
-    return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
+    return edition != DeploymentEdition.CLOUD or ((plan := get_plan(tenant_id)) is not None and plan.is_paid)
 
 
 def build_agent_app_services(
     *, database_client: sessionmaker[Session], rbac_members: MemberService
 ) -> AgentAppServices:
     """Wire Agent App use cases to the shared repository and their post-commit effects."""
-    apps = AgentAppRepository(session_factory=database_client)
+    apps = AgentAppRepository(
+        session_factory=database_client, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
         store=apps,

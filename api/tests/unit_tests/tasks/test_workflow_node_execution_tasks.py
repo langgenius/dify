@@ -433,7 +433,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
         elif writer == "sql-batch":
             repository.save_many([execution])
         else:
-            repository.save_execution_data(execution)
+            repository._save_execution_data(execution)
     with sqlite_session_factory() as session:
         stored = session.get(WorkflowNodeExecutionModel, EXECUTION_ID)
         assert stored is not None

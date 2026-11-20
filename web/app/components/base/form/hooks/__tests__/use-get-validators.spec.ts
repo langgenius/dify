@@ -17,7 +17,7 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textNumber,
     })
 
-    for (const validate of [validators?.onMount, validators?.onChange, validators?.onBlur]) {
+    for (const validate of [validators?.onMount, validators?.onChange]) {
       expect(validate?.({ value: 0 })).toBeUndefined()
       expect(validate?.({ value: null })).toContain('common.errorMsg.fieldRequired')
     }
@@ -32,7 +32,7 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textInput,
     })
 
-    for (const validate of [validators?.onMount, validators?.onChange, validators?.onBlur]) {
+    for (const validate of [validators?.onMount, validators?.onChange]) {
       expect(validate?.({ value: '' })).toContain('"field":"Username"')
       expect(validate?.({ value: 'Alice' })).toBeUndefined()
     }

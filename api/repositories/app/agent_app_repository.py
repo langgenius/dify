@@ -47,7 +47,7 @@ from repositories.app.agent_runtime_app import (
     ensure_workflow_agent_backing_app,
     resolve_agent_runtime_app,
 )
-from repositories.app.console_repository import ConsoleAppRepository, console_app_actor
+from repositories.app.console_repository import ConsoleAppRepository, StageTargetEvaluationCleanup, console_app_actor
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
@@ -82,8 +82,12 @@ from services.entities.app_entities import (
 
 
 class AgentAppRepository:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+    ) -> None:
+        """Use the supplied session factory and preserve evaluation cleanup within App deletion."""
         self._session_factory = session_factory
+        self._stage_evaluation_cleanup = stage_evaluation_cleanup
 
     def create_agent_app(
         self,
@@ -251,7 +255,12 @@ class AgentAppRepository:
                 resource_type=ResourceAccessTokenResourceType.APP,
                 resource_id=app.id,
             )
-            return ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
+            return ConsoleAppRepository.delete_app_record(
+                app,
+                account_id=context.account_id,
+                session=session,
+                stage_evaluation_cleanup=self._stage_evaluation_cleanup,
+            )
 
     def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
         """Return the tenant Agent's detached detail, materializing a hidden runtime App if needed."""

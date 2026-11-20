@@ -20,6 +20,7 @@ import { useQueries } from '@tanstack/react-query'
 import { intersectionBy, xorBy } from 'es-toolkit/compat'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
@@ -143,7 +144,7 @@ const createMetadataCondition = ({
   name,
   type,
 }: DatasetDocMetadataResponse): MetadataFilteringCondition => ({
-  id: crypto.randomUUID(),
+  id: uuid4(),
   metadata_id: id,
   name,
   comparison_operator:
