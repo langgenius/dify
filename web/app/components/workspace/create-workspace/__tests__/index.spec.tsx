@@ -30,13 +30,14 @@ const activatedWorkspace: WorkspaceActivationResponse = {
 }
 const clients: ReturnType<typeof createTestQueryClient>[] = []
 
-function renderPage() {
+function renderPage(webappUrl = '') {
   const queryClient = createTestQueryClient()
   clients.push(queryClient)
   return renderWithConsoleQuery(<CreateWorkspace />, {
     queryClient,
     accountProfile: null,
     currentWorkspace: null,
+    systemFeatures: { webapp_url: webappUrl },
   })
 }
 
@@ -159,11 +160,15 @@ describe('CreateWorkspace', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('links back to My apps', () => {
-    renderPage()
+  it.each([
+    ['https://webapp.example.com/web-prefix', 'https://webapp.example.com/web-prefix/my-apps'],
+    ['/web-prefix', '/web-prefix/my-apps'],
+    ['', '/my-apps'],
+  ])('links back to My apps using the runtime prefix %j', (webappUrl, expectedHref) => {
+    renderPage(webappUrl)
 
     expect(
       screen.getByRole('link', { name: 'common.workspace.create.backToMyApps' }),
-    ).toHaveAttribute('href', '/my-apps')
+    ).toHaveAttribute('href', expectedHref)
   })
 })
