@@ -6,6 +6,7 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@langgenius/dify-ui/avatar'
+import { useState } from 'react'
 import { getAvatarInitial } from '@/utils/avatar'
 
 /**
@@ -23,7 +24,22 @@ type CollaboratorAvatarProps = Omit<AvatarProps, 'children'> & {
   collaborator: Collaborator
 }
 
+const withoutQuery = (url: string) => url.split('?')[0]
+
+/**
+ * Avatar URLs are signed per response, so the same picture arrives under a new
+ * query string after every refetch. Keep the URL this avatar already shows while
+ * it points at the same file, so a refetch does not reload the image.
+ */
+function useStableImageSrc(src: string | undefined) {
+  const [stableSrc, setStableSrc] = useState(src)
+  const sameFile = src && stableSrc && withoutQuery(src) === withoutQuery(stableSrc)
+  if (src !== stableSrc && !sameFile) setStableSrc(src)
+  return sameFile ? stableSrc : src
+}
+
 export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvatarProps) {
+  const src = useStableImageSrc(collaborator.avatarUrl || undefined)
   return (
     <Avatar aria-hidden="true" {...props}>
       <AvatarFallback
@@ -31,7 +47,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>
-      <AvatarImage src={collaborator.avatarUrl || undefined} alt="" />
+      <AvatarImage src={src} alt="" />
     </Avatar>
   )
 }
