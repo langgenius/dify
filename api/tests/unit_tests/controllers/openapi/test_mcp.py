@@ -342,7 +342,7 @@ def test_the_mcp_route_is_not_in_the_catalog(openapi_app: Flask) -> None:
     with openapi_app.test_request_context():
         raw, _ = current_catalog()
 
-    assert all("mcp" not in entry["path"] for entry in json.loads(raw)["ops"].values())
+    assert all(entry["path"] != MCP_PATH for entry in json.loads(raw)["ops"].values())
 
 
 class _OpRecorder:
