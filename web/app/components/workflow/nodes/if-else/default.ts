@@ -38,11 +38,21 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     ],
   },
   checkValid(payload: IfElseNodeType, t: TFunction<['workflow']>) {
-    const { cases } = payload
+    const { cases, _targetBranches } = payload
     if (!Array.isArray(cases)) {
       return {
         isValid: false,
         errorMessage: t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'IF' }),
+      }
+    }
+
+    if (
+      !Array.isArray(_targetBranches) ||
+      !_targetBranches.some((branch) => branch?.id === 'false')
+    ) {
+      return {
+        isValid: false,
+        errorMessage: t(($) => $[`${i18nPrefix}.fieldRequired`], { ns: 'workflow', field: 'ELSE' }),
       }
     }
 

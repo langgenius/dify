@@ -186,6 +186,7 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
 
 export const branchNameCorrect = (branches: Branch[]) => {
   const branchLength = branches.length
+  if (branchLength < 2 && branches[0]?.id !== 'false') return branches
 
   if (branchLength <= 2) {
     return branches.map((branch) => {

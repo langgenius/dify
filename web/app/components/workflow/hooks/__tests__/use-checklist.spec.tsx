@@ -37,7 +37,7 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { CodeLanguage } from '../../nodes/code/types'
-import { LogicalOperator } from '../../nodes/if-else/types'
+import { ComparisonOperator, LogicalOperator } from '../../nodes/if-else/types'
 import llmDefault from '../../nodes/llm/default'
 import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
@@ -722,6 +722,50 @@ describe('useChecklistBeforePublish', () => {
 
     await act(async () => {
       expect(await result.current.handleCheckBeforePublish()).toBe(canPublish)
+    })
+  })
+
+  it('reports a missing ELSE outlet on the canvas and blocks publishing', async () => {
+    const { nodes } = buildConnectedGraph()
+    const branch = createNode({
+      id: 'branch',
+      data: {
+        type: BlockEnum.IfElse,
+        _targetBranches: [{ id: 'true', name: 'IF' }],
+        cases: [
+          {
+            case_id: 'true',
+            logical_operator: LogicalOperator.and,
+            conditions: [
+              {
+                id: 'condition',
+                varType: VarType.number,
+                variable_selector: ['code', 'result'],
+                comparison_operator: ComparisonOperator.equal,
+                value: '1',
+              },
+            ],
+          },
+        ],
+      },
+    })
+    const edges = [
+      createEdge({ source: 'start', target: 'code' }),
+      createEdge({ source: 'code', target: branch.id }),
+      createEdge({ source: branch.id, sourceHandle: 'true', target: 'end' }),
+    ]
+    const { wrapper } = createChecklistWrapper({ nodes: [...nodes, branch], edges })
+    const { result } = renderHook(
+      () => ({ run: useWorkflowRunValidation(), publish: useChecklistBeforePublish() }),
+      { wrapper },
+    )
+
+    const warning = result.current.run.warningNodes.find((item) => item.id === branch.id)
+    expect(warning).toMatchObject({
+      errorMessages: expect.arrayContaining(['workflow.errorMsg.fieldRequired:{"field":"ELSE"}']),
+    })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
     })
   })
 
