@@ -118,9 +118,18 @@ def test_a_zero_byte_member_and_a_nested_zip_are_plain_members() -> None:
     assert members == [ArchiveMember("empty.txt", b""), ArchiveMember("inner.zip", inner)]
 
 
-@pytest.mark.parametrize("path", ["../x", "/abs", "a\\b", "é.md", "a b/中文.md"])
+@pytest.mark.parametrize("path", ["../x", "/abs", "é.md", "a b/中文.md"])
 def test_paths_are_returned_as_stored(path: str) -> None:
     assert read_archive(zip_bytes({path: b"x"}), _ROOMY) == [ArchiveMember(path, b"x")]
+
+
+def test_a_backslash_in_a_path_is_read_as_a_separator() -> None:
+    """Windows PowerShell 5.1's Compress-Archive writes its paths, folder entries included, with backslashes."""
+    content = zip_bytes({"SKILL.md": b"a", "scripts\\run.py": b"b"}, folders=["scripts\\"])
+
+    members = read_archive(content, ArchiveLimits(max_entries=2, max_bytes=10))
+
+    assert members == [ArchiveMember("SKILL.md", b"a"), ArchiveMember("scripts/run.py", b"b")]
 
 
 def test_a_name_without_the_utf8_flag_comes_out_as_zipfile_decodes_it() -> None:

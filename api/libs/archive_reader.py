@@ -1,6 +1,7 @@
 """Read a zip into named members under limits, in memory. The reading side of ``archive_writer``.
 
-Members come back with their paths exactly as the zip stores them: no junk filter and no path rule here.
+Members come back with their paths as the zip stores them, except that a backslash is read as a separator:
+Windows PowerShell 5.1's ``Compress-Archive`` writes ``scripts\\run.py``. No junk filter and no path rule here.
 Callers apply ``entries_from_folder`` and a ``PathPolicy`` when they turn the members into a folder.
 """
 
@@ -17,6 +18,8 @@ from libs.archive_writer import ArchiveError, ArchiveLimitKind, ArchiveLimits, A
 from libs.zip_filename_recovery import open_zip_with_replacement_names
 
 _READ_CHUNK_SIZE: Final = 64 * 1024
+_SEPARATOR: Final = "/"
+_WINDOWS_SEPARATOR: Final = "\\"
 _ENCRYPTED_FLAG: Final = 0x1
 _READ_ERRORS: Final = (zipfile.BadZipFile, NotImplementedError, zlib.error, EOFError)
 
@@ -54,6 +57,10 @@ class ArchiveMember:
     content: bytes
 
 
+def _path_of(info: zipfile.ZipInfo) -> str:
+    return info.filename.replace(_WINDOWS_SEPARATOR, _SEPARATOR)
+
+
 def is_zip(content: bytes) -> bool:
     return zipfile.is_zipfile(io.BytesIO(content))
 
@@ -61,24 +68,25 @@ def is_zip(content: bytes) -> bool:
 def read_archive(content: bytes, limits: ArchiveLimits) -> list[ArchiveMember]:
     """Precondition: ``content`` is the whole archive.
 
-    Postcondition: the file members in the zip's order; folder entries are skipped and do not count toward
-    ``limits.max_entries``. Each member is read in pieces and reading stops as soon as the running total
-    passes ``limits.max_bytes``, whatever the headers claim. Raises ``ArchiveTooLargeError`` past a limit and
-    ``ArchiveUnreadableError`` for bytes that are not a zip, an encrypted member or a member that fails to read.
+    Postcondition: the file members in the zip's order, each path with ``/`` for every backslash; folder entries
+    are skipped and do not count toward ``limits.max_entries``. Each member is read in pieces and reading stops
+    as soon as the running total passes ``limits.max_bytes``, whatever the headers claim. Raises
+    ``ArchiveTooLargeError`` past a limit and ``ArchiveUnreadableError`` for bytes that are not a zip, an
+    encrypted member or a member that fails to read.
     """
     try:
         archive = open_zip_with_replacement_names(content)
     except zipfile.BadZipFile as error:
         raise ArchiveUnreadableError(ArchiveUnreadableReason.NOT_A_ZIP) from error
     with archive:
-        files = [info for info in archive.infolist() if not info.is_dir()]
+        files = [info for info in archive.infolist() if not _path_of(info).endswith(_SEPARATOR)]
         if len(files) > limits.max_entries:
             raise ArchiveTooLargeError(ArchiveLimitKind.ENTRIES, limits.max_entries)
         members: list[ArchiveMember] = []
         total = 0
         for info in files:
             if info.flag_bits & _ENCRYPTED_FLAG:
-                raise ArchiveUnreadableError(ArchiveUnreadableReason.ENCRYPTED, path=info.filename)
+                raise ArchiveUnreadableError(ArchiveUnreadableReason.ENCRYPTED, path=_path_of(info))
             member, total = _read_member(archive, info, total=total, max_bytes=limits.max_bytes)
             members.append(member)
     return members
@@ -97,5 +105,5 @@ def _read_member(
                     raise ArchiveTooLargeError(ArchiveLimitKind.BYTES, max_bytes)
                 content += chunk
     except _READ_ERRORS as error:
-        raise ArchiveUnreadableError(ArchiveUnreadableReason.DAMAGED, path=info.filename) from error
-    return ArchiveMember(info.filename, bytes(content)), total
+        raise ArchiveUnreadableError(ArchiveUnreadableReason.DAMAGED, path=_path_of(info)) from error
+    return ArchiveMember(_path_of(info), bytes(content)), total
