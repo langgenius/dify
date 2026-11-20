@@ -2,12 +2,97 @@ import type { OutputVar } from './types'
 import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
+const canStartJavaScriptRegex = (code: string, start: number) => {
+  let previous = start - 1
+  while (previous >= 0 && /\s/.test(code[previous]!)) previous--
+  if (previous < 0) return true
+
+  const previousChar = code[previous]!
+  if ((previousChar === '+' || previousChar === '-') && code[previous - 1] === previousChar)
+    return false
+  if ('([{,;:=!?&|+-*%^~<>/'.includes(previousChar)) return true
+  if (previousChar === '>' && code[previous - 1] === '=') return true
+
+  const previousWord = code.slice(0, previous + 1).match(/[\w$]+$/)?.[0]
+  return [
+    'await',
+    'case',
+    'delete',
+    'else',
+    'in',
+    'instanceof',
+    'of',
+    'return',
+    'throw',
+    'typeof',
+    'void',
+    'yield',
+  ].includes(previousWord ?? '')
+}
+
+const isJavaScriptControlConditionOpen = (code: string, start: number) =>
+  /(?:^|[^\w$.])(?:catch|if|switch|while|for(?:\s+await)?|with)\s*$/.test(code.slice(0, start))
+
+const isJavaScriptControlBodyOpen = (code: string, start: number) =>
+  /(?:^|[^\w$.])(?:else|finally|try)\s*$/.test(code.slice(0, start))
+
+const isJavaScriptArrowBodyOpen = (code: string, start: number) =>
+  /=>\s*$/.test(code.slice(0, start))
+
+const isJavaScriptStandaloneBlockOpen = (code: string, start: number, inStatementList: boolean) => {
+  if (!inStatementList) return false
+  let previous = start - 1
+  while (previous >= 0 && /\s/.test(code[previous]!)) previous--
+  return previous >= 0 && '{;}'.includes(code[previous]!)
+}
+
+const getJavaScriptRegexLiteralEnd = (
+  code: string,
+  start: number,
+  followsControlCondition = false,
+) => {
+  if (
+    code[start] !== '/' ||
+    code[start + 1] === '/' ||
+    code[start + 1] === '*' ||
+    (!followsControlCondition && !canStartJavaScriptRegex(code, start))
+  ) {
+    return undefined
+  }
+
+  let inCharacterClass = false
+  let escaped = false
+  for (let i = start + 1; i < code.length; i++) {
+    const char = code[i]!
+    if (char === '\n' || char === '\r') return undefined
+    if (escaped) {
+      escaped = false
+    } else if (char === '\\') {
+      escaped = true
+    } else if (char === '[') {
+      inCharacterClass = true
+    } else if (char === ']' && inCharacterClass) {
+      inCharacterClass = false
+    } else if (char === '/' && !inCharacterClass) {
+      let end = i + 1
+      while (/[a-z]/i.test(code[end] ?? '')) end++
+      return end
+    }
+  }
+
+  return undefined
+}
+
 const splitTopLevelParams = (rawParams: string, language: CodeLanguage) => {
   const params: string[] = []
   let start = 0
   let nesting = 0
   let quote: string | undefined
   let escaped = false
+  const controlConditionParens: boolean[] = []
+  const controlBodyBraces: boolean[] = []
+  const statementListBraces: boolean[] = []
+  let followsControlCondition = false
 
   for (let i = 0; i < rawParams.length; i++) {
     const char = rawParams[i]!
@@ -24,6 +109,25 @@ const splitTopLevelParams = (rawParams: string, language: CodeLanguage) => {
       continue
     }
 
+    const opensControlBody =
+      language === CodeLanguage.javascript &&
+      char === '{' &&
+      (followsControlCondition || isJavaScriptControlBodyOpen(rawParams, i))
+    const opensStandaloneBlock =
+      language === CodeLanguage.javascript &&
+      char === '{' &&
+      isJavaScriptStandaloneBlockOpen(rawParams, i, statementListBraces.at(-1) ?? false)
+    if (!/\s/.test(char) && char !== '/' && !opensControlBody) followsControlCondition = false
+
+    if (language === CodeLanguage.javascript && char === '/') {
+      const regexEnd = getJavaScriptRegexLiteralEnd(rawParams, i, followsControlCondition)
+      if (regexEnd !== undefined) {
+        i = regexEnd - 1
+        followsControlCondition = false
+        continue
+      }
+    }
+
     if (char === '"' || char === "'" || (language === CodeLanguage.javascript && char === '`')) {
       quote =
         language === CodeLanguage.python3 && rawParams.startsWith(char.repeat(3), i)
@@ -34,8 +138,22 @@ const splitTopLevelParams = (rawParams: string, language: CodeLanguage) => {
     }
 
     if (char === '(' || char === '[' || char === '{') {
+      if (language === CodeLanguage.javascript && char === '(')
+        controlConditionParens.push(isJavaScriptControlConditionOpen(rawParams, i))
+      if (language === CodeLanguage.javascript && char === '{') {
+        controlBodyBraces.push(opensControlBody || opensStandaloneBlock)
+        statementListBraces.push(
+          opensControlBody || isJavaScriptArrowBodyOpen(rawParams, i) || opensStandaloneBlock,
+        )
+        followsControlCondition = false
+      }
       nesting++
     } else if (char === ')' || char === ']' || char === '}') {
+      if (language === CodeLanguage.javascript && char === ')')
+        followsControlCondition = controlConditionParens.pop() ?? false
+      if (language === CodeLanguage.javascript && char === '}')
+        followsControlCondition = controlBodyBraces.pop() ?? false
+      if (language === CodeLanguage.javascript && char === '}') statementListBraces.pop()
       nesting = Math.max(0, nesting - 1)
     } else if (char === ',' && nesting === 0) {
       params.push(rawParams.slice(start, i))
@@ -63,6 +181,10 @@ const getMainParams = (
   let nesting = 1
   let quote: string | undefined
   let escaped = false
+  const controlConditionParens: boolean[] = []
+  const controlBodyBraces: boolean[] = []
+  const statementListBraces: boolean[] = []
+  let followsControlCondition = false
 
   for (let i = start; i < code.length; i++) {
     const char = code[i]!
@@ -79,6 +201,25 @@ const getMainParams = (
       continue
     }
 
+    const opensControlBody =
+      language === CodeLanguage.javascript &&
+      char === '{' &&
+      (followsControlCondition || isJavaScriptControlBodyOpen(code, i))
+    const opensStandaloneBlock =
+      language === CodeLanguage.javascript &&
+      char === '{' &&
+      isJavaScriptStandaloneBlockOpen(code, i, statementListBraces.at(-1) ?? false)
+    if (!/\s/.test(char) && char !== '/' && !opensControlBody) followsControlCondition = false
+
+    if (language === CodeLanguage.javascript && char === '/') {
+      const regexEnd = getJavaScriptRegexLiteralEnd(code, i, followsControlCondition)
+      if (regexEnd !== undefined) {
+        i = regexEnd - 1
+        followsControlCondition = false
+        continue
+      }
+    }
+
     if (char === '"' || char === "'" || (language === CodeLanguage.javascript && char === '`')) {
       quote =
         language === CodeLanguage.python3 && code.startsWith(char.repeat(3), i)
@@ -86,9 +227,24 @@ const getMainParams = (
           : char
       i += quote.length - 1
     } else if (char === '(') {
+      if (language === CodeLanguage.javascript)
+        controlConditionParens.push(isJavaScriptControlConditionOpen(code, i))
       nesting++
-    } else if (char === ')' && --nesting === 0) {
-      return code.slice(start, i)
+    } else if (char === ')') {
+      if (language === CodeLanguage.javascript)
+        followsControlCondition = controlConditionParens.pop() ?? false
+      if (--nesting === 0) return code.slice(start, i)
+    } else if (char === '{' && language === CodeLanguage.javascript) {
+      controlBodyBraces.push(opensControlBody || opensStandaloneBlock)
+      statementListBraces.push(
+        opensControlBody || isJavaScriptArrowBodyOpen(code, i) || opensStandaloneBlock,
+      )
+      followsControlCondition = false
+      nesting++
+    } else if (char === '}' && language === CodeLanguage.javascript) {
+      followsControlCondition = controlBodyBraces.pop() ?? false
+      statementListBraces.pop()
+      nesting--
     }
   }
 
