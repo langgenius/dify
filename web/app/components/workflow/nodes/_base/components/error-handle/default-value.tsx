@@ -1,4 +1,5 @@
 import type { DefaultValueForm } from './types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Input } from '@langgenius/dify-ui/input'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,8 +46,18 @@ const DefaultValue = ({ forms, onFormChange }: DefaultValueProps) => {
                   onValueChange={(value) => onFormChange({ key: form.key, type: form.type, value })}
                 />
               )}
+              {form.type === VarType.boolean && (
+                <Checkbox
+                  aria-label={form.key}
+                  checked={!!form.value}
+                  onCheckedChange={(value) =>
+                    onFormChange({ key: form.key, type: form.type, value })
+                  }
+                />
+              )}
               {(form.type === VarType.array ||
                 form.type === VarType.arrayNumber ||
+                form.type === VarType.arrayBoolean ||
                 form.type === VarType.arrayString ||
                 form.type === VarType.arrayObject ||
                 form.type === VarType.object) && (
