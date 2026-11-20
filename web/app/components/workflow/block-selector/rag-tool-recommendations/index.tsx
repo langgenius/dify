@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { selectRAGRecommendedPlugins } from '@/app/components/tools/utils/query-select'
 import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useMarketplace } from '@/features/marketplace/client'
@@ -48,7 +48,7 @@ export function RAGToolRecommendations({
 
   const unInstalledPlugins = useMemo(() => {
     if (ragRecommendedPlugins)
-      return ragRecommendedPlugins.uninstalled_recommended_plugins.map(getFormattedPlugin)
+      return ragRecommendedPlugins.uninstalled_recommended_plugins.map(toPluginCard)
     return []
   }, [ragRecommendedPlugins])
 

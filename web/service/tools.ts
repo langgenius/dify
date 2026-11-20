@@ -117,10 +117,6 @@ export const updateCustomCollection = (collection: CustomCollectionBackend) => {
   })
 }
 
-export const removeCustomCollection = (collectionName: string) => {
-  return toolProvider.api.delete.post({ body: { provider: collectionName } })
-}
-
 export const importSchemaFromURL = (url: string) => {
   return toolProvider.api.remote.get({ query: { url } })
 }
@@ -176,8 +172,4 @@ export const fetchWorkflowToolDetail = (toolID: string) => {
   return toolProvider.workflow.get
     .get({ query: { workflow_tool_id: toolID } })
     .then(selectWorkflowToolDetail)
-}
-
-export const deleteWorkflowTool = (toolID: string) => {
-  return toolProvider.workflow.delete.post({ body: { workflow_tool_id: toolID } })
 }

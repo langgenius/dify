@@ -2,8 +2,8 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
-import { TagManagementModal } from '../components/tag-management-modal'
-import { renderWithTags } from './render-browser'
+import { TagManagementDialog } from '../tag-management-dialog'
+import { renderWithTags } from '@/test/tag-management'
 
 let serverTags: Tag[] = []
 // Tag routes address tags by UUID.
@@ -15,7 +15,7 @@ function renderEditor(bindingCount = '3') {
     { ...baseTag, binding_count: bindingCount },
     { ...baseTag, id: backendId, name: 'Backend', binding_count: '' },
   ]
-  return renderWithTags(<TagManagementModal type="app" show onClose={() => {}} />, serverTags)
+  return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, serverTags)
 }
 const edit = () => page.getByRole('button', { name: 'common.operation.edit Frontend' })
 const remove = () => page.getByRole('button', { name: 'common.operation.remove Frontend' })
