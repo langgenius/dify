@@ -62,7 +62,7 @@ export function IpPolicyDialog({
   onOpenChange: (open: boolean) => void
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <IpPolicyDialogContent>
         <IpPolicyForm
           {...formProps}

@@ -162,6 +162,7 @@ export default function IpPoliciesPage() {
   const [recovery, setRecovery] = useState<PolicyRecovery>()
   const createButtonRef = useRef<HTMLButtonElement>(null)
   const formAnalyticsRef = useRef<IpPolicyFormSession | null>(null)
+  const savedCreateSessionRef = useRef<IpPolicyFormSession | null>(null)
   const groups = data?.groups ?? []
   const isEmpty = !isPending && !isError && groups.length === 0
   const entitled = data?.entitled === true
@@ -173,6 +174,15 @@ export default function IpPoliciesPage() {
     viewedRef.current = true
     trackNetworkAccessEvent('ip_policy_interaction', { action: 'settings_tab_viewed' })
   }, [canReadPolicies])
+
+  useEffect(() => {
+    const session = savedCreateSessionRef.current
+    if (!session || !createGroup.isSuccess) return
+    // Refetch settles before the list commits its new Add button.
+    if (data !== queryClient.getQueryData(groupsQuery.queryKey)) return
+    savedCreateSessionRef.current = null
+    if (formAnalyticsRef.current === session && createDialog.isOpen) createDialog.close()
+  }, [createDialog, createGroup.isSuccess, data, groupsQuery.queryKey, queryClient])
 
   const refreshGroupsAfterConflict = async (groupId: string, session: IpPolicyFormSession) => {
     if (formAnalyticsRef.current !== session) return
@@ -317,7 +327,7 @@ export default function IpPoliciesPage() {
         },
         {
           onSuccess: () => {
-            if (formAnalyticsRef.current === formSession && dialog.isOpen) dialog.close()
+            savedCreateSessionRef.current = formSession
           },
         },
       )
@@ -448,6 +458,7 @@ export default function IpPoliciesPage() {
       {canMutate && (
         <Dialog
           handle={createDialog}
+          disablePointerDismissal
           onOpenChange={(open, details) =>
             handleDialogOpenChange(open, details, createGroup.isPending)
           }
@@ -465,6 +476,7 @@ export default function IpPoliciesPage() {
       )}
       <Dialog
         handle={policyDialog}
+        disablePointerDismissal={canMutate}
         onOpenChange={(open, details) =>
           handleDialogOpenChange(open, details, updateGroup.isPending)
         }

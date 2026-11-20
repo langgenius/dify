@@ -35233,6 +35233,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [RagPipelineIconInfo](#ragpipelineiconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
@@ -35259,6 +35260,15 @@ Resource types understood by access policies.
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### RagPipelineIconInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
 #### RagPipelineImportCheckDependenciesResponse
 
