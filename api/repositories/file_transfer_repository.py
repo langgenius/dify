@@ -1,8 +1,9 @@
 """SQL adapter for file transfer rows."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import override
+from uuid import UUID
 
 from sqlalchemy import CursorResult, Select, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -109,20 +110,19 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
             FileTransfer.owner_id == owner_id,
             FileTransfer.expires_at > now,
         )
-        return self._one(statement)
+        return self._by_id(transfer_id, statement, _record)
 
     @override
     def get(self, *, transfer_id: str, now: datetime) -> Transfer | None:
         statement = select(FileTransfer).where(FileTransfer.id == transfer_id, FileTransfer.expires_at > now)
-        return self._one(statement)
+        return self._by_id(transfer_id, statement, _record)
 
     @override
     def token_digest(self, *, transfer_id: str, now: datetime) -> str | None:
         statement = select(FileTransfer.token_digest).where(
             FileTransfer.id == transfer_id, FileTransfer.expires_at > now
         )
-        with self._session_factory() as session:
-            return session.scalar(statement)
+        return self._by_id(transfer_id, statement, str)
 
     @override
     def owned(self, *, owner_id: str) -> Sequence[Transfer]:
@@ -148,16 +148,30 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
         with self._session_factory.begin() as session:
             session.execute(delete(FileTransfer).where(FileTransfer.id.in_(transfer_ids)))
 
-    def _one(self, statement: Select[tuple[FileTransfer]]) -> Transfer | None:
+    def _by_id[T, R](self, transfer_id: str, statement: Select[tuple[T]], value_of: Callable[[T], R]) -> R | None:
+        """Postcondition: the one value the statement selects for ``transfer_id``, mapped before the session
+        closes; None when there is none or the id is not a UUID. An id comes from a URL or a request body, and
+        PostgreSQL refuses to compare a UUID column with text that is not one, so such an id is never queried.
+        """
+        if not _is_uuid(transfer_id):
+            return None
         with self._session_factory() as session:
-            row = session.scalar(statement)
-            if row is None:
+            found = session.scalar(statement)
+            if found is None:
                 return None
-            return _record(row)
+            return value_of(found)
 
     def _all(self, statement: Select[tuple[FileTransfer]]) -> list[Transfer]:
         with self._session_factory() as session:
             return [_record(row) for row in session.scalars(statement)]
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _write_file(row: FileTransfer, file: StoredFile) -> None:

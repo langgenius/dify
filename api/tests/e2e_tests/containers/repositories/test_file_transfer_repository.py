@@ -51,3 +51,14 @@ def test_two_claims_at_once_record_exactly_one_file() -> None:
         assert stored.file == files[won.index(True)]
     finally:
         repository.delete(transfer_ids=[transfer.id])
+
+
+@pytest.mark.parametrize("transfer_id", ["not-a-uuid", "", "1234"])
+def test_an_id_that_is_not_a_uuid_reads_as_nothing(transfer_id: str) -> None:
+    """PostgreSQL refuses to compare a UUID column with such text; the repository must answer nothing instead."""
+    repository = SQLAlchemyFileTransferRepository(session_factory=sessionmaker(bind=db.engine, expire_on_commit=False))
+    now = naive_utc_now()
+
+    assert repository.find(owner_id="owner", transfer_id=transfer_id, now=now) is None
+    assert repository.get(transfer_id=transfer_id, now=now) is None
+    assert repository.token_digest(transfer_id=transfer_id, now=now) is None
