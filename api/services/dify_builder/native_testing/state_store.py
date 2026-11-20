@@ -11,8 +11,9 @@ from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
+from enum import StrEnum
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter
@@ -87,9 +88,24 @@ from services.dify_builder.native_testing.repository import (
 )
 from services.dify_builder.native_testing.transitions import require_ancestor_authority
 
+
+class RecoveryObjectRole(StrEnum):
+    CONFIG = "config"
+    ASSOCIATION = "association"
+    CHECKPOINT = "checkpoint"
+    RECONSTRUCTION = "reconstruction"
+    RELATION = "relation"
+
+
 _JSON = TypeAdapter(FiniteJSON)
 logger = logging.getLogger(__name__)
-PayloadKind = Literal["context", "checkpoint", "result"]
+
+
+class PayloadKind(StrEnum):
+    CONTEXT = "context"
+    CHECKPOINT = "checkpoint"
+    RESULT = "result"
+
 
 if TYPE_CHECKING:
     from dify_agent.protocol.confirmed_recovery import AgentRecoveryBinding
@@ -108,13 +124,14 @@ if TYPE_CHECKING:
 def encode_payload(
     *, tenant_id: str, request_id: str, invocation_id: str, kind: str, payload: JsonValue
 ) -> tuple[str, str]:
+    """Encode a payload and its owner fields as JSON with a stable digest."""
     value = _JSON.validate_python(payload)
     envelope = {
         "schema": "1",
         "tenant_id": tenant_id,
         "request_id": request_id,
         "invocation_id": invocation_id,
-        "kind": kind,
+        "kind": kind.value if isinstance(kind, PayloadKind) else kind,
         "payload": value,
     }
     return json.dumps(
@@ -1033,7 +1050,11 @@ class NativeExecutionStateStore:
             existing[0]
             if existing is not None
             else self.prepare_object(
-                ref=ref, tenant_id=prepared.context.tenant_id, kind="result", logical_key=logical_key, payload=value
+                ref=ref,
+                tenant_id=prepared.context.tenant_id,
+                kind=PayloadKind.RESULT,
+                logical_key=logical_key,
+                payload=value,
             )
         )
         self._agent_refresh_access(prepared)
@@ -1170,7 +1191,11 @@ class NativeExecutionStateStore:
             existing[0]
             if existing is not None
             else self.prepare_object(
-                ref=ref, tenant_id=prepared.context.tenant_id, kind="result", logical_key=logical_key, payload=value
+                ref=ref,
+                tenant_id=prepared.context.tenant_id,
+                kind=PayloadKind.RESULT,
+                logical_key=logical_key,
+                payload=value,
             )
         )
         self._agent_refresh_access(prepared)
@@ -1741,7 +1766,7 @@ class NativeExecutionStateStore:
             schema_version="agent-recovery-config-v1", parent_node=prepared.parent, config=config
         )
         config_receipt = self.stage_recovery_object(
-            ref=ref, expected=expected, role="config", value=payload.model_dump(mode="json")
+            ref=ref, expected=expected, role=RecoveryObjectRole.CONFIG, value=payload.model_dump(mode="json")
         )
         executable = self._recovery_prepared_config(receipt=config_receipt, value=payload.model_dump(mode="json"))
         workspace = AgentTestWorkspaceRef(
@@ -1764,7 +1789,7 @@ class NativeExecutionStateStore:
             workspace=workspace,
         )
         association_receipt = self.stage_recovery_object(
-            ref=ref, expected=expected, role="association", value=association.model_dump(mode="json")
+            ref=ref, expected=expected, role=RecoveryObjectRole.ASSOCIATION, value=association.model_dump(mode="json")
         )
         calls = [
             {
@@ -1784,7 +1809,7 @@ class NativeExecutionStateStore:
             }
         )
         checkpoint_receipt = self.stage_recovery_object(
-            ref=ref, expected=expected, role="checkpoint", value=checkpoint.model_dump(mode="json")
+            ref=ref, expected=expected, role=RecoveryObjectRole.CHECKPOINT, value=checkpoint.model_dump(mode="json")
         )
         reconstruction = AgentRecoveryReconstruction(
             kind="empty-bootstrap-v1",
@@ -1792,7 +1817,10 @@ class NativeExecutionStateStore:
             home_snapshot_digest=expected.home_snapshot_digest,
         )
         reconstruction_receipt = self.stage_recovery_object(
-            ref=ref, expected=expected, role="reconstruction", value=reconstruction.model_dump(mode="json")
+            ref=ref,
+            expected=expected,
+            role=RecoveryObjectRole.RECONSTRUCTION,
+            value=reconstruction.model_dump(mode="json"),
         )
         successor = AgentRecoveryBinding(
             binding_id=workspace.binding_id,
@@ -1846,7 +1874,7 @@ class NativeExecutionStateStore:
             checkpoint,
         )
         relation_receipt = self.stage_recovery_object(
-            ref=ref, expected=expected, role="relation", value=relation.model_dump(mode="json")
+            ref=ref, expected=expected, role=RecoveryObjectRole.RELATION, value=relation.model_dump(mode="json")
         )
         return PreparedRecoverySelection(
             expected,
@@ -1863,7 +1891,7 @@ class NativeExecutionStateStore:
         *,
         ref: NativeTestContextRef,
         expected: "AgentRecoveryRecord",
-        role: Literal["config", "association", "checkpoint", "reconstruction", "relation"],
+        role: RecoveryObjectRole,
         value: JsonValue,
     ) -> ObjectReceipt:
         """Acknowledge one inert allocated-only role and return its stable stored ID.
@@ -1875,9 +1903,7 @@ class NativeExecutionStateStore:
         """
         from services.dify_builder.native_testing.agent_recovery import recovery_record
 
-        role = TypeAdapter(
-            Literal["config", "association", "checkpoint", "reconstruction", "relation"]
-        ).validate_python(role)
+        role = TypeAdapter(RecoveryObjectRole).validate_python(role)
         owned = self.loader.load(ref=ref)
         if expected.phase != "allocated" or recovery_record(owned.bindings) != expected:
             raise BuilderExecutionPolicyError("native_agent_recovery_conflict")
@@ -1891,7 +1917,7 @@ class NativeExecutionStateStore:
             existing[0]
             if existing is not None
             else self.prepare_object(
-                ref=ref, tenant_id=owned.tenant_id, kind="result", logical_key=logical_key, payload=value
+                ref=ref, tenant_id=owned.tenant_id, kind=PayloadKind.RESULT, logical_key=logical_key, payload=value
             )
         )
         self._agent_refresh_access(prepared)
@@ -2357,7 +2383,7 @@ class NativeExecutionStateStore:
             protected = self.prepare_object(
                 ref=ref,
                 tenant_id=owned.tenant_id,
-                kind="result",
+                kind=PayloadKind.RESULT,
                 logical_key="agent-recovery:" + expected.attempt_id + ":allocation",
                 payload=receipt.model_dump(mode="json"),
             )
@@ -2588,7 +2614,7 @@ class NativeExecutionStateStore:
         receipt = self.prepare_object(
             ref=context.ref,
             tenant_id=owned.tenant_id,
-            kind="context",
+            kind=PayloadKind.CONTEXT,
             logical_key="context",
             payload=context.model_dump(mode="json"),
         )
@@ -2727,7 +2753,7 @@ class NativeExecutionStateStore:
             receipt = self.prepare_object(
                 ref=ref,
                 tenant_id=context.tenant_id,
-                kind="checkpoint",
+                kind=PayloadKind.CHECKPOINT,
                 logical_key=str(generation),
                 payload=payload.model_dump(
                     mode="json", exclude={"agent_associations"} if not payload.agent_associations else set()
@@ -2854,7 +2880,7 @@ class NativeExecutionStateStore:
             self.loader.load(ref=ref)
             validate_private_read(self.loader, ref)
         receipt = self.prepare_object(
-            ref=ref, tenant_id=owned.tenant_id, kind="result", logical_key=logical_key, payload=result
+            ref=ref, tenant_id=owned.tenant_id, kind=PayloadKind.RESULT, logical_key=logical_key, payload=result
         )
         with self.loader.locked(ref=ref, settlement=spent) as (session, _, _):
             row = self.acknowledge_object(session, receipt)
@@ -2886,7 +2912,7 @@ class NativeExecutionStateStore:
                 owned, scope = self.loader._load(session, ref=ref, lock=False)
                 self._validate_node_inputs_owner(session, owned, scope, context, authority, generation)
             receipt = self.prepare_object(
-                ref=ref, tenant_id=context.tenant_id, kind="result", logical_key=logical_key, payload=inputs
+                ref=ref, tenant_id=context.tenant_id, kind=PayloadKind.RESULT, logical_key=logical_key, payload=inputs
             )
             with self.loader.locked(ref=ref) as (session, owned, scope):
                 self._validate_node_inputs_owner(session, owned, scope, context, authority, generation)
@@ -3369,7 +3395,7 @@ class NativeExecutionStateStore:
             receipt = self.prepare_object(
                 ref=prepared.parent.ref,
                 tenant_id=prepared.context.tenant_id,
-                kind="result",
+                kind=PayloadKind.RESULT,
                 logical_key=logical_key,
                 payload=value,
             )
@@ -3481,7 +3507,7 @@ class NativeExecutionStateStore:
             receipt = self.prepare_object(
                 ref=ref,
                 tenant_id=prepared.context.tenant_id,
-                kind="result",
+                kind=PayloadKind.RESULT,
                 logical_key=key,
                 payload=value,
                 max_bytes=1024 * 1024,

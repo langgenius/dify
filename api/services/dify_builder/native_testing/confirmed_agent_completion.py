@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session as SqlSession
 from core.dify_builder.contract import (
     AssistantTurnItem,
     ExecutionActivity,
+    ExecutionActivityKind,
     ExecutionActivityState,
     ExecutionProgress,
     ExecutionProgressStatus,
@@ -644,18 +645,18 @@ def _resumed_test_progress(
     status: ExecutionProgressStatus
     state: ExecutionActivityState
     if outcome.native_status == "stopped":
-        status, state = "stopped", "stopped"
+        status, state = ExecutionProgressStatus.STOPPED, ExecutionActivityState.STOPPED
     elif run.status == "succeeded":
-        status, state = "completed", "done"
+        status, state = ExecutionProgressStatus.COMPLETED, ExecutionActivityState.DONE
     else:
-        status, state = "error", "failed"
+        status, state = ExecutionProgressStatus.ERROR, ExecutionActivityState.FAILED
 
     nodes = {
         f"node:{node.node_id}": ExecutionActivity(
             id=f"node:{node.node_id}",
             label=node.title or node.node_id,
-            state=node_activity_state(node.status) if node.status != "running" else "stopped",
-            kind="node",
+            state=node_activity_state(node.status) if node.status != "running" else ExecutionActivityState.STOPPED,
+            kind=ExecutionActivityKind.NODE,
             parent_id=activity_id,
         )
         for node in run.per_node

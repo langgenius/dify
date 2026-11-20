@@ -34,6 +34,7 @@ from runtime_contracts.builder.native.approval_contracts import NativeApprovalPr
 from runtime_contracts.builder.native.contracts import (
     EffectIntent,
     OperationKey,
+    WaitReason,
     operation_digest,
 )
 from runtime_contracts.builder.native.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
@@ -427,7 +428,9 @@ class NativeHttpBindingResolver:
             manifest_digest=digest,
         )
 
-    def resolve_pending(self, *, session, owned, category: Literal["configuration", "interaction"], reference: str):
+    def resolve_pending(
+        self, *, session, owned, category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION], reference: str
+    ):
         raise BuilderExecutionPolicyError("native_pending_requires_resolution")
 
 

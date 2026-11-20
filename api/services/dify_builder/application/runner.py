@@ -27,9 +27,11 @@ from datetime import datetime
 
 from core.dify_builder.contract import (
     AgentMessageEventData,
+    AssistantReplyMode,
     AssistantTurnItem,
     ConversationItemAppendedEventData,
     ExecutionProgress,
+    ExecutionProgressStatus,
     ProgressEventData,
     ReasoningEventData,
     UserItem,
@@ -307,7 +309,7 @@ class Env:
             stage_id=str(session.current_state),
             execution=execution,
             reply_text=reply_text,
-            reply_mode="complete",
+            reply_mode=AssistantReplyMode.COMPLETE,
             reply_language=context.reply_language,
             cards=list(cards or []),
         ).to_item(seq=context.next_seq, at_version=session.version + 1)
@@ -448,7 +450,7 @@ class Runner:
             session,
             context,
             reply_text=copy_text(BuilderCopyId.OPERATION_FAILED),
-            execution=ExecutionProgress(status="error"),
+            execution=ExecutionProgress(status=ExecutionProgressStatus.ERROR),
         )
         self._commit(session, PcState.FAILED, context, items, settled=True)
         return session
@@ -638,7 +640,7 @@ class Runner:
             assistant_seq = fc.next_seq
             assistant_version = s.version + 1
             streamed_parts: list[str] = []
-            execution = ExecutionProgress(status="completed")
+            execution = ExecutionProgress(status=ExecutionProgressStatus.COMPLETED)
             self._env.begin_assistant_stream(
                 s,
                 turn_id=turn_id,

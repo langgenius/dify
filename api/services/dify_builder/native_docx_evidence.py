@@ -13,7 +13,7 @@ import zlib
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Literal, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
 from xml.etree.ElementTree import Element, ParseError
@@ -23,7 +23,7 @@ from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
 from sqlalchemy import select
 
-from core.dify_builder.models import Graph, Run
+from core.dify_builder.models import BusinessAcceptanceState, Graph, Run
 from core.workflow.file_reference import parse_file_reference
 from services.dify_builder.revision import executable_graph_revision
 
@@ -53,7 +53,7 @@ class _ClosableStream(Protocol):
 
 @dataclass(frozen=True)
 class FileAcceptance:
-    state: Literal["passed", "failed", "unverified"]
+    state: BusinessAcceptanceState
     reason: str
 
 
@@ -142,14 +142,14 @@ def _package_evidence(blob: bytes, *, max_uncompressed_bytes: int) -> FileAccept
                 len(entries) > _MAX_ARCHIVE_ENTRIES
                 or sum(entry.file_size for entry in entries) > max_uncompressed_bytes
             ):
-                return FileAcceptance("unverified", "docx_archive_limit")
+                return FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "docx_archive_limit")
             names = [entry.filename for entry in entries]
             if any(names.count(name) != 1 for name in ("[Content_Types].xml", "_rels/.rels")):
-                return FileAcceptance("failed", "docx_parts_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_parts_invalid")
             content_types = _xml_part(package, "[Content_Types].xml")
             relationships = _xml_part(package, "_rels/.rels")
             if relationships.tag != f"{{{_RELATIONSHIPS_NS}}}Relationships":
-                return FileAcceptance("failed", "docx_relationship_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_relationship_invalid")
             main_relationships = [
                 item
                 for item in relationships
@@ -161,16 +161,16 @@ def _package_evidence(blob: bytes, *, max_uncompressed_bytes: int) -> FileAccept
                 or not main_relationships[0].attrib.get("Id")
                 or main_relationships[0].attrib.get("TargetMode", "Internal") != "Internal"
             ):
-                return FileAcceptance("failed", "docx_relationship_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_relationship_invalid")
             target = main_relationships[0].attrib.get("Target", "")
             parsed = urlsplit(target)
             if not target or parsed.scheme or parsed.netloc or "?" in target or "#" in target or "\\" in target:
-                return FileAcceptance("failed", "docx_relationship_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_relationship_invalid")
             # A root relationship resolves within this ZIP, never a URL or an
             # extracted filesystem path. Decode before checking root traversal.
             main_part = posixpath.normpath(unquote(parsed.path).removeprefix("/"))
             if main_part in {".", ".."} or main_part.startswith(("../", "/")) or names.count(main_part) != 1:
-                return FileAcceptance("failed", "docx_relationship_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_relationship_invalid")
             main_content_types = [
                 item
                 for item in content_types
@@ -181,15 +181,15 @@ def _package_evidence(blob: bytes, *, max_uncompressed_bytes: int) -> FileAccept
                 or len(main_content_types) != 1
                 or main_content_types[0].attrib.get("ContentType") != _DOCX_CONTENT_TYPE
             ):
-                return FileAcceptance("failed", "docx_content_type_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_content_type_invalid")
             document = _xml_part(package, main_part)
             if not any(
                 document.tag == f"{{{namespace}}}document" and document.find(f"{{{namespace}}}body") is not None
                 for namespace in _WORD_NAMESPACES
             ):
-                return FileAcceptance("failed", "docx_document_invalid")
+                return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_document_invalid")
     except _XmlLimitError:
-        return FileAcceptance("unverified", "docx_xml_limit")
+        return FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "docx_xml_limit")
     except (
         BadZipFile,
         ParseError,
@@ -199,8 +199,8 @@ def _package_evidence(blob: bytes, *, max_uncompressed_bytes: int) -> FileAccept
         ValueError,
         zlib.error,
     ):
-        return FileAcceptance("failed", "docx_package_invalid")
-    return FileAcceptance("passed", "docx_bytes_validated")
+        return FileAcceptance(BusinessAcceptanceState.FAILED, "docx_package_invalid")
+    return FileAcceptance(BusinessAcceptanceState.PASSED, "docx_bytes_validated")
 
 
 def validate_native_docx(
@@ -224,22 +224,22 @@ def validate_native_docx(
         raise ValueError("DOCX read bounds must be positive")
     values = value if isinstance(value, list) else [value]
     if not values:
-        return FileAcceptance("failed", "required_docx_missing")
+        return FileAcceptance(BusinessAcceptanceState.FAILED, "required_docx_missing")
     if len(values) > _MAX_FILES or not tenant_id:
-        return FileAcceptance("unverified", "native_file_evidence_unavailable")
+        return FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "native_file_evidence_unavailable")
     observed = _observed_tool_file_ids(run, native_graph)
     results = []
     for item in values:
         identity = _file_identity(item)
         if identity is None or identity[0] not in observed:
-            results.append(FileAcceptance("unverified", "native_tool_file_unbound"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "native_tool_file_unbound"))
             continue
         file_id, embedded_key = identity
         try:
             stored = lookup_file(tenant_id, file_id)
         except Exception as exc:
             logger.warning("DOCX metadata lookup unavailable (reason=%s)", type(exc).__name__)
-            results.append(FileAcceptance("unverified", "tool_file_lookup_unavailable"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "tool_file_lookup_unavailable"))
             continue
         if (
             stored is None
@@ -249,10 +249,10 @@ def validate_native_docx(
             or ".." in stored.file_key.split("/")
             or (embedded_key is not None and embedded_key != stored.file_key)
         ):
-            results.append(FileAcceptance("unverified", "tool_file_identity_unbound"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "tool_file_identity_unbound"))
             continue
         if stored.size > max_file_bytes:
-            results.append(FileAcceptance("unverified", "docx_file_limit"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "docx_file_limit"))
             continue
         try:
             stream = load_stream(stored.file_key)
@@ -271,12 +271,12 @@ def validate_native_docx(
                     stream.close()
         except Exception as exc:
             logger.warning("DOCX storage read unavailable (reason=%s)", type(exc).__name__)
-            results.append(FileAcceptance("unverified", "tool_file_bytes_unavailable"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "tool_file_bytes_unavailable"))
             continue
         if exceeded:
-            results.append(FileAcceptance("unverified", "docx_file_limit"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "docx_file_limit"))
         elif stored.size >= 0 and stored.size != len(data):
-            results.append(FileAcceptance("unverified", "tool_file_size_unbound"))
+            results.append(FileAcceptance(BusinessAcceptanceState.UNVERIFIED, "tool_file_size_unbound"))
         else:
             result = _package_evidence(bytes(data), max_uncompressed_bytes=max_uncompressed_bytes)
             if result.state == "passed":

@@ -1,3 +1,4 @@
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.dify_builder.native_launch_observation import NativeLaunchObservation, begin_preparation, mark_dispatched
 
 
@@ -35,7 +36,7 @@ def test_handled_metadata_failure_cannot_label_an_unrelated_later_error() -> Non
         import pytest
 
         with pytest.raises(ConnectionRefusedError, match="private") as caught:
-            with observe_resource("model", "provider", "model"):
+            with observe_resource(FailureResourceKind.MODEL, "provider", "model"):
                 raise ConnectionRefusedError("private")
         assert observation.resource_for(caught.value) == ("model", "provider", "model")
         assert observation.resource_for(ValueError("unrelated input error")) is None
@@ -50,6 +51,6 @@ def test_known_but_invalid_failure_node_does_not_attribute_other_same_provider_n
     observation = NativeLaunchObservation()
     with observation.track():
         with pytest.raises(ValueError, match="private") as caught:
-            with observe_resource("tool", "provider", "action", node_id="invalid node"):
+            with observe_resource(FailureResourceKind.TOOL, "provider", "action", node_id="invalid node"):
                 raise ValueError("private")
     assert observation.node_ids_for(caught.value, graph) == ()

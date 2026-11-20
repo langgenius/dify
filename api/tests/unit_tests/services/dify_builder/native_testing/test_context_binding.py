@@ -11,7 +11,7 @@ from sqlalchemy.orm import ORMExecuteState, sessionmaker
 from core.dify_builder.models import Actor
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import JsonValue, NativeTestContextRef
-from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode, ResolvedNativeTestContext
 from services.dify_builder.native_testing.agent_binding import AgentBindingAuthorization
 from services.dify_builder.native_testing.context_binding import (
     NativeAdmissionCompilation,
@@ -149,7 +149,7 @@ def compile_owned(owned: Owned) -> tuple[NativeAdmissionCompiler, NativeAdmissio
         session_id=sid,
         test_input_id=tid,
         expected_version=1,
-        mode="native",
+        mode=NativeTestMode.NATIVE,
         request_id="request-1",
         invocation_id="invocation-1",
         native_run_id="run-1",
@@ -523,7 +523,7 @@ def test_confirmed_compiler_rechecks_canvas_basis_without_resolving_secret_value
         session_id=sid,
         test_input_id=tid,
         expected_version=1,
-        mode="native",
+        mode=NativeTestMode.NATIVE,
         request_id="request-canvas",
         invocation_id="root-canvas",
         native_run_id="run-canvas",

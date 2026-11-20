@@ -20,8 +20,13 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import CheckpointRef
+from services.dify_builder.native_testing.host_lifetime import CloseReason
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
-from services.dify_builder.native_testing.lifecycle import NativeDispatchRef, NativeTestLifecycleService
+from services.dify_builder.native_testing.lifecycle import (
+    NativeDispatchRef,
+    NativeRecoveryEvidence,
+    NativeTestLifecycleService,
+)
 from services.dify_builder.native_testing.observation_repository import bind_native_repository_observation
 from services.dify_builder.native_testing.state_store import invocation_state, owner_query
 
@@ -317,7 +322,7 @@ class DifyNativeRuntime:
         if not self._started or self.host.lifetime._consumed:
             return
         try:
-            self.host.request_close(reason="failed")
+            self.host.request_close(reason=CloseReason.FAILED)
             # This actual zero-activity predicate rejects any source/reader,
             # attempted worker, native activity, controls or child history.
             self.host.confirm_never_started()
@@ -349,8 +354,8 @@ class DifyNativeRuntime:
     def cancel(self, *, refs):
         return ()  # Request-wide coordinator owns retained acquisitions, never a replacement verifier.
 
-    def recovery_evidence(self, *, context, dispatch_id):
-        return "unknown"
+    def recovery_evidence(self, *, context, dispatch_id) -> NativeRecoveryEvidence:
+        return NativeRecoveryEvidence.UNKNOWN
 
 
 class _UnavailableCollaborator:
@@ -693,7 +698,7 @@ class DifyNativeRuntimeOwner:
                 host.mark_unknown()
         return ()  # SQL ACK is authority; invocation IDs are never cleanup receipts.
 
-    def recovery_evidence(self, *, context, dispatch_id):
+    def recovery_evidence(self, *, context, dispatch_id) -> NativeRecoveryEvidence:
         with self._lock:
             retained = tuple(self._current.values())
         for current in retained:
@@ -702,8 +707,12 @@ class DifyNativeRuntimeOwner:
                 context.generation,
                 dispatch_id,
             ):
-                return "stopped" if current.host.lifetime._consumed else "unknown"
-        return "unknown"
+                return (
+                    NativeRecoveryEvidence.STOPPED
+                    if current.host.lifetime._consumed
+                    else NativeRecoveryEvidence.UNKNOWN
+                )
+        return NativeRecoveryEvidence.UNKNOWN
 
     def retire_closed(self, *, sessions):
         from services.dify_builder.native_testing.host_capacity import finish_unacquired_cancellation

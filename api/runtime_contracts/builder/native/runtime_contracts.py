@@ -23,6 +23,35 @@ from runtime_contracts.builder.native.contracts import (
     WaitReason,
     operation_digest,
 )
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class NativeTestMode(BuilderStringEnum):
+    NATIVE = "native"
+    MOCK = "mock"
+
+
+class NativeWorkflowStatus(BuilderStringEnum):
+    COMPLETED = "completed"
+    WAITING = "waiting"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
+
+
+class NativeWorkflowRunStatus(BuilderStringEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    PARTIAL_SUCCEEDED = "partial-succeeded"
+    STOPPED = "stopped"
+
+
+class NativeBuilderRoute(BuilderStringEnum):
+    WAITING = "waiting"
+    REVIEW = "review"
+    DIAGNOSE = "diagnose"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
+
 
 _FINITE_JSON = TypeAdapter(FiniteJSON)
 NonNegativeInt = Annotated[int, Field(ge=0)]
@@ -48,7 +77,7 @@ class ResolvedNativeTestContext(FrozenDTO):
     call_depth: NonNegativeInt
     budget_ref: str
     cancellation_ref: str
-    execution_mode: Literal["native", "mock"]
+    execution_mode: NativeTestMode
 
     @field_validator("graph", "inputs", mode="before")
     @classmethod
@@ -160,14 +189,14 @@ class NativeWorkflowOutcome(FrozenDTO):
     state-owner commit and the lifecycle receipt establish that it is durable.
     """
 
-    status: Literal["completed", "waiting", "stopped", "unknown"]
+    status: NativeWorkflowStatus
     ref: NativeTestContextRef
     native_run_id: str | None
     checkpoint_ref: CheckpointRef | None
     pending_operation_ids: tuple[str, ...]
     reason_code: str | None
     wait_reason: WaitReason | None
-    native_status: Literal["succeeded", "failed", "partial-succeeded", "stopped"] | None
+    native_status: NativeWorkflowRunStatus | None
     output_result_ref: str | None
 
     @model_validator(mode="after")
@@ -196,7 +225,7 @@ class NativeWorkflowOutcome(FrozenDTO):
 class NativeBuilderProjection(FrozenDTO):
     """Public Builder route, preserving the lifecycle's actual wait category."""
 
-    route: Literal["waiting", "review", "diagnose", "stopped", "unknown"]
+    route: NativeBuilderRoute
     native_run_id: str | None
     public_receipt_ref: str | None
     wait_reason: WaitReason | None

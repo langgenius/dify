@@ -4,9 +4,7 @@ The repository owns the durable fence and public history boundary. Cancellation
 settles outside SQL; a receipt acknowledges revocation, never physical cleanup.
 """
 
-from typing import Literal
-
-from core.dify_builder.contract import Phase, RunStatus, SessionView
+from core.dify_builder.contract import LifecycleSettlement, Phase, RunStatus, SessionTaskStatus, SessionView
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import Actor, DifyBuilderContext, Session
 from services.dify_builder.task_control_service import _settle_stop
@@ -16,16 +14,20 @@ def is_conversation_cleared(context: DifyBuilderContext) -> bool:
     return bool(context.task_control.get("conversation_clear"))
 
 
-def lifecycle_settlement(context: DifyBuilderContext) -> Literal["settled", "pending", "unknown"] | None:
+def lifecycle_settlement(context: DifyBuilderContext) -> LifecycleSettlement | None:
     """Project the current clear/abandon's recorded state, without inferring execution cleanup."""
     if not is_conversation_cleared(context) and context.task_status != "abandoned":
         return None
     controls = context.task_control
     receipt = controls.get("lifecycle_receipt")
     if not isinstance(receipt, dict) or not context.last_command_id or receipt.get("id") != context.last_command_id:
-        return "unknown"
+        return LifecycleSettlement.UNKNOWN
     settlement = controls.get("settlement")
-    return settlement if isinstance(settlement, str) and settlement in {"settled", "pending", "unknown"} else "unknown"
+    return (
+        LifecycleSettlement(settlement)
+        if isinstance(settlement, str) and settlement in LifecycleSettlement
+        else LifecycleSettlement.UNKNOWN
+    )
 
 
 def cleared_session_view(session: Session, context: DifyBuilderContext) -> SessionView:
@@ -42,7 +44,7 @@ def cleared_session_view(session: Session, context: DifyBuilderContext) -> Sessi
         entry_mode=session.entry_mode,
         phase=Phase.UNDERSTAND,
         last_command_id=context.last_command_id,
-        task_status="abandoned",
+        task_status=SessionTaskStatus.ABANDONED,
         conversation_cleared=True,
         lifecycle_settlement=lifecycle_settlement(context),
     )
@@ -150,7 +152,7 @@ def stop_task_for_switch(
 
 def observe_task_stop(
     service, session_id: str, actor: Actor, *, client_action_id: str, deliver: bool = False
-) -> Literal["settled", "pending", "unknown"]:
+) -> LifecycleSettlement:
     _, context = service._get_authorized_session(session_id, actor)
     if is_conversation_cleared(context):
         raise ConflictError("conversation has been cleared")
@@ -159,4 +161,4 @@ def observe_task_stop(
     _settle_stop(service._repo, service._test_actions, session_id, actor, client_action_id, deliver=deliver)
     _, context = service._repo.get_session(session_id)
     settlement = context.task_control.get("settlement", "settled")
-    return settlement if settlement in {"pending", "unknown"} else "settled"
+    return LifecycleSettlement(settlement) if settlement in {"pending", "unknown"} else LifecycleSettlement.SETTLED

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from operator import methodcaller
 from threading import Barrier, Event, Thread, current_thread
 from types import TracebackType
-from typing import Literal, TypedDict, override
+from typing import TypedDict, override
 
 import pytest
 from pydantic import TypeAdapter, ValidationError
@@ -59,6 +59,7 @@ from services.dify_builder.native_testing.control import (
     NativePolicyStop,
     _NativeControlBoundary,
 )
+from services.dify_builder.native_testing.host_lifetime import NativeNodePhase
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
 
@@ -715,7 +716,7 @@ class ObservedNode(AbstractContextManager[None]):
 
     observations: Observations
     node: Node[BaseNodeData]
-    phase: Literal["run", "resume_container"]
+    phase: NativeNodePhase
     thread: Thread = field(default_factory=current_thread)
     execution_id: str = field(init=False)
     runtime: RuntimeState = field(init=False)
@@ -755,9 +756,7 @@ class Observations:
     suppress: bool = False
     before_exit: Callable[[ObservedNode], None] | None = None
 
-    def node_scope(
-        self, *, node: Node[BaseNodeData], phase: Literal["run", "resume_container"]
-    ) -> AbstractContextManager[None]:
+    def node_scope(self, *, node: Node[BaseNodeData], phase: NativeNodePhase) -> AbstractContextManager[None]:
         if self.factory_error is not None:
             raise self.factory_error
         return ObservedNode(self, node, phase)

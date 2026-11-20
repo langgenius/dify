@@ -9,14 +9,14 @@ No network/provider transport or Graphon activation is involved.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, override
+from typing import TYPE_CHECKING, override
 
 from pydantic import JsonValue
 from sqlalchemy.orm import Session
 
-from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, OperationKey, PolicyStop
+from runtime_contracts.builder.native.contracts import DispatchPermit, EffectIntent, OperationKey, Outcome, PolicyStop
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
-from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision, EffectAuthorizationService
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
@@ -242,7 +242,7 @@ def _decide(
     c: ContinuationCase | ChildApprovalCase,
     guard: PendingDecisionGuard,
     *,
-    decision: Literal["approved", "denied"] = "approved",
+    decision: EffectApprovalDecision = EffectApprovalDecision.APPROVED,
     service: EffectAuthorizationService | None = None,
 ) -> NativeTestPublicReceipt:
     terms = guard.terms
@@ -325,7 +325,7 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
     assert _decide(c, guards[0]) == _decide(c, guards[0])
     first = _claim(c, effects[0])
     result = c.store.store_result(ref=c.ref, key=effects[0].key, result={"done": True})
-    c.ledger.guard.record_outcome(permit=first, outcome="completed", result_ref=result)
+    c.ledger.guard.record_outcome(permit=first, outcome=Outcome.COMPLETED, result_ref=result)
     assert c.ledger.guard.before_call(ref=c.ref, intent=effects[0]) == RecordedResult(
         operation_id=first.operation_id, result_ref=result
     )
@@ -333,7 +333,7 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
     reconfirm: InternalDecisionArguments = {
         "ref": c.ref,
         "intent": effects[0],
-        "decision": "approved",
+        "decision": EffectApprovalDecision.APPROVED,
         "max_calls": 1,
         "max_dispatches": 1,
         "max_cost_units": 2,
@@ -347,7 +347,7 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
     guards.extend(next_guards)
     _decide(c, guards[1])
     second = _claim(c, effects[1])
-    c.ledger.guard.record_outcome(permit=second, outcome="unknown", result_ref=None)
+    c.ledger.guard.record_outcome(permit=second, outcome=Outcome.UNKNOWN, result_ref=None)
     next_effects, next_guards = _prepare_pending(c, raw[2:])
     effects.extend(next_effects)
     guards.extend(next_guards)
@@ -368,7 +368,7 @@ def test_unknown_operation_cannot_redispatch_using_another_operation_grant(appro
     effects, guards = list(first_effects), list(first_guards)
     _decide(c, guards[0])
     first = _claim(c, effects[0])
-    c.ledger.guard.record_outcome(permit=first, outcome="unknown", result_ref=None)
+    c.ledger.guard.record_outcome(permit=first, outcome=Outcome.UNKNOWN, result_ref=None)
     next_effects, next_guards = _prepare_pending(c, raw[1:])
     effects.extend(next_effects)
     guards.extend(next_guards)
@@ -400,16 +400,18 @@ def test_legacy_batch_digest_and_exhaustion_keep_one_immutable_grant(approval_ca
     expiry = datetime.now(UTC) + timedelta(minutes=3)
     terms: DecisionTerms = {"max_calls": 1, "max_dispatches": 1, "max_cost_units": 2, "expires_at": expiry}
     first, second = _effects(c, 2)
-    grant_id = c.ledger.guard.decide(ref=c.ref, intent=first, decision="approved", **terms)
+    grant_id = c.ledger.guard.decide(ref=c.ref, intent=first, decision=EffectApprovalDecision.APPROVED, **terms)
     permit = _claim(c, first)
-    c.ledger.guard.record_outcome(permit=permit, outcome="unknown", result_ref=None)
+    c.ledger.guard.record_outcome(permit=permit, outcome=Outcome.UNKNOWN, result_ref=None)
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=second), ApprovalWait)
-    assert c.ledger.guard.decide(ref=c.ref, intent=second, decision="approved", **terms) == grant_id
+    assert (
+        c.ledger.guard.decide(ref=c.ref, intent=second, decision=EffectApprovalDecision.APPROVED, **terms) == grant_id
+    )
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=second), ApprovalWait)
     conflicting_terms = terms.copy()
     conflicting_terms["max_calls"] = 2
     with pytest.raises(BuilderExecutionPolicyError, match="native_grant_conflict"):
-        c.ledger.guard.decide(ref=c.ref, intent=second, decision="approved", **conflicting_terms)
+        c.ledger.guard.decide(ref=c.ref, intent=second, decision=EffectApprovalDecision.APPROVED, **conflicting_terms)
     counts = _counts(c)
     assert counts.grants == [(1, 1, 2, 1)]
     assert counts.quota == (1, 1, 2)
@@ -426,14 +428,14 @@ def test_denial_cannot_be_bypassed_by_decision_replay(approval_case: Continuatio
             for identity, raw in require_instance(row, NativeTestInvocation).bindings.items()
         }
     effects, guards = _prepare_pending(c, _effects(c))
-    _decide(c, guards[0], decision="denied")
+    _decide(c, guards[0], decision=EffectApprovalDecision.DENIED)
     assert c.ledger.guard.before_call(ref=c.ref, intent=effects[0]) == PolicyStop(reason_code="effect_denied")
     terms = guards[0].terms
     with pytest.raises(BuilderExecutionPolicyError, match="native_grant_conflict"):
         c.ledger.guard.decide(
             ref=c.ref,
             intent=effects[0],
-            decision="approved",
+            decision=EffectApprovalDecision.APPROVED,
             max_calls=1,
             max_dispatches=1,
             max_cost_units=2,

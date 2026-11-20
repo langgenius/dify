@@ -7,7 +7,6 @@ runtime schemas are not fetched here: those are capability operations themselves
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Literal
 
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolParameter, DifyPluginToolsLayerConfig
@@ -22,6 +21,14 @@ from extensions.ext_database import db
 from models.agent_config_entities import AgentSoulToolsConfig
 from models.tools import WorkflowToolProvider
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
+from runtime_contracts.builder.native.contracts import NativeAgentTestProfile
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class AgentToolReadiness(BuilderStringEnum):
+    READY = "ready"
+    NEEDS_SETUP = "needs_setup"
+    UNRESOLVED = "unresolved"
 
 
 @dataclass(frozen=True)
@@ -38,7 +45,7 @@ class AgentToolRuntimeReference:
     tool_name: str
     credential_id: str | None
     implementation_revision: str
-    readiness: Literal["ready", "needs_setup", "unresolved"]
+    readiness: AgentToolReadiness
 
 
 @dataclass(frozen=True)
@@ -170,7 +177,7 @@ class AgentToolDeclarationService:
         actor_id: str,
         app_id: str,
         tools: AgentSoulToolsConfig,
-        profile: Literal["isolated", "confirmed"] = "isolated",
+        profile: NativeAgentTestProfile = NativeAgentTestProfile.ISOLATED,
     ) -> PreparedAgentToolDeclarations:
         plugins, core, references = [], [], []
         names: set[str] = set()
@@ -251,11 +258,11 @@ class AgentToolDeclarationService:
                         name,
                         credential_id,
                         declaration.implementation_revision,
-                        "needs_setup"
+                        AgentToolReadiness.NEEDS_SETUP
                         if declaration.requires_credentials and credential_id is None
-                        else "unresolved"
+                        else AgentToolReadiness.UNRESOLVED
                         if declaration.requires_credentials
-                        else "ready",
+                        else AgentToolReadiness.READY,
                     )
                 )
         return PreparedAgentToolDeclarations(

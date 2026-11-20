@@ -5,7 +5,7 @@ IDs, protected object refs and digests preserve evidence without checkpoint
 contents, credentials, scripts, permits, or an unbounded attempt history.
 """
 
-from typing import Literal, Self
+from typing import Self
 
 from dify_agent.protocol.confirmed_recovery import AgentRecoveryBinding, RecoveryProtocolVersion
 from dify_agent.protocol.native_testing import AgentCheckpointRef
@@ -13,9 +13,18 @@ from pydantic import model_validator
 
 from runtime_contracts.builder.execution import Digest, canonical_digest
 from runtime_contracts.builder.native.contracts import ID, Counter, FrozenDTO
+from runtime_contracts.builder.string_enum import BuilderStringEnum
 
 RECOVERY_RECORD_KEY = "_agent_confirmed_recovery_v1"
-RecoveryPhase = Literal["reserved", "creating", "allocated", "ready", "unknown", "blocked"]
+
+
+class RecoveryPhase(BuilderStringEnum):
+    RESERVED = "reserved"
+    CREATING = "creating"
+    ALLOCATED = "allocated"
+    READY = "ready"
+    UNKNOWN = "unknown"
+    BLOCKED = "blocked"
 
 
 class AgentRecoveryAttemptIdentity(FrozenDTO):
@@ -98,12 +107,12 @@ class AgentRecoveryRecord(FrozenDTO):
 
 
 _PHASE_EDGES: dict[RecoveryPhase, frozenset[RecoveryPhase]] = {
-    "reserved": frozenset({"creating"}),
-    "creating": frozenset({"allocated", "unknown"}),
-    "allocated": frozenset({"ready", "blocked"}),
-    "ready": frozenset(),
-    "unknown": frozenset(),
-    "blocked": frozenset(),
+    RecoveryPhase.RESERVED: frozenset({RecoveryPhase.CREATING}),
+    RecoveryPhase.CREATING: frozenset({RecoveryPhase.ALLOCATED, RecoveryPhase.UNKNOWN}),
+    RecoveryPhase.ALLOCATED: frozenset({RecoveryPhase.READY, RecoveryPhase.BLOCKED}),
+    RecoveryPhase.READY: frozenset(),
+    RecoveryPhase.UNKNOWN: frozenset(),
+    RecoveryPhase.BLOCKED: frozenset(),
 }
 _EVIDENCE_FIELDS = frozenset(
     {"allocation_receipt_ref", "successor_object_ref", "successor_digest", "sdk_receipt_ref", "successor_wait_ref"}

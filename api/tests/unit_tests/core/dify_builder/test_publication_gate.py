@@ -4,7 +4,17 @@ from typing import Protocol
 import pytest
 from pytest_mock import MockerFixture
 
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Run, RunVerification, Session, Turn
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    DifyBuilderContext,
+    EntryMode,
+    OutputFindingState,
+    Run,
+    RunVerification,
+    Session,
+    Turn,
+)
 from core.dify_builder.state import PcState
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
 from services.dify_builder.application.placeholder_agent import PlaceholderAgent
@@ -195,7 +205,7 @@ def test_verification_unresolved_output_never_invents_repair(
                 node_id="end",
                 output_name="result",
                 selector=["tool", "missing"],
-                state="unresolved",
+                state=OutputFindingState.UNRESOLVED,
                 reason="key_absent",
             )
         ],

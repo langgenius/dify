@@ -5,16 +5,19 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic, sleep
-from typing import Literal, override
+from typing import override
 
 import pytest
 
+from runtime_contracts.builder.native.contracts import WaitReason
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativeControlRecord
 from services.dify_builder.native_testing.host_lifetime import (
+    CloseReason,
     NativeHostCallTicket,
     NativeHostLifetime,
     NativeHostLifetimeRegistry,
+    NativeNodePhase,
     ThreadRole,
 )
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
@@ -36,10 +39,12 @@ def consume(life: NativeHostLifetime) -> None:
 
 
 def close(life: NativeHostLifetime, allowance: float = 0.5) -> None:
-    life.request_close(reason="cancel", deadline=monotonic() + allowance)
+    life.request_close(reason=CloseReason.CANCEL, deadline=monotonic() + allowance)
 
 
-def worker(life: NativeHostLifetime, body: Callable[[], None] = lambda: None, *, role: ThreadRole = "worker") -> Thread:
+def worker(
+    life: NativeHostLifetime, body: Callable[[], None] = lambda: None, *, role: ThreadRole = ThreadRole.WORKER
+) -> Thread:
     def run() -> None:
         try:
             body()
@@ -56,7 +61,7 @@ def test_inert_or_missing_ownership_never_establishes_cleanup() -> None:
     registry = NativeHostLifetimeRegistry()
     life = NativeHostLifetime(context=ResolvedNativeTestContext.model_validate(CONTEXT), dispatch_id="dispatch")
     with pytest.raises(ValueError, match="^native_host_acquisition_not_current$"):
-        life.register_thread(thread=Thread(), role="worker")
+        life.register_thread(thread=Thread(), role=ThreadRole.WORKER)
     with pytest.raises(ValueError, match="^native_host_acquisition_not_current$"):
         consume(life)
     registry.activate(lifetime=life)
@@ -103,7 +108,7 @@ def test_only_single_owned_reader_may_start_after_close_for_existing_drain() -> 
     with pytest.raises(ValueError, match="^native_host_reader_registration_refused$"):
         life.register_reader(thread=Thread(), stream=stream)
     with pytest.raises(ValueError, match="^native_host_admission_closed$"):
-        life.register_thread(thread=Thread(), role="dispatcher")
+        life.register_thread(thread=Thread(), role=ThreadRole.DISPATCHER)
     life.wait_until_closing()
     assert life.settle() == "settled"
     life.require_settled_root()
@@ -119,7 +124,7 @@ def test_expired_close_reader_can_clean_but_cannot_make_snapshot_ready() -> None
     case = LaunchCase()
     life = case.lifetime
     worker(life).join(1)
-    life.request_close(reason="exhausted", deadline=monotonic() - 1)
+    life.request_close(reason=CloseReason.EXHAUSTED, deadline=monotonic() - 1)
     reader = Thread(target=lambda: life.thread_finished(thread=current_thread()))
     life.register_reader(thread=reader, stream=HostOwnedNativeGeneratorStream(source=iter_source(), host=case.host))
     life.start_thread(thread=reader)
@@ -143,7 +148,7 @@ def test_closing_reader_requires_started_worker_and_exact_existing_host_stream()
     with pytest.raises(ValueError, match="^native_host_reader_registration_refused$"):
         case.lifetime.register_reader(thread=Thread(), stream=stream)
     worker(case.lifetime).join(1)
-    case.host.request_close(reason="exhausted")
+    case.host.request_close(reason=CloseReason.EXHAUSTED)
     foreign = HostOwnedNativeGeneratorStream(source=iter_source(), host=other.host)
     with pytest.raises(ValueError, match="^native_host_reader_registration_refused$"):
         case.lifetime.register_reader(thread=Thread(), stream=foreign)
@@ -180,7 +185,7 @@ def test_registration_refusal_prevents_start_and_unstarted_false_is_not_proof() 
         life.start_thread(thread=thread)
     assert not ran.is_set()
     assert thread.ident is None
-    life.register_thread(thread=thread, role="worker")
+    life.register_thread(thread=thread, role=ThreadRole.WORKER)
     close(life, 0.01)
     assert not thread.is_alive()
     assert life.settle() == "unknown"
@@ -201,7 +206,7 @@ def test_finally_callback_is_not_exit_and_late_cleanup_preserves_unknown() -> No
         release.wait(2)
 
     thread = Thread(target=run)
-    life.register_thread(thread=thread, role="worker")
+    life.register_thread(thread=thread, role=ThreadRole.WORKER)
     life.start_thread(thread=thread)
     try:
         assert finished.wait(1)
@@ -229,7 +234,7 @@ def test_start_failure_is_explicit_and_cleanup_is_exactly_once() -> None:
             raise RuntimeError("startup refused")
 
     thread = FailedStart()
-    life.register_thread(thread=thread, role="worker")
+    life.register_thread(thread=thread, role=ThreadRole.WORKER)
     with pytest.raises(RuntimeError, match="startup refused"):
         life.start_thread(thread=thread)
     close(life)
@@ -242,7 +247,7 @@ def test_start_failure_is_explicit_and_cleanup_is_exactly_once() -> None:
 def test_missing_finally_is_not_equivalent_to_joined_thread() -> None:
     _, life = opened()
     thread = Thread(target=lambda: None)
-    life.register_thread(thread=thread, role="worker")
+    life.register_thread(thread=thread, role=ThreadRole.WORKER)
     life.start_thread(thread=thread)
     thread.join(1)
     close(life, 0.01)
@@ -294,7 +299,7 @@ def test_one_shared_deadline_across_actual_threads_and_slow_precontrol_work() ->
         ready.wait(2)
         release.wait(2)
 
-    threads = [worker(life, blocked, role=role) for role in ("worker", "reader", "dispatcher")]
+    threads = [worker(life, blocked, role=role) for role in ThreadRole]
     try:
         ready.wait(2)
         sleep(0.06)
@@ -331,7 +336,7 @@ def test_control_does_not_wait_for_blocked_permission_and_refuses_late_callback(
         assert entered.wait(1)
         started = monotonic()
         close(life, 0.03)
-        life.request_close(reason="cancel", deadline=monotonic() + 20)
+        life.request_close(reason=CloseReason.CANCEL, deadline=monotonic() + 20)
         assert life.settle() == "unknown"
         assert monotonic() - started < 0.15
         assert not dispatched.is_set()
@@ -404,7 +409,7 @@ def test_stream_close_failure_is_ambiguous_even_when_thread_exits() -> None:
 
 @pytest.mark.parametrize("phase", ["run", "resume_container"])
 def test_real_native_scope_retains_node_runtime_execution_thread_through_closure(
-    phase: Literal["run", "resume_container"],
+    phase: NativeNodePhase,
 ) -> None:
     from tests.unit_tests.services.dify_builder.native_testing.test_control import bound_guard, make_native, permit
 
@@ -447,18 +452,20 @@ def test_control_record_requires_actual_active_node_and_exact_execution() -> Non
     node = bound_guard(factory)
     life.bind_runtime(runtime_state=factory.runtime)
     record = NativeControlRecord(
-        control=NativeApprovalWait(ref=life.context.ref, pending_operation_id="pending", wait_reason="approval"),
+        control=NativeApprovalWait(
+            ref=life.context.ref, pending_operation_id="pending", wait_reason=WaitReason.APPROVAL
+        ),
         node_id=node.id,
         native_execution_id=node.execution_id,
         carrier_ref="carrier",
     )
     with pytest.raises(ValueError, match="^native_host_control_scope_invalid$"):
         life.record_control(record=record, deadline=monotonic() + 1)
-    with life.node_scope(node=node, phase="run"):
+    with life.node_scope(node=node, phase=NativeNodePhase.RUN):
         life.record_control(record=record, deadline=monotonic() + 1)
     worker_thread = Thread()
     with pytest.raises(ValueError, match="^native_host_admission_closed$"):
-        life.register_thread(thread=worker_thread, role="worker")
+        life.register_thread(thread=worker_thread, role=ThreadRole.WORKER)
     assert life.control_records == (record,)
 
 
@@ -468,7 +475,7 @@ def test_foreign_runtime_node_is_refused_and_self_join_never_blocks() -> None:
     _, life = opened()
     _, factory = make_native(decision=permit())
     with pytest.raises(ValueError, match="^native_host_node_invalid$"):
-        with life.node_scope(node=bound_guard(factory), phase="run"):
+        with life.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RUN):
             pass
     result: list[str] = []
 
@@ -573,7 +580,7 @@ def test_control_registration_stays_unblocked_while_coordinator_joins() -> None:
         assert settling.wait(1)
         sleep(0.02)
         started = monotonic()
-        life.request_close(reason="consumer_closed", deadline=monotonic() + 20)
+        life.request_close(reason=CloseReason.CONSUMER_CLOSED, deadline=monotonic() + 20)
         assert monotonic() - started < 0.05
         coordinator.join(1)
         assert result == ["unknown"]
@@ -587,7 +594,7 @@ def test_control_registration_stays_unblocked_while_coordinator_joins() -> None:
 
 @pytest.mark.parametrize("phase", ["run", "resume_container"])
 def test_actual_native_boundary_keeps_scope_across_generator_yield_and_real_close(
-    phase: Literal["run", "resume_container"],
+    phase: NativeNodePhase,
 ) -> None:
     from graphon.engine_events.node import NodeRunStartedEvent
     from graphon.nodes.container_effects import IterationFrameRequest
@@ -716,7 +723,7 @@ def test_late_node_and_call_tracking_survives_control_without_reopening_physical
         before_control.set()
         enter_late.wait(2)
         try:
-            with life.node_scope(node=node, phase="resume_container"), life.call_scope() as ticket:
+            with life.node_scope(node=node, phase=NativeNodePhase.RESUME_CONTAINER), life.call_scope() as ticket:
                 try:
                     with ticket.callback_scope():
                         pytest.fail("late tracking cannot reopen physical entry")
@@ -739,10 +746,10 @@ def test_late_node_and_call_tracking_survives_control_without_reopening_physical
         assert refused.is_set()
         assert len(life.active_node_scopes) == 1
         with pytest.raises(ValueError, match="^native_host_admission_closed$"):
-            life.register_thread(thread=Thread(), role="reader")
+            life.register_thread(thread=Thread(), role=ThreadRole.READER)
         with pytest.raises(ValueError, match="^native_host_cleanup_incomplete$"):
             consume(life)
-        life.request_close(reason="consumer_closed", deadline=monotonic() + 20)
+        life.request_close(reason=CloseReason.CONSUMER_CLOSED, deadline=monotonic() + 20)
         assert life.settle() == "unknown"
         assert monotonic() - started < 0.18
         assert thread.is_alive()
@@ -756,7 +763,7 @@ def test_late_node_and_call_tracking_survives_control_without_reopening_physical
         with life.call_scope():
             pass
     with pytest.raises(ValueError, match="^native_host_acquisition_not_current$"):
-        with life.node_scope(node=node, phase="run"):
+        with life.node_scope(node=node, phase=NativeNodePhase.RUN):
             pass
 
 
@@ -770,7 +777,9 @@ def test_late_owned_activity_invalidates_an_earlier_in_time_quiet_sample(kind: s
     worker(life).join(1)
     close(life, 0.04)
     assert life.settle() == "settled"
-    scope = life.call_scope() if kind == "call" else life.node_scope(node=bound_guard(factory), phase="run")
+    scope = (
+        life.call_scope() if kind == "call" else life.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RUN)
+    )
     with scope:
         sleep(0.06)
     assert life.settle() == "unknown"
@@ -812,7 +821,11 @@ def test_descendant_late_activity_invalidates_ancestor_sample(depth: int, kind: 
         worker(lifetime).join(1)
         close(lifetime, 0.04 if lifetime is parent else 0.5)
     assert parent.settle() == "settled"
-    scope = descendant.call_scope() if kind == "call" else descendant.node_scope(node=bound_guard(factory), phase="run")
+    scope = (
+        descendant.call_scope()
+        if kind == "call"
+        else descendant.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RUN)
+    )
     with scope:
         sleep(0.06)
     if check == "settle":
@@ -840,7 +853,9 @@ def test_descendant_completion_wakes_waiting_ancestor_promptly(depth: int, kind:
 
     def pool_work() -> None:
         scope = (
-            descendant.call_scope() if kind == "call" else descendant.node_scope(node=bound_guard(factory), phase="run")
+            descendant.call_scope()
+            if kind == "call"
+            else descendant.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RUN)
         )
         with scope:
             active.set()
@@ -851,7 +866,7 @@ def test_descendant_completion_wakes_waiting_ancestor_promptly(depth: int, kind:
     assert active.wait(1)
     deadline = monotonic() + 0.6
     for lifetime in tree:
-        lifetime.request_close(reason="cancel", deadline=deadline)
+        lifetime.request_close(reason=CloseReason.CANCEL, deadline=deadline)
 
     def coordinate() -> None:
         ready.wait(1)
@@ -894,7 +909,7 @@ def test_cleaned_payloads_collect_while_compact_verifier_is_retained() -> None:
         _, factory = make_native(decision=permit())
         node = bound_guard(factory)
         life.bind_runtime(runtime_state=factory.runtime)
-        with life.node_scope(node=node, phase="run"):
+        with life.node_scope(node=node, phase=NativeNodePhase.RUN):
             pass
         with life.call_scope() as ticket:
             stream = Stream()
@@ -954,7 +969,7 @@ def test_registry_scope_and_disposal_never_evict_incomplete_ownership() -> None:
     with pytest.raises(ValueError, match="^native_host_registry_scope_invalid$"):
         opened(registry=registry, context=foreign_context)
     thread = Thread()
-    life.register_thread(thread=thread, role="worker")
+    life.register_thread(thread=thread, role=ThreadRole.WORKER)
     close(life, 0.01)
     assert life.settle() == "unknown"
     with pytest.raises(ValueError, match="^native_host_registry_disposal_refused$"):
@@ -1070,7 +1085,7 @@ def test_consumed_ancestor_blocks_late_tracking_while_child_cleanup_remains_poss
         with child.call_scope():
             pass
     with pytest.raises(ValueError, match="^native_host_acquisition_not_current$"):
-        with child.node_scope(node=bound_guard(factory), phase="run"):
+        with child.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RUN):
             pass
     consume(child)
     registry.dispose()
@@ -1100,13 +1115,13 @@ def test_actual_late_frame_runtime_tracking_never_reopens_execution_or_quiet_sam
     assert life.settle() == "settled"
     _, frame = make_native(decision=permit())
     life.bind_runtime(runtime_state=frame.runtime)
-    with life.node_scope(node=bound_guard(frame), phase="resume_container"):
+    with life.node_scope(node=bound_guard(frame), phase=NativeNodePhase.RESUME_CONTAINER):
         with life.call_scope() as ticket:
             with pytest.raises(ValueError, match="^native_host_admission_closed$"):
                 with ticket.callback_scope():
                     pytest.fail("late frame observation must not reopen physical entry")
         with pytest.raises(ValueError, match="^native_host_admission_closed$"):
-            life.register_thread(thread=Thread(), role="reader")
+            life.register_thread(thread=Thread(), role=ThreadRole.READER)
         sleep(0.06)
     assert life.settle() == "unknown"
     consume(life)
@@ -1182,7 +1197,7 @@ def test_prestart_confirmation_refuses_every_owned_activity_history(history: str
 
     registry, life = opened()
     if history == "registered":
-        life.register_thread(thread=Thread(), role="worker")
+        life.register_thread(thread=Thread(), role=ThreadRole.WORKER)
     elif history == "start_failed":
 
         class FailedStart(Thread):
@@ -1191,7 +1206,7 @@ def test_prestart_confirmation_refuses_every_owned_activity_history(history: str
                 raise RuntimeError("actual start refused")
 
         failed = FailedStart()
-        life.register_thread(thread=failed, role="worker")
+        life.register_thread(thread=failed, role=ThreadRole.WORKER)
         with pytest.raises(RuntimeError):
             life.start_thread(thread=failed)
     elif history == "started":
@@ -1203,11 +1218,11 @@ def test_prestart_confirmation_refuses_every_owned_activity_history(history: str
         node = bound_guard(factory)
         life.bind_runtime(runtime_state=factory.runtime)
         if history in ("node", "control"):
-            with life.node_scope(node=node, phase="run"):
+            with life.node_scope(node=node, phase=NativeNodePhase.RUN):
                 if history == "control":
                     record = NativeControlRecord(
                         control=NativeApprovalWait(
-                            ref=life.ref, pending_operation_id="pending", wait_reason="approval"
+                            ref=life.ref, pending_operation_id="pending", wait_reason=WaitReason.APPROVAL
                         ),
                         node_id=node.id,
                         native_execution_id=node.execution_id,
@@ -1248,7 +1263,7 @@ def test_prestart_late_diagnostic_history_permanently_invalidates_zero_proof(dia
 
     _, life = opened()
     deadline = monotonic() + 0.03
-    life.request_close(reason="failed", deadline=deadline)
+    life.request_close(reason=CloseReason.FAILED, deadline=deadline)
     life.confirm_never_started()
     assert life.settle() == "settled"
     if diagnostic == "call":
@@ -1260,13 +1275,13 @@ def test_prestart_late_diagnostic_history_permanently_invalidates_zero_proof(dia
         _, factory = make_native(decision=permit())
         life.bind_runtime(runtime_state=factory.runtime)
         if diagnostic == "node":
-            with life.node_scope(node=bound_guard(factory), phase="resume_container"):
+            with life.node_scope(node=bound_guard(factory), phase=NativeNodePhase.RESUME_CONTAINER):
                 assert life.active_node_scopes
     with pytest.raises(ValueError, match="^native_host_admission_closed$"):
-        life.register_thread(thread=Thread(), role="reader")
+        life.register_thread(thread=Thread(), role=ThreadRole.READER)
     with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
         consume(life)
-    life.request_close(reason="consumer_closed", deadline=deadline + 20)
+    life.request_close(reason=CloseReason.CONSUMER_CLOSED, deadline=deadline + 20)
     sleep(0.04)
     assert life.settle() == "unknown"  # Quiet sample invalidated; deadline never extended.
     with pytest.raises(ValueError, match="^native_host_never_started_unproven$"):
@@ -1277,10 +1292,10 @@ def test_prestart_late_diagnostic_history_permanently_invalidates_zero_proof(dia
 
 def test_prestart_expired_or_unknown_outcome_never_reopens_after_clean_consumption() -> None:
     registry, life = opened()
-    life.request_close(reason="failed", deadline=monotonic() - 1)
+    life.request_close(reason=CloseReason.FAILED, deadline=monotonic() - 1)
     life.mark_unknown()
     life.confirm_never_started()
-    life.request_close(reason="failed", deadline=monotonic() + 20)
+    life.request_close(reason=CloseReason.FAILED, deadline=monotonic() + 20)
     assert life.settle() == "unknown"
     consume(life)
     assert life.unknown
@@ -1321,7 +1336,7 @@ def test_prestart_in_progress_registered_start_refuses_zero_proof_and_keeps_late
             life.thread_finished(thread=current_thread())
 
     actual = GatedStart(target=run)
-    life.register_thread(thread=actual, role="worker")
+    life.register_thread(thread=actual, role=ThreadRole.WORKER)
 
     def start() -> None:
         try:
@@ -1363,7 +1378,7 @@ def test_prestart_successful_proof_wins_actual_registration_start_race_without_i
         try:
             ready.wait(1)
             assert proof_done.wait(1)
-            life.register_thread(thread=actual, role="worker")
+            life.register_thread(thread=actual, role=ThreadRole.WORKER)
             life.start_thread(thread=actual)
         except ValueError:
             attempted.set()
@@ -1416,7 +1431,7 @@ def test_prestart_current_orphan_child_prevents_zero_proof_or_late_cleanup(late:
     with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
         consume(parent)
     sleep(0.04)
-    parent.request_close(reason="failed", deadline=monotonic() + 20)
+    parent.request_close(reason=CloseReason.FAILED, deadline=monotonic() + 20)
     assert parent.settle() == "unknown"
 
 

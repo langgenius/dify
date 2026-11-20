@@ -6,9 +6,10 @@ import asyncio
 import json
 from collections.abc import Callable, Coroutine
 from dataclasses import replace
+from enum import StrEnum
 from operator import call
 from pathlib import Path
-from typing import Literal, Never, Unpack, override
+from typing import Never, Unpack, override
 
 import httpx2 as httpx
 import pytest
@@ -28,6 +29,12 @@ from services.code_execution.native_scope_transport import (
     NativeCodeSyncOwner,
     NativeScopeCodeExecutionTransport,
 )
+
+
+class MissingOwner(StrEnum):
+    DURABLE_OWNER = "durable_owner"
+    LIFETIME_OWNER = "lifetime_owner"
+    SYNC_OWNER = "sync_owner"
 
 
 class DurableOwner:
@@ -261,10 +268,10 @@ def test_bad_job_output_fails_redacted_and_closes(bad: dict[str, object]) -> Non
     assert lifetime.settlements == [False]
 
 
-@pytest.mark.parametrize("missing", ["durable_owner", "lifetime_owner", "sync_owner"])
-def test_missing_owner_refuses_before_io(missing: Literal["durable_owner", "lifetime_owner", "sync_owner"]) -> None:
+@pytest.mark.parametrize("missing", list(MissingOwner))
+def test_missing_owner_refuses_before_io(missing: MissingOwner) -> None:
     overrides: TransportOverrides = {}
-    overrides[missing] = None
+    overrides[missing.value] = None
     transport, sdk, _, _ = setup_transport(**overrides)
     with pytest.raises(CodeExecutionError):
         execute(transport)

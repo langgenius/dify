@@ -5,7 +5,12 @@ from uuid import uuid4
 
 import pytest
 
-from core.dify_builder.contract import ExecutionActivity, ExecutionProgress
+from core.dify_builder.contract import (
+    ExecutionActivity,
+    ExecutionActivityState,
+    ExecutionProgress,
+    ExecutionProgressStatus,
+)
 from services.dify_builder import progress_snapshot, session_lock
 
 
@@ -17,8 +22,8 @@ def _snapshot(session_id: str) -> progress_snapshot.ProgressSnapshot:
         revision=4,
         reply_language="zh-Hans",
         execution=ExecutionProgress(
-            status="running",
-            activities=[ExecutionActivity(id="plan", label="Generate plan", state="active")],
+            status=ExecutionProgressStatus.RUNNING,
+            activities=[ExecutionActivity(id="plan", label="Generate plan", state=ExecutionActivityState.ACTIVE)],
         ),
     )
 

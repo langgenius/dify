@@ -13,7 +13,8 @@ from sqlalchemy import Engine, Table
 
 from models.account import TenantAccountRole, TenantStatus
 from models.workflow import Workflow
-from runtime_contracts.builder.native.contracts import DispatchPermit, PolicyStop
+from runtime_contracts.builder.native.contracts import DispatchPermit, Outcome, PolicyStop, WaitReason
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
@@ -107,7 +108,7 @@ class MetadataOwner:
         *,
         session: Session,
         owned: OwnedNativeTest,
-        category: Literal["configuration", "interaction"],
+        category: Literal[WaitReason.CONFIGURATION, WaitReason.INTERACTION],
         reference: str,
     ) -> PendingOwner:
         from services.dify_builder.native_testing.repository import PendingOwner
@@ -134,7 +135,10 @@ class LedgerCase:
         return EffectAuthorizationService(OwnedNativeTestLoader(self.factory, actor=self.actor, resolver=self.metadata))
 
     def confirm(
-        self, max_calls: int = 1, max_dispatches: int = 1, decision: Literal["approved", "denied"] = "approved"
+        self,
+        max_calls: int = 1,
+        max_dispatches: int = 1,
+        decision: EffectApprovalDecision = EffectApprovalDecision.APPROVED,
     ) -> str:
         return self.guard.decide(
             ref=self.ref,
@@ -434,7 +438,7 @@ def test_duplicate_delivery_does_not_get_second_permit(ledger_case: LedgerCase) 
 
 def test_unapproved_and_denied_never_dispatch(ledger_case: LedgerCase) -> None:
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), ApprovalWait)
-    ledger_case.confirm(decision="denied")
+    ledger_case.confirm(decision=EffectApprovalDecision.DENIED)
     assert ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
         reason_code="effect_denied"
     )
@@ -484,11 +488,11 @@ def test_completed_result_replays_and_changed_intent_conflicts(ledger_case: Ledg
     guard = ledger_case.guard
     permit = guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent)
     receipt = guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="protected-result"
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref="protected-result"
     )
     assert (
         guard.record_outcome(
-            permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="protected-result"
+            permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref="protected-result"
         )
         == receipt
     )
@@ -496,7 +500,7 @@ def test_completed_result_replays_and_changed_intent_conflicts(ledger_case: Ledg
         operation_id=require_instance(permit, DispatchPermit).operation_id, result_ref="protected-result"
     )
     with pytest.raises(BuilderExecutionPolicyError, match="outcome_conflict"):
-        guard.record_outcome(permit=require_instance(permit, DispatchPermit), outcome="failed", result_ref=None)
+        guard.record_outcome(permit=require_instance(permit, DispatchPermit), outcome=Outcome.FAILED, result_ref=None)
     changed = ledger_case.intent.model_copy(update={"parameters": {"limit": 2}})
     assert isinstance(guard.before_call(ref=ledger_case.ref, intent=changed), PolicyStop)
     assert ledger_case.dispatched_attempt_count() == 1
@@ -780,7 +784,7 @@ def test_oauth_requires_its_own_bounded_approval(ledger_case: LedgerCase) -> Non
     guard.decide(
         ref=ledger_case.ref,
         intent=oauth,
-        decision="approved",
+        decision=EffectApprovalDecision.APPROVED,
         max_calls=1,
         max_dispatches=1,
         max_cost_units=2,
@@ -924,7 +928,7 @@ def test_spent_permit_can_settle_after_cancel_without_new_dispatch(ledger_case: 
             session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id), DifyBuilderExecutionRequest
         ).state = "sealed"
     receipt = guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref="result-after-cancel"
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref="result-after-cancel"
     )
     assert receipt.outcome == "completed"
     assert guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent) == PolicyStop(
@@ -940,7 +944,7 @@ def test_forged_permit_cannot_record_or_resolve_reservation(ledger_case: LedgerC
     forged = permit.model_copy(update={"permit_id": str(uuid4())})
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
         guard.record_outcome(
-            permit=require_instance(forged, DispatchPermit), outcome="completed", result_ref="fake-result"
+            permit=require_instance(forged, DispatchPermit), outcome=Outcome.COMPLETED, result_ref="fake-result"
         )
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_dispatch_permit"):
         guard.resolve_budget_reservation(

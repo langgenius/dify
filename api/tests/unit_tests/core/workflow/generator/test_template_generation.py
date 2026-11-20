@@ -3,7 +3,7 @@
 import json
 import time
 from copy import deepcopy
-from typing import Literal
+from enum import StrEnum
 
 import pytest
 
@@ -18,6 +18,12 @@ from services.dify_builder.template_execution import BoundedJinja2TemplateRender
 from services.workflow_generation.runner import WorkflowGenerator
 from tests.unit_tests.services.workflow_generation.test_runner import _ParallelBuilderModel
 from tests.workflow_test_utils import build_test_graph_init_params
+
+
+class CorrectionAction(StrEnum):
+    ADD = "add"
+    UPDATE = "update"
+
 
 # Exact template and bindings from Dev run 51e13ecc-ad86-4c44-8b89-53687981475b.
 _REJECTED: dict[str, object] = {
@@ -132,11 +138,11 @@ def _native_template(config: dict[str, object]) -> NodeRunResult:
     return node._run()
 
 
-@pytest.mark.parametrize("action", ["add", "update"])
-def test_generated_template_correction_reaches_native_aliases(action: Literal["add", "update"]) -> None:
+@pytest.mark.parametrize("action", list(CorrectionAction))
+def test_generated_template_correction_reaches_native_aliases(action: CorrectionAction) -> None:
     assert _native_template(_REJECTED).status == WorkflowNodeExecutionStatus.FAILED
     plan = deepcopy(_PLAN)
-    plan["nodes"][2]["action"] = action
+    plan["nodes"][2]["action"] = action.value
     current = _existing_graph() if action == "update" else None
     before = deepcopy(current)
     model = _ParallelBuilderModel(

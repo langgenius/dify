@@ -6,7 +6,7 @@ These exercise the API boundary, not a qualified Graphon execution.
 from __future__ import annotations
 
 from multiprocessing.synchronize import Event as ProcessEvent
-from typing import TYPE_CHECKING, Literal, Unpack
+from typing import TYPE_CHECKING, Unpack
 
 from pydantic import JsonValue
 from sqlalchemy import Engine
@@ -14,8 +14,9 @@ from sqlalchemy import Engine
 from models.account import Account, AccountStatus
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision, NativeTestPublicReceipt
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     advance_builder_context,
     require_instance,
@@ -1227,7 +1228,7 @@ class _ForwardArguments420(TypedDict, closed=True):
 class PublicDecisionArguments(TypedDict, closed=True):
     ref: NativeTestContextRef
     intent: EffectIntent
-    decision: Literal["approved", "denied"]
+    decision: EffectApprovalDecision
     max_calls: int
     max_dispatches: int
     max_cost_units: int
@@ -1237,7 +1238,7 @@ class PublicDecisionArguments(TypedDict, closed=True):
 
 class ConsoleDecisionArguments(TypedDict, closed=True):
     pending_operation_id: str
-    decision: Literal["confirm", "deny"]
+    decision: NativeTestDecision
     scope_digest: str
     expected_version: int
     idempotency_key: str

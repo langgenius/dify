@@ -18,6 +18,7 @@ from core.dify_builder.models import Actor, DifyBuilderContext
 from core.dify_builder.state import PcState
 from models.dify_builder import DifyBuilderExecutionRequest
 from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import BuilderTestActions
@@ -236,7 +237,7 @@ def test_expired_current_test_remains_readonly_and_cannot_continue(
             session_id=sid,
             request_id=c.ref.request_id,
             pending_operation_id=pending.pending_operation_id,
-            decision="confirm",
+            decision=NativeTestDecision.CONFIRM,
             scope_digest=pending.scope_digest,
             expected_version=pending.version,
             idempotency_key="approve-before-expiry",

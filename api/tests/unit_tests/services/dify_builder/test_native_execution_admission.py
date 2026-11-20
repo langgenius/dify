@@ -14,6 +14,8 @@ from runtime_contracts.builder.execution import (
     BuilderExecutionContext,
     ExecutionEvidenceSummary,
     TrustedExecutionCompletion,
+    WorkerExit,
+    WorkflowExecutionTransport,
 )
 from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
@@ -400,7 +402,7 @@ def test_completion_snapshots_actual_thread_once(owned: Owned, alive_at_snapshot
                 task_id="task",
                 recorder=None,
                 worker_thread=threading.current_thread(),
-                exit_kind="policy_refused",
+                exit_kind=WorkerExit.POLICY_REFUSED,
             )
         except Exception as exc:
             failures.append(exc)
@@ -533,7 +535,7 @@ def test_real_service_transport_guard_marks_preworker_origin(owned: Owned) -> No
                 InvokeFrom.DEBUGGER,
                 session=session,
                 streaming=True,
-                workflow_execution_mode="celery",
+                workflow_execution_mode=WorkflowExecutionTransport.CELERY,
                 builder_execution=context,
                 builder_execution_admit=launch,
             )
@@ -666,7 +668,7 @@ def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) ->
             task_id="task",
             recorder=None,
             worker_thread=threading.current_thread(),
-            exit_kind="returned",
+            exit_kind=WorkerExit.RETURNED,
         )
         try:
             launch.on_worker_finished(
@@ -675,7 +677,7 @@ def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) ->
                 task_id="task",
                 recorder=foreign_recorder if invalid == "recorder" else None,
                 worker_thread=threading.main_thread() if invalid == "thread" else threading.current_thread(),
-                exit_kind="failed" if invalid == "conflicting_exit" else "returned",
+                exit_kind=WorkerExit.FAILED if invalid == "conflicting_exit" else WorkerExit.RETURNED,
             )
         except BuilderExecutionPolicyError as error:
             errors.append(error.reason_code)
@@ -728,7 +730,7 @@ def test_setup_refusal_is_completed_only_with_positive_preworker_origin(
                     task_id="task",
                     recorder=None,
                     worker_thread=threading.current_thread(),
-                    exit_kind="returned",
+                    exit_kind=WorkerExit.RETURNED,
                 )
 
             thread = threading.Thread(target=returned_worker)

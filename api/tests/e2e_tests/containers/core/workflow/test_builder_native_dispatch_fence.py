@@ -6,6 +6,7 @@ and physical host quiescence are separately owned. No provider I/O is invoked.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, override
 
 from pydantic import JsonValue
@@ -15,8 +16,11 @@ from runtime_contracts.builder.native.contracts import (
     CheckpointRef,
     DispatchPermit,
     EffectDecision,
+    Outcome,
     ResumeReceipt,
 )
+from services.dify_builder.native_testing.lifecycle import NativeRecoveryEvidence
+from services.dify_builder.native_testing.repository import EffectApprovalScope
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     NativeRuntimeWitness,
     require_instance,
@@ -123,6 +127,13 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger 
 )
 
 
+class ChildRunStatus(StrEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
+
+
 @pytest.fixture
 def fence_case(
     continuation_case: _fixture_types_0.ContinuationCase, migrated_dispatch_claims: None
@@ -150,7 +161,9 @@ def _pending(c: ContinuationCase, category: str, ref: NativeTestContextRef | Non
         return service.configuration(ref=ref, requirements_ref="configuration-1", expected_generation=generation)
     if category == "interaction":
         return service.interaction(ref=ref, native_form_ref="form-1", expected_generation=generation)
-    effect = c.ledger.intent if ref == c.ref else _bind_child_effect(c, ref, approval_scope="operation")
+    effect = (
+        c.ledger.intent if ref == c.ref else _bind_child_effect(c, ref, approval_scope=EffectApprovalScope.OPERATION)
+    )
     return require_instance(c.ledger.guard.before_call(ref=ref, intent=effect), ApprovalWait)
 
 
@@ -221,7 +234,7 @@ def test_completed_result_replay_survives_later_running_fence(fence_case: Contin
     c.ledger.guard.claim_dispatch(ref=c.ref, intent=c.ledger.intent, permit=require_instance(permit, DispatchPermit))
     result = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"done": True})
     c.ledger.guard.record_outcome(
-        permit=require_instance(permit, DispatchPermit), outcome="completed", result_ref=result
+        permit=require_instance(permit, DispatchPermit), outcome=Outcome.COMPLETED, result_ref=result
     )
     wait = _pending(c, "configuration")
     _fence(c, wait.pending_operation_id)
@@ -437,7 +450,9 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     context = c.store.load_context(ref=child)
     assert context.generation == 0
-    effect = _bind_child_effect(c, child, approval_scope="operation", input_digest=canonical_digest({"limit": 1}))
+    effect = _bind_child_effect(
+        c, child, approval_scope=EffectApprovalScope.OPERATION, input_digest=canonical_digest({"limit": 1})
+    )
     selected = ChildApprovalCase(
         ref=child,
         store=c.store,
@@ -506,8 +521,8 @@ def test_real_explicit_recovery_preserves_source_and_refuses_later_fence_evidenc
         """Trusted proof-port fixture; this does not claim real host quiescence."""
 
         @override
-        def recovery_evidence(self, **_kwargs: object) -> Literal["not_started"]:
-            return "not_started"
+        def recovery_evidence(self, **_kwargs: object) -> Literal[NativeRecoveryEvidence.NOT_STARTED]:
+            return NativeRecoveryEvidence.NOT_STARTED
 
     c.lifecycle.runtime = RuntimeProof()
     if late_fence:
@@ -714,7 +729,7 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
     mocker: pytest_mock.MockerFixture,
     fence_case: ContinuationCase,
     monkeypatch: pytest.MonkeyPatch,
-    child_status: Literal["running", "completed", "stopped", "unknown"],
+    child_status: ChildRunStatus,
     fault: None | str,
 ) -> None:
     """Root A stays authorized; actual parent B must qualify every lookup of C."""

@@ -8,7 +8,11 @@ to the exact retained C03 bridge; native observation callbacks never commit it.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import TYPE_CHECKING
+
+from runtime_contracts.builder.execution import WorkerExit
+from services.dify_builder.native_testing.host_lifetime import NativeNodePhase, ThreadRole
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.context_runtime import NativeExecutionContext
@@ -160,7 +164,7 @@ class _HostCommandChannel:
             if self._host._cancellation_fence is not None and self._host._cancellation_fence.poll():
                 from graphon.engine.command import AbortCommand
 
-                self._host.request_close(reason="cancel")
+                self._host.request_close(reason=CloseReason.CANCEL)
                 return [AbortCommand(reason="native_cancelled")]
             return self._channel.fetch_commands()
         except BaseException:
@@ -183,7 +187,12 @@ class NativeHostEngineBindings:
     commands: CommandChannel
 
 
-RootTerminal = Literal["succeeded", "failed", "partial-succeeded", "stopped", "paused"]
+class RootTerminal(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    PARTIAL_SUCCEEDED = "partial-succeeded"
+    STOPPED = "stopped"
+    PAUSED = "paused"
 
 
 @dataclass(frozen=True, slots=True)
@@ -628,11 +637,11 @@ class NativeHostLaunch:
 
     def _observe_root_event(self, *, event: EngineEvent, layer: Layer) -> None:
         terminals: dict[type[EngineEvent], RootTerminal] = {
-            GraphRunSucceededEvent: "succeeded",
-            GraphRunFailedEvent: "failed",
-            GraphRunPartialSucceededEvent: "partial-succeeded",
-            GraphRunAbortedEvent: "stopped",
-            GraphRunPausedEvent: "paused",
+            GraphRunSucceededEvent: RootTerminal.SUCCEEDED,
+            GraphRunFailedEvent: RootTerminal.FAILED,
+            GraphRunPartialSucceededEvent: RootTerminal.PARTIAL_SUCCEEDED,
+            GraphRunAbortedEvent: RootTerminal.STOPPED,
+            GraphRunPausedEvent: RootTerminal.PAUSED,
         }
         if type(event) is not GraphRunStartedEvent and type(event) not in terminals:
             return
@@ -1123,13 +1132,16 @@ class NativeHostLaunch:
     def start_worker(self, *, worker: Thread) -> None:
         # No external caller .start gap: lifetime owns the actual start attempt.
         _ = self.generation_bindings
-        self.lifetime.register_thread(thread=worker, role="worker")
+        self.lifetime.register_thread(thread=worker, role=ThreadRole.WORKER)
         with self._registration:
             self._worker = worker
         self.lifetime.start_thread(thread=worker)
 
     def worker_finished(
-        self, *, worker: Thread, exit_kind: Literal["returned", "policy_refused", "stopped", "failed"]
+        self,
+        *,
+        worker: Thread,
+        exit_kind: Literal[WorkerExit.RETURNED, WorkerExit.POLICY_REFUSED, WorkerExit.STOPPED, WorkerExit.FAILED],
     ) -> None:
         if exit_kind not in ("returned", "policy_refused", "stopped", "failed"):
             raise ValueError("native_host_worker_exit_invalid")
@@ -1221,11 +1233,11 @@ class NativeHostLaunch:
     @contextmanager
     def _logical_node_scope(self, *, node: Node) -> Generator[None]:
         self.bind_node_runtime(node=node)
-        with self.lifetime.node_scope(node=node, phase="run"):
+        with self.lifetime.node_scope(node=node, phase=NativeNodePhase.RUN):
             yield
 
     @contextmanager
-    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> Generator[None]:
+    def node_scope(self, *, node: Node, phase: NativeNodePhase) -> Generator[None]:
         self.bind_node_runtime(node=node)
         manager = self.lifetime.node_scope(node=node, phase=phase)
         actual = _HookScope(node, current_thread(), node.execution_id, manager)

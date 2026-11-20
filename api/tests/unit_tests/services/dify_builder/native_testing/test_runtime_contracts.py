@@ -307,6 +307,7 @@ def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dep
         "runtime_contracts.builder.native.contracts",
         "runtime_contracts.builder.native.approval_contracts",
         "runtime_contracts.builder.native.agent_contracts",
+        "runtime_contracts.builder.string_enum",
     }
 
 

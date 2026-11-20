@@ -2,46 +2,28 @@
 
 import re
 from dataclasses import dataclass
-from typing import Literal, TypeIs
-
-NativeModelFailureStage = Literal["invoke", "receipt_append", "result_store", "outcome_complete", "unknown_settlement"]
-NativeModelFailureCategory = Literal[
-    "quota_exceeded",
-    "authentication",
-    "bad_request",
-    "rate_limit",
-    "connection",
-    "timeout",
-    "service_unavailable",
-    "invalid_response",
-    "result_too_large",
-    "internal_unknown",
-]
-_MODEL_STAGES = frozenset({"invoke", "receipt_append", "result_store", "outcome_complete", "unknown_settlement"})
-_MODEL_CATEGORIES = frozenset(
-    {
-        "quota_exceeded",
-        "authentication",
-        "bad_request",
-        "rate_limit",
-        "connection",
-        "timeout",
-        "service_unavailable",
-        "invalid_response",
-        "result_too_large",
-        "internal_unknown",
-    }
-)
+from enum import StrEnum
 
 
-def _is_model_failure_stage(value: str) -> TypeIs[NativeModelFailureStage]:
-    """Narrow a diagnostic stage only when it belongs to the fixed allowlist."""
-    return value in _MODEL_STAGES
+class NativeModelFailureStage(StrEnum):
+    INVOKE = "invoke"
+    RECEIPT_APPEND = "receipt_append"
+    RESULT_STORE = "result_store"
+    OUTCOME_COMPLETE = "outcome_complete"
+    UNKNOWN_SETTLEMENT = "unknown_settlement"
 
 
-def _is_model_failure_category(value: str) -> TypeIs[NativeModelFailureCategory]:
-    """Narrow a diagnostic category only when it belongs to the fixed allowlist."""
-    return value in _MODEL_CATEGORIES
+class NativeModelFailureCategory(StrEnum):
+    QUOTA_EXCEEDED = "quota_exceeded"
+    AUTHENTICATION = "authentication"
+    BAD_REQUEST = "bad_request"
+    RATE_LIMIT = "rate_limit"
+    CONNECTION = "connection"
+    TIMEOUT = "timeout"
+    SERVICE_UNAVAILABLE = "service_unavailable"
+    INVALID_RESPONSE = "invalid_response"
+    RESULT_TOO_LARGE = "result_too_large"
+    INTERNAL_UNKNOWN = "internal_unknown"
 
 
 @dataclass(frozen=True)
@@ -52,7 +34,7 @@ class NativeModelFailureDiagnostic:
     category: NativeModelFailureCategory
 
     def __post_init__(self) -> None:
-        if self.stage not in _MODEL_STAGES or self.category not in _MODEL_CATEGORIES:
+        if self.stage not in NativeModelFailureStage or self.category not in NativeModelFailureCategory:
             raise ValueError("invalid_native_model_failure_diagnostic")
 
 
@@ -72,9 +54,11 @@ def parse_native_model_failure(error: str) -> NativeModelFailureDiagnostic | Non
     if match is None:
         return None
     stage, category = match.groups()
-    if not _is_model_failure_stage(stage) or not _is_model_failure_category(category):
+    if stage not in NativeModelFailureStage or category not in NativeModelFailureCategory:
         return None
-    return NativeModelFailureDiagnostic(stage=stage, category=category)
+    return NativeModelFailureDiagnostic(
+        stage=NativeModelFailureStage(stage), category=NativeModelFailureCategory(category)
+    )
 
 
 class NativeObservationError(RuntimeError):

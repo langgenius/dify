@@ -14,8 +14,10 @@ from dataclasses import replace
 
 from core.dify_builder.contract import (
     DecisionItem,
+    ExecutionProgressStatus,
     FormCard,
     TestResultCard,
+    TestResultStatus,
 )
 from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, ProposalWouldRunWrongError
 from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
@@ -30,6 +32,7 @@ from core.dify_builder.models import (
     Run,
     Session,
     Snapshot,
+    TaskSummaryOutcome,
     TestInput,
     Turn,
 )
@@ -415,7 +418,7 @@ def _change_not_applied(
     fc.staged_repair = []
     fc.last_edit_rejection = rejection
     progress.fail_step(failed_step)
-    execution = progress.finish(status="error")
+    execution = progress.finish(status=ExecutionProgressStatus.ERROR)
     turn_items = append_assistant(
         env, s, fc, text_parts(title, ": ", body, "\n", reply_text), execution=execution, turn_id=progress.operation_id
     )
@@ -884,7 +887,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         return wait_for_native_approval(env, s, fc, progress, run, PcState.EDIT_AWAIT_REPAIR)
 
     if status == "running":
-        progress.finish(status="stopped")
+        progress.finish(status=ExecutionProgressStatus.STOPPED)
     else:
         if status == "succeeded":
             progress.complete("edit-run-test")
@@ -940,7 +943,9 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc,
             result_card(run, reply_language=fc.reply_language)
             if run.verification
-            else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
+            else TestResultCard(
+                status=TestResultStatus.FAILED, failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id
+            ),
         )
         execution = progress.finish()
         turn_items = append_assistant(
@@ -1323,7 +1328,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     if kind == "keep_draft":
         from services.dify_builder.task_lifecycle import record_task_completion
 
-        record_task_completion(env, s, fc, "kept_draft")
+        record_task_completion(env, s, fc, TaskSummaryOutcome.KEPT_DRAFT)
         decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
         turn_items = append_assistant(
             env,
@@ -1392,7 +1397,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     )
     from services.dify_builder.task_lifecycle import record_task_completion
 
-    record_task_completion(env, s, fc, "published")
+    record_task_completion(env, s, fc, TaskSummaryOutcome.PUBLISHED)
     return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=items)
 
 

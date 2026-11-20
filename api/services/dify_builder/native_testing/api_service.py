@@ -7,7 +7,7 @@ fail closed before admission. No default profile or ordinary executor is used.
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol
+from typing import Protocol
 from uuid import uuid4
 
 from pydantic import TypeAdapter
@@ -37,8 +37,9 @@ from runtime_contracts.builder.native.contracts import (
     NativeTestContextRef,
     WaitReason,
 )
+from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
-from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.authorization import EffectApprovalDecision, EffectAuthorizationService
 from services.dify_builder.native_testing.canvas_path import read_canvas_path
 from services.dify_builder.native_testing.context_binding import NativeAdmissionCompiler, NativeRuntimeProfile
 from services.dify_builder.native_testing.input_binding import current_input_binding
@@ -53,7 +54,11 @@ from services.dify_builder.native_testing.pending_intents import (
     ResolvedPendingIntent,
 )
 from services.dify_builder.native_testing.private_reads import validate_private_read
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt, PendingActionDisclosure
+from services.dify_builder.native_testing.public_contracts import (
+    NativeTestDecision,
+    NativeTestPublicReceipt,
+    PendingActionDisclosure,
+)
 from services.dify_builder.native_testing.public_projection import decision_public_revision, project_pending_decision
 from services.dify_builder.native_testing.repository import (
     NativeBindingResolver,
@@ -186,7 +191,7 @@ class NativeTestApiService:
         session_id: str,
         test_input_id: str,
         expected_version: int,
-        mode: Literal["native", "mock"],
+        mode: NativeTestMode,
         idempotency_key: str,
     ) -> NativeTestPublicReceipt:
         self._actor(actor)
@@ -194,7 +199,11 @@ class NativeTestApiService:
             raise BuilderExecutionPolicyError("native_runtime_unavailable")
         key, body = self._command(
             "start",
-            {"test_input_id": test_input_id, "expected_version": expected_version, "mode": mode},
+            {
+                "test_input_id": test_input_id,
+                "expected_version": expected_version,
+                "mode": mode.value if isinstance(mode, NativeTestMode) else mode,
+            },
             idempotency_key,
         )
         # The session lock serializes same-key admission without adding a second
@@ -555,7 +564,7 @@ class NativeTestApiService:
         session_id: str,
         request_id: str,
         pending_operation_id: str,
-        decision: Literal["confirm", "deny"],
+        decision: NativeTestDecision,
         scope_digest: str,
         expected_version: int,
         idempotency_key: str,
@@ -565,7 +574,7 @@ class NativeTestApiService:
             "decision",
             {
                 "pending_operation_id": pending_operation_id,
-                "decision": decision,
+                "decision": decision.value if isinstance(decision, NativeTestDecision) else decision,
                 "scope_digest": scope_digest,
                 "expected_version": expected_version,
             },
@@ -594,7 +603,7 @@ class NativeTestApiService:
         return self.authorization.decide(
             ref=resolved.ref,
             intent=resolved.intent,
-            decision="approved" if decision == "confirm" else "denied",
+            decision=EffectApprovalDecision.APPROVED if decision == "confirm" else EffectApprovalDecision.DENIED,
             max_calls=terms.max_calls,
             max_dispatches=terms.max_dispatches,
             max_cost_units=terms.max_cost_units,

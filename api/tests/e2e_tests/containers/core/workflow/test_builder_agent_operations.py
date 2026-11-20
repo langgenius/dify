@@ -11,8 +11,10 @@ from pydantic import JsonValue
 from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
-from runtime_contracts.builder.native.contracts import DispatchPermit
+from runtime_contracts.builder.native.contracts import DispatchPermit, NativeAgentTestProfile, Outcome
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
+from services.dify_builder.native_testing.public_contracts import NativeTestDecision
+from services.dify_builder.native_testing.state_store import PayloadKind
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
@@ -420,7 +422,7 @@ def test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot(
             session_id=session_id,
             request_id=ref.request_id,
             pending_operation_id=item.pending_operation_id,
-            decision="confirm",
+            decision=NativeTestDecision.CONFIRM,
             scope_digest=require_instance(item.scope_digest, str),
             expected_version=receipt.version,
             idempotency_key="decision-" + item.pending_operation_id,
@@ -551,7 +553,7 @@ def claimed_shell_ack(
         ref=AgentNativeTestRef.model_validate(case.ref.model_dump(mode="json")),
         config=prepared,
         association=None,
-        native_test_profile="confirmed",
+        native_test_profile=NativeAgentTestProfile.CONFIRMED,
     )
     service = AgentOperationService(loader=case.store.loader, state_store=case.store, assessor=None)
     monkeypatch.setattr(service, "_endpoint", lambda _ref: endpoint)
@@ -738,7 +740,7 @@ def test_receipt_failure_preserves_known_completed_ack_and_refuses_config_read(
         conflicting = case.store.prepare_object(
             ref=case.ref,
             tenant_id=case.ledger.actor.tenant_id,
-            kind="result",
+            kind=PayloadKind.RESULT,
             logical_key=logical_key,
             payload={"conflicting": "immutable receipt"},
         )
@@ -812,7 +814,11 @@ def test_noncompleted_outcome_never_unlocks_config_read(claimed_shell_ack: Claim
 
     case, service, _endpoint, envelope = claimed_shell_ack
     assert outcome in {"unknown", "failed", "not_dispatched"}
-    choices: dict[str, Outcome] = {"unknown": "unknown", "failed": "failed", "not_dispatched": "not_dispatched"}
+    choices: dict[str, Outcome] = {
+        "unknown": Outcome.UNKNOWN,
+        "failed": Outcome.FAILED,
+        "not_dispatched": Outcome.NOT_DISPATCHED,
+    }
     checked = choices[outcome]
     service.bridge.authorization.record_outcome(permit=api_permit(envelope.permit), outcome=checked, result_ref=None)
     with pytest.raises(BuilderExecutionPolicyError):

@@ -139,7 +139,7 @@ def test_two_generation_wait_receipt_preserves_owner_category_and_exact_private_
 def test_storage_encryption_readback_or_sql_ack_failure_never_reaches_pause(code: str) -> None:
     events: list[tuple[str, dict[str, object]]] = []
     bridge = bridge_class()(
-        state=State(events, BuilderExecutionPolicyError(code)), lifecycle=Lifecycle(events, "approval")
+        state=State(events, BuilderExecutionPolicyError(code)), lifecycle=Lifecycle(events, WaitReason.APPROVAL)
     )
     with pytest.raises(BuilderExecutionPolicyError, match=code):
         bridge.commit_wait(ref=REF, generation=0, payload=payload(0), pending_operation_ids=("pending",))
@@ -158,7 +158,7 @@ def test_storage_encryption_readback_or_sql_ack_failure_never_reaches_pause(code
 def test_lifecycle_refusal_propagates_without_creating_a_waiting_outcome(code: str) -> None:
     events: list[tuple[str, dict[str, object]]] = []
     bridge = bridge_class()(
-        state=State(events), lifecycle=Lifecycle(events, "interaction", BuilderExecutionPolicyError(code))
+        state=State(events), lifecycle=Lifecycle(events, WaitReason.INTERACTION, BuilderExecutionPolicyError(code))
     )
     with pytest.raises(BuilderExecutionPolicyError, match=code):
         bridge.commit_wait(ref=REF, generation=0, payload=payload(0), pending_operation_ids=("pending",))
@@ -168,7 +168,7 @@ def test_lifecycle_refusal_propagates_without_creating_a_waiting_outcome(code: s
 def test_lifecycle_commit_exception_is_not_masked_as_durable_wait() -> None:
     events: list[tuple[str, dict[str, object]]] = []
     bridge = bridge_class()(
-        state=State(events), lifecycle=Lifecycle(events, "approval", RuntimeError("sql commit failed"))
+        state=State(events), lifecycle=Lifecycle(events, WaitReason.APPROVAL, RuntimeError("sql commit failed"))
     )
     with pytest.raises(RuntimeError, match="sql commit failed"):
         bridge.commit_wait(ref=REF, generation=0, payload=payload(0), pending_operation_ids=("pending",))

@@ -15,7 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
-from typing import TYPE_CHECKING, Literal, Unpack
+from typing import TYPE_CHECKING, Unpack
 from uuid import uuid4
 
 import pytest
@@ -36,6 +36,7 @@ from core.dify_builder.real_call_consent import (
     GmailReadParameters,
     InstalledToolBinding,
     Phase,
+    RealCallDecision,
     scope_digest,
     validate_phase,
 )
@@ -249,7 +250,7 @@ class DecisionChanges(TypedDict, total=False, closed=True):
     consent_id: str
     scope_digest: str
     at_version: int
-    decision: Literal["confirm", "decline"]
+    decision: RealCallDecision
     idempotency_key: str
 
 
@@ -272,7 +273,7 @@ class DecisionArgs:
     consent_id: str
     scope_digest: str
     at_version: int
-    decision: Literal["confirm", "decline"] = "confirm"
+    decision: RealCallDecision = RealCallDecision.CONFIRM
     idempotency_key: str = "confirm-1"
 
 
@@ -390,7 +391,7 @@ def test_business_phase_cannot_reopen(state: ConsentState, claimed_flag: bool, r
     with pytest.raises(BuilderExecutionPolicyError):
         validate_phase(
             state=state,
-            phase="business",
+            phase=Phase.BUSINESS,
             claimed=claimed_flag,
             expires_at=now + timedelta(minutes=1),
             now=now,
@@ -402,11 +403,16 @@ def test_phase_expiry_boundary_is_exclusive() -> None:
     now = datetime(2026, 10, 11, tzinfo=UTC)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_expired"):
         validate_phase(
-            state="claimed", phase="refresh", claimed=False, expires_at=now, now=now, refresh_uncertain=False
+            state=ConsentState.CLAIMED,
+            phase=Phase.REFRESH,
+            claimed=False,
+            expires_at=now,
+            now=now,
+            refresh_uncertain=False,
         )
     validate_phase(
-        state="claimed",
-        phase="refresh",
+        state=ConsentState.CLAIMED,
+        phase=Phase.REFRESH,
         claimed=False,
         expires_at=now + timedelta(microseconds=1),
         now=now,
@@ -682,7 +688,7 @@ def test_permission_denial_is_checked_outside_sql_and_creates_nothing(
 def test_new_preparation_references_prior_unknown_consent(consent_owner: Owner) -> None:
     owner = consent_owner
     reserved, binding = claimed(owner)
-    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     owner.service().finish(binding=binding, outcome=ActionOutcome(state="unknown", reason_code="stream_incomplete"))
     repo = SqlDifyBuilderRepository(owner.factory)
     session, fc = repo.get_session(owner.session_id)
@@ -715,7 +721,7 @@ def test_identical_decision_replay_returns_saved_receipt_after_later_advancement
 
 @pytest.mark.parametrize("invalid_decision", ["approve"])
 def test_decision_conflicts_and_mismatches_do_not_mutate(
-    consent_owner: Owner, invalid_decision: Literal["confirm", "decline"]
+    consent_owner: Owner, invalid_decision: RealCallDecision
 ) -> None:
     owner = consent_owner
     prepared = prepare(owner)
@@ -739,21 +745,21 @@ def test_decision_conflicts_and_mismatches_do_not_mutate(
     assert (row.state, row.confirm_key, row.decision) == ("prepared", None, None)
     decision = confirm(owner, prepared)
     with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
-        confirm(owner, prepared, decision="decline")
+        confirm(owner, prepared, decision=RealCallDecision.DECLINE)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_decision_conflict"):
-        confirm(owner, prepared, idempotency_key="decline-1", decision="decline")
+        confirm(owner, prepared, idempotency_key="decline-1", decision=RealCallDecision.DECLINE)
     assert get(owner, prepared.consent_id) == decision
 
 
 def test_decline_is_terminal_and_never_reserves(consent_owner: Owner) -> None:
     owner = consent_owner
     prepared = prepare(owner)
-    declined = confirm(owner, prepared, decision="decline")
+    declined = confirm(owner, prepared, decision=RealCallDecision.DECLINE)
     assert (declined.state, declined.can_retry) == ("declined", True)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_not_confirmed"):
         reserve(owner, prepared)
     assert owner.count(DifyBuilderExecutionRequest) == 0
-    assert confirm(owner, prepared, decision="decline") == declined
+    assert confirm(owner, prepared, decision=RealCallDecision.DECLINE) == declined
 
 
 @pytest.mark.parametrize("change", ["rotation", "client", "graph", "input", "partial_revoke", "scope_key"])
@@ -1020,10 +1026,10 @@ def test_refresh_and_business_phases_spend_once_with_full_reference_cas(consent_
     service = owner.service()
     initial = owner.full_reference_revision()
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_phase_input"):
-        service.claim_phase(binding=binding, phase="refresh", final_parameters=APPROVED)
-    service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=APPROVED)
+    service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_already_claimed"):
-        service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     derived = service.finish_refresh(
         binding=binding,
         old_revision=initial,
@@ -1038,9 +1044,9 @@ def test_refresh_and_business_phases_spend_once_with_full_reference_cas(consent_
             '{"access_token":"enc-new"}',
             1_900_003_600,
         )
-    service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_already_claimed"):
-        service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     row = owner.consent_row(reserved.consent_id)
     assert (row.refresh_count, row.business_count) == (1, 1)
     assert (row.initial_credential_revision, row.derived_credential_revision) == (initial, derived)
@@ -1055,7 +1061,7 @@ def test_refresh_cas_conflict_is_unknown_and_never_overwrites_rotation(consent_o
     reserved, binding = claimed(owner)
     service = owner.service()
     initial = owner.full_reference_revision()
-    service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+    service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     update_credential(owner, encrypted_credentials='{"access_token":"rotated-elsewhere"}')
     with pytest.raises(BuilderExecutionPolicyError, match="refresh_conflict"):
         service.finish_refresh(
@@ -1071,7 +1077,7 @@ def test_refresh_cas_conflict_is_unknown_and_never_overwrites_rotation(consent_o
     current = get(owner, reserved.consent_id)
     assert (current.state, current.reason_code, current.can_retry) == ("unknown", "refresh_conflict", False)
     with pytest.raises(BuilderExecutionPolicyError):
-        service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     assert owner.consent_row(reserved.consent_id).business_count == 0
     assert get(owner, reserved.consent_id).state == "unknown"
 
@@ -1079,9 +1085,9 @@ def test_refresh_cas_conflict_is_unknown_and_never_overwrites_rotation(consent_o
 def test_unresolved_refresh_blocks_business_as_unknown(consent_owner: Owner) -> None:
     owner = consent_owner
     reserved, binding = claimed(owner)
-    owner.service().claim_phase(binding=binding, phase="refresh", final_parameters=None)
+    owner.service().claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     with pytest.raises(BuilderExecutionPolicyError, match="refresh_uncertain"):
-        owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     current = get(owner, reserved.consent_id)
     assert (current.state, current.business_claimed) == ("unknown", False)
 
@@ -1105,7 +1111,7 @@ def test_known_pre_phase_denial_after_claim_is_failed(
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         monkeypatch.setattr(RBACService.CheckAccess, "check", lambda *_args, **_kwargs: False)
     with pytest.raises(BuilderExecutionPolicyError):
-        owner.service().claim_phase(binding=binding, phase="business", final_parameters=parameters)
+        owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=parameters)
     current = get(owner, reserved.consent_id) if change != "permission" else None
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.business_count, row.business_claimed_at) == ("failed", 0, None)
@@ -1119,7 +1125,7 @@ def test_expiry_blocks_new_phase_but_permits_recording_dispatched_outcome(
 ) -> None:
     owner = consent_owner
     reserved, binding = claimed(owner)
-    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     shift_clock(monkeypatch, timedelta(minutes=30))
     owner.service().finish(binding=binding, outcome=ActionOutcome(state="completed", reason_code="message_returned"))
     row = owner.consent_row(reserved.consent_id)
@@ -1135,7 +1141,7 @@ def test_outcome_candidates_and_unknown_finality(consent_owner: Owner) -> None:
     service = owner.service()
     with pytest.raises(BuilderExecutionPolicyError, match="phase_not_claimed"):
         service.finish(binding=binding, outcome=ActionOutcome(state="completed", reason_code="message_returned"))
-    service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    service.claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     completed = ActionOutcome(state="completed", reason_code="message_returned")
     service.finish(binding=binding, outcome=completed)
     service.finish(binding=binding, outcome=completed)
@@ -1148,7 +1154,7 @@ def test_outcome_candidates_and_unknown_finality(consent_owner: Owner) -> None:
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.outcome_state, row.reason_code) == ("unknown", "unknown", "seal_mismatch")
     with pytest.raises(BuilderExecutionPolicyError):
-        service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     assert owner.consent_row(reserved.consent_id).refresh_count == 0
 
 
@@ -1162,7 +1168,7 @@ def test_phase_and_finish_reject_forged_binding(consent_owner: Owner) -> None:
     ]
     for candidate in forged:
         with pytest.raises(BuilderExecutionPolicyError):
-            owner.service().claim_phase(binding=candidate, phase="business", final_parameters=APPROVED)
+            owner.service().claim_phase(binding=candidate, phase=Phase.BUSINESS, final_parameters=APPROVED)
         with pytest.raises(BuilderExecutionPolicyError):
             owner.service().finish(binding=candidate, outcome=ActionOutcome(state="unknown", reason_code="x"))
     row = owner.consent_row(reserved.consent_id)
@@ -1246,7 +1252,7 @@ def test_execute_replay_returns_current_state_after_business_and_unknown(consent
     binding = owner.service().claim_tool(
         context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-execution-1"
     )
-    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     executed, again = reserve(owner, decision)
     assert again is False
     assert (executed.state, executed.business_claimed, executed.native_run_id) == ("claimed", True, run_id)
@@ -1331,7 +1337,7 @@ def test_malformed_public_ids_refuse_before_any_sql(
             actor=owner.actor,
             session_id=owner.session_id,
             consent_id=malformed,
-            decision="confirm",
+            decision=RealCallDecision.CONFIRM,
             scope_digest="a" * 64,
             at_version=1,
             idempotency_key="k",
@@ -1340,7 +1346,7 @@ def test_malformed_public_ids_refuse_before_any_sql(
             actor=owner.actor,
             session_id=malformed,
             consent_id=valid,
-            decision="decline",
+            decision=RealCallDecision.DECLINE,
             scope_digest="a" * 64,
             at_version=1,
             idempotency_key="k",
@@ -1464,7 +1470,7 @@ def test_phase_crossing_expiry_inside_lock_wait_is_a_known_failure(
     service = owner.service()
     parameters = None if phase == "refresh" else APPROVED
     if prior == "refreshed":
-        service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        service.claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
         service.finish_refresh(
             binding=binding,
             old_revision=owner.full_reference_revision(),
@@ -1493,12 +1499,12 @@ def test_unresolved_refresh_stays_unknown_when_business_crosses_expiry_in_lock(
 ) -> None:
     owner = consent_owner
     reserved, binding = claimed(owner)
-    owner.service().claim_phase(binding=binding, phase="refresh", final_parameters=None)
+    owner.service().claim_phase(binding=binding, phase=Phase.REFRESH, final_parameters=None)
     before = owner.consent_row(reserved.consent_id)
     clock = LockClock(monkeypatch, "_lock_request")
     clock.cross(expires(owner, reserved.consent_id), timedelta(seconds=1))
     with pytest.raises(BuilderExecutionPolicyError, match="refresh_uncertain"):
-        owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+        owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     assert clock.jumps == 1
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.business_count, row.business_claimed_at) == ("unknown", 0, None)
@@ -1517,7 +1523,7 @@ def test_spend_timestamps_use_fresh_time_after_lock_wait(consent_owner: Owner, m
     )
     assert owner.consent_row(reserved.consent_id).claimed_at == deadline - timedelta(seconds=2)
     clock.cross(deadline, -timedelta(seconds=1))
-    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    owner.service().claim_phase(binding=binding, phase=Phase.BUSINESS, final_parameters=APPROVED)
     row = owner.consent_row(reserved.consent_id)
     assert (row.business_claimed_at, row.business_count, row.state) == (deadline - timedelta(seconds=1), 1, "claimed")
     assert clock.jumps == 2

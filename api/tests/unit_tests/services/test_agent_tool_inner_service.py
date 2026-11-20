@@ -4,7 +4,7 @@ import json
 import sqlite3
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import Literal
+from enum import StrEnum
 from unittest.mock import patch
 
 import pytest
@@ -31,6 +31,14 @@ from models.tools import ToolFile
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+
+
+class PluginProviderType(StrEnum):
+    PLUGIN = "plugin"
+    BUILTIN = "builtin"
+    API = "api"
+    WORKFLOW = "workflow"
+    MCP = "mcp"
 
 
 def _persist_app(session: Session, *, tenant_id: str = "tenant-1") -> App:
@@ -485,10 +493,10 @@ def test_actual_plugin_cast_frontend_and_converter_preserve_file_wire(
     assert dispatch.call_args.kwargs["tool_parameters"] == {"input": expected}
 
 
-@pytest.mark.parametrize("provider_type", ["plugin", "builtin"])
+@pytest.mark.parametrize("provider_type", [PluginProviderType.PLUGIN, PluginProviderType.BUILTIN])
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runtime(
-    provider_type: Literal["plugin", "builtin"], sqlite_session: sqlalchemy.orm.Session
+    provider_type: PluginProviderType, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
     from copy import deepcopy
 
@@ -506,7 +514,7 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
     before = tool.runtime.model_dump()
     cached_parameters = tool.runtime.runtime_parameters
     request = _request()
-    request.tool.provider_type = provider_type
+    request.tool.provider_type = provider_type.value
     request.tool.runtime_parameters = deepcopy(configured)
     request.tool.tool_parameters = {
         "input": DAEMON_FILE,
@@ -593,10 +601,13 @@ def test_api_select_list_repr_is_not_decoded_as_an_array(
             assert parameter.init_frontend_parameter("a") == "a"
 
 
-@pytest.mark.parametrize("provider_type", ["builtin", "api", "workflow", "mcp"])
+@pytest.mark.parametrize(
+    "provider_type",
+    [PluginProviderType.BUILTIN, PluginProviderType.API, PluginProviderType.WORKFLOW, PluginProviderType.MCP],
+)
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_non_plugin_runtime_keeps_existing_configured_precedence(
-    provider_type: Literal["plugin", "builtin"], sqlite_session: sqlalchemy.orm.Session
+    provider_type: PluginProviderType, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
     from core.tools.__base.tool import Tool
 
@@ -623,7 +634,7 @@ def test_non_plugin_runtime_keeps_existing_configured_precedence(
     fixture = _ordinary_plugin([_parameter("query", "string")], {"query": "configured"})
     tool = OrdinaryTool(fixture.entity, fixture.runtime)
     request = _request()
-    request.tool.provider_type = provider_type
+    request.tool.provider_type = provider_type.value
     with patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=tool):
         assert AgentToolInnerService().invoke(request, session=sqlite_session).observation == "configured"
     assert tool.runtime is fixture.runtime

@@ -20,12 +20,14 @@ import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Never
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, Never
 from uuid import UUID
 
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.workflow.generator.tool_catalogue import build_tool_catalogue
 from models.provider_ids import ToolProviderID
+from runtime_contracts.builder.execution import FailureResourceKind
 from services.credentials.query import CredentialQuery, ToolCredentialMetadata, WorkflowToolCredentialMetadata
 from services.workflow_ref_service import WorkflowRef
 
@@ -42,7 +44,9 @@ if TYPE_CHECKING:
 INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
 
 
-ToolSetupReason = Literal["credential_unavailable", "authorization_lookup_failed"]
+class ToolSetupReason(StrEnum):
+    CREDENTIAL_UNAVAILABLE = "credential_unavailable"
+    AUTHORIZATION_LOOKUP_FAILED = "authorization_lookup_failed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,7 +187,7 @@ def _refuse_missing_declaration(declarations: DraftToolDeclarations, provider: s
 
         # Positive source failure, not merely an empty catalogue or absent
         # credential. Associate only the requested declaration lookup.
-        with observe_resource("tool", provider, action):
+        with observe_resource(FailureResourceKind.TOOL, provider, action):
             raise ToolProviderCredentialValidationError(
                 "Installed Tool metadata service unavailable. Check workspace access and plugin services."
             )
@@ -299,7 +303,7 @@ def validate_tool_setup(
     for node in nodes:
         from services.dify_builder.native_launch_observation import observe_resource
 
-        with observe_resource("tool", *tool_key(node["data"]), node_id=node.get("id")):
+        with observe_resource(FailureResourceKind.TOOL, *tool_key(node["data"]), node_id=node.get("id")):
             _validate_tool_node(
                 tenant_id=tenant_id,
                 actor_id=actor_id,
@@ -340,13 +344,13 @@ def _validate_tool_node(
         raise DraftToolSetupError(
             "Tool credential setup could not be verified. "
             "Configure or select credentials before testing or publishing.",
-            reason="authorization_lookup_failed",
+            reason=ToolSetupReason.AUTHORIZATION_LOOKUP_FAILED,
             node=node,
         ) from None
     if not available:
         raise DraftToolSetupError(
             "Configure or select an authorized Tool credential before testing or publishing.",
-            reason="credential_unavailable",
+            reason=ToolSetupReason.CREDENTIAL_UNAVAILABLE,
             node=node,
         )
 

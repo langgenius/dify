@@ -32,7 +32,8 @@ import dataclasses
 import functools
 import logging
 from collections.abc import Callable
-from typing import Literal, TypedDict
+from enum import StrEnum
+from typing import TypedDict
 
 from flask import Response, request
 from flask.globals import app_ctx
@@ -114,6 +115,25 @@ from .dify_builder_fields import (
     DifyBuilderSubmitMessagePayload,
     DifyBuilderTaskControlPayload,
 )
+
+
+class TaskControlOperation(StrEnum):
+    STOP = "stop"
+    RESUME = "resume"
+
+
+class ConversationControlOperation(StrEnum):
+    CLEAR = "clear"
+    ABANDON = "abandon"
+
+
+class NativeCommand(StrEnum):
+    START = "start"
+    GET = "get"
+    DECIDE = "decide"
+    RESUME = "resume"
+    CANCEL = "cancel"
+
 
 logger = logging.getLogger(__name__)
 
@@ -344,7 +364,7 @@ def _message(session_id: str, body, actor: Actor) -> dict | tuple[dict, int]:
     )
 
 
-def _task_control(session_id: str, body, actor: Actor, *, operation: Literal["stop", "resume"]) -> dict:
+def _task_control(session_id: str, body, actor: Actor, *, operation: TaskControlOperation) -> dict:
     """Parse a fixed task operation and serialize its authoritative JSON projection."""
     try:
         payload = DifyBuilderTaskControlPayload.model_validate(body)
@@ -382,7 +402,7 @@ def _task_control(session_id: str, body, actor: Actor, *, operation: Literal["st
     return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
 
 
-def _conversation_control(session_id: str, body, actor: Actor, *, operation: Literal["clear", "abandon"]):
+def _conversation_control(session_id: str, body, actor: Actor, *, operation: ConversationControlOperation):
     """Confirmed lifecycle controls deliberately have no app-revision input."""
     payload_type = (
         DifyBuilderClearConversationPayload if operation == "clear" else DifyBuilderConversationLifecyclePayload
@@ -761,7 +781,10 @@ class DifyBuilderTaskStopApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _task_control(
-            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="stop"
+            session_id,
+            request.get_json(silent=True),
+            _actor(current_user, current_tenant_id),
+            operation=TaskControlOperation.STOP,
         )
 
 
@@ -783,7 +806,10 @@ class DifyBuilderTaskResumeApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _task_control(
-            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="resume"
+            session_id,
+            request.get_json(silent=True),
+            _actor(current_user, current_tenant_id),
+            operation=TaskControlOperation.RESUME,
         )
 
 
@@ -803,7 +829,10 @@ class DifyBuilderConversationClearApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _conversation_control(
-            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="clear"
+            session_id,
+            request.get_json(silent=True),
+            _actor(current_user, current_tenant_id),
+            operation=ConversationControlOperation.CLEAR,
         )
 
 
@@ -821,7 +850,10 @@ class DifyBuilderTaskAbandonApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _conversation_control(
-            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="abandon"
+            session_id,
+            request.get_json(silent=True),
+            _actor(current_user, current_tenant_id),
+            operation=ConversationControlOperation.ABANDON,
         )
 
 
@@ -992,7 +1024,7 @@ def _native_command(
     *,
     actor: Actor,
     session_id: str,
-    command: Literal["start", "get", "decide", "resume", "cancel"],
+    command: NativeCommand,
     payload_model=None,
     request_id=None,
 ):
@@ -1088,7 +1120,7 @@ class DifyBuilderNativeTestsApi(Resource):
         return _native_command(
             actor=_actor(current_user, current_tenant_id),
             session_id=session_id,
-            command="start",
+            command=NativeCommand.START,
             payload_model=NativeTestStartPayload,
         )
 
@@ -1112,7 +1144,10 @@ class DifyBuilderNativeTestApi(Resource):
     @dify_builder_required
     def get(self, current_tenant_id, current_user, session_id, request_id):
         return _native_command(
-            actor=_actor(current_user, current_tenant_id), session_id=session_id, request_id=request_id, command="get"
+            actor=_actor(current_user, current_tenant_id),
+            session_id=session_id,
+            request_id=request_id,
+            command=NativeCommand.GET,
         )
 
 
@@ -1139,7 +1174,7 @@ class DifyBuilderNativeTestDecisionsApi(Resource):
             actor=_actor(current_user, current_tenant_id),
             session_id=session_id,
             request_id=request_id,
-            command="decide",
+            command=NativeCommand.DECIDE,
             payload_model=NativeTestDecisionPayload,
         )
 
@@ -1169,7 +1204,7 @@ class DifyBuilderNativeTestResumeApi(Resource):
             actor=_actor(current_user, current_tenant_id),
             session_id=session_id,
             request_id=request_id,
-            command="resume",
+            command=NativeCommand.RESUME,
             payload_model=NativeTestResumePayload,
         )
 
@@ -1199,6 +1234,6 @@ class DifyBuilderNativeTestCancelApi(Resource):
             actor=_actor(current_user, current_tenant_id),
             session_id=session_id,
             request_id=request_id,
-            command="cancel",
+            command=NativeCommand.CANCEL,
             payload_model=NativeTestCancelPayload,
         )

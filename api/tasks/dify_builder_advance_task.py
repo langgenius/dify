@@ -37,10 +37,13 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.dify_builder.contract import (
     AgentMessageEventData,
+    AssistantReplyMode,
     AssistantTurnItem,
     ConversationItemAppendedEventData,
     ExecutionActivity,
+    ExecutionActivityState,
     ExecutionProgress,
+    ExecutionProgressStatus,
     ProgressEventData,
     ReasoningEventData,
     WorkflowEventData,
@@ -154,9 +157,9 @@ def _persist_failed_state(
     item = AssistantTurnItem(
         turn_id=command_id,
         stage_id=str(session.current_state),
-        execution=ExecutionProgress(status="error"),
+        execution=ExecutionProgress(status=ExecutionProgressStatus.ERROR),
         reply_text=copy_text(BuilderCopyId.OPERATION_FAILED),
-        reply_mode="complete",
+        reply_mode=AssistantReplyMode.COMPLETE,
         reply_language=context.reply_language,
     ).to_item(seq=context.next_seq, at_version=at_version)
     context.next_seq += 1
@@ -494,7 +497,9 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         logger.exception("dify_builder advance failed for session %s", session_id)
         if last_progress is not None and last_progress.status == "running" and delivery_active():
             active_activities = [activity for activity in progress_activities.values() if activity.state == "active"]
-            failure_deltas = [replace(activity, state="failed") for activity in active_activities] or [None]
+            failure_deltas = [
+                replace(activity, state=ExecutionActivityState.FAILED) for activity in active_activities
+            ] or [None]
             try:
                 for revision_offset, activity in enumerate(failure_deltas, start=1):
                     progress_bus.publish(
@@ -503,7 +508,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                             replace(
                                 last_progress,
                                 revision=last_progress.revision + revision_offset,
-                                status="error",
+                                status=ExecutionProgressStatus.ERROR,
                                 activity=activity,
                             )
                         ),

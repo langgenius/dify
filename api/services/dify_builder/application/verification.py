@@ -1,8 +1,9 @@
 """Pure publication policy and execution presentation; no native graph interpretation."""
 
-from core.dify_builder.contract import TestResultCard
-from core.dify_builder.models import PublicationDecision, Run
+from core.dify_builder.contract import TestResultCard, TestResultOutcome, TestResultStatus
+from core.dify_builder.models import BusinessAcceptanceState, PublicationDecision, PublicationReason, Run
 from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.execution import SafetyOutcome
 from runtime_contracts.builder.presentation import copy_text, text_parts
 from services.dify_builder.effect_presentation import mocked_note
 from services.dify_builder.execution_messages import FALLBACK, execution_refusal_message
@@ -38,21 +39,21 @@ def publication_decision(
     run: Run | None, *, session_id: str, current_revision: str, current_graph_revision: str
 ) -> PublicationDecision:
     if run is None or run.session_id != session_id or run.kind != "verify" or not run.immutable:
-        return PublicationDecision(allowed=False, reason="no_verified_run")
+        return PublicationDecision(allowed=False, reason=PublicationReason.NO_VERIFIED_RUN)
     summary = run.verification.execution_evidence if run.verification else None
     if run.execution_refusal is not None or (summary and summary.blocked_node_ids):
-        return PublicationDecision(allowed=False, reason="execution_policy_blocked")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_POLICY_BLOCKED)
     if summary is None or not summary.sealed or not summary.native_run_id or summary.native_run_id != run.dify_run_id:
-        return PublicationDecision(allowed=False, reason="execution_provenance_unbound")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_PROVENANCE_UNBOUND)
     if summary.safety_outcome in {"unsupported_safe_execution", "execution_blocked"}:
-        return PublicationDecision(allowed=False, reason="execution_policy_blocked")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_POLICY_BLOCKED)
     if summary.safety_outcome == "execution_evidence_unknown":
-        return PublicationDecision(allowed=False, reason="execution_evidence_unknown")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_EVIDENCE_UNKNOWN)
     if summary.safety_outcome == "simulation_completed":
-        return PublicationDecision(allowed=False, reason="simulation_only")
+        return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
     # PRD §19.2: a run that mocked any step proves nothing about that step.
     if summary.mode == "confirmed_run" and summary.simulated_node_ids:
-        return PublicationDecision(allowed=False, reason="simulation_only")
+        return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
     restricted_success = summary.safety_outcome == "restricted_execution_completed" and summary.mode == "restricted"
     confirmed_run_success = (
         summary.safety_outcome == "confirmed_run_completed"
@@ -69,11 +70,11 @@ def publication_decision(
         and summary.consent_id is not None
     )
     if not (restricted_success or confirmed_run_success or confirmed_success):
-        return PublicationDecision(allowed=False, reason="execution_failed")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_FAILED)
     if run.status == "failed":
-        return PublicationDecision(allowed=False, reason="execution_failed")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_FAILED)
     if run.status != "succeeded":
-        return PublicationDecision(allowed=False, reason="execution_unknown")
+        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_UNKNOWN)
     evidence = run.verification
     if (
         evidence is None
@@ -82,14 +83,14 @@ def publication_decision(
         or not current_revision
         or not current_graph_revision
     ):
-        return PublicationDecision(allowed=False, reason="revision_unbound")
+        return PublicationDecision(allowed=False, reason=PublicationReason.REVISION_UNBOUND)
     if evidence.execution_revision != current_revision or evidence.executed_graph_revision != current_graph_revision:
-        return PublicationDecision(allowed=False, reason="stale_revision")
+        return PublicationDecision(allowed=False, reason=PublicationReason.STALE_REVISION)
     if any(f.state == "unresolved" for f in evidence.output_findings):
-        return PublicationDecision(allowed=False, reason="required_output_unresolved")
+        return PublicationDecision(allowed=False, reason=PublicationReason.REQUIRED_OUTPUT_UNRESOLVED)
     if evidence.no_output_dead_branch:
-        return PublicationDecision(allowed=False, reason="dead_branch_without_output")
-    return PublicationDecision(allowed=True, reason="eligible")
+        return PublicationDecision(allowed=False, reason=PublicationReason.DEAD_BRANCH_WITHOUT_OUTPUT)
+    return PublicationDecision(allowed=True, reason=PublicationReason.ELIGIBLE)
 
 
 def has_output_blocker(run: Run) -> bool:
@@ -111,7 +112,7 @@ def _confirmed_result_card(run: Run) -> TestResultCard:
     assert summary is not None
     completed = summary.safety_outcome == "confirmed_tool_completed" and run.status == "succeeded"
     card = TestResultCard(
-        status="succeeded" if completed else "failed",
+        status=TestResultStatus.SUCCEEDED if completed else TestResultStatus.FAILED,
         dify_run_id=run.dify_run_id,
         review_note=CONFIRMED_COMPLETED_NOTE,
         terminal_outputs=None,
@@ -124,16 +125,16 @@ def _confirmed_result_card(run: Run) -> TestResultCard:
         action_reason_code=summary.action_reason_code,
     )
     if completed and has_output_blocker(run):
-        card.status = "failed"
-        card.outcome = "required_output_unresolved"
+        card.status = TestResultStatus.FAILED
+        card.outcome = TestResultOutcome.REQUIRED_OUTPUT_UNRESOLVED
         card.failure_reason = copy_text(BuilderCopyId.REPLIES_A_REQUIRED_OUTPUT_REFERENCE_WAS_UNRESOLVED)
     elif completed:
-        card.outcome = "execution_succeeded_needs_review"
+        card.outcome = TestResultOutcome.EXECUTION_SUCCEEDED_NEEDS_REVIEW
     elif summary.safety_outcome == "native_failed":
-        card.outcome = "execution_failed"
+        card.outcome = TestResultOutcome.EXECUTION_FAILED
         card.failure_reason = CONFIRMED_FAILED_REASON
     else:
-        card.outcome = "execution_unknown"
+        card.outcome = TestResultOutcome.EXECUTION_UNKNOWN
         card.failure_reason = CONFIRMED_UNKNOWN_REASON
     return card
 
@@ -147,7 +148,7 @@ def _project_acceptance(run: Run, card: TestResultCard) -> TestResultCard:
         try:
             result = CaseAcceptance.model_validate(finding)
         except ValueError:
-            card.business_acceptance_state = "unverified"
+            card.business_acceptance_state = BusinessAcceptanceState.UNVERIFIED
         else:
             card.business_acceptance_state = result.state
             card.business_acceptance_case_id = result.case_id
@@ -160,7 +161,7 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
     if summary is not None and summary.mode == "confirmed_tool":
         return _project_acceptance(run, _confirmed_result_card(run))
     card = TestResultCard(
-        status="succeeded" if run.status == "succeeded" else "failed",
+        status=TestResultStatus.SUCCEEDED if run.status == "succeeded" else TestResultStatus.FAILED,
         dify_run_id=run.dify_run_id,
         review_note=REVIEW_NOTE,
         terminal_outputs=evidence.terminal_outputs if evidence else None,
@@ -175,17 +176,17 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
         card.simulated_node_ids = list(summary.simulated_node_ids)
         card.blocked_node_ids = list(summary.blocked_node_ids)
     elif run.execution_refusal:
-        card.safety_outcome = run.execution_refusal.safety_outcome
+        card.safety_outcome = SafetyOutcome(run.execution_refusal.safety_outcome)
     else:
-        card.safety_outcome = "execution_evidence_unknown"
+        card.safety_outcome = SafetyOutcome.EXECUTION_EVIDENCE_UNKNOWN
     from services.dify_builder.execution_messages import observed_failure_message
 
     observed_failure = observed_failure_message(summary, reply_language=reply_language)
     if observed_failure is not None:
         card.outcome = (
-            "execution_failed"
+            TestResultOutcome.EXECUTION_FAILED
             if summary and summary.safety_outcome in {"preparation_failed", "native_failed"}
-            else "execution_unknown"
+            else TestResultOutcome.EXECUTION_UNKNOWN
         )
         card.failure_reason = observed_failure
         card.failure_phase = summary.failure_phase if summary else None
@@ -198,7 +199,7 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
         return card
     if is_execution_policy_blocker(run):
         failed_reason = json_failed_reason(summary, run.status)
-        card.outcome = "execution_failed" if failed_reason else "execution_unknown"
+        card.outcome = TestResultOutcome.EXECUTION_FAILED if failed_reason else TestResultOutcome.EXECUTION_UNKNOWN
         card.failure_reason = (
             execution_refusal_message(run.execution_refusal.reason_code)
             if run.execution_refusal
@@ -212,11 +213,11 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
                 card.executed_node_ids = []
         return card
     if run.status == "succeeded" and has_output_blocker(run):
-        card.status = "failed"
-        card.outcome = "required_output_unresolved"
+        card.status = TestResultStatus.FAILED
+        card.outcome = TestResultOutcome.REQUIRED_OUTPUT_UNRESOLVED
         card.failure_reason = copy_text(BuilderCopyId.REPLIES_A_REQUIRED_OUTPUT_REFERENCE_WAS_UNRESOLVED)
     elif run.status == "succeeded":
-        card.outcome = "execution_succeeded_needs_review"
+        card.outcome = TestResultOutcome.EXECUTION_SUCCEEDED_NEEDS_REVIEW
         if evidence is None or not evidence.execution_revision:
             card.review_note = copy_text(BuilderCopyId.REPLIES_OTHER_PATHS_AND_GOAL_ACCEPTANCE_WERE)
         mocked = (
@@ -227,12 +228,12 @@ def result_card(run: Run, *, reply_language: str = "en-US") -> TestResultCard:
         if mocked is not None:
             card.review_note = text_parts(card.review_note, " ", mocked) if card.review_note else mocked
     elif run.status == "failed":
-        card.outcome = "execution_failed"
+        card.outcome = TestResultOutcome.EXECUTION_FAILED
         card.failure_reason = run.error or next(
             (n.error for n in run.per_node if n.error), copy_text(BuilderCopyId.LABELS_EXECUTION_FAILED)
         )
     else:
-        card.outcome = "execution_unknown"
+        card.outcome = TestResultOutcome.EXECUTION_UNKNOWN
         card.failure_reason = run.error or copy_text(
             BuilderCopyId.REPLIES_EXECUTION_OUTCOME_IS_UNKNOWN_RUN_AGAIN_BEFORE_PUBLISHING
         )

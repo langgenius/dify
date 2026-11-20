@@ -36,9 +36,11 @@ from core.dify_builder import credentials, urls
 from core.dify_builder.contract import (
     DecisionItem,
     ExecutionProgress,
+    ExecutionProgressStatus,
     FormCard,
     FormField,
     TestResultCard,
+    TestResultStatus,
 )
 from core.dify_builder.errors import ConflictError, DraftWouldNotStartError, HashMismatchError, NotFoundError
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
@@ -61,6 +63,7 @@ from core.dify_builder.models import (
     Session,
     Snapshot,
     StartSchema,
+    TaskSummaryOutcome,
     TestInput,
     Turn,
 )
@@ -507,7 +510,7 @@ def append_assistant(
         s,
         fc,
         reply_text=reply_text,
-        execution=execution or ExecutionProgress(status="completed"),
+        execution=execution or ExecutionProgress(status=ExecutionProgressStatus.COMPLETED),
         cards=cards,
         turn_id=turn_id,
     )
@@ -524,7 +527,9 @@ def wait_for_native_approval(
     """
     fc.verify_run_id = run.id
     fc.diagnosis, fc.staged_repair, fc.unknown_outcome_count = None, [], 0
-    items = append_assistant(env, s, fc, "", execution=progress.finish(status="stopped"), turn_id=progress.operation_id)
+    items = append_assistant(
+        env, s, fc, "", execution=progress.finish(status=ExecutionProgressStatus.STOPPED), turn_id=progress.operation_id
+    )
     return StepResult(next=next_state, context=fc, items=items, run=run)
 
 
@@ -661,7 +666,7 @@ def drop_unapplied_repair(
     the progress, and say why in the assistant reply. Shared by every repair-apply
     gate (Fix's apply, Build's and Edit's await_repair)."""
     fc.staged_repair = []
-    execution = progress.finish(status="error")
+    execution = progress.finish(status=ExecutionProgressStatus.ERROR)
     return append_assistant(
         env, s, fc, text_parts(title, ". ", body), execution=execution, turn_id=progress.operation_id
     )
@@ -1543,7 +1548,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         return wait_for_native_approval(env, s, fc, progress, run, PcState.FIX_AWAIT_DECISION)
 
     if result.status == "running":
-        progress.finish(status="stopped")
+        progress.finish(status=ExecutionProgressStatus.STOPPED)
     else:
         if result.status == "succeeded":
             progress.complete("fix-run-validation")
@@ -1627,7 +1632,9 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             fc,
             result_card(run, reply_language=fc.reply_language)
             if run.verification
-            else TestResultCard(status="failed", failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id),
+            else TestResultCard(
+                status=TestResultStatus.FAILED, failure_reason=NO_OUTPUT_BODY, dify_run_id=run.dify_run_id
+            ),
         )
         execution = progress.finish()
         items += append_assistant(
@@ -1789,7 +1796,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     # default: keep_draft
     from services.dify_builder.task_lifecycle import record_task_completion
 
-    record_task_completion(env, s, fc, "kept_draft")
+    record_task_completion(env, s, fc, TaskSummaryOutcome.KEPT_DRAFT)
     items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
@@ -1833,7 +1840,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     )
     from services.dify_builder.task_lifecycle import record_task_completion
 
-    record_task_completion(env, s, fc, "published")
+    record_task_completion(env, s, fc, TaskSummaryOutcome.PUBLISHED)
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -1906,7 +1913,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         if isinstance(value, bool):
             passed = value
     if passed:
-        items = append_card(fc, TestResultCard(status="succeeded"))
+        items = append_card(fc, TestResultCard(status=TestResultStatus.SUCCEEDED))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
 
     # residual checklist errors: reload them and loop back to re-diagnose.

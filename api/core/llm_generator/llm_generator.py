@@ -29,6 +29,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.telemetry import PromptGenerationEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
+from core.workflow.generator.types import WorkflowGraphMode
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -372,7 +373,7 @@ class LLMGenerator:
         tenant_id: str,
         *,
         instruction: str,
-        mode: Literal["workflow", "advanced-chat"] = "workflow",
+        mode: WorkflowGraphMode = WorkflowGraphMode.WORKFLOW,
         language: str | None = None,
     ) -> str:
         """Expand a build instruction with the details it leaves unstated.

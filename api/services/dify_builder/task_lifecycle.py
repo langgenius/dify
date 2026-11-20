@@ -10,18 +10,20 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from pydantic import TypeAdapter
 
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import (
+    ContextTaskStatus,
     DifyBuilderContext,
     EntryMode,
     Run,
     Session,
     TaskEvidenceStatus,
     TaskSummary,
+    TaskSummaryOutcome,
     TaskTestEvidence,
 )
 from services.dify_builder.diagnostic_context import redact_diagnostic_value
@@ -49,14 +51,14 @@ def advance_task_identity(session: Session, context: DifyBuilderContext, entry_m
     """Begin a genuinely new task; the caller separately advances its execution fence."""
     context.logical_task_ordinal = max(0, context.logical_task_ordinal) + 1
     context.logical_task_id = f"{session.id}:{context.logical_task_ordinal}"
-    context.task_status = "active"
+    context.task_status = ContextTaskStatus.ACTIVE
     context.active_entry_mode = str(entry_mode)
     return context.logical_task_id
 
 
 def mark_task_abandoned(context: DifyBuilderContext, reason: str) -> None:
     """Preserve transcript/evidence and never represent abandonment as completion."""
-    context.task_status = "abandoned"
+    context.task_status = ContextTaskStatus.ABANDONED
     context.task_control["abandon_reason"] = reason[:128]
 
 
@@ -113,7 +115,9 @@ def _test_evidence(run: Run | None) -> TaskTestEvidence:
     if run is None:
         return TaskTestEvidence()
     status: TaskEvidenceStatus = (
-        run.status if run.status in ("running", "succeeded", "failed", "unknown", "stopped") else "unknown"
+        TaskEvidenceStatus(run.status)
+        if run.status in ("running", "succeeded", "failed", "unknown", "stopped")
+        else TaskEvidenceStatus.UNKNOWN
     )
     result = TaskTestEvidence(run_id=run.id, native_run_id=run.dify_run_id, status=status)
     verification = run.verification
@@ -148,7 +152,7 @@ def _test_evidence(run: Run | None) -> TaskTestEvidence:
 
 
 def record_task_completion(
-    env: "Env", session: Session, context: DifyBuilderContext, outcome: Literal["kept_draft", "published"]
+    env: "Env", session: Session, context: DifyBuilderContext, outcome: TaskSummaryOutcome
 ) -> None:
     """Prepare one truthful summary for the same CAS that completes the task."""
     task_id = task_identity(session, context)
@@ -241,7 +245,7 @@ def record_task_completion(
         )
     )
     context.logical_task_id = task_id
-    context.task_status = "completed"
+    context.task_status = ContextTaskStatus.COMPLETED
     context.task_summaries = [*summaries, summary][-_MAX_SUMMARIES:]
 
 

@@ -8,7 +8,9 @@ never infer edges, rewrite configurations, or constrain authored partial drafts.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
+
+from core.workflow.generator.types import WorkflowGraphMode
 
 if TYPE_CHECKING:
     from core.dify_builder.models import MutationIntent
@@ -20,7 +22,7 @@ _MARKER_TYPES = frozenset({"iteration-start", "loop-start"})
 def generated_build_completeness_problems(
     intents: Sequence[MutationIntent],
     *,
-    mode: Literal["workflow", "advanced-chat"],
+    mode: WorkflowGraphMode,
     current_graph: Mapping[str, Any] | None,
 ) -> list[str]:
     """Check execution topology projected from the grounded applicable batch.
@@ -52,7 +54,7 @@ def generated_build_completeness_problems(
 def generated_graph_completeness_problems(
     graph: Mapping[str, Any],
     *,
-    mode: Literal["workflow", "advanced-chat"],
+    mode: WorkflowGraphMode,
     current_graph: Mapping[str, Any] | None,
 ) -> list[str]:
     """Require each top-level executable node on a Start-to-terminal path.

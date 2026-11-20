@@ -26,17 +26,17 @@ import dataclasses
 from collections.abc import Callable, Iterable, Iterator
 from datetime import timedelta
 from itertools import islice
-from typing import Literal
 
 from sqlalchemy import Select, false, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, sessionmaker
 
-from core.dify_builder.contract import ConversationPage
+from core.dify_builder.contract import ConversationPage, LifecycleSettlement
 from core.dify_builder.errors import ConflictError, NotFoundError
 from core.dify_builder.models import (
     Checkpoint,
+    ContextTaskStatus,
     ConversationItem,
     DifyBuilderContext,
     EntryMode,
@@ -68,6 +68,7 @@ from services.dify_builder.application.cognition_policy import (
     CognitionModel,
     CognitionPolicy,
     CognitionPolicyDeniedError,
+    CognitionPolicySource,
 )
 from services.dify_builder.serde import context_from_dict, context_to_dict
 
@@ -193,7 +194,7 @@ class SqlDifyBuilderRepository:
                 data["default_model_id"],
                 tuple(data["fallback_model_ids"]),
                 row.revision,
-                "explicit",
+                CognitionPolicySource.EXPLICIT,
             )
 
     def put_policy(self, actor, policy: CognitionPolicy, expected_revision: int) -> CognitionPolicy:
@@ -229,7 +230,7 @@ class SqlDifyBuilderRepository:
                 row.revision = revision + 1
                 row.policy = data
                 row.updated_by = actor.account_id
-            return dataclasses.replace(policy, revision=revision + 1, source="explicit")
+            return dataclasses.replace(policy, revision=revision + 1, source=CognitionPolicySource.EXPLICIT)
 
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session_factory = session_factory
@@ -674,7 +675,7 @@ class SqlDifyBuilderRepository:
                 context = DifyBuilderContext(
                     paused=True,
                     last_command_id=client_action_id,
-                    task_status="abandoned",
+                    task_status=ContextTaskStatus.ABANDONED,
                     task_control={
                         "generation": old_generation + 1,
                         "conversation_clear": floor,
@@ -717,14 +718,14 @@ class SqlDifyBuilderRepository:
 
     def _clear_execution_settlement(
         self, sql: Session, session: DomainSession, context: DifyBuilderContext
-    ) -> Literal["settled", "pending", "unknown"]:
+    ) -> LifecycleSettlement:
         """Classify the pre-clear task and retained native execution without treating a sealed request as live."""
         from models.dify_builder_native_tests import NativeDispatch, NativeEffectOperation
         from services.dify_builder.task_native_cancel import task_execution_settlement
 
         task = task_execution_settlement(sql, session.id, context)
         if task == "unknown":
-            return "unknown"
+            return LifecycleSettlement.UNKNOWN
         native_ids = self._native_request_ids(session)
         dispatches = select(NativeDispatch.id).where(
             NativeDispatch.request_id.in_(native_ids), NativeDispatch.tenant_id == session.tenant_id
@@ -752,8 +753,8 @@ class SqlDifyBuilderRepository:
             )
         ).one()
         if unknown:
-            return "unknown"
-        return "pending" if task == "pending" or pending else "settled"
+            return LifecycleSettlement.UNKNOWN
+        return LifecycleSettlement.PENDING if task == "pending" or pending else LifecycleSettlement.SETTLED
 
     def cleared_execution_settled(self, session: DomainSession) -> bool:
         """Observe the exact predecessor of an authorized pending clear without editing or exposing its history.

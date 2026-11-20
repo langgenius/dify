@@ -12,7 +12,7 @@ from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import llm
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.cognition_model_gateway import PolicyModelInstance
-from services.tools.draft_tool_setup import DraftToolSetupError
+from services.tools.draft_tool_setup import DraftToolSetupError, ToolSetupReason
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
@@ -96,7 +96,7 @@ def test_policy_wrapped_provider_reason_survives_without_retry_or_secret_project
 def test_explicit_setup_refusal_keeps_priority_over_underlying_timeout() -> None:
     error = DraftToolSetupError(
         "private-token timeout",
-        reason="credential_unavailable",
+        reason=ToolSetupReason.CREDENTIAL_UNAVAILABLE,
         node={"id": "tool", "data": {"provider_id": "provider", "tool_name": "action"}},
     )
     error.__cause__ = TimeoutError()

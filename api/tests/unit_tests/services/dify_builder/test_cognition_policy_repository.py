@@ -13,11 +13,14 @@ from services.dify_builder.application.cognition_policy import (
     CognitionModel,
     CognitionPolicy,
     CognitionPolicyDeniedError,
+    CognitionPolicySource,
 )
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 ACTOR = Actor(tenant_id="11111111-1111-1111-1111-111111111111", account_id="22222222-2222-2222-2222-222222222222")
-POLICY = CognitionPolicy(True, (CognitionModel("one", "openai", "gpt", "chat", {}),), "one", (), 0, "explicit")
+POLICY = CognitionPolicy(
+    True, (CognitionModel("one", "openai", "gpt", "chat", {}),), "one", (), 0, CognitionPolicySource.EXPLICIT
+)
 
 
 type SqlContext = tuple[SqlDifyBuilderRepository, sessionmaker[Session]]
@@ -111,7 +114,11 @@ def test_absent_sql_policy_keeps_visible_native_selection_and_rechecks_after_met
             if change == "private":
                 return False
             if change in {"restrict", "disable"}:
-                repo.put_policy(ACTOR, CognitionPolicy(change != "disable", POLICY.models, "one", (), 0, "explicit"), 0)
+                repo.put_policy(
+                    ACTOR,
+                    CognitionPolicy(change != "disable", POLICY.models, "one", (), 0, CognitionPolicySource.EXPLICIT),
+                    0,
+                )
             elif change == "membership":
                 with factory.begin() as session:
                     session.delete(session.query(TenantAccountJoin).one())

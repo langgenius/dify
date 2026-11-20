@@ -46,7 +46,7 @@ from runtime_contracts.builder.native.runtime_contracts import (
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
-from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, ObjectReceipt, PayloadKind
 from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn, SQLStandIn
 from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
     checked_row,
@@ -713,7 +713,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
     receipt = store.prepare_object(
         ref=loader.ref,
         tenant_id="tenant",
-        kind="context",
+        kind=PayloadKind.CONTEXT,
         logical_key="context",
         payload=context.model_dump(mode="json"),
     )

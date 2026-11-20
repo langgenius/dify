@@ -33,6 +33,48 @@ from typing import Any, Literal
 
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.execution import BuilderExecutionRefusal, ExecutionEvidenceSummary, HttpFixtureSetV1
+from runtime_contracts.builder.string_enum import BuilderStringEnum
+
+
+class OutputFindingState(BuilderStringEnum):
+    PRESENT = "present"
+    UNRESOLVED = "unresolved"
+    UNKNOWN = "unknown"
+
+
+class PublicationReason(StrEnum):
+    ELIGIBLE = "eligible"
+    EXECUTION_POLICY_BLOCKED = "execution_policy_blocked"
+    EXECUTION_EVIDENCE_UNKNOWN = "execution_evidence_unknown"
+    SIMULATION_ONLY = "simulation_only"
+    EXECUTION_PROVENANCE_UNBOUND = "execution_provenance_unbound"
+    NO_VERIFIED_RUN = "no_verified_run"
+    EXECUTION_FAILED = "execution_failed"
+    EXECUTION_UNKNOWN = "execution_unknown"
+    REVISION_UNBOUND = "revision_unbound"
+    STALE_REVISION = "stale_revision"
+    REQUIRED_OUTPUT_UNRESOLVED = "required_output_unresolved"
+    DEAD_BRANCH_WITHOUT_OUTPUT = "dead_branch_without_output"
+    BUSINESS_ACCEPTANCE_FAILED = "business_acceptance_failed"
+    BUSINESS_ACCEPTANCE_UNVERIFIED = "business_acceptance_unverified"
+
+
+class BusinessAcceptanceState(BuilderStringEnum):
+    PASSED = "passed"
+    FAILED = "failed"
+    UNVERIFIED = "unverified"
+
+
+class TaskSummaryOutcome(BuilderStringEnum):
+    KEPT_DRAFT = "kept_draft"
+    PUBLISHED = "published"
+
+
+class ContextTaskStatus(BuilderStringEnum):
+    UNSET = ""
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    ABANDONED = "abandoned"
 
 
 class EntryMode(StrEnum):
@@ -95,7 +137,7 @@ class OutputFinding:
     node_id: str
     output_name: str
     selector: list[str]
-    state: Literal["present", "unresolved", "unknown"]
+    state: OutputFindingState
     reason: str
 
 
@@ -117,22 +159,7 @@ class RunVerification:
 @dataclass(kw_only=True)
 class PublicationDecision:
     allowed: bool
-    reason: Literal[
-        "eligible",
-        "execution_policy_blocked",
-        "execution_evidence_unknown",
-        "simulation_only",
-        "execution_provenance_unbound",
-        "no_verified_run",
-        "execution_failed",
-        "execution_unknown",
-        "revision_unbound",
-        "stale_revision",
-        "required_output_unresolved",
-        "dead_branch_without_output",
-        "business_acceptance_failed",
-        "business_acceptance_unverified",
-    ]
+    reason: PublicationReason
 
 
 @dataclass(kw_only=True)
@@ -305,7 +332,13 @@ class BuildNodesResult:
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
-TaskEvidenceStatus = Literal["not_run", "running", "succeeded", "failed", "unknown", "stopped"]
+class TaskEvidenceStatus(BuilderStringEnum):
+    NOT_RUN = "not_run"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+    STOPPED = "stopped"
 
 
 @dataclass(kw_only=True)
@@ -314,13 +347,13 @@ class TaskTestEvidence:
 
     run_id: str = ""
     native_run_id: str = ""
-    status: TaskEvidenceStatus = "not_run"
+    status: TaskEvidenceStatus = TaskEvidenceStatus.NOT_RUN
     execution_revision: str = ""
     graph_revision: str = ""
     sealed: bool = False
     mode: str = ""
     safety_outcome: str = ""
-    business_acceptance_state: Literal["passed", "failed", "unverified"] = "unverified"
+    business_acceptance_state: BusinessAcceptanceState = BusinessAcceptanceState.UNVERIFIED
     business_acceptance_case_id: str = ""
 
 
@@ -331,7 +364,7 @@ class TaskSummary:
     schema_version: Literal[1] = 1
     task_id: str = ""
     entry_mode: EntryMode = EntryMode.BUILD
-    outcome: Literal["kept_draft", "published"] = "kept_draft"
+    outcome: TaskSummaryOutcome = TaskSummaryOutcome.KEPT_DRAFT
     goal: str = ""
     # Recorded requirements, without claiming every value was user-confirmed.
     constraints: dict[str, str] = field(default_factory=dict)
@@ -457,7 +490,7 @@ class DifyBuilderContext:
     # Logical business identity survives Stop/Resume execution generations.
     logical_task_id: str = ""
     logical_task_ordinal: int = 0
-    task_status: Literal["", "active", "completed", "abandoned"] = ""
+    task_status: ContextTaskStatus = ContextTaskStatus.UNSET
     task_summaries: list[TaskSummary] = field(default_factory=list)
     checkpoint_seq: int = 0
 

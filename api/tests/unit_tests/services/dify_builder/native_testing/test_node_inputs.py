@@ -36,6 +36,7 @@ from services.dify_builder.native_testing import state_store as module
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingResolver
 from services.dify_builder.native_testing.private_reads import PrivateReadOwner
 from services.dify_builder.native_testing.repository import OwnedNativeTest, OwnedNativeTestLoader
+from services.dify_builder.native_testing.state_store import PayloadKind
 from tests.unit_tests.services.dify_builder.native_testing.typed_boundaries import (
     SqlMethods,
     checked_row,
@@ -320,7 +321,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> NodeInputsCase:
     receipt = store.prepare_object(
         ref=loader.ref,
         tenant_id="tenant",
-        kind="context",
+        kind=PayloadKind.CONTEXT,
         logical_key="context",
         payload=context.model_dump(mode="json"),
     )
@@ -363,7 +364,11 @@ def test_typed_inputs_roundtrip_in_independent_namespace(
     key = OperationKey(invocation_id="inv", occurrence_path=(NATIVE_ID,), cursor=0)
     assert row.logical_key != operation_digest(key)
     effect = case.store.prepare_object(
-        ref=case.ref, tenant_id="tenant", kind="result", logical_key=operation_digest(key), payload={"completed": True}
+        ref=case.ref,
+        tenant_id="tenant",
+        kind=PayloadKind.RESULT,
+        logical_key=operation_digest(key),
+        payload={"completed": True},
     )
     with case.loader.locked(ref=case.ref) as (session, _, _):
         effect_ref = case.store.acknowledge_object(session, effect).id
@@ -433,7 +438,11 @@ def test_running_branch_retains_generation_after_unrelated_scope_resume(case: No
         update={"parent_invocation_id": parent_id, "call_depth": 1, "native_run_id": "child-run"}
     )
     receipt = case.store.prepare_object(
-        ref=case.ref, tenant_id="tenant", kind="context", logical_key="context", payload=context.model_dump(mode="json")
+        ref=case.ref,
+        tenant_id="tenant",
+        kind=PayloadKind.CONTEXT,
+        logical_key="context",
+        payload=context.model_dump(mode="json"),
     )
     row = module.NativePayloadObject(**vars(receipt))
     case.loader.rows = [row]

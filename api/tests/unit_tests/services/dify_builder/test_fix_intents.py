@@ -9,7 +9,7 @@ from typing_extensions import TypedDict
 
 from core.dify_builder.contract import RunContextCard
 from core.dify_builder.errors import ConflictError, NotFoundError
-from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session
+from core.dify_builder.models import Action, Actor, ContextTaskStatus, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
 from graphon.enums import WorkflowExecutionStatus
 from models.dify_builder import DifyBuilderRun, DifyBuilderSession
@@ -424,7 +424,7 @@ def test_task_that_completed_after_offer_does_not_get_stopped(
     session = seed(repo)
     receipt = prepare_fix_intent(service, session.id, ACTOR, failed_run_id=native_run(repo), client_action_id="offer")
     _, context = repo.get_session(session.id)
-    context.task_status = "completed"
+    context.task_status = ContextTaskStatus.COMPLETED
     repo.compare_and_advance(session.id, 1, PcState.BUILD_COMPLETE, context, [])
     submit_fix_intent(
         service,
