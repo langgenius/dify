@@ -1570,6 +1570,25 @@ export const zAccountNotLinkTenantError = zErrorResponse.and(
 )
 
 /**
+ * PendingInvitationRevokePayload
+ */
+export const zPendingInvitationRevokePayload = z.object({
+  email: z.string(),
+})
+
+/**
+ * PendingInvitationNotFoundError
+ *
+ * No live invitation exists for this email in the workspace.
+ */
+export const zPendingInvitationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pending_invitation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * Meta
  */
 export const zMeta = z.object({
@@ -2926,6 +2945,22 @@ export const zWorkspaceTenantResultResponse = z.object({
 export const zSwitchWorkspaceResponse = z.object({
   new_tenant: zTenantInfoResponse,
   result: z.string(),
+})
+
+/**
+ * PendingWorkspaceInvitationResponse
+ */
+export const zPendingWorkspaceInvitationResponse = z.object({
+  email: z.string(),
+  expires_at: z.iso.datetime(),
+  role: zTenantAccountRole,
+})
+
+/**
+ * PendingWorkspaceInvitationListResponse
+ */
+export const zPendingWorkspaceInvitationListResponse = z.object({
+  invitations: z.array(zPendingWorkspaceInvitationResponse),
 })
 
 /**
@@ -9401,3 +9436,26 @@ export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRes
   z.string(),
   z.unknown(),
 )
+
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  zPendingWorkspaceInvitationListResponse
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeBody =
+  zPendingInvitationRevokePayload
+
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokePath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  zSimpleResultResponse

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import override
@@ -36,7 +36,7 @@ from services.email_code_login_challenge import (
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
-from services.entities.account_activation_entities import InvitationToken
+from services.entities.account_activation_entities import ActivationCommand, InvitationLookup, InvitationToken
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeChallengeStatus,
@@ -48,7 +48,21 @@ from services.entities.account_login_entities import (
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 from services.workspace import gateways
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 from tests.unit_tests.services.account.test_login_service import Dependencies
+
+
+class _OpenCapacity:
+    def __init__(self) -> None:
+        self.checked: list[tuple[str, str]] = []
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        self.checked.append((workspace_id, ""))
+        return nullcontext()
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        self.checked.append((workspace_id, account_id))
+        return True
 
 
 class FakeRateLimiter(RateLimiter):
@@ -89,91 +103,21 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
-def test_invitation_gateway_restores_editor_membership_without_revoking_token(
+def _invited_world(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-) -> None:
+    *,
+    password: bool,
+    status: AccountStatus = AccountStatus.PENDING,
+) -> tuple[Dependencies, AccountActivationService, str]:
     redis, commands = redis_transport
-    commands.return_value = (
-        b'{"account_id":"account-1","email":"user@example.com","workspace_id":"workspace-1",'
-        b'"role":"editor","requires_setup":false}'
-    )
+    commands.side_effect = RedisCommandEmulator()
     with sqlite_session_factory.begin() as session:
-        account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+        account = Account(name="invitee", email="invitee@example.com", status=status)
         account.id = "account-1"
-        tenant = Tenant(name="Workspace")
-        tenant.id = "workspace-1"
-        session.add_all([account, tenant])
-    tokens = RedisInvitationTokenStore(redis=redis)
-    accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
-    activation = AccountActivationService(
-        tokens=tokens,
-        accounts=accounts,
-        workspace_policy=DeploymentWorkspaceInvitePolicy(),
-        eligibility=BillingAccountActivationEligibility(enabled=False),
-        membership_cache=BillingWorkspaceMembershipCache(enabled=False),
-        member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
-    )
-    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
-        tokens=tokens,
-        accounts=accounts,
-        activation=activation,
-    )
-
-    commands.side_effect = lambda command, *_args, **_kwargs: (
-        3600 if command == "PTTL" else b"OK" if command == "SET" else commands.return_value
-    )
-    assert gateway.ensure_membership(account_id="different-account", email="user@example.com", token="token-1") is False
-    with sqlite_session_factory() as session:
-        assert session.scalar(select(TenantAccountJoin)) is None
-    assert gateway.ensure_membership(account_id="account-1", email="user@example.com", token="token-1") is True
-
-    with sqlite_session_factory() as session:
-        persisted = session.get(Account, "account-1")
-        membership = session.scalar(select(TenantAccountJoin))
-        assert persisted is not None
-        assert persisted.id == "account-1"
-        assert persisted.status == AccountStatus.ACTIVE
-        assert persisted.name == "User"
-        assert membership is not None
-        assert membership.role == TenantAccountRole.EDITOR
-        assert membership.current is True
-    assert not any(command.args and command.args[0] == "DEL" for command in commands.call_args_list)
-
-
-def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
-    sqlite_session_factory: sessionmaker[Session],
-    redis_transport: tuple[RedisClientWrapper, MagicMock],
-    config_overrides: Callable[..., None],
-) -> None:
-    redis, commands = redis_transport
-    config_overrides(REDIS_KEY_PREFIX="enterprise-a")
-    stored: dict[str, object] = {}
-
-    def execute(command: object, *args: object, **_kwargs: object) -> object:
-        operation, key = str(command).upper(), str(args[0])
-        if operation == "SETEX":
-            stored[key] = args[2]
-            return True
-        if operation == "GET":
-            return stored.get(key)
-        if operation == "PTTL":
-            return 3600 if key in stored else -2
-        if operation == "SET" and "NX" in args and key not in stored:
-            stored[key] = b"1"
-            return True
-        return None
-
-    commands.side_effect = execute
-    with sqlite_session_factory.begin() as session:
-        account = Account(
-            name="User",
-            email="user@example.com",
-            status=AccountStatus.ACTIVE,
-            password="hash",
-            password_salt="salt",
-        )
-        account.id = "account-1"
+        if password:
+            account.password = "hash"
+            account.password_salt = "salt"
         workspace = Tenant(name="Workspace")
         workspace.id = "workspace-1"
         session.add_all([account, workspace])
@@ -181,40 +125,108 @@ def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
     token = tokens.create(
         InvitationToken(
             account_id="account-1",
-            email="user@example.com",
+            email="invitee@example.com",
             workspace_id="workspace-1",
             role="editor",
-            requires_setup=False,
+            requires_setup=status == AccountStatus.PENDING,
         )
     )
     activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
-    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
-        tokens=tokens,
-        accounts=activation_accounts,
-        activation=AccountActivationService(
-            tokens=tokens,
-            accounts=activation_accounts,
-            workspace_policy=DeploymentWorkspaceInvitePolicy(),
-            eligibility=BillingAccountActivationEligibility(enabled=False),
-            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
-            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
-        ),
-    )
     dependencies = Dependencies()
     dependencies.accounts = SQLAlchemyAccountRepository(sqlite_session_factory)  # type: ignore[assignment]
     dependencies.workspaces = WorkspaceRepository(sqlite_session_factory)  # type: ignore[assignment]
-    dependencies.invitations = gateway  # type: ignore[assignment]
-    result = dependencies.service().login_with_password(
-        PasswordLoginCommand(email="user@example.com", password="password", invite_token=token, ip_address="127.0.0.1")
+    dependencies.invitations = adapters.AccountActivationConsoleAuthInvitationGateway(  # type: ignore[assignment]
+        tokens=tokens,
+        accounts=activation_accounts,
+    )
+    activation = AccountActivationService(
+        tokens=tokens,
+        accounts=activation_accounts,
+        workspace_policy=DeploymentWorkspaceInvitePolicy(),
+        eligibility=BillingAccountActivationEligibility(enabled=False),
+        membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+        member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        capacity=_OpenCapacity(),
+    )
+    return dependencies, activation, token
+
+
+def _memberships(sqlite_session_factory: sessionmaker[Session]) -> list[tuple[str, TenantAccountRole, bool]]:
+    with sqlite_session_factory() as session:
+        return [(m.tenant_id, m.role, m.current) for m in session.scalars(select(TenantAccountJoin)).all()]
+
+
+def test_invitation_gateway_resolves_the_invited_email(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    dependencies, _, token = _invited_world(sqlite_session_factory, redis_transport, password=False)
+
+    invitation = dependencies.invitations.resolve(email="Invitee@Example.com", token=token)
+
+    assert invitation is not None
+    assert invitation.email == "invitee@example.com"
+    assert dependencies.invitations.resolve(email="invitee@example.com", token="missing") is None
+
+
+@pytest.mark.parametrize("method", ["password", "email-code"])
+@pytest.mark.parametrize("status", [AccountStatus.PENDING, AccountStatus.UNINITIALIZED])
+def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    method: str,
+    status: AccountStatus,
+) -> None:
+    dependencies, activation, token = _invited_world(
+        sqlite_session_factory, redis_transport, password=method == "password", status=status
+    )
+    dependencies.policies.workspace_creation_allowed = False
+    service = dependencies.service(defer_workspace_creation=True)
+
+    if method == "password":
+        result = service.login_with_password(
+            PasswordLoginCommand(
+                email="invitee@example.com", password="password", invite_token=token, ip_address="127.0.0.1"
+            )
+        )
+        assert result.workspace_found is None
+        assert result.tokens is not None
+    else:
+        service.login_with_email_code(
+            EmailCodeLoginCommand(
+                email="invitee@example.com",
+                code="123456",
+                token="challenge-token",
+                turnstile_token=None,
+                language=None,
+                timezone=None,
+                ip_address="127.0.0.1",
+                invite_token=token,
+            )
+        )
+
+    assert dependencies.sessions.issued == ["account-1"]
+    assert dependencies.workspaces_provisioning.account_ids == []
+    assert _memberships(sqlite_session_factory) == []
+
+    activation.activate(
+        ActivationCommand(
+            invitation=InvitationLookup(workspace_id=None, email=None, token=token),
+            name="Invitee" if status == AccountStatus.PENDING else None,
+            interface_language="en-US" if status == AccountStatus.PENDING else None,
+            timezone="UTC" if status == AccountStatus.PENDING else None,
+        ),
+        authenticated_account_id="account-1",
     )
 
-    assert f"enterprise-a:member_invite:token:{token}" in stored
-    assert result.workspace_found is True
-    assert result.tokens == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    assert _memberships(sqlite_session_factory) == [("workspace-1", TenantAccountRole.EDITOR, True)]
     with sqlite_session_factory() as session:
-        membership = session.scalar(select(TenantAccountJoin))
-        assert membership is not None
-        assert membership.role == TenantAccountRole.EDITOR
+        account = session.get(Account, "account-1")
+        assert account is not None
+        assert account.status == AccountStatus.ACTIVE
+        assert account.initialized_at is not None
+        assert account.first_workspace_created_at is None
+        assert account.name == ("Invitee" if status == AccountStatus.PENDING else "invitee")
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:

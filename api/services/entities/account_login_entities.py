@@ -79,6 +79,8 @@ class EmailCodeSendCommand:
 
 @dataclass(frozen=True, slots=True)
 class EmailCodeLoginCommand:
+    """Email-code sign-in; ``invite_token`` is the invitation link being accepted, or ``None``."""
+
     email: str
     code: str
     token: str
@@ -87,10 +89,11 @@ class EmailCodeLoginCommand:
     timezone: str | None
     ip_address: str
     mode: LoginMode = LoginMode.CONSOLE
+    invite_token: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordLoginResult:
     tokens: AccountSessionTokens | None
-    # None when Account-only login does not query workspace membership.
+    # None when End User or invitation sign-in does not query workspace membership.
     workspace_found: bool | None

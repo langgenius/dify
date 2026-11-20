@@ -325,11 +325,11 @@ export const education = {
 /**
  * Read private profile data for the admitted Account without provisioning a workspace
  *
- * Get the signed-in Account profile before Cloud workspace admission.
+ * Get the signed-in Account profile without workspace admission.
  */
 export const get6 = oc
   .route({
-    description: 'Get the signed-in Account profile before Cloud workspace admission.',
+    description: 'Get the signed-in Account profile without workspace admission.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccountEndUserProfile',

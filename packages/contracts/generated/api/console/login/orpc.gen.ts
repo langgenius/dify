@@ -11,6 +11,7 @@ import {
   zEmailDomainSuspendedError,
   zInvalidAccountPasswordError,
   zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
   zLimitExceededError,
   zNotAllowedCreateWorkspaceError,
   zWebLoginUnavailableError,
@@ -57,6 +58,7 @@ export const post = oc
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
     invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
     invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
     limit_exceeded: { status: 400, data: zLimitExceededError },
     not_allowed_create_workspace: { status: 400, data: zNotAllowedCreateWorkspaceError },
   })

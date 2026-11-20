@@ -458,7 +458,7 @@ export function FileTree({
   const handleUploadFiles = async (filesToUpload: File[], targetDirectory: string | undefined) => {
     if (!detail || filesToUpload.length === 0 || isMutating) return
 
-    const itemIds = filesToUpload.map((file, index) => createUploadItemId(file, index))
+    const itemIds = filesToUpload.map(() => createUploadItemId())
     const paths = filesToUpload.map((file) => getUploadPath(file, targetDirectory))
     try {
       const response = (await fileCheckMutation.mutateAsync({

@@ -44,6 +44,7 @@
   "invalidInvitationCode": "رمز دعوة غير صالح",
   "invitationCode": "رمز الدعوة",
   "invitationCodePlaceholder": "رمز الدعوة الخاص بك",
+  "invitationWorkspaceFull": "لا توجد مقاعد متبقية في مساحة العمل هذه، لذا لا يمكنك الانضمام إليها حاليًا. اطلب من الشخص الذي دعاك تحرير مقعد أو ترقية الخطة.",
   "join": "انضم ",
   "joinTipEnd": " فريق على Dify",
   "joinTipStart": "يدعوك للانضمام إلى ",

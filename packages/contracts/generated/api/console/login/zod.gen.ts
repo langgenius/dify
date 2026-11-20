@@ -119,6 +119,18 @@ export const zInvalidEmailError = zErrorResponse.and(
 )
 
 /**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * LimitExceededError
  *
  * Unable to create account because the licensed seats limit was exceeded

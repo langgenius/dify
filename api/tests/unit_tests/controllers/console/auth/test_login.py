@@ -263,6 +263,7 @@ def test_email_code_login_decodes_code_and_serializes_tokens(
             "code": _encode("123456"),
             "token": TEST_TOKEN,
             "timezone": "Asia/Singapore",
+            "invite_token": "invite-token",
         },
     ):
         response = login.EmailCodeLoginApi().post()
@@ -277,6 +278,7 @@ def test_email_code_login_decodes_code_and_serializes_tokens(
             language=None,
             timezone="Asia/Singapore",
             ip_address="127.0.0.1",
+            invite_token="invite-token",
         )
     ]
 

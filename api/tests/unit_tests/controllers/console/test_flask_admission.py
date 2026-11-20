@@ -18,11 +18,13 @@ from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from libs.token import generate_csrf_token
-from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from services.account.adapters import RedisInvitationTokenStore
 from services.billing_client import saas
+from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_login_entities import LoginMode
 from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 PROFILE_PATH = "/console/api/account/profile"
 END_USER_PROFILE_PATH = "/console/api/account/end_user_profile"
@@ -65,6 +67,7 @@ def cloud_console(
     app.register_blueprint(bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, services.accounts.identity.load_user)
+    ext_login.bind_account_only_loader(app, services.accounts.identity.load_account)
     return app, account_domain
 
 
@@ -78,11 +81,18 @@ def _browser_session(app: DifyApp, account_id: str) -> FlaskClient:
     return client
 
 
-def _password_login(client: FlaskClient, email: str, *, mode: LoginMode = LoginMode.CONSOLE) -> TestResponse:
+def _password_login(
+    client: FlaskClient, email: str, *, mode: LoginMode = LoginMode.CONSOLE, invite_token: str | None = None
+) -> TestResponse:
     """Sign in using the test account's password and keep any issued CSRF cookie in sync for subsequent reads."""
     response = client.post(
         "/console/api/login",
-        json={"email": email, "password": b64encode(PASSWORD.encode()).decode(), "mode": mode},
+        json={
+            "email": email,
+            "password": b64encode(PASSWORD.encode()).decode(),
+            "mode": mode,
+            "invite_token": invite_token,
+        },
     )
     if (csrf_cookie := client.get_cookie("csrf_token")) is not None:
         client.environ_base["HTTP_X_CSRF_TOKEN"] = csrf_cookie.value
@@ -153,37 +163,30 @@ def test_password_login_prepares_workspace_only_for_console(
     assert browser.get(END_USER_PROFILE_PATH).status_code == 200
 
 
-@pytest.mark.parametrize("team_status", [TenantStatus.NORMAL, TenantStatus.ARCHIVE], ids=["active", "archived"])
-def test_cloud_invitee_provisions_only_if_console_login_needs_a_workspace(
+def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
     cloud_console: tuple[DifyApp, AccountDomain],
-    sqlite_session_factory: sessionmaker[Session],
-    team_status: TenantStatus,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
-    """A new invitee keeps the team membership; only Console login can bootstrap a replacement."""
+    """An invited End User gets an account-only session without workspace changes."""
     app, account_domain = cloud_console
     inviter = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     team = account_domain.provisioning.create(name="Team", owner_email=inviter.email)
-    invitee = account_domain.invitations.invite(
-        RequestContext("request", None, inviter.id, team.id), "invitee@example.com", "en-US"
+    invitee = account_domain.accounts.create_account(
+        "invitee@example.com", "Invitee", "en-US", password=PASSWORD, status=AccountStatus.UNINITIALIZED.value
     )
-    assert account_domain.workspaces.list_ids_for_account(invitee.account_id) == (team.id,)
-    account_domain.accounts.reset_password(invitee.account_id, PASSWORD, email=invitee.email)
-    with sqlite_session_factory.begin() as session:
-        persisted_team = session.get(Tenant, team.id)
-        assert persisted_team is not None
-        persisted_team.status = team_status
+    redis, commands = redis_transport
+    commands.side_effect = RedisCommandEmulator()
+    token = RedisInvitationTokenStore(redis=redis).create(
+        InvitationToken(invitee.id, invitee.email, team.id, "normal", False)
+    )
 
     browser = app.test_client()
-    end_user_login = _password_login(browser, invitee.email, mode=LoginMode.END_USER)
-    assert end_user_login.status_code == 200, end_user_login.json
-    assert account_domain.workspaces.list_ids_for_account(invitee.account_id) == (team.id,)
-
-    console_login = _password_login(browser, invitee.email)
+    console_login = _password_login(browser, invitee.email, invite_token=token)
     assert console_login.status_code == 200, console_login.json
-    assert browser.get(PROFILE_PATH).status_code == 200
-    active_workspaces = account_domain.workspaces.list_for_account(invitee.account_id)
-    expected_names = [team.name] if team_status == TenantStatus.NORMAL else ["invitee's Workspace"]
-    assert [workspace.name for workspace in active_workspaces] == expected_names
+    assert console_login.get_json()["result"] == "success"
+    assert browser.get(PROFILE_PATH).status_code == 401
+    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
+    assert account_domain.workspaces.list_ids_for_account(invitee.id) == ()
 
 
 def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyApp, AccountDomain]) -> None:

@@ -47,7 +47,6 @@ from controllers.console.error import (
 )
 from controllers.console.flask_admission import (
     console_account_admission,
-    console_account_identity_admission,
     console_workspace_profile_admission,
 )
 from controllers.console.workspace.error import (
@@ -60,7 +59,6 @@ from controllers.console.workspace.error import (
 )
 from controllers.console.wraps import (
     email_password_login_enabled,
-    enterprise_license_required,
     model_validate,
     setup_required,
 )
@@ -287,12 +285,13 @@ def _load_account_profile(context: AccountRequestContext | RequestContext) -> Ac
 
 @console_ns.route("/account/end_user_profile")
 class EndUserAccountProfileApi(Resource):
-    @console_ns.doc(description="Get the signed-in Account profile before Cloud workspace admission.")
+    @console_ns.doc(description="Get the signed-in Account profile without workspace admission.")
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Account profile", console_ns.models[AccountProfileResponse.__name__])
-    @console_account_identity_admission
-    @enterprise_license_required
-    def get(self, request_context: AccountRequestContext):
+    @console_account_admission(
+        require_valid_enterprise_license=True, require_active_workspace=False, require_initialized=False
+    )
+    def get(self, request_context: RequestContext):
         """Read private profile data for the admitted Account without provisioning a workspace."""
         response = make_response(dump_response(AccountProfileResponse, _load_account_profile(request_context)))
         response.headers["Cache-Control"] = "no-store"

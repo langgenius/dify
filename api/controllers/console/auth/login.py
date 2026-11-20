@@ -116,6 +116,7 @@ class EmailCodeLoginPayload(BaseModel):
     email: EmailStr = Field(...)
     code: str
     token: UUID
+    invite_token: str | None = Field(default=None, description="Invitation link token being accepted.")
     turnstile_token: str | None = Field(
         default=None,
         max_length=2048,
@@ -282,6 +283,7 @@ class LoginApi(Resource):
         EmailPasswordLoginLimitError,
         InvalidAccountPasswordRequestError,
         InvalidEmailError,
+        InvalidTokenError,
         NotAllowedCreateWorkspace,
         WorkspacesLimitExceeded,
     )
@@ -416,7 +418,7 @@ class EmailCodeLoginApi(Resource):
     @decrypt_code_field
     @model_validate(EmailCodeLoginPayload)
     def post(self, req_data: EmailCodeLoginPayload):
-        require_login_mode(req_data.mode)
+        require_login_mode(req_data.mode, invite_token=req_data.invite_token)
         try:
             tokens = application_services().accounts.authentication.login_with_email_code(
                 EmailCodeLoginCommand(
@@ -428,6 +430,7 @@ class EmailCodeLoginApi(Resource):
                     language=req_data.language,
                     timezone=req_data.timezone,
                     ip_address=extract_remote_ip(request),
+                    invite_token=req_data.invite_token,
                 )
             )
         except account_errors.AccountApplicationError as error:
@@ -484,6 +487,8 @@ def _raise_account_state_error(error: account_errors.AccountApplicationError) ->
 
 
 def _raise_password_login_error(error: account_errors.AccountApplicationError) -> Never:
+    if isinstance(error, account_errors.InvalidInvitationError):
+        raise InvalidTokenError() from error
     if isinstance(error, account_errors.LoginRateLimitError):
         raise EmailPasswordLoginLimitError() from error
     if isinstance(error, account_errors.InvalidLoginCredentialsError):
@@ -522,9 +527,9 @@ def _raise_email_code_send_error(error: account_errors.AccountApplicationError) 
 
 
 def _raise_email_code_login_error(error: account_errors.AccountApplicationError) -> Never:
-    if isinstance(error, account_errors.InvalidEmailCodeTokenError):
+    if isinstance(error, (account_errors.InvalidEmailCodeTokenError, account_errors.InvalidInvitationError)):
         raise InvalidTokenError() from error
-    if isinstance(error, account_errors.EmailCodeEmailMismatchError):
+    if isinstance(error, (account_errors.EmailCodeEmailMismatchError, account_errors.InvalidLoginInvitationEmailError)):
         raise InvalidEmailError() from error
     if isinstance(error, account_errors.InvalidEmailCodeError):
         raise EmailCodeError() from error
