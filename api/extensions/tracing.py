@@ -18,9 +18,12 @@ from core.helper.trace_id_helper import ParentTraceContext
 if TYPE_CHECKING:
     from dify_agent.layers.execution_context import ApplicationTracingContext
 
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
-    from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+    from core.app.entities.app_invoke_entities import (
+        AdvancedChatAppGenerateEntity,
+        DifyRunContext,
+        WorkflowAppGenerateEntity,
+    )
+    from models.agent import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +50,52 @@ class ExecutionTraceScopes(Protocol):
     ) -> TraceScope | None: ...
 
 
+class AgentAppTracingContext(Protocol):
+    """Trusted Agent App invocation fields consumed by the tracing lifecycle."""
+
+    @property
+    def dify_context(self) -> "DifyRunContext": ...
+
+    @property
+    def agent_id(self) -> str: ...
+
+    @property
+    def conversation_id(self) -> str: ...
+
+    @property
+    def idempotency_key(self) -> str: ...
+
+
+class WorkflowAgentTracingContext(Protocol):
+    """Trusted Workflow Agent invocation fields consumed by the tracing lifecycle."""
+
+    @property
+    def dify_context(self) -> "DifyRunContext": ...
+
+    @property
+    def agent(self) -> "Agent": ...
+
+    @property
+    def workflow_id(self) -> str: ...
+
+    @property
+    def workflow_run_id(self) -> str | None: ...
+
+    @property
+    def node_execution_id(self) -> str: ...
+
+    @property
+    def attempt(self) -> int: ...
+
+
 @runtime_checkable
 class ApplicationTracingHooks(Protocol):
     """Agent trace collection lifecycle; it never replaces the trace pipeline."""
 
-    def prepare_agent_app(self, context: "AgentAppRuntimeBuildContext") -> "ApplicationTracingContext | None": ...
+    def prepare_agent_app(self, context: AgentAppTracingContext) -> "ApplicationTracingContext | None": ...
 
     def prepare_workflow_agent(
-        self, context: "WorkflowAgentRuntimeBuildContext", conversation_id: str | None
+        self, context: WorkflowAgentTracingContext, conversation_id: str | None
     ) -> "ApplicationTracingContext | None": ...
 
     def freeze_workflow_run(
