@@ -109,7 +109,70 @@ class RetrievalService:
     ):
         if not query and not attachment_ids:
             return []
+
         dataset = cls._get_dataset(dataset_id)
+        if not dataset:
+            return []
+
+        summary_settings = dataset.summary_index_setting
+        if top_k <= 0 or not summary_settings or not summary_settings.get("enable"):
+            return cls._retrieve_candidates(
+                retrieval_method=retrieval_method,
+                dataset_id=dataset_id,
+                dataset=dataset,
+                query=query,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                reranking_model=reranking_model,
+                reranking_mode=reranking_mode,
+                weights=weights,
+                document_ids_filter=document_ids_filter,
+                attachment_ids=attachment_ids,
+            )
+
+        kwargs = {
+            "retrieval_method": retrieval_method,
+            "dataset_id": dataset_id,
+            "dataset": dataset,
+            "query": query,
+            "score_threshold": score_threshold,
+            "reranking_model": reranking_model,
+            "reranking_mode": reranking_mode,
+            "weights": weights,
+            "document_ids_filter": document_ids_filter,
+            "attachment_ids": attachment_ids,
+        }
+        candidate_limit = max(top_k, min(200, top_k * 8))
+        candidate_top_k = min(candidate_limit, top_k * 2)
+        selected: list[Document] = []
+        while True:
+            candidates = cls._retrieve_candidates(top_k=candidate_top_k, **kwargs)
+            selected, unique_count = cls.select_segment_documents(candidates, top_k)
+            if unique_count >= top_k or candidate_top_k >= candidate_limit or len(candidates) < candidate_top_k:
+                break
+            candidate_top_k = min(candidate_limit, candidate_top_k * 2)
+
+        return selected
+
+    @classmethod
+    @trace_span()
+    def _retrieve_candidates(
+        cls,
+        retrieval_method: RetrievalMethod,
+        dataset_id: str,
+        query: str,
+        dataset: Dataset | None = None,
+        top_k: int = 4,
+        score_threshold: float | None = 0.0,
+        reranking_model: RerankingModelDict | None = None,
+        reranking_mode: str = "reranking_model",
+        weights: WeightsDict | None = None,
+        document_ids_filter: list[str] | None = None,
+        attachment_ids: list[str] | None = None,
+    ):
+        if not query and not attachment_ids:
+            return []
+        dataset = dataset or cls._get_dataset(dataset_id)
         if not dataset:
             return []
 
@@ -171,6 +234,85 @@ class RetrievalService:
             raise ValueError(";\n".join(exceptions))
 
         return all_documents
+
+    @classmethod
+    def select_segment_documents(cls, documents: list[Document], top_k: int) -> tuple[list[Document], int]:
+        """Limit candidates by eligible source segments while keeping all selected evidence views.
+
+        Preconditions: internal candidates carry retrieval metadata and map through the existing formatter.
+        Returns the original evidence records belonging to the highest-scoring ``top_k`` source segments,
+        plus the number of selected segments. Opens a read-only session; database and formatting failures
+        propagate, and no persistent state is changed.
+        """
+        if not documents or top_k <= 0:
+            return documents, len(documents)
+
+        internal_documents = [document for document in documents if document.provider != "external"]
+        with Session(db.engine) as session:
+            records = cls.format_retrieval_documents(session, internal_documents) if internal_documents else []
+            segments = {str(record.segment.id): record.segment for record in records}
+            index_node_segments: dict[str, set[str]] = {}
+            for record in records:
+                segment = record.segment
+                segment_id = str(segment.id)
+                if segment.index_node_id:
+                    index_node_segments.setdefault(str(segment.index_node_id), set()).add(segment_id)
+                for file in record.files or []:
+                    index_node_segments.setdefault(str(file["id"]), set()).add(segment_id)
+
+            scopes = [
+                (segment.tenant_id, segment.dataset_id, segment.document_id, segment.id)
+                for segment in segments.values()
+            ]
+            index_node_ids = [
+                str(document.metadata.get("doc_id"))
+                for document in internal_documents
+                if document.metadata.get("doc_id")
+            ]
+            if scopes and index_node_ids:
+                child_chunks = session.scalars(
+                    select(ChildChunk).where(
+                        tuple_(
+                            ChildChunk.tenant_id, ChildChunk.dataset_id, ChildChunk.document_id, ChildChunk.segment_id
+                        ).in_(scopes),
+                        ChildChunk.index_node_id.in_(index_node_ids),
+                    )
+                ).all()
+                for child_chunk in child_chunks:
+                    index_node_segments.setdefault(str(child_chunk.index_node_id), set()).add(
+                        str(child_chunk.segment_id)
+                    )
+
+        def source_keys(document: Document, position: int) -> set[tuple[str, str]]:
+            if document.provider == "external":
+                return {("external", str(position))}
+
+            metadata = document.metadata
+            segment_ids = (
+                {str(metadata.get("original_chunk_id"))}
+                if metadata.get("is_summary") and metadata.get("original_chunk_id")
+                else index_node_segments.get(str(metadata.get("doc_id")), set())
+            )
+            return {
+                (str(segments[segment_id].dataset_id), segment_id)
+                for segment_id in segment_ids
+                if segment_id in segments
+                and str(segments[segment_id].document_id) == str(metadata.get("document_id"))
+                and str(segments[segment_id].dataset_id) == str(metadata.get("dataset_id"))
+            }
+
+        memberships = [source_keys(document, position) for position, document in enumerate(documents)]
+        scores: dict[tuple[str, str], float] = {}
+        for document, keys in zip(documents, memberships, strict=True):
+            score = float(document.metadata.get("score") or 0.0)
+            for key in keys:
+                scores[key] = max(scores.get(key, float("-inf")), score)
+
+        selected_sources = set(sorted(scores, key=lambda key: scores[key], reverse=True)[:top_k])
+        selected_documents = [
+            document for document, keys in zip(documents, memberships, strict=True) if keys & selected_sources
+        ]
+        return selected_documents, len(selected_sources)
 
     @classmethod
     def external_retrieve(
