@@ -20,13 +20,18 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
 import { useAtomValue } from 'jotai'
 import {
-  Fragment,
   memo,
   Suspense,
   useCallback,
@@ -64,8 +69,10 @@ import CommentManager from './comment-manager'
 import { CommentIcon } from './comment/comment-icon'
 import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
+import { getCommentMarkerId } from './comment/marker-id'
 import { CommentPlacementPreview } from './comment/placement-preview'
 import { CommentThread } from './comment/thread'
+import { commentThreadPlacement } from './comment/thread-placement'
 import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
@@ -319,6 +326,17 @@ export const Workflow: FC<WorkflowProps> = memo(
       },
       [activeComment, handleCommentIconClick, visibleComments],
     )
+    const [commentThreadHandle] = useState(() => createPopoverHandle())
+    const activeCommentIndex = activeComment
+      ? visibleComments.findIndex((comment) => comment.id === activeComment.id)
+      : -1
+    const isCommentThreadOpen = activeComment !== null && activeCommentIndex !== -1
+    const canGoPrevComment = activeCommentIndex > 0
+    const canGoNextComment =
+      activeCommentIndex !== -1 && activeCommentIndex < visibleComments.length - 1
+    // The popup keeps showing the last comment while it animates closed.
+    const [threadComment, setThreadComment] = useState(activeComment)
+    if (isCommentThreadOpen && activeComment !== threadComment) setThreadComment(activeComment)
 
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
@@ -428,23 +446,6 @@ export const Workflow: FC<WorkflowProps> = memo(
         collaborationManager.refreshGraphSynchronously()
       syncWorkflowDraftWhenPageClose()
     }, [syncWorkflowDraftWhenPageClose])
-
-    // Optimized comment deletion using showConfirm
-    const handleCommentDeleteClick = useCallback(
-      (commentId: string) => {
-        if (!showConfirm) {
-          setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' }),
-            desc: t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' }),
-            onConfirm: async () => {
-              await handleCommentDelete(commentId)
-              setShowConfirm(undefined)
-            },
-          })
-        }
-      },
-      [showConfirm, setShowConfirm, handleCommentDelete, t],
-    )
 
     useEffect(() => {
       document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
@@ -681,56 +682,66 @@ export const Workflow: FC<WorkflowProps> = memo(
             onPositionChange={handlePendingCommentPositionChange}
           />
         )}
-        {visibleComments.map((comment, index) => {
-          const isActive = activeComment?.id === comment.id
-
-          if (isActive && activeComment) {
-            const canGoPrev = index > 0
-            const canGoNext = index < visibleComments.length - 1
-            return (
-              <Fragment key={comment.id}>
-                <CommentIcon
-                  key={`${comment.id}-icon`}
-                  comment={comment}
-                  onClick={() => handleCommentIconClick(comment)}
-                  isActive={true}
-                  onPositionUpdate={(position) => handleCommentPositionUpdate(comment.id, position)}
-                />
-                <CommentThread
-                  key={`${comment.id}-thread`}
-                  comment={activeComment}
-                  loading={activeCommentLoading}
-                  replySubmitting={replySubmitting}
-                  replyUpdating={replyUpdating}
-                  onClose={handleActiveCommentClose}
-                  onResolve={() => handleCommentResolve(comment.id)}
-                  onDelete={() => handleCommentDeleteClick(comment.id)}
-                  onCommentEdit={(content, ids) =>
-                    handleCommentUpdate(comment.id, content, ids ?? [])
-                  }
-                  onPrev={canGoPrev ? () => handleVisibleCommentNavigate('prev') : undefined}
-                  onNext={canGoNext ? () => handleVisibleCommentNavigate('next') : undefined}
-                  onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
-                  onReplyEdit={(replyId, content, ids) =>
-                    handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])
-                  }
-                  onReplyDelete={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
-                  canGoPrev={canGoPrev}
-                  canGoNext={canGoNext}
-                />
-              </Fragment>
-            )
-          }
-
-          return showUserComments || controlMode === ControlMode.Comment ? (
+        {visibleComments.map((comment) =>
+          comment.id === threadComment?.id ||
+          showUserComments ||
+          controlMode === ControlMode.Comment ? (
             <CommentIcon
               key={comment.id}
               comment={comment}
-              onClick={() => handleCommentIconClick(comment)}
+              threadHandle={commentThreadHandle}
+              isActive={isCommentThreadOpen && comment.id === activeComment?.id}
               onPositionUpdate={(position) => handleCommentPositionUpdate(comment.id, position)}
             />
-          ) : null
-        })}
+          ) : null,
+        )}
+        <Popover
+          handle={commentThreadHandle}
+          open={isCommentThreadOpen}
+          triggerId={isCommentThreadOpen ? getCommentMarkerId(activeComment.id) : null}
+          onOpenChange={(open, { trigger }) => {
+            if (!open) {
+              handleActiveCommentClose()
+              return
+            }
+            const comment = visibleComments.find(
+              (candidate) => getCommentMarkerId(candidate.id) === trigger?.id,
+            )
+            if (comment) handleCommentIconClick(comment)
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) setThreadComment(null)
+          }}
+        >
+          <PopoverPortal>
+            <PopoverPositioner {...commentThreadPlacement}>
+              {threadComment && (
+                <CommentThread
+                  comment={threadComment}
+                  loading={activeCommentLoading}
+                  replySubmitting={replySubmitting}
+                  replyUpdating={replyUpdating}
+                  onResolve={() => handleCommentResolve(threadComment.id)}
+                  onDelete={() => handleCommentDelete(threadComment.id)}
+                  onCommentEdit={(content, ids) =>
+                    handleCommentUpdate(threadComment.id, content, ids ?? [])
+                  }
+                  onPrev={canGoPrevComment ? () => handleVisibleCommentNavigate('prev') : undefined}
+                  onNext={canGoNextComment ? () => handleVisibleCommentNavigate('next') : undefined}
+                  onReply={(content, ids) =>
+                    handleCommentReply(threadComment.id, content, ids ?? [])
+                  }
+                  onReplyEdit={(replyId, content, ids) =>
+                    handleCommentReplyUpdate(threadComment.id, replyId, content, ids ?? [])
+                  }
+                  onReplyDelete={(replyId) => handleCommentReplyDelete(threadComment.id, replyId)}
+                  canGoPrev={canGoPrevComment}
+                  canGoNext={canGoNextComment}
+                />
+              )}
+            </PopoverPositioner>
+          </PopoverPortal>
+        </Popover>
         {children}
         <WorkflowContextmenu>
           <WorkflowCanvas

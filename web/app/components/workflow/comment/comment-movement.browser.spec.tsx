@@ -4,7 +4,7 @@ import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
-import { CommentIcon } from './comment-icon'
+import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 import { CommentInput } from './comment-input'
 import 'reactflow/dist/style.css'
 
@@ -44,9 +44,9 @@ function Fixture({ draft = false }: { draft?: boolean }) {
             onPositionChange={(next) => setPosition({ x: next.elementX, y: next.elementY })}
           />
         ) : (
-          <CommentIcon
+          <CommentMarkerFixture
             comment={current}
-            onClick={() => setOpened(true)}
+            onOpen={() => setOpened(true)}
             onPositionUpdate={(next) =>
               setCurrent((value) => ({ ...value, position_x: next.x, position_y: next.y }))
             }
@@ -130,7 +130,7 @@ function SelectableMarker() {
         Toggle selection
       </button>
       <div id="workflow-container" style={{ position: 'relative', width: 800, height: 600 }}>
-        <CommentIcon comment={comment} onClick={() => {}} isActive={active} />
+        <CommentMarkerFixture comment={comment} isActive={active} />
         <ReactFlow nodes={[]} />
       </div>
     </>

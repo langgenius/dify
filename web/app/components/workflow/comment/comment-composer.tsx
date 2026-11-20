@@ -104,7 +104,9 @@ export function CommentComposerPreview({
           <span className="text-components-input-text-placeholder">{placeholder}</span>
         )}
       </div>
-      <CommentComposerActions canSend={Boolean(value.trim())} sending={sending} mentionDisabled />
+      <div inert aria-hidden className="flex self-end">
+        <CommentComposerActions canSend={Boolean(value.trim())} sending={sending} mentionDisabled />
+      </div>
     </div>
   )
 }

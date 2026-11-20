@@ -3,6 +3,12 @@ import type {
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { UserProfile } from '../types'
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -10,7 +16,10 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
+import { getCommentMarkerId } from '../marker-id'
 import { CommentThread } from '../thread'
+import { commentThreadPlacement } from '../thread-placement'
+import { CommentThreadFixture } from './comment-thread-fixture'
 
 let mentionableUsers: UserProfile[] = []
 const renderWithAccountProfile = (ui: Parameters<typeof renderWorkflowFlowComponent>[0]) => {
@@ -64,7 +73,7 @@ describe('Comment thread focus', () => {
         kind === 'draft' ? (
           <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
         ) : (
-          <CommentThread comment={createComment()} onClose={onClose} onReply={() => {}} />
+          <CommentThreadFixture comment={createComment()} onClose={onClose} onReply={() => {}} />
         ),
       )
       await user.click(screen.getByRole('textbox'))
@@ -85,12 +94,13 @@ describe('Comment thread focus', () => {
     function Comment() {
       const [comment, setComment] = useState(createComment)
       const [opened, setOpened] = useState(false)
+      const [handle] = useState(() => createPopoverHandle())
       return (
         <div id="workflow-container">
           <CommentIcon
             comment={comment}
+            threadHandle={handle}
             isActive={opened}
-            onClick={() => setOpened(true)}
             onPositionUpdate={(position) => {
               onPositionUpdate(position)
               setComment((current) => ({
@@ -100,9 +110,18 @@ describe('Comment thread focus', () => {
               }))
             }}
           />
-          {opened && (
-            <CommentThread comment={comment} onClose={() => setOpened(false)} onReply={() => {}} />
-          )}
+          <Popover
+            handle={handle}
+            open={opened}
+            triggerId={opened ? getCommentMarkerId(comment.id) : null}
+            onOpenChange={setOpened}
+          >
+            <PopoverPortal>
+              <PopoverPositioner {...commentThreadPlacement}>
+                {opened && <CommentThread comment={comment} onReply={() => {}} />}
+              </PopoverPositioner>
+            </PopoverPortal>
+          </Popover>
         </div>
       )
     }
@@ -141,7 +160,7 @@ describe('Comment thread focus', () => {
       },
     ]
     renderWithAccountProfile(
-      <CommentThread
+      <CommentThreadFixture
         comment={comment}
         onClose={onClose}
         onReply={() => {}}
@@ -203,7 +222,7 @@ describe('Comment thread focus', () => {
       const [comment, setComment] = useState(initial)
       const [loading, setLoading] = useState(false)
       return (
-        <CommentThread
+        <CommentThreadFixture
           comment={comment}
           loading={loading}
           onClose={() => {}}
@@ -246,17 +265,15 @@ describe('Comment thread focus', () => {
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
   })
 
-  it('focuses the reply input when navigating to another comment', async () => {
+  it('starts a fresh reply draft on navigation and keeps focus on the navigation button', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    const onReply = vi.fn()
 
     function Comments() {
       const [comment, setComment] = useState(createComment)
       return (
-        <CommentThread
+        <CommentThreadFixture
           comment={comment}
-          onClose={() => {}}
-          onReply={onReply}
+          onReply={() => {}}
           canGoNext
           onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
         />
@@ -265,13 +282,13 @@ describe('Comment thread focus', () => {
 
     renderWithAccountProfile(<Comments />)
     await act(() => vi.advanceTimersByTimeAsync(100))
-    const replyInput = screen.getByRole('textbox')
-    expect(replyInput).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveFocus()
+    await user.type(screen.getByRole('textbox'), 'Unsent draft')
 
-    await user.click(
-      screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
-    )
-    await act(() => vi.advanceTimersByTimeAsync(100))
-    expect(replyInput).toHaveFocus()
+    const next = screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+    await user.click(next)
+
+    expect(next).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveValue('')
   })
 })

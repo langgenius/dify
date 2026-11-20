@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { CommentIcon } from './comment-icon'
+import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 
 const render = (ui: ReactElement, userId = 'user-1') => {
   const { queryClient } = createConsoleQueryWrapper({
@@ -51,9 +51,9 @@ describe('CommentIcon', () => {
     function Comment() {
       const [comment, setComment] = useState(() => createComment())
       return (
-        <CommentIcon
+        <CommentMarkerFixture
           comment={comment}
-          onClick={onClick}
+          onOpen={onClick}
           onPositionUpdate={(position) => {
             onPositionUpdate(position)
             setComment((current) => ({
@@ -86,9 +86,9 @@ describe('CommentIcon', () => {
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
     render(
-      <CommentIcon
+      <CommentMarkerFixture
         comment={createComment()}
-        onClick={onClick}
+        onOpen={onClick}
         onPositionUpdate={onPositionUpdate}
       />,
       'user-2',
@@ -102,7 +102,7 @@ describe('CommentIcon', () => {
   it('toggles preview on hover when inactive', async () => {
     const user = userEvent.setup()
     const comment = createComment()
-    render(<CommentIcon comment={comment} onClick={vi.fn()} isActive={false} />)
+    render(<CommentMarkerFixture comment={comment} onOpen={vi.fn()} isActive={false} />)
     const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
     await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
     expect(screen.getByText('Hello')).toBeInTheDocument()
@@ -115,7 +115,13 @@ describe('CommentIcon', () => {
     const comment = createComment({ position_x: 0, position_y: 0 })
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
-    render(<CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />)
+    render(
+      <CommentMarkerFixture
+        comment={comment}
+        onOpen={onClick}
+        onPositionUpdate={onPositionUpdate}
+      />,
+    )
     const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
 
     fireEvent.pointerDown(marker, {
@@ -135,6 +141,8 @@ describe('CommentIcon', () => {
       clientY: 110,
     })
 
+    fireEvent.click(marker)
+
     expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith({ x: 5, y: 5 })
     expect(onClick).not.toHaveBeenCalled()
   })
@@ -142,10 +150,13 @@ describe('CommentIcon', () => {
   it('opens another author’s comment with a click', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
-    render(<CommentIcon comment={createComment()} onClick={onClick} isActive={false} />, 'user-2')
+    render(
+      <CommentMarkerFixture comment={createComment()} onOpen={onClick} isActive={false} />,
+      'user-2',
+    )
 
     await user.click(screen.getByRole('button', { name: /workflow.keyboard.openComment/ }))
 
-    expect(onClick).toHaveBeenCalledExactlyOnceWith()
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 })

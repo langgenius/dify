@@ -1,80 +1,72 @@
-import type { ComponentProps, ReactNode, Ref } from 'react'
+import type { PopoverPopupProps } from '@langgenius/dify-ui/popover'
+import type { ComponentProps, ReactNode } from 'react'
 import type { Collaborator } from '../collaboration/components/collaborator-avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId } from 'react'
+import { PopoverClose, PopoverPopup, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { CommentComposerFrame } from './comment-composer'
 import { highlightMentions } from './mention-highlight'
 
-type CommentThreadPanelProps = Omit<ComponentProps<'div'>, 'title'> & {
+type CommentThreadPopupProps = Omit<PopoverPopupProps, 'title' | 'children' | 'render'> & {
   title: ReactNode
   closeLabel: string
-  onClose: () => void
   /** Header buttons placed before the close button. */
   actions?: ReactNode
-  /** Scroll container of the message list. */
-  listRef?: Ref<HTMLDivElement>
-  /** Shown under the list, usually a `CommentReplyBar`. */
-  footer?: ReactNode
   /** When set, covers the thread with this busy message. */
   loadingLabel?: string
+  /** The thread body, usually a `CommentThreadList` and a `CommentReplyBar`. */
+  children?: ReactNode
 }
 
 /**
- * The comment thread dialog: header with title and close, a scrolling list of
- * `CommentThreadItem`s, and an optional footer.
+ * The comment thread popup: a header with the title, `actions` and a close
+ * button, then the body. Compose it in a dify-ui `Popover` whose positioner
+ * spreads `commentThreadPlacement`; the close button closes that popover.
  */
-export function CommentThreadPanel({
+export function CommentThreadPopup({
   title,
   closeLabel,
-  onClose,
   actions,
-  listRef,
-  footer,
   loadingLabel,
   className,
   children,
   ...props
-}: CommentThreadPanelProps) {
-  const titleId = useId()
-
+}: CommentThreadPopupProps) {
   return (
-    <div
-      role="dialog"
-      aria-labelledby={titleId}
+    <PopoverPopup
       className={cn(
-        'relative flex max-h-100 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px]',
+        'relative flex max-h-100 w-90 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px]',
         className,
       )}
       {...props}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-divider-subtle py-1 ps-4 pe-2">
-        <div id={titleId} className="system-sm-semibold text-text-primary uppercase">
+        <PopoverTitle className="system-sm-semibold text-text-primary uppercase">
           {title}
-        </div>
+        </PopoverTitle>
         <div className="flex items-center">
           {actions}
-          <button
-            type="button"
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-            onClick={onClose}
+          <PopoverClose
             aria-label={closeLabel}
+            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
           >
             <span aria-hidden className="i-ri-close-line size-4" />
-          </button>
+          </PopoverClose>
         </div>
       </div>
-      <div ref={listRef} className="relative min-h-0 flex-1 overflow-y-auto">
-        {children}
-      </div>
+      {children}
       {loadingLabel && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
           {loadingLabel}
         </div>
       )}
-      {footer}
-    </div>
+    </PopoverPopup>
   )
+}
+
+/** The scrolling message list of a thread. */
+export function CommentThreadList({ className, ...props }: ComponentProps<'div'>) {
+  return <div className={cn('relative min-h-0 flex-1 overflow-y-auto', className)} {...props} />
 }
 
 /** One row of a thread; reveals a row action menu placed inside it on hover. */

@@ -322,12 +322,27 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           }
         }
 
+        if (e.key === 'Escape' && isEditing && onCancel) {
+          e.preventDefault()
+          e.stopPropagation()
+          onCancel()
+          return
+        }
+
         if (e.key === 'Enter' && !e.shiftKey && !isMentionMenuOpen) {
           e.preventDefault()
           handleSubmit()
         }
       },
-      [isMentionMenuOpen, filteredMentionUsers, selectedMentionIndex, insertMention, handleSubmit],
+      [
+        isMentionMenuOpen,
+        filteredMentionUsers,
+        selectedMentionIndex,
+        insertMention,
+        handleSubmit,
+        isEditing,
+        onCancel,
+      ],
     )
 
     const resetMentionState = useCallback(() => {

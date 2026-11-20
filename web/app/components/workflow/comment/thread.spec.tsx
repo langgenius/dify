@@ -1,10 +1,10 @@
 import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
-import { CommentThread } from './thread'
+import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
 
 const render = (ui: ReactElement) => {
   const { queryClient } = createConsoleQueryWrapper({
@@ -69,7 +69,7 @@ describe('CommentThread', () => {
     const onNext = vi.fn()
 
     render(
-      <CommentThread
+      <CommentThreadFixture
         comment={createComment()}
         onClose={onClose}
         onDelete={onDelete}
@@ -82,14 +82,16 @@ describe('CommentThread', () => {
     )
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    expect(onDelete).not.toHaveBeenCalled()
+    const confirmation = await screen.findByRole('alertdialog')
+    expect(confirmation).toHaveTextContent('workflowComments.comments.confirm.deleteThreadTitle')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.delete' }))
     await user.click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
     await user.click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
     await user.click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
     await user.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
-
-    fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await user.keyboard('{Escape}')
 
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onResolve).toHaveBeenCalledTimes(1)
@@ -98,12 +100,50 @@ describe('CommentThread', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('closes on an outside press', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(
+      <>
+        <button type="button">Elsewhere</button>
+        <CommentThreadFixture comment={createComment()} onClose={onClose} />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves editing on Escape and keeps the thread open', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    render(<CommentThreadFixture comment={createComment()} onClose={onClose} onReply={vi.fn()} />)
+
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
+    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editComment')
+    await waitFor(() => expect(editor).toHaveFocus())
+    await user.keyboard('{Escape}')
+
+    expect(onClose).not.toHaveBeenCalled()
+    expect(editor).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.getByPlaceholderText('workflowComments.comments.placeholder.reply'),
+      ).toHaveFocus(),
+    )
+  })
+
   it('supports editing the root comment when the current user owns the thread', async () => {
     const user = userEvent.setup()
     const onCommentEdit = vi.fn()
 
     render(
-      <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
+      <CommentThreadFixture
+        comment={createComment()}
+        onClose={vi.fn()}
+        onCommentEdit={onCommentEdit}
+      />,
     )
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
@@ -123,7 +163,7 @@ describe('CommentThread', () => {
     const user = userEvent.setup()
     const onReply = vi.fn()
     const { store } = render(
-      <CommentThread comment={createComment()} onClose={vi.fn()} onReply={onReply} />,
+      <CommentThreadFixture comment={createComment()} onClose={vi.fn()} onReply={onReply} />,
     )
 
     const dialog = screen.getByRole('dialog')
@@ -147,7 +187,7 @@ describe('CommentThread', () => {
     const onReplyDelete = vi.fn()
 
     render(
-      <CommentThread
+      <CommentThreadFixture
         comment={createComment()}
         onClose={vi.fn()}
         onReplyEdit={onReplyEdit}

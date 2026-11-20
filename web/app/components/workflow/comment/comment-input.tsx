@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useStore } from '../store'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
+import { CommentComposerFrame } from './comment-composer'
 import { CommentMarker } from './comment-marker'
 import { MentionInput } from './mention-input'
 
@@ -196,9 +197,9 @@ export const CommentInput: FC<CommentInputProps> = memo(
           {t(($) => $['keyboard.moveDraftHelp'], { ns: 'workflow' })}{' '}
           {t(($) => $['keyboard.position'], { ns: 'workflow', x: position.x, y: position.y })}
         </span>
-        <div
-          className="absolute -top-8.5 z-10 w-80 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]"
-          style={opensLeft ? { right: 12 } : { left: 39 }}
+        <CommentComposerFrame
+          className="absolute z-10 w-80 shadow-lg"
+          style={{ top: Math.max(-34, -position.y), ...(opensLeft ? { right: 12 } : { left: 39 }) }}
         >
           <MentionInput
             value={content}
@@ -208,7 +209,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
             autoFocus={autoFocus}
             disabled={disabled}
           />
-        </div>
+        </CommentComposerFrame>
       </div>
     )
   },

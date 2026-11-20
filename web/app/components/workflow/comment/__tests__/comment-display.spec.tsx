@@ -1,3 +1,4 @@
+import { Popover, PopoverPortal, PopoverPositioner } from '@langgenius/dify-ui/popover'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CommentComposerPreview } from '../comment-composer'
@@ -6,7 +7,8 @@ import {
   CommentMessage,
   CommentReplyBar,
   CommentThreadItem,
-  CommentThreadPanel,
+  CommentThreadList,
+  CommentThreadPopup,
 } from '../thread-view'
 
 const ann = { id: 'ann', name: 'Ann', color: '#155AEF' }
@@ -29,25 +31,32 @@ it('renders a thread dialog with its messages, mentions and close action', async
   const user = userEvent.setup()
   const onClose = vi.fn()
   render(
-    <CommentThreadPanel
-      title="Comments"
-      closeLabel="Close comment"
-      onClose={onClose}
-      footer={
-        <CommentReplyBar author={{ id: 'me', name: 'Me' }}>
-          <CommentComposerPreview value="" placeholder="Reply" />
-        </CommentReplyBar>
-      }
+    <Popover
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
     >
-      <CommentThreadItem>
-        <CommentMessage
-          author={ann}
-          timeLabel="2 minutes ago"
-          content="Thanks @Bob for checking"
-          mentionNames={['Bob']}
-        />
-      </CommentThreadItem>
-    </CommentThreadPanel>,
+      <PopoverPortal>
+        <PopoverPositioner anchor={document.body}>
+          <CommentThreadPopup title="Comments" closeLabel="Close comment">
+            <CommentThreadList>
+              <CommentThreadItem>
+                <CommentMessage
+                  author={ann}
+                  timeLabel="2 minutes ago"
+                  content="Thanks @Bob for checking"
+                  mentionNames={['Bob']}
+                />
+              </CommentThreadItem>
+            </CommentThreadList>
+            <CommentReplyBar author={{ id: 'me', name: 'Me' }}>
+              <CommentComposerPreview value="" placeholder="Reply" />
+            </CommentReplyBar>
+          </CommentThreadPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
+    </Popover>,
   )
 
   expect(screen.getByRole('dialog', { name: 'Comments' })).toBeInTheDocument()
@@ -58,11 +67,12 @@ it('renders a thread dialog with its messages, mentions and close action', async
   expect(onClose).toHaveBeenCalledTimes(1)
 })
 
-it('enables the preview send button only for non-empty text', () => {
-  const { rerender } = render(<CommentComposerPreview value="   " placeholder="Reply" />)
-  expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeDisabled()
+it('shows the preview send state without exposing inert buttons', () => {
+  const { container, rerender } = render(<CommentComposerPreview value="   " placeholder="Reply" />)
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(container.querySelector('[aria-label="common.operation.send"]')).toBeDisabled()
 
   rerender(<CommentComposerPreview value="Looks good" placeholder="Reply" />)
-  expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeEnabled()
+  expect(container.querySelector('[aria-label="common.operation.send"]')).toBeEnabled()
   expect(screen.getByText('Looks good')).toBeInTheDocument()
 })

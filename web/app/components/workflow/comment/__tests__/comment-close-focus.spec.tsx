@@ -1,14 +1,22 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Fragment } from 'react'
+import { useState } from 'react'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 import { useStore } from '../../store'
 import { CommentIcon } from '../comment-icon'
+import { getCommentMarkerId } from '../marker-id'
 import { CommentThread } from '../thread'
+import { commentThreadPlacement } from '../thread-placement'
 
 const mockFetchComments = vi.hoisted(() => vi.fn())
 const mockFetchComment = vi.hoisted(() => vi.fn())
@@ -58,8 +66,10 @@ const comment: WorkflowCommentBasic = {
   participants: [],
 }
 
+// Mirrors the canvas entry: markers are triggers of one thread popover.
 function CommentCanvas() {
   const showUserComments = useStore((state) => state.showUserComments)
+  const [threadHandle] = useState(() => createPopoverHandle())
   const {
     comments,
     activeComment,
@@ -70,47 +80,56 @@ function CommentCanvas() {
     handleCommentPositionUpdate,
     handleCommentNavigate,
   } = useWorkflowComment()
+  const activeIndex = activeComment
+    ? comments.findIndex((item) => item.id === activeComment.id)
+    : -1
+  const open = activeComment !== null && activeIndex !== -1
 
   return (
     <div id="workflow-container">
-      {comments.map((item, index) => {
-        // Match Workflow's active/inactive branches: opening and closing rebuild the marker.
-        if (activeComment?.id === item.id) {
-          return (
-            <Fragment key={item.id}>
-              <CommentIcon
-                key={`${item.id}-icon`}
-                comment={item}
-                onClick={() => handleCommentIconClick(item)}
-                isActive
-                onPositionUpdate={(position) => handleCommentPositionUpdate(item.id, position)}
-              />
-              <CommentThread
-                key={`${item.id}-thread`}
-                comment={activeComment}
-                loading={activeCommentLoading}
-                onClose={handleActiveCommentClose}
-                onReply={(content, ids) => handleCommentReply(item.id, content, ids)}
-                onPrev={index > 0 ? () => handleCommentNavigate('prev') : undefined}
-                onNext={
-                  index < comments.length - 1 ? () => handleCommentNavigate('next') : undefined
-                }
-                canGoPrev={index > 0}
-                canGoNext={index < comments.length - 1}
-              />
-            </Fragment>
-          )
-        }
-
-        return showUserComments ? (
+      {comments.map((item) =>
+        item.id === activeComment?.id || showUserComments ? (
           <CommentIcon
             key={item.id}
             comment={item}
-            onClick={() => handleCommentIconClick(item)}
+            threadHandle={threadHandle}
+            isActive={item.id === activeComment?.id}
             onPositionUpdate={(position) => handleCommentPositionUpdate(item.id, position)}
           />
-        ) : null
-      })}
+        ) : null,
+      )}
+      <Popover
+        handle={threadHandle}
+        open={open}
+        triggerId={open ? getCommentMarkerId(activeComment.id) : null}
+        onOpenChange={(nextOpen, { trigger }) => {
+          if (!nextOpen) return handleActiveCommentClose()
+          const item = comments.find(
+            (candidate) => getCommentMarkerId(candidate.id) === trigger?.id,
+          )
+          if (item) handleCommentIconClick(item)
+        }}
+      >
+        <PopoverPortal>
+          <PopoverPositioner {...commentThreadPlacement}>
+            {open && (
+              <CommentThread
+                comment={activeComment}
+                loading={activeCommentLoading}
+                onReply={(content, ids) => handleCommentReply(activeComment.id, content, ids)}
+                onPrev={activeIndex > 0 ? () => handleCommentNavigate('prev') : undefined}
+                onNext={
+                  activeIndex < comments.length - 1
+                    ? () => handleCommentNavigate('next')
+                    : undefined
+                }
+                canGoPrev={activeIndex > 0}
+                canGoNext={activeIndex < comments.length - 1}
+              />
+            )}
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
     </div>
   )
 }
@@ -227,7 +246,7 @@ describe('Comment keyboard focus lifecycle', () => {
     },
   )
 
-  it('restores the last viewed comment marker after navigating to another thread', async () => {
+  it('keeps focus on navigation and restores the last viewed marker on close', async () => {
     const user = userEvent.setup()
     const otherComment: WorkflowCommentBasic = {
       ...comment,
@@ -249,10 +268,12 @@ describe('Comment keyboard focus lifecycle', () => {
     await user.tab({ shift: true })
     await user.tab({ shift: true })
     await user.tab({ shift: true })
-    expect(screen.getByRole('button', { name: /comments.aria.nextComment/ })).toHaveFocus()
+    const next = screen.getByRole('button', { name: /comments.aria.nextComment/ })
+    expect(next).toHaveFocus()
     await user.keyboard('{Enter}')
-    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
-    expect(screen.getByText(otherComment.content)).toBeInTheDocument()
+    expect(await screen.findByText(otherComment.content)).toBeInTheDocument()
+    // Navigation keeps focus on the header control so the next press keeps moving.
+    expect(next).toHaveFocus()
     await user.keyboard('{Escape}')
 
     await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument())

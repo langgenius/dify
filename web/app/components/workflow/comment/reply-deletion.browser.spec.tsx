@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
-import { CommentThread } from './thread'
+import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
 
 const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
 const comment: WorkflowCommentDetail = {
@@ -45,7 +45,7 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
         className="isolate"
         style={{ position: 'relative', width: 1000, height: 650 }}
       >
-        <CommentThread
+        <CommentThreadFixture
           comment={detail}
           onClose={() => {}}
           onReply={() => {}}

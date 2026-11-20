@@ -4,6 +4,7 @@ import type {
   WorkflowCommentDetail,
   WorkflowCommentReply,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RefObject } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -28,9 +29,8 @@ import {
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow, useViewport } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -43,7 +43,8 @@ import {
   CommentMessage,
   CommentReplyBar,
   CommentThreadItem,
-  CommentThreadPanel,
+  CommentThreadList,
+  CommentThreadPopup,
 } from './thread-view'
 
 type CommentThreadProps = {
@@ -51,8 +52,7 @@ type CommentThreadProps = {
   loading?: boolean
   replySubmitting?: boolean
   replyUpdating?: boolean
-  onClose: () => void
-  onDelete?: () => void
+  onDelete?: () => Promise<void> | void
   onResolve?: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -100,26 +100,215 @@ function ThreadMessage({ author, createdAt, content, mentionNames }: ThreadMessa
   )
 }
 
-function CommentThreadComponent({
+// An edit field opens with its text ready to extend.
+const focusAtEnd = (textarea: HTMLTextAreaElement | null) => {
+  if (!textarea) return
+  textarea.focus()
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+}
+
+/**
+ * The open comment's thread popup. Render it in the canvas's comment thread
+ * `Popover`: the header (delete, resolve, previous, next, close) lasts as long
+ * as the popup, and each comment gets a fresh session for its drafts and menus.
+ */
+export function CommentThread({
   comment,
   loading = false,
-  replySubmitting = false,
-  replyUpdating = false,
-  onClose,
   onDelete,
   onResolve,
   onPrev,
   onNext,
   canGoPrev,
   canGoNext,
+  ...sessionProps
+}: CommentThreadProps) {
+  const { t } = useTranslation(['common', 'workflowComments'])
+  const setCommentPreviewHovering = useStore((state) => state.setCommentPreviewHovering)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const replyInputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(
+    () => () => {
+      setCommentPreviewHovering(false)
+    },
+    [setCommentPreviewHovering],
+  )
+
+  return (
+    <CommentThreadPopup
+      initialFocus={sessionProps.onReply ? replyInputRef : undefined}
+      onMouseEnter={() => setCommentPreviewHovering(true)}
+      onMouseLeave={() => setCommentPreviewHovering(false)}
+      title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
+      closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
+      loadingLabel={
+        loading ? t(($) => $['comments.loading'], { ns: 'workflowComments' }) : undefined
+      }
+      actions={
+        <>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={loading}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                  )}
+                  onClick={() => setConfirmingDelete(true)}
+                  aria-label={t(($) => $['comments.aria.deleteComment'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  <RiDeleteBinLine className="size-4" />
+                </button>
+              }
+            />
+            <TooltipContent>
+              {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={comment.resolved || loading}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                  )}
+                  onClick={onResolve}
+                  aria-label={t(($) => $['comments.aria.resolveComment'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  {comment.resolved ? (
+                    <RiCheckboxCircleFill className="size-4" />
+                  ) : (
+                    <RiCheckboxCircleLine className="size-4" />
+                  )}
+                </button>
+              }
+            />
+            <TooltipContent>
+              {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
+            </TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="mx-2 h-3.5" />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={!canGoPrev || loading}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                  )}
+                  onClick={onPrev}
+                  aria-label={t(($) => $['comments.aria.previousComment'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  <RiArrowUpSLine className="size-4" />
+                </button>
+              }
+            />
+            <TooltipContent>
+              {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  disabled={!canGoNext || loading}
+                  className={cn(
+                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
+                  )}
+                  onClick={onNext}
+                  aria-label={t(($) => $['comments.aria.nextComment'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  <RiArrowDownSLine className="size-4" />
+                </button>
+              }
+            />
+            <TooltipContent>
+              {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
+            </TooltipContent>
+          </Tooltip>
+        </>
+      }
+    >
+      <CommentThreadSession
+        key={comment.id}
+        comment={comment}
+        loading={loading}
+        replyInputRef={replyInputRef}
+        {...sessionProps}
+      />
+      <AlertDialog
+        open={confirmingDelete}
+        onOpenChange={(open, eventDetails) => {
+          if (!open && loading) {
+            eventDetails.cancel()
+            return
+          }
+          setConfirmingDelete(open)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['comments.confirm.deleteThreadTitle'], { ns: 'workflowComments' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(($) => $['comments.confirm.deleteThreadDesc'], { ns: 'workflowComments' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={loading}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={loading} onClick={() => onDelete?.()}>
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </CommentThreadPopup>
+  )
+}
+
+type CommentThreadSessionProps = Pick<
+  CommentThreadProps,
+  | 'comment'
+  | 'loading'
+  | 'replySubmitting'
+  | 'replyUpdating'
+  | 'onCommentEdit'
+  | 'onReply'
+  | 'onReplyEdit'
+  | 'onReplyDelete'
+> & {
+  replyInputRef: RefObject<HTMLTextAreaElement | null>
+}
+
+function CommentThreadSession({
+  comment,
+  loading = false,
+  replySubmitting = false,
+  replyUpdating = false,
+  replyInputRef,
   onCommentEdit,
   onReply,
   onReplyEdit,
   onReplyDelete,
-}: CommentThreadProps) {
+}: CommentThreadSessionProps) {
   const appId = useAtomValue(editorAppIdAtom)
-  const { flowToScreenPosition } = useReactFlow()
-  const viewport = useViewport()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -137,16 +326,11 @@ function CommentThreadComponent({
   const [isCommentEditing, setIsCommentEditing] = useState(false)
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
-  // Focus management refs
-  const replyInputRef = useRef<HTMLTextAreaElement>(null)
-  const editInputRef = useRef<HTMLTextAreaElement>(null)
-
   // Get mentionable users from store
   const mentionUsersFromStore = useStore((state) =>
     appId ? state.mentionableUsersCache[appId] : undefined,
   )
   const mentionUsers = mentionUsersFromStore ?? []
-  const setCommentPreviewHovering = useStore((state) => state.setCommentPreviewHovering)
 
   // Extract all mentionable names for highlighting
   const mentionableNames = useMemo(() => {
@@ -155,42 +339,6 @@ function CommentThreadComponent({
       .filter((name): name is string => Boolean(name))
     return Array.from(new Set(names))
   }, [mentionUsers])
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setReplyContent('')
-      setEditingCommentContent('')
-      setIsCommentEditing(false)
-      setEditingReply({ id: '', content: '' })
-      setActiveReplyMenuId(null)
-      setDeletingReplyId(null)
-    })
-  }, [comment.id])
-
-  useEffect(
-    () => () => {
-      setCommentPreviewHovering(false)
-    },
-    [setCommentPreviewHovering],
-  )
-
-  const canReply = Boolean(onReply)
-
-  // Focus on thread and edit transitions, not callback changes after position updates.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (editingReply.id || isCommentEditing) {
-        const editInput = editInputRef.current
-        if (!editInput) return
-        editInput.focus()
-        editInput.setSelectionRange(editInput.value.length, editInput.value.length)
-        return
-      }
-      if (replyInputRef.current && canReply) replyInputRef.current.focus()
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [comment.id, editingReply.id, isCommentEditing, canReply])
 
   const handleReplySubmit = useCallback(
     async (content: string, mentionedUserIds: string[]) => {
@@ -210,34 +358,7 @@ function CommentThreadComponent({
         setReplyContent(content)
       }
     },
-    [onReply, replySubmitting],
-  )
-
-  const screenPosition = useMemo(() => {
-    return flowToScreenPosition({
-      x: comment.position_x,
-      y: comment.position_y,
-    })
-  }, [
-    comment.position_x,
-    comment.position_y,
-    viewport.x,
-    viewport.y,
-    viewport.zoom,
-    flowToScreenPosition,
-  ])
-  const workflowContainerRect =
-    typeof document !== 'undefined'
-      ? document.getElementById('workflow-container')?.getBoundingClientRect()
-      : null
-  const containerLeft = workflowContainerRect?.left ?? 0
-  const containerTop = workflowContainerRect?.top ?? 0
-  const canvasPosition = useMemo(
-    () => ({
-      x: screenPosition.x - containerLeft,
-      y: screenPosition.y - containerTop,
-    }),
-    [screenPosition.x, screenPosition.y, containerLeft, containerTop],
+    [onReply, replyInputRef, replySubmitting],
   )
 
   const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
@@ -260,7 +381,7 @@ function CommentThreadComponent({
     setTimeout(() => {
       replyInputRef.current?.focus()
     }, 0)
-  }, [])
+  }, [replyInputRef])
 
   const handleCancelCommentEdit = useCallback(() => {
     setEditingCommentContent('')
@@ -269,7 +390,7 @@ function CommentThreadComponent({
     setTimeout(() => {
       replyInputRef.current?.focus()
     }, 0)
-  }, [])
+  }, [replyInputRef])
 
   const handleCommentEditSubmit = useCallback(
     async (content: string, mentionedUserIds: string[]) => {
@@ -292,7 +413,7 @@ function CommentThreadComponent({
         setIsSubmittingEdit(false)
       }
     },
-    [onCommentEdit],
+    [onCommentEdit, replyInputRef],
   )
 
   const handleEditSubmit = useCallback(
@@ -316,7 +437,7 @@ function CommentThreadComponent({
         setIsSubmittingEdit(false)
       }
     },
-    [editingReply, onReplyEdit],
+    [editingReply, onReplyEdit, replyInputRef],
   )
 
   const replies = comment.replies || []
@@ -325,7 +446,6 @@ function CommentThreadComponent({
   const isOwnComment = comment.created_by_account?.id === currentUserId
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
-  const previousCommentIdRef = useRef<string | undefined>(undefined)
 
   // Close menu when scrolling
   useEffect(() => {
@@ -340,179 +460,21 @@ function CommentThreadComponent({
     return () => container.removeEventListener('scroll', handleScroll)
   }, [activeReplyMenuId])
 
-  // Auto-scroll to bottom on new messages
+  // Scroll to the newest message when the session opens and when a reply arrives.
   useEffect(() => {
     const container = messageListRef.current
     if (!container) return
 
-    const isFirstRender = previousCommentIdRef.current === undefined
-    const isNewComment = comment.id !== previousCommentIdRef.current
-    const hasNewReply =
-      previousReplyCountRef.current !== undefined && replies.length > previousReplyCountRef.current
+    const previousReplyCount = previousReplyCountRef.current
+    if (previousReplyCount === undefined || replies.length > previousReplyCount)
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
 
-    // Scroll on first render, new comment, or new reply
-    if (isFirstRender || isNewComment || hasNewReply) {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: 'smooth',
-      })
-    }
-
-    previousCommentIdRef.current = comment.id
     previousReplyCountRef.current = replies.length
-  }, [comment.id, replies.length])
+  }, [replies.length])
 
   return (
-    <div
-      className="absolute z-30 w-90 max-w-90"
-      style={{
-        left: canvasPosition.x + 62,
-        top: canvasPosition.y,
-        transform: 'translateY(-20%)',
-      }}
-      onMouseEnter={() => setCommentPreviewHovering(true)}
-      onMouseLeave={() => setCommentPreviewHovering(false)}
-    >
-      <CommentThreadPanel
-        title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
-        closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
-        onClose={onClose}
-        listRef={messageListRef}
-        loadingLabel={
-          loading ? t(($) => $['comments.loading'], { ns: 'workflowComments' }) : undefined
-        }
-        onKeyDown={(event) => {
-          if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
-            return
-          if (editingReply.id || isCommentEditing) return
-          event.preventDefault()
-          event.stopPropagation()
-          onClose()
-        }}
-        actions={
-          <>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    disabled={loading}
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                    )}
-                    onClick={onDelete}
-                    aria-label={t(($) => $['comments.aria.deleteComment'], {
-                      ns: 'workflowComments',
-                    })}
-                  >
-                    <RiDeleteBinLine className="size-4" />
-                  </button>
-                }
-              />
-              <TooltipContent>
-                {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    disabled={comment.resolved || loading}
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                    )}
-                    onClick={onResolve}
-                    aria-label={t(($) => $['comments.aria.resolveComment'], {
-                      ns: 'workflowComments',
-                    })}
-                  >
-                    {comment.resolved ? (
-                      <RiCheckboxCircleFill className="size-4" />
-                    ) : (
-                      <RiCheckboxCircleLine className="size-4" />
-                    )}
-                  </button>
-                }
-              />
-              <TooltipContent>
-                {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
-              </TooltipContent>
-            </Tooltip>
-            <Separator orientation="vertical" className="mx-2 h-3.5" />
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    disabled={!canGoPrev || loading}
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                    )}
-                    onClick={onPrev}
-                    aria-label={t(($) => $['comments.aria.previousComment'], {
-                      ns: 'workflowComments',
-                    })}
-                  >
-                    <RiArrowUpSLine className="size-4" />
-                  </button>
-                }
-              />
-              <TooltipContent>
-                {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    disabled={!canGoNext || loading}
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                    )}
-                    onClick={onNext}
-                    aria-label={t(($) => $['comments.aria.nextComment'], {
-                      ns: 'workflowComments',
-                    })}
-                  >
-                    <RiArrowDownSLine className="size-4" />
-                  </button>
-                }
-              />
-              <TooltipContent>
-                {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
-              </TooltipContent>
-            </Tooltip>
-          </>
-        }
-        footer={
-          onReply && (
-            <CommentReplyBar
-              author={toCommentCollaborator(
-                {
-                  id: currentUserId,
-                  name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
-                  avatar_url: userProfile?.avatar_url ?? null,
-                },
-                currentUserId,
-              )}
-            >
-              <MentionInput
-                ref={replyInputRef}
-                value={replyContent}
-                onChange={setReplyContent}
-                onSubmit={handleReplySubmit}
-                placeholder={t(($) => $['comments.placeholder.reply'], {
-                  ns: 'workflowComments',
-                })}
-                disabled={loading}
-                loading={replySubmitting}
-              />
-            </CommentReplyBar>
-          )
-        }
-      >
+    <>
+      <CommentThreadList ref={messageListRef}>
         <CommentThreadItem>
           {isOwnComment && !isCommentEditing && (
             <Menu
@@ -559,7 +521,7 @@ function CommentThreadComponent({
               <div className="min-w-0 flex-1">
                 <CommentComposerFrame>
                   <MentionInput
-                    ref={editInputRef}
+                    ref={focusAtEnd}
                     value={editingCommentContent}
                     onChange={setEditingCommentContent}
                     onSubmit={handleCommentEditSubmit}
@@ -655,7 +617,7 @@ function CommentThreadComponent({
                       <div className="min-w-0 flex-1">
                         <CommentComposerFrame>
                           <MentionInput
-                            ref={editInputRef}
+                            ref={focusAtEnd}
                             value={editingReply?.content ?? ''}
                             onChange={(newContent) =>
                               setEditingReply((prev) =>
@@ -687,7 +649,31 @@ function CommentThreadComponent({
             })}
           </div>
         )}
-      </CommentThreadPanel>
+      </CommentThreadList>
+      {onReply && (
+        <CommentReplyBar
+          author={toCommentCollaborator(
+            {
+              id: currentUserId,
+              name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
+              avatar_url: userProfile?.avatar_url ?? null,
+            },
+            currentUserId,
+          )}
+        >
+          <MentionInput
+            ref={replyInputRef}
+            value={replyContent}
+            onChange={setReplyContent}
+            onSubmit={handleReplySubmit}
+            placeholder={t(($) => $['comments.placeholder.reply'], {
+              ns: 'workflowComments',
+            })}
+            disabled={loading}
+            loading={replySubmitting}
+          />
+        </CommentReplyBar>
+      )}
       <AlertDialog
         open={deletingReplyId !== null && !replyWasDeleted}
         onOpenChangeComplete={(open) => {
@@ -725,10 +711,6 @@ function CommentThreadComponent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
-
-export const CommentThread = memo(CommentThreadComponent)
-
-CommentThread.displayName = 'CommentThread'

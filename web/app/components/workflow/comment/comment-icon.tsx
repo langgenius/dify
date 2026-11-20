@@ -1,8 +1,10 @@
 'use client'
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import type { PopoverHandle } from '@langgenius/dify-ui/popover'
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,17 +13,20 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
 import { CommentMarker } from './comment-marker'
 import CommentPreview from './comment-preview'
+import { getCommentMarkerId } from './marker-id'
 import { getCommentParticipants } from './participants'
 
 type CommentIconProps = {
   comment: WorkflowCommentBasic
-  onClick: () => void
+  /** The canvas's comment thread popover; the marker is one of its triggers. */
+  threadHandle: PopoverHandle<unknown>
   isActive?: boolean
   onPositionUpdate?: (position: { x: number; y: number }) => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(
-  ({ comment, onClick, isActive = false, onPositionUpdate }) => {
+  ({ comment, threadHandle, isActive = false, onPositionUpdate }) => {
+    const markerId = getCommentMarkerId(comment.id)
     const { t } = useTranslation(['workflow'])
     const descriptionId = useId()
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
@@ -35,6 +40,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
+    const dragEndedRef = useRef(false)
     const finishKeyboardMove = useCallback(() => {
       const position = keyboardPositionRef.current
       if (!position) return
@@ -164,6 +170,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         setShowPreview(false)
 
         if (didDrag) {
+          dragEndedRef.current = true
           if (onPositionUpdate) {
             const flowPosition = screenToFlowPosition({
               x: finalScreenPosition.x,
@@ -171,18 +178,19 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             })
             onPositionUpdate(flowPosition)
           }
-        } else if (!isActive) {
-          onClick()
+        } else if (event.currentTarget.dataset.role === 'comment-preview' && !isActive) {
+          threadHandle.open(markerId)
         }
       },
       [
         dragPosition,
         finishDrag,
         isActive,
-        onClick,
+        markerId,
         onPositionUpdate,
         screenPosition,
         screenToFlowPosition,
+        threadHandle,
       ],
     )
 
@@ -221,24 +229,39 @@ export const CommentIcon: FC<CommentIconProps> = memo(
 
     return (
       <>
-        <IconButton
-          aria-label={t(($) => $['keyboard.openComment'], {
-            name: comment.created_by_account?.name ?? '',
-          })}
+        <PopoverTrigger
+          handle={threadHandle}
+          id={markerId}
+          render={
+            <IconButton
+              aria-label={t(($) => $['keyboard.openComment'], {
+                name: comment.created_by_account?.name ?? '',
+              })}
+              className="nokey absolute z-10 size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
+            >
+              <CommentMarker
+                participants={participants}
+                selected={isActive}
+                className={cursorClass}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              />
+            </IconButton>
+          }
           aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
-          className="nokey absolute z-10 size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,
           }}
           data-role="comment-marker"
-          id={`workflow-comment-marker-${comment.id}`}
           {...pointerEventHandlers}
           onClick={(event) => {
-            if (event.detail === 0 && !isActive) {
-              finishKeyboardMove()
-              onClick()
+            if (dragEndedRef.current) {
+              dragEndedRef.current = false
+              event.preventBaseUIHandler()
+              return
             }
+            if (event.detail === 0) finishKeyboardMove()
           }}
           onBlur={finishKeyboardMove}
           onKeyUp={(event) => {
@@ -258,15 +281,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             keyboardPositionRef.current = next
             setDragPosition(flowToScreenPosition(next))
           }}
-        >
-          <CommentMarker
-            participants={participants}
-            selected={isActive}
-            className={cursorClass}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          />
-        </IconButton>
+        />
         {isAuthor && onPositionUpdate && (
           <span id={descriptionId} className="sr-only" aria-live="polite">
             {t(($) => $['keyboard.moveHelp'])}{' '}
@@ -291,7 +306,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               comment={comment}
               onClick={() => {
                 setShowPreview(false)
-                onClick()
+                threadHandle.open(markerId)
               }}
             />
           </div>
@@ -304,7 +319,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       prevProps.comment.id === nextProps.comment.id &&
       prevProps.comment.position_x === nextProps.comment.position_x &&
       prevProps.comment.position_y === nextProps.comment.position_y &&
-      prevProps.onClick === nextProps.onClick &&
+      prevProps.threadHandle === nextProps.threadHandle &&
       prevProps.isActive === nextProps.isActive &&
       prevProps.onPositionUpdate === nextProps.onPositionUpdate
     )
