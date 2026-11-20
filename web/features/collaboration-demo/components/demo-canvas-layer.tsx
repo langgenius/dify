@@ -54,7 +54,7 @@ function MarkerBubble({
     <div
       data-selected={selected || undefined}
       className={cn(
-        'flex rounded-[13.5px] rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-px data-selected:border-[1.5px] data-selected:border-components-option-card-option-selected-border data-selected:p-0',
+        'relative flex rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[0.5px] after:border-components-panel-border data-selected:after:border-[1.5px] data-selected:after:border-components-option-card-option-selected-border',
         floatingShadow,
       )}
     >
