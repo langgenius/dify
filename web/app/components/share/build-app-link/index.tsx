@@ -8,7 +8,11 @@ import Link from '@/next/link'
 import { webAppQuery } from '@/service/webapp'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 
-export default function BuildAppLink() {
+type BuildAppLinkProps = {
+  variant?: 'sidebar' | 'footer'
+}
+
+export default function BuildAppLink({ variant = 'sidebar' }: BuildAppLinkProps) {
   const { t } = useTranslation(['app'])
   const authSession = useSyncExternalStore(
     subscribeWebAppAuthSession,
@@ -30,11 +34,9 @@ export default function BuildAppLink() {
       staleTime: Infinity,
     }),
   )
-  const className =
-    'flex min-h-9 w-full items-center gap-2 rounded-lg px-3 py-2 system-md-medium text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover'
   const content = (
     <>
-      <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+      {variant === 'sidebar' && <span aria-hidden className="i-ri-add-line size-4 shrink-0" />}
       <span className="min-w-0 flex-1 text-start wrap-anywhere">
         {t(($) => $['endUser.buildYourOwnApp'], { ns: 'app' })}
       </span>
@@ -52,7 +54,8 @@ export default function BuildAppLink() {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        className,
+        'flex items-center gap-2 rounded-lg px-3 system-md-medium text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',
+        variant === 'footer' ? 'min-h-7 min-w-0 py-1' : 'min-h-9 w-full py-2',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
       )}
     >
