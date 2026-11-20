@@ -67,6 +67,7 @@ from services.human_input_v2.im_channel_service import IMChannelView, WorkspaceI
 from services.human_input_v2.im_channel_service_composition import (
     build_workspace_im_channel_service,
 )
+from services.human_input_v2.test_channel_composition import build_test_channel_service
 
 from ._common import StrictModel
 from ._decorators import (
@@ -461,18 +462,15 @@ class ListTestChannelsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @workspace_channel_api_admission
-    @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
-        """List current Workspace test channels without granting channel management or app execution permissions."""
-        email, im = _configured_channel_views(tenant_id, current_user)
-        channels: list[DebugChannel] = []
-        if email is not None:
-            channels.append(DebugChannel.EMAIL)
-        if im is not None:
-            channels.append(DebugChannel(im.provider.value))
-        return HumanInputTestChannelsResponse(channels=tuple(channels)).model_dump(mode="json")
+    def get(self, tenant_id: str) -> ResponseReturnValue:
+        """List test identifiers for an authenticated workspace member in every edition.
+
+        Discovery grants no channel-management or app-execution permissions and
+        performs no writes or provider I/O. Storage failures propagate normally.
+        """
+        channels = build_test_channel_service().list_channels(TenantId(tenant_id))
+        return HumanInputTestChannelsResponse(channels=channels).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/test")
