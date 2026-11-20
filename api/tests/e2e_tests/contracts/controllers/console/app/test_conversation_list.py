@@ -442,7 +442,7 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
     end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
     partial_user = {"id": partial_user_id, "label": "other-customer-42", "source": "end-user"}
     account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
-    for keyword, expected in (
+    cases: tuple[tuple[str, list[dict[str, str]]], ...] = (
         (" customer-42 ", [end_user, partial_user]),
         ("42", [partial_user, end_user]),
         ("MER-4", [partial_user, end_user]),
@@ -450,7 +450,8 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         ("port ag", [account]),
         (harness.account.id, [account]),
         ("%", []),
-    ):
+    )
+    for keyword, expected in cases:
         response = harness.get("identity-options", query={"keyword": keyword})
         assert response.status_code == 200
         assert response.get_json() == {"data": expected}
@@ -886,9 +887,9 @@ def test_download_conversation_log_export_reports_missing_csv(
     harness.redis.get.return_value = task.model_copy(
         update={"status": ConversationLogExportStatus.READY, "storage_key": "private/export.csv"}
     ).model_dump_json()
-    if signed:
+    sign = Mock() if signed else None
+    if sign is not None:
         config_overrides(STORAGE_TYPE=StorageType.S3)
-        sign = Mock()
         monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
         monkeypatch.setattr(log_export_adapters.storage, "exists", Mock(return_value=False))
     else:
@@ -897,7 +898,7 @@ def test_download_conversation_log_export_reports_missing_csv(
 
     assert response.status_code == 404
     assert response.get_json()["code"] == "conversation_log_export_file_not_found"
-    if signed:
+    if sign is not None:
         sign.assert_not_called()
 
 

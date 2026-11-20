@@ -3,7 +3,7 @@
 import csv
 from datetime import UTC, datetime, timedelta
 from io import StringIO
-from typing import Literal
+from typing import Literal, override
 from unittest.mock import Mock
 
 import pytest
@@ -202,6 +202,7 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     assert isinstance(pool, QueuePool)
 
     class Output(StringIO):
+        @override
         def write(self, text: str, /) -> int:
             assert pool.checkedout() == 0
             return super().write(text)

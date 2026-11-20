@@ -103,15 +103,14 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
-def test_cloud_refresh_accepts_an_account_without_a_workspace(account_domain: AccountDomain) -> None:
+def test_refresh_workspace_requirement_depends_on_login_mode(account_domain: AccountDomain) -> None:
     account = account_domain.accounts.create_account(
         "consumer@example.com", "Consumer", "en-US", status="uninitialized"
     )
-    preparation = adapters.SQLAlchemyAccountRefreshPreparationGateway(
-        accounts=account_domain.repository, defer_workspace_creation=True
-    )
+    preparation = adapters.SQLAlchemyAccountRefreshPreparationGateway(accounts=account_domain.repository)
 
-    assert preparation.prepare(account.id) == RefreshAccountStatus.READY
+    assert preparation.prepare(account.id, mode=LoginMode.CONSOLE) == RefreshAccountStatus.NOT_FOUND
+    assert preparation.prepare(account.id, mode=LoginMode.END_USER) == RefreshAccountStatus.READY
     persisted = account_domain.repository.get(account.id)
     assert persisted is not None
     assert persisted.first_workspace_created_at is None

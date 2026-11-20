@@ -109,9 +109,6 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
             if setup is not None or account.status == AccountStatus.UNINITIALIZED:
                 account.status = AccountStatus.ACTIVE
                 account.initialized_at = naive_utc_now()
-            elif account.status == AccountStatus.UNINITIALIZED:
-                account.status = AccountStatus.ACTIVE
-                account.initialized_at = naive_utc_now()
 
             session.execute(
                 update(TenantAccountJoin)

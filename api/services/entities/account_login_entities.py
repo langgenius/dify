@@ -88,7 +88,6 @@ class EmailCodeLoginCommand:
     language: str | None
     timezone: str | None
     ip_address: str
-    invite_token: str | None
     mode: LoginMode = LoginMode.CONSOLE
     invite_token: str | None = None
 
