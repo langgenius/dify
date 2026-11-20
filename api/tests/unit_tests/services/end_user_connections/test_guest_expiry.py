@@ -23,8 +23,9 @@ from models.workflow import WorkflowRun, WorkflowType
 from repositories.web_migration_repository import WebMigrationRepository
 from services.end_user_connection_oauth_adapters import RedisOAuthRefreshSingleFlight
 from services.end_user_connections.contracts import ListConnectionsInput, UpdateConnectionInput
-from services.end_user_connections.entities import WebConnectionContext
+from services.end_user_connections.entities import ConnectionManagementContext, WebConnectionContext
 from services.end_user_connections.guest_expiry import GuestConnectionExpiryService
+from services.end_user_connections.management import StoredConnection
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_connection_contract import new_connection
@@ -269,6 +270,48 @@ def test_revocation_transport_failure_is_logged_without_secrets(
     assert "access-secret" not in caplog.text
     assert "Pinned OAuth revocation unavailable" in caplog.text
     assert len(base.auth.revocations) == 1
+    with base.sessions() as session:
+        assert session.get(EndUserConnection, connection.id) is None
+
+
+def test_unexpected_revoker_exception_is_a_warning_after_local_deletion(
+    harness: OAuthHarness, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An exception escaping the revocation port neither fails the sweep nor leaks its details."""
+    base = harness.base
+    base.context = _guest(harness)
+    connection = harness.finish(harness.start())
+    _backdate(harness, connection.id)
+
+    attempts: list[tuple[ConnectionManagementContext, str]] = []
+
+    class FailingRevoker:
+        def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
+            attempts.append((context, record.access.id))
+            raise RuntimeError("sensitive-provider-detail")
+
+    expiry = GuestConnectionExpiryService(
+        store=base.repository,
+        oauth=FailingRevoker(),
+        inactivity=_RETENTION,
+        batch_size=1,
+        clock=lambda: _NOW,
+    )
+    logger_name = "services.end_user_connections.guest_expiry"
+    with caplog.at_level(logging.WARNING, logger=logger_name):
+        expiry.run()
+        expiry.run()
+
+    assert attempts == [(base.context, connection.id)]
+    assert [record for record in caplog.record_tuples if record[0] == logger_name] == [
+        (
+            logger_name,
+            logging.WARNING,
+            "Guest Connection deleted locally; best-effort OAuth revocation did not complete: "
+            f"connection_id={connection.id}",
+        ),
+    ]
+    assert "sensitive-provider-detail" not in caplog.text
     with base.sessions() as session:
         assert session.get(EndUserConnection, connection.id) is None
 

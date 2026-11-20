@@ -69,7 +69,7 @@ class GuestConnectionExpiryService:
         self._clock = clock
 
     def run(self) -> None:
-        """Sweep with a fixed cutoff and bounded pages; retry failed rows on the next sweep.
+        """Sweep with a fixed cutoff and bounded pages; retry failed deletions on the next sweep.
 
         A cursor advances past failed rows, so the oldest bad record cannot block
         later pages. Repeated or concurrent sweeps can neither delete an Account
@@ -104,7 +104,13 @@ class GuestConnectionExpiryService:
         )
         if record.access.credential_type != ConnectionCredentialType.OAUTH2:
             return
+        # Revocation is best effort: local deletion has committed, so an incomplete
+        # revocation must not be reported as a cleanup failure or retried.
         try:
             self._oauth.revoke_deleted(candidate.context, record)
         except Exception:
-            logger.error("Guest OAuth revocation failed: connection_id=%s", candidate.connection_id)  # noqa: TRY400
+            # The exception may contain credentials; log only the Connection ID.
+            logger.warning(
+                "Guest Connection deleted locally; best-effort OAuth revocation did not complete: connection_id=%s",
+                candidate.connection_id,
+            )
