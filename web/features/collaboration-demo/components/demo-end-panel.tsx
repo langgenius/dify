@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -59,6 +60,13 @@ export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
   const upgradeRef = useRef<HTMLButtonElement>(null)
   const [pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const pricingWasOpenRef = useRef(false)
+  const pendingPrimaryFocusedRef = useRef(false)
+  const focusReadyPrimary = (element: HTMLElement | null) => {
+    if (!element || !pendingPrimaryFocusedRef.current) return
+    pendingPrimaryFocusedRef.current = false
+    element.focus()
+  }
+  const upgradeButtonRef = useMergedRefs(upgradeRef, focusReadyPrimary)
   const primaryLink = buttonVariants({ variant: 'primary', size: 'medium' })
 
   useEffect(() => {
@@ -135,32 +143,45 @@ export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
       </span>
       <div className="mt-5 flex flex-wrap items-center gap-2">
         {(kind === 'loading' || kind === 'appsLoading') && (
-          <Button variant="primary" loading>
+          <Button
+            variant="primary"
+            loading
+            onFocus={() => {
+              pendingPrimaryFocusedRef.current = true
+            }}
+            onBlur={() => {
+              pendingPrimaryFocusedRef.current = false
+            }}
+          >
             {tryNowLabel}
           </Button>
         )}
         {state.kind === 'tryNow' && (
-          <Link href={`/app/${state.app.id}/workflow`} className={primaryLink}>
+          <Link
+            ref={focusReadyPrimary}
+            href={`/app/${state.app.id}/workflow`}
+            className={primaryLink}
+          >
             {tryNowLabel}
           </Link>
         )}
         {kind === 'appsError' && (
-          <Link href="/apps" className={primaryLink}>
+          <Link ref={focusReadyPrimary} href="/apps" className={primaryLink}>
             {t(($) => $['end.goToStudio'])}
           </Link>
         )}
         {kind === 'createApp' && (
-          <Link href={createWorkflowAppHref} className={primaryLink}>
+          <Link ref={focusReadyPrimary} href={createWorkflowAppHref} className={primaryLink}>
             {t(($) => $['end.createWorkflow'])}
           </Link>
         )}
         {kind === 'upgrade' && (
-          <Button ref={upgradeRef} variant="primary" onClick={() => setPricing('open')}>
+          <Button ref={upgradeButtonRef} variant="primary" onClick={() => setPricing('open')}>
             {t(($) => $['end.upgrade.action'])}
           </Button>
         )}
         {kind === 'unavailable' ? (
-          <Button variant="primary" onClick={() => router.replace('/apps')}>
+          <Button ref={focusReadyPrimary} variant="primary" onClick={() => router.replace('/apps')}>
             {t(($) => $['end.backToWorkspace'])}
           </Button>
         ) : (

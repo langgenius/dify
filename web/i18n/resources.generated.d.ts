@@ -1816,6 +1816,7 @@ export default interface Resources {
     'steps.members.title': 'See who’s editing with you'
     'thread.close': 'Close comment'
     'thread.justNow': 'just now'
+    'thread.open': 'Open comment by {{name}}, replies: {{count}}'
     title: 'Team collaboration demo'
   }
   common: {

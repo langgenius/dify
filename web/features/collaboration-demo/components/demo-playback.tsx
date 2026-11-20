@@ -2,10 +2,12 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { demoDuration, getPlaybackFrame } from '../playback-script'
+import { demoUsers } from '../demo-users'
+import { demoDuration, demoMessages, getPlaybackFrame } from '../playback-script'
 import { usePlayback } from '../use-playback'
 import { DemoCanvasLayer } from './demo-canvas-layer'
 import { DemoEndPanel } from './demo-end-panel'
@@ -18,11 +20,15 @@ export function DemoPlayback() {
   const playback = usePlayback(demoDuration)
   const [threadOpen, setThreadOpen] = useState(true)
   const reopenedRef = useRef(false)
+  const pauseRef = useRef<HTMLButtonElement>(null)
+  const pauseButtonRef = useMergedRefs(pauseRef, focusOnMount)
+  const frame = getPlaybackFrame(playback.seconds, reducedMotion)
 
   useHotkey('Escape', playback.pause, { enabled: playback.playing })
 
   const changeThreadOpen = (open: boolean) => {
     reopenedRef.current = open
+    if (!open && !playback.finished) pauseRef.current?.focus()
     setThreadOpen(open)
   }
   const focusReopenedThread = (element: HTMLButtonElement | null) => {
@@ -33,9 +39,23 @@ export function DemoPlayback() {
 
   return (
     <>
+      <div
+        role="log"
+        aria-live={playback.playing ? 'polite' : 'off'}
+        aria-relevant="additions"
+        className="sr-only"
+      >
+        {demoMessages.slice(0, frame.visibleMessages).map((message) => (
+          <p key={message.id}>
+            {demoUsers[message.author].name}:{' '}
+            {message.mention && `@${demoUsers[message.mention].name} `}
+            {t(($) => $[`messages.${message.id}`])}
+          </p>
+        ))}
+      </div>
       <DemoCanvasLayer
-        frame={getPlaybackFrame(playback.seconds, reducedMotion)}
-        playing={playback.playing}
+        frame={frame}
+        markerInteractive={playback.finished}
         reducedMotion={reducedMotion}
         threadOpen={threadOpen}
         onThreadOpenChange={changeThreadOpen}
@@ -55,7 +75,7 @@ export function DemoPlayback() {
       ) : (
         <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <Button
-            ref={focusOnMount}
+            ref={pauseButtonRef}
             variant="ghost"
             onClick={playback.playing ? playback.pause : playback.play}
           >

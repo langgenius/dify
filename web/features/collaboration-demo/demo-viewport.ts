@@ -36,6 +36,7 @@ export function getThreadPlacement(
 
 export function useDemoViewport() {
   const { setViewport } = useReactFlow()
+  const flowElement = useStore((state) => state.domNode)
   const nodesInitialized = useNodesInitialized()
   const width = useStore((state) => state.width)
   const height = useStore((state) => state.height)
@@ -43,4 +44,14 @@ export function useDemoViewport() {
   useEffect(() => {
     if (nodesInitialized && width && height) setViewport(getDemoViewport(width, height))
   }, [height, nodesInitialized, setViewport, width])
+
+  useEffect(() => {
+    const decorative = flowElement?.querySelectorAll(
+      ':scope > .react-flow__renderer, :scope > .react-flow__attribution',
+    )
+    decorative?.forEach((element) => {
+      element.setAttribute('inert', '')
+      element.setAttribute('aria-hidden', 'true')
+    })
+  }, [flowElement])
 }

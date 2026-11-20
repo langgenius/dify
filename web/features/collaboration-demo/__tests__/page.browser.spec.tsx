@@ -8,6 +8,7 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import CollaborationDemoPage from '../page'
 
@@ -64,6 +65,20 @@ beforeEach(() => {
       : appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }),
   )
 })
+
+async function startPlayback(screen: Awaited<ReturnType<typeof renderDemo>>) {
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.comment\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
+    .toHaveFocus()
+}
 
 it('walks the guide, playback and end panel from the keyboard', async () => {
   const screen = await renderDemo('editor')
@@ -149,4 +164,58 @@ it('explains read-only access without looking up apps', async () => {
   await expect.element(endPanel.getByText('collaborationDemo.end.readOnly.normal')).toBeVisible()
   await expect.element(endPanel.getByRole('link')).not.toBeInTheDocument()
   expect(api.apps).not.toHaveBeenCalled()
+})
+
+it('announces messages through a region that exists before the first message', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+
+  const log = screen.getByRole('log')
+  await expect.element(log).toHaveAttribute('aria-live', 'polite')
+  await expect.element(log).toBeEmptyDOMElement()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(log).toHaveAttribute('aria-live', 'off')
+  await userEvent.keyboard('{Tab}{Enter}')
+  await expect.element(log).toMatchTextContent(/Sam:.*Alex:/)
+})
+
+it('keeps focus on the primary action when Try it now becomes ready', async () => {
+  const apps = createDeferred<ReturnType<typeof appPage>>()
+  api.apps.mockReturnValue(apps.promise)
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+  await userEvent.keyboard('{Tab}{Enter}')
+
+  const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
+  await expect.element(endPanel.getByRole('heading')).toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  await expect
+    .element(endPanel.getByRole('button', { name: 'collaborationDemo.end.enabled.action' }))
+    .toHaveFocus()
+  apps.resolve(appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }))
+  await expect
+    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
+    .toHaveFocus()
+})
+
+it('makes the comment marker reopen the thread once playback has finished', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+  await userEvent.keyboard('{Tab}{Enter}')
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'collaborationDemo.end.enabled.title' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.thread.close' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  const marker = screen.getByRole('button', { name: /collaborationDemo\.thread\.open/ })
+  await expect.element(marker).toHaveFocus()
+  await expect.element(marker).toHaveAccessibleName(/"count":2/)
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.thread.close' }))
+    .toHaveFocus()
 })

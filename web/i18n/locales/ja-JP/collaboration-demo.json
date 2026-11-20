@@ -43,5 +43,6 @@
   "steps.members.title": "一緒に編集しているメンバーを確認",
   "thread.close": "コメントを閉じる",
   "thread.justNow": "たった今",
+  "thread.open": "{{name}} のコメントを開く（返信 {{count}} 件）",
   "title": "共同編集デモ"
 }

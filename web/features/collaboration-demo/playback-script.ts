@@ -31,7 +31,7 @@ const alexPath: Waypoint[] = [
   [14.2, { x: 1060, y: 590 }],
   [14.8, 'reply'],
   [17.8, 'reply'],
-  [18.6, { x: 1120, y: 120 }],
+  [18.6, { x: 860, y: 620 }],
 ]
 
 const samPath: Waypoint[] = [
@@ -43,7 +43,7 @@ const samPath: Waypoint[] = [
   [9.8, { x: 790, y: 480 }],
   [10.4, 'reply'],
   [14, 'reply'],
-  [14.8, { x: 1150, y: 560 }],
+  [14.8, { x: 520, y: 580 }],
 ]
 
 const presence: { node: DemoNodeId; from: number; to: number }[] = [
