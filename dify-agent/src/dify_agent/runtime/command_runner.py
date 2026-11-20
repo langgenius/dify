@@ -58,26 +58,25 @@ async def execute_complete_with_commands(
             if captured_bytes >= max_output_bytes and (result.truncated or not result.done):
                 incomplete_reason = "output_limit"
                 break
-            if result.truncated:
-                remaining_time = _remaining_time(deadline)
-                if remaining_time <= 0.0:
-                    incomplete_reason = "timeout"
-                    break
-                try:
-                    # Unlike run/wait, output replay has no provider timeout argument.
-                    async with asyncio.timeout(remaining_time):
-                        result = await commands.read_output(result.job_id, offset=result.offset)
-                except TimeoutError:
-                    incomplete_reason = "timeout"
-                    break
-                continue
-            if result.done:
+            if not result.truncated and result.done:
                 break
             remaining_time = _remaining_time(deadline)
             if remaining_time <= 0.0:
                 incomplete_reason = "timeout"
                 break
-            result = await commands.wait(result.job_id, offset=result.offset, timeout=remaining_time)
+            if result.truncated:
+                # Output replay has no provider timeout argument.
+                read_timeout = asyncio.timeout(remaining_time)
+                try:
+                    async with read_timeout:
+                        result = await commands.read_output(result.job_id, offset=result.offset)
+                except TimeoutError:
+                    if not read_timeout.expired():
+                        raise
+                    incomplete_reason = "timeout"
+                    break
+            else:
+                result = await commands.wait(result.job_id, offset=result.offset, timeout=remaining_time)
 
         final_status = result.status
         final_done = result.done
