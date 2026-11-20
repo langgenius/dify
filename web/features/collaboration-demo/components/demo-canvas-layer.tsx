@@ -38,9 +38,11 @@ function RemoteCursor({ user, x, y }: { user: DemoUserId; x: number; y: number }
 export function DemoCanvasLayer({
   frame,
   playing,
+  reducedMotion,
 }: {
   frame: Frame | undefined
   playing: boolean
+  reducedMotion: boolean
 }) {
   const { t } = useTranslation(['collaborationDemo'])
   const { x: vx, y: vy, zoom } = useViewport()
@@ -50,8 +52,9 @@ export function DemoCanvasLayer({
 
   useEffect(() => {
     const list = listRef.current
-    if (list && visibleMessages > 0) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' })
-  }, [visibleMessages])
+    if (list && visibleMessages > 0)
+      list.scrollTo({ top: list.scrollHeight, behavior: reducedMotion ? 'instant' : 'smooth' })
+  }, [reducedMotion, visibleMessages])
 
   if (!frame) return null
 

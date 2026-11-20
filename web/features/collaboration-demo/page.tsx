@@ -23,6 +23,8 @@ import { usePlayback } from './use-playback'
 
 type Step = 'members' | 'comment' | 'playing'
 
+const focusOnMount = (element: HTMLElement | null) => element?.focus()
+
 function useCollaborativeAppCounts(enabled: boolean) {
   const query = (mode: 'workflow' | 'advanced-chat') =>
     consoleQuery.apps.get.queryOptions({
@@ -91,7 +93,7 @@ export default function CollaborationDemoPage() {
     <div className="flex h-full min-h-0 flex-col bg-background-body">
       <div className="relative min-h-0 flex-1">
         <WorkflowPreview {...graph} miniMapToRight>
-          <DemoCanvasLayer frame={frame} playing={playback.playing} />
+          <DemoCanvasLayer frame={frame} playing={playback.playing} reducedMotion={reducedMotion} />
         </WorkflowPreview>
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-14 items-center justify-between px-3">
@@ -129,7 +131,11 @@ export default function CollaborationDemoPage() {
 
         {step === 'playing' && !playback.finished && (
           <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
-            <Button variant="ghost" onClick={playback.playing ? playback.pause : playback.play}>
+            <Button
+              ref={focusOnMount}
+              variant="ghost"
+              onClick={playback.playing ? playback.pause : playback.play}
+            >
               <span
                 aria-hidden
                 className={playback.playing ? 'i-ri-pause-line size-4' : 'i-ri-play-line size-4'}
