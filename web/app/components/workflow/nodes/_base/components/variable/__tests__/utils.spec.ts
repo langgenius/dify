@@ -418,6 +418,25 @@ describe('variable utils', () => {
       )
     })
 
+    it.each(['1', '2'])('reads imported Human Input v%s without a paragraph default', (version) => {
+      const node = createNode({
+        type: BlockEnum.HumanInput,
+        title: 'Imported approval',
+        desc: '',
+        version,
+        form_content: '{{#start.request#}}',
+        inputs: [{ type: InputVarType.paragraph, output_variable_name: 'note' }],
+        delivery_methods: [],
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review', body: '{{#url#}}' },
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([['start', 'request']])
+      expect(
+        getNodeUsedVars(updateNodeVars(node, ['start', 'request'], ['start', 'updated'])),
+      ).toEqual([['start', 'updated']])
+    })
+
     it('reads Human Input v2 recipient, template, form and input dependencies', () => {
       const node = createNode<HumanInputV2NodeType>({
         type: BlockEnum.HumanInput,
