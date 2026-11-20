@@ -7,7 +7,6 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from core.mcp.types import Tool
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
