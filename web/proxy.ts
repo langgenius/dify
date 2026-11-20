@@ -130,19 +130,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - favicon.ico (favicon file)
-     */
     {
       source: '/((?!_next/static|favicon.ico).*)',
-      // source: '/(.*)',
-      // missing: [
-      //   { type: 'header', key: 'next-router-prefetch' },
-      //   { type: 'header', key: 'purpose', value: 'prefetch' },
-      // ],
     },
   ],
 }

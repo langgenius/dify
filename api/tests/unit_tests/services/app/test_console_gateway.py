@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable, Generator, Iterator
 from typing import cast
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zipfile import ZipFile
 
 import pytest
@@ -31,7 +31,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -226,7 +226,11 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             assert bindings[node_id].agent_id == roster_id
             assert bindings[node_id].current_snapshot_id == roster_snapshot_id
         for node_id in node_ids:
-            assert bindings[node_id].node_job_config_dict == source_jobs[node_id]
+            copied_job = WorkflowNodeJobConfig.model_validate(bindings[node_id].node_job_config_dict)
+            source_job = WorkflowNodeJobConfig.model_validate(source_jobs[node_id])
+            assert str(UUID(copied_job.session_generation)) == copied_job.session_generation
+            assert copied_job.session_generation != source_job.session_generation
+            assert copied_job == source_job.model_copy(update={"session_generation": copied_job.session_generation})
         if include_inline:
             binding = bindings["inline"]
             assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT

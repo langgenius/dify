@@ -1067,11 +1067,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/features/new-feature-panel/follow-up-setting-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/features/new-feature-panel/moderation/moderation-content.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -3226,11 +3221,6 @@
       "count": 4
     }
   },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/rag-pipeline-header/publisher/popup.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
@@ -4266,11 +4256,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/http/components/authorization/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/http/components/authorization/radio-group.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -4353,11 +4338,6 @@
   "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
@@ -4490,11 +4470,6 @@
   },
   "web/app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/add-knowledge-space.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 3
     }
   },

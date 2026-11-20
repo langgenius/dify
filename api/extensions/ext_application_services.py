@@ -538,9 +538,12 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        invitation_tokens=invitation_tokens,
+        redis=redis,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -610,7 +613,6 @@ def build_application_services(
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
-    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -1016,7 +1018,7 @@ def init_app(app: Flask) -> None:
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_legacy_trace_capture(app, services.tracing.legacy_capture)
     bind_account_loader(app, services.accounts.identity.load_user)
-    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
 
 def application_services() -> ApplicationServices:

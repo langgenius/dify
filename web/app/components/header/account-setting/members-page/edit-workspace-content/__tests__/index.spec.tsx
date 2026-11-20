@@ -6,7 +6,7 @@ import { createRef } from 'react'
 import { vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import EditWorkspaceContent from '../index'
+import { EditWorkspaceContent } from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),

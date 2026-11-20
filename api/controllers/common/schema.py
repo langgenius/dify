@@ -71,6 +71,7 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "services.agent_config_service.AgentConfigVersionKind": "AgentConfigTargetVersionKind",
     "graphon.model_runtime.entities.common_entities.I18nObject": "ModelRuntimeI18nObject",
     "services.knowledge.entities.knowledge_entities.FileInfo": "KnowledgeFileInfo",
+    "services.entities.knowledge_entities.rag_pipeline_entities.IconInfo": "RagPipelineIconInfo",
     "core.plugin.entities.plugin.PluginDependency.Github": "PluginDependencyGithub",
     "core.plugin.entities.plugin.PluginDependency.Marketplace": "PluginDependencyMarketplace",
     "core.plugin.entities.plugin.PluginDependency.Package": "PluginDependencyPackage",
