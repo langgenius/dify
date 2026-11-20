@@ -352,3 +352,10 @@ def test_get_image_upload_file_ids():
     end
     """
     assert get_image_upload_file_ids(content) == ["id1", "id2"]
+
+    # signed preview URLs keep the file ID before their query string/fragment
+    content = """
+    ![image](https://h/files/id3/file-preview?timestamp=1&signature=abc)
+    ![image](https://h/files/id4/image-preview#page=1)
+    """
+    assert get_image_upload_file_ids(content) == ["id3", "id4"]
