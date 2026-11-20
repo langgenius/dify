@@ -329,11 +329,6 @@ class MCPToolManageService:
         except IntegrityError as e:
             self._handle_integrity_error(e, name, server_url, server_identifier)
 
-    def delete_provider(self, *, tenant_id: str, provider_id: str) -> None:
-        """Delete an MCP provider."""
-        mcp_tool = self.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
-        self._session.delete(mcp_tool)
-
     def list_providers(self, *, tenant_id: str, include_sensitive: bool = True) -> list[ToolProviderApiEntity]:
         """List all MCP providers for a tenant.
 

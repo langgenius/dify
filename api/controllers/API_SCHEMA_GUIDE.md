@@ -122,6 +122,10 @@ can validate from `inputs_dict` while documenting and serializing `inputs`.
 
 ## Request Bodies
 
+Translate protocol conventions into application inputs in the controller. For example, interpret a masked secret
+echoed by a client according to the endpoint's existing contract before calling the use case; keep that wire-format
+convention out of business logic.
+
 For non-GET request bodies:
 
 1. Define a Pydantic `Payload` model.
