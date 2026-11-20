@@ -60,7 +60,7 @@ class WebhookQuery(Protocol):
 
 
 class WebhookFiles(Protocol):
-    def create(self, *, tenant_id: str, user_id: str, content: bytes, mimetype: str) -> File: ...
+    def create(self, *, tenant_id: str, user_id: str, content: bytes, mimetype: str, filename: str | None) -> File: ...
 
 
 class WebhookBindingWriter(Protocol):
