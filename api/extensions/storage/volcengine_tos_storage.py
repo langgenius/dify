@@ -2,6 +2,7 @@ from collections.abc import Generator
 from typing import override
 
 import tos
+from tos.exceptions import TosError, TosServerError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -35,10 +36,32 @@ class VolcengineTosStorage(BaseStorage):
         self.client.put_object(bucket=self.bucket_name, key=filename, content=data)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require a bucket; use the TOS atomic no-overwrite condition."""
+        if not self.bucket_name:
+            raise OSError("TOS bucket is not configured")
+        try:
+            self.client.put_object(bucket=self.bucket_name, key=filename, content=data, forbid_overwrite=True)
+        except TosServerError as error:
+            if error.code == "FileAlreadyExists":
+                return False
+            raise OSError("TOS atomic creation failed") from None
+        except TosError:
+            raise OSError("TOS atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
-            raise FileNotFoundError("VOLCENGINE_TOS_BUCKET_NAME is not set")
-        data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
+            raise OSError("TOS bucket is not configured")
+        try:
+            data = self.client.get_object(bucket=self.bucket_name, key=filename).read()
+        except TosServerError as error:
+            if error.code == "NoSuchKey":
+                raise FileNotFoundError("File not found") from None
+            raise OSError("TOS read failed") from None
+        except TosError:
+            raise OSError("TOS read failed") from None
         if not isinstance(data, bytes):
             raise TypeError(f"Expected bytes, got {type(data).__name__}")
         return data

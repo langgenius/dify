@@ -5,6 +5,7 @@ from typing import override
 
 from baidubce.auth.bce_credentials import BceCredentials
 from baidubce.bce_client_configuration import BceClientConfiguration
+from baidubce.exception import BceError, BceServerError
 from baidubce.services.bos.bos_client import BosClient
 
 from configs import dify_config
@@ -37,9 +38,31 @@ class BaiduObsStorage(BaseStorage):
         )
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require BOS no-overwrite support; atomically preserve an existing object."""
+        try:
+            self.client.put_object_from_string(
+                self.bucket_name, filename, data, user_headers={"x-bce-forbid-overwrite": "true"}
+            )
+        except BceServerError as error:
+            if error.code == "ObjectAlreadyExists":
+                return False
+            raise OSError("BOS atomic creation failed") from None
+        except BceError:
+            raise OSError("BOS atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
-        response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
-        data: bytes = response.data.read()
+        try:
+            response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
+            data: bytes = response.data.read()
+        except BceServerError as error:
+            if error.code == "NoSuchKey":
+                raise FileNotFoundError("File not found") from None
+            raise OSError("BOS read failed") from None
+        except BceError:
+            raise OSError("BOS read failed") from None
         return data
 
     @override

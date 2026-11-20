@@ -62,6 +62,10 @@ Provisioning 必须按 deployment 串行化并支持安全重试：
 4. 两者均不存在时才生成密钥；不得覆盖其他初始化请求已经创建的有效密钥。Azure 重试也不得无故创建新 key version。
 5. reference 已存在但密钥丢失、损坏或不匹配时失败，不能自动生成替代密钥。
 
+Redis lease 只协调初始化和 reference 提交，不能撤销过期请求已经发出的 Storage 写入。local backend 因此使用 `Storage.save_if_absent`，由存储端原子保证不覆盖；若其他请求先创建密钥，当前请求读取并复用该密钥。不得用 `exists` 加普通 `save` 模拟原子创建，也不得在不支持条件写时回退到覆盖写。
+
+Storage 的 `load_once` 仅在目标对象确实不存在时抛出 `FileNotFoundError`。权限、网络、容器不存在及服务故障作为访问失败处理，不能触发密钥创建。此次接入的原子写包括 OpenDAL 的 `if_not_exists`（须由所选 scheme 支持）、S3/OCI 的 `If-None-Match`、Azure Block Blob 的 no-overwrite、OSS/BOS/TOS 的 forbid-overwrite、GCS 的 generation precondition，以及 Supabase 的无 upsert 上传。COS、Huawei OBS、ClickZetta Volume 尚未接入已验证的原子创建能力，其首次部署密钥初始化会明确失败；已有有效密钥仍可读取和恢复 reference。
+
 外部 Storage/KMS 与数据库不能原子提交，初始化实现必须保证部分成功可恢复。Service 管理短 Session/事务，Repository 使用注入的 Session；不为远程 KMS I/O 持有长数据库事务。
 
 新安装在建立稳定部署身份后 provision。已有安装通过显式初始化入口补齐，并在部署级凭据功能启用前完成。Schema migration 只增加 nullable 字段，不执行 Storage/KMS 操作。
@@ -79,6 +83,8 @@ Runtime builder、encrypt 和 decrypt 均不触发 provisioning。API 与 worker
 - 密钥丢失时拒绝重新生成；runtime builder 和 decrypt 不修改密钥生命周期。
 - Azure 轮换后，新版本加密与旧版本密文解密。
 - 新安装与已有安装初始化，以及原 Tenant 加密行为保持不变。
+- 使用真实 OpenDAL fs 暂停旧请求写入，使其租约失效并让新请求完成初始化，再恢复旧请求；新请求的 reference 和已有密文必须保持可用。
+- Azure Blob 首次缺失、并发创建冲突及权限/网络错误；其他 storage adapter 的对象缺失与访问失败分类，以及条件写参数。
 
 ## 实施范围
 
@@ -105,6 +111,12 @@ uv run --project api flask provision-deployment-credential-key
 Azure 使用现有 `AZURE_KEYVAULT_VAULT_URL`、`AZURE_KEYVAULT_KEY_SIZE`、`AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS`。运行身份需要相应 get/wrap/unwrap 权限；初始化还需要 create 与配置 rotation policy 的权限。已经加密的版本必须持续 enabled 且无 expiry。改变 provider 或 Vault 不构成 migration，builder 会拒绝不兼容或不存在的 reference/material。
 
 本地行为测试与真实 Azure SDK 验证已通过：随机化、认证失败、错误 key、初始化重试、commit 失败恢复与版本轮换。真实 Azure 验证使用 `qg-kms-test` 的临时 key，之后已软删除并撤回临时授权；不提供持久应用凭证。后续已按用户指令在 box 完成全新 PostgreSQL 迁移、实际 Redis 并发 lease 与数据库 reference 行为验证，并从 box 对真实 Azure Vault 验证部署 Service 的 reference 持久化、幂等初始化、轮换与旧版本解密；详见 [box 集成报告](hitl-v2-ee-inner-api-box-integration-report.md)。
+
+## Review 修复验证（2026-11-19）
+
+在真实 OpenDAL fs 临时目录上复现并修复过期 lease 持有者覆盖后继密钥的问题；旧请求恢复后只能遇到原子创建冲突并读取已有 material，reference 与既有密文保持可用。Azure Blob adapter 使用 SDK 的对象错误码区分 `BlobNotFound` 与容器、权限、网络故障，并在创建冲突后复用已写入密钥。Organization binding 查询通过既有 Channel-bound repository 的 `list_all(contact_ids=...)` 将选择范围下推 SQL，未选择的绑定不再物化。
+
+本次最终定向测试共 356 项通过，覆盖 storage adapters、部署 cipher/Service、原 Tenant 加密、Inner HTTP、Account setup、Contact/binding repository、默认绑定与 override，以及 Console sync。Ruff、Pyrefly、89 条 import contracts 和相关 OpenSpec strict validation 通过。本次使用真实本地文件系统与受控 SDK 响应，没有重新执行 box 或真实云存储验证；此前 box/Azure 记录对应当时的源码快照。
 
 ## 参考
 

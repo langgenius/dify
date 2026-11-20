@@ -3,6 +3,8 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import override
 
+from httpx import RequestError
+from storage3.exceptions import StorageApiError
 from supabase import Client
 
 from configs import dify_config
@@ -34,8 +36,28 @@ class SupabaseStorage(BaseStorage):
         self.client.storage.from_(self.bucket_name).upload(filename, data)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Create without upsert so an existing object cannot be replaced."""
+        try:
+            self.client.storage.from_(self.bucket_name).upload(filename, data, file_options={"upsert": "false"})
+        except StorageApiError as error:
+            if error.code in ("Duplicate", "ResourceAlreadyExists"):
+                return False
+            raise OSError("Supabase atomic creation failed") from None
+        except RequestError:
+            raise OSError("Supabase atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
-        content: bytes = self.client.storage.from_(self.bucket_name).download(filename)
+        try:
+            content: bytes = self.client.storage.from_(self.bucket_name).download(filename)
+        except StorageApiError as error:
+            if error.code == "NoSuchKey":
+                raise FileNotFoundError("File not found") from None
+            raise OSError("Supabase read failed") from None
+        except RequestError:
+            raise OSError("Supabase read failed") from None
         return content
 
     @override

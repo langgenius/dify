@@ -103,6 +103,10 @@ def test_default_create_is_idempotent_and_get_list_are_channel_scoped(sqlite_eng
         assert created.kind is IMBindingKind.DEFAULT
         assert first.get(created.id) == created
         assert first.list_all() == (created,)
+        assert first.list_all(contact_ids=(_CONTACT_ONE, _CONTACT_ONE, _CONTACT_THREE)) == (created,)
+        assert first.list_all(contact_ids=(_CONTACT_TWO,)) == ()
+        assert first.list_all(contact_ids=()) == ()
+        assert SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO).list_all(contact_ids=(_CONTACT_ONE,)) == ()
         assert SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO).get(created.id) is None
         record = session.get_one(HumanInputIMBinding, str(created.id))
         assert record.channel_id == str(_CHANNEL_ONE)
