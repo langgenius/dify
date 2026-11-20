@@ -52,7 +52,7 @@ from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
-from services.retention.conversation import log_export_adapters
+from services.retention import log_export_adapters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportStatus,
@@ -213,7 +213,7 @@ def harness(
             ),
             dispatch=state.dispatch,
             store_csv=Mock(),
-            open_csv=log_export_adapters.open_conversation_log_export_csv,
+            open_csv=log_export_adapters.open_log_export_csv,
         ),
     )
     api = ExternalApi(app)

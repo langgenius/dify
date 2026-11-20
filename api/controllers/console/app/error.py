@@ -44,6 +44,18 @@ class WorkflowLogExportTaskNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class WorkflowLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_ready"
+    description = "The Workflow log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class WorkflowLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_file_not_found"
+    description = "Workflow log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AppTriggerNotFoundError(BaseHTTPException):
     error_code = "app_trigger_not_found"
     description = "Trigger not found."

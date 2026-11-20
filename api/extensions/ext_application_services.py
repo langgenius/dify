@@ -220,9 +220,8 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
-from services.retention.conversation.log_export_adapters import open_conversation_log_export_csv
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
-from services.retention.log_export_adapters import dispatch_log_export, store_log_export_csv
+from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
@@ -706,7 +705,7 @@ def build_application_services(
             ),
             dispatch=partial(dispatch_log_export, export_kind="conversation"),
             store_csv=store_log_export_csv,
-            open_csv=open_conversation_log_export_csv,
+            open_csv=open_log_export_csv,
         ),
         accounts=account_services,
         apps=apps,
@@ -924,6 +923,7 @@ def build_application_services(
             dispatch=partial(dispatch_log_export, export_kind="workflow"),
             store_csv=store_log_export_csv,
             write_csv=WorkflowLogCsvWriter(logs=workflow_app_logs).write_csv,
+            open_csv=open_log_export_csv,
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,

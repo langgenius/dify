@@ -1,6 +1,5 @@
 from datetime import datetime
 from http import HTTPStatus
-from itertools import chain
 from typing import Literal
 from uuid import UUID
 
@@ -31,6 +30,7 @@ from controllers.console.app.error import (
     ConversationLogExportTaskNotFoundHTTPError,
     ConversationLogExportTaskNotReadyHTTPError,
 )
+from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
 from enums import DeploymentEdition
@@ -69,11 +69,13 @@ from services.entities.conversation_entities import (
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
 from services.retention.conversation.log_export_service import (
-    ConversationLogExportFileNotFoundError,
     ConversationLogExportStatus,
-    ConversationLogExportTaskNotFoundError,
-    ConversationLogExportTaskNotReadyError,
     UnsupportedConversationLogExportModeError,
+)
+from services.retention.log_export_task import (
+    LogExportFileNotFoundError,
+    LogExportTaskNotFoundError,
+    LogExportTaskNotReadyError,
 )
 
 
@@ -538,7 +540,7 @@ class ConversationLogExportTaskApi(Resource):
         scope = _resolve_log_export_scope(request_context, app_id)
         try:
             task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
-        except ConversationLogExportTaskNotFoundError as exc:
+        except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
         return dump_response(ConversationLogExportStatusResponse, task)
 
@@ -572,22 +574,14 @@ class ConversationLogExportFileApi(Resource):
             download = application_services().conversation_log_exports.download_csv(
                 scope=scope, task_id=str(task_id), filename=filename
             )
-        except ConversationLogExportTaskNotFoundError as exc:
+        except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
-        except ConversationLogExportTaskNotReadyError as exc:
+        except LogExportTaskNotReadyError as exc:
             raise ConversationLogExportTaskNotReadyHTTPError() from exc
-        except ConversationLogExportFileNotFoundError as exc:
+        except LogExportFileNotFoundError as exc:
             raise ConversationLogExportFileNotFoundHTTPError() from exc
-        if isinstance(download, str):
-            response = Response(status=HTTPStatus.FOUND, headers={"Location": download})
-        else:
-            first_chunk, stream = download
-            response = Response(chain((first_chunk,), stream), mimetype="text/csv")
-            response.headers.set("Content-Disposition", "attachment", filename=filename)
-            response.call_on_close(stream.close)
-        response.cache_control.no_store = True
         # response-contract:ignore signed redirect or streamed CSV attachment
-        return response
+        return log_export_file_response(download, filename=filename)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

@@ -1,8 +1,8 @@
-"""Create, prepare, and poll Workflow CSV exports through the Console API."""
+"""Create, prepare, poll, and download Workflow CSV exports through the Console API."""
 
 import csv
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -26,12 +26,14 @@ from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
+from libs.datetime_utils import utc_now
 from libs.external_api import ExternalApi
 from libs.token import generate_csrf_token
 from models import Account, Tenant, TenantAccountJoin, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.model import AppMode
+from models.model import AppMode, DifySetup
 from models.workflow import WorkflowAppLogCreatedFrom, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.retention import log_export_adapters
@@ -71,6 +73,11 @@ class _ExportClient:
         """Read this account's last task under the admitted app."""
         return self.client.get(f"{self.path}/latest", headers=self.headers)
 
+    def get_file(self, task_id: str, *, authenticated: bool = True) -> TestResponse:
+        """Navigate to the file with only a Console session cookie, like a browser download."""
+        client = self.client if authenticated else self.client.application.test_client()
+        return client.get(f"/console/api{self.path}/{task_id}/file")
+
 
 @pytest.fixture
 def export_client(
@@ -81,6 +88,7 @@ def export_client(
 ) -> Iterator[_ExportClient]:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        STORAGE_TYPE=StorageType.LOCAL,
         LOGIN_DISABLED=False,
         RBAC_ENABLED=False,
         SECRET_KEY="workflow-export-http-tests-key-at-least-32-bytes",
@@ -123,6 +131,7 @@ def export_client(
                 target,
                 run,
                 log,
+                DifySetup(version="test"),
                 TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER),
             ]
         )
@@ -179,6 +188,7 @@ def export_client(
             dispatch=partial(log_export_adapters.dispatch_log_export, export_kind="workflow"),
             store_csv=log_export_adapters.store_log_export_csv,
             write_csv=WorkflowLogCsvWriter(logs=logs).write_csv,
+            open_csv=log_export_adapters.open_log_export_csv,
         ),
     )
     api = ExternalApi(app)
@@ -186,6 +196,7 @@ def export_client(
     api.add_resource(workflow_app_log.WorkflowLogExportApi, path)
     api.add_resource(workflow_app_log.WorkflowLogExportLatestApi, f"{path}/latest")
     api.add_resource(workflow_app_log.WorkflowLogExportTaskApi, f"{path}/<uuid:task_id>")
+    api.add_resource(workflow_app_log.WorkflowLogExportFileApi, f"/console/api{path}/<uuid:task_id>/file")
 
     client = app.test_client()
     with client.session_transaction() as session:
@@ -276,6 +287,7 @@ def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportCl
     assert response.status_code == 403
     assert export_client.get_status(str(uuid4())).status_code == 403
     assert export_client.get_latest().status_code == 403
+    assert export_client.get_file(str(uuid4())).status_code == 403
     export_client.redis.setex.assert_not_called()
     export_client.redis.get.assert_not_called()
 
@@ -393,3 +405,108 @@ def test_workflow_export_status_and_latest_respect_their_scope(
 
     assert export_client.get_status(task.task_id).status_code == task_status
     assert export_client.get_latest().json == {"task": None}
+
+
+@pytest.fixture
+def ready_export(export_client: _ExportClient) -> WorkflowLogExportTask:
+    """Create an export and run the worker so the file and task are available for download."""
+    submitted = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert submitted.status_code == 202
+    with export_client.client.application.app_context():
+        prepare_log_export_task.run(**export_client.publish.call_args.kwargs["kwargs"])
+    task_key = export_client.redis.setex.call_args_list[0].args[0]
+    task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(task_key))
+    assert task.status is LogExportStatus.READY
+    return task
+
+
+def test_workflow_export_download_signs_cloud_s3_file(
+    export_client: _ExportClient,
+    ready_export: WorkflowLogExportTask,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(STORAGE_TYPE=StorageType.S3)
+    key, ttl, _ = export_client.redis.setex.call_args_list[0].args
+    task = ready_export.model_copy(update={"expires_at": utc_now() + timedelta(minutes=2)})
+    export_client.redis.setex(key, ttl, task.model_dump_json())
+    export_client.storage.exists.side_effect = export_client.files.__contains__
+    url = "https://storage.example.test/workflow-logs.csv?signature=signed"
+    export_client.storage.generate_presigned_url.return_value = url
+
+    response = export_client.get_file(task.task_id)
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == url
+    assert response.cache_control.no_store
+    expires_in = export_client.storage.generate_presigned_url.call_args.kwargs["expires_in"]
+    assert 0 < expires_in <= 120
+    export_client.storage.generate_presigned_url.assert_called_once_with(
+        task.storage_key,
+        expires_in=expires_in,
+        content_type="text/csv; charset=utf-8",
+        download_filename=f"workflow-logs-{task.task_id}.csv",
+    )
+    export_client.storage.load.assert_not_called()
+
+
+def test_workflow_export_download_streams_for_self_hosted_s3(
+    export_client: _ExportClient,
+    ready_export: WorkflowLogExportTask,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, STORAGE_TYPE=StorageType.S3)
+    assert ready_export.storage_key is not None
+    payload = export_client.files[ready_export.storage_key].encode("utf-8-sig")
+    closed = False
+
+    def chunks() -> Generator[bytes]:
+        """Leave data unread so closing the response must release the open stream."""
+        nonlocal closed
+        try:
+            yield payload[:16]
+            yield payload[16:]
+        finally:
+            closed = True
+
+    export_client.storage.load.return_value = chunks()
+
+    with export_client.get_file(ready_export.task_id) as response:
+        assert response.status_code == 200
+        assert response.mimetype == "text/csv"
+        assert (
+            response.headers["Content-Disposition"] == f"attachment; filename=workflow-logs-{ready_export.task_id}.csv"
+        )
+        assert response.cache_control.no_store
+        assert next(iter(response.response)) == payload[:16]
+        assert not closed
+
+    assert closed
+    export_client.storage.load.assert_called_once_with(ready_export.storage_key, stream=True)
+    export_client.storage.generate_presigned_url.assert_not_called()
+
+
+def test_workflow_export_download_requires_login_and_ready_task(export_client: _ExportClient) -> None:
+    submitted = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert submitted.status_code == 202
+    task_id = submitted.json["task_id"]
+
+    assert export_client.get_file(task_id, authenticated=False).status_code == 401
+    export_client.redis.get.assert_not_called()
+    response = export_client.get_file(task_id)
+    assert (response.status_code, response.json["code"]) == (409, "workflow_log_export_task_not_ready")
+    export_client.storage.exists.assert_not_called()
+    export_client.storage.load.assert_not_called()
+
+
+def test_workflow_export_download_reports_missing_file(
+    export_client: _ExportClient,
+    ready_export: WorkflowLogExportTask,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(STORAGE_TYPE=StorageType.S3)
+    export_client.storage.exists.return_value = False
+
+    response = export_client.get_file(ready_export.task_id)
+
+    assert (response.status_code, response.json["code"]) == (404, "workflow_log_export_file_not_found")
+    export_client.storage.generate_presigned_url.assert_not_called()

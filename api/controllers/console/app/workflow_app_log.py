@@ -4,12 +4,13 @@ from typing import Any, Literal
 from uuid import UUID
 
 from dateutil.parser import isoparse
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer, field_validator
 
 from configs import dify_config
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
@@ -18,7 +19,13 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError, WorkflowLogExportTaskNotFoundHTTPError
+from controllers.console.app.error import (
+    AppNotFoundError,
+    WorkflowLogExportFileNotFoundHTTPError,
+    WorkflowLogExportTaskNotFoundHTTPError,
+    WorkflowLogExportTaskNotReadyHTTPError,
+)
+from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, model_validate
@@ -39,12 +46,13 @@ from models import App
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
-from services.retention.log_export_task import LogExportStatus
-from services.retention.workflow_run.log_export_service import (
-    WorkflowLogExportFilters,
-    WorkflowLogExportScope,
-    WorkflowLogExportTaskNotFoundError,
+from services.retention.log_export_task import (
+    LogExportFileNotFoundError,
+    LogExportStatus,
+    LogExportTaskNotFoundError,
+    LogExportTaskNotReadyError,
 )
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 
 
 class WorkflowAppLogQuery(BaseModel):
@@ -318,6 +326,7 @@ register_response_schema_models(
     WorkflowLogExportTaskResponse,
     WorkflowLogExportStatusResponse,
     WorkflowLogExportLatestResponse,
+    BinaryFileResponse,
 )
 
 
@@ -443,6 +452,45 @@ class WorkflowLogExportTaskApi(Resource):
         scope = _resolve_log_export_scope(request_context, app_id)
         try:
             task = application_services().workflow_log_exports.get_task(scope=scope, task_id=str(task_id))
-        except WorkflowLogExportTaskNotFoundError as exc:
+        except LogExportTaskNotFoundError as exc:
             raise WorkflowLogExportTaskNotFoundHTTPError() from exc
         return dump_response(WorkflowLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>/file")
+class WorkflowLogExportFileApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        WorkflowLogExportTaskNotFoundHTTPError,
+        WorkflowLogExportTaskNotReadyHTTPError,
+        WorkflowLogExportFileNotFoundHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc("download_workflow_log_export")
+    @console_ns.doc(description="Download a completed Workflow CSV from object storage or the Console API")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
+    @console_ns.produces(["text/csv"])
+    @console_ns.response(HTTPStatus.OK, "CSV attachment", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.FOUND,
+        "Redirect to a pre-signed CSV download URL",
+        headers={"Location": {"description": "Pre-signed object storage URL", "type": "string"}},
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(self, request_context: RequestContext, app_id: UUID, task_id: UUID) -> Response:
+        """Authorize the Workflow app and ready export before opening its CSV."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        filename = f"workflow-logs-{task_id}.csv"
+        try:
+            download = application_services().workflow_log_exports.download_csv(
+                scope=scope, task_id=str(task_id), filename=filename
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotReadyError as exc:
+            raise WorkflowLogExportTaskNotReadyHTTPError() from exc
+        except LogExportFileNotFoundError as exc:
+            raise WorkflowLogExportFileNotFoundHTTPError() from exc
+        # response-contract:ignore signed redirect or streamed CSV attachment
+        return log_export_file_response(download, filename=filename)

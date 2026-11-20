@@ -6,10 +6,14 @@ from datetime import datetime
 
 from graphon.enums import WorkflowExecutionStatus
 from services.retention.log_export_task import (
+    LogExportDownload,
     LogExportTask,
+    LogExportTaskNotFoundError,
     LogExportTaskStore,
+    OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    open_ready_log_export_csv,
     prepare_log_export_task,
     save_and_dispatch_log_export_task,
 )
@@ -38,10 +42,6 @@ class WorkflowLogExportFilters:
 WorkflowLogExportTask = LogExportTask[WorkflowLogExportFilters]
 
 
-class WorkflowLogExportTaskNotFoundError(Exception):
-    """The requested export task is unavailable for the admitted app."""
-
-
 class WorkflowLogExportService:
     """Manage Workflow CSV export tasks within their admitted app scope."""
 
@@ -52,12 +52,14 @@ class WorkflowLogExportService:
         dispatch: Callable[[WorkflowLogExportTask], None],
         store_csv: StoreLogExportFile,
         write_csv: WriteLogExportCsv[WorkflowLogExportFilters],
+        open_csv: OpenLogExportFile,
     ) -> None:
-        """Bind Workflow task state, delivery and CSV preparation."""
+        """Bind Workflow task state, delivery, CSV preparation and file storage."""
         self._tasks = tasks
         self._dispatch = dispatch
         self._store_csv = store_csv
         self._write_csv = write_csv
+        self._open_csv = open_csv
 
     def create_task(
         self, *, scope: WorkflowLogExportScope, requested_by: str, filters: WorkflowLogExportFilters
@@ -76,12 +78,17 @@ class WorkflowLogExportService:
         """Return a live task in the admitted workspace and app, or raise if unavailable."""
         task = self._tasks.get(tenant_id=scope.tenant_id, app_id=scope.app_id, task_id=task_id)
         if task is None:
-            raise WorkflowLogExportTaskNotFoundError()
+            raise LogExportTaskNotFoundError()
         return task
 
     def get_latest_task(self, *, scope: WorkflowLogExportScope, requested_by: str) -> WorkflowLogExportTask | None:
         """Return the admitted caller's latest live export for the app, or None if it is unavailable."""
         return self._tasks.get_latest(tenant_id=scope.tenant_id, app_id=scope.app_id, requested_by=requested_by)
+
+    def download_csv(self, *, scope: WorkflowLogExportScope, task_id: str, filename: str) -> LogExportDownload:
+        """Serve a ready export in the admitted app as a signed URL or an open CSV stream."""
+        task = self.get_task(scope=scope, task_id=task_id)
+        return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Load the task for the workspace and app and prepare its CSV if it is still pending."""

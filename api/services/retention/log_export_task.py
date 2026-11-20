@@ -1,7 +1,7 @@
 """Temporary CSV export tasks and their lifecycle, shared by Console applications."""
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal, Protocol, Self, TextIO
@@ -13,9 +13,12 @@ from libs.datetime_utils import utc_now
 from machinery.context import RequestContext
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
+_LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
 logger = logging.getLogger(__name__)
 
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
+type LogExportDownload = str | tuple[bytes, Generator[bytes]]
+type OpenLogExportFile = Callable[[str, int, str], LogExportDownload]
 type LogExportKind = Literal["conversation", "workflow"]
 
 
@@ -24,6 +27,18 @@ class LogExportStatus(StrEnum):
     PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
+
+
+class LogExportTaskNotFoundError(Exception):
+    """The task is unavailable for the admitted app."""
+
+
+class LogExportTaskNotReadyError(Exception):
+    """The admitted task has no completed CSV."""
+
+
+class LogExportFileNotFoundError(Exception):
+    """The completed export's CSV could not be opened."""
 
 
 class LogExportTask[FiltersT](BaseModel):
@@ -54,6 +69,19 @@ class LogExportTask[FiltersT](BaseModel):
             created_at=created_at,
             expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )
+
+
+def open_ready_log_export_csv[FiltersT](
+    task: LogExportTask[FiltersT], *, open_csv: OpenLogExportFile, filename: str
+) -> LogExportDownload:
+    """Open an admitted, unexpired export after verifying its completed file and bounding the URL lifetime."""
+    if task.status is not LogExportStatus.READY or not task.storage_key:
+        raise LogExportTaskNotReadyError()
+    remaining_seconds = int((task.expires_at - utc_now()).total_seconds())
+    if remaining_seconds < 1:
+        raise LogExportTaskNotFoundError()
+    expires_in = min(_LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS, remaining_seconds)
+    return open_csv(task.storage_key, expires_in, filename)
 
 
 class LogExportTaskStore[FiltersT](Protocol):
