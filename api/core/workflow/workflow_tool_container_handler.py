@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import Any, final
+from typing import Any, cast, final
 
 from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -34,7 +34,7 @@ from graphon.engine_events.base import NodeEvent
 from graphon.engine_events.node import NodeRunFailedEvent, NodeRunPauseRequestedEvent
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.file import File
+from graphon.file import FILE_MODEL_IDENTITY, File
 from graphon.graph import Graph
 from graphon.nodes.container_effects import (
     ContainerAwaitRequest,
@@ -284,7 +284,16 @@ class WorkflowToolContainerHandler:
                 if failure_variable is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 inputs={key: build_container_value(value) for key, value in payload.inputs_for_log.items()},
-                outputs=self._build_tool_outputs(frame.state.outputs) if failure_variable is None else {},
+                outputs=(
+                    self._build_tool_outputs(
+                        frame.state.outputs,
+                        tenant_id=resolve_dify_run_context(
+                            parent_frame.graph.nodes[run_state.node_id].run_context
+                        ).tenant_id,
+                    )
+                    if failure_variable is None
+                    else {}
+                ),
                 error=error,
                 error_type=error_type,
                 llm_usage=frame.state.llm_usage,
@@ -471,26 +480,43 @@ class WorkflowToolContainerHandler:
         return variable_pool
 
     @staticmethod
-    def _build_tool_outputs(workflow_outputs: Mapping[str, object]) -> dict[str, ContainerValue]:
+    def _build_tool_outputs(
+        workflow_outputs: Mapping[str, object],
+        *,
+        tenant_id: str = "",
+    ) -> dict[str, ContainerValue]:
         json_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(workflow_outputs) or {}
         tool_outputs: dict[str, Any] = {
             **{key: value for key, value in workflow_outputs.items() if key not in _RESERVED_TOOL_OUTPUTS},
             "text": json.dumps(json_outputs, ensure_ascii=False),
-            "files": ArrayFileSegment(value=WorkflowToolContainerHandler._collect_files(workflow_outputs)),
+            "files": ArrayFileSegment(
+                value=WorkflowToolContainerHandler._collect_files(workflow_outputs, tenant_id=tenant_id)
+            ),
             "json": [json_outputs],
         }
         return {key: build_container_value(value) for key, value in tool_outputs.items()}
 
     @staticmethod
-    def _collect_files(values: Mapping[str, object]) -> list[File]:
+    def _collect_files(values: Mapping[str, object], *, tenant_id: str = "") -> list[File]:
         files: list[File] = []
 
         def collect_files(value: object) -> None:
             if isinstance(value, File):
                 files.append(value)
             elif isinstance(value, Mapping):
-                for item in value.values():
-                    collect_files(item)
+                if value.get("dify_model_identity") == FILE_MODEL_IDENTITY and all(
+                    isinstance(key, str) for key in value
+                ):
+                    files.append(
+                        file_factory.build_from_mapping(
+                            mapping=cast(Mapping[str, Any], value),
+                            tenant_id=tenant_id,
+                            access_controller=_file_access_controller,
+                        )
+                    )
+                else:
+                    for item in value.values():
+                        collect_files(item)
             elif isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
                 for item in value:
                     collect_files(item)
