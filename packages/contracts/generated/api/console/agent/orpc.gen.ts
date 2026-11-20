@@ -12,6 +12,7 @@ import {
   zAgentNotFoundError,
   zAgentNotPublishedError,
   zAgentSoulLockedError,
+  zAgentVersionConflictError,
   zAgentVersionNotFoundError,
   zAppNotFoundError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
@@ -423,12 +424,16 @@ export const buildChat = {
   finalize,
 }
 
+/**
+ * Apply the admitted account's Build draft to the shared draft and return its metadata
+ */
 export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdBuildDraftApply',
     path: '/agent/{agent_id}/build-draft/apply',
+    summary: "Apply the admitted account's Build draft to the shared draft and return its metadata",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdBuildDraftApplyPath }))
@@ -438,6 +443,7 @@ export const post5 = oc
     agent_home_snapshot_create_failed: { status: 502, data: zAgentHomeSnapshotCreateFailedError },
     agent_home_snapshot_too_large: { status: 413, data: zAgentHomeSnapshotTooLargeError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
@@ -447,12 +453,17 @@ export const apply = {
   post: post5,
 }
 
+/**
+ * Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced
+ */
 export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdBuildDraftCheckout',
     path: '/agent/{agent_id}/build-draft/checkout',
+    summary:
+      'Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced',
     tags: ['console'],
   })
   .input(
@@ -507,12 +518,16 @@ export const get4 = oc
   .output(zGetAgentByAgentIdBuildDraftResponse)
   .errors({ agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError } })
 
+/**
+ * Save the admitted account's Build draft and return its committed state
+ */
 export const put = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putAgentByAgentIdBuildDraft',
     path: '/agent/{agent_id}/build-draft',
+    summary: "Save the admitted account's Build draft and return its committed state",
     tags: ['console'],
   })
   .input(
@@ -523,6 +538,7 @@ export const put = oc
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
   })
 
 export const buildDraft = {
