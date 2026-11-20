@@ -15,7 +15,7 @@ def github_blob_to_raw_url(url: str) -> str:
     parts = parsed.path.split("/", 4)
     if (
         parsed.scheme != "https"
-        or parsed.netloc != "github.com"
+        or parsed.netloc.lower() != "github.com"
         or len(parts) != 5
         or not parts[1]
         or not parts[2]
