@@ -127,7 +127,7 @@ describe('variable-modal', () => {
       name: 'config',
       value_type: ChatVarType.Object,
       value: {
-        apiKey: null,
+        apiKey: '',
         timeout: 5,
       },
       description: 'settings',
