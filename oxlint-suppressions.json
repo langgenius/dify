@@ -4417,11 +4417,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/if-else/node.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -5503,7 +5498,7 @@
   },
   "web/app/components/workflow/utils/workflow-init.ts": {
     "typescript/no-explicit-any": {
-      "count": 12
+      "count": 3
     }
   },
   "web/app/components/workflow/utils/workflow.ts": {
