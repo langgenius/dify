@@ -6,6 +6,7 @@ import type {
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Logs from '../index'
@@ -76,6 +77,7 @@ const conversations: ConversationWithSummary[] = [
 async function openExport(
   hasExistingTask = false,
   mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'chat',
+  waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined,
 ) {
   const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
@@ -123,6 +125,7 @@ async function openExport(
         return Response.json({ count: 0 })
       case 'conversation-log-exports/preview': {
         previews.push(url.searchParams)
+        await waitForPreview?.(url.searchParams)
         const identities =
           url.searchParams.getAll('end_user_ids').length +
           url.searchParams.getAll('account_ids').length
@@ -392,6 +395,33 @@ it('shows an inline identity list and previews selections beyond the visible Log
   await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
   expect(previews.at(-1)?.has('end')).toBe(false)
+})
+
+it('keeps the export dialog height stable while recounting after an identity change', async () => {
+  await page.viewport(768, 900)
+  const recount = createDeferred()
+  onTestFinished(() => recount.resolve())
+  const { trigger, dialog } = await openExport(false, 'advanced-chat', (query) =>
+    query.has('end_user_ids') ? recount.promise : undefined,
+  )
+  await trigger.click()
+  const count = dialog.getByRole('status')
+  await expect
+    .element(count)
+    .toHaveTextContent('appLog.export.previewSize:{"conversations":2,"rows":4}')
+  const dialogHeight = () => (dialog.element() as HTMLElement).offsetHeight
+  const initialHeight = dialogHeight()
+
+  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await expect.element(count).toHaveTextContent('appLog.detail.loading')
+  expect(dialogHeight()).toBe(initialHeight)
+
+  recount.resolve()
+  await expect
+    .element(count)
+    .toHaveTextContent('appLog.export.previewSize:{"conversations":1,"rows":2}')
+  expect(dialogHeight()).toBe(initialHeight)
 })
 
 it('shares the Chatflow list filters with export while keeping a separate export draft', async () => {

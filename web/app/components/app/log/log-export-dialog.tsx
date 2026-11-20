@@ -291,8 +291,14 @@ export function LogExportDialog({
   if (exporting) actionLabel = exportingLabel
   else if (retryStatus) actionLabel = t(($) => $['operation.retry'], { ns: 'common' })
 
+  const descriptionKey = isCompletion
+    ? 'export.previewCompletionDescription'
+    : appMode === 'advanced-chat'
+      ? 'export.previewChatflowDescription'
+      : 'export.previewConversationDescription'
+  const showPreviewDescription = !filtersLocked && !noMatches && (preview.isPending || !!counts)
+
   let summary
-  let previewDescription
   if (exporting) summary = actionLabel
   else if (preview.isPending) summary = t(($) => $['detail.loading'], { ns: 'appLog' })
   else if (counts) {
@@ -303,14 +309,6 @@ export function LogExportDialog({
           conversations: counts.conversation_count,
           rows: counts.message_count,
         })
-    if (!noMatches) {
-      const descriptionKey = isCompletion
-        ? 'export.previewCompletionDescription'
-        : appMode === 'advanced-chat'
-          ? 'export.previewChatflowDescription'
-          : 'export.previewConversationDescription'
-      previewDescription = t(($) => $[descriptionKey], { ns: 'appLog' })
-    }
   } else summary = t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error
@@ -504,7 +502,7 @@ export function LogExportDialog({
               {!taskInProgress && (busy || (validFilters && !retryStatus)) && (
                 <div className="space-y-1 rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
                   <p role="status">{summary}</p>
-                  {previewDescription && <p>{previewDescription}</p>}
+                  {showPreviewDescription && <p>{t(($) => $[descriptionKey], { ns: 'appLog' })}</p>}
                 </div>
               )}
               {error && (
