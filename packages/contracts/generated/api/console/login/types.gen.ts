@@ -67,8 +67,18 @@ export type InvalidEmailError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
 export type LimitExceededError = ErrorResponse & {
   code: 'limit_exceeded'
+  status: 400
+}
+
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
   status: 400
 }
 
@@ -124,7 +134,9 @@ export type PostLoginErrors = {
     | EmailDomainSuspendedError
     | InvalidAccountPasswordError
     | InvalidEmailError
+    | InvalidOrExpiredTokenError
     | LimitExceededError
+    | NotAllowedCreateWorkspaceError
     | ErrorResponse
   401: AuthenticationFailedError | ErrorResponse
   429: EmailCodeLoginLimitError | ErrorResponse

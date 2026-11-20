@@ -315,6 +315,7 @@ const ModelLoadBalancingModal = ({
     <>
       <Dialog
         open={Boolean(model) && open}
+        disablePointerDismissal
         onOpenChange={(open) => {
           if (!open) onClose?.()
         }}

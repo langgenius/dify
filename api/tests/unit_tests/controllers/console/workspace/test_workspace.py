@@ -226,7 +226,9 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     client.set_cookie("__Host-csrf_token", tokens.csrf_token, domain="console.example.com", secure=True)
     headers: dict[str, str] = {} if scenario == "missing_csrf" else {"X-CSRF-Token": tokens.csrf_token}
     if scenario == "success":
-        profile = client.get("/console/api/account/profile", base_url="https://console.example.com", headers=headers)
+        profile = client.get(
+            "/console/api/account/end_user_profile", base_url="https://console.example.com", headers=headers
+        )
         assert profile.status_code == 200
         profile_data = profile.get_json()
         assert isinstance(profile_data, dict)

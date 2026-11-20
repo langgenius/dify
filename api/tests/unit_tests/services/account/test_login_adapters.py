@@ -123,11 +123,12 @@ def _invited_world(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     *,
     password: bool,
+    status: AccountStatus = AccountStatus.PENDING,
 ) -> tuple[Dependencies, AccountActivationService, str]:
     redis, commands = redis_transport
     commands.side_effect = RedisCommandEmulator()
     with sqlite_session_factory.begin() as session:
-        account = Account(name="invitee", email="invitee@example.com", status=AccountStatus.PENDING)
+        account = Account(name="invitee", email="invitee@example.com", status=status)
         account.id = "account-1"
         if password:
             account.password = "hash"
@@ -142,7 +143,7 @@ def _invited_world(
             email="invitee@example.com",
             workspace_id="workspace-1",
             role="editor",
-            requires_setup=True,
+            requires_setup=status == AccountStatus.PENDING,
         )
     )
     activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
@@ -185,17 +186,19 @@ def test_invitation_gateway_resolves_the_invited_email(
 
 @pytest.mark.parametrize("method", ["password", "email-code"])
 @pytest.mark.parametrize("workspace_creation_allowed", [False, True], ids=["no-self-serve", "cloud"])
+@pytest.mark.parametrize("status", [AccountStatus.PENDING, AccountStatus.UNINITIALIZED])
 def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
     sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     method: str,
+    status: AccountStatus,
     workspace_creation_allowed: bool,
 ) -> None:
     dependencies, activation, token = _invited_world(
-        sqlite_session_factory, redis_transport, password=method == "password"
+        sqlite_session_factory, redis_transport, password=method == "password", status=status
     )
     dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
-    service = dependencies.service()
+    service = dependencies.service(defer_workspace_creation=True)
 
     if method == "password":
         result = service.login_with_password(
@@ -203,7 +206,7 @@ def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
                 email="invitee@example.com", password="password", invite_token=token, ip_address="127.0.0.1"
             )
         )
-        assert result.workspace_found is False
+        assert result.workspace_found is None
         assert result.tokens is not None
     else:
         service.login_with_email_code(
@@ -226,14 +229,21 @@ def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
     activation.activate(
         ActivationCommand(
             invitation=InvitationLookup(workspace_id=None, email=None, token=token),
-            name="Invitee",
-            interface_language="en-US",
-            timezone="UTC",
+            name="Invitee" if status == AccountStatus.PENDING else None,
+            interface_language="en-US" if status == AccountStatus.PENDING else None,
+            timezone="UTC" if status == AccountStatus.PENDING else None,
         ),
         authenticated_account_id="account-1",
     )
 
     assert _memberships(sqlite_session_factory) == [("workspace-1", TenantAccountRole.EDITOR, True)]
+    with sqlite_session_factory() as session:
+        account = session.get(Account, "account-1")
+        assert account is not None
+        assert account.status == AccountStatus.ACTIVE
+        assert account.initialized_at is not None
+        assert account.first_workspace_created_at is None
+        assert account.name == ("Invitee" if status == AccountStatus.PENDING else "invitee")
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:

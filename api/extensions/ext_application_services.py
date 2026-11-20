@@ -1104,7 +1104,7 @@ def init_app(app: Flask) -> None:
     app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
-    bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
 
 def application_services() -> ApplicationServices:

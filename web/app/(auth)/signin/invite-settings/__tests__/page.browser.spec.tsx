@@ -30,7 +30,7 @@ vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (path: readonly string[], input: Pick<PostActivateData, 'body'>) => {
       if (path.join('.') === 'activate.post') return mocks.activate(input)
-      if (path.join('.') === 'account.profile.get') return { email: 'invitee@example.com' }
+      if (path.join('.') === 'account.endUserProfile.get') return { email: 'invitee@example.com' }
       throw new Error(`Unexpected console request: ${path.join('.')}`)
     },
   },
@@ -51,7 +51,7 @@ async function renderInvitation() {
     resources: { 'zh-Hans': { accountSettings, common, login } },
   })
   const { queryClient } = createConsoleQueryWrapper({
-    accountProfile: { email: 'invitee@example.com' },
+    accountProfile: null,
     systemFeatures: { branding: { enabled: false }, deployment_edition: 'CLOUD' },
   })
   queryClient.setQueryData(

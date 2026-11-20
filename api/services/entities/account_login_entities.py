@@ -90,10 +90,11 @@ class EmailCodeLoginCommand:
     ip_address: str
     invite_token: str | None
     mode: LoginMode = LoginMode.CONSOLE
+    invite_token: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class PasswordLoginResult:
     tokens: AccountSessionTokens | None
-    # None when Account-only login does not query workspace membership.
+    # None when End User or invitation sign-in does not query workspace membership.
     workspace_found: bool | None

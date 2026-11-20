@@ -55,14 +55,17 @@ export default function InviteSettingsPage() {
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
   const {
-    data: userResp,
+    data: accountProfile,
     isPending: isProfilePending,
     error: profileError,
-  } = useQuery({
-    ...userProfileQueryOptions(),
-    throwOnError: (err) => !isUnauthorizedError(err),
-    refetchOnWindowFocus: false,
-  })
+  } = useQuery(
+    consoleQuery.account.endUserProfile.get.queryOptions({
+      context: { silent: true, handleUnauthorizedLocally: true },
+      throwOnError: (err) => !isUnauthorizedError(err),
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
@@ -85,13 +88,13 @@ export default function InviteSettingsPage() {
   )
   const isInvitationForCurrentAccount = isInvitationForAccount(
     checkRes?.data?.email,
-    userResp?.profile.email,
+    accountProfile?.email,
   )
   const shouldReturnToSignIn =
     !isProfilePending &&
     Boolean(
       checkRes?.is_valid &&
-      (isUnauthorizedError(profileError) || (userResp && !isInvitationForCurrentAccount)),
+      (isUnauthorizedError(profileError) || (accountProfile && !isInvitationForCurrentAccount)),
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
@@ -134,10 +137,17 @@ export default function InviteSettingsPage() {
             token,
           }
       const [error, res, isDefined] = await safe(
-        consoleClient.activate.post({ body }, { context: { silent: true } }),
+        consoleClient.activate.post(
+          { body },
+          { context: { silent: true, handleUnauthorizedLocally: true } },
+        ),
       )
       if (error) {
         setIsActivating(false)
+        if (isUnauthorizedError(error)) {
+          router.replace(`/signin?${searchParams.toString()}`)
+          return
+        }
         if (isDefined && error.code === 'workspace_member_limit_reached') {
           setIsWorkspaceFull(true)
           return
@@ -149,6 +159,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!)
+        queryClient.removeQueries({ queryKey: consoleQuery.account.endUserProfile.get.key() })
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }

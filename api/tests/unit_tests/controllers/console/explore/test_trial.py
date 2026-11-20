@@ -67,7 +67,6 @@ from graphon.model_runtime.errors.invoke import InvokeBadRequestError, InvokeErr
 from graphon.variables import SecretVariable, StringVariable
 from libs.external_api import ExternalApi
 from libs.token import generate_csrf_token
-from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, AccountTrialAppRecord, Tenant, TrialApp
 from models import App as _trial_audio_App
 from models import App as _trial_file_upload_App
@@ -3358,7 +3357,7 @@ class TestTrialPreviewDetailsCases:
         harness.assert_app_not_queried()
 
     @staticmethod
-    def test_missing_active_workspace_uses_shared_console_error_and_monitoring(
+    def test_missing_active_workspace_is_not_reported_as_server_failure(
         harness: _TrialPreviewDetailsHarness,
     ) -> None:
         harness.viewer._current_tenant = None
@@ -3370,10 +3369,9 @@ class TestTrialPreviewDetailsCases:
         with got_request_exception.connected_to(record_error):
             response = harness.get()
 
-        _trial_preview_details_assert_error(response, 500, "active_workspace_required")
-        assert response.get_json()["message"] == "Internal Server Error"
-        assert len(errors) == 1
-        assert isinstance(errors[0], ActiveWorkspaceRequiredError)
+        _trial_preview_details_assert_error(response, 403, "active_workspace_required")
+        assert response.get_json()["message"] == "An active workspace is required."
+        assert errors == []
         harness.assert_app_not_queried()
 
     @staticmethod

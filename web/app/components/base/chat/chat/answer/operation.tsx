@@ -300,6 +300,7 @@ function Operation({
       >
         <Dialog
           actionsRef={feedbackActionsRef}
+          disablePointerDismissal
           onOpenChange={(open, eventDetails) => {
             if (!open && isSubmittingFeedback && eventDetails.reason !== 'imperative-action')
               eventDetails.cancel()

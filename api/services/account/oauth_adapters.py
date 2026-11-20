@@ -50,7 +50,12 @@ from services.entities.account_oauth_entities import (
     OAuthIdentity,
     OAuthInvitation,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
+)
 from services.system_feature_service import SystemFeatureService
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 
@@ -285,6 +290,15 @@ class WorkspaceProvisioningOAuthGateway(OAuthWorkspaceGateway):
         try:
             self._workspaces.create_owner_workspace(account_id)
         except AccountNotFoundError as exc:
+            raise OAuthAccountNotFoundError from exc
+        except (WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError) as exc:
+            raise OAuthWorkspaceCreationNotAllowedError from exc
+
+    def activate_default_workspace(self, account_id: str) -> None:
+        """Provision a workspace for a verified OAuth account, or deny Console login."""
+        try:
+            self._workspaces.activate(account_id)
+        except (WorkspaceOwnerNotFoundError, WorkspaceNotFoundError) as exc:
             raise OAuthAccountNotFoundError from exc
         except (WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError) as exc:
             raise OAuthWorkspaceCreationNotAllowedError from exc

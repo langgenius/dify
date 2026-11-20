@@ -92,13 +92,24 @@ class WorkspaceProvisioningService:
         self._memberships = memberships
         self._members = members
 
-    def activate(self, account_id: str, *, name: str) -> WorkspaceActivation:
+    def activate(self, account_id: str, *, name: str | None = None) -> WorkspaceActivation:
         """Create a workspace only if the admitted Account has no usable membership.
 
-        The store locks the Account through the existence check, preparation and
-        commit. Retries reuse membership and preserve the first creation time.
-        Creation policy failures leave the Account and workspace rows unchanged.
+        A supplied name is already validated by the caller. Automatic Console
+        provisioning omits the name and uses the Account's default workspace name;
+        a closed Account cannot provision automatically. The store locks the
+        Account through the existence check, preparation and commit. Retries reuse
+        membership and preserve the first creation time. A missing Account or denied
+        creation leaves workspace rows unchanged.
         """
+        if name is None:
+            owner = self._owners.get(account_id)
+            if owner is None:
+                raise WorkspaceOwnerNotFoundError()
+            if owner.status == "closed":
+                raise WorkSpaceNotAllowedCreateError()
+            suffix = "'s Workspace"
+            name = f"{owner.name[: 255 - len(suffix)]}{suffix}"
 
         def prepare() -> WorkspaceCreation:
             if not self._policies.is_workspace_creation_allowed():

@@ -188,6 +188,19 @@ Get account avatar url
 | 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /account/end_user_profile
+**Read private profile data for the admitted Account without provisioning a workspace**
+
+Get the signed-in Account profile without workspace admission.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account profile | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /account/init
 #### Request Body
 
@@ -350,6 +363,10 @@ payload validation or credential writes; failures leave credentials unchanged.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
+**Return the profile for an admitted Console workspace without provisioning one**
+
+Get the Console Account profile. A session without an active workspace returns 401.
+
 #### Responses
 
 | Code | Description | Schema |
@@ -11984,7 +12001,7 @@ Called by /signin in the Account origin before showing a login form and after su
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -27947,6 +27964,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 
 #### EvaluationRunResponse
 
+Expose the model pinned in the run snapshot, independent of later config edits.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completed_at | integer |  | No |
@@ -27956,6 +27975,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | dataset_file_id | string |  | No |
 | error | string |  | No |
 | evaluation_config_id | string |  | Yes |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
 | failed_items | integer |  | Yes |
 | id | string |  | Yes |
 | metrics_summary | object |  | No |
@@ -35854,6 +35875,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [RagPipelineIconInfo](#ragpipelineiconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
@@ -35880,6 +35902,15 @@ Resource types understood by access policies.
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### RagPipelineIconInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
 #### RagPipelineImportCheckDependenciesResponse
 
@@ -36113,7 +36144,7 @@ A configured credential whose stored value is omitted.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [LoginMode](#loginmode) | End User mode refreshes the Account session without workspace admission | No |
+| mode | [LoginMode](#loginmode) | Console mode requires an active workspace; End User mode refreshes only the Account session. | No |
 
 #### RelatedAppListResponse
 

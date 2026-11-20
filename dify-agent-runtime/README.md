@@ -111,10 +111,20 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does not create a separate temp directory, so the active Workspace is both the working directory and temp space.
 
-`$HOME` and `cwd` allow cross-directory `rename` and `link` within their trees
-via `LANDLOCK_ACCESS_FS_REFER`. Extra `SHELLCTL_LANDLOCK_RW_PATHS` grant
-read-write access without `REFER`, so cross-directory renames and hard links
-within those extra paths or between them and `$HOME`/`cwd` remain denied.
+Path isolation requires the Landlock kernel feature. Linux >= 5.19 (Landlock
+ABI v2) is recommended: there `$HOME` and `cwd` allow cross-directory `rename`
+and `link` within their trees via `LANDLOCK_ACCESS_FS_REFER`. On ABI v1 kernels
+(Linux 5.13-5.18) the runner falls back to Landlock V1: the same path
+restrictions apply, but `REFER` cannot be granted, so the kernel denies all
+cross-directory `rename`/`link` with `EXDEV`, including inside `$HOME`/`cwd`.
+Most tools fall back to copy (e.g. `mv` does copy+unlink), but
+hard-link-preserving copies (e.g. Local Home snapshots with cross-directory
+hard links) and tools that require rename across directories can fail. On
+kernels without Landlock the job still aborts with exit code 125.
+
+Extra `SHELLCTL_LANDLOCK_RW_PATHS` grant read-write access without `REFER`, so
+cross-directory renames and hard links within those extra paths or between
+them and `$HOME`/`cwd` remain denied.
 
 ### Environment Variables
 

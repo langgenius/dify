@@ -119,6 +119,18 @@ export const zInvalidEmailError = zErrorResponse.and(
 )
 
 /**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * LimitExceededError
  *
  * Unable to create account because the licensed seats limit was exceeded
@@ -126,6 +138,18 @@ export const zInvalidEmailError = zErrorResponse.and(
 export const zLimitExceededError = zErrorResponse.and(
   z.object({
     code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotAllowedCreateWorkspaceError
+ *
+ * Workspace not found, please contact system admin to invite you to join in a workspace.
+ */
+export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_allowed_create_workspace'),
     status: z.literal(400),
   }),
 )

@@ -1,9 +1,9 @@
 import type { HumanInputV2Recipient } from '../types'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createFeaturesFixture } from '@/test/console/features-fixture'
 import Recipients from '../components/recipients'
 import {
   contact,
@@ -189,10 +189,9 @@ describe('recipient selection through generated queries', () => {
   it.each([true, false])(
     'gates the platform source on authoritative features (%s)',
     async (enabled) => {
-      contactApi.features.mockResolvedValue({
-        ...zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
-        im_centrally_managed: enabled,
-      })
+      contactApi.features.mockResolvedValue(
+        createFeaturesFixture({ im_centrally_managed: enabled }),
+      )
       const user = userEvent.setup()
       renderContactOwner(<Harness />)
       await openPicker(user)

@@ -383,6 +383,27 @@ export const zEducationVerifyLimitError = zErrorResponse.and(
 )
 
 /**
+ * AccountProfileResponse
+ */
+export const zAccountProfileResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * AccountInitPayload
  */
 export const zAccountInitPayload = z.object({
@@ -478,27 +499,6 @@ export const zPersonalAccessTokenCreatedResponse = z.object({
   version: z.int(),
   workspace_count: z.int(),
   workspace_scope_mode: z.enum(['all', 'none', 'selected']),
-})
-
-/**
- * AccountProfileResponse
- */
-export const zAccountProfileResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  first_workspace_created_at: z.int().nullish(),
-  has_owned_tenant: z.boolean().nullish(),
-  has_tenant: z.boolean().nullish(),
-  id: z.string(),
-  interface_language: z.string().nullish(),
-  interface_theme: z.string().nullish(),
-  is_password_set: z.boolean(),
-  last_login_at: z.int().nullish(),
-  last_login_ip: z.string().nullish(),
-  name: z.string(),
-  timezone: z.string().nullish(),
 })
 
 /**
@@ -807,6 +807,11 @@ export const zGetAccountEducationAutocompleteResponse = zEducationAutocompleteRe
  * Success
  */
 export const zGetAccountEducationVerifyResponse = zEducationVerifyResponse
+
+/**
+ * Account profile
+ */
+export const zGetAccountEndUserProfileResponse = zAccountProfileResponse
 
 export const zPostAccountInitBody = zAccountInitPayload
 

@@ -439,6 +439,7 @@ function CreateKnowledgeSession() {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) requestClose()
       }}

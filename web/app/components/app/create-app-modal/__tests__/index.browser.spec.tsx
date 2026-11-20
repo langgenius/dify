@@ -44,13 +44,12 @@ vi.mock('@/app/components/base/amplitude/init', () => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createFeaturesFixture } = await import('@/test/console/features-fixture')
   const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': async () =>
-        zGetFeaturesResponse.parse({ end_user_auth_enabled: false, apps: appQuota }),
+      'features.get': async () => createFeaturesFixture({ apps: appQuota }),
       'apps.post': ({ body }: { body: Record<string, unknown> }) => mocks.create(body),
     }),
   }

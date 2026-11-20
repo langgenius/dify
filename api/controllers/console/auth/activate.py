@@ -12,6 +12,7 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     InvitationWorkspaceMemberLimitError,
 )
+from controllers.console.flask_admission import console_account_only_identity
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
@@ -111,6 +112,7 @@ class ActivateCheckApi(Resource):
 
 @console_ns.route("/activate")
 class ActivateApi(Resource):
+    @console_account_only_identity
     @error_responses(
         AccountInFreezeError,
         AlreadyActivateError,

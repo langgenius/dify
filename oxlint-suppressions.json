@@ -1028,11 +1028,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/features/new-feature-panel/follow-up-setting-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/base/features/new-feature-panel/moderation/moderation-content.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -2408,11 +2403,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/extra-info/service-api/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/formatted-text/flavours/__tests__/edit-slice.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3160,11 +3150,6 @@
   "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/rag-pipeline-header/publisher/popup.tsx": {
@@ -4221,11 +4206,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/http/components/authorization/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/http/components/authorization/radio-group.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -4368,11 +4348,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/if-else/components/condition-wrap.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/if-else/node.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -4440,11 +4415,6 @@
   },
   "web/app/components/workflow/nodes/knowledge-base/use-single-run-form-params.ts": {
     "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval-v2/components/add-knowledge-space.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 3
     }
   },
@@ -5449,7 +5419,7 @@
   },
   "web/app/components/workflow/utils/workflow-init.ts": {
     "typescript/no-explicit-any": {
-      "count": 12
+      "count": 3
     }
   },
   "web/app/components/workflow/utils/workflow.ts": {
