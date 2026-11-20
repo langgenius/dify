@@ -1053,8 +1053,10 @@ class ToolManager:
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
     ) -> dict[str, Any]:
-        """
-        Convert tool parameters type
+        """Convert persisted form inputs using their declarations and variable pool.
+
+        Optional parameters with stale variable selectors of ``""`` or ``[]`` are omitted without variable lookup.
+        Required and non-empty malformed selectors retain normal validation.
         """
         from graphon.nodes.tool.entities import ToolNodeData
         from graphon.nodes.tool.exc import ToolParameterError
@@ -1084,7 +1086,15 @@ class ToolManager:
                         runtime_parameters[parameter.name] = selector_value
                         continue
 
-                    if not (config and isinstance(config, dict) and config.get("value") is not None):
+                    is_unset_optional_variable = (
+                        not parameter.required
+                        and isinstance(config, dict)
+                        and config.get("type") == "variable"
+                        and config.get("value") in ("", [])
+                    )
+                    if is_unset_optional_variable or not (
+                        config and isinstance(config, dict) and config.get("value") is not None
+                    ):
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
