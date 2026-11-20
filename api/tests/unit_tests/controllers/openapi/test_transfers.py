@@ -5,25 +5,50 @@ import hashlib
 import io
 import json
 import logging
-from collections.abc import Buffer, Iterator
-from dataclasses import dataclass
+import uuid
+import zipfile
+from collections.abc import Buffer, Callable, Iterator
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from inspect import unwrap
 from itertools import count
 from typing import override
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from flask import Flask
+from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.datastructures import FileStorage
 from werkzeug.test import TestResponse
 
-from controllers.openapi import _transfer, transfers
+from constants.oauth_bearer import TokenType
+from controllers.openapi import _files, _transfer, transfers
 from controllers.openapi._catalog import current_catalog
-from controllers.openapi._errors import OpenApiErrorCode
+from controllers.openapi._contract import accepts
+from controllers.openapi._errors import OpenApiErrorCode, SkillPackageInvalid, UploadArchiveInvalid
+from controllers.openapi._models import FileUploadPayload, SkillImportPayload
+from controllers.openapi._multipart import body_from_request
+from controllers.openapi._upload import UploadParts, file_fields
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
+from controllers.openapi.skills import SkillImportApi
 from controllers.openapi.transfers import DOWNLOAD_EVENT, NEXT_STEP, UPLOAD_EVENT
 from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
+from machinery.context import RequestContext
 from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
-from services.file_transfer import FileTransferService, TransferLimits, TransferTicket
+from services.file_transfer import (
+    FileTransferService,
+    IncomingFile,
+    LoadedTransfer,
+    TransferLimits,
+    TransferTicket,
+)
+from services.skill_management_service import SkillImportPayload as ServiceSkillImportPayload
+from services.skill_management_service import SkillManagementService
+from tests.helpers.unit.libs.zip_builder import zip_bytes
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.file_transfer_fakes import InMemoryBlobs, SettableClock
 
@@ -45,9 +70,24 @@ _LIMITS = TransferLimits(
 @dataclass
 class TransferWorld:
     caller: AdmittedWorld
-    service: FileTransferService
+    base_services: ApplicationServices
+    repository: SQLAlchemyFileTransferRepository
     blobs: InMemoryBlobs
     clock: SettableClock
+    new_token: Callable[[], str]
+    service: FileTransferService = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.install(_LIMITS)
+
+    def install(self, limits: TransferLimits) -> None:
+        """Postcondition: the routes use a service over the same rows, blobs and clock with ``limits``."""
+        self.service = FileTransferService(
+            transfers=self.repository, blobs=self.blobs, limits=limits, now=self.clock, new_token=self.new_token
+        )
+
+    def services(self) -> ApplicationServices:
+        return dataclasses.replace(self.base_services, file_transfers=self.service)
 
     def prepare(self, *, folder: bool = False) -> TestResponse:
         body = {"folder": True} if folder else {}
@@ -77,20 +117,18 @@ def world(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> TransferWorld:
-    blobs = InMemoryBlobs()
-    clock = SettableClock(datetime(2026, 11, 20, 10, 0))
     tokens = count()
-    service = FileTransferService(
-        transfers=SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory),
-        blobs=blobs,
-        limits=_LIMITS,
-        now=clock,
+    world = TransferWorld(
+        caller=admitted_bearer,
+        base_services=account_application_services,
+        repository=SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory),
+        blobs=InMemoryBlobs(),
+        clock=SettableClock(datetime(2026, 11, 20, 10, 0)),
         new_token=lambda: f"token-{next(tokens)}",
     )
-    services = dataclasses.replace(account_application_services, file_transfers=service)
     for module in (transfers, _transfer):
-        monkeypatch.setattr(module, "application_services", lambda: services)
-    return TransferWorld(admitted_bearer, service, blobs, clock)
+        monkeypatch.setattr(module, "application_services", world.services)
+    return world
 
 
 @pytest.fixture
@@ -340,3 +378,261 @@ def test_the_byte_route_needs_no_catalog_header_and_is_not_in_the_catalog(
     assert world.get(world.link(world.park())).status_code == 200
     assert "prepare.upload" in ops
     assert all("{transfer_id}" not in entry["path"] for entry in ops.values() if "transfers" in entry["path"])
+
+
+# Transfer ids in the file fields of a JSON body.
+
+_OWNER = uuid.UUID(int=7)
+_OWNER_AUTH = AuthContext(
+    token_type=TokenType.OAUTH_ACCOUNT,
+    subject_email="owner@example.com",
+    subject_issuer="dify:account",
+    account_id=_OWNER,
+    client_id="difyctl",
+    token_id=uuid.UUID(int=8),
+    expires_at=None,
+)
+_ZIP_LIMITS = dataclasses.replace(_LIMITS, max_bytes=4096)
+
+
+class _Named(BaseModel):
+    files: UploadParts
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class _StoredUpload:
+    id: str
+    name: str
+    size: int
+    mime_type: str
+
+
+@dataclass
+class _RecordingFiles:
+    received: list[tuple[str, bytes, str]] = field(default_factory=list)
+
+    def upload_file(self, *, filename: str, content: bytes, mimetype: str, user: object) -> _StoredUpload:
+        del user
+        self.received.append((filename, content, mimetype))
+        return _StoredUpload(id=str(uuid.UUID(int=9)), name=filename, size=len(content), mime_type=mimetype)
+
+
+@dataclass(frozen=True)
+class _FilesOnly:
+    files: _RecordingFiles
+
+
+def _received(world: TransferWorld, content: bytes, name: str, *, folder: bool = False) -> str:
+    """Postcondition: the id of a transfer of ``_OWNER`` holding ``content``."""
+    ticket = world.service.prepare(str(_OWNER), folder=folder)
+    world.service.receive(
+        ticket.transfer.id, ticket.token, IncomingFile(name=name, mime_type="text/plain", content=content)
+    )
+    return ticket.transfer.id
+
+
+def _parsed[M: BaseModel](app: Flask, body: dict[str, object], model: type[M]) -> M:
+    with app.test_request_context(json=body):
+        reset = set_auth_ctx(_OWNER_AUTH)
+        try:
+            return model.model_validate(body_from_request(file_fields=file_fields(model)))
+        finally:
+            reset_auth_ctx(reset)
+
+
+def _uploaded_with_json(world: TransferWorld, body: dict[str, object]) -> TestResponse:
+    return world.post(f"/openapi/v1/apps/{world.caller.app_id}/files", json=body, headers=world.caller.headers)
+
+
+@pytest.fixture
+def recording_files(monkeypatch: pytest.MonkeyPatch) -> _RecordingFiles:
+    files = _RecordingFiles()
+    monkeypatch.setattr(_files, "application_services", lambda: _FilesOnly(files=files))
+    return files
+
+
+def test_json_file_field_takes_a_file_transfer(world: TransferWorld, recording_files: _RecordingFiles) -> None:
+    prepared = world.prepare().get_json()
+    world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+
+    response = _uploaded_with_json(world, {"file": prepared["id"]})
+
+    assert response.status_code == 201
+    assert response.get_json()["name"] == "r.pdf"
+    assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
+
+
+def test_the_same_id_works_in_a_second_call(world: TransferWorld, recording_files: _RecordingFiles) -> None:
+    prepared = world.prepare().get_json()
+    world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+
+    answers = [_uploaded_with_json(world, {"file": prepared["id"]}) for _ in range(2)]
+
+    assert [answer.status_code for answer in answers] == [201, 201]
+    assert len(recording_files.received) == 2
+
+
+def test_named_files_and_lists_resolve_at_any_depth(world: TransferWorld, openapi_app: Flask) -> None:
+    doc, first, second = (_received(world, f"{index}".encode(), f"{index}.txt") for index in range(3))
+
+    body = _parsed(openapi_app, {"files": {"doc": doc, "pages": [first, second]}}, _Named)
+
+    named = body.files
+    assert isinstance(named["doc"], FileStorage)
+    assert named["doc"].read() == b"0"
+    pages = named["pages"]
+    assert isinstance(pages, list)
+    assert [(page.filename, page.read()) for page in pages] == [("1.txt", b"1"), ("2.txt", b"2")]
+
+
+def test_a_folder_transfer_becomes_a_path_mapping(world: TransferWorld, openapi_app: Flask) -> None:
+    world.install(_ZIP_LIMITS)
+    folder = _received(world, zip_bytes({"SKILL.md": b"a", "s/run.py": b"b"}), "up.zip", folder=True)
+
+    body = _parsed(openapi_app, {"files": folder}, _Named)
+
+    assert list(body.files) == ["SKILL.md", "s/run.py"]
+    run = body.files["s/run.py"]
+    assert isinstance(run, FileStorage)
+    assert (run.filename, run.content_type, run.read()) == ("run.py", "application/octet-stream", b"b")
+
+
+def test_a_string_outside_a_file_field_is_left_alone(world: TransferWorld, openapi_app: Flask) -> None:
+    doc = _received(world, b"x", "x.txt")
+
+    body = _parsed(openapi_app, {"files": {"doc": doc}, "note": doc}, _Named)
+
+    assert body.note == doc
+
+
+def test_a_folder_id_in_a_single_file_field_is_a_422(world: TransferWorld, recording_files: _RecordingFiles) -> None:
+    world.install(_ZIP_LIMITS)
+    prepared = world.prepare(folder=True).get_json()
+    world.upload(prepared["upload_url"], content=zip_bytes({"a.txt": b"a"}), name="up.zip")
+
+    response = _uploaded_with_json(world, {"file": prepared["id"]})
+
+    assert response.status_code == 422
+    assert recording_files.received == []
+
+
+def test_each_refusal_names_the_field_and_the_next_step(world: TransferWorld, openapi_app: Flask) -> None:
+    unknown = _uploaded_with_json(world, {"file": "00000000-0000-4000-8000-000000000000"})
+    pending = world.prepare().get_json()
+    not_received = _uploaded_with_json(world, {"file": pending["id"]})
+    world.install(_ZIP_LIMITS)
+    crowded = _received(
+        world, zip_bytes({str(index): b"" for index in range(_LIMITS.max_unpacked_files + 1)}), "up.zip", folder=True
+    )
+
+    with pytest.raises(UploadArchiveInvalid) as archive:
+        _parsed(openapi_app, {"files": crowded}, _Named)
+
+    assert (unknown.status_code, unknown.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
+    assert unknown.get_json()["message"].startswith("file: No upload 00000000-0000-4000-8000-000000000000 for this")
+    assert unknown.get_json()["message"].endswith("Prepare and send again.")
+    assert (not_received.status_code, not_received.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_RECEIVED)
+    assert "no file reached this server" in not_received.get_json()["message"]
+    assert pending["upload_before"] in not_received.get_json()["message"]
+    assert archive.value.description == (
+        f"files: The folder's zip cannot be unpacked: archive is over the limit of {_LIMITS.max_unpacked_files} "
+        "entries."
+    )
+
+
+def test_the_read_transaction_is_ended_before_a_transfer_is_loaded(
+    world: TransferWorld, openapi_app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    doc = _received(world, b"x", "x.txt")
+    in_transaction_at_load: list[bool] = []
+    load = world.service.load
+
+    def watched_load(owner_id: str, transfer_id: str) -> LoadedTransfer:
+        in_transaction_at_load.append(sqlite_session.in_transaction())
+        return load(owner_id, transfer_id)
+
+    monkeypatch.setattr(world.service, "load", watched_load)
+    sqlite_session.execute(text("SELECT 1"))
+    ctx = Context(AccountSubject(_OWNER_AUTH), sqlite_session, {})
+
+    def parsed(*, ctx: Context, body: FileUploadPayload) -> FileUploadPayload:
+        del ctx
+        return body
+
+    handler = accepts(body=FileUploadPayload)(parsed)
+
+    with openapi_app.test_request_context(json={"file": doc}):
+        reset = set_auth_ctx(_OWNER_AUTH)
+        try:
+            handler(ctx=ctx)
+        finally:
+            reset_auth_ctx(reset)
+
+    assert in_transaction_at_load == [False]
+
+
+@pytest.mark.usefixtures("every_slot_taken")
+def test_an_operation_that_reads_a_transfer_gets_429_when_no_slot_is_free(
+    world: TransferWorld, recording_files: _RecordingFiles
+) -> None:
+    doc = world.service.prepare("anyone", folder=False).transfer.id
+
+    response = _uploaded_with_json(world, {"file": doc})
+
+    assert (response.status_code, response.get_json()["code"]) == (429, OpenApiErrorCode.TRANSFERS_BUSY)
+    assert recording_files.received == []
+
+
+# Review focus: what a folder's zip can hold reaches the operation's own rules.
+
+
+def _imported_paths(
+    world: TransferWorld, openapi_app: Flask, members: dict[str, bytes], monkeypatch: pytest.MonkeyPatch
+) -> list[str]:
+    """Postcondition: the paths in the archive ``import.skill`` hands its service for a folder transfer."""
+    world.install(_ZIP_LIMITS)
+    folder = _received(world, zip_bytes(members), "up.zip", folder=True)
+    archives: list[bytes] = []
+
+    def import_skill(_service: SkillManagementService, **kwargs: object) -> dict[str, object]:
+        payload = kwargs["payload"]
+        assert isinstance(payload, ServiceSkillImportPayload)
+        archives.append(payload.content)
+        return {"id": "s", "name": "n", "updated_at": 1, "files": []}
+
+    monkeypatch.setattr(SkillManagementService, "import_skill", import_skill)
+    body = _parsed(openapi_app, {"files": folder}, SkillImportPayload)
+    context = RequestContext(request_id="r", trace_id=None, account_id=str(_OWNER), active_workspace_id="ws")
+    with openapi_app.test_request_context():
+        unwrap(SkillImportApi.post)(SkillImportApi(), context, "ws", body=body)
+    with zipfile.ZipFile(io.BytesIO(archives[0])) as archive:
+        return archive.namelist()
+
+
+def test_junk_in_the_zip_is_dropped_by_the_existing_folder_code(
+    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    members = {"SKILL.md": b"a", ".DS_Store": b"j", "__MACOSX/._SKILL.md": b"j", "s/Thumbs.db": b"j"}
+
+    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["SKILL.md"]
+
+
+@pytest.mark.parametrize("path", ["../x.md", "/abs.md", "a\\b.md"])
+def test_a_hostile_path_in_the_zip_gets_the_operations_own_path_error(
+    path: str, world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with pytest.raises(SkillPackageInvalid) as error:
+        _imported_paths(world, openapi_app, {"SKILL.md": b"a", path: b"x"}, monkeypatch)
+
+    assert error.value.details is not None
+    assert [detail.loc for detail in error.value.details] == [[path]]
+
+
+def test_a_zip_of_the_folder_itself_keeps_its_extra_first_segment(
+    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The paths reach the operation as stored; the skill service then decides what a nested root means."""
+    members = {"skill/SKILL.md": b"a", "skill/run.py": b"b"}
+
+    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["skill/SKILL.md", "skill/run.py"]

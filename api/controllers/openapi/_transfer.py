@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from functools import singledispatch
 from http import HTTPStatus
+from io import BytesIO
 from typing import Final
 
 from flask import Response, after_this_request, g, url_for
+from werkzeug.datastructures import FileStorage
 
 from constants import BYTES_PER_MIB
 from controllers.openapi._errors import (
@@ -32,6 +34,7 @@ from services.file_transfer import (
     TransferAlreadyReceivedError,
     TransferArchiveError,
     TransferDirection,
+    TransferFile,
     TransferLinkExpiredError,
     TransferNotAZipError,
     TransferNotFoundError,
@@ -75,6 +78,27 @@ def hold_slot() -> None:
     def free_on_close(response: Response) -> Response:
         response.call_on_close(transfers.free_slot)
         return response
+
+
+def parts_of(transfer_id: str, *, field: str) -> FileStorage | dict[str, FileStorage]:
+    """Precondition: inside an admitted request; ``transfer_id`` sat in body field ``field``.
+
+    Postcondition: the same file parts a multipart request gives: one part for a file, a path-to-part mapping
+    in the zip's order for a folder. Holds this request's slot before anything is loaded. A refusal names
+    ``field`` and the next step.
+    """
+    hold_slot()
+    try:
+        loaded = application_services().file_transfers.load(transfer_owner_id(), transfer_id)
+    except FileTransferError as error:
+        raise refusal_of(error, field=field) from None
+    if loaded.transfer.folder:
+        return {file.path: _part(file) for file in loaded.files}
+    return _part(loaded.files[0])
+
+
+def _part(file: TransferFile) -> FileStorage:
+    return FileStorage(stream=BytesIO(file.content), filename=file.name, content_type=file.mime_type)
 
 
 def refusal_of(error: FileTransferError, *, field: str | None = None) -> OpenApiError:
