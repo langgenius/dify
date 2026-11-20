@@ -8,8 +8,9 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, hold, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { basePath } from '@/utils/var'
 import CreateAppModal from '../index'
 
 const emojiData = [
@@ -46,7 +47,13 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/base/amplitude/init', () => ({
   getAmplitudeClient: () => ({ track: mocks.track, flush: mocks.flush }),
 }))
+// The emoji picker loads static emojibase data from the app origin, outside the API.
+const emojiCatalog = `${basePath}/emoji/emojibase-17.0.0/en`
 const fake = setupFakeApi(() => ({
+  routes: [
+    route('GET', 'origin', `${emojiCatalog}/data.json`, () => emojiData),
+    route('GET', 'origin', `${emojiCatalog}/messages.json`, () => emojiMessages),
+  ],
   console: {
     features: { get: () => zGetFeaturesResponse.parse({}) },
     apps: {
@@ -111,14 +118,6 @@ beforeEach(async () => {
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
   sessionStorage.clear()
-  // boundary: the emoji picker loads static emojibase data from the app origin, outside the API.
-  const apiFetch = globalThis.fetch
-  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = input instanceof Request ? input.url : String(input)
-    if (/^\/.*emoji\/emojibase-17\.0\.0\/en\/(?:data|messages)\.json$/.test(url))
-      return Response.json(url.endsWith('/messages.json') ? emojiMessages : emojiData)
-    return apiFetch(input, init)
-  })
 })
 afterEach(() => {
   toast.dismiss()

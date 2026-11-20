@@ -6,6 +6,7 @@ import {
   analyzeBrowserSpec,
   checkBrowserSpecPolicy,
   isOwnedMockSpecifier,
+  isServiceMockSpecifier,
   MAX_BROWSER_SPEC_LINES,
   reportPolicyResult,
   runBrowserSpecPolicy,
@@ -79,6 +80,45 @@ describe('Browser spec policy', () => {
     )
 
     expect(result.violations).toEqual([])
+  })
+
+  it.each(['@/service/console', '@/service/base', '@/service/use-common'])(
+    'treats %s as a service mock',
+    (specifier) => {
+      expect(isServiceMockSpecifier(specifier)).toBe(true)
+    },
+  )
+
+  it('rejects service mocks even with a boundary reason', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      ['// boundary: control the API', "vi.mock('@/service/console', () => ({}))"].join('\n'),
+    )
+
+    expect(result.violations).toEqual([
+      expect.objectContaining({ kind: 'service-mock', line: 2, specifier: '@/service/console' }),
+    ])
+  })
+
+  it('rejects raw fetch and XMLHttpRequest stubs, but not other globals', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "vi.stubGlobal('fetch', vi.fn())",
+        "vi.stubGlobal('XMLHttpRequest', FakeXhr)",
+        "vi.spyOn(globalThis, 'fetch')",
+        'window.fetch = vi.fn()',
+        "vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)",
+        "vi.spyOn(window, 'open')",
+      ].join('\n'),
+    )
+
+    expect(result.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['raw-network-stub', 1],
+      ['raw-network-stub', 2],
+      ['raw-network-stub', 3],
+      ['raw-network-stub', 4],
+    ])
   })
 
   it('allows only the exact occurrence recorded as existing debt', () => {

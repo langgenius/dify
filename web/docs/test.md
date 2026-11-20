@@ -111,6 +111,18 @@ Put `// boundary: <reason>` immediately above each retained owned-path or otherw
 - Prefer typed builders with valid defaults for complex data. Add overrides only for fields relevant to the scenario.
 - Keep local mocks local. Move a mock helper to `web/__mocks__/` only when multiple suites genuinely share it.
 
+### API Data in Browser Specs
+
+Browser specs serve API data from the fake API in `web/test/fake-api.ts`, never by mocking `@/service/*` modules or stubbing `fetch`/`XMLHttpRequest` directly; `web/scripts/check-browser-spec-policy.ts` rejects both. Requests then run through the real clients, transports, error handling, and TanStack Query, and the fake validates every request and response against the generated oRPC contract, so a fixture that drifts from the API fails the test.
+
+- Call `setupFakeApi({ console: { … } })` once at module level. It installs a fresh fake before each test, tears it down afterwards, and fails the test on contract violations, requests no handler answers, and requests outside the known API prefixes. Use `installFakeApi` with `onTestFinished` only when the handlers depend on per-test arguments.
+- Handlers mirror the contract tree used by `consoleClient` (for example `workspaces.current.members.get`) and receive the validated input. Keep mutable server state in the handlers' closure or module variables reset in `beforeEach`; do not read it back from the query cache, which the app may reset.
+- Each handler is a `vi.fn` spy at `fake.console.<path>` that records the request parts the client sent, such as `{ body }` or `{ params }`. Assert them exactly; reach for `expect.objectContaining` only when the input carries defaulted query fields or declared headers that the test does not care about.
+- Answer errors with `throw apiError({ status, message })`, and offline failures with `networkError()`.
+- Use `hold(spy)` to keep the next request pending: await `arrived` to know it was sent, then `resolve(value)`, `reject(error)`, or `release()` to answer with the handler's regular implementation. Settling before the request arrives is safe. Use `wrap(spy, (current) => next)` to build an override on a stateful handler, and `fake.use({ … })` to replace or add handlers mid-test.
+- Endpoints without a contract, such as static files on the page origin, use `routes: [route(method, base, path, handler)]`. For specs that must not reach the network at all, register `onTestFinished(guardUnexpectedFetch())` from `web/test/unexpected-fetch.ts`.
+- Shared fixtures use UUIDs for IDs that appear in request paths (`web/test/console/ids.ts`), because the contract validates them.
+
 ## Async, Time, and Isolation
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.

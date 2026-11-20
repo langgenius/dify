@@ -89,7 +89,7 @@ export type FakeApiHandle<T extends FakeApi> = (() => void) & {
 }
 
 /** The spies and controls of a fake API handle, without its teardown. */
-export type FakeApiSpies<T extends FakeApi> = Pick<
+type FakeApiSpies<T extends FakeApi> = Pick<
   FakeApiHandle<T>,
   'console' | 'marketplace' | 'route' | 'use'
 >

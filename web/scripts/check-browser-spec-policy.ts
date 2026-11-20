@@ -26,7 +26,7 @@ const MOCK_ALLOWLIST: MockAllowance[] = []
 const LINE_ALLOWLIST: LineAllowance[] = []
 
 export type PolicyViolation = {
-  kind: 'missing-boundary-comment' | 'oversized-spec'
+  kind: 'missing-boundary-comment' | 'oversized-spec' | 'service-mock' | 'raw-network-stub'
   path: string
   line?: number
   specifier?: string
@@ -56,6 +56,50 @@ export function isOwnedMockSpecifier(specifier: string) {
     specifier === '#i18n' ||
     specifier.startsWith('#i18n/')
   )
+}
+
+// API data must come from the contract-validated fake API (`@/test/fake-api`), not mocked clients.
+export function isServiceMockSpecifier(specifier: string) {
+  return /^@\/service(?:\/|$)/.test(specifier)
+}
+
+const networkGlobals = new Set(['fetch', 'XMLHttpRequest'])
+
+function isGlobalObject(node: ts.Expression) {
+  return ts.isIdentifier(node) && (node.text === 'globalThis' || node.text === 'window')
+}
+
+// `vi.stubGlobal('fetch', …)`, `vi.spyOn(globalThis, 'fetch')` or `globalThis.fetch = …`.
+function rawNetworkStub(node: ts.Node) {
+  if (ts.isCallExpression(node)) {
+    const callee = node.expression
+    if (
+      !ts.isPropertyAccessExpression(callee) ||
+      !ts.isIdentifier(callee.expression) ||
+      callee.expression.text !== 'vi'
+    )
+      return
+    const [first, second] = node.arguments
+    if (callee.name.text === 'stubGlobal' && first && ts.isStringLiteralLike(first))
+      return networkGlobals.has(first.text) ? first.text : undefined
+    if (
+      callee.name.text === 'spyOn' &&
+      first &&
+      isGlobalObject(first) &&
+      second &&
+      ts.isStringLiteralLike(second)
+    )
+      return networkGlobals.has(second.text) ? second.text : undefined
+    return
+  }
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    ts.isPropertyAccessExpression(node.left) &&
+    isGlobalObject(node.left.expression) &&
+    networkGlobals.has(node.left.name.text)
+  )
+    return node.left.name.text
 }
 
 function countLines(source: string) {
@@ -114,8 +158,26 @@ export function analyzeBrowserSpec(
   const occurrences = new Map<string, number>()
 
   function visit(node: ts.Node) {
+    const stubbed = rawNetworkStub(node)
+    if (stubbed) {
+      violations.push({
+        kind: 'raw-network-stub',
+        path,
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+        message: `stubs ${stubbed} directly; serve requests with installFakeApi/setupFakeApi from @/test/fake-api, or guardUnexpectedFetch when none are expected`,
+      })
+    }
     if (ts.isCallExpression(node)) {
       const specifier = mockSpecifier(node)
+      if (specifier && isServiceMockSpecifier(specifier)) {
+        violations.push({
+          kind: 'service-mock',
+          path,
+          line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+          specifier,
+          message: `mocks ${specifier}; serve API data with installFakeApi/setupFakeApi from @/test/fake-api instead`,
+        })
+      }
       if (specifier && isOwnedMockSpecifier(specifier)) {
         const occurrence = (occurrences.get(specifier) ?? 0) + 1
         occurrences.set(specifier, occurrence)
