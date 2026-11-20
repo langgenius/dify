@@ -625,6 +625,7 @@ export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
   file_upload?: AgentFileUploadFeatureConfig
+  generative_ui?: AgentFeatureToggleConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null

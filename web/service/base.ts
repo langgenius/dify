@@ -1,6 +1,7 @@
 import type { FetchOptionType } from './fetch'
 import type { RequestGuard } from './request-guard'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { MessageContentEvent } from '@/features/generative-ui/protocol/types'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -124,6 +125,7 @@ export type IOnDataMoreInfo = {
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
 type IOnThought = (though: ThoughtItem) => void
 type IOnFile = (file: VisionFile) => void
+type IOnMessageContent = (messageContent: MessageContentEvent) => void
 type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
@@ -271,6 +273,8 @@ export type IOtherOptions = {
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
+  /** Enables ordered UI events and keeps answer text aligned with their offsets. */
+  onMessageContent?: IOnMessageContent
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
   /** Replaces the default global error notification for this request. */
@@ -441,6 +445,7 @@ export const handleStream = (
   onDataSourceNodeError?: IOnDataSourceNodeError,
   onReasoning?: IOnReasoning,
   onUnhandledEvent?: IOnUnhandledEvent,
+  onMessageContent?: IOnMessageContent,
 ) => {
   if (!response.ok) throw new Error('Network response was not ok')
 
@@ -510,7 +515,8 @@ export const handleStream = (
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
                 // can not use format here. Because message is splitted.
-                onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
+                const answer = onMessageContent ? bufferObj.answer : unicodeToChar(bufferObj.answer)
+                onData(answer, isFirstMessage, {
                   event: bufferObj.event,
                   conversationId: bufferObj.conversation_id,
                   taskId: bufferObj.task_id,
@@ -521,6 +527,8 @@ export const handleStream = (
                 onThought?.(bufferObj as ThoughtItem)
               } else if (bufferObj.event === 'message_file') {
                 onFile?.(bufferObj as VisionFile)
+              } else if (bufferObj.event === 'message_content') {
+                onMessageContent?.(bufferObj as MessageContentEvent)
               } else if (bufferObj.event === 'message_end') {
                 onMessageEnd?.(bufferObj as MessageEnd)
               } else if (bufferObj.event === 'message_replace') {
@@ -719,6 +727,7 @@ export const ssePost = async (
     onThought,
     onFile,
     onMessageEnd,
+    onMessageContent,
     onMessageReplace,
     onWorkflowStarted,
     onWorkflowFinished,
@@ -868,6 +877,7 @@ export const ssePost = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        onMessageContent,
       )
     })
     .catch((e) => {
@@ -894,6 +904,7 @@ export const sseGet = async (
     onThought,
     onFile,
     onMessageEnd,
+    onMessageContent,
     onMessageReplace,
     onWorkflowStarted,
     onWorkflowFinished,
@@ -1037,6 +1048,7 @@ export const sseGet = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        onMessageContent,
       )
     })
     .catch((e) => {

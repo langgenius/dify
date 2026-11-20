@@ -19,6 +19,7 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
+import { OrderedResponseContent } from './ordered-response-content'
 import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
@@ -78,6 +79,7 @@ const Answer: FC<AnswerProps> = ({
     humanInputFormDataList,
     humanInputFilledFormDataList,
   } = item
+  const hasGenerativeUI = !!item.content_blocks?.length
   const hasAgentThoughts = !!agent_thoughts?.length
   const hasAgentResponseParts = !!item.agent_response_parts?.length
   const hasAgentContent = hasAgentThoughts || hasAgentResponseParts
@@ -155,6 +157,20 @@ const Answer: FC<AnswerProps> = ({
   ) : (
     <AgentContent item={item} responding={responding} content={content} />
   )
+  const responseContent = hasAgentContent ? (
+    agentContentNode
+  ) : hasGenerativeUI ? (
+    <>
+      {annotation?.logAnnotation && <BasicContent item={item} />}
+      <OrderedResponseContent
+        item={item}
+        content={annotation?.logAnnotation ? '' : content}
+        renderText={(text) => <BasicContent item={{ ...item, content: text }} />}
+      />
+    </>
+  ) : !contentIsEmpty ? (
+    <BasicContent item={item} />
+  ) : null
   // Reasoning is "done" — freeze the elapsed timer and collapse the panel — as soon as ANY of:
   //  ① the answer has begun streaming (first text delta): the only signal that fires
   //     mid-node, so it drives the normal think→answer handoff;
@@ -163,7 +179,8 @@ const Answer: FC<AnswerProps> = ({
   //  ③ the response is no longer active — explicitly false, not merely absent (history / abnormal end).
   // graphon's is_final (on BOTH the text and reasoning channels) is a node-terminal marker
   // that trails the whole answer, so it can't drive ①; the answer-started signal must.
-  const reasoningDone = !contentIsEmpty || !!item.reasoningFinished || responding === false
+  const reasoningDone =
+    !contentIsEmpty || hasGenerativeUI || !!item.reasoningFinished || responding === false
 
   return (
     <div className="mb-2 flex last:mb-0">
@@ -194,7 +211,7 @@ const Answer: FC<AnswerProps> = ({
                 'relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary',
               )}
             >
-              {!responding && contentIsEmpty && !hasAgentContent && (
+              {!responding && contentIsEmpty && !hasAgentContent && !hasGenerativeUI && (
                 <Operation
                   answerActionPosition={answerActionPosition}
                   hasWorkflowProcess={!!workflowProcess}
@@ -233,7 +250,8 @@ const Answer: FC<AnswerProps> = ({
                 item.siblingCount > 1 &&
                 !responding &&
                 contentIsEmpty &&
-                !hasAgentContent && (
+                !hasAgentContent &&
+                !hasGenerativeUI && (
                   <ContentSwitch
                     count={item.siblingCount}
                     currentIndex={item.siblingIndex}
@@ -252,6 +270,7 @@ const Answer: FC<AnswerProps> = ({
             !contentIsEmpty ||
             hasAgentContent ||
             hasReasoning ||
+            hasGenerativeUI ||
             hasWorkflowActivities) && (
             <div className={cn('group relative mt-2 pe-10', chatAnswerContainerInner)}>
               <div className="absolute inset-s-6 -top-2 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
@@ -278,6 +297,7 @@ const Answer: FC<AnswerProps> = ({
                   contentIsEmpty &&
                   !hasAgentContent &&
                   !hasReasoning &&
+                  !hasGenerativeUI &&
                   !hasWorkflowActivities && (
                     <div className="flex h-5 w-6 items-center justify-center">
                       <LoadingAnim type="text" />
@@ -286,8 +306,7 @@ const Answer: FC<AnswerProps> = ({
                 {hasWorkflowActivities && (
                   <WorkflowToolActivity item={item} responding={responding} />
                 )}
-                {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
-                {hasAgentContent && agentContentNode}
+                {responseContent}
                 {!!allFiles?.length && (
                   <FileList
                     className="my-1"
@@ -342,7 +361,7 @@ const Answer: FC<AnswerProps> = ({
               ref={contentRef}
               className={cn(
                 'relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary',
-                workflowProcess && 'w-full',
+                (workflowProcess || hasGenerativeUI) && 'w-full',
               )}
             >
               {!responding && (
@@ -375,6 +394,7 @@ const Answer: FC<AnswerProps> = ({
                 contentIsEmpty &&
                 !hasAgentContent &&
                 !hasReasoning &&
+                !hasGenerativeUI &&
                 !hasWorkflowActivities && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
@@ -383,8 +403,7 @@ const Answer: FC<AnswerProps> = ({
               {hasWorkflowActivities && (
                 <WorkflowToolActivity item={item} responding={responding} />
               )}
-              {!contentIsEmpty && !hasAgentContent && <BasicContent item={item} />}
-              {hasAgentContent && agentContentNode}
+              {responseContent}
               {!!allFiles?.length && (
                 <FileList
                   className="my-1"

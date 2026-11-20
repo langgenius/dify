@@ -194,6 +194,7 @@ export function AgentPreviewChatSession({
           config={config}
           conversationId={conversationId}
           currentModel={currentModel}
+          disabled={disabled}
           draftType={draftType}
           initialChatTree={initialChatTree}
           inputs={inputs}

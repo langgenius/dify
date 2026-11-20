@@ -120,6 +120,12 @@ export function getFormattedAgentDebugChatTree(
     chatList.push({
       id: item.id,
       content: answer,
+      content_blocks: item.content_blocks,
+      agent_response_is_partial:
+        typeof item.metadata === 'object' &&
+        item.metadata !== null &&
+        'agent_response_is_partial' in item.metadata &&
+        item.metadata.agent_response_is_partial === true,
       citation: item.retriever_resources?.map((source) => ({
         knowledge_fs_citation: source.knowledge_fs_citation,
         content: source.content ?? '',

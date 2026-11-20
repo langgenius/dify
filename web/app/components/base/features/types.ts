@@ -88,6 +88,7 @@ export const FeatureEnum = {
   moderation: 'moderation',
   file: 'file',
   annotationReply: 'annotationReply',
+  generativeUI: 'generativeUI',
 } as const
 
 export type FeatureEnum = (typeof FeatureEnum)[keyof typeof FeatureEnum]
@@ -103,6 +104,7 @@ export type Features = {
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig
+  [FeatureEnum.generativeUI]?: EnabledOrDisabled
 }
 
 export type OnFeaturesChange = (features?: Features) => void

@@ -106,6 +106,8 @@ function getFormattedChatList(messages: any[]) {
     newChatList.push({
       id: item.id,
       content: item.answer,
+      content_blocks: item.content_blocks,
+      agent_response_is_partial: item.metadata?.agent_response_is_partial === true,
       agent_thoughts: addFileInfos(
         item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
         item.message_files,

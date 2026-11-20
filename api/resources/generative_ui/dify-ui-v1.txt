@@ -1,0 +1,78 @@
+The Dify component library is available for optional UI blocks. The syntax, examples, and verification rules below apply only inside an OpenUI block. A plain-text-only answer requires no OpenUI program.
+
+## Syntax Rules
+
+1. Each statement is on its own line: `identifier = Expression`
+2. `root` is the entry point — every program must define `root = Stack(...)`
+3. Expressions are: strings ("..."), numbers, booleans (true/false), null, arrays ([...]), objects ({...}), or component calls TypeName(arg1, arg2, ...)
+4. Use references for readability: define `name = ...` on one line, then use `name` later
+5. EVERY variable (except root) MUST be referenced by at least one other variable. Unreferenced variables are silently dropped and will NOT render. Always include defined variables in their parent's children/items array.
+6. Arguments are POSITIONAL (order matters, not names). Write `SomeComp([children], "row", "l")` NOT `SomeComp([children], direction: "row", gap: "l")` — colon syntax is NOT supported and silently breaks
+7. Optional arguments can be omitted from the end
+- Strings use double quotes with backslash escaping
+
+## Component Signatures
+
+Arguments marked with ? are optional. Sub-components can be inline or referenced; prefer references for better streaming.
+
+Text(content: string) — Supporting text within a useful UI. Do not repeat the prose answer. Use the language of the user.
+Heading(text: string, level?: "section" | "subsection") — A heading within this response.
+Status(label: string, tone: "success" | "warning" | "error" | "normal" | "disabled") — A short status label with a decorative status indicator.
+Table(caption: string, columns: string[], rows: string[][]) — Owns exact values and row-by-row comparisons. Use prose for the conclusion, not a second listing of every cell. Has a visible caption and column names. Every row matches the columns.
+LineChart(title: string, points: {label: string, value: number}[], unit?: string) — Owns one numeric series over time. Keep points chronological. Prose explains the important change rather than listing every point. Values are numbers; put the shared unit in unit.
+BarChart(title: string, points: {label: string, value: number}[], unit?: string) — Owns numeric category comparisons on a shared zero baseline. Prose interprets the comparison rather than listing every bar. Values are numbers; put the shared unit in unit.
+MetricCard(title: string, value: number, previousValue: number, unit?: string, comparisonLabel?: string, higherIsBetter?: boolean) — A metric with its previous-period value and calculated percentage change: (value - previousValue) / abs(previousValue) * 100. A zero previous value with a nonzero current value has no percentage comparison. Both values use the same unit. comparisonLabel names the period comparison in the user language. higherIsBetter defaults to true; set false for costs, latency, or error rates.
+ActionButton(label: string, message: string) — A button that sends its message as the next user turn. It cannot call tools or navigate.
+TextField(name: string, label: string, initialValue: string, required?: boolean) — A labeled text input inside a Form. Its name must be unique within that form.
+SelectField(name: string, label: string, options: string[], initialValue: string, required?: boolean) — A labeled single-choice field inside a Form. initialValue is an option, or an empty string.
+Form(name: string, title: string, submitLabel: string, message: string, fields: (TextField | SelectField)[]) — A standalone form. Submitting sends the message and entered values as the next user turn.
+Card(title: string, children: (Text | Heading | Table | LineChart | BarChart | MetricCard | Status | ActionButton | Form)[]) — A titled panel grouping related UI content, not a wrapper for a prose-only answer.
+Stack(children: (Card | Text | Heading | Table | LineChart | BarChart | MetricCard | Status | ActionButton | Form)[]) — The response root. Displays its children vertically in reading order.
+
+## Hoisting & Streaming (CRITICAL)
+
+openui-lang supports hoisting: a reference can be used BEFORE it is defined. The parser resolves all references after the full input is parsed.
+
+During streaming, the output is re-parsed on every chunk. Undefined references are temporarily unresolved and appear once their definitions stream in. This creates a progressive top-down reveal — structure first, then data fills in.
+
+**Recommended statement order for optimal streaming:**
+1. `root = Stack(...)` — UI shell appears immediately
+2. Component definitions — fill in as they stream
+3. Data values — leaf content last
+
+Always write the root = Stack(...) statement first so the UI shell appears immediately, even before child data has streamed in.
+
+## Examples
+
+root = Stack([overview, filter])
+overview = Card("Sales", [table])
+table = Table("Sales by region", ["Region", "Sales"], [["East", "80"], ["West", "40"]])
+filter = ActionButton("Show East", "Show sales for the East region")
+
+root = Stack([filters])
+filters = Form("filters", "Filter results", "Apply", "Apply these filters", [region, keyword])
+region = SelectField("region", "Region", ["East", "West"], "East", true)
+keyword = TextField("keyword", "Keyword", "", false)
+
+root = Stack([metric, trend, comparison])
+metric = MetricCard("Revenue", 144, 120, "USD", "vs. previous month", true)
+trend = LineChart("Monthly revenue", [{label: "May", value: 120}, {label: "June", value: 144}], "USD")
+comparison = BarChart("Revenue by region", [{label: "East", value: 80}, {label: "West", value: 64}], "USD")
+
+## Important Rules
+- Choose components that best represent the content (tables for comparisons, charts for trends, forms for input, etc.)
+
+## Final Verification
+Before finishing, walk your output and verify:
+1. root = Stack(...) is the FIRST line (for optimal streaming).
+2. Every referenced name is defined. Every defined name (other than root) is reachable from root.
+
+- Do not add a UI block merely to repeat the prose answer. Text and Card should support useful UI content, not duplicate a greeting, capability description, or simple explanation.
+- Use only the listed components. Write plain text in text properties, not HTML or Markdown.
+- Use a complete root = Stack(...) program. Define referenced children on separate lines.
+- Never nest forms. TextField and SelectField belong only inside Form.fields.
+- Form names are unique within a response. Field names are unique within their form.
+- Buttons and forms only send a new conversation turn; their message must describe the visible action.
+- Use only facts and data provided by the conversation or tools. Do not invent table values.
+- Use LineChart for time trends, BarChart for category comparisons, and MetricCard for period changes. Supply numeric values, never formatted strings or invented data. Use the same unit for every point and both metric values.
+- MetricCard calculates the change. Pass original current and previous values, not a percentage-point difference or a precomputed change. For percentages, pass values such as 1.5 for 1.5% and use "%" as the unit.

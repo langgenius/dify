@@ -1,0 +1,42 @@
+[
+  {
+    "id": "plain-text",
+    "prompt": "The following figures are simulated: sales of CNY 720,000 in East China, CNY 480,000 in South China, and CNY 240,000 in North China. Compare them in a single paragraph of plain text, without charts, cards, or other UI.",
+    "ui": "forbidden",
+    "rubric": ["Do not generate UI", "Match each sales figure to the correct region", "Do not infer investment, profit, or causes"]
+  },
+  {
+    "id": "empty-results",
+    "prompt": "The following query result is simulated: {\"period\":\"June\",\"sales\":[]}. No sales records were returned for this period. Analyze sales in June.",
+    "ui": "forbidden",
+    "rubric": ["Explain that there are no records to analyze", "Do not interpret an empty result as zero sales", "Do not generate empty charts or decorative cards"]
+  },
+  {
+    "id": "missing-baseline",
+    "prompt": "Simulated data: June sales were CNY 1,440,000, and May sales were not provided. Tell me whether sales improved month over month and by what percentage. Do not guess missing values.",
+    "ui": "forbidden",
+    "rubric": ["Explain that the missing baseline prevents calculating the month-over-month change", "Do not treat missing values as zero", "Do not generate a MetricCard with fabricated data"]
+  },
+  {
+    "id": "comparison",
+    "prompt": "The following figures are simulated: sales of CNY 720,000 in East China, CNY 480,000 in South China, and CNY 240,000 in North China. Start with a one-sentence conclusion, then show a bar chart comparing the regions, and finish by identifying the additional information needed before making resource allocation decisions. No cost, profit, or market size data is available.",
+    "ui": "required",
+    "rubric": ["Present the conclusion, bar chart, and recommendations in that order", "Use accurate values and units for all three regions", "Do not repeat the entire dataset item by item in the prose", "Do not infer operational efficiency from sales alone"]
+  },
+  {
+    "id": "trend",
+    "prompt": "The following monthly sales figures are simulated, in units of CNY 10,000: January 80, February 96, March 90, April 108, May 120, and June 144. I am reviewing sales for the first half of the year. Show the trend in a line chart, explain whether growth was steady, and identify what to investigate next. Do not invent business causes.",
+    "ui": "required",
+    "rubric": ["Keep the months and values accurate and in their original order", "Identify the March decline instead of claiming uninterrupted growth", "Do not repeat all six monthly figures in the prose", "Do not invent causes for the fluctuations"]
+  },
+  {
+    "id": "follow-up-ui-fact",
+    "history": [
+      {"role": "user", "content": "Show the simulated regional query results."},
+      {"role": "assistant", "content": "East China had the highest sales.\n\n```openui\nroot = Stack([regions])\nregions = BarChart(\"Regional sales\", [{label: \"East China\", value: 72}, {label: \"South China\", value: 48}, {label: \"North China\", value: 24}], \"CNY 10,000\")\n```\n"}
+    ],
+    "prompt": "What was the exact sales figure for South China just shown? Answer in a single sentence of plain text.",
+    "ui": "forbidden",
+    "rubric": ["Read South China's sales of CNY 480,000 from the previous UI", "Do not confuse this with East China's CNY 720,000 or North China's CNY 240,000", "Do not generate unnecessary UI"]
+  }
+]

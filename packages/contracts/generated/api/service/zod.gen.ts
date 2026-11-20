@@ -4313,6 +4313,25 @@ export const zNotWorkflowAppError = zErrorResponse.and(
 )
 
 /**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  text_offset: z.int().gte(0),
+  type: z.literal('openui'),
+})
+
+/**
  * ServiceApiUserPayload
  */
 export const zOptionalServiceApiUserPayload = z.object({
@@ -5621,6 +5640,7 @@ export const zMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -6151,6 +6171,7 @@ export const zMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
+  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),

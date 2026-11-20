@@ -1,5 +1,7 @@
 import logging
 import time
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,6 +27,12 @@ from models.enums import MessageStatus
 from models.model import Message
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OutputModerationResult:
+    answer: str
+    flagged: bool
 
 
 class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
@@ -152,18 +160,20 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             self.output_moderation_handler = None
         return replacement
 
-    def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
-        """
-        Handle output moderation when task finished.
-        :param completion: completion
-        :return:
-        """
-        # response moderation
-        if self.output_moderation_handler:
-            completion, flagged = self.output_moderation_handler.moderation_completion(completion=completion)
+    def handle_output_moderation_when_task_finished(
+        self, completion: str, *, extra_texts: Sequence[str] = ()
+    ) -> OutputModerationResult | None:
+        """Finish the active check and return a release or a flagged verdict for the caller to deliver.
 
-            self.output_moderation_handler = None
-            if flagged:
-                return completion
+        Check each independent source outside the prose buffer. A flagged source
+        requires dropping the blocks while retaining checked prose. On success
+        the handler is retired. None means the caller has nothing to deliver.
+        """
+        handler = self.output_moderation_handler
+        if handler is None:
+            return None
 
-        return None
+        answer, changed = handler.moderation_completion(completion=completion)
+        flagged = handler.flagged or any(handler.independent_output_is_flagged(text) for text in extra_texts)
+        self.output_moderation_handler = None
+        return OutputModerationResult(answer=answer, flagged=flagged) if changed or flagged else None
