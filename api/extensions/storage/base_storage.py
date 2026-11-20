@@ -11,8 +11,17 @@ class BaseStorage(ABC):
     def save(self, filename: str, data: bytes):
         raise NotImplementedError
 
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Atomically publish bytes only if absent; return False without changing existing material.
+
+        Implementations must use a storage-side precondition, never an exists/save
+        sequence. Unsupported backends fail closed; ordinary save is not a fallback.
+        """
+        raise NotImplementedError("This storage backend does not support atomic creation")
+
     @abstractmethod
     def load_once(self, filename: str) -> bytes:
+        """Read one object; FileNotFoundError means only that object is absent, not an access failure."""
         raise NotImplementedError
 
     @abstractmethod

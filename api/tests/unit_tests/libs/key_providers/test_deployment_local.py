@@ -1,5 +1,7 @@
 """Authenticated credential bytes and recoverable local deployment key lifecycle."""
 
+from typing import override
+
 import pytest
 
 from libs.credential_cipher import CredentialKeyUnavailableError, InvalidCredentialCiphertextError
@@ -15,9 +17,11 @@ class MemoryStorage:
             raise FileNotFoundError(filename)
         return self.files[filename]
 
-    def save(self, filename: str, data: bytes) -> None:
-        assert filename not in self.files, "Provisioning must never overwrite a deployment key"
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        if filename in self.files:
+            return False
         self.files[filename] = data
+        return True
 
 
 def test_provision_recovers_the_same_key_after_partial_success() -> None:
@@ -69,3 +73,23 @@ def test_corrupt_key_is_not_overwritten() -> None:
     with pytest.raises(CredentialKeyUnavailableError):
         LocalDeploymentKeyBackend(storage).provision("deployment-a", None)
     assert next(iter(storage.files.values())) == b"broken key"
+
+
+def test_atomic_creation_unavailable_never_falls_back_to_overwriting_save() -> None:
+    class UnsupportedStorage(MemoryStorage):
+        @override
+        def save_if_absent(self, filename: str, data: bytes) -> bool:
+            raise NotImplementedError("Atomic creation unavailable")
+
+    storage = UnsupportedStorage()
+    with pytest.raises(CredentialKeyUnavailableError):
+        LocalDeploymentKeyBackend(storage).provision("deployment-a", None)
+    assert not storage.files
+    existing = MemoryStorage()
+    reference = LocalDeploymentKeyBackend(existing).provision("deployment-a", None)
+    storage.files.update(existing.files)
+    backend = LocalDeploymentKeyBackend(storage)
+    assert backend.provision("deployment-a", None) == reference
+    assert backend.provision("deployment-a", reference) == reference
+    cipher = backend.bind("deployment-a", reference)
+    assert cipher.decrypt(cipher.encrypt("existing credential")) == "existing credential"

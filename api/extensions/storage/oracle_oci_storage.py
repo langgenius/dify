@@ -2,7 +2,7 @@ from collections.abc import Generator
 from typing import override
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -28,14 +28,28 @@ class OracleOCIStorage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Atomically create an object with the S3 conditional-write precondition."""
+        try:
+            self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data, IfNoneMatch="*")
+        except ClientError as error:
+            if error.response.get("Error", {}).get("Code") == "PreconditionFailed":
+                return False
+            raise OSError("S3 atomic creation failed") from None
+        except BotoCoreError:
+            raise OSError("S3 atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found") from ex
-            else:
-                raise
+            raise OSError("S3 read failed") from None
+        except BotoCoreError:
+            raise OSError("S3 read failed") from None
         return data
 
     @override
