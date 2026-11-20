@@ -23,7 +23,6 @@ Web owns application-specific requirements and consumes shared architecture guid
 - Follow the [Dify UI overlay contract] for primitive selection, portals, focus, and layering. Use `@langgenius/dify-ui/infotip` for an info glyph that opens explanatory content. Do not introduce a generic Web wrapper that recreates Dify UI overlay behavior.
 - For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
 - `docs/test.md` is the single source of truth for Web automated-test policy. Skills may route and execute that policy but must not redefine it.
-- Consume named feature policies or capability atoms instead of adding raw edition imports or decisions. Follow [Deployment edition policies] for frontend policy ownership and the System Features query contract.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -37,7 +36,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 [Accessible names and descriptions]: ../packages/dify-ui/docs/accessible-names-and-descriptions.md
 [Button contract]: ../packages/dify-ui/src/button/README.md
-[Deployment edition policies]: ../packages/tooling/README.md#deployment-edition-policies
 [Dify UI overlay contract]: ../packages/dify-ui/docs/overlays.md
 [Dify UI package index]: ../packages/dify-ui/README.md
 [IconButton contract]: ../packages/dify-ui/src/icon-button/README.md

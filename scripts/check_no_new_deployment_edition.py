@@ -1,9 +1,9 @@
 """Reject new deployment-edition dependencies and decisions outside feature policies.
 
-Scan API Python sources, including tests and stubs. Only the three explicit
+Scan API Python sources and stubs outside api/tests. Only the three explicit
 feature-policy modules below may add DeploymentEdition imports, qualified enum
-accesses, comparisons or match cases. Reading the edition for logging or
-serialization remains allowed.
+accesses, comparisons or match cases in production code. Reading the edition
+for logging or serialization remains allowed.
 
 Compare complete source versions, counting identical normalized occurrences
 per module. Existing code and Git-detected file renames retain their baseline;
@@ -41,11 +41,14 @@ _FEATURE_POLICY_MODULES = frozenset(
     }
 )
 _ENUM_MODULES = frozenset({"enums", "api.enums"})
-_GUIDE_REFERENCE = " Read docs/FEATURE_FLAGS.md#fixing-a-lint-error."
-_DEPENDENCY_MESSAGE = (
-    "no-new-deployment-edition: do not import DeploymentEdition outside feature policy modules." + _GUIDE_REFERENCE
+_FIX_GUIDANCE = (
+    " Reuse or add a named capability in FeatureService or SystemFeatureService."
+    " See docs/FEATURE_FLAGS.md#fixing-a-lint-error."
 )
-_DECISION_MESSAGE = "no-new-deployment-edition: do not branch directly on deployment edition." + _GUIDE_REFERENCE
+_DEPENDENCY_MESSAGE = (
+    "no-new-deployment-edition: do not import DeploymentEdition outside feature policy modules." + _FIX_GUIDANCE
+)
+_DECISION_MESSAGE = "no-new-deployment-edition: do not branch directly on deployment edition." + _FIX_GUIDANCE
 
 
 @dataclass(frozen=True)
@@ -177,8 +180,13 @@ def _occurrences(source: str, path: str) -> list[_Occurrence]:
     return occurrences
 
 
+def _is_guarded_source(path: str) -> bool:
+    """Precondition: path comes from Git's API path listing. Postcondition: identify guarded Python sources."""
+    return is_python_source_path(path) and not path.startswith("api/tests/") and path not in _FEATURE_POLICY_MODULES
+
+
 def _file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]]:
-    """Precondition: cwd is a Git checkout. Postcondition: read selected source versions, preserving rename origins."""
+    """Precondition: cwd is a Git checkout. Postcondition: read sources and baselines from guarded paths only."""
     local = not args.staged and not args.base_rev
     baseline = "HEAD" if args.staged else args.base_rev
     if local:
@@ -199,10 +207,10 @@ def _file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]]:
     for status in fields:
         old_path = next(fields)
         path = next(fields) if status.startswith("R") else old_path
-        if is_python_source_path(path) and path not in _FEATURE_POLICY_MODULES and status != "D":
+        if status != "D" and _is_guarded_source(path):
             old_source = (
                 ""
-                if status == "A" or old_path in _FEATURE_POLICY_MODULES
+                if status == "A" or not _is_guarded_source(old_path)
                 else git_output("show", f"{baseline}:{old_path}")
             )
             if local:
@@ -213,7 +221,7 @@ def _file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]]:
             versions[path] = (old_source, new_source)
     if local:
         for path in git_output("ls-files", "--others", "--exclude-standard", "-z", "api").rstrip("\0").split("\0"):
-            if is_python_source_path(path) and path not in _FEATURE_POLICY_MODULES:
+            if _is_guarded_source(path):
                 versions[path] = ("", Path(path).read_text(encoding="utf-8"))
     return versions
 

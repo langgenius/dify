@@ -254,7 +254,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -269,8 +268,6 @@ jobs:
             vite-task-static-v1-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Static check
-        env:
-          DIFY_EDITION_GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
         run: vp run -w check
 
       - name: Type check with tsrs

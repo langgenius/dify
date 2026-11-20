@@ -227,27 +227,6 @@ cannot detect replacing one old use with another at the same count. Do not treat
 passing lint as proof that all requests use generated contracts. This rule set
 does not enforce Query ownership.
 
-### Deployment Edition Policies
-
-Web code consumes named capability policies or derived atoms. Keep edition-dependent
-presentation decisions in the matching frontend policy owner. Follow the shared
-[feature flag guidelines] for capability design and API boundaries. Frontend bootstrap,
-cache ownership, and capability reads follow the [System Features frontend contract].
-
-`dify/no-new-deployment-edition` rejects new `DeploymentEdition` type imports,
-raw `deploymentEditionAtom` imports, and raw edition comparisons, membership calls,
-or `switch` cases. Only these frontend policy modules may add them:
-
-- `web/features/system-features/state.ts` for derived capability atoms.
-- `web/features/agent-v2/feature-flag.ts`
-- `web/features/agent-v2/agent-detail/configure/feature-flags.ts`
-- `web/features/contacts/management/feature-flag.ts`
-- `web/features/contacts/im-platform/feature-flag.ts`
-
-Reuse a policy or add a capability-specific one in the matching owner, then consume
-its result. Existing edition-dependent code does not permit new imports or decisions;
-do not add bulk suppressions for new uses. See [Fixing a lint error] for the shared guidance.
-
 ### Translation Function Types
 
 `dify/require-i18n-namespace` requires translation hook calls to use non-empty
@@ -274,7 +253,3 @@ the translation calls.
 ### Introducing New Plugins or Rules
 
 Prefer a native Oxlint rule. If none exists, verify that the rule works through an Oxlint JS plugin on representative files. Record unsupported code rules as migration gaps instead of adding them to ESLint; reserve the ESLint configuration for non-code languages that Oxlint cannot parse. Do not add the Antfu ESLint config as a dependency or enable rules already covered by Oxlint.
-
-[Fixing a lint error]: ../../docs/FEATURE_FLAGS.md#fixing-a-lint-error
-[System Features frontend contract]: ../../web/features/system-features/README.md
-[feature flag guidelines]: ../../docs/FEATURE_FLAGS.md

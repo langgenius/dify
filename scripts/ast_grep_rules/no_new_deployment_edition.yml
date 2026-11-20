@@ -1,7 +1,9 @@
 id: no-new-deployment-edition
 language: python
 severity: error
-message: Read docs/FEATURE_FLAGS.md#fixing-a-lint-error before adding deployment-edition dependencies or decisions.
+message: >-
+  Reuse or add a named capability in FeatureService or SystemFeatureService.
+  See docs/FEATURE_FLAGS.md#fixing-a-lint-error.
 # The guard resolves candidate names and compares complete Git source versions.
 # Keep comparisons broad so existing import aliases and raw-string checks are included.
 rule:

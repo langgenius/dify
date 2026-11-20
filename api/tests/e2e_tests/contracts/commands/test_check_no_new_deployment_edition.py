@@ -83,7 +83,8 @@ def test_rejects_new_dependencies_and_decisions(repo: Path, source: str) -> None
     assert result.returncode == 1, result.stderr
     assert f"{SOURCE_PATH}:" in result.stderr
     assert "no-new-deployment-edition" in result.stderr
-    assert "Read docs/FEATURE_FLAGS.md#fixing-a-lint-error" in result.stderr
+    assert "Reuse or add a named capability in FeatureService or SystemFeatureService." in result.stderr
+    assert "docs/FEATURE_FLAGS.md#fixing-a-lint-error" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -137,21 +138,20 @@ def test_preserves_only_existing_occurrences(repo: Path, source: str, mode: str,
         "api/services/feature_service.py",
         "api/services/system_feature_service.py",
         "api/services/knowledge_fs/feature_service.py",
+        "api/tests/unit_tests/test_example.py",
         "web/example.py",
     ],
 )
 def test_allows_only_explicit_feature_policy_modules_and_out_of_scope_files(repo: Path, path: str) -> None:
-    """Precondition: the source is exempt or outside api. Postcondition: its new dependencies and decisions pass."""
+    """Precondition: the source is exempt or outside API production code. Postcondition: its additions pass."""
     write_source(repo, IMPORT + CHECK, path)
     git(repo, "add", ".")
     result = run_guard(repo, "--staged")
     assert result.returncode == 0, result.stderr
 
 
-@pytest.mark.parametrize(
-    "path", ["api/services/other_feature_service.py", "api/tests/unit_tests/test_example.py", "api/example.pyi"]
-)
-def test_does_not_exempt_tests_stubs_or_similarly_named_modules(repo: Path, path: str) -> None:
+@pytest.mark.parametrize("path", ["api/services/other_feature_service.py", "api/example.pyi"])
+def test_does_not_exempt_stubs_or_similarly_named_modules(repo: Path, path: str) -> None:
     """Precondition: a non-exempt Python source adds a dependency. Postcondition: the guard rejects it."""
     write_source(repo, IMPORT, path)
     git(repo, "add", ".")
@@ -221,15 +221,17 @@ def test_editing_a_legacy_match_body_preserves_the_baseline(repo: Path) -> None:
     assert result.returncode == 1, result.stderr
 
 
-@pytest.mark.parametrize("exempt_origin", [False, True])
-def test_renames_preserve_only_non_exempt_baselines(repo: Path, exempt_origin: bool) -> None:
-    """Precondition: a file moves outside the allowlist. Postcondition: exempt code receives no legacy allowance."""
-    origin = "api/services/feature_service.py" if exempt_origin else SOURCE_PATH
+@pytest.mark.parametrize(
+    ("origin", "expected"),
+    [(SOURCE_PATH, 0), ("api/services/feature_service.py", 1), ("api/tests/unit_tests/test_example.py", 1)],
+)
+def test_renames_preserve_only_non_exempt_baselines(repo: Path, origin: str, expected: int) -> None:
+    """Precondition: a source moves into guarded code. Postcondition: only guarded origins retain their baseline."""
     write_source(repo, IMPORT + CHECK, origin)
     commit(repo)
     git(repo, "mv", origin, "api/services/renamed file.py")
     result = run_guard(repo, "--staged")
-    assert result.returncode == int(exempt_origin), result.stderr
+    assert result.returncode == expected, result.stderr
 
 
 def test_staged_mode_uses_index_contents(repo: Path) -> None:
@@ -242,13 +244,15 @@ def test_staged_mode_uses_index_contents(repo: Path) -> None:
 
 
 def test_local_mode_checks_unstaged_and_untracked_sources(repo: Path) -> None:
-    """Precondition: local sources add violations. Postcondition: local inspection reports tracked and new files."""
+    """Precondition: local sources add violations. Postcondition: inspection reports only guarded files."""
     write_source(repo, CHECK)
     write_source(repo, IMPORT, "api/services/untracked.py")
+    write_source(repo, IMPORT + CHECK, "api/tests/test_untracked.py")
     result = run_guard(repo)
     assert result.returncode == 1, result.stderr
     assert SOURCE_PATH in result.stderr
     assert "api/services/untracked.py" in result.stderr
+    assert "api/tests/test_untracked.py" not in result.stderr
 
 
 def test_invalid_baseline_fails(repo: Path) -> None:
