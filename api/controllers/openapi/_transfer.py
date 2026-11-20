@@ -32,6 +32,7 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi._models import FileResultResponse, TransferredFile
 from extensions.ext_application_services import application_services
+from libs.datetime_utils import to_utc_iso
 from libs.oauth_bearer import get_auth_ctx
 from services.file_transfer import (
     FileTransferError,
@@ -197,7 +198,7 @@ def _(error: TransferNotFoundError, field: str | None) -> OpenApiError:
 def _(error: TransferNotReceivedError, field: str | None) -> OpenApiError:
     return UploadNotReceived(
         f"Upload {error.transfer_id} was prepared but no file reached this server. The shell may be sandboxed "
-        f"or blocked from this host. Send it again before {error.upload_before.isoformat()}, or prepare again."
+        f"or blocked from this host. Send it again before {to_utc_iso(error.upload_before)}, or prepare again."
     )
 
 

@@ -36,6 +36,7 @@ from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.skills import SkillImportApi
 from controllers.openapi.transfers import DOWNLOAD_EVENT, NEXT_STEP, UPLOAD_EVENT
 from extensions.ext_application_services import ApplicationServices
+from libs.datetime_utils import to_utc_iso
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from machinery.context import RequestContext
 from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
@@ -153,8 +154,9 @@ def test_prepare_returns_an_id_a_url_on_the_callers_host_and_both_commands(world
         "powershell": f'curl.exe -fsS -F "file=@<path to the file>" "{body["upload_url"]}"',
     }
     assert body["max_bytes"] == _LIMITS.max_bytes
-    assert datetime.fromisoformat(body["upload_before"]) == world.clock.current + _LIMITS.upload_link_life
-    assert datetime.fromisoformat(body["expires_at"]) == world.clock.current + _LIMITS.ttl
+    assert body["upload_before"] == to_utc_iso(world.clock.current + _LIMITS.upload_link_life)
+    assert body["expires_at"] == to_utc_iso(world.clock.current + _LIMITS.ttl)
+    assert body["upload_before"].endswith("Z")
 
 
 def test_prepare_for_a_folder_returns_the_zip_then_send_commands(world: TransferWorld) -> None:
@@ -181,6 +183,7 @@ def test_an_upload_is_stored_and_answers_the_next_step_without_a_login(world: Tr
     body = response.get_json()
 
     assert response.status_code == 200
+    assert body["expires_at"] == to_utc_iso(world.clock.current + _LIMITS.ttl)
     assert {key: body[key] for key in ("id", "name", "size", "sha256", "next")} == {
         "id": prepared["id"],
         "name": "a b.txt",
@@ -534,7 +537,8 @@ def test_each_refusal_names_the_field_and_the_next_step(world: TransferWorld, op
     assert unknown.get_json()["message"].endswith("Prepare and send again.")
     assert (not_received.status_code, not_received.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_RECEIVED)
     assert "no file reached this server" in not_received.get_json()["message"]
-    assert pending["upload_before"] in not_received.get_json()["message"]
+    assert pending["upload_before"].endswith("Z")
+    assert f"before {pending['upload_before']}," in not_received.get_json()["message"]
     assert archive.value.description == (
         f"files: The folder's zip cannot be unpacked: archive is over the limit of {_LIMITS.max_unpacked_files} "
         "entries."
