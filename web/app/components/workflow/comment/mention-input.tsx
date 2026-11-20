@@ -61,9 +61,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const appId = useAtomValue(editorAppIdAtom)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
-    const actionContainerRef = useRef<HTMLDivElement | null>(null)
-    const actionRightRef = useRef<HTMLDivElement | null>(null)
-    const baseTextareaHeightRef = useRef<number | null>(null)
+    const lineProbeRef = useRef<HTMLDivElement>(null)
 
     // Expose textarea ref to parent component
     useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
@@ -84,18 +82,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
     const resolvedPlaceholder =
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
-    const BASE_PADDING_INLINE = 8
-    const BASE_PADDING_BLOCK = 7
-    const [shouldReserveButtonGap, setShouldReserveButtonGap] = useState(isEditing)
-    const [shouldReserveHorizontalSpace, setShouldReserveHorizontalSpace] = useState(
-      () => !isEditing,
-    )
-    const [paddingRight, setPaddingRight] = useState(
-      () => BASE_PADDING_INLINE + (isEditing ? 0 : 72),
-    )
-    const [paddingBottom, setPaddingBottom] = useState(
-      () => BASE_PADDING_BLOCK + (isEditing ? 32 : 0),
-    )
+    const [isMultiline, setIsMultiline] = useState(false)
 
     const mentionNameList = useMemo(() => {
       const names = mentionUsers
@@ -194,101 +181,22 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       highlightContent.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
     }, [])
 
-    const evaluateContentLayout = useCallback(() => {
-      const textarea = textareaRef.current
-      if (!textarea) return
-
-      const extraBottom = Math.max(0, paddingBottom - BASE_PADDING_BLOCK)
-      const effectiveClientHeight = textarea.clientHeight - extraBottom
-
-      if (baseTextareaHeightRef.current === null)
-        baseTextareaHeightRef.current = effectiveClientHeight
-
-      const baseHeight = baseTextareaHeightRef.current ?? effectiveClientHeight
-      const hasMultiline = effectiveClientHeight > baseHeight + 1
-      const shouldReserveVertical = isEditing ? true : hasMultiline
-
-      setShouldReserveButtonGap(shouldReserveVertical)
-      setShouldReserveHorizontalSpace(!hasMultiline)
-    }, [isEditing, paddingBottom])
-
-    const updateLayoutPadding = useCallback(() => {
-      const actionEl = actionContainerRef.current
-      const rect = actionEl?.getBoundingClientRect()
-      const rightRect = actionRightRef.current?.getBoundingClientRect()
-      let actionWidth = 0
-      if (rightRect) actionWidth = Math.ceil(rightRect.width)
-      else if (rect) actionWidth = Math.ceil(rect.width)
-
-      const actionHeight = rect ? Math.ceil(rect.height) : 0
-      const fallbackWidth = Math.max(0, paddingRight - BASE_PADDING_INLINE)
-      const fallbackHeight = Math.max(0, paddingBottom - BASE_PADDING_BLOCK)
-      const effectiveWidth = actionWidth > 0 ? actionWidth : fallbackWidth
-      const effectiveHeight = actionHeight > 0 ? actionHeight : fallbackHeight
-
-      const nextRight = BASE_PADDING_INLINE + (shouldReserveHorizontalSpace ? effectiveWidth : 0)
-      const nextBottom = BASE_PADDING_BLOCK + (shouldReserveButtonGap ? effectiveHeight : 0)
-
-      setPaddingRight((prev) => (prev === nextRight ? prev : nextRight))
-      setPaddingBottom((prev) => (prev === nextBottom ? prev : nextBottom))
-    }, [shouldReserveButtonGap, shouldReserveHorizontalSpace, paddingRight, paddingBottom])
-
-    const setActionContainerRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        actionContainerRef.current = node
-
-        if (!isEditing) actionRightRef.current = node
-        else if (!node) actionRightRef.current = null
-
-        if (node && typeof window !== 'undefined')
-          window.requestAnimationFrame(() => updateLayoutPadding())
-      },
-      [isEditing, updateLayoutPadding],
-    )
-
-    const setActionRightRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        actionRightRef.current = node
-
-        if (node && typeof window !== 'undefined')
-          window.requestAnimationFrame(() => updateLayoutPadding())
-      },
-      [updateLayoutPadding],
-    )
-
     useLayoutEffect(() => {
       syncHighlightScroll()
     }, [value, syncHighlightScroll])
 
-    useLayoutEffect(() => {
-      Promise.resolve().then(() => {
-        evaluateContentLayout()
-      })
-    }, [value, evaluateContentLayout])
-
-    useLayoutEffect(() => {
-      Promise.resolve().then(() => {
-        updateLayoutPadding()
-      })
-    }, [updateLayoutPadding, isEditing, shouldReserveButtonGap])
-
     useEffect(() => {
-      const handleResize = () => {
-        evaluateContentLayout()
-        updateLayoutPadding()
-      }
-
-      window.addEventListener('resize', handleResize)
-      return () => window.removeEventListener('resize', handleResize)
-    }, [evaluateContentLayout, updateLayoutPadding])
-
-    useEffect(() => {
-      Promise.resolve().then(() => {
-        baseTextareaHeightRef.current = null
-        evaluateContentLayout()
-        setShouldReserveHorizontalSpace(!isEditing)
+      const probe = lineProbeRef.current
+      if (!probe || isEditing) return
+      const observer = new ResizeObserver(() => {
+        const { lineHeight, paddingTop, paddingBottom } = getComputedStyle(probe)
+        const contentHeight =
+          probe.offsetHeight - Number.parseFloat(paddingTop) - Number.parseFloat(paddingBottom)
+        setIsMultiline(contentHeight > Number.parseFloat(lineHeight) * 1.5)
       })
-    }, [isEditing, evaluateContentLayout])
+      observer.observe(probe)
+      return () => observer.disconnect()
+    }, [isEditing])
 
     const filteredMentionUsers = useMemo(() => {
       if (!mentionQuery) return mentionUsers
@@ -346,16 +254,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           } else {
             setShowMentionDropdown(false)
           }
-
-          if (typeof window !== 'undefined') {
-            window.requestAnimationFrame(() => {
-              evaluateContentLayout()
-              syncHighlightScroll()
-            })
-          }
+          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [onChange, evaluateContentLayout, syncHighlightScroll],
+      [onChange, syncHighlightScroll],
     )
 
     const handleMentionButtonClick = useCallback(
@@ -386,16 +288,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           setMentionPosition(cursorPosition)
           setShowMentionDropdown(true)
           setSelectedMentionIndex(0)
-
-          if (typeof window !== 'undefined') {
-            window.requestAnimationFrame(() => {
-              evaluateContentLayout()
-              syncHighlightScroll()
-            })
-          }
+          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [value, onChange, evaluateContentLayout, syncHighlightScroll, showMentionDropdown],
+      [value, onChange, syncHighlightScroll, showMentionDropdown],
     )
 
     const insertMention = useCallback(
@@ -421,22 +317,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
           textarea.setSelectionRange(newCursorPos, newCursorPos)
           textarea.focus()
-          if (typeof window !== 'undefined') {
-            window.requestAnimationFrame(() => {
-              evaluateContentLayout()
-              syncHighlightScroll()
-            })
-          }
+          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [
-        value,
-        mentionPosition,
-        onChange,
-        mentionedUserIds,
-        evaluateContentLayout,
-        syncHighlightScroll,
-      ],
+      [value, mentionPosition, onChange, mentionedUserIds, syncHighlightScroll],
     )
 
     const handleSubmit = useCallback(
@@ -535,58 +419,57 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       <>
         <div
           className={cn(
-            'relative flex items-center body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
+            'relative flex body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
+            isEditing || isMultiline ? 'flex-col gap-1' : 'items-end',
             className,
           )}
         >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-0 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary"
-            style={{ paddingRight, paddingBottom }}
-          >
+          <div className="relative min-w-0 flex-1">
             <div
-              ref={highlightContentRef}
-              className="min-h-full"
-              style={{ willChange: 'transform' }}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary"
             >
-              {highlightedValue}
+              <div ref={highlightContentRef} className="min-h-full will-change-transform">
+                {highlightedValue}
+              </div>
             </div>
+            <Textarea
+              ref={textareaRef}
+              className="relative block w-full resize-none bg-transparent px-2 py-1.75 text-transparent caret-primary-500 outline-hidden placeholder:text-components-input-text-placeholder"
+              placeholder={resolvedPlaceholder}
+              autoFocus={autoFocus}
+              minRows={isEditing ? 2 : 1}
+              maxRows={isEditing || isMultiline ? 4 : 1}
+              value={value}
+              disabled={disabled || loading}
+              onChange={(e) => handleContentChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onScroll={syncHighlightScroll}
+            />
           </div>
-          <Textarea
-            ref={textareaRef}
-            className={cn(
-              'relative z-10 w-full resize-none bg-transparent px-2 py-1.75 text-transparent caret-primary-500 outline-hidden',
-              'placeholder:text-components-input-text-placeholder',
-            )}
-            style={{ paddingRight, paddingBottom }}
-            placeholder={resolvedPlaceholder}
-            autoFocus={autoFocus}
-            minRows={isEditing ? 4 : 1}
-            maxRows={4}
-            value={value}
-            disabled={disabled || loading}
-            onChange={(e) => handleContentChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onScroll={syncHighlightScroll}
-          />
-
           {!isEditing && (
             <div
-              ref={setActionContainerRef}
-              className="absolute inset-e-0 bottom-0 z-20 flex items-end gap-2"
+              ref={lineProbeRef}
+              aria-hidden
+              className="pointer-events-none invisible absolute inset-s-0 inset-e-18 top-0 px-2 py-1.75 wrap-break-word whitespace-pre-wrap"
             >
+              {`${value}\u200B`}
+            </div>
+          )}
+
+          {!isEditing && (
+            <div className="flex shrink-0 items-center gap-2 self-end">
               <IconButton
                 aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
                 size="lg"
                 disabled={shouldDisableMentionButton}
-                className="z-20 transition-opacity data-disabled:opacity-40"
+                className="transition-opacity data-disabled:opacity-40"
                 onClick={handleMentionButtonClick}
               >
                 <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
               </IconButton>
               <IconButton
                 aria-label={t(($) => $['operation.send'], { ns: 'common' })}
-                className="z-20"
                 size="lg"
                 variant="primary"
                 disabled={!value.trim() || disabled || loading}
@@ -608,20 +491,17 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           )}
 
           {isEditing && (
-            <div
-              ref={setActionContainerRef}
-              className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between"
-            >
+            <div className="flex items-center justify-between">
               <IconButton
                 aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
                 size="lg"
                 disabled={shouldDisableMentionButton}
-                className="z-20 transition-opacity data-disabled:opacity-40"
+                className="transition-opacity data-disabled:opacity-40"
                 onClick={handleMentionButtonClick}
               >
                 <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
               </IconButton>
-              <div ref={setActionRightRef} className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </Button>
