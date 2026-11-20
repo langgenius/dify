@@ -317,6 +317,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
             return
           } else if (e.key === 'Escape') {
             e.preventDefault()
+            e.stopPropagation()
             setShowMentionDropdown(false)
             return
           }

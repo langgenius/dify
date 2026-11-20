@@ -140,3 +140,32 @@ it('moves focus into the edit field when a reply is edited from its menu, and ba
   await expect.element(editField).not.toBeInTheDocument()
   await expect.element(screen.getByRole('dialog')).toBeVisible()
 })
+
+it('closes the mention list before the thread on Escape', async () => {
+  await page.viewport(1200, 800)
+  const onClose = vi.fn()
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  const screen = await render(
+    <CommentThreadFixture comment={comment} onClose={onClose} onReply={() => {}} />,
+    {
+      queryClient,
+      initialStoreState: {
+        mentionableUsersCache: {
+          'app-1': [{ id: 'bob', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
+        },
+      },
+    },
+  )
+  const reply = screen.getByRole('textbox')
+  await expect.element(reply).toHaveFocus()
+  await userEvent.keyboard('@')
+  await expect.element(screen.getByRole('listbox')).toBeVisible()
+
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
+  expect(onClose).not.toHaveBeenCalled()
+  await userEvent.keyboard('{Escape}')
+  expect(onClose).toHaveBeenCalledTimes(1)
+})
