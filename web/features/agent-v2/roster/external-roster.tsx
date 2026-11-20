@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
@@ -30,6 +30,11 @@ import { ConnectExternalAgent } from './components/connect-external-agent'
 import { ExternalAgentActions } from './components/external-agent-actions'
 import { ExternalAgentList } from './components/external-agent-list'
 import { externalRosterQueryParsers } from './query-params'
+
+const EMPTY_STATUS_COUNTS = {
+  enabled_count: 0,
+  disabled_count: 0,
+} as const
 
 export function ExternalRoster() {
   const { t } = useTranslation(['agentRoster', 'common'])
@@ -51,8 +56,8 @@ export function ExternalRoster() {
     ...(keyword ? { keyword } : {}),
     connected_by_me: filters.external_connected_by_me,
   }
-  const list = useInfiniteQuery(
-    consoleQuery.externalAgents.get.infiniteOptions({
+  const list = useInfiniteQuery({
+    ...consoleQuery.externalAgents.get.infiniteOptions({
       input: (page) => ({
         query: {
           ...commonFilters,
@@ -69,8 +74,9 @@ export function ExternalRoster() {
       getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
       enabled: capabilities.isSuccess && !workspaceLoading,
     }),
-  )
-  const counts = list.data?.pages[0]
+    placeholderData: keepPreviousData,
+  })
+  const counts = list.data?.pages[0] ?? EMPTY_STATUS_COUNTS
   const agents =
     list.data?.pages.flatMap((page) =>
       page.items.map((asset) => toExternalAgentListItem(asset, profile.data?.profile.id)),
@@ -80,12 +86,12 @@ export function ExternalRoster() {
     {
       value: 'enabled',
       label: t(($) => $['external.filters.enabled']),
-      count: counts?.enabled_count,
+      count: counts.enabled_count,
     },
     {
       value: 'disabled',
       label: t(($) => $['external.filters.disabled']),
-      count: counts?.disabled_count,
+      count: counts.disabled_count,
     },
   ] as const
   const sortOptions = [
@@ -109,7 +115,7 @@ export function ExternalRoster() {
               className="gap-1 data-checked:text-text-secondary"
             >
               <span>{option.label}</span>
-              {'count' in option && option.count !== undefined && (
+              {'count' in option && (
                 <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
                   {option.count}
                 </span>

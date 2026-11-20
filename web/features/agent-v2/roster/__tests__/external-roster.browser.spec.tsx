@@ -147,7 +147,21 @@ it('queries server filters and clears them without touching Dify parameters', as
     searchParams: '?filter=drafts&keyword=keep-dify&layout=grid',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
+  const filtered = createDeferred<ExternalAgentListResponse>()
+  requests.list.mockImplementationOnce(() => filtered.promise)
   await page.getByRole('radio', { name: 'Disabled 1', exact: true }).click()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 1', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 1', exact: true })).toBeChecked()
+  await expect.element(card('Contract Review Agent')).toBeVisible()
+  await expect.element(page.getByRole('status')).not.toBeInTheDocument()
+  filtered.resolve({
+    items: [server.assets[0]!],
+    enabled_count: 1,
+    disabled_count: 1,
+    total: 1,
+    page: 1,
+    limit: 20,
+  })
   await expect.element(card('Vendor Screening Agent')).toBeVisible()
   await expect.element(card('Contract Review Agent')).not.toBeInTheDocument()
   await page.getByRole('checkbox', { name: 'Connected by me', exact: true }).click()
@@ -189,10 +203,12 @@ it('keeps a failed initial list distinct from empty results without a query erro
   requests.list.mockImplementation(() => pending.promise)
   await setup()
   await expect.element(page.getByRole('status')).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
   pending.reject(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
   await expect.element(page.getByRole('status')).not.toBeInTheDocument()
-  await expect.element(page.getByRole('radio', { name: 'Enabled', exact: true })).toBeVisible()
-  await expect.element(page.getByRole('radio', { name: 'Disabled', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
   await expect
     .element(page.getByText('No external agents yet', { exact: true }))
     .not.toBeInTheDocument()
