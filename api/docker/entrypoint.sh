@@ -118,7 +118,8 @@ if [[ "${MODE}" == "worker" ]]; then
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}
 
 elif [[ "${MODE}" == "beat" ]]; then
-  exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
+  exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO} \
+    --schedule "${CELERY_BEAT_SCHEDULE_FILENAME:-celerybeat-schedule}"
 
 elif [[ "${MODE}" == "job" ]]; then
   # Job mode: Run a one-time Flask command and exit
