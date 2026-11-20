@@ -1,6 +1,6 @@
 """Persisted credential extensions must never escape through Console responses."""
 
-from controllers.console.human_input_v2.provider_views import im_credentials_response
+from controllers.common.human_input_v2.provider_views import im_credentials_response
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 
 

@@ -667,7 +667,7 @@ def test_saved_im_test_rejects_provider_mismatch_as_bad_request(
 def test_provider_diagnostics_are_structured_test_results(
     wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str, saved: bool, request_id: str | None
 ) -> None:
-    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from controllers.common.human_input_v2.config_version import encode_email_config_version
     from core.human_input_v2.shared import EmailProviderId
     from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 
