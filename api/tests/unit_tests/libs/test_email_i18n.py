@@ -551,6 +551,33 @@ class TestEmailI18nIntegration:
             # Restore original mail
             libs.email_i18n.mail = original_mail
 
+    def test_flask_mail_sender_before_extension_bootstrap(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An unbound gateway must not try network I/O."""
+        import libs.email_i18n as email_i18n
+
+        monkeypatch.setattr(email_i18n, "mail", None)
+        email_i18n.FlaskMailSender().send_email("test@example.com", "Subject", "<p>Body</p>")
+
+    def test_mail_extension_wires_the_i18n_gateway(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Extension bootstrap must wire the same initialized sender used by tasks."""
+        import libs.email_i18n as email_i18n
+        from extensions import ext_mail
+
+        mock_mail = MagicMock()
+        mock_mail.is_inited.return_value = True
+        monkeypatch.setattr(email_i18n, "mail", None)
+        monkeypatch.setattr(ext_mail, "mail", mock_mail)
+
+        app = Flask(__name__)
+        ext_mail.init_app(app)
+
+        mock_mail.init_app.assert_called_once_with(app)
+        assert email_i18n.mail is mock_mail
+        email_i18n.FlaskMailSender().send_email("test@example.com", "Subject", "<p>Body</p>")
+        mock_mail.send.assert_called_once_with(
+            to="test@example.com", subject="Subject", html="<p>Body</p>"
+        )
+
     def test_flask_mail_sender_initialized(self) -> None:
         """Test FlaskMailSender when mail is initialized"""
         sender = FlaskMailSender()

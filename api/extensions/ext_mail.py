@@ -109,7 +109,15 @@ def is_enabled() -> bool:
 
 
 def init_app(app: DifyApp):
+    """Initialize mail, then wire its gateway into the i18n mail adapter.
+
+    A failed provider initialization does not register a partially configured
+    gateway. A successful initialization preserves the extension singleton.
+    """
     mail.init_app(app)
+    from libs import email_i18n
+
+    email_i18n.mail = mail
 
 
 mail = Mail()
