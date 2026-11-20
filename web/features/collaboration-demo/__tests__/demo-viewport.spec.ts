@@ -14,6 +14,7 @@ describe('getDemoViewport', () => {
   it.each([
     [1376, 900],
     [1216, 800],
+    [1024, 768],
   ])('keeps the comment thread beside the flow on a %ix%i canvas', (width, height) => {
     const viewport = getDemoViewport(width, height)
     const graphRight = toScreen(viewport, {
