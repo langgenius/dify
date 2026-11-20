@@ -40,3 +40,9 @@ export function getDemoEndState({
 
   return 'unavailable'
 }
+
+export function getTryNowHref({ workflows, chatflows }: { workflows: number; chatflows: number }) {
+  if (workflows > 0 && chatflows === 0) return '/apps?category=workflow'
+  if (chatflows > 0 && workflows === 0) return '/apps?category=advanced-chat'
+  return '/apps'
+}
