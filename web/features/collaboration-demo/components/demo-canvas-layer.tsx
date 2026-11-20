@@ -54,7 +54,7 @@ function MarkerBubble({
     <div
       data-selected={selected || undefined}
       className={cn(
-        'flex rounded-[13.5px] rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-[1.5px] data-selected:border-[1.5px] data-selected:border-components-option-card-option-selected-border data-selected:p-[0.5px]',
+        'flex rounded-[13.5px] rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-px data-selected:border-[1.5px] data-selected:border-components-option-card-option-selected-border data-selected:p-0',
         floatingShadow,
       )}
     >
@@ -187,7 +187,7 @@ export function DemoCanvasLayer({
         <div
           aria-hidden
           className="absolute flex items-start gap-3"
-          style={{ left: Math.min(pin.x, width - 368), top: pin.y - 28 }}
+          style={{ left: Math.min(pin.x, width - 368), top: pin.y - 27 }}
         >
           <MarkerBubble participants={['alex']} selected />
           <div className={cn('w-80 rounded-xl bg-components-panel-bg p-1', floatingShadow)}>
