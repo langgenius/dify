@@ -122,6 +122,18 @@ describe('form-input-item helpers', () => {
     ).toBeUndefined()
   })
 
+  it('should accept integer variables for number fields', () => {
+    const numberState = getFormInputState(createSchema({ type: FormTypeEnum.textNumber }), {
+      type: VarKindType.variable,
+      value: ['tool', 'count'],
+    })
+    const numberFilter = getFilterVar(numberState)
+
+    expect(numberFilter?.({ type: VarType.integer } as Var)).toBe(true)
+    expect(numberFilter?.({ type: VarType.number } as Var)).toBe(true)
+    expect(numberFilter?.({ type: VarType.string } as Var)).toBe(false)
+  })
+
   it('should expose date field state', () => {
     const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
       type: VarKindType.constant,

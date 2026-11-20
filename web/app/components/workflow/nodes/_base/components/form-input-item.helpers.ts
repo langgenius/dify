@@ -158,7 +158,11 @@ export const getTargetVarType = (state: FormInputState) => {
 }
 
 export const getFilterVar = (state: FormInputState) => {
-  if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
+  if (state.isNumber)
+    return (varPayload: Var) => {
+      const numberVariableTypes: readonly VarType[] = [VarType.number, VarType.integer]
+      return numberVariableTypes.includes(varPayload.type)
+    }
   if (state.isSelect && state.isMultipleSelect)
     return (varPayload: Var) => {
       const stringArrayVariableTypes: readonly VarType[] = [VarType.array, VarType.arrayString]
