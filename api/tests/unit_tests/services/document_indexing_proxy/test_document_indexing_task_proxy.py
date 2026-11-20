@@ -14,15 +14,6 @@ class DocumentIndexingTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for DocumentIndexingTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(plan: CloudPlan | str | None = CloudPlan.SANDBOX) -> Mock:
-        """Create mock features with billing configuration."""
-        features = Mock()
-        features.billing = Mock()
-        features.billing.subscription = Mock()
-        features.billing.subscription.plan = plan
-        return features
-
-    @staticmethod
     def create_document_task_proxy(
         tenant_id: str = "tenant-123", dataset_id: str = "dataset-456", document_ids: list[str] | None = None
     ) -> DocumentIndexingTaskProxy:
@@ -52,24 +43,6 @@ class TestDocumentIndexingTaskProxy:
         assert isinstance(proxy._tenant_isolated_task_queue, TenantIsolatedTaskQueue)
         assert proxy._tenant_isolated_task_queue._tenant_id == tenant_id
         assert proxy._tenant_isolated_task_queue._unique_key == "document_indexing"
-
-    @patch("services.document_indexing_proxy.base.FeatureService")
-    def test_features_property(self, mock_feature_service: MagicMock) -> None:
-        """Test cached_property features."""
-        # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features()
-        mock_feature_service.get_features.return_value = mock_features
-        proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-
-        # Act
-        features1 = proxy.features
-        features2 = proxy.features  # Second call should use cached property
-
-        # Assert
-        assert features1 == mock_features
-        assert features2 == mock_features
-        assert features1 is features2  # Should be the same instance due to caching
-        mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
     @patch("services.document_indexing_proxy.document_indexing_task_proxy.normal_document_indexing_task")
     def test_send_to_direct_queue(self, mock_task: MagicMock) -> None:
@@ -179,8 +152,7 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_with_cloud_sandbox_plan(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test _dispatch method in Cloud with Sandbox plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_default_tenant_queue = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
@@ -195,8 +167,7 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_with_cloud_paid_plan(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test _dispatch method in Cloud with a paid plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = CloudPlan.TEAM
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_priority_tenant_queue = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 
@@ -211,8 +182,7 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_outside_cloud(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test _dispatch method outside Cloud."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features()
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_priority_direct_queue = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
 
@@ -227,8 +197,7 @@ class TestDocumentIndexingTaskProxy:
     def test_delay_method(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test delay method integration."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_default_tenant_queue = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
@@ -259,8 +228,7 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_edge_case_empty_plan(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test _dispatch method with empty plan string."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan="")
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = ""
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_priority_tenant_queue = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 
@@ -275,8 +243,7 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_edge_case_none_plan(self, mock_feature_service: MagicMock, mocker: MockerFixture) -> None:
         """Test _dispatch method with None plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(plan=None)
-        mock_feature_service.get_features.return_value = mock_features
+        mock_feature_service.get_workspace_plan.return_value = None
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         mock_send_to_priority_tenant_queue = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
 

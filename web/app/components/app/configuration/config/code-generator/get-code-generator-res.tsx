@@ -185,6 +185,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   return (
     <Dialog
       open={isShow}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onClose()
       }}

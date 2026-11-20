@@ -70,20 +70,20 @@ const KeyValueList: FC<Props> = ({
       >
         <div
           className={cn(
-            'flex h-full items-center border-r border-divider-regular pl-3',
+            'flex h-full items-center border-e border-divider-regular ps-3',
             isSupportFile ? 'w-35' : 'w-1/2',
           )}
         >
           {t(($) => $[`${i18nPrefix}.key`], { ns: 'workflowIntegrations' })}
         </div>
         {isSupportFile && (
-          <div className="flex h-full w-17.5 shrink-0 items-center border-r border-divider-regular pl-3">
+          <div className="flex h-full w-17.5 shrink-0 items-center border-e border-divider-regular ps-3">
             {t(($) => $[`${i18nPrefix}.type`], { ns: 'workflowIntegrations' })}
           </div>
         )}
         <div
           className={cn(
-            'flex h-full items-center justify-between pr-1 pl-3',
+            'flex h-full items-center justify-between ps-3 pe-1',
             isSupportFile ? 'grow' : 'w-1/2',
           )}
         >

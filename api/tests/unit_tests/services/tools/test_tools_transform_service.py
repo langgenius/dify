@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
@@ -83,18 +84,14 @@ class TestMcpToolsTransformCases:
             sse_read_timeout=300,
         )
         provider.id = "provider-id-123"
-
-        # Mock timestamp
-        mock_updated_at = Mock()
-        mock_updated_at.timestamp.return_value = 1234567890
-        provider.updated_at = mock_updated_at
+        provider.updated_at = datetime.fromtimestamp(1234567890, UTC)
 
         mocker.patch.object(provider, "load_user", return_value=mock_user)
         return provider
 
     @staticmethod
     @pytest.fixture
-    def sample_mcp_tools() -> dict[str, Tool]:
+    def sample_mcp_tools() -> dict[str, MCPTool]:
         """Provides sample MCP tools for testing."""
         return {
             "simple": MCPTool(
@@ -195,7 +192,7 @@ class TestMcpToolsTransformCases:
             assert result[0].author == "Anonymous"
 
         def test_mcp_tool_to_user_tool_with_complex_schema(
-            self, mock_provider: MCPToolProvider, sample_mcp_tools: dict[str, Tool]
+            self, mock_provider: MCPToolProvider, sample_mcp_tools: dict[str, MCPTool]
         ) -> None:
             """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
             # Use complex tool from fixtures
@@ -825,6 +822,7 @@ class TestToolsTransformServiceCases:
             assert isinstance(url, str)
 
             assert "/builtin/google/icon" in url
+            assert isinstance(url, str)
             assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
 
         def test_builtin_provider_with_no_console_url(self, config_overrides: Callable[..., None]) -> None:
@@ -906,12 +904,12 @@ class TestToolsTransformServiceCases:
             assert count_param.type.value == "number"
 
         def test_float_maps_to_number(self) -> None:
-            schema = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": list[str]()}
+            schema: dict[str, object] = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "number"
 
         def test_array_type_attaches_input_schema(self) -> None:
             prop = {"type": "array", "description": "Items", "items": {"type": "string"}}
-            schema = {"type": "object", "properties": {"items": prop}, "required": list[str]()}
+            schema: dict[str, object] = {"type": "object", "properties": {"items": prop}, "required": []}
             param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
             assert param.input_schema is not None
 
@@ -922,7 +920,11 @@ class TestToolsTransformServiceCases:
             assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "object"}) == []
 
         def test_list_type_uses_first_element(self) -> None:
-            schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": list[str]()}
+            schema: dict[str, object] = {
+                "type": "object",
+                "properties": {"f": {"type": ["string", "null"]}},
+                "required": [],
+            }
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
 
         @pytest.mark.parametrize(
@@ -937,8 +939,8 @@ class TestToolsTransformServiceCases:
                 ({"type": ["string", "array", "null"]}, "string"),
             ],
         )
-        def test_mixed_type_union_attaches_input_schema(self, prop: dict[str, JsonValue], expected_type: str) -> None:
-            schema = {"type": "object", "properties": {"domain": prop}, "required": list[str]()}
+        def test_mixed_type_union_attaches_input_schema(self, prop: dict[str, object], expected_type: str) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"domain": prop}, "required": []}
             param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
             assert param.type.value == expected_type
             assert param.input_schema == prop
@@ -952,12 +954,12 @@ class TestToolsTransformServiceCases:
                 {"oneOf": [{"type": "integer"}, {"type": "number"}]},
             ],
         )
-        def test_single_type_union_has_no_input_schema(self, prop: dict[str, JsonValue]) -> None:
-            schema = {"type": "object", "properties": {"f": prop}, "required": list[str]()}
+        def test_single_type_union_has_no_input_schema(self, prop: dict[str, object]) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"f": prop}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema is None
 
         def test_missing_description_defaults_empty(self) -> None:
-            schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": list[str]()}
+            schema: dict[str, object] = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
 
     class TestApiProviderToController:

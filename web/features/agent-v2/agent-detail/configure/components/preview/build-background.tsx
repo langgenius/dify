@@ -10,8 +10,8 @@ export function AgentBuildPanelBackground({ visible }: { visible: boolean }) {
         visible && 'opacity-100',
       )}
     >
-      <AgentBuildGridTexture className="absolute top-0 left-0" />
-      <AgentBuildGridTexture className="absolute bottom-0 left-0 origin-center scale-y-[-1]" />
+      <AgentBuildGridTexture className="absolute inset-s-0 top-0" />
+      <AgentBuildGridTexture className="absolute inset-s-0 bottom-0 origin-center scale-y-[-1]" />
     </div>
   )
 }

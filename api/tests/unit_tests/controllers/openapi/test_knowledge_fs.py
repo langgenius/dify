@@ -13,6 +13,7 @@ from werkzeug.exceptions import NotFound
 from werkzeug.routing.rules import Rule
 
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._catalog import CATALOG_HEADER
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
@@ -428,14 +429,14 @@ def test_knowledge_fs_error_adapter_uses_stable_domain_errors() -> None:
 
 @pytest.mark.parametrize("operation", ["ls", "tree", "grep", "find", "cat", "stat", "diff"])
 def test_knowledge_fs_catalog_gate_precedes_request_validation(admitted_bearer: AdmittedWorld, operation: str) -> None:
-    """A CLI request must carry the downloaded fingerprint before its handler can run."""
+    """A CLI request must carry the current fingerprint before its handler can run."""
     path = (
         f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}"
         f"/knowledge-fs/knowledge-spaces/00000000-0000-4000-8000-000000000001/fs:{operation}"
     )
     method = "POST" if operation == "diff" else "GET"
-    without = {"Authorization": admitted_bearer.headers["Authorization"]}
-    refused = admitted_bearer.client.open(path, method=method, headers=without)
+    stale = {"Authorization": admitted_bearer.headers["Authorization"], CATALOG_HEADER: "stale"}
+    refused = admitted_bearer.client.open(path, method=method, headers=stale)
     admitted = admitted_bearer.client.open(path, method=method, headers=admitted_bearer.headers)
     assert refused.status_code == 412
     assert refused.get_json()["code"] == "catalog_stale"

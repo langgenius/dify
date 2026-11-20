@@ -19,6 +19,7 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.moderation.factory import get_app_moderation
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from extensions.application_services.moderation_policy import platform_owns_openai_moderation
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 from models.model import Message
@@ -111,27 +112,33 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
     def _init_output_moderation(self) -> OutputModeration | None:
-        """
-        Init output moderation.
-        :return:
-        """
+        """Bind an enabled app output check unless the platform owns the rule's OpenAI checks."""
         app_config = self._application_generate_entity.app_config
-        sensitive_word_avoidance = app_config.sensitive_word_avoidance
-        moderation = self._moderation
-
-        if sensitive_word_avoidance is not None and sensitive_word_avoidance.type == "openai_moderation":
+        rule = app_config.sensitive_word_avoidance
+        if rule is None:
             return None
-        if sensitive_word_avoidance:
-            outputs_config = sensitive_word_avoidance.config.get("outputs_config")
-            if isinstance(outputs_config, dict) and outputs_config.get("enabled") is False:
+        outputs_config = rule.config.get("outputs_config")
+        if isinstance(outputs_config, dict) and outputs_config.get("enabled") is False:
+            return None
+
+        platform_owned = rule.type == "openai_moderation" and platform_owns_openai_moderation(
+            self._application_generate_entity
+        )
+        moderation = self._moderation
+        if moderation is not None:
+            output_evaluator = moderation.output_evaluator(app_config, platform_owned=platform_owned)
+            if output_evaluator is None:
                 return None
-            return OutputModeration(
-                tenant_id=app_config.tenant_id,
-                app_id=app_config.app_id,
-                rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                output_evaluator=moderation.output_evaluator(app_config) if moderation is not None else None,
-            )
-        return None
+        elif platform_owned:
+            return None
+        else:
+            output_evaluator = None
+        return OutputModeration(
+            tenant_id=app_config.tenant_id,
+            app_id=app_config.app_id,
+            rule=ModerationRule(type=rule.type, config=rule.config),
+            output_evaluator=output_evaluator,
+        )
 
     def moderation_replacement(self, error: Exception) -> tuple[str, str] | None:
         """Render platform verdicts using a matching app preset or chat default; never hide backend failures."""

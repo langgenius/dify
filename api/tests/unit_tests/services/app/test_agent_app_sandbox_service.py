@@ -52,6 +52,7 @@ from services.app.agent_app_contracts import (
 )
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.evaluation_service import EvaluationService
 from services.file_request_service import DownloadFileRequestResult, FileRequestService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_message
@@ -274,7 +275,9 @@ def sandbox(
         assert all(session in closed_sessions and not session.in_transaction() for session in sessions)
         yield cast(Client, client)
 
-    apps = AgentAppRepository(session_factory=factory)
+    apps = AgentAppRepository(
+        session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     service = AgentAppSandboxService(
         bindings=AgentSandboxRepository(session_factory=factory, apps=apps),
         files=AgentSandboxFileGateway(

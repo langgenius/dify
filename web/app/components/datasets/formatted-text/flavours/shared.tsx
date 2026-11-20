@@ -11,7 +11,7 @@ export const SliceContainer: FC<SliceContainerProps> = ({ ref, ...props }) => {
     <span
       {...rest}
       ref={ref}
-      className={cn('group mr-1 align-bottom text-sm select-none', className)}
+      className={cn('group me-1 align-bottom text-sm select-none', className)}
     />
   )
 }

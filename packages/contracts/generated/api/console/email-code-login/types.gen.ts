@@ -68,6 +68,7 @@ export type TurnstileServiceUnavailableError = ErrorResponse & {
 export type EmailCodeLoginPayload = {
   code: string
   email: string
+  invite_token?: string | null
   language?: string | null
   timezone?: string | null
   token: string

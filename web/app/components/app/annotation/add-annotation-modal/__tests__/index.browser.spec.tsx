@@ -6,7 +6,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import appAnnotation from '@/i18n/locales/en-US/app-annotation.json'
 import common from '@/i18n/locales/en-US/common.json'
-import { seedSystemFeatures } from '@/test/console/query-data'
+import { seedFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import AddAnnotationDialog from '../index'
 
@@ -33,7 +33,7 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
-  seedSystemFeatures(client, { deployment_edition: 'COMMUNITY' })
+  seedFeatures(client, { annotation_quota_limit: { size: 0, limit: 0 } })
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',

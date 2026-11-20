@@ -123,7 +123,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
       ref={rightPanelRef}
       data-workflow-right-panel
       tabIndex={-1}
-      className={cn('absolute top-14 right-0 bottom-1 z-10 flex outline-hidden')}
+      className={cn('absolute inset-e-0 top-14 bottom-1 z-10 flex outline-hidden')}
       key={`${isRestoring}`}
     >
       {components?.left}
