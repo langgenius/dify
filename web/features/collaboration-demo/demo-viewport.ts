@@ -4,10 +4,12 @@ import { demoGraphBounds } from './demo-graph'
 
 const toolbarInset = 56
 const headerInset = 64
+const threadColumn = 376
 
 export function getDemoViewport(width: number, height: number) {
-  const reserve = width - toolbarInset >= 1000 ? 440 : 48
-  const availableWidth = width - toolbarInset - reserve - 16
+  const besideThread = width - toolbarInset - threadColumn - 16
+  const availableWidth =
+    besideThread / demoGraphBounds.width >= 0.45 ? besideThread : width - toolbarInset - 64
   const availableHeight = height - headerInset - 64
   const zoom = Math.max(
     0.25,
