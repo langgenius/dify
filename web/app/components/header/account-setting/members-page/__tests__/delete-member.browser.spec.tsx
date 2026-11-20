@@ -37,7 +37,7 @@ afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
   let accounts = ids.map(member)
   const { queryClient } = createConsoleQueryWrapper({
-    currentWorkspace: { id: '74e6f5f1-621e-4ca0-910f-94c686e4ada1', role: 'owner' },
+    currentWorkspace: { role: 'owner' },
     systemFeatures: { deployment_edition: 'COMMUNITY' },
     workspacePermissionKeys: ['workspace.member.manage'],
   })

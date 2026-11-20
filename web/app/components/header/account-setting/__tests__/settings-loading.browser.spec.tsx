@@ -8,6 +8,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
 import commonTranslations from '@/i18n/locales/en-US/common.json'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -20,8 +21,6 @@ const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
 // boundary: defer the external translation load while keeping i18next and its consumers real.
 vi.mock('@/i18n/load-resource', () => ({ loadI18nResource: mocks.loadResource }))
 
-// Workspace routes take a UUID path parameter.
-const workspaceId = '74e6f5f1-621e-4ca0-910f-94c686e4ada1'
 const resources: Resource = {
   'en-US': {
     appLog: {},
@@ -64,7 +63,7 @@ function renderSettings(
   const queryClient = createConsoleQueryClient()
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     queryClient,
-    currentWorkspace: { id: workspaceId, name: 'Workspace', role: 'owner' },
+    currentWorkspace: { id: TEST_WORKSPACE_ID, name: 'Workspace', role: 'owner' },
     workspacePermissionKeys: ['workspace.member.manage'],
     systemFeatures: { deployment_edition: 'CLOUD', is_email_setup: true, ...systemFeatures },
     features: { billing: { subscription: { plan: 'team' } } },
@@ -109,7 +108,7 @@ const fake = setupFakeApi(() => ({
       },
       current: {
         networkAccessGroups: {
-          get: () => ({ tenant_id: workspaceId, entitled: true, groups: [] }),
+          get: () => ({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [] }),
           post: () => ({ group: createNetworkAccessGroupFixture() }),
           currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
         },
@@ -185,7 +184,7 @@ describe('Settings content loading', () => {
       const create = settings.getByRole('button', { name: 'Create an IP policy' })
       await expect.element(create).not.toBeInTheDocument()
 
-      groups.resolve({ tenant_id: workspaceId, entitled: true, groups: [] })
+      groups.resolve({ tenant_id: TEST_WORKSPACE_ID, entitled: true, groups: [] })
       await expect.element(create).toBeVisible()
       await expect
         .element(settings.getByRole('progressbar', { name: 'Loading' }))
@@ -212,7 +211,7 @@ describe('Settings content loading', () => {
       const group = createNetworkAccessGroupFixture({ name: 'Office network' })
       fake.console.workspaces.current.networkAccessGroups.post.mockResolvedValue({ group })
       fake.console.workspaces.current.networkAccessGroups.get.mockResolvedValue({
-        tenant_id: workspaceId,
+        tenant_id: TEST_WORKSPACE_ID,
         entitled: true,
         groups: [group],
       })
