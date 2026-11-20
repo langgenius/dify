@@ -82,6 +82,7 @@ from .file_scan import (
     FileScanRecord,
     FileScanRecordStatus,
 )
+from .file_transfer import FileTransfer
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -337,6 +338,7 @@ __all__ = [
     "FileScanProviderStatus",
     "FileScanRecord",
     "FileScanRecordStatus",
+    "FileTransfer",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",
