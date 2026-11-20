@@ -1,5 +1,5 @@
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Protocol
@@ -84,6 +84,21 @@ class WorkflowLogExportFilters:
     account_ids: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class WorkflowLogExportRow:
+    """Detached data for one run. Missing input, output, or actor fields are blank in the CSV."""
+
+    run_id: str
+    created_at: datetime
+    inputs: str | None
+    outputs: str | None
+    status: str
+    trigger_by: str
+    end_user_id: str | None
+    account_id: str | None
+    account_name: str | None
+
+
 class WorkflowAppLogQuery(Protocol):
     def get_log_export_scope(self, context: RequestContext, app_id: str) -> WorkflowLogExportScope:
         """Resolve a normal Workflow app in the admitted caller's workspace or raise if unavailable."""
@@ -91,6 +106,12 @@ class WorkflowAppLogQuery(Protocol):
 
     def count_log_export_rows(self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters) -> int | None:
         """Count distinct live runs matching the filters, returning None if the count times out."""
+        ...
+
+    def iter_log_export_rows(
+        self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
+    ) -> Iterable[WorkflowLogExportRow]:
+        """Yield the app's matching runs, one per row, releasing the session between batches."""
         ...
 
     def search_log_export_identities(
@@ -131,6 +152,12 @@ class WorkflowAppLogQueryService:
     def count_log_export_rows(self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters) -> int | None:
         """Preview one row per live run in the admitted app, or return None on timeout."""
         return self._logs.count_log_export_rows(scope=scope, filters=filters)
+
+    def iter_log_export_rows(
+        self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
+    ) -> Iterable[WorkflowLogExportRow]:
+        """Read CSV rows from the admitted app's runs using the preview filters."""
+        return self._logs.iter_log_export_rows(scope=scope, filters=filters)
 
     def search_log_export_identities(
         self, *, scope: WorkflowLogExportScope, keyword: str

@@ -1,6 +1,5 @@
 """Create export tasks and write CSV for the logs of one Console conversation app."""
 
-import csv
 import json
 import logging
 from collections.abc import Callable, Generator, Iterable
@@ -11,7 +10,6 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
-from core.helper.csv_sanitizer import CSVSanitizer
 from libs.datetime_utils import ensure_naive_utc, utc_now
 from machinery.context import RequestContext
 from services.entities.conversation_entities import (
@@ -19,6 +17,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationScope,
     ConversationLogExportRow,
 )
+from services.retention.log_export_csv import write_log_export_csv
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +32,6 @@ _LOG_CSV_APP_TYPES = {
     "agent-chat": "Agent",
     "completion": "Text Generator",
 }
-_LOG_CSV_COLUMNS = (
-    "app_id",
-    "app_type",
-    "end_user_id",
-    "account_id",
-    "account_name",
-    "conversation_id",
-    "run_id",
-    "message_id",
-    "created_at",
-    "user_input",
-    "app_response",
-    "feedback_rating",
-    "feedback_content",
-    "status",
-    "trigger_by",
-    "source",
-    "agent_id",
-)
 
 
 class ConversationLogExportStatus(StrEnum):
@@ -261,31 +241,27 @@ class ConversationLogExportService:
         if app_type is None:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
 
-        output.write("\ufeff")
-        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
-        writer.writerow(_LOG_CSV_COLUMNS)
-        row_count = 0
-        for row in self._conversations.iter_console_log_export_rows(scope=scope, filters=filters):
-            user_input = json.dumps(row.input_variables, ensure_ascii=False) if row.input_variables else row.user_input
-            values = (
-                scope.app_id,
-                app_type,
-                row.end_user_id,
-                row.account_id,
-                row.account_name,
-                row.conversation_id,
-                "",
-                row.message_id,
-                ensure_naive_utc(row.created_at).replace(tzinfo=UTC).isoformat(),
-                user_input,
-                row.app_response,
-                row.feedback_rating,
-                row.feedback_content,
-                row.status,
-                "",
-                "",
-                "",
-            )
-            writer.writerow(CSVSanitizer.sanitize_value(value) for value in values)
-            row_count += 1
-        return row_count
+        rows = self._conversations.iter_console_log_export_rows(scope=scope, filters=filters)
+        return write_log_export_csv(
+            output,
+            (
+                {
+                    "app_id": scope.app_id,
+                    "app_type": app_type,
+                    "end_user_id": row.end_user_id,
+                    "account_id": row.account_id,
+                    "account_name": row.account_name,
+                    "conversation_id": row.conversation_id,
+                    "message_id": row.message_id,
+                    "created_at": ensure_naive_utc(row.created_at).replace(tzinfo=UTC).isoformat(),
+                    "user_input": json.dumps(row.input_variables, ensure_ascii=False)
+                    if row.input_variables
+                    else row.user_input,
+                    "app_response": row.app_response,
+                    "feedback_rating": row.feedback_rating,
+                    "feedback_content": row.feedback_content,
+                    "status": row.status,
+                }
+                for row in rows
+            ),
+        )

@@ -1,20 +1,24 @@
 import json
 import uuid
+from collections.abc import Iterator
 from datetime import datetime
 from enum import Enum
+from itertools import batched
+from tempfile import TemporaryFile
 from typing import override
 
-from sqlalchemy import Select, and_, func, literal, or_, select
+from sqlalchemy import Select, and_, case, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, aliased, sessionmaker
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.sql.elements import ColumnElement
 
 from graphon.enums import WorkflowExecutionStatus
+from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from machinery.context import RequestContext
 from models import Account, EndUser, TenantAccountJoin, WorkflowAppLog, WorkflowRun
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus, EvaluationTargetType
 from models.model import AppMode
 from models.trigger import WorkflowTriggerLog
@@ -30,10 +34,12 @@ from services.workflow_app_log_query_service import (
     WorkflowAppLogQuery,
     WorkflowAppLogRunSummary,
     WorkflowLogExportFilters,
+    WorkflowLogExportRow,
     WorkflowLogExportScope,
 )
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
+_LOG_EXPORT_BATCH_SIZE = 100
 
 
 class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
@@ -65,6 +71,107 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
             result = execute_log_export_count(session, statement)
             return result[0] if result is not None else None
+
+    @override
+    def iter_log_export_rows(
+        self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
+    ) -> Iterator[WorkflowLogExportRow]:
+        """Scan candidate log IDs once, then yield one CSV row per matching run in log order."""
+        end_before = naive_utc_now()
+        candidate_logs = (
+            self._filter_export_logs(select(WorkflowAppLog.id), scope=scope, filters=filters)
+            .where(WorkflowAppLog.created_at < end_before)
+            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
+        )
+        matching_log = (
+            self._matching_export_logs(scope=scope, filters=filters)
+            .where(WorkflowAppLog.created_at < end_before)
+            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
+            .limit(1)
+            .scalar_subquery()
+        )
+        statement = (
+            select(
+                WorkflowRun.id,
+                WorkflowRun.created_at,
+                WorkflowRun.inputs,
+                WorkflowRun.outputs,
+                WorkflowRun.status,
+                WorkflowRun.triggered_from,
+                WorkflowAppLog.created_from,
+                EndUser.session_id,
+                case((WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT, WorkflowAppLog.created_by)),
+                Account.name,
+            )
+            .select_from(WorkflowAppLog)
+            .join(
+                WorkflowRun,
+                and_(
+                    WorkflowRun.id == WorkflowAppLog.workflow_run_id,
+                    WorkflowRun.tenant_id == WorkflowAppLog.tenant_id,
+                    WorkflowRun.app_id == WorkflowAppLog.app_id,
+                ),
+            )
+            .outerjoin(
+                EndUser,
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
+                    WorkflowAppLog.created_by == EndUser.id,
+                    EndUser.tenant_id == scope.tenant_id,
+                ),
+            )
+            .outerjoin(
+                Account,
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT, WorkflowAppLog.created_by == Account.id
+                ),
+            )
+            .where(
+                WorkflowRun.tenant_id == scope.tenant_id,
+                WorkflowRun.app_id == scope.app_id,
+                WorkflowRun.created_at < end_before,
+                WorkflowAppLog.id == matching_log,
+            )
+            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
+        )
+        statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
+        # Stage only IDs on disk so the initial scan finishes before CSV rows are produced.
+        with TemporaryFile(mode="w+t", encoding="utf-8") as id_file:
+            with (
+                self._session_factory() as session,
+                session.execute(candidate_logs.execution_options(yield_per=1000)) as result,
+            ):
+                id_file.writelines(f"{log_id}\n" for log_id in result.scalars())
+            id_file.seek(0)
+            candidate_ids = (line.rstrip("\n") for line in id_file)
+            for log_ids in batched(candidate_ids, _LOG_EXPORT_BATCH_SIZE, strict=False):
+                with self._session_factory() as session:
+                    batch = session.execute(statement.where(WorkflowAppLog.id.in_(log_ids))).tuples().all()
+                for (
+                    run_id,
+                    created_at,
+                    inputs,
+                    outputs,
+                    status,
+                    trigger,
+                    created_from,
+                    user_id,
+                    account_id,
+                    name,
+                ) in batch:
+                    yield WorkflowLogExportRow(
+                        run_id=run_id,
+                        created_at=created_at,
+                        inputs=inputs,
+                        outputs=outputs,
+                        status=status,
+                        trigger_by=created_from
+                        if trigger is None or trigger == WorkflowRunTriggeredFrom.APP_RUN
+                        else trigger,
+                        end_user_id=user_id,
+                        account_id=account_id,
+                        account_name=name,
+                    )
 
     @override
     def search_log_export_identities(
@@ -128,14 +235,19 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
     ) -> Select[tuple[str]]:
         """Select the current run's published log IDs within the app and requested time and identity filters."""
-        statement = (
-            select(WorkflowAppLog.id)
-            .where(
-                WorkflowAppLog.tenant_id == scope.tenant_id,
-                WorkflowAppLog.app_id == scope.app_id,
-                WorkflowAppLog.workflow_run_id == WorkflowRun.id,
-            )
+        return (
+            self._filter_export_logs(select(WorkflowAppLog.id), scope=scope, filters=filters)
+            .where(WorkflowAppLog.workflow_run_id == WorkflowRun.id)
             .correlate(WorkflowRun)
+        )
+
+    def _filter_export_logs[RowT: tuple[object, ...]](
+        self, statement: Select[RowT], *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
+    ) -> Select[RowT]:
+        """Use the same application, date and identity predicates for preview and CSV reads."""
+        statement = statement.where(
+            WorkflowAppLog.tenant_id == scope.tenant_id,
+            WorkflowAppLog.app_id == scope.app_id,
         )
         candidates: list[ColumnElement[bool]] = []
         if filters.end_user_ids:
