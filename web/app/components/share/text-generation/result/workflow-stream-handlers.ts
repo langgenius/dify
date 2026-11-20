@@ -14,6 +14,7 @@ import {
   updatePendingHumanInputForm,
 } from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { isExternalWaitOnly } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
@@ -233,7 +234,7 @@ const applyWorkflowPaused = (
   reasons: WorkflowProcess['pauseReasons'],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    draft.expand = false
+    draft.expand = isExternalWaitOnly(reasons)
     draft.status = WorkflowRunningStatus.Paused
     draft.pauseReasons = reasons
   })

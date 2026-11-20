@@ -444,6 +444,7 @@ describe('createWorkflowStreamHandlers', () => {
           expiration_time: 200,
         },
       })
+      expect(setup.workflowProcessData()?.expand).toBe(true)
       handlers.onWorkflowPaused({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -455,7 +456,10 @@ describe('createWorkflowStreamHandlers', () => {
           workflow_run_id: 'run-1',
         },
       })
-      expect(setup.workflowProcessData()?.pauseReasons).toEqual(externalWaitReasons)
+      expect(setup.workflowProcessData()).toMatchObject({
+        expand: true,
+        pauseReasons: externalWaitReasons,
+      })
       handlers.onWorkflowPaused({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -467,7 +471,10 @@ describe('createWorkflowStreamHandlers', () => {
           workflow_run_id: 'run-1',
         },
       })
-      expect(setup.workflowProcessData()?.pauseReasons).toEqual(humanInputReasons)
+      expect(setup.workflowProcessData()).toMatchObject({
+        expand: false,
+        pauseReasons: humanInputReasons,
+      })
       handlers.onWorkflowFinished({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
