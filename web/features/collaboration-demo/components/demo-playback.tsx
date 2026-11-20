@@ -43,14 +43,17 @@ export function DemoPlayback() {
         threadCloseRef={focusReopenedThread}
       />
       {playback.finished ? (
-        <DemoEndPanel
-          onReplay={() => {
-            setThreadOpen(true)
-            playback.restart()
-          }}
-        />
+        <>
+          <div className="pointer-events-none absolute inset-0 z-20 bg-background-overlay-alt motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0" />
+          <DemoEndPanel
+            onReplay={() => {
+              setThreadOpen(true)
+              playback.restart()
+            }}
+          />
+        </>
       ) : (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-12 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+        <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <Button
             ref={focusOnMount}
             variant="ghost"

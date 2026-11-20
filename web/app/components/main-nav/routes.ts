@@ -165,7 +165,8 @@ export function shouldHideMainNavigation(pathname: string) {
 
   return (
     (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
-    isSkillDetailPathname(pathname)
+    isSkillDetailPathname(pathname) ||
+    pathname === '/collaboration-demo'
   )
 }
 
@@ -182,12 +183,7 @@ function isSnippetDetailPathname(pathname: string) {
 }
 
 export function shouldUseDetailSidebar(pathname: string, options: DetailSidebarVisibilityOptions) {
-  if (
-    isDatasetDetailPathname(pathname) ||
-    isSnippetDetailPathname(pathname) ||
-    pathname === '/collaboration-demo'
-  )
-    return true
+  if (isDatasetDetailPathname(pathname) || isSnippetDetailPathname(pathname)) return true
 
   if (options.isCurrentWorkspaceDatasetOperator) return false
 

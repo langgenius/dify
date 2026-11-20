@@ -108,14 +108,21 @@ it('walks the guide, playback and end panel from the keyboard', async () => {
     .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
     .toHaveAttribute('href', '/app/chatflow-1/workflow')
 
-  await userEvent.keyboard('{Tab}{Tab}')
+  await userEvent.keyboard('{Tab}')
+  await expect
+    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}')
   await expect
     .element(endPanel.getByRole('button', { name: 'collaborationDemo.end.close' }))
     .toHaveFocus()
   await userEvent.keyboard('{Enter}')
   expect(api.replace).toHaveBeenCalledWith('/apps')
 
-  await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+  await userEvent.keyboard('{Tab}')
+  await expect
+    .element(endPanel.getByRole('button', { name: 'collaborationDemo.playback.replay' }))
+    .toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect
     .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))

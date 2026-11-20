@@ -30,7 +30,7 @@ export function getThreadPlacement(
 ) {
   return {
     left: Math.max(8, Math.min(pin.x + 40, canvas.width - 368)),
-    top: Math.max(headerInset, Math.min(pin.y - 72, canvas.height - 620)),
+    top: Math.max(headerInset, Math.min(pin.y - 28, canvas.height - 520)),
   }
 }
 

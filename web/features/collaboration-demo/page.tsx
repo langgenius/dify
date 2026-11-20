@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { DemoEditorCanvasChrome, DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
+import { DemoCanvasCorner, DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
 import { DemoPlayback } from './components/demo-playback'
 import { DemoStepGuide } from './components/demo-step-guide'
 import { createDemoGraph } from './demo-graph'
@@ -21,7 +21,7 @@ export default function CollaborationDemoPage() {
   return (
     <div className="relative h-full min-h-0 overflow-hidden bg-background-body">
       <DemoHeader
-        membersGuide={step === 'members' ? 'listed' : step === 'comment' ? 'collapsed' : undefined}
+        membersListed={step === 'members'}
         membersRef={setMembersTarget}
         onExit={exitDemo}
       />
@@ -42,7 +42,7 @@ export default function CollaborationDemoPage() {
         showControls={false}
         interactive={false}
       >
-        <DemoEditorCanvasChrome />
+        <DemoCanvasCorner />
         {step === 'playing' && <DemoPlayback />}
       </WorkflowPreview>
       {step !== 'playing' && (

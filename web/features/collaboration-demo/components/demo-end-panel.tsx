@@ -114,7 +114,7 @@ export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
     <section
       aria-labelledby="collaboration-demo-end-title"
       aria-describedby="collaboration-demo-end-description"
-      className="pointer-events-auto absolute inset-x-0 bottom-12 z-20 mx-auto w-100 max-w-[calc(100%-32px)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-5 shadow-xl motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
+      className="pointer-events-auto absolute inset-0 z-30 m-auto h-fit w-100 max-w-[calc(100%-32px)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-5 shadow-xl motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
     >
       <h2
         id="collaboration-demo-end-title"
@@ -133,45 +133,43 @@ export function DemoEndPanel({ onReplay }: { onReplay: () => void }) {
       <span aria-live="polite" className="sr-only">
         {readyAction && t(($) => $['end.ready'], { action: readyAction })}
       </span>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        {(kind === 'loading' || kind === 'appsLoading') && (
+          <Button variant="primary" loading>
+            {tryNowLabel}
+          </Button>
+        )}
+        {state.kind === 'tryNow' && (
+          <Link href={`/app/${state.app.id}/workflow`} className={primaryLink}>
+            {tryNowLabel}
+          </Link>
+        )}
+        {kind === 'appsError' && (
+          <Link href="/apps" className={primaryLink}>
+            {t(($) => $['end.goToStudio'])}
+          </Link>
+        )}
+        {kind === 'createApp' && (
+          <Link href={createWorkflowAppHref} className={primaryLink}>
+            {t(($) => $['end.createWorkflow'])}
+          </Link>
+        )}
+        {kind === 'upgrade' && (
+          <Button ref={upgradeRef} variant="primary" onClick={() => setPricing('open')}>
+            {t(($) => $['end.upgrade.action'])}
+          </Button>
+        )}
+        {kind === 'unavailable' ? (
+          <Button variant="primary" onClick={() => router.replace('/apps')}>
+            {t(($) => $['end.backToWorkspace'])}
+          </Button>
+        ) : (
+          <Button onClick={exitDemo}>{t(($) => $['end.close'])}</Button>
+        )}
         <Button variant="ghost" onClick={onReplay}>
-          <span aria-hidden className="i-ri-replay-line size-4" />
+          <span aria-hidden className="i-ri-restart-line size-4" />
           {t(($) => $['playback.replay'])}
         </Button>
-        <div className="flex items-center gap-2">
-          {kind === 'unavailable' ? (
-            <Button variant="primary" onClick={() => router.replace('/apps')}>
-              {t(($) => $['end.backToWorkspace'])}
-            </Button>
-          ) : (
-            <Button onClick={exitDemo}>{t(($) => $['end.close'])}</Button>
-          )}
-          {(kind === 'loading' || kind === 'appsLoading') && (
-            <Button variant="primary" loading>
-              {tryNowLabel}
-            </Button>
-          )}
-          {state.kind === 'tryNow' && (
-            <Link href={`/app/${state.app.id}/workflow`} className={primaryLink}>
-              {tryNowLabel}
-            </Link>
-          )}
-          {kind === 'appsError' && (
-            <Link href="/apps" className={primaryLink}>
-              {t(($) => $['end.goToStudio'])}
-            </Link>
-          )}
-          {kind === 'createApp' && (
-            <Link href={createWorkflowAppHref} className={primaryLink}>
-              {t(($) => $['end.createWorkflow'])}
-            </Link>
-          )}
-          {kind === 'upgrade' && (
-            <Button ref={upgradeRef} variant="primary" onClick={() => setPricing('open')}>
-              {t(($) => $['end.upgrade.action'])}
-            </Button>
-          )}
-        </div>
       </div>
     </section>
   )
