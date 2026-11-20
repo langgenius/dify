@@ -67,7 +67,7 @@ from services.human_input_v2.im_channel_service import IMChannelView, WorkspaceI
 from services.human_input_v2.im_channel_service_composition import (
     build_workspace_im_channel_service,
 )
-from services.human_input_v2.test_channel_composition import build_test_channel_service
+from services.human_input_v2.message_template_test_composition import build_message_template_test_service
 
 from ._common import StrictModel
 from ._decorators import (
@@ -462,14 +462,18 @@ class ListTestChannelsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str) -> ResponseReturnValue:
+    def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
         """List test identifiers for an authenticated workspace member in every edition.
 
         Discovery grants no channel-management or app-execution permissions and
         performs no writes or provider I/O. Storage failures propagate normally.
         """
-        channels = build_test_channel_service().list_channels(TenantId(tenant_id))
+        service = build_message_template_test_service(
+            tenant_id=tenant_id, account_id=current_user.id, account_email=current_user.email
+        )
+        channels = service.list_channels()
         return HumanInputTestChannelsResponse(channels=channels).model_dump(mode="json")
 
 

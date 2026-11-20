@@ -34,7 +34,6 @@ from services.human_input_v2.form_service import HumanInputDeliveryTestFormServi
 from services.human_input_v2.im_channel_service import WorkspaceIMChannelService
 from services.human_input_v2.message_template_test_service import MessageTemplateTestService
 from services.human_input_v2.resend_channel import ResendProviderGateway
-from services.human_input_v2.test_channel_service import HumanInputTestChannelService
 
 _TEST_CHANNELS_URL = "/console/api/workspaces/current/human-input/v2/test-channels"
 
@@ -96,8 +95,10 @@ def channel_client(
     )
     monkeypatch.setattr(
         channel_controller,
-        "build_test_channel_service",
-        lambda: HumanInputTestChannelService(sqlite_session_factory),
+        "build_message_template_test_service",
+        lambda tenant_id, account_id, account_email: _build_template_service(
+            sqlite_session_factory, tenant_id=tenant_id, account_id=account_id, account_email=account_email
+        ),
     )
     return template_console_app.test_client(), account
 
@@ -211,7 +212,7 @@ def test_test_channel_discovery_requires_dify_authentication_before_channel_read
 
     monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", unexpected_read)
     monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", unexpected_read)
-    monkeypatch.setattr(channel_controller, "build_test_channel_service", unexpected_read)
+    monkeypatch.setattr(channel_controller, "build_message_template_test_service", unexpected_read)
     application = Flask(__name__)
     LoginManager(application)
     application.register_blueprint(console_bp)
@@ -281,10 +282,9 @@ def test_enterprise_test_channel_discovery_does_not_fall_back_to_workspace_confi
     assert response.get_json() == {"channels": ["email"] if mail_available else []}
 
 
-@pytest.fixture
-def template_service() -> MessageTemplateTestService:
-    sessions = sessionmaker()
-
+def _build_template_service(
+    sessions: sessionmaker[Session], *, tenant_id: str, account_id: str, account_email: str
+) -> MessageTemplateTestService:
     def build_adapter(_channel: IMChannel) -> IMProviderAdapter:
         raise AssertionError("Controller dispatch must not resolve a provider")
 
@@ -293,18 +293,25 @@ def template_service() -> MessageTemplateTestService:
 
     return MessageTemplateTestService(
         session_factory=sessions,
-        tenant_id=TenantId("tenant-id"),
-        account_id=AccountId("editor-id"),
-        account_email="editor@example.com",
+        tenant_id=TenantId(tenant_id),
+        account_id=AccountId(account_id),
+        account_email=account_email,
         email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=ResendProviderGateway(),
         im_adapter_factory=build_adapter,
         form_service=HumanInputDeliveryTestFormService(
             session_factory=sessions,
-            tenant_id=TenantId("tenant-id"),
-            account_id=AccountId("editor-id"),
+            tenant_id=TenantId(tenant_id),
+            account_id=AccountId(account_id),
             variable_loader_factory=variable_loader,
         ),
+    )
+
+
+@pytest.fixture
+def template_service() -> MessageTemplateTestService:
+    return _build_template_service(
+        sessionmaker(), tenant_id="tenant-id", account_id="editor-id", account_email="editor@example.com"
     )
 
 
