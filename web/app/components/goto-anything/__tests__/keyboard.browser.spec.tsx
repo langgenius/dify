@@ -6,7 +6,7 @@ import { MainNavSearchButton } from '@/app/components/main-nav/components/search
 import { MainNavMobileBar } from '@/app/components/main-nav/mobile-nav'
 import { ThemeProvider } from '@/features/theme/provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { GotoAnything } from '../index'
 
@@ -23,39 +23,32 @@ const emptyPage = { data: [], has_more: false, limit: 10, page: 1, total: 0 }
 const searchTitle = 'app.gotoAnything.searchTitle'
 const shortcut = detectPlatform() === 'mac' ? '{Meta>}k{/Meta}' : '{Control>}k{/Control}'
 
-function installPaletteApi() {
-  return installFakeApi({
-    console: {
-      apps: { get: () => emptyPage },
-      datasets: { get: () => emptyPage },
-      agent: {
-        get: () => ({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } }),
-      },
-      workspaces: {
-        current: {
-          skills: { get: () => emptyPage },
-          defaultModel: { get: () => ({ data: null }) },
-          tools: {
-            builtin: { get: () => [] },
-            api: { get: () => [] },
-            workflow: { get: () => [] },
-            mcp: { get: () => [] },
-          },
-          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
-          plugin: {
-            list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
-          },
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: { get: () => emptyPage },
+    datasets: { get: () => emptyPage },
+    agent: {
+      get: () => ({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } }),
+    },
+    workspaces: {
+      current: {
+        skills: { get: () => emptyPage },
+        defaultModel: { get: () => ({ data: null }) },
+        tools: {
+          builtin: { get: () => [] },
+          api: { get: () => [] },
+          workflow: { get: () => [] },
+          mcp: { get: () => [] },
+        },
+        models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+        plugin: {
+          list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
         },
       },
     },
-    marketplace: { searchAdvanced: () => ({ data: { plugins: [], total: 0 } }) },
-  })
-}
-let fake: ReturnType<typeof installPaletteApi>
-beforeEach(() => {
-  fake = installPaletteApi()
-  onTestFinished(fake)
-})
+  },
+  marketplace: { searchAdvanced: () => ({ data: { plugins: [], total: 0 } }) },
+}))
 
 function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
   const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper({

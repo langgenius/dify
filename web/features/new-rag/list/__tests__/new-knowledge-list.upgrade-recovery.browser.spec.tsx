@@ -3,7 +3,7 @@ import type { DatasetListResponse } from './new-knowledge-list-test-env'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
   legacyDataset,
@@ -31,47 +31,42 @@ function fakeUpgradePolling() {
   })
 }
 
-function installListApi() {
-  return installFakeApi({
-    console: {
-      knowledgeFs: {
-        spaces: {
-          get: async () => spacesPage(),
-          byControlSpaceId: { delete: async () => {} },
-        },
-      },
-      workspaces: { current: { members: { get: async () => ({ accounts: members }) } } },
-      datasets: {
-        get: async () => datasetsPage([]),
-        knowledgeFsUpgradeJobs: {
-          get: async () => ({ data: [] }),
-        },
-        byDatasetId: {
-          knowledgeFsUpgrades: {
-            byJobId: { get: () => new Promise(() => {}) },
-          },
-        },
-        apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
-        externalKnowledgeApi: {
-          get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
-        },
-      },
-      tags: {
-        get: () => [
-          { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-          { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-        ],
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        get: async () => spacesPage(),
+        byControlSpaceId: { delete: async () => {} },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installListApi>
+    workspaces: { current: { members: { get: async () => ({ accounts: members }) } } },
+    datasets: {
+      get: async () => datasetsPage([]),
+      knowledgeFsUpgradeJobs: {
+        get: async () => ({ data: [] }),
+      },
+      byDatasetId: {
+        knowledgeFsUpgrades: {
+          byJobId: { get: () => new Promise(() => {}) },
+        },
+      },
+      apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+      externalKnowledgeApi: {
+        get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+      },
+    },
+    tags: {
+      get: () => [
+        { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+        { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+      ],
+    },
+  },
+}))
 
 describe('NewKnowledgeList upgrade recovery', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    fake = installListApi()
-    onTestFinished(fake)
   })
 
   describe('upgrade recovery', () => {

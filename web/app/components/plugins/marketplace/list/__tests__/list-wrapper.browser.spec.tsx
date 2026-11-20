@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
@@ -83,22 +83,16 @@ const renderListWrapper = async ({
   return { ...rendered, onUrlUpdate }
 }
 
-function installMarketplaceApi() {
-  return installFakeApi({
-    marketplace: {
-      collections: () => ({ data: { collections: [] } }),
-      collectionPlugins: () => ({ data: { plugins: [] } }),
-      searchAdvanced: () => searchResponse([]),
-    },
-  })
-}
+const fake = setupFakeApi(() => ({
+  marketplace: {
+    collections: () => ({ data: { collections: [] } }),
+    collectionPlugins: () => ({ data: { plugins: [] } }),
+    searchAdvanced: () => searchResponse([]),
+  },
+}))
 
 describe('ListWrapper', () => {
-  let fake: ReturnType<typeof installMarketplaceApi>
-  beforeEach(() => {
-    fake = installMarketplaceApi()
-    onTestFinished(fake)
-  })
+  beforeEach(() => {})
 
   afterEach(() => {
     vi.useRealTimers()

@@ -7,27 +7,19 @@ import { IpPolicyDialog } from '@/features/network-access/policy-editor'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 
 vi.unmock('react-i18next')
 
-function installCurrentIpApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          networkAccessGroups: { currentIp: { get: async () => ({ client_ip: '203.0.113.42' }) } },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        networkAccessGroups: { currentIp: { get: async () => ({ client_ip: '203.0.113.42' }) } },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installCurrentIpApi>
-
-beforeEach(() => {
-  fake = installCurrentIpApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 async function renderEditor(props: Partial<ComponentProps<typeof IpPolicyDialog>> = {}) {
   const i18n = createInstance()

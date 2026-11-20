@@ -1,7 +1,7 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import ChangePasswordForm from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -57,16 +57,11 @@ async function completePasswordChange() {
   return screen
 }
 
-function installApi() {
-  return installFakeApi({
-    console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
-  })
-}
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   navigation.replace.mockReset()
   navigation.search = 'token=reset-token'
 })

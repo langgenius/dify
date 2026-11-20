@@ -4,7 +4,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { marketplaceLinks } from '@/features/marketplace/links'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { BuiltinMarketplacePanel } from '../builtin-marketplace-panel'
@@ -24,35 +24,30 @@ const collection: MarketplaceCollection = {
   search_params: {},
 }
 
-function installMarketplaceApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          plugin: {
-            permission: {
-              fetch: {
-                get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
-              },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: {
+          permission: {
+            fetch: {
+              get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
             },
-            installedIds: { get: () => ({ plugin_ids: [] }) },
-            list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
           },
+          installedIds: { get: () => ({ plugin_ids: [] }) },
+          list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
         },
       },
     },
-    marketplace: {
-      collections: () => ({ data: { collections: [collection] } }),
-      collectionPlugins: () => ({ data: { plugins: [plugin], total: 1 } }),
-      searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
-    },
-  })
-}
-let fake: ReturnType<typeof installMarketplaceApi>
+  },
+  marketplace: {
+    collections: () => ({ data: { collections: [collection] } }),
+    collectionPlugins: () => ({ data: { plugins: [plugin], total: 1 } }),
+    searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+  },
+}))
 
 beforeEach(async () => {
-  fake = installMarketplaceApi()
-  onTestFinished(fake)
   await page.viewport(1200, 800)
 })
 

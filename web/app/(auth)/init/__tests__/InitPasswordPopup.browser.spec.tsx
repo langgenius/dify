@@ -1,7 +1,7 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import InitPasswordPopup from '../InitPasswordPopup'
 
 const replace = vi.hoisted(() => vi.fn())
@@ -18,21 +18,16 @@ const renderPopup = () => {
   )
 }
 
-function installApi() {
-  return installFakeApi({
-    console: {
-      init: {
-        get: () => ({ status: 'not_started' }),
-        post: () => ({ result: 'success' }),
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    init: {
+      get: () => ({ status: 'not_started' }),
+      post: () => ({ result: 'success' }),
     },
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   replace.mockReset()
 })
 

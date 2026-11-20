@@ -9,7 +9,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
@@ -96,28 +96,25 @@ const run: SourceWorkflowRun = {
   updatedAt: '2026-07-20T10:01:00Z',
 }
 
-function installSourceApi() {
-  return installFakeApi({
-    console: {
-      knowledgeFs: {
-        spaces: {
-          byControlSpaceId: {
-            settings: { get: () => settingsResponse() },
-            sources: {
-              bySourceId: {
-                asyncImport: {
-                  post: async () =>
-                    workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }),
-                },
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          settings: { get: () => settingsResponse() },
+          sources: {
+            bySourceId: {
+              asyncImport: {
+                post: async () =>
+                  workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }),
               },
             },
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installSourceApi>
+  },
+}))
 
 const pages = [
   {
@@ -214,8 +211,6 @@ async function selectSyncPolicy(user: typeof userEvent, mode: 'custom' | 'interv
 describe('CrawlSelectionForm', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    fake = installSourceApi()
-    onTestFinished(fake)
     settingsState.configurationState = 'active'
   })
 

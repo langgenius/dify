@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createWavFixture } from '@/test/browser-media'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { TtsAutoPlay } from '@/types/app'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import VoiceSettings from '../voice-settings'
@@ -21,21 +21,17 @@ const voices = [
   { name: 'Alloy', value: 'alloy' },
   { name: 'Echo', value: 'echo' },
 ]
-const installApi = () =>
-  installFakeApi({
-    console: {
-      apps: { byAppId: { textToAudio: { voices: { get: () => voices } } } },
-      agent: {
-        byAgentId: { textToAudio: { voices: { get: () => voices }, post: () => new Blob() } },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: { byAppId: { textToAudio: { voices: { get: () => voices } } } },
+    agent: {
+      byAgentId: { textToAudio: { voices: { get: () => voices }, post: () => new Blob() } },
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  fake = installApi()
-  onTestFinished(fake)
   navigation.params = { appId }
 })
 

@@ -4,7 +4,7 @@ import { render } from 'vitest-browser-react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi, route } from '@/test/fake-api'
+import { route, setupFakeApi } from '@/test/fake-api'
 import { TransferMethod } from '@/types/app'
 import { FileItem } from '../../file-uploader-in-chat-input/file-item'
 import { FileContextProvider, useStore } from '../../store'
@@ -53,32 +53,26 @@ async function setup(props: Partial<ComponentProps<typeof FileFromLinkOrLocal>> 
   return { onChange }
 }
 
-const installApi = () =>
-  installFakeApi({
-    console: {
-      remoteFiles: {
-        upload: {
-          post: () => ({
-            id: 'uploaded-file',
-            name: 'report.pdf',
-            extension: 'pdf',
-            mime_type: 'application/pdf',
-            created_at: 1_767_225_600,
-            created_by: 'user-1',
-            size: 10,
-            url: 'https://example.com/report.pdf',
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    remoteFiles: {
+      upload: {
+        post: () => ({
+          id: 'uploaded-file',
+          name: 'report.pdf',
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+          created_at: 1_767_225_600,
+          created_by: 'user-1',
+          size: 10,
+          url: 'https://example.com/report.pdf',
+        }),
       },
     },
-    // Local uploads still use the XHR transport; the fake API answers it.
-    routes: [route('POST', 'console', '/files/upload', () => ({ id: 'uploaded-file' }))],
-  })
-let fake: ReturnType<typeof installApi>
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+  },
+  // Local uploads still use the XHR transport; the fake API answers it.
+  routes: [route('POST', 'console', '/files/upload', () => ({ id: 'uploaded-file' }))],
+}))
 
 it.each([
   { showFromLink: true, showFromLocal: false },

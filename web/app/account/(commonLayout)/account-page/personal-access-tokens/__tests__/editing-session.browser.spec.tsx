@@ -5,7 +5,7 @@ import type {
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
@@ -17,31 +17,26 @@ const saved: PersonalAccessTokenDetailResponse = {
 // The server's token list, which a delete removes from.
 let tokens: PersonalAccessTokenResponse[]
 
-function installApi() {
-  return installFakeApi({
-    console: {
-      account: {
-        personalAccessTokens: {
-          get: () => tokenList(tokens),
-          byTokenId: {
-            get: () => saved,
-            patch: () => saved,
-            delete: ({ params }) => {
-              tokens = tokens.filter(({ id }) => id !== params.token_id)
-            },
+const fake = setupFakeApi(() => ({
+  console: {
+    account: {
+      personalAccessTokens: {
+        get: () => tokenList(tokens),
+        byTokenId: {
+          get: () => saved,
+          patch: () => saved,
+          delete: ({ params }) => {
+            tokens = tokens.filter(({ id }) => id !== params.token_id)
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
   tokens = [token]
-  fake = installApi()
-  onTestFinished(fake)
 })
 
 it('retains the edited name after validation failure and saves the loaded version without expiry', async () => {

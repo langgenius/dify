@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { PluginImg } from '../plugin-img'
 
 // boundary: keep the unrelated marketplace image fallback local; all asset bytes still go
@@ -17,16 +17,10 @@ vi.mock('@/env', async (importOriginal) => {
   }
 })
 
-const installApi = () =>
-  installFakeApi({
-    console: { workspaces: { current: { plugin: { asset: { get: () => new Blob() } } } } },
-  })
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { workspaces: { current: { plugin: { asset: { get: () => new Blob() } } } } },
+}))
 const assetRequest = () => fake.console.workspaces.current.plugin.asset.get
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
 
 async function pngAsset(width: number, height: number) {
   const canvas = document.createElement('canvas')

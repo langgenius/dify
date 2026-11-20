@@ -4,16 +4,14 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createMicrophoneFixture, paintedPixelCount } from '@/test/browser-media'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import VoiceInput from '../index'
 
 // The contract requires a UUID app id.
 const appId = '8b9c0d1e-2f3a-4b4c-8d5e-6f7a8b9c0d1e'
-const installApi = () =>
-  installFakeApi({
-    console: { apps: { byAppId: { audioToText: { post: () => ({ text: 'transcribed text' }) } } } },
-  })
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { apps: { byAppId: { audioToText: { post: () => ({ text: 'transcribed text' }) } } } },
+}))
 const target = { type: 'consoleApp' as const, appId }
 const microphones: MicrophoneFixture[] = []
 const recorderCloseGates: Array<ReturnType<typeof createDeferred<void>>> = []
@@ -88,8 +86,6 @@ const waitForRecording = async (screen: Awaited<ReturnType<typeof render>>) => {
 }
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   beforeTranscribeCalls = 0
   beforeTranscribe = async () => {
     beforeTranscribeCalls++

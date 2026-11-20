@@ -12,7 +12,7 @@ import commonMessages from '@/i18n/locales/en-US/common.json'
 import navigationMessages from '@/i18n/locales/en-US/navigation.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
@@ -47,17 +47,14 @@ const template = {
 }
 
 let queryClient: QueryClient
-let fake: ReturnType<typeof installSearchApi>
 let i18n: ReturnType<typeof createInstance>
 
-function installSearchApi() {
-  return installFakeApi({
-    marketplace: {
-      searchAdvanced: () => ({ data: { plugins: [], total: 0 } }),
-      templateSearch: () => ({ data: { templates: [], total: 0 } }),
-    },
-  })
-}
+const fake = setupFakeApi(() => ({
+  marketplace: {
+    searchAdvanced: () => ({ data: { plugins: [], total: 0 } }),
+    templateSearch: () => ({ data: { templates: [], total: 0 } }),
+  },
+}))
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
@@ -142,8 +139,6 @@ describe('Marketplace search autocomplete', () => {
       },
     })
     vi.clearAllMocks()
-    fake = installSearchApi()
-    onTestFinished(fake)
   })
 
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {

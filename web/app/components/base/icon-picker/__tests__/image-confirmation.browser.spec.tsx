@@ -5,7 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { dropFixtureFile } from '@/test/browser-file-drag'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createGifFile } from '@/test/fixtures/image-files'
 import gifDataUrl from '@/test/fixtures/media/preview.gif?url&inline'
 import { createIconPickerEnvironment, defaultIcon } from '@/test/icon-picker'
@@ -18,25 +18,19 @@ const fileId = (key: string) =>
     .join('')
     .slice(0, 12)
     .padStart(12, '0')}`
-const installApi = () =>
-  installFakeApi({
-    console: {
-      files: {
-        upload: {
-          post: ({ body }) => ({
-            id: fileId('uploaded'),
-            name: 'uploaded-image',
-            size: body.file.size,
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: fileId('uploaded'),
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
       },
     },
-  })
-let fake: ReturnType<typeof installApi>
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+  },
+}))
 afterEach(() => {
   vi.restoreAllMocks()
 })

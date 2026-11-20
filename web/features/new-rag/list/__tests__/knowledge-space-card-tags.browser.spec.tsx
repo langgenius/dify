@@ -6,7 +6,7 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceCardTags } from '../knowledge-space-card-tags'
 
 type KnowledgeFsSpaceListItemResponse = Awaited<
@@ -91,38 +91,33 @@ async function setup(permissionKeys = editable) {
   await expect.element(trigger()).toBeVisible()
   return queryClient
 }
-function installTagsApi() {
-  return installFakeApi({
-    console: {
-      knowledgeFs: {
-        spaces: {
-          get: async () => ({ data: [serverSpace], has_more: false, limit: 30, page: 1 }),
-          byControlSpaceId: {
-            tags: {
-              put: async ({ body }) => {
-                const tagIds = body.tag_ids ?? []
-                serverSpace = {
-                  ...serverSpace,
-                  tags: serverTags.filter((tag) => tagIds.includes(tag.id)),
-                }
-                serverTags = serverTags.map((tag) => ({
-                  ...tag,
-                  binding_count: tagIds.includes(tag.id) ? '1' : '0',
-                }))
-                return { data: serverSpace.tags ?? [] }
-              },
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        get: async () => ({ data: [serverSpace], has_more: false, limit: 30, page: 1 }),
+        byControlSpaceId: {
+          tags: {
+            put: async ({ body }) => {
+              const tagIds = body.tag_ids ?? []
+              serverSpace = {
+                ...serverSpace,
+                tags: serverTags.filter((tag) => tagIds.includes(tag.id)),
+              }
+              serverTags = serverTags.map((tag) => ({
+                ...tag,
+                binding_count: tagIds.includes(tag.id) ? '1' : '0',
+              }))
+              return { data: serverSpace.tags ?? [] }
             },
           },
         },
       },
-      tags: { get: async () => serverTags },
     },
-  })
-}
-let fake: ReturnType<typeof installTagsApi>
-beforeEach(async ({ onTestFinished }) => {
-  fake = installTagsApi()
-  onTestFinished(fake)
+    tags: { get: async () => serverTags },
+  },
+}))
+beforeEach(async () => {
   await page.viewport(640, 600)
   serverTags = knowledgeTags.map((tag) => ({ ...tag }))
 })

@@ -2,27 +2,25 @@ import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderBaseField } from './base-field-test-env'
 
 type DynamicOptions = Awaited<
   ReturnType<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>
 >
-const installApi = () =>
-  installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          plugin: {
-            parameters: {
-              dynamicOptions: { get: () => ({ options: [] }) },
-            },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: {
+          parameters: {
+            dynamicOptions: { get: () => ({ options: [] }) },
           },
         },
       },
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 const dynamicOptions = () => fake.console.workspaces.current.plugin.parameters.dynamicOptions.get
 
 const dynamicSelectParams = {
@@ -188,6 +186,4 @@ describe('BaseField dynamic options', () => {
 
 beforeEach(async () => {
   await page.viewport(1280, 900)
-  fake = installApi()
-  onTestFinished(fake)
 })

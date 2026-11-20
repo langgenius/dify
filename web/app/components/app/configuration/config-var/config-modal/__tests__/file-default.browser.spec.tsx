@@ -6,7 +6,7 @@ import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi, route } from '@/test/fake-api'
+import { route, setupFakeApi } from '@/test/fake-api'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
@@ -48,22 +48,14 @@ async function getFilePicker() {
   return page.elementLocator(uploadButton.element().querySelector('input[type="file"]')!)
 }
 
-function installApi() {
-  return installFakeApi({
-    routes: [
-      route('POST', 'console', '/files/upload', ({ body }) => {
-        const file = (body as FormData).get('file') as File
-        return { id: `uploaded-${file.name}` }
-      }),
-    ],
-  })
-}
-let fake: ReturnType<typeof installApi>
-
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+const fake = setupFakeApi(() => ({
+  routes: [
+    route('POST', 'console', '/files/upload', ({ body }) => {
+      const file = (body as FormData).get('file') as File
+      return { id: `uploaded-${file.name}` }
+    }),
+  ],
+}))
 
 it('uses the server size limit when uploading a default image', async () => {
   fake.route('POST', 'console', '/files/upload').mockResolvedValue({ id: 'uploaded-image' })

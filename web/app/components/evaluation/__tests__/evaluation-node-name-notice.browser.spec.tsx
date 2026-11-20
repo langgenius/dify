@@ -6,7 +6,7 @@ import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import evaluation from '@/i18n/locales/en-US/evaluation.json'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import EvaluationNodeNameNotice from '../evaluation-node-name-notice'
 
@@ -27,16 +27,13 @@ const distinctNodes: EvaluationNodeInfoResponse = {
   ],
 }
 
-function installNodeInfoApi() {
-  return installFakeApi({
-    console: {
-      byEvaluateTargetType: {
-        byEvaluateTargetId: { evaluation: { nodeInfo: { post: async () => distinctNodes } } },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    byEvaluateTargetType: {
+      byEvaluateTargetId: { evaluation: { nodeInfo: { post: async () => distinctNodes } } },
     },
-  })
-}
-let fake: ReturnType<typeof installNodeInfoApi>
+  },
+}))
 
 async function renderNotice(resourceType: 'apps' | 'snippets') {
   const i18n = createInstance()
@@ -56,11 +53,6 @@ async function renderNotice(resourceType: 'apps' | 'snippets') {
     </QueryClientTestProvider>,
   )
 }
-
-beforeEach(() => {
-  fake = installNodeInfoApi()
-  onTestFinished(fake)
-})
 
 it('opens app evaluation and warns about duplicate node names in a dismissible dialog', async () => {
   fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mockResolvedValue(

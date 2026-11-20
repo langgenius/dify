@@ -4,7 +4,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import SelectDataSet from '../index'
 
@@ -56,12 +56,7 @@ async function setup({
     </Providers>,
   )
 }
-const installApi = () => installFakeApi({ console: { datasets: { get: () => response([]) } } })
-let fake: ReturnType<typeof installApi>
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+const fake = setupFakeApi(() => ({ console: { datasets: { get: () => response([]) } } }))
 
 it('adds available knowledge through the real selector and leaves unavailable entries disabled', async () => {
   fake.console.datasets.get.mockResolvedValue(

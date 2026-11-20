@@ -1,6 +1,6 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi, route } from '@/test/fake-api'
+import { apiError, route, setupFakeApi } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
 const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
@@ -23,29 +23,24 @@ const context = {
 }
 const approvalContextPath = '/openapi/v1/oauth/device/approval-context'
 const approveExternalPath = '/openapi/v1/oauth/device/approve-external'
-function installApi() {
-  return installFakeApi({
-    console: {
-      account: {
-        profile: {
-          // The signed-out state is a failed profile probe; a 401 would start the app's
-          // token refresh and sign-in redirect, which belong to the running application.
-          get: () => {
-            throw apiError({ status: 403, code: 'forbidden', message: 'No console session' })
-          },
+const fake = setupFakeApi(() => ({
+  console: {
+    account: {
+      profile: {
+        // The signed-out state is a failed profile probe; a 401 would start the app's
+        // token refresh and sign-in redirect, which belong to the running application.
+        get: () => {
+          throw apiError({ status: 403, code: 'forbidden', message: 'No console session' })
         },
       },
     },
-    routes: [
-      route('GET', 'origin', approvalContextPath, () => context),
-      route('POST', 'origin', approveExternalPath, () => ({})),
-    ],
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+  routes: [
+    route('GET', 'origin', approvalContextPath, () => context),
+    route('POST', 'origin', approveExternalPath, () => ({})),
+  ],
+}))
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   api.search = new URLSearchParams({ sso_verified: '1' })
 })
 

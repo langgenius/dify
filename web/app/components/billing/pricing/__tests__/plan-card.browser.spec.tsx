@@ -3,20 +3,13 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { CloudPlanCard } from '../plan-card'
 import { PlanFeatureInfotip } from '../plan-card/features'
 
-function installCheckoutApi() {
-  return installFakeApi({
-    console: { billing: { subscription: { get: async () => ({ url: '' }) } } },
-  })
-}
-let fake: ReturnType<typeof installCheckoutApi>
-beforeEach(() => {
-  fake = installCheckoutApi()
-  onTestFinished(fake)
-})
+const fake = setupFakeApi(() => ({
+  console: { billing: { subscription: { get: async () => ({ url: '' }) } } },
+}))
 
 it('keeps both education checkout actions inside the dialog on a narrow phone', async () => {
   await page.viewport(320, 700)

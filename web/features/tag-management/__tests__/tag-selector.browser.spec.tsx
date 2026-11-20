@@ -1,7 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { TagSelector } from '../components/tag-selector'
 import { renderWithTags } from './render-browser'
 
@@ -26,22 +26,17 @@ function renderSelector(permissions = ['app.tag.manage'], canBindOrUnbindTags = 
     permissions,
   )
 }
-function installTagApi() {
-  return installFakeApi({
-    console: {
-      tags: { get: () => serverTags, post: ({ body }) => ({ id: 'new-tag', ...body }) },
-      tagBindings: {
-        post: () => ({ result: 'success' }),
-        remove: { post: () => ({ result: 'success' }) },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: { get: () => serverTags, post: ({ body }) => ({ id: 'new-tag', ...body }) },
+    tagBindings: {
+      post: () => ({ result: 'success' }),
+      remove: { post: () => ({ result: 'success' }) },
     },
-  })
-}
-let fake: ReturnType<typeof installTagApi>
+  },
+}))
 beforeEach(() => {
   serverTags = tags
-  fake = installTagApi()
-  onTestFinished(fake)
 })
 afterEach(() => {
   toast.dismiss()

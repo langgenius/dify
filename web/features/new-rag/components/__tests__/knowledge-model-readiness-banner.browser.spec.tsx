@@ -2,7 +2,7 @@ import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/kn
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { KnowledgeModelReadinessBanner } from '../knowledge-model-readiness-banner'
 
 vi.mock('@/next/navigation', () => ({
@@ -43,20 +43,15 @@ async function renderBanner(capability?: 'index') {
   )
 }
 
-function installSettingsApi() {
-  return installFakeApi({
-    console: {
-      knowledgeFs: { spaces: { byControlSpaceId: { settings: { get: () => readiness() } } } },
-    },
-  })
-}
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: { spaces: { byControlSpaceId: { settings: { get: () => readiness() } } } },
+  },
+}))
 
 describe('KnowledgeModelReadinessBanner', () => {
-  let fake: ReturnType<typeof installSettingsApi>
   beforeEach(async () => {
     await page.viewport(800, 600)
-    fake = installSettingsApi()
-    onTestFinished(fake)
   })
 
   it.each([

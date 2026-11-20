@@ -3,7 +3,7 @@ import { useRef } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import {
   expectedUpgradeModels as expectedPayload,
   upgradeModelCatalogs as modelCatalogs,
@@ -22,47 +22,44 @@ const datasetId = '3f0b6c8e-2a4d-4e8f-9b1a-7c5d2e6f8a90'
 const dataset = { ...upgradeDataset, id: datasetId }
 const job = { ...upgradeJob, old_dataset_id: datasetId }
 
-function installUpgradeApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        byDatasetId: {
-          knowledgeFsUpgrades: {
-            get: () => ({
-              can_retry: false,
-              can_upgrade: true,
-              job: null,
-              models: recommendedModels,
-            }),
-            post: () => job,
-            byJobId: { get: () => new Promise(() => {}) },
-          },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        knowledgeFsUpgrades: {
+          get: () => ({
+            can_retry: false,
+            can_upgrade: true,
+            job: null,
+            models: recommendedModels,
+          }),
+          post: () => job,
+          byJobId: { get: () => new Promise(() => {}) },
         },
       },
-      workspaces: {
-        current: {
-          models: {
-            modelTypes: {
-              byModelType: {
-                get: ({ params }) => ({
-                  data: modelCatalogs
-                    .map((provider) => ({
-                      ...provider,
-                      models: provider.models.filter(
-                        (model) => model.model_type === params.model_type,
-                      ),
-                    }))
-                    .filter((provider) => provider.models.length),
-                }),
-              },
+    },
+    workspaces: {
+      current: {
+        models: {
+          modelTypes: {
+            byModelType: {
+              get: ({ params }) => ({
+                data: modelCatalogs
+                  .map((provider) => ({
+                    ...provider,
+                    models: provider.models.filter(
+                      (model) => model.model_type === params.model_type,
+                    ),
+                  }))
+                  .filter((provider) => provider.models.length),
+              }),
             },
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installUpgradeApi>
+  },
+}))
 
 // Exercise dialog callbacks through their production owner: cancel removes it and start adds a card.
 function UpgradeOwner() {
@@ -118,8 +115,6 @@ async function expectStarted() {
 }
 describe('KnowledgeUpgradeDialog', () => {
   beforeEach(async () => {
-    fake = installUpgradeApi()
-    onTestFinished(fake)
     await page.viewport(640, 600)
   })
 

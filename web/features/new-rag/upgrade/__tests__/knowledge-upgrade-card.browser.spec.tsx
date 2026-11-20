@@ -5,7 +5,7 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { upgradeDataset, upgradeJob } from '@/test/new-rag-upgrade'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeProvider } from '../knowledge-upgrade-context'
@@ -67,22 +67,17 @@ function PollingOwner() {
   )
 }
 
-function installUpgradeApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        byDatasetId: {
-          knowledgeFsUpgrades: { byJobId: { get: () => new Promise(() => {}) } },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        knowledgeFsUpgrades: { byJobId: { get: () => new Promise(() => {}) } },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installUpgradeApi>
+  },
+}))
 
-beforeEach(async ({ onTestFinished }) => {
-  fake = installUpgradeApi()
-  onTestFinished(fake)
+beforeEach(async () => {
   await page.viewport(640, 600)
   // Only the query polling interval is controlled; browser input and rendering stay real.
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })

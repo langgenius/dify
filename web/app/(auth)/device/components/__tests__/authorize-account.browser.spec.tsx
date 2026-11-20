@@ -1,6 +1,6 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi, route } from '@/test/fake-api'
+import { apiError, route, setupFakeApi } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
 const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
@@ -14,21 +14,16 @@ vi.mock('@/next/navigation', () => ({
   }),
   usePathname: () => '/device',
 }))
-function installApi() {
-  return installFakeApi({
-    routes: [
-      route('POST', 'origin', '/openapi/v1/oauth/device/approve', () => ({ status: 'approved' })),
-      route('POST', 'origin', '/openapi/v1/oauth/device/deny', () => ({ status: 'denied' })),
-    ],
-  })
-}
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  routes: [
+    route('POST', 'origin', '/openapi/v1/oauth/device/approve', () => ({ status: 'approved' })),
+    route('POST', 'origin', '/openapi/v1/oauth/device/deny', () => ({ status: 'denied' })),
+  ],
+}))
 const deviceAction = (action: 'approve' | 'deny') =>
   fake.route('POST', 'origin', `/openapi/v1/oauth/device/${action}`)
 const withCode = expect.objectContaining({ body: { user_code: 'ABCD-3456' } })
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   api.search = new URLSearchParams({ user_code: 'ABCD-3456' })
 })
 

@@ -3,7 +3,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import RetryButton from '../index-failed'
 
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
@@ -34,23 +34,16 @@ async function renderRetryButton() {
   )
 }
 
-function installErrorDocsApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        byDatasetId: {
-          errorDocs: { get: async () => errors },
-          retry: { post: async () => {} },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        errorDocs: { get: async () => errors },
+        retry: { post: async () => {} },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installErrorDocsApi>
-beforeEach(() => {
-  fake = installErrorDocsApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 it('reveals settled failures, blocks repeated native activation and disappears after refresh', async () => {
   const statusResponse = createDeferred<typeof errors>()

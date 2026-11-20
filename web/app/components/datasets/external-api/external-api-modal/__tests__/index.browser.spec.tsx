@@ -5,30 +5,23 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
 import { data, response as responseFixture } from './fixtures'
 
 // The patch route takes a UUID path parameter.
 const response = { ...responseFixture, id: '3b8f2c1d-7e4a-4f5b-9c6d-1e2f3a4b5c6d' }
-function installExternalApiApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        externalKnowledgeApi: {
-          post: async () => response,
-          byExternalKnowledgeApiId: { patch: async () => response },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      externalKnowledgeApi: {
+        post: async () => response,
+        byExternalKnowledgeApiId: { patch: async () => response },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installExternalApiApi>
-beforeEach(() => {
-  fake = installExternalApiApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 async function setup(existing?: ExternalKnowledgeApiResponse) {
   const { wrapper: Providers } = createConsoleQueryWrapper()

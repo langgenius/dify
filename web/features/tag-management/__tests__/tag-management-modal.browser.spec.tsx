@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
@@ -28,21 +28,14 @@ function renderModal(
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
-function installTagApi() {
-  return installFakeApi({
-    console: {
-      tags: {
-        get: () => tags,
-        post: ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }),
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: {
+      get: () => tags,
+      post: ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }),
     },
-  })
-}
-let fake: ReturnType<typeof installTagApi>
-beforeEach(() => {
-  fake = installTagApi()
-  onTestFinished(fake)
-})
+  },
+}))
 afterEach(() => {
   toast.dismiss()
 })

@@ -2,7 +2,7 @@ import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
@@ -88,26 +88,22 @@ function deferNextCanvasBlob() {
   }
 }
 
-const installApi = () =>
-  installFakeApi({
-    console: {
-      files: {
-        upload: {
-          post: ({ body }) => ({
-            id: fileId('uploaded'),
-            name: 'uploaded-image',
-            size: body.file.size,
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: fileId('uploaded'),
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
       },
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  fake = installApi()
-  onTestFinished(fake)
 })
 afterEach(() => {
   vi.restoreAllMocks()

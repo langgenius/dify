@@ -6,7 +6,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { DocumentPicker } from '../index'
 import PreviewDocumentPicker from '../preview-document-picker'
 
@@ -99,16 +99,9 @@ function PreviewOwner({ files = previewDocuments }: { files?: DocumentItem[] }) 
   )
 }
 
-function installDocumentsApi() {
-  return installFakeApi({
-    console: { datasets: { byDatasetId: { documents: { get: async () => response() } } } },
-  })
-}
-let fake: ReturnType<typeof installDocumentsApi>
-beforeEach(() => {
-  fake = installDocumentsApi()
-  onTestFinished(fake)
-})
+const fake = setupFakeApi(() => ({
+  console: { datasets: { byDatasetId: { documents: { get: async () => response() } } } },
+}))
 
 it('shows the current document contract and links every available document', async () => {
   const screen = await renderDocumentPicker({

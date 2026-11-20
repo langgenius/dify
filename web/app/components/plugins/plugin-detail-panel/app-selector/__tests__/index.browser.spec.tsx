@@ -2,11 +2,11 @@ import type { AppPartial, GetAppsResponse } from '@dify/contracts/api/console/ap
 import type { AppSelectorValue } from '../index'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
-import { beforeEach, expect, it, vi } from 'vite-plus/test'
+import { expect, it, vi } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { AppSelector } from '../index'
@@ -77,36 +77,29 @@ async function renderSelector() {
   return { input, onSelect, onSubmit }
 }
 
-function installAppsApi() {
-  return installFakeApi({
-    console: {
-      apps: {
-        get: (input) => ({
-          data: apps.filter((app) =>
-            app.name.toLowerCase().includes(input?.query?.name?.toLowerCase() ?? ''),
-          ),
-          page: input?.query?.page ?? 1,
-          limit: 20,
-          total: 2,
-          has_more: false,
-        }),
-        byAppId: {
-          get: ({ params }) =>
-            createAppDetailFixture({
-              id: params.app_id,
-              ...apps.find((app) => app.id === params.app_id),
-            }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      get: (input) => ({
+        data: apps.filter((app) =>
+          app.name.toLowerCase().includes(input?.query?.name?.toLowerCase() ?? ''),
+        ),
+        page: input?.query?.page ?? 1,
+        limit: 20,
+        total: 2,
+        has_more: false,
+      }),
+      byAppId: {
+        get: ({ params }) =>
+          createAppDetailFixture({
+            id: params.app_id,
+            ...apps.find((app) => app.id === params.app_id),
+          }),
       },
-      files: { upload: { get: () => createFileUploadConfigFixture() } },
     },
-  })
-}
-let fake: ReturnType<typeof installAppsApi>
-beforeEach(() => {
-  fake = installAppsApi()
-  onTestFinished(fake)
-})
+    files: { upload: { get: () => createFileUploadConfigFixture() } },
+  },
+}))
 
 it('dismisses only the inner picker with Escape and starts a fresh search after either popover closes', async () => {
   const { input, onSubmit } = await renderSelector()

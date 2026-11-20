@@ -1,13 +1,12 @@
 import type { SnippetListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Toaster } from '@langgenius/dify-ui/toast'
-import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { manager, toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture, createSnippetListItemFixture } from '@/test/fixtures/snippet'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import SnippetList from '../../index'
@@ -111,51 +110,46 @@ async function remove() {
   return dialog
 }
 
-function installSnippetApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          customizedSnippets: {
-            get: () => ({
-              data: snippets,
-              page: 1,
-              limit: 30,
-              total: snippets.length,
-              has_more: false,
-            }),
-            bySnippetId: {
-              patch: ({ body }) => {
-                const changes = { ...body, name: body.name ?? snippets[0]!.name }
-                snippets = snippets.map((item) => ({ ...item, ...changes }))
-                return createSnippetFixture({ id: snippetId, ...changes })
-              },
-              delete: () => {
-                snippets = []
-              },
-              export: { get: () => 'kind: snippet\nname: Tone Rewriter\n' },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        customizedSnippets: {
+          get: () => ({
+            data: snippets,
+            page: 1,
+            limit: 30,
+            total: snippets.length,
+            has_more: false,
+          }),
+          bySnippetId: {
+            patch: ({ body }) => {
+              const changes = { ...body, name: body.name ?? snippets[0]!.name }
+              snippets = snippets.map((item) => ({ ...item, ...changes }))
+              return createSnippetFixture({ id: snippetId, ...changes })
             },
+            delete: () => {
+              snippets = []
+            },
+            export: { get: () => 'kind: snippet\nname: Tone Rewriter\n' },
           },
-          members: { get: () => members },
         },
+        members: { get: () => members },
       },
-      tagBindings: {
-        post: () => {
-          snippets = snippets.map((item) => ({ ...item, tags: [sales] }))
-          return { result: 'success' }
-        },
-      },
-      tags: { get: () => [sales] },
     },
-  })
-}
-let fake: ReturnType<typeof installSnippetApi>
+    tagBindings: {
+      post: () => {
+        snippets = snippets.map((item) => ({ ...item, tags: [sales] }))
+        return { result: 'success' }
+      },
+    },
+    tags: { get: () => [sales] },
+  },
+}))
 
 beforeEach(() => {
-  vi.resetAllMocks()
+  vi.clearAllMocks()
   snippets = [createSnippet()]
-  fake = installSnippetApi()
-  onTestFinished(fake)
 })
 afterEach(() => {
   toast.dismiss()

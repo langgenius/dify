@@ -1,10 +1,9 @@
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture } from '@/test/fixtures/snippet'
 import SnippetCreateButton from '../snippet-create-button'
 
@@ -35,33 +34,28 @@ async function openCreate() {
   return dialog
 }
 
-function installSnippetApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          customizedSnippets: {
-            post: () => createSnippetFixture({ id: snippetId }),
-          },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        customizedSnippets: {
+          post: () => createSnippetFixture({ id: snippetId }),
         },
       },
-      snippets: {
-        bySnippetId: {
-          workflows: {
-            draft: {
-              post: () => ({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 }),
-            },
+    },
+    snippets: {
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: () => ({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 }),
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installSnippetApi>
+  },
+}))
 beforeEach(() => {
-  vi.resetAllMocks()
-  fake = installSnippetApi()
-  onTestFinished(fake)
+  vi.clearAllMocks()
 })
 
 it('hides creation without workspace permission', async () => {

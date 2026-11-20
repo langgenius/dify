@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import AgentLogModal from '../index'
 import { renderAgentLog } from './browser-test-env'
 
@@ -79,19 +79,15 @@ function ControlledModal({ floating = false }: { floating?: boolean }) {
   )
 }
 
-const installApi = () =>
-  installFakeApi({
-    console: {
-      apps: {
-        byAppId: { agent: { logs: { get: () => response('User') } } },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      byAppId: { agent: { logs: { get: () => response('User') } } },
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   toast.dismiss()
 })
 

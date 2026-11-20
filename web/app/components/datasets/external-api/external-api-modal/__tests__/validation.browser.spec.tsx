@@ -8,22 +8,15 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import common from '@/i18n/locales/en-US/common.json'
 import dataset from '@/i18n/locales/en-US/dataset.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
 import { response } from './fixtures'
 
 vi.unmock('react-i18next')
-function installExternalApiApi() {
-  return installFakeApi({
-    console: { datasets: { externalKnowledgeApi: { post: async () => response } } },
-  })
-}
-let fake: ReturnType<typeof installExternalApiApi>
-beforeEach(() => {
-  fake = installExternalApiApi()
-  onTestFinished(fake)
-})
+const fake = setupFakeApi(() => ({
+  console: { datasets: { externalKnowledgeApi: { post: async () => response } } },
+}))
 
 async function setup(endpoint: string, key = 'secret-key') {
   const i18n = createInstance()

@@ -5,7 +5,7 @@ import type {
 } from '@dify/contracts/api/console/account/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
@@ -27,34 +27,29 @@ const app: PersonalAccessTokenResourceResponse = {
 }
 const unscoped: PersonalAccessTokenDetailResponse = { token, resources: [], workspaces: [] }
 
-function installApi() {
-  return installFakeApi({
-    console: {
-      account: {
-        personalAccessTokens: {
-          get: () => tokenList(),
-          post: () => ({ ...token, secret: 'dpat_scoped' }),
-          byTokenId: {
-            get: () => unscoped,
-            patch: () => unscoped,
-          },
-        },
-        personalAccessTokenResources: {
-          get: () => ({ data: [app], next_cursor: null, has_more: false }),
-        },
-        personalAccessTokenWorkspaces: {
-          get: () => ({ data: [workspace], next_cursor: null, has_more: false }),
+const fake = setupFakeApi(() => ({
+  console: {
+    account: {
+      personalAccessTokens: {
+        get: () => tokenList(),
+        post: () => ({ ...token, secret: 'dpat_scoped' }),
+        byTokenId: {
+          get: () => unscoped,
+          patch: () => unscoped,
         },
       },
+      personalAccessTokenResources: {
+        get: () => ({ data: [app], next_cursor: null, has_more: false }),
+      },
+      personalAccessTokenWorkspaces: {
+        get: () => ({ data: [workspace], next_cursor: null, has_more: false }),
+      },
     },
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  fake = installApi()
-  onTestFinished(fake)
 })
 
 it('requires each selected scope and preserves selections while switching the expanded picker', async () => {

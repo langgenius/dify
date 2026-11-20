@@ -3,28 +3,25 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
 
-function installPricingApi() {
-  return installFakeApi({
-    console: {
-      features: { get: async () => ({}) },
-      account: {
-        education: {
-          get: () => ({
-            is_student: false,
-            allow_refresh: false,
-            can_redeem_discount: false,
-            expire_at: null,
-            result: false,
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    features: { get: async () => ({}) },
+    account: {
+      education: {
+        get: () => ({
+          is_student: false,
+          allow_refresh: false,
+          can_redeem_discount: false,
+          expire_at: null,
+          result: false,
+        }),
       },
     },
-  })
-}
-let fake: ReturnType<typeof installPricingApi>
+  },
+}))
 
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
@@ -41,11 +38,6 @@ async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = 
     </Providers>,
   )
 }
-
-beforeEach(() => {
-  fake = installPricingApi()
-  onTestFinished(fake)
-})
 
 it('keeps prices and interval selection available while purchases wait for features', async () => {
   const request = createDeferred<Awaited<ReturnType<typeof consoleClient.features.get>>>()

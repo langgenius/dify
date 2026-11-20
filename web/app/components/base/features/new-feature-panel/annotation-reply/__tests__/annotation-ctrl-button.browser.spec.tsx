@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
@@ -10,15 +10,11 @@ const appId = '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a'
 const annotationId = '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 vi.unmock('react-i18next')
 
-const installApi = () =>
-  installFakeApi({
-    console: { apps: { byAppId: { annotations: { post: () => ({ id: annotationId }) } } } },
-  })
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { apps: { byAppId: { annotations: { post: () => ({ id: annotationId }) } } } },
+}))
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  fake = installApi()
-  onTestFinished(fake)
 })
 
 function Answer({ answer = 'test answer' }: { answer?: string }) {

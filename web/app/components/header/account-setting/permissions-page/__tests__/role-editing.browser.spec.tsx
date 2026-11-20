@@ -1,7 +1,7 @@
 import type { Role } from '@/models/access-control'
 import { userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import {
   builtinRole as builtinRoleFixture,
   customRole as customRoleFixture,
@@ -13,38 +13,33 @@ import {
 const customRole = { ...customRoleFixture, id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d' }
 const builtinRole = { ...builtinRoleFixture, id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e' }
 let roles: Role[]
-function installRoleApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          rbac: {
-            roles: {
-              get: async () => rolePage(roles),
-              post: async ({ body }) => {
-                const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
-                roles = [...roles, saved]
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        rbac: {
+          roles: {
+            get: async () => rolePage(roles),
+            post: async ({ body }) => {
+              const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
+              roles = [...roles, saved]
+              return saved
+            },
+            byRoleId: {
+              put: async ({ params, body }) => {
+                const saved = { ...customRole, ...body, id: params.role_id }
+                roles = roles.map((role) => (role.id === saved.id ? saved : role))
                 return saved
-              },
-              byRoleId: {
-                put: async ({ params, body }) => {
-                  const saved = { ...customRole, ...body, id: params.role_id }
-                  roles = roles.map((role) => (role.id === saved.id ? saved : role))
-                  return saved
-                },
               },
             },
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installRoleApi>
+  },
+}))
 beforeEach(() => {
   roles = [customRole]
-  fake = installRoleApi()
-  onTestFinished(fake)
 })
 async function setup(options?: Parameters<typeof renderRolePage>[0]) {
   const view = await renderRolePage(options)

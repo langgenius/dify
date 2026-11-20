@@ -2,7 +2,16 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { consoleClient } from '@/service/console'
 import { marketplaceClient } from '@/service/marketplace'
 import { createNetworkAccessGroupFixture } from '../console/network-access'
-import { apiError, installFakeApi, networkError, route, sseResponse } from '../fake-api'
+import {
+  apiError,
+  hold,
+  installFakeApi,
+  networkError,
+  route,
+  setupFakeApi,
+  sseResponse,
+  wrap,
+} from '../fake-api'
 
 const groupList = {
   tenant_id: 'workspace-1',
@@ -31,7 +40,7 @@ describe('installFakeApi', () => {
     spy.mockReturnValueOnce(Promise.resolve({ ...groupList, groups: [] }))
 
     expect((await consoleClient.workspaces.current.networkAccessGroups.get({})).groups).toEqual([])
-    expect(spy.mock.calls[0]![0]).toEqual(expect.objectContaining({ query: {} }))
+    expect(spy).toHaveBeenCalledWith({})
     fake()
   })
 
@@ -319,5 +328,105 @@ describe('installFakeApi', () => {
     expect(teardown).toThrow(
       /unhandled console request: GET \/workspaces\/current\/network-access-groups\/current-ip[\s\S]*unexpected network request: GET https:\/\/example\.com\/telemetry/,
     )
+  })
+
+  it('records exactly the request parts the client sent', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              post: () => ({ group: createNetworkAccessGroupFixture() }),
+            },
+          },
+        },
+      },
+    })
+    const body = { name: 'Office', description: '', allowed_cidrs: ['10.0.0.0/8'] }
+
+    await consoleClient.workspaces.current.networkAccessGroups.post({ body })
+
+    expect(fake.console.workspaces.current.networkAccessGroups.post).toHaveBeenCalledWith({ body })
+    fake()
+  })
+})
+
+describe('hold', () => {
+  const api = () =>
+    installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+
+  it('keeps the next request open until the test resolves it, then serves the default', async () => {
+    const fake = api()
+    const spy = fake.console.workspaces.current.networkAccessGroups.get
+    const request = hold(spy)
+    let settled = false
+    const response = consoleClient.workspaces.current.networkAccessGroups
+      .get({})
+      .finally(() => (settled = true))
+
+    expect(await request.arrived).toStrictEqual({})
+    expect(settled).toBe(false)
+    request.resolve({ ...groupList, groups: [] })
+    expect((await response).groups).toEqual([])
+    expect(
+      (await consoleClient.workspaces.current.networkAccessGroups.get({})).groups,
+    ).toHaveLength(1)
+    fake()
+  })
+
+  it('applies an outcome settled before the request arrives, without an unhandled rejection', async () => {
+    const fake = api()
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    request.reject(apiError({ status: 503, message: 'Unavailable' }))
+
+    await expect(consoleClient.workspaces.current.networkAccessGroups.get({})).rejects.toThrow(
+      'Unavailable',
+    )
+    expect(() => request.resolve(groupList)).toThrow(/settled once/)
+    fake()
+  })
+})
+
+describe('wrap', () => {
+  it('builds a new implementation on the current one, for every call or just the next', async () => {
+    let groups = [createNetworkAccessGroupFixture()]
+    const fake = installFakeApi({
+      console: {
+        workspaces: { current: { networkAccessGroups: { get: () => ({ ...groupList, groups }) } } },
+      },
+    })
+    const spy = fake.console.workspaces.current.networkAccessGroups.get
+    const names = async () =>
+      (await consoleClient.workspaces.current.networkAccessGroups.get({})).groups.map(
+        (group) => group.name,
+      )
+
+    wrap(spy, (list) => async (input) => {
+      const result = await list(input)
+      return { ...result, groups: result.groups.slice(0, 1) }
+    })
+    groups = [...groups, createNetworkAccessGroupFixture({ name: 'Second' })]
+    expect(await names()).toEqual(['Internal Network'])
+    wrap(spy, () => () => ({ ...groupList, groups: [] }), { once: true })
+    expect(await names()).toEqual([])
+    expect(await names()).toEqual(['Internal Network'])
+    fake()
+  })
+})
+
+describe('setupFakeApi', () => {
+  const fake = setupFakeApi(() => ({
+    console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+  }))
+
+  it('installs a fresh fake for each test', async () => {
+    await consoleClient.workspaces.current.networkAccessGroups.get({})
+    expect(fake.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledOnce()
+  })
+
+  it('does not carry spies over from the previous test', () => {
+    expect(fake.console.workspaces.current.networkAccessGroups.get).not.toHaveBeenCalled()
   })
 })

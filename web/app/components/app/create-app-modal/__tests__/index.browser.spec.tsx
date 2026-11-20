@@ -9,7 +9,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import CreateAppModal from '../index'
 
@@ -47,21 +47,19 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/base/amplitude/init', () => ({
   getAmplitudeClient: () => ({ track: mocks.track, flush: mocks.flush }),
 }))
-const installApi = () =>
-  installFakeApi({
-    console: {
-      features: { get: () => zGetFeaturesResponse.parse({}) },
-      apps: {
-        post: () =>
-          createAppDetailFixture({
-            id: 'created-app',
-            mode: 'advanced-chat',
-            maintainer: 'user-1',
-          }),
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    features: { get: () => zGetFeaturesResponse.parse({}) },
+    apps: {
+      post: () =>
+        createAppDetailFixture({
+          id: 'created-app',
+          mode: 'advanced-chat',
+          maintainer: 'user-1',
+        }),
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 async function renderModal({ quota = { size: 0, limit: 1 }, show = true } = {}) {
   fake.console.features.get.mockReturnValue(zGetFeaturesResponse.parse({ apps: quota }))
@@ -114,8 +112,6 @@ beforeEach(async () => {
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
   sessionStorage.clear()
-  fake = installApi()
-  onTestFinished(fake)
   // boundary: the emoji picker loads static emojibase data from the app origin, outside the API.
   const apiFetch = globalThis.fetch
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {

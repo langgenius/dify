@@ -5,7 +5,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi, networkError } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import {
   createCredentialProvider,
   credential,
@@ -15,41 +15,34 @@ import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import { ModelCredentialDialog } from '../dialog'
 import { modelCredentialDialog } from '../handle'
 
-function installCredentialApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          modelProviders: {
-            byProvider: {
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            credentials: {
+              get: () => ({ credentials: { api_key: 'masked' } }),
+              post: () => ({ result: 'success' }),
+              delete: async () => {},
+            },
+            models: {
               credentials: {
-                get: () => ({ credentials: { api_key: 'masked' } }),
+                get: () => ({
+                  credentials: {},
+                  available_credentials: [credential],
+                  load_balancing: { enabled: false, configs: [] },
+                }),
                 post: () => ({ result: 'success' }),
-                delete: async () => {},
-              },
-              models: {
-                credentials: {
-                  get: () => ({
-                    credentials: {},
-                    available_credentials: [credential],
-                    load_balancing: { enabled: false, configs: [] },
-                  }),
-                  post: () => ({ result: 'success' }),
-                  switch: { post: () => ({ result: 'success' }) },
-                },
+                switch: { post: () => ({ result: 'success' }) },
               },
             },
           },
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installCredentialApi>
-beforeEach(() => {
-  fake = installCredentialApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 type Payload = Parameters<typeof modelCredentialDialog.openWithPayload>[0]
 async function setup(options: Partial<Payload> = {}) {

@@ -5,7 +5,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import AddKnowledgeSpace from '../add-knowledge-space'
 
 type Space = Awaited<ReturnType<typeof consoleClient.knowledgeFs.spaces.get>>['data'][number]
@@ -43,37 +43,29 @@ const response = (data: Space[], page = 1, has_more = false) => ({
   limit: 50,
 })
 
-function installSpacesApi() {
-  return installFakeApi({
-    console: {
-      knowledgeFs: {
-        spaces: {
-          get: () =>
-            response([
-              space('product', 'Product docs', {
-                technical_summary: {
-                  knowledge_space_id: 'product',
-                  name: 'Product docs',
-                  revision: 1,
-                  slug: 'product',
-                  icon: '📘',
-                  description: null,
-                  document_count: 0,
-                },
-              }),
-              space('archive', 'Archived docs', { technical_status: 'unavailable' }),
-            ]),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        get: () =>
+          response([
+            space('product', 'Product docs', {
+              technical_summary: {
+                knowledge_space_id: 'product',
+                name: 'Product docs',
+                revision: 1,
+                slug: 'product',
+                icon: '📘',
+                description: null,
+                document_count: 0,
+              },
+            }),
+            space('archive', 'Archived docs', { technical_status: 'unavailable' }),
+          ]),
       },
     },
-  })
-}
-let fake: ReturnType<typeof installSpacesApi>
-
-beforeEach(() => {
-  fake = installSpacesApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 async function setup(initial: KnowledgeRetrievalV2SpaceSummary[] = []) {
   function Selection() {

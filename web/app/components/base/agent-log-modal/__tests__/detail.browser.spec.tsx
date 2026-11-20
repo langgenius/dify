@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import AgentLogDetail from '../detail'
 import { renderAgentLog } from './browser-test-env'
 
@@ -72,19 +72,15 @@ async function renderDetail(props: Partial<ComponentProps<typeof AgentLogDetail>
   )
 }
 
-const installApi = () =>
-  installFakeApi({
-    console: {
-      apps: {
-        byAppId: { agent: { logs: { get: () => createResponse() } } },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      byAppId: { agent: { logs: { get: () => createResponse() } } },
     },
-  })
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   toast.dismiss()
 })
 

@@ -2,7 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi, route } from '@/test/fake-api'
+import { route, setupFakeApi } from '@/test/fake-api'
 import ChangePasswordForm from './ChangePasswordForm'
 
 type TokenValidity = {
@@ -31,25 +31,20 @@ async function renderForm() {
   )
 }
 
-function installApi() {
-  return installFakeApi({
-    console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
-    routes: [
-      route('POST', 'console', '/forgot-password/validity', () => ({
-        result: 'success',
-        is_valid: true,
-        email: 'user@example.com',
-        token: 'verified-token-t2',
-      })),
-    ],
-  })
-}
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
+  routes: [
+    route('POST', 'console', '/forgot-password/validity', () => ({
+      result: 'success',
+      is_valid: true,
+      email: 'user@example.com',
+      token: 'verified-token-t2',
+    })),
+  ],
+}))
 const verifyToken = () => fake.route('POST', 'console', '/forgot-password/validity')
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   navigation.search = 'token=url-token-t1'
 })
 

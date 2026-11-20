@@ -6,7 +6,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { FileScanProviderDialog } from '../scanner-dialog'
 
 // Provider ids are UUIDs in the contract.
@@ -59,24 +59,16 @@ const apiSecretField = () => page.getByLabelText('fileScan.dialog.apiSecret')
 const endpointUrlField = () => page.getByLabelText('fileScan.dialog.endpointUrl')
 const saveButton = () => page.getByRole('button', { name: 'common.operation.save' })
 
-function installScannerApi() {
-  return installFakeApi({
-    console: {
-      fileScan: {
-        providers: {
-          post: async ({ body }) => scanner({ name: body.name, provider_type: body.provider_type }),
-          byProviderId: { patch: () => scanner() },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    fileScan: {
+      providers: {
+        post: async ({ body }) => scanner({ name: body.name, provider_type: body.provider_type }),
+        byProviderId: { patch: () => scanner() },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installScannerApi>
-
-beforeEach(() => {
-  fake = installScannerApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 it('offers only the available services and swaps the fields with the selected one', async () => {
   await renderDialog()

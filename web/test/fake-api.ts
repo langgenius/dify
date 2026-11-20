@@ -7,7 +7,7 @@ import { SmartCoercionPlugin } from '@orpc/json-schema'
 import { OpenAPIHandler } from '@orpc/openapi/fetch'
 import { implement, ORPCError } from '@orpc/server'
 import { ZodToJsonSchemaConverter } from '@orpc/zod/zod4'
-import { vi } from 'vite-plus/test'
+import { beforeEach, onTestFinished, vi } from 'vite-plus/test'
 import { API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { loadConsoleContractForSegment } from '@/service/console/contract-loader'
@@ -87,6 +87,12 @@ export type FakeApiHandle<T extends FakeApi> = (() => void) & {
   /** Override or add handlers; returns typed spies for the handlers it was given. */
   use: <const U extends FakeApi>(overrides: U) => Pick<FakeApiHandle<U>, 'console' | 'marketplace'>
 }
+
+/** The spies and controls of a fake API handle, without its teardown. */
+export type FakeApiSpies<T extends FakeApi> = Pick<
+  FakeApiHandle<T>,
+  'console' | 'marketplace' | 'route' | 'use'
+>
 
 /**
  * Declare a REST endpoint relative to an API prefix. `:name` segments become `params`. Return a
@@ -236,6 +242,20 @@ function collectLeaves(tree: HandlerTree, path: string[] = []): Array<[string[],
   )
 }
 
+function sentParts(input: unknown) {
+  const parts = { ...(input as Record<string, unknown> | undefined) }
+  delete parts.headers
+  for (const [key, value] of Object.entries(parts)) {
+    const empty =
+      typeof value === 'object' &&
+      value !== null &&
+      Object.getPrototypeOf(value) === Object.prototype &&
+      !Object.keys(value).length
+    if (value === undefined || empty) delete parts[key]
+  }
+  return parts
+}
+
 function implementLeaves(
   contracts: Record<string, unknown>,
   leaves: Array<[string[], AnyHandler]>,
@@ -251,8 +271,11 @@ function implementLeaves(
       throw new Error(`Fake API: no contract procedure at ${path.join('.')}`)
     let node = router
     for (const key of path.slice(0, -1)) node = (node[key] ??= {}) as Record<string, unknown>
+    // Without an input schema oRPC passes the raw decoded request (transport headers, empty
+    // parts); record only what the client actually sent so spies can be asserted exactly.
+    const hasInput = Boolean((procedure as AnyContractProcedure)['~orpc'].inputSchema)
     node[path.at(-1)!] = implement(procedure as AnyContractProcedure).handler(
-      ({ input }: { input: unknown }) => handler(input),
+      ({ input }: { input: unknown }) => handler(hasInput ? input : sentParts(input)),
     )
   }
   return router
@@ -590,4 +613,95 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       }
     },
   }) as FakeApiHandle<T>
+}
+
+/**
+ * Install the fake API before every test in the file and tear it down after each one. The
+ * returned handle always points at the current test's fake. Pass a factory when handlers need
+ * fresh per-test values; handlers can also close over module state reset in `beforeEach`.
+ */
+export function setupFakeApi<const T extends FakeApi>(api: T | (() => T)) {
+  let current: FakeApiHandle<T> | undefined
+  beforeEach(() => {
+    const handle = installFakeApi(typeof api === 'function' ? api() : api)
+    current = handle
+    onTestFinished(() => {
+      current = undefined
+      handle()
+    })
+  })
+  const active = () => {
+    if (!current) throw new Error('Fake API: use the setupFakeApi handle inside a test or hook')
+    return current
+  }
+  const handle: FakeApiSpies<T> = {
+    get console() {
+      return active().console
+    },
+    get marketplace() {
+      return active().marketplace
+    },
+    route: (...args) => active().route(...args),
+    use: (overrides) => active().use(overrides),
+  }
+  return handle
+}
+
+type SpyInput<F> = F extends (input: infer I, ...args: never[]) => unknown ? I : never
+type SpyOutput<F> = F extends (...args: never[]) => infer R ? Awaited<R> : never
+
+/** The next request a spy answers, held open until the test settles it. */
+export type HeldRequest<F> = {
+  /** Resolves with the request input once the request reaches the fake. */
+  arrived: Promise<SpyInput<F>>
+  resolve: (value: SpyOutput<F>) => void
+  reject: (error: unknown) => void
+}
+
+/**
+ * Hold the next request a handler or route spy answers until the test resolves or rejects it.
+ * Settling before the request arrives is safe: the outcome is applied when it does, so a rejected
+ * hold never surfaces as an unhandled rejection.
+ */
+export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
+  type Outcome = { ok: true; value: unknown } | { ok: false; error: unknown }
+  let outcome: Outcome | undefined
+  let settle: ((result: Outcome) => void) | undefined
+  let arrive!: (input: SpyInput<F>) => void
+  const arrived = new Promise<SpyInput<F>>((resolve) => {
+    arrive = resolve
+  })
+  const finish = (result: Outcome) => {
+    if (outcome) throw new Error('Fake API: a held request can only be settled once')
+    outcome = result
+    settle?.(result)
+  }
+  spy.mockImplementationOnce(((input: SpyInput<F>) => {
+    arrive(input)
+    return new Promise((resolve, reject) => {
+      settle = (result) => (result.ok ? resolve(result.value) : reject(result.error))
+      if (outcome) settle(outcome)
+    })
+  }) as never)
+  return {
+    arrived,
+    resolve: (value) => finish({ ok: true, value }),
+    reject: (error) => finish({ ok: false, error }),
+  }
+}
+
+/**
+ * Replace a spy's implementation with one built on its current implementation, such as a stateful
+ * handler that should answer differently for one case. Use `{ once: true }` for the next call only.
+ */
+export function wrap<F extends AnyFunction>(
+  spy: Mock<F>,
+  build: (current: F) => F,
+  { once = false } = {},
+) {
+  const current = spy.getMockImplementation()
+  if (!current) throw new Error('Fake API: wrap needs a spy with an implementation')
+  const next = build(current as unknown as F) as never
+  if (once) spy.mockImplementationOnce(next)
+  else spy.mockImplementation(next)
 }

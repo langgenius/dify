@@ -5,37 +5,30 @@ import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
 
-function installBillingApi() {
-  return installFakeApi({
-    console: {
-      billing: {
-        subscription: { get: async () => ({ url: '' }) },
-        invoices: { get: async () => ({ url: '' }) },
-      },
-      account: {
-        education: {
-          get: () => ({
-            is_student: false,
-            allow_refresh: false,
-            can_redeem_discount: false,
-            expire_at: null,
-            result: false,
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    billing: {
+      subscription: { get: async () => ({ url: '' }) },
+      invoices: { get: async () => ({ url: '' }) },
+    },
+    account: {
+      education: {
+        get: () => ({
+          is_student: false,
+          allow_refresh: false,
+          can_redeem_discount: false,
+          expire_at: null,
+          result: false,
+        }),
       },
     },
-  })
-}
+  },
+}))
 
 const initialUrl = window.location.href
-let fake: ReturnType<typeof installBillingApi>
-beforeEach(() => {
-  fake = installBillingApi()
-  onTestFinished(fake)
-})
 afterEach(() => window.history.replaceState(null, '', initialUrl))
 
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0]) {

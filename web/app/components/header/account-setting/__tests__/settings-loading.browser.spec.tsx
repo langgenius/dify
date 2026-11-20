@@ -11,7 +11,7 @@ import commonTranslations from '@/i18n/locales/en-US/common.json'
 import { createNetworkAccessGroupFixture } from '@/test/console/network-access'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
@@ -101,71 +101,65 @@ function deferNamespace(namespace: string) {
   return { started, finishLoading }
 }
 
-const installSettingsApi = () =>
-  installFakeApi({
-    console: {
-      workspaces: {
-        byWorkspaceId: {
-          members: { pendingInvitations: { get: () => ({ invitations: [] }) } },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      byWorkspaceId: {
+        members: { pendingInvitations: { get: () => ({ invitations: [] }) } },
+      },
+      current: {
+        networkAccessGroups: {
+          get: () => ({ tenant_id: workspaceId, entitled: true, groups: [] }),
+          post: () => ({ group: createNetworkAccessGroupFixture() }),
+          currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
         },
-        current: {
-          networkAccessGroups: {
-            get: () => ({ tenant_id: workspaceId, entitled: true, groups: [] }),
-            post: () => ({ group: createNetworkAccessGroupFixture() }),
-            currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
-          },
+        members: {
+          get: () => ({
+            accounts: [
+              {
+                id: '6c7d8e9f-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
+                name: 'Ada',
+                email: 'ada@example.com',
+                avatar_url: null,
+                role: 'admin',
+                status: 'active',
+                created_at: 1731000000,
+                last_active_at: 1731000000,
+                roles: [{ id: 'admin', name: 'Admin' }],
+              },
+            ],
+          }),
+        },
+        rbac: {
           members: {
-            get: () => ({
-              accounts: [
-                {
-                  id: '6c7d8e9f-0a1b-4c2d-9e3f-4a5b6c7d8e9f',
-                  name: 'Ada',
-                  email: 'ada@example.com',
-                  avatar_url: null,
-                  role: 'admin',
-                  status: 'active',
-                  created_at: 1731000000,
-                  last_active_at: 1731000000,
-                  roles: [{ id: 'admin', name: 'Admin' }],
-                },
-              ],
-            }),
-          },
-          rbac: {
-            members: {
-              byMemberId: {
-                rbacRoles: {
-                  get: ({ params }) => ({
-                    account_id: params.member_id,
-                    roles: [
-                      {
-                        id: 'admin',
-                        name: 'Admin',
-                        type: 'workspace',
-                        is_builtin: true,
-                        permission_keys: ['app.create', 'ip_policy.view', 'ip_policy.manage'],
-                      },
-                    ],
-                  }),
-                },
+            byMemberId: {
+              rbacRoles: {
+                get: ({ params }) => ({
+                  account_id: params.member_id,
+                  roles: [
+                    {
+                      id: 'admin',
+                      name: 'Admin',
+                      type: 'workspace',
+                      is_builtin: true,
+                      permission_keys: ['app.create', 'ip_policy.view', 'ip_policy.manage'],
+                    },
+                  ],
+                }),
               },
             },
-            roles: {
-              get: () => ({
-                data: [],
-                pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
-              }),
-            },
+          },
+          roles: {
+            get: () => ({
+              data: [],
+              pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
+            }),
           },
         },
       },
     },
-  })
-let fake: ReturnType<typeof installSettingsApi>
-beforeEach(() => {
-  fake = installSettingsApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 describe('Settings content loading', () => {
   beforeEach(() => {

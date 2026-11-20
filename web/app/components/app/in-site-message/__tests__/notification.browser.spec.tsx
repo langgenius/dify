@@ -6,7 +6,7 @@ import { render } from 'vitest-browser-react'
 import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
@@ -42,20 +42,14 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   )
   return { screen, i18n }
 }
-const installApi = () =>
-  installFakeApi({
-    console: {
-      notification: {
-        get: () => ({ should_show: false, notifications: [] }),
-        dismiss: { post: () => ({ result: 'success' }) },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    notification: {
+      get: () => ({ should_show: false, notifications: [] }),
+      dismiss: { post: () => ({ result: 'success' }) },
     },
-  })
-let fake: ReturnType<typeof installApi>
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 it('keeps cloud notifications unavailable in Community even when the service has a notice', async () => {
   fake.console.notification.get.mockResolvedValue({

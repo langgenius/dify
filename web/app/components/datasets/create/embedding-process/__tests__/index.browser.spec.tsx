@@ -8,7 +8,7 @@ import { render } from 'vitest-browser-react'
 import { ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
@@ -68,26 +68,19 @@ const rule = {
   },
 } satisfies Awaited<ReturnType<typeof consoleClient.datasets.processRule.get>>
 
-function installIndexingApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        processRule: { get: async () => rule },
-        byDatasetId: {
-          documents: {
-            get: async () => ({ data: [], total: 2, has_more: false, page: 1, limit: 20 }),
-          },
-          batch: { byBatch: { indexingStatus: { get: async () => ({ data: [status()] }) } } },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      processRule: { get: async () => rule },
+      byDatasetId: {
+        documents: {
+          get: async () => ({ data: [], total: 2, has_more: false, page: 1, limit: 20 }),
         },
+        batch: { byBatch: { indexingStatus: { get: async () => ({ data: [status()] }) } } },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installIndexingApi>
-beforeEach(() => {
-  fake = installIndexingApi()
-  onTestFinished(fake)
-})
+  },
+}))
 afterEach(() => vi.useRealTimers())
 
 async function setup({

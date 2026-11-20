@@ -9,7 +9,7 @@ import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/ta
 import explore from '@/i18n/locales/en-US/explore.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import LearnDify from '../index'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../storage'
 
@@ -41,20 +41,15 @@ const createApp = (name: string, position: number | null = 1): RecommendedAppRes
   position,
 })
 
-function installLessonsApi() {
-  return installFakeApi({
-    console: {
-      explore: {
-        apps: { learnDify: { get: () => ({ recommended_apps: [createApp('Learn Dify App')] }) } },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    explore: {
+      apps: { learnDify: { get: () => ({ recommended_apps: [createApp('Learn Dify App')] }) } },
     },
-  })
-}
-let fake: ReturnType<typeof installLessonsApi>
+  },
+}))
 beforeEach(() => {
   localStorage.clear()
-  fake = installLessonsApi()
-  onTestFinished(fake)
 })
 
 it('defers a hidden catalog until the tour forces it visible', async () => {

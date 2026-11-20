@@ -10,7 +10,7 @@ import common from '@/i18n/locales/en-US/common.json'
 import datasetDocuments from '@/i18n/locales/en-US/dataset-documents.json'
 import datasetMessages from '@/i18n/locales/en-US/dataset.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -61,31 +61,28 @@ const documentDetail = zDocumentDetailResponse.parse({
   dataset_process_rule: null,
 })
 
-function installDocumentApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        byDatasetId: {
-          documents: {
-            byDocumentId: {
-              get: ({ query }) =>
-                query?.metadata === 'only'
-                  ? { ...documentDetail, doc_metadata: fields }
-                  : documentDetail,
-              segments: {
-                get: () => ({ data: [], total: 0, total_pages: 0, page: 1, limit: 10 }),
-              },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        documents: {
+          byDocumentId: {
+            get: ({ query }) =>
+              query?.metadata === 'only'
+                ? { ...documentDetail, doc_metadata: fields }
+                : documentDetail,
+            segments: {
+              get: () => ({ data: [], total: 0, total_pages: 0, page: 1, limit: 10 }),
             },
-            metadata: { post: () => {} },
           },
-          metadata: { get: () => ({ doc_metadata: fields, built_in_field_enabled: false }) },
+          metadata: { post: () => {} },
         },
+        metadata: { get: () => ({ doc_metadata: fields, built_in_field_enabled: false }) },
       },
-      files: { upload: { get: () => createFileUploadConfigFixture() } },
     },
-  })
-}
-let fake: ReturnType<typeof installDocumentApi>
+    files: { upload: { get: () => createFileUploadConfigFixture() } },
+  },
+}))
 
 const renderDocumentDetail = async () => {
   const i18n = createInstance()
@@ -123,11 +120,6 @@ const clickRightEdge = async (control: Locator) => {
   const { width, height } = control.element().getBoundingClientRect()
   await userEvent.click(control, { position: { x: width - 1, y: height / 2 } })
 }
-
-beforeEach(() => {
-  fake = installDocumentApi()
-  onTestFinished(fake)
-})
 
 it('keeps edit controls clickable beside the metadata scrollbar and reaches the last field', async () => {
   await page.viewport(1280, 640)

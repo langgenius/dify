@@ -10,7 +10,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
@@ -87,29 +87,24 @@ async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLO
   return { onUrlUpdate, screen }
 }
 
-function installSearchApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
       },
     },
-    marketplace: {
-      searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
-      templateSearch: () => ({ data: { templates: [template], total: 1 } }),
-    },
-  })
-}
+  },
+  marketplace: {
+    searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+    templateSearch: () => ({ data: { templates: [template], total: 1 } }),
+  },
+}))
 
 describe('Embedded Marketplace search', () => {
-  let fake: ReturnType<typeof installSearchApi>
   beforeEach(async () => {
     await page.viewport(1000, 800)
     vi.clearAllMocks()
-    fake = installSearchApi()
-    onTestFinished(fake)
   })
 
   it('opens both Cloud result dialogs, closes them, and leaves catalog filters untouched', async () => {

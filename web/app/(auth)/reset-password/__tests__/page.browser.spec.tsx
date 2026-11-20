@@ -2,7 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import ResetPasswordPage from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -24,16 +24,11 @@ async function renderPage() {
   )
 }
 
-function installApi() {
-  return installFakeApi({
-    console: { forgotPassword: { post: () => ({ result: 'success', data: 'reset-token' }) } },
-  })
-}
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { forgotPassword: { post: () => ({ result: 'success', data: 'reset-token' }) } },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   navigation.push.mockReset()
   navigation.search = ''
   localStorage.removeItem(COUNT_DOWN_KEY)

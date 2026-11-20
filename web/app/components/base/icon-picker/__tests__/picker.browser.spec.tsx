@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
@@ -29,25 +29,19 @@ const emojis = [
   '🤓',
   '😎',
 ]
-const installApi = () =>
-  installFakeApi({
-    console: {
-      files: {
-        upload: {
-          post: ({ body }) => ({
-            id: '00000000-0000-4000-8000-000000000001',
-            name: 'uploaded-image',
-            size: body.file.size,
-          }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
       },
     },
-  })
-let fake: ReturnType<typeof installApi>
-beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
 

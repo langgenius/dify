@@ -9,7 +9,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { installFakeApi, networkError } from '@/test/fake-api'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import ExternalAPIPanel from '../index'
 
 const response: ExternalKnowledgeApiListResponse = {
@@ -31,24 +31,17 @@ const response: ExternalKnowledgeApiListResponse = {
   total: 1,
 }
 
-function installExternalApiApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        externalKnowledgeApi: {
-          get: async () => response,
-          post: async () => response.data[0]!,
-          byExternalKnowledgeApiId: { get: async () => response.data[0]! },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: async () => response,
+        post: async () => response.data[0]!,
+        byExternalKnowledgeApiId: { get: async () => response.data[0]! },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installExternalApiApi>
-beforeEach(() => {
-  fake = installExternalApiApi()
-  onTestFinished(fake)
-})
+  },
+}))
 
 async function setup(canManage = true) {
   const { wrapper: Providers } = createConsoleQueryWrapper({ features: {} })

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConfigurationModalTestWrapper } from '@/test/configuration-modals-browser'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import ExternalApiSelection from '../ExternalApiSelection'
 
 const mocks = vi.hoisted(() => ({ refresh: vi.fn() }))
@@ -41,20 +41,13 @@ function KnowledgeConnectionForm() {
   )
 }
 
-function installExternalApiApi() {
-  return installFakeApi({
-    console: {
-      datasets: {
-        externalKnowledgeApi: { get: async () => response, post: async () => response.data[0]! },
-      },
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      externalKnowledgeApi: { get: async () => response, post: async () => response.data[0]! },
     },
-  })
-}
-let fake: ReturnType<typeof installExternalApiApi>
-beforeEach(() => {
-  fake = installExternalApiApi()
-  onTestFinished(fake)
-})
+  },
+}))
 async function setup() {
   const { wrapper: Providers } = createConfigurationModalTestWrapper()
   return render(

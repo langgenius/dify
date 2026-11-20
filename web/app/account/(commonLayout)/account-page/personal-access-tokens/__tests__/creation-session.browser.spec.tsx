@@ -1,28 +1,23 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
 vi.unmock('react-i18next')
 
-function installApi() {
-  return installFakeApi({
-    console: {
-      account: {
-        personalAccessTokens: {
-          get: () => tokenList(),
-          post: () => ({ ...token, secret: 'dpat_created_secret' }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    account: {
+      personalAccessTokens: {
+        get: () => tokenList(),
+        post: () => ({ ...token, secret: 'dpat_created_secret' }),
       },
     },
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  fake = installApi()
-  onTestFinished(fake)
 })
 
 it('clears the one-time secret and name after closing and reopening creation', async () => {

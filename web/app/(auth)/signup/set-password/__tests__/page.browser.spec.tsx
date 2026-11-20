@@ -2,7 +2,7 @@ import Cookies from 'js-cookie'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
@@ -56,16 +56,11 @@ async function renderPage() {
   )
 }
 
-function installApi() {
-  return installFakeApi({
-    console: { emailRegister: { post: () => ({ result: 'fail', data: tokens }) } },
-  })
-}
-let fake: ReturnType<typeof installApi>
+const fake = setupFakeApi(() => ({
+  console: { emailRegister: { post: () => ({ result: 'fail', data: tokens }) } },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   tracking.rememberCreateAppExternalAttribution.mockReset()
   tracking.rememberRegistrationSuccess.mockReset()
   tracking.sendGAEvent.mockReset()

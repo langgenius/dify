@@ -11,22 +11,19 @@ import common from '@/i18n/locales/en-US/common.json'
 import contacts from '@/i18n/locales/en-US/contacts.json'
 import workflow from '@/i18n/locales/en-US/workflow.json'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import DebugMode from '../components/debug-mode'
 import { createChannelsQueryClient } from './channel-fixtures'
 
-function installChannelsApi() {
-  return installFakeApi({
-    console: {
-      workspaces: {
-        current: {
-          humanInput: { v2: { testChannels: { get: () => ({ channels: ['email', 'slack'] }) } } },
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        humanInput: { v2: { testChannels: { get: () => ({ channels: ['email', 'slack'] }) } } },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installChannelsApi>
+  },
+}))
 
 vi.unmock('react-i18next')
 const i18n = createInstance().use(initReactI18next)
@@ -91,8 +88,6 @@ const settings = () => page.getByRole('status', { name: 'Debug settings' })
 
 beforeEach(async () => {
   await page.viewport(1100, 700)
-  fake = installChannelsApi()
-  onTestFinished(fake)
 })
 
 it('only offers channels configured in the current workspace', async () => {

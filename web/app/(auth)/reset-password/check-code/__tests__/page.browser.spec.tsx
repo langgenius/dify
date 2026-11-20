@@ -2,7 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { setupFakeApi } from '@/test/fake-api'
 import CheckCodePage from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -30,22 +30,17 @@ async function renderPage() {
   )
 }
 
-function installApi() {
-  return installFakeApi({
-    console: {
-      forgotPassword: {
-        validity: {
-          post: () => ({ email: 'user@example.com', is_valid: true, token: 'verified-token' }),
-        },
+const fake = setupFakeApi(() => ({
+  console: {
+    forgotPassword: {
+      validity: {
+        post: () => ({ email: 'user@example.com', is_valid: true, token: 'verified-token' }),
       },
     },
-  })
-}
-let fake: ReturnType<typeof installApi>
+  },
+}))
 
 beforeEach(() => {
-  fake = installApi()
-  onTestFinished(fake)
   navigation.back.mockReset()
   navigation.push.mockReset()
   navigation.replace.mockReset()

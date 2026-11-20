@@ -2,7 +2,7 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
@@ -22,33 +22,26 @@ const edit = () => page.getByRole('button', { name: 'common.operation.edit Front
 const remove = () => page.getByRole('button', { name: 'common.operation.remove Frontend' })
 const input = () => page.getByRole('textbox', { name: 'common.operation.rename Frontend' })
 const confirmation = () => page.getByRole('alertdialog', { name: 'common.tag.delete "Frontend"' })
-function installTagApi() {
-  return installFakeApi({
-    console: {
-      tags: {
-        get: () => serverTags,
-        byTagId: {
-          patch: ({ params, body }) => {
-            const updated = {
-              ...serverTags.find((tag) => tag.id === params.tag_id)!,
-              name: body.name,
-            }
-            serverTags = serverTags.map((tag) => (tag.id === params.tag_id ? updated : tag))
-            return updated
-          },
-          delete: ({ params }) => {
-            serverTags = serverTags.filter((tag) => tag.id !== params.tag_id)
-          },
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: {
+      get: () => serverTags,
+      byTagId: {
+        patch: ({ params, body }) => {
+          const updated = {
+            ...serverTags.find((tag) => tag.id === params.tag_id)!,
+            name: body.name,
+          }
+          serverTags = serverTags.map((tag) => (tag.id === params.tag_id ? updated : tag))
+          return updated
+        },
+        delete: ({ params }) => {
+          serverTags = serverTags.filter((tag) => tag.id !== params.tag_id)
         },
       },
     },
-  })
-}
-let fake: ReturnType<typeof installTagApi>
-beforeEach(() => {
-  fake = installTagApi()
-  onTestFinished(fake)
-})
+  },
+}))
 afterEach(() => {
   toast.dismiss()
 })
