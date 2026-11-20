@@ -13,7 +13,7 @@ from controllers.openapi._models import McpProviderPayload, McpProviderResponse
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.mcp_providers import McpProviderApi, McpProviderRefreshApi, McpProvidersApi
-from core.entities.mcp_provider import MCPConfiguration
+from core.entities.mcp_provider import IdentityMode, MCPConfiguration
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
@@ -62,14 +62,22 @@ def _payload() -> McpProviderPayload:
 
 
 def _entity() -> ToolProviderApiEntity:
-    return ToolProviderApiEntity.model_construct(
+    return ToolProviderApiEntity(
         id=_PROVIDER_ID,
         author="caller",
         name="fetch",
         description=I18nObject(en_US="Fetch tools"),
         icon="\U0001f310",
+        label=I18nObject(en_US="fetch"),
         type=ToolProviderType.MCP,
-        tools=[ToolApiEntity.model_construct(name="fetch_url")],
+        tools=[
+            ToolApiEntity(
+                author="caller",
+                name="fetch_url",
+                label=I18nObject(en_US="fetch_url"),
+                description=I18nObject(en_US="Fetch a URL"),
+            )
+        ],
         labels=[],
         server_url="https://mcp.example.com/*****",
         server_identifier="fetch",
@@ -83,20 +91,22 @@ def _entity() -> ToolProviderApiEntity:
     )
 
 
-def _provider(**overrides: object) -> MCPToolProvider:
-    fields = {
-        "name": "fetch",
-        "server_identifier": "fetch",
-        "server_url": "https://mcp.example.com/sse",
-        "server_url_hash": "hash",
-        "icon": "\U0001f310",
-        "tenant_id": "ws",
-        "user_id": "caller",
-    }
-    return MCPToolProvider(**(fields | overrides))
+def _provider() -> MCPToolProvider:
+    return MCPToolProvider(
+        name="fetch",
+        server_identifier="fetch",
+        server_url="https://mcp.example.com/sse",
+        server_url_hash="hash",
+        icon="\U0001f310",
+        tenant_id="ws",
+        user_id="caller",
+        identity_mode="off",
+    )
 
 
-def _service(session: Session, monkeypatch: pytest.MonkeyPatch, **methods: Callable) -> MCPToolManageService:
+def _service(
+    session: Session, monkeypatch: pytest.MonkeyPatch, **methods: Callable[..., object]
+) -> MCPToolManageService:
     """A real MCPToolManageService with the named methods replaced, wired as the controller's service."""
     service = MCPToolManageService(session=session)
     for name, replacement in methods.items():
@@ -133,7 +143,7 @@ def test_describe_masks_secrets(app: Flask, monkeypatch: pytest.MonkeyPatch, sql
     _service(
         sqlite_session,
         monkeypatch,
-        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+        list_providers=lambda **_k: [_entity()],
         get_provider_by_id=lambda **_k: _provider(),
     )
     monkeypatch.setattr(mcp_providers.ToolTransformService, "mcp_provider_to_user_provider", lambda _p: _entity())
@@ -167,13 +177,11 @@ def test_describe_answers_404_for_an_unknown_id(
 def test_create_runs_the_short_transaction_then_reconnects(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    created: dict = {}
+    created: dict[str, object] = {}
     _service(
         sqlite_session,
         monkeypatch,
-        create_provider=lambda **kwargs: (
-            created.update(kwargs) or ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)
-        ),
+        create_provider=lambda **kwargs: created.update(kwargs) or _entity(),
         get_provider_by_id=lambda **_k: _provider(),
     )
     reconnect = ReconnectResult(authed=True, tools='[{"name": "fetch_url"}]', encrypted_credentials="")
@@ -183,11 +191,14 @@ def test_create_runs_the_short_transaction_then_reconnects(
 
     api = McpProvidersApi()
     with app.test_request_context("/openapi/v1/workspaces/ws/mcp-providers", method="POST"):
-        response, status = _handler(api.post)(api, _context(sqlite_session), "ws", body=_payload())
+        created_result = _handler(api.post)(api, _context(sqlite_session), "ws", body=_payload())
+
+    assert isinstance(created_result, tuple)
+    response, status = created_result
 
     assert status == 201
     assert created["tenant_id"] == "ws"
-    assert created["identity_mode"].value == "off"
+    assert created["identity_mode"] == IdentityMode.OFF
     assert isinstance(response, McpProviderResponse)
 
 
@@ -199,20 +210,23 @@ def test_set_validates_the_url_outside_the_transaction(
         sqlite_session,
         monkeypatch,
         get_provider_for_url_validation=lambda **_k: order.append("validation_data") or "data",
-        get_provider_by_id=lambda **_k: ToolProviderApiEntity.model_construct(identity_mode="off"),
+        get_provider_by_id=lambda **_k: _provider(),
         update_provider=lambda **_k: order.append("update"),
-        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+        list_providers=lambda **_k: [_entity()],
     )
 
-    class _OrderedSession(_NullSession):
+    class _OrderedSession:
         def __enter__(self) -> "_OrderedSession":
             order.append("session")
             return self
 
+        def __exit__(self, *_a: object) -> None:
+            return None
+
         def commit(self) -> None:
             return None
 
-    monkeypatch.setattr(mcp_providers, "_session", lambda: _OrderedSession(sqlite_session))
+    monkeypatch.setattr(mcp_providers, "_session", _OrderedSession)
     monkeypatch.setattr(
         MCPToolManageService,
         "validate_server_url_standalone",
@@ -246,11 +260,11 @@ def test_delete_answers_404_for_an_unknown_id(
 
 
 def test_refresh_refetches_tools(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    called: list[dict] = []
+    called: list[dict[str, object]] = []
     _service(
         sqlite_session,
         monkeypatch,
-        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+        list_providers=lambda **_k: [_entity()],
         list_provider_tools=lambda **kwargs: called.append(kwargs),
     )
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))

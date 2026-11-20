@@ -403,7 +403,7 @@ from controllers.openapi.model_providers import (  # noqa: E402
 )
 from services.entities.model_provider_entities import DefaultModelResponse as ServiceDefaultModelResponse  # noqa: E402
 from services.entities.model_provider_entities import SimpleProviderEntityResponse  # noqa: E402
-from services.model_load_balancing_service import ModelLoadBalancingService  # noqa: E402
+from services.model_load_balancing_service import LoadBalancingConfigSummaryDict, ModelLoadBalancingService  # noqa: E402
 
 
 def _ref_query() -> ModelRefQuery:
@@ -664,7 +664,7 @@ class _FakeConfiguration:
         return self._setting
 
 
-_LB_ROWS = [
+_LB_ROWS: list[LoadBalancingConfigSummaryDict] = [
     {
         "id": "inherit-id",
         "name": "__inherit__",
@@ -686,12 +686,14 @@ _LB_ROWS = [
 ]
 
 
-def _stub_balancing(monkeypatch: pytest.MonkeyPatch, rows: list[dict] | None = None) -> list[dict]:
-    calls: list[dict] = []
+def _stub_balancing(
+    monkeypatch: pytest.MonkeyPatch, rows: list[LoadBalancingConfigSummaryDict] | None = None
+) -> list[dict[str, object]]:
+    calls: list[dict[str, object]] = []
     monkeypatch.setattr(
         ModelLoadBalancingService,
         "get_load_balancing_configs",
-        lambda _self, **_kwargs: (True, rows if rows is not None else [dict(r) for r in _LB_ROWS]),
+        lambda _self, **_kwargs: (True, rows if rows is not None else list(_LB_ROWS)),
     )
     monkeypatch.setattr(
         ModelLoadBalancingService,
@@ -734,6 +736,7 @@ def test_model_settings_describe_defaults_to_enabled_without_a_setting_row(
     with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/settings"):
         response = _handler(api.get)(api, _context(sqlite_session), "ws", _OPENAI, query=_settings_query())
 
+    assert isinstance(response, ModelSettingsResponse)
     assert response.enabled is True
 
 
@@ -759,7 +762,7 @@ def test_lb_config_dicts_reuse_existing_ids_and_the_inherit_row() -> None:
         LoadBalancingEntryPayload(credential_id="cred-2", enabled=True),
         LoadBalancingEntryPayload(credential_id="cred-3", enabled=True),
     ]
-    configs = _lb_config_dicts([dict(r) for r in _LB_ROWS], desired)
+    configs = _lb_config_dicts(list(_LB_ROWS), desired)
 
     assert configs == [
         {"id": "inherit-id", "name": "__inherit__", "enabled": False},
@@ -801,7 +804,7 @@ def test_model_settings_put_translates_entries_and_replaces_the_whole_list(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     calls = _stub_balancing(monkeypatch)
-    enabled_models: list[dict] = []
+    enabled_models: list[dict[str, object]] = []
     monkeypatch.setattr(model_providers, "_provider_configuration", lambda *_a: _FakeConfiguration(None))
     monkeypatch.setattr(ModelProviderService, "enable_model", lambda _self, **k: enabled_models.append(k))
     monkeypatch.setattr(ModelProviderService, "disable_model", lambda *_a, **_k: None)

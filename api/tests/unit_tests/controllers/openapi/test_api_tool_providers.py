@@ -80,13 +80,14 @@ def _provider_dict(credentials: dict[str, object] | None = None) -> dict[str, ob
     }
 
 
-def _entity() -> ToolProviderApiEntity:
-    return ToolProviderApiEntity.model_construct(
+def _entity(name: str = _NAME) -> ToolProviderApiEntity:
+    return ToolProviderApiEntity(
         id="provider-id",
         author="caller",
-        name=_NAME,
+        name=name,
         description=I18nObject(en_US="Weather tools"),
         icon=dict(_ICON),
+        label=I18nObject(en_US=name),
         type=ToolProviderType.API,
         tools=[],
         labels=["utilities"],
@@ -95,7 +96,14 @@ def _entity() -> ToolProviderApiEntity:
 
 def test_list_returns_typed_summaries(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     entity = _entity()
-    entity.tools = [ToolApiEntity.model_construct(name="forecast")]
+    entity.tools = [
+        ToolApiEntity(
+            author="caller",
+            name="forecast",
+            label=I18nObject(en_US="forecast"),
+            description=I18nObject(en_US="Forecast"),
+        )
+    ]
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [entity])
 
     api = ApiToolProvidersApi()
@@ -142,14 +150,17 @@ def test_describe_answers_404_for_an_unknown_provider(
 def test_create_calls_the_service_and_answers_201(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    created: list[tuple] = []
+    created: list[tuple[object, ...]] = []
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [_entity()])
     monkeypatch.setattr(ApiToolManageService, "create_api_tool_provider", lambda *a: created.append(a))
     monkeypatch.setattr(ApiToolManageService, "get_api_tool_provider", lambda *_a, **_k: _provider_dict())
 
     api = ApiToolProvidersApi()
     with app.test_request_context("/openapi/v1/workspaces/ws/api-tool-providers", method="POST"):
-        response, status = _handler(api.post)(api, _context(sqlite_session), "ws", body=_payload())
+        created_result = _handler(api.post)(api, _context(sqlite_session), "ws", body=_payload())
+
+    assert isinstance(created_result, tuple)
+    response, status = created_result
 
     assert status == 201
     (_user_id, tenant_id, name, *_rest) = created[0]
@@ -160,10 +171,8 @@ def test_create_calls_the_service_and_answers_201(
 def test_set_renames_through_the_path_name(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    updated: list[tuple] = []
-    monkeypatch.setattr(
-        ApiToolManageService, "list_api_tools", lambda *_a: [ToolProviderApiEntity.model_construct(name="weather-v2")]
-    )
+    updated: list[tuple[object, ...]] = []
+    monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [_entity(name="weather-v2")])
     monkeypatch.setattr(ApiToolManageService, "update_api_tool_provider", lambda *a: updated.append(a))
     monkeypatch.setattr(ApiToolManageService, "get_api_tool_provider", lambda *_a, **_k: _provider_dict())
 
@@ -173,11 +182,12 @@ def test_set_renames_through_the_path_name(
 
     (_user_id, tenant_id, new_name, original, *_rest) = updated[0]
     assert (tenant_id, new_name, original) == ("ws", "weather-v2", _NAME)
+    assert isinstance(response, ApiToolProviderResponse)
     assert response.name == "weather-v2"
 
 
 def test_delete_calls_the_service(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    deleted: list[tuple] = []
+    deleted: list[tuple[object, ...]] = []
     monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [_entity()])
     monkeypatch.setattr(ApiToolManageService, "delete_api_tool_provider", lambda *a: deleted.append(a))
 

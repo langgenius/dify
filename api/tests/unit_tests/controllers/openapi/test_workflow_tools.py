@@ -10,11 +10,13 @@ from werkzeug.exceptions import BadRequest
 from constants.oauth_bearer import TokenType
 from controllers.common.fields import SimpleResultResponse
 from controllers.openapi._errors import ProviderNotFound
-from controllers.openapi._models import WorkflowToolCreatePayload, WorkflowToolSetPayload
+from controllers.openapi._models import WorkflowToolCreatePayload, WorkflowToolResponse, WorkflowToolSetPayload
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workflow_tools import WorkflowToolApi, WorkflowToolsApi
 from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderType
 from libs.oauth_bearer import AuthContext
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.helpers.unit.model_factories import make_account, make_tenant
@@ -94,22 +96,35 @@ def _set_payload() -> WorkflowToolSetPayload:
 def test_create_calls_the_service_and_describes_by_app(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    created: list[dict] = []
+    created: list[dict[str, object]] = []
     monkeypatch.setattr(WorkflowToolManageService, "create_workflow_tool", staticmethod(lambda **k: created.append(k)))
     monkeypatch.setattr(WorkflowToolManageService, "get_workflow_tool_by_app_id", lambda *_a: _tool_dict())
 
     api = WorkflowToolsApi()
     with app.test_request_context("/openapi/v1/workspaces/ws/workflow-tools", method="POST"):
-        response, status = _handler(api.post)(api, _context(sqlite_session), "ws", body=_create_payload())
+        created_result = _handler(api.post)(api, _context(sqlite_session), "ws", body=_create_payload())
 
+    assert isinstance(created_result, tuple)
+    response, status = created_result
     assert status == 201
+    assert isinstance(response, WorkflowToolResponse)
     assert created[0]["tenant_id"] == "ws"
     assert created[0]["workflow_app_id"] == _APP_ID
     assert response.workflow_tool_id == _TOOL_ID
 
 
 def _existing_tools() -> list[ToolProviderApiEntity]:
-    return [ToolProviderApiEntity.model_construct(id=_TOOL_ID)]
+    return [
+        ToolProviderApiEntity(
+            id=_TOOL_ID,
+            author="caller",
+            name="summarizer",
+            description=I18nObject(en_US="Summarize a document"),
+            icon="\U0001f4dd",
+            label=I18nObject(en_US="Summarizer"),
+            type=ToolProviderType.WORKFLOW,
+        )
+    ]
 
 
 def test_describe_answers_404_for_an_unknown_tool(
@@ -135,11 +150,12 @@ def test_describe_returns_the_typed_tool(app: Flask, monkeypatch: pytest.MonkeyP
     with app.test_request_context(f"/openapi/v1/workspaces/ws/workflow-tools/{_TOOL_ID}"):
         response = _handler(api.get)(api, _context(sqlite_session), "ws", _TOOL_ID)
 
+    assert isinstance(response, WorkflowToolResponse)
     assert (response.workflow_tool_id, response.workflow_app_id, response.synced) == (_TOOL_ID, _APP_ID, True)
 
 
 def test_set_replaces_the_tool(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    updated: list[tuple] = []
+    updated: list[tuple[object, ...]] = []
     monkeypatch.setattr(
         WorkflowToolManageService, "list_tenant_workflow_tools", classmethod(lambda _cls, _u, _t: _existing_tools())
     )
@@ -152,6 +168,7 @@ def test_set_replaces_the_tool(app: Flask, monkeypatch: pytest.MonkeyPatch, sqli
 
     (_user_id, tenant_id, tool_id, name, *_rest) = updated[0]
     assert (tenant_id, tool_id, name) == ("ws", _TOOL_ID, "summarizer_v2")
+    assert isinstance(response, WorkflowToolResponse)
     assert response.workflow_tool_id == _TOOL_ID
 
 
@@ -175,7 +192,7 @@ def test_set_answers_400_for_a_duplicate_name(
 
 
 def test_delete_calls_the_service(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    deleted: list[tuple] = []
+    deleted: list[tuple[object, ...]] = []
     monkeypatch.setattr(
         WorkflowToolManageService, "list_tenant_workflow_tools", classmethod(lambda _cls, _u, _t: _existing_tools())
     )
