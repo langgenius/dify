@@ -35,6 +35,7 @@ export type SuggestedQuestionsResponse = SuccessResponse & {
 export type DifyClientConfig = {
   apiKey: string
   baseUrl?: string
+  /** Per-attempt deadline in seconds, including SSE and binary response bodies. Default: 60. */
   timeout?: number
   maxRetries?: number
   retryDelay?: number
