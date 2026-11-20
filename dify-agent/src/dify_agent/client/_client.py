@@ -667,6 +667,12 @@ class Client:
         response, but after observing a terminal event it will not reconnect when that
         response ends normally or raises a reconnectable transport error.
 
+        ``should_stop`` and ``timeout_seconds`` are checked before connecting,
+        before reconnect sleeps, on each received chunk, and immediately before
+        yielding each decoded or flushed event. Triggering either closes the
+        active response without reconnecting and raises ``DifyAgentStreamError``
+        or ``DifyAgentTimeoutError``.
+
         If you stop consuming early, close the returned async generator with
         ``await events.aclose()`` or ``contextlib.aclosing`` to release the active
         response promptly without reconnecting. HTTPX errors during caller-driven
@@ -739,7 +745,7 @@ class Client:
         timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        """Synchronous variant of ``stream_events`` with the same reconnect rules."""
+        """Synchronous variant of ``stream_events`` with the same reconnect and stop rules."""
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
@@ -843,9 +849,13 @@ class Client:
     ) -> AsyncGenerator[RunEvent]:
         """Open one SSE connection and yield events until it ends or fails.
 
-        Caller interruption must not make response cleanup failures reconnectable.
+        Stop conditions are checked per chunk (for comment/heartbeat chunks that
+        emit no events) and immediately before each decoded or flushed yield.
+        Caller interruption and already-raised stop/stream errors must not make
+        response cleanup failures reconnectable.
         """
         caller_interrupted = False
+        stop_error: DifyAgentStreamError | DifyAgentTimeoutError | None = None
         try:
             async with self._get_async_http_client().stream(
                 "GET",
@@ -861,10 +871,12 @@ class Client:
                     decoder = _SSEDecoder()
                     line_decoder = _SSELineDecoder()
                     async for text in response.aiter_text():
+                        # Check per chunk so comment/heartbeat chunks still observe cancellation and deadlines.
                         _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                         for line in line_decoder.decode(text):
                             event = decoder.feed_line(line)
                             if event is not None:
+                                # Re-check immediately before yielding so buffered events stop promptly.
                                 _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                                 yield event
                     for line in line_decoder.flush():
@@ -875,16 +887,23 @@ class Client:
                 except (GeneratorExit, asyncio.CancelledError):
                     caller_interrupted = True
                     raise
+                except (DifyAgentStreamError, DifyAgentTimeoutError) as exc:
+                    stop_error = exc
+                    raise
         except DifyAgentHTTPError:
             raise
         except DifyAgentStreamError:
             raise
         except httpx.TimeoutException as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             timeout_error = DifyAgentTimeoutError("SSE stream timed out")
             if caller_interrupted:
                 raise timeout_error from exc
             raise _ReconnectableStreamError(timeout_error) from exc
         except (httpx.TransportError, httpx.StreamError) as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             stream_error = DifyAgentStreamError(f"SSE stream failed: {exc}")
             if caller_interrupted:
                 raise stream_error from exc
@@ -898,7 +917,14 @@ class Client:
         deadline: float | None,
         should_stop: Callable[[], bool] | None,
     ) -> Iterator[RunEvent]:
-        """Open one synchronous SSE connection and yield events until it ends or fails."""
+        """Open one synchronous SSE connection and yield events until it ends or fails.
+
+        Stop conditions are checked per chunk (for comment/heartbeat chunks that
+        emit no events) and immediately before each decoded or flushed yield,
+        and already-raised stop/stream errors take precedence over response
+        cleanup failures.
+        """
+        stop_error: DifyAgentStreamError | DifyAgentTimeoutError | None = None
         try:
             with self._get_sync_http_client().stream(
                 "GET",
@@ -907,32 +933,40 @@ class Client:
                 headers=self._merged_headers(),
                 timeout=self._stream_timeout,
             ) as response:
-                if response.status_code >= 400:
-                    _ = response.read()
-                _raise_for_stream_status(response)
-                decoder = _SSEDecoder()
-                line_decoder = _SSELineDecoder()
-                for text in response.iter_text():
-                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                    for line in line_decoder.decode(text):
+                try:
+                    if response.status_code >= 400:
+                        _ = response.read()
+                    _raise_for_stream_status(response)
+                    decoder = _SSEDecoder()
+                    line_decoder = _SSELineDecoder()
+                    for text in response.iter_text():
+                        # Check per chunk so comment/heartbeat chunks still observe cancellation and deadlines.
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                        for line in line_decoder.decode(text):
+                            event = decoder.feed_line(line)
+                            if event is not None:
+                                # Re-check immediately before yielding so buffered events stop promptly.
+                                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                                yield event
+                    for line in line_decoder.flush():
                         event = decoder.feed_line(line)
                         if event is not None:
                             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                             yield event
-                for line in line_decoder.flush():
-                    event = decoder.feed_line(line)
-                    if event is not None:
-                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                        yield event
+                except (DifyAgentStreamError, DifyAgentTimeoutError) as exc:
+                    stop_error = exc
+                    raise
         except DifyAgentHTTPError:
             raise
         except DifyAgentStreamError:
             raise
         except httpx.TimeoutException as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             raise _ReconnectableStreamError(DifyAgentTimeoutError("SSE stream timed out")) from exc
-        except httpx.TransportError as exc:
-            raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
-        except httpx.StreamError as exc:
+        except (httpx.TransportError, httpx.StreamError) as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
 
     def _get_sync_http_client(self) -> httpx.Client:
