@@ -26,15 +26,16 @@ export const sortAgentSorts = (list: ThoughtItem[]) => {
   return temp
 }
 
+/** Match attachments in thought order, omitting IDs absent from the loaded message files. */
 export const addFileInfos = (list: ThoughtItem[], messageFiles: (FileEntity | VisionFile)[]) => {
   if (!list || !messageFiles) return list
   return list.map((item) => {
     if (item.files && item.files?.length > 0) {
       return {
         ...item,
-        message_files: item.files.map((fileId) =>
-          messageFiles.find((file) => file.id === fileId),
-        ) as FileEntity[],
+        message_files: item.files
+          .map((fileId) => messageFiles.find((file) => file.id === fileId))
+          .filter((file) => file !== undefined) as FileEntity[],
       }
     }
     return item

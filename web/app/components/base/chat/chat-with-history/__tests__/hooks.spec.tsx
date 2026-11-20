@@ -1669,12 +1669,12 @@ describe('useChatWithHistory', () => {
                 id: 'file-assistant-1',
                 belongs_to: 'assistant',
                 type: 'custom',
-                filename: 'output.txt',
-                mime_type: 'text/plain',
-                transfer_method: 'local_file',
+                filename: 'report.pdf',
+                mime_type: 'application/pdf',
+                transfer_method: 'tool_file',
                 upload_file_id: 'upload-assistant-1',
                 size: 20,
-                url: 'https://example.com/output.txt',
+                url: 'https://example.com/report.pdf?sign=report',
               },
             ],
             feedback: null,
@@ -1689,7 +1689,7 @@ describe('useChatWithHistory', () => {
                 conversation_id: 'conversation-1',
                 observation: 'done',
                 position: 1,
-                files: ['file-assistant-1'],
+                files: ['file-assistant-1', 'deleted-file'],
               },
             ],
             parent_message_id: null,
@@ -1758,6 +1758,17 @@ describe('useChatWithHistory', () => {
       expect(messageWithFiles?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.message_files).toHaveLength(1)
       expect(messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files).toHaveLength(1)
+      expect(
+        messageWithFiles?.children?.[0]?.agent_thoughts?.[0]?.message_files?.[0],
+      ).toMatchObject({
+        id: 'file-assistant-1',
+        name: 'report.pdf',
+        supportFileType: 'document',
+        transferMethod: 'tool_file',
+        type: 'application/pdf',
+        size: 20,
+        url: 'https://example.com/report.pdf?sign=report',
+      })
 
       const normalAnswerNode = messageWithFiles?.children?.[0]
       expect(normalAnswerNode?.more).toEqual({

@@ -18,7 +18,11 @@ import {
   updateFeedback,
 } from '@/service/share'
 import * as tryAppService from '@/service/try-app'
-import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
+import {
+  createChatConfigFixture,
+  createChatFileFixture,
+  createChatThoughtFixture,
+} from '@/test/fixtures/chat'
 import { createTestQueryClient } from '@/test/query-client'
 import { TransferMethod } from '@/types/app'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
@@ -241,9 +245,15 @@ describe('useEmbeddedChatbot', () => {
             answer: 'Hi there!',
             message_files: [
               createMessageFile('mf-1', 'user'),
-              createMessageFile('mf-2', 'assistant'),
+              {
+                ...createMessageFile('mf-2', 'assistant'),
+                filename: 'report.pdf',
+                mime_type: 'application/pdf',
+                transfer_method: 'tool_file',
+                url: 'https://example.com/report.pdf?sign=report',
+              },
             ],
-            agent_thoughts: [],
+            agent_thoughts: [createChatThoughtFixture({ files: ['mf-2', 'deleted-file'] })],
             feedback: { rating: 'like' },
           },
         ],
@@ -278,6 +288,21 @@ describe('useEmbeddedChatbot', () => {
             isAnswer: true,
             feedback: { rating: 'like' },
             message_files: [expect.objectContaining({ id: 'mf-2' })],
+            agent_thoughts: [
+              expect.objectContaining({
+                message_files: [
+                  expect.objectContaining({
+                    id: 'mf-2',
+                    name: 'report.pdf',
+                    supportFileType: 'document',
+                    transferMethod: 'tool_file',
+                    type: 'application/pdf',
+                    size: 100,
+                    url: 'https://example.com/report.pdf?sign=report',
+                  }),
+                ],
+              }),
+            ],
           }),
         ],
       })

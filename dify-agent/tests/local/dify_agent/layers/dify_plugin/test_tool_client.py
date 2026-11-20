@@ -133,3 +133,21 @@ def test_merge_blob_chunks_keeps_non_chunk_messages_in_order() -> None:
         DifyPluginToolInvokeMessage.MessageType.BLOB,
         DifyPluginToolInvokeMessage.MessageType.TEXT,
     ]
+
+
+def test_merge_blob_chunks_preserves_per_file_metadata_and_later_updates() -> None:
+    first = blob_chunk(chunk_id="one", sequence=0, total_length=2, blob=b"a", end=False)
+    first.meta = {"filename": "one.pdf", "mime_type": "application/octet-stream"}
+    second = blob_chunk(chunk_id="two", sequence=0, total_length=1, blob=b"c", end=True)
+    second.meta = {"filename": "two.png", "mime_type": "image/png"}
+    update = blob_chunk(chunk_id="one", sequence=1, total_length=2, blob=b"b", end=False)
+    update.meta = {"mime_type": "application/pdf"}
+    final = blob_chunk(chunk_id="one", sequence=2, total_length=2, blob=b"", end=True)
+
+    merged = merge_blob_chunks([first, second, update, final])
+
+    assert [message.meta for message in merged] == [
+        {"filename": "two.png", "mime_type": "image/png"},
+        {"filename": "one.pdf", "mime_type": "application/pdf"},
+    ]
+    assert first.meta == {"filename": "one.pdf", "mime_type": "application/octet-stream"}

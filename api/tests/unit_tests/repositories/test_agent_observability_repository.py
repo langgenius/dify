@@ -1,17 +1,23 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from sqlite3 import Connection
+from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
-from sqlalchemy import Select, select
+from sqlalchemy import Select, event, select
+from sqlalchemy.engine import Connection as SQLAlchemyConnection
+from sqlalchemy.engine import ExecutionContext
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_repository_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from fields.agent_fields import AgentLogMessageListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import FileTransferMethod, FileType
 from libs.datetime_utils import naive_utc_now
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
@@ -20,10 +26,12 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    MessageFileBelongsTo,
     MessageStatus,
 )
 from models.enums import InvokeFrom as _workflow_tool_agent_statistics_InvokeFrom
-from models.model import App, AppMode, Conversation, Message, MessageFeedback
+from models.model import App, AppMode, Conversation, Message, MessageFeedback, MessageFile
+from models.tools import ToolFile
 from models.workflow import (
     Workflow,
     WorkflowExecutionStatus,
@@ -40,16 +48,16 @@ from repositories.agent_observability_repository import (
     AgentStatisticsQueryParams,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_upload_file
 
 
-def _agent_observability_service_app(
+def _agent_observability_repository_app(
     *, app_id: str = "app-1", name: str = "Iris", mode: AppMode = AppMode.AGENT_CHAT
 ) -> App:
     return make_app(app_id=app_id, name=name, mode=mode, icon_background="#fff", enable_site=False, enable_api=False)
 
 
-def _agent_observability_service_conversation(
+def _agent_observability_repository_conversation(
     *, conversation_id: str = "conversation-1", app_id: str = "app-1"
 ) -> Conversation:
     return make_conversation(
@@ -63,7 +71,7 @@ def _agent_observability_service_conversation(
     )
 
 
-def _agent_observability_service_message(
+def _agent_observability_repository_message(
     *,
     message_id: str = "message-1",
     conversation_id: str = "conversation-1",
@@ -86,7 +94,7 @@ def _agent_observability_service_message(
         currency="USD",
         from_source=ConversationFromSource.CONSOLE,
         from_account_id="account-1",
-        invoke_from=_agent_observability_service_InvokeFrom.EXPLORE,
+        invoke_from=_agent_observability_repository_InvokeFrom.EXPLORE,
         message_tokens=3,
         answer_tokens=4,
         provider_response_latency=1.25,
@@ -94,6 +102,188 @@ def _agent_observability_service_message(
     message.created_at = timestamp
     message.updated_at = timestamp
     return message
+
+
+@pytest.mark.parametrize(
+    ("message_count", "remote_url", "remote_filename", "remote_mime_type"),
+    [
+        (1, "https://remote.test/remote.pdf?token=test", "remote.pdf", "application/pdf"),
+        (6, "https://remote.test/remote.pdf?token=test", "remote.pdf", "application/pdf"),
+        (1, "https://files.example/report.pdf#page=2", "report.pdf", "application/pdf"),
+        (1, "https://files.example/my%20file.pdf", "my file.pdf", "application/pdf"),
+        (1, "https://files.example?id=1", "", None),
+    ],
+)
+def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
+    sqlite_session: Session,
+    message_count: int,
+    remote_url: str,
+    remote_filename: str,
+    remote_mime_type: str | None,
+) -> None:
+    app = _agent_observability_repository_app()
+    upload = make_upload_file(name="input.pdf", mime_type="application/pdf", extension="pdf")
+    foreign_upload = make_upload_file(tenant_id="foreign-tenant")
+    tool = ToolFile(
+        tenant_id=app.tenant_id,
+        user_id="account-1",
+        conversation_id=None,
+        file_key="generated/output",
+        name="output",
+        mimetype="application/pdf",
+        size=42,
+    )
+    foreign_tool = ToolFile(
+        tenant_id="foreign-tenant",
+        user_id="account-1",
+        conversation_id=None,
+        file_key="foreign/output",
+        name="secret.pdf",
+        mimetype="application/pdf",
+    )
+    messages = [_agent_observability_repository_message(message_id=str(uuid4())) for _ in range(message_count)]
+    attachments = []
+    legacy_attachments = []
+    for message in messages:
+        specs = [
+            (FileTransferMethod.LOCAL_FILE, upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, upload.id, "https://untrusted.test/input.pdf", MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, remote_url, None),
+            (
+                FileTransferMethod.TOOL_FILE,
+                tool.id,
+                f"https://untrusted.test/files/tools/{uuid4()}.exe",
+                MessageFileBelongsTo.ASSISTANT,
+            ),
+            (FileTransferMethod.TOOL_FILE, None, f"/files/tools/{tool.id}.exe", MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.TOOL_FILE, str(uuid4()), None, MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.LOCAL_FILE, str(uuid4()), None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, str(uuid4()), "https://remote.test/missing.pdf", MessageFileBelongsTo.USER),
+            (FileTransferMethod.LOCAL_FILE, foreign_upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.TOOL_FILE, foreign_tool.id, None, MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.TOOL_FILE, None, "/files/tools/invalid.pdf", MessageFileBelongsTo.ASSISTANT),
+            (FileTransferMethod.DATASOURCE_FILE, upload.id, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.LOCAL_FILE, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, None, MessageFileBelongsTo.USER),
+            (FileTransferMethod.REMOTE_URL, None, "", MessageFileBelongsTo.USER),
+        ]
+        for index, (method, file_id, url, belongs_to) in enumerate(specs):
+            attachment = MessageFile(
+                message_id=message.id,
+                type=FileType.DOCUMENT,
+                transfer_method=method,
+                upload_file_id=file_id,
+                url=url,
+                belongs_to=belongs_to,
+                created_by="account-1",
+                created_by_role=CreatorUserRole.ACCOUNT,
+            )
+            attachment.created_at = datetime(2026, 11, 1) + timedelta(seconds=index)
+            attachments.append(attachment)
+            if method == FileTransferMethod.TOOL_FILE and file_id is None and url == f"/files/tools/{tool.id}.exe":
+                legacy_attachments.append(attachment)
+    sqlite_session.add_all([*messages, upload, foreign_upload, tool, foreign_tool, *attachments])
+    sqlite_session.commit()
+    queries = []
+
+    def reject_writes(_session: Session, *_args) -> None:
+        raise AssertionError("Log serialization must not flush or commit")
+
+    def capture_sql(
+        _conn: SQLAlchemyConnection,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: ExecutionContext | None,
+        _executemany: bool,
+    ) -> None:
+        queries.append(statement)
+
+    bind = sqlite_session.get_bind()
+    event.listen(sqlite_session, "before_commit", reject_writes)
+    event.listen(sqlite_session, "before_flush", reject_writes)
+    event.listen(bind, "before_cursor_execute", capture_sql)
+    try:
+        payload = AgentObservabilityQueries(sqlite_session).list_log_messages(
+            app=app,
+            agent_id="agent-1",
+            conversation_id="conversation-1",
+            params=AgentLogQueryParams(sources=("webapp",), limit=100),
+        )
+    finally:
+        event.remove(sqlite_session, "before_commit", reject_writes)
+        event.remove(sqlite_session, "before_flush", reject_writes)
+        event.remove(bind, "before_cursor_execute", capture_sql)
+
+    response = AgentLogMessageListResponse.model_validate(payload)
+    assert len(response.data) == message_count
+    for message in response.data:
+        files = message.message_files
+        assert [file.filename for file in files] == ["input.pdf", "input.pdf", remote_filename, "output", "output"]
+        assert [file.belongs_to for file in files] == ["user", "user", None, "assistant", "assistant"]
+        for file in [*files[:2], *files[3:]]:
+            assert file.url
+            assert "untrusted.test" not in file.url
+            assert "sign=" in file.url
+            assert "timestamp=" in file.url
+        assert files[2].url == remote_url
+        assert files[2].mime_type == remote_mime_type
+        for file in files[3:]:
+            assert file.url
+            assert urlsplit(file.url).path == f"/files/tools/{tool.id}.pdf"
+            assert parse_qs(urlsplit(file.url).query)["sign"]
+            assert file.upload_file_id == tool.id
+            assert file.mime_type == "application/pdf"
+            assert file.size == 42
+    for table in ("message_files", "upload_files", "tool_files"):
+        assert sum(f"FROM {table}" in query for query in queries) == 1
+    assert all(query.lstrip().upper().startswith("SELECT") for query in queries)
+    assert not sqlite_session.dirty
+    assert not sqlite_session.new
+    assert all(attachment.upload_file_id is None for attachment in legacy_attachments)
+
+
+def test_log_messages_leave_pending_session_changes_unflushed(sqlite_session: Session) -> None:
+    """Reading attachments must leave unrelated pending writes with their caller."""
+    app = _agent_observability_repository_app()
+    message = _agent_observability_repository_message()
+    upload = make_upload_file(name="input.pdf", mime_type="application/pdf", extension="pdf")
+    attachment = MessageFile(
+        message_id=message.id,
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        upload_file_id=upload.id,
+        belongs_to=MessageFileBelongsTo.USER,
+        created_by="account-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+    )
+    sqlite_session.add_all([app, message, upload, attachment])
+    sqlite_session.commit()
+    pending_upload = make_upload_file()
+    sqlite_session.add(pending_upload)
+    app.name = "Pending app edit"
+
+    def reject_writes(_session: Session, *_args: object) -> None:
+        raise AssertionError("Log queries must not flush or commit pending changes")
+
+    event.listen(sqlite_session, "before_flush", reject_writes)
+    event.listen(sqlite_session, "before_commit", reject_writes)
+    try:
+        payload = AgentObservabilityQueries(sqlite_session).list_log_messages(
+            app=app,
+            agent_id="agent-1",
+            conversation_id=message.conversation_id,
+            params=AgentLogQueryParams(sources=("webapp",)),
+        )
+    finally:
+        event.remove(sqlite_session, "before_flush", reject_writes)
+        event.remove(sqlite_session, "before_commit", reject_writes)
+
+    response = AgentLogMessageListResponse.model_validate(payload)
+    assert [file.filename for file in response.data[0].message_files] == ["input.pdf"]
+    assert list(sqlite_session.new) == [pending_upload]
+    assert list(sqlite_session.dirty) == [app]
+    assert app.name == "Pending app edit"
 
 
 def _feedback(
@@ -114,7 +304,7 @@ def _feedback(
     )
 
 
-def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = WorkflowType.WORKFLOW) -> WorkflowRun:
+def _agent_observability_repository_workflow_run(*, workflow_type: WorkflowType = WorkflowType.WORKFLOW) -> WorkflowRun:
     created_at = datetime(2026, 7, 21, 7, 0, 19)
     workflow_record = WorkflowRun(
         id="workflow-run-1",
@@ -140,7 +330,7 @@ def _agent_observability_service_workflow_run(*, workflow_type: WorkflowType = W
     return workflow_record
 
 
-def _agent_observability_service_node_execution(
+def _agent_observability_repository_node_execution(
     *,
     execution_id: str = "node-execution-1",
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -189,7 +379,7 @@ def _agent_observability_service_node_execution(
     return node_record
 
 
-def _agent_observability_service_workflow_binding(
+def _agent_observability_repository_workflow_binding(
     *, app_id: str = "workflow-app-1", binding_id: str | None = None, node_id: str = "node-1"
 ) -> WorkflowAgentNodeBinding:
     return WorkflowAgentNodeBinding(
@@ -212,9 +402,9 @@ class TestAgentObservabilityQueriesCases:
     def test_resolve_source_accepts_frontend_aliases() -> None:
         assert AgentObservabilityQueries.resolve_source(None) is None
         assert AgentObservabilityQueries.resolve_source("all") is None
-        assert AgentObservabilityQueries.resolve_source("console") == _agent_observability_service_InvokeFrom.EXPLORE
-        assert AgentObservabilityQueries.resolve_source("api") == _agent_observability_service_InvokeFrom.SERVICE_API
-        assert AgentObservabilityQueries.resolve_source("web_app") == _agent_observability_service_InvokeFrom.WEB_APP
+        assert AgentObservabilityQueries.resolve_source("console") == _agent_observability_repository_InvokeFrom.EXPLORE
+        assert AgentObservabilityQueries.resolve_source("api") == _agent_observability_repository_InvokeFrom.SERVICE_API
+        assert AgentObservabilityQueries.resolve_source("web_app") == _agent_observability_repository_InvokeFrom.WEB_APP
 
         with pytest.raises(ValueError, match="Unsupported source"):
             AgentObservabilityQueries.resolve_source("unknown")
@@ -245,7 +435,7 @@ class TestAgentObservabilityQueriesCases:
 
         legacy_filter = AgentObservabilityQueries.resolve_source_filter("console")
         assert legacy_filter.kind == "webapp"
-        assert legacy_filter.invoke_from == _agent_observability_service_InvokeFrom.EXPLORE
+        assert legacy_filter.invoke_from == _agent_observability_repository_InvokeFrom.EXPLORE
 
         with pytest.raises(ValueError, match="Unsupported source"):
             AgentObservabilityQueries.resolve_source_filter("workflow:")
@@ -314,15 +504,15 @@ class TestAgentObservabilityQueriesCases:
     def test_workflow_statistics_include_run_without_message(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
-        workflow_app = _agent_observability_service_app(
+        workflow_app = _agent_observability_repository_app(
             app_id="workflow-app-1", name="Workflow App", mode=AppMode.WORKFLOW
         )
         sqlite_session.add_all(
             [
                 workflow_app,
-                _agent_observability_service_workflow_run(),
-                _agent_observability_service_node_execution(),
-                _agent_observability_service_workflow_binding(),
+                _agent_observability_repository_workflow_run(),
+                _agent_observability_repository_node_execution(),
+                _agent_observability_repository_workflow_binding(),
             ]
         )
         sqlite_session.commit()
@@ -341,7 +531,7 @@ class TestAgentObservabilityQueriesCases:
         service = AgentObservabilityQueries(sqlite_session)
 
         payload = service.get_statistics_summary(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
             params=observability_repository_module.AgentStatisticsQueryParams(source="workflow:workflow-app-1"),
         )
@@ -412,7 +602,7 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         service = AgentObservabilityQueries(sqlite_session)
-        app = _agent_observability_service_app()
+        app = _agent_observability_repository_app()
         rows = [
             {"id": "old", "source": {"id": "webapp:app-1"}, "created_at": 10, "updated_at": 100},
             {"id": "new", "source": {"id": "webapp:app-1"}, "created_at": 20, "updated_at": 50},
@@ -433,7 +623,7 @@ class TestAgentObservabilityQueriesCases:
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         service = AgentObservabilityQueries(sqlite_session)
-        webapp_message = _agent_observability_service_message(message_id="shared")
+        webapp_message = _agent_observability_repository_message(message_id="shared")
         webapp_row = {"id": "shared", "created_at": 10, "updated_at": 30}
         workflow_rows = [
             {"id": "shared", "created_at": 10, "updated_at": 20},
@@ -441,11 +631,13 @@ class TestAgentObservabilityQueriesCases:
         ]
         monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
         monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
-        monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
+        monkeypatch.setattr(
+            service, "serialize_log_message", lambda message, feedbacks=(), message_files=(): webapp_row
+        )
         monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
 
         payload = service.list_log_messages(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
             conversation_id="execution-1",
             params=AgentLogQueryParams(
@@ -466,11 +658,11 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     def test_list_webapp_conversation_logs_includes_feedback_rates(sqlite_session: Session) -> None:
         timestamp = datetime(2026, 7, 23, 7, 0, 19)
-        app = _agent_observability_service_app(name="Agent WebApp")
-        conversation = _agent_observability_service_conversation()
+        app = _agent_observability_repository_app(name="Agent WebApp")
+        conversation = _agent_observability_repository_conversation()
         conversation.name = "Feedback conversation"
-        first_message = _agent_observability_service_message(created_at=timestamp)
-        second_message = _agent_observability_service_message(message_id="message-2", created_at=timestamp)
+        first_message = _agent_observability_repository_message(created_at=timestamp)
+        second_message = _agent_observability_repository_message(message_id="message-2", created_at=timestamp)
         sqlite_session.add_all(
             [
                 app,
@@ -496,22 +688,22 @@ class TestAgentObservabilityQueriesCases:
 
     @staticmethod
     def test_list_workflow_logs_uses_node_executions_without_messages(sqlite_session: Session) -> None:
-        workflow_app = _agent_observability_service_app(
+        workflow_app = _agent_observability_repository_app(
             app_id="workflow-app-1", name="Marketing Department", mode=AppMode.WORKFLOW
         )
         sqlite_session.add_all(
             [
                 workflow_app,
-                _agent_observability_service_workflow_run(),
-                _agent_observability_service_node_execution(),
-                _agent_observability_service_workflow_binding(),
+                _agent_observability_repository_workflow_run(),
+                _agent_observability_repository_node_execution(),
+                _agent_observability_repository_workflow_binding(),
             ]
         )
         sqlite_session.commit()
         service = AgentObservabilityQueries(sqlite_session)
 
         rows = service._list_workflow_conversation_logs(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
             params=AgentLogQueryParams(),
             source_filter=AgentObservabilityQueries.resolve_source_filter("workflow:workflow-app-1"),
@@ -523,7 +715,7 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     @pytest.mark.parametrize("source_identity", ["persisted-binding", "source-version", "unique-legacy-binding"])
     def test_nested_agent_logs_and_messages_keep_source_identity(sqlite_session: Session, source_identity: str) -> None:
-        source_app = _agent_observability_service_app(
+        source_app = _agent_observability_repository_app(
             app_id="workflow-app-1", name="Source workflow", mode=AppMode.WORKFLOW
         )
         source = Workflow(
@@ -536,14 +728,14 @@ class TestAgentObservabilityQueriesCases:
             _features="{}",
             created_by="account-1",
         )
-        run = _agent_observability_service_workflow_run()
+        run = _agent_observability_repository_workflow_run()
         run.app_id, run.workflow_id, run.version = "caller-app", "caller-workflow", "caller-version"
-        execution = _agent_observability_service_node_execution()
+        execution = _agent_observability_repository_node_execution()
         execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
-        binding = _agent_observability_service_workflow_binding()
+        binding = _agent_observability_repository_workflow_binding()
         if source_identity == "persisted-binding":
             execution.process_data = json.dumps({"workflow_agent_binding_id": binding.id})
-        unused_binding = _agent_observability_service_workflow_binding(binding_id="unused-binding")
+        unused_binding = _agent_observability_repository_workflow_binding(binding_id="unused-binding")
         unused_binding.workflow_version = "v2"
         sqlite_session.add_all([source_app, run, execution, binding])
         if source_identity != "unique-legacy-binding":
@@ -553,10 +745,10 @@ class TestAgentObservabilityQueriesCases:
         params = AgentLogQueryParams(sources=("workflow:workflow-app-1",))
 
         logs = service.list_logs(
-            app=_agent_observability_service_app(app_id="agent-app"), agent_id="agent-1", params=params
+            app=_agent_observability_repository_app(app_id="agent-app"), agent_id="agent-1", params=params
         )
         messages = service.list_log_messages(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
             conversation_id=execution.id,
             params=params,
@@ -570,13 +762,13 @@ class TestAgentObservabilityQueriesCases:
             params = AgentLogQueryParams(sources=(source_filter,))
             assert (
                 service.list_logs(
-                    app=_agent_observability_service_app(app_id="agent-app"), agent_id="agent-1", params=params
+                    app=_agent_observability_repository_app(app_id="agent-app"), agent_id="agent-1", params=params
                 )["total"]
                 == 0
             )
             assert (
                 service.list_log_messages(
-                    app=_agent_observability_service_app(app_id="agent-app"),
+                    app=_agent_observability_repository_app(app_id="agent-app"),
                     agent_id="agent-1",
                     conversation_id=execution.id,
                     params=params,
@@ -593,13 +785,13 @@ class TestAgentObservabilityQueriesCases:
             params = AgentLogQueryParams(sources=("workflow",))
             assert (
                 service.list_logs(
-                    app=_agent_observability_service_app(app_id="agent-app"), agent_id="agent-1", params=params
+                    app=_agent_observability_repository_app(app_id="agent-app"), agent_id="agent-1", params=params
                 )["total"]
                 == 0
             )
             assert (
                 service.list_log_messages(
-                    app=_agent_observability_service_app(app_id="agent-app"),
+                    app=_agent_observability_repository_app(app_id="agent-app"),
                     agent_id="agent-1",
                     conversation_id=execution.id,
                     params=params,
@@ -610,11 +802,11 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     @pytest.mark.parametrize("mismatch", ["run-tenant", "source-tenant", "binding-id", "unrelated-run"])
     def test_workflow_agent_observability_rejects_mismatched_ownership(sqlite_session: Session, mismatch: str) -> None:
-        source_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        source_app = _agent_observability_repository_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
         run, execution, binding = (
-            _agent_observability_service_workflow_run(),
-            _agent_observability_service_node_execution(),
-            _agent_observability_service_workflow_binding(),
+            _agent_observability_repository_workflow_run(),
+            _agent_observability_repository_node_execution(),
+            _agent_observability_repository_workflow_binding(),
         )
         execution.process_data = json.dumps({"workflow_agent_binding_id": binding.id})
         if mismatch == "run-tenant":
@@ -632,13 +824,13 @@ class TestAgentObservabilityQueriesCases:
 
         assert (
             service.list_logs(
-                app=_agent_observability_service_app(app_id="agent-app"), agent_id="agent-1", params=params
+                app=_agent_observability_repository_app(app_id="agent-app"), agent_id="agent-1", params=params
             )["total"]
             == 0
         )
         assert (
             service.list_log_messages(
-                app=_agent_observability_service_app(app_id="agent-app"),
+                app=_agent_observability_repository_app(app_id="agent-app"),
                 agent_id="agent-1",
                 conversation_id=execution.id,
                 params=params,
@@ -650,13 +842,15 @@ class TestAgentObservabilityQueriesCases:
     def test_list_workflow_messages_uses_node_execution_identity(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
-        node_execution = _agent_observability_service_node_execution()
+        node_execution = _agent_observability_repository_node_execution()
         sqlite_session.add_all(
             [
-                _agent_observability_service_app(app_id="workflow-app-1", name="Workflow App", mode=AppMode.WORKFLOW),
-                _agent_observability_service_workflow_run(),
+                _agent_observability_repository_app(
+                    app_id="workflow-app-1", name="Workflow App", mode=AppMode.WORKFLOW
+                ),
+                _agent_observability_repository_workflow_run(),
                 node_execution,
-                _agent_observability_service_workflow_binding(),
+                _agent_observability_repository_workflow_binding(),
             ]
         )
         sqlite_session.commit()
@@ -665,7 +859,7 @@ class TestAgentObservabilityQueriesCases:
         monkeypatch.setattr(service, "serialize_workflow_node_message", lambda execution: serialized)
 
         rows = service._list_workflow_messages(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
             conversation_id="node-execution-1",
             params=AgentLogQueryParams(),
@@ -711,7 +905,7 @@ class TestAgentObservabilityQueriesCases:
 
     @staticmethod
     def test_source_serializers_return_structured_frontend_shape() -> None:
-        app = _agent_observability_service_app()
+        app = _agent_observability_repository_app()
 
         webapp_source = AgentObservabilityQueries._serialize_webapp_source(app)
         workflow_app_source = AgentObservabilityQueries._serialize_workflow_app_source(app=app)
@@ -752,22 +946,22 @@ class TestAgentObservabilityQueriesCases:
 
     @staticmethod
     def test_list_workflow_sources_deduplicates_versions_and_nodes_by_app(sqlite_session: Session) -> None:
-        app_a = _agent_observability_service_app(app_id="app-a", name="Alpha", mode=AppMode.WORKFLOW)
-        app_b = _agent_observability_service_app(app_id="app-b", name="Beta", mode=AppMode.WORKFLOW)
+        app_a = _agent_observability_repository_app(app_id="app-a", name="Alpha", mode=AppMode.WORKFLOW)
+        app_b = _agent_observability_repository_app(app_id="app-b", name="Beta", mode=AppMode.WORKFLOW)
         sqlite_session.add_all(
             [
                 app_a,
                 app_b,
-                _agent_observability_service_workflow_binding(app_id="app-a", node_id="node-a-1"),
-                _agent_observability_service_workflow_binding(app_id="app-a", node_id="node-a-2"),
-                _agent_observability_service_workflow_binding(app_id="app-b", node_id="node-b-1"),
+                _agent_observability_repository_workflow_binding(app_id="app-a", node_id="node-a-1"),
+                _agent_observability_repository_workflow_binding(app_id="app-a", node_id="node-a-2"),
+                _agent_observability_repository_workflow_binding(app_id="app-b", node_id="node-b-1"),
             ]
         )
         sqlite_session.commit()
         service = AgentObservabilityQueries(sqlite_session)
 
         sources = service._list_workflow_sources(
-            app=_agent_observability_service_app(app_id="agent-app"),
+            app=_agent_observability_repository_app(app_id="agent-app"),
             agent_id="agent-1",
         )
 
@@ -777,9 +971,9 @@ class TestAgentObservabilityQueriesCases:
     def test_serialize_log_message_returns_frontend_log_shape() -> None:
         created_at = datetime(2026, 6, 17, 1, 2, 3, tzinfo=UTC)
         updated_at = datetime(2026, 6, 17, 1, 3, 3, tzinfo=UTC)
-        message = _agent_observability_service_message(created_at=created_at)
+        message = _agent_observability_repository_message(created_at=created_at)
         message.updated_at = updated_at
-        conversation = _agent_observability_service_conversation()
+        conversation = _agent_observability_repository_conversation()
         feedbacks = [
             _feedback(),
             _feedback(
@@ -809,6 +1003,7 @@ class TestAgentObservabilityQueriesCases:
                 {"rating": "like", "content": "Useful", "from_source": "user"},
                 {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
             ],
+            "message_files": [],
             "message_tokens": 3,
             "answer_tokens": 4,
             "total_tokens": 7,
@@ -824,7 +1019,7 @@ class TestAgentObservabilityQueriesCases:
     def test_serialize_workflow_node_message_returns_frontend_log_shape(multimodal: bool) -> None:
         created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
         finished_at = datetime(2026, 7, 23, 7, 0, 28, tzinfo=UTC)
-        node_execution = _agent_observability_service_node_execution()
+        node_execution = _agent_observability_repository_node_execution()
         context_config = (
             DifyUserPromptLayerConfig(
                 text="Focus on action items",
@@ -872,6 +1067,7 @@ class TestAgentObservabilityQueriesCases:
             "from_account_id": None,
             "feedback_enabled": False,
             "feedbacks": [],
+            "message_files": [],
             "message_tokens": 10,
             "answer_tokens": 5,
             "total_tokens": 15,
@@ -885,7 +1081,7 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     def test_serialize_workflow_node_message_handles_sparse_runtime_data() -> None:
         created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
-        node_execution = _agent_observability_service_node_execution(
+        node_execution = _agent_observability_repository_node_execution(
             execution_id="node-execution-2", status=WorkflowNodeExecutionStatus.PAUSED
         )
         node_execution.title = "Fallback prompt"
@@ -942,8 +1138,8 @@ class TestAgentObservabilityQueriesCases:
 
     @staticmethod
     def test_list_message_feedbacks_groups_feedbacks_by_message(sqlite_session: Session) -> None:
-        first_message = _agent_observability_service_message()
-        second_message = _agent_observability_service_message(message_id="message-2")
+        first_message = _agent_observability_repository_message()
+        second_message = _agent_observability_repository_message(message_id="message-2")
         feedbacks = [
             _feedback(),
             _feedback(rating=FeedbackRating.DISLIKE),
@@ -951,8 +1147,8 @@ class TestAgentObservabilityQueriesCases:
         ]
         sqlite_session.add_all(
             [
-                _agent_observability_service_app(),
-                _agent_observability_service_conversation(),
+                _agent_observability_repository_app(),
+                _agent_observability_repository_conversation(),
                 first_message,
                 second_message,
                 *feedbacks,
@@ -962,7 +1158,7 @@ class TestAgentObservabilityQueriesCases:
         service = AgentObservabilityQueries(sqlite_session)
 
         grouped_feedbacks = service._list_message_feedbacks(
-            app=_agent_observability_service_app(),
+            app=_agent_observability_repository_app(),
             messages=[first_message, second_message],
         )
 
@@ -971,11 +1167,11 @@ class TestAgentObservabilityQueriesCases:
             feedbacks[1].id,
         }
         assert grouped_feedbacks["message-2"] == [feedbacks[2]]
-        assert service._list_message_feedbacks(app=_agent_observability_service_app(), messages=[]) == {}
+        assert service._list_message_feedbacks(app=_agent_observability_repository_app(), messages=[]) == {}
 
     @staticmethod
     def test_list_conversation_feedback_rates_maps_user_and_admin_sources(sqlite_session: Session) -> None:
-        messages = [_agent_observability_service_message(message_id=f"message-{index}") for index in range(1, 5)]
+        messages = [_agent_observability_repository_message(message_id=f"message-{index}") for index in range(1, 5)]
         feedbacks = [
             _feedback(message_id="message-1"),
             _feedback(message_id="message-2"),
@@ -984,20 +1180,25 @@ class TestAgentObservabilityQueriesCases:
             _feedback(message_id="message-1", source=FeedbackFromSource.ADMIN),
         ]
         sqlite_session.add_all(
-            [_agent_observability_service_app(), _agent_observability_service_conversation(), *messages, *feedbacks]
+            [
+                _agent_observability_repository_app(),
+                _agent_observability_repository_conversation(),
+                *messages,
+                *feedbacks,
+            ]
         )
         sqlite_session.commit()
         service = AgentObservabilityQueries(sqlite_session)
 
         rates = service._list_conversation_feedback_rates(
-            app=_agent_observability_service_app(),
+            app=_agent_observability_repository_app(),
             conversation_ids=["conversation-1"],
         )
 
         assert rates == {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}}
         assert (
             service._list_conversation_feedback_rates(
-                app=_agent_observability_service_app(),
+                app=_agent_observability_repository_app(),
                 conversation_ids=[],
             )
             == {}
@@ -1025,7 +1226,7 @@ class TestAgentObservabilityQueriesCases:
     @staticmethod
     def test_serialize_workflow_execution_log_uses_node_execution_identity() -> None:
         created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
-        node_execution = _agent_observability_service_node_execution(status=WorkflowNodeExecutionStatus.FAILED)
+        node_execution = _agent_observability_repository_node_execution(status=WorkflowNodeExecutionStatus.FAILED)
         node_execution.created_by_role = CreatorUserRole.ACCOUNT
         node_execution.created_by = "account-1"
         node_execution.created_at = created_at
@@ -1105,12 +1306,12 @@ class TestAgentObservabilityQueriesCases:
 """Real SQL coverage for Agent statistics inside a Workflow Tool invocation."""
 
 
-_workflow_tool_agent_statistics_app = _agent_observability_service_app
-_workflow_tool_agent_statistics_conversation = _agent_observability_service_conversation
-_workflow_tool_agent_statistics_message = _agent_observability_service_message
-_workflow_tool_agent_statistics_node_execution = _agent_observability_service_node_execution
-_workflow_tool_agent_statistics_workflow_binding = _agent_observability_service_workflow_binding
-_workflow_tool_agent_statistics_workflow_run = _agent_observability_service_workflow_run
+_workflow_tool_agent_statistics_app = _agent_observability_repository_app
+_workflow_tool_agent_statistics_conversation = _agent_observability_repository_conversation
+_workflow_tool_agent_statistics_message = _agent_observability_repository_message
+_workflow_tool_agent_statistics_node_execution = _agent_observability_repository_node_execution
+_workflow_tool_agent_statistics_workflow_binding = _agent_observability_repository_workflow_binding
+_workflow_tool_agent_statistics_workflow_run = _agent_observability_repository_workflow_run
 
 
 def _seed_nested_agent(sqlite_session: Session, *, workflow_type: WorkflowType) -> App:

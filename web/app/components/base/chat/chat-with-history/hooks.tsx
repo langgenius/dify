@@ -36,6 +36,7 @@ import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/we
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
+import { toFileResponse } from '../message-files'
 import {
   buildChatItemTree,
   getProcessedSystemVariablesFromUrlParams,
@@ -108,7 +109,7 @@ function getFormattedChatList(messages: any[]) {
       content: item.answer,
       agent_thoughts: addFileInfos(
         item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
-        item.message_files,
+        getProcessedFilesFromResponse((item.message_files ?? []).map(toFileResponse)),
       ),
       feedback: item.feedback,
       isAnswer: true,

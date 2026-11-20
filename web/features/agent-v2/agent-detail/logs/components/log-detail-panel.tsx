@@ -10,7 +10,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Chat from '@/app/components/base/chat/chat'
+import { toFileResponse } from '@/app/components/base/chat/message-files'
 import CopyIcon from '@/app/components/base/copy-icon'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-row'
 import { toast } from '@/app/notifications'
@@ -186,10 +188,15 @@ function formatAgentLogMessages({
   messages.forEach((message) => {
     const userFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'user')
     const adminFeedback = message.feedbacks?.find((feedback) => feedback.from_source === 'admin')
+    const questionFiles =
+      message.message_files?.filter((file) => file.belongs_to !== 'assistant') ?? []
+    const answerFiles =
+      message.message_files?.filter((file) => file.belongs_to === 'assistant') ?? []
     chatList.push({
       id: `question-${message.id}`,
       content: message.query,
       isAnswer: false,
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
       parentMessageId: undefined,
     })
     chatList.push({
@@ -206,6 +213,7 @@ function formatAgentLogMessages({
         query: message.query,
       },
       isAnswer: true,
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
       log: [
         { role: 'user', text: message.query },
         { role: 'assistant', text: message.answer || message.error || '' },

@@ -16,7 +16,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference
+from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference, is_safe_dify_file_uri
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
 
@@ -111,6 +111,8 @@ async def upload_agent_tool_file(
     """
     if not execution_context.user_id:
         raise ValueError("plugin file upload requires execution context user_id")
+    if not execution_context.user_from:
+        raise ValueError("plugin file upload requires execution context user_from")
     if len(content) > max_size:
         raise ValueError(f"file size {len(content)} bytes exceeds upload limit {max_size} bytes")
     data = await _post_file_request(
@@ -127,7 +129,7 @@ async def upload_agent_tool_file(
         },
     )
     uri = data.get("upload_uri")
-    if not isinstance(uri, str) or not uri.startswith("/files/upload/for-plugin?"):
+    if not isinstance(uri, str) or not uri.startswith("/files/upload/for-plugin?") or not is_safe_dify_file_uri(uri):
         raise ValueError("file control plane returned an invalid upload_uri")
     response = await services.dify_api_http_client.post(
         services.inner_api_url.rstrip("/") + uri,
