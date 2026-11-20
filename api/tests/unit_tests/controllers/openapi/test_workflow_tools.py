@@ -1,6 +1,5 @@
 import uuid
 from collections.abc import Callable
-from types import SimpleNamespace
 
 import pytest
 from flask import Flask
@@ -15,6 +14,7 @@ from controllers.openapi._models import WorkflowToolCreatePayload, WorkflowToolS
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.workflow_tools import WorkflowToolApi, WorkflowToolsApi
+from core.tools.entities.api_entities import ToolProviderApiEntity
 from libs.oauth_bearer import AuthContext
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from tests.helpers.unit.model_factories import make_account, make_tenant
@@ -108,8 +108,8 @@ def test_create_calls_the_service_and_describes_by_app(
     assert response.workflow_tool_id == _TOOL_ID
 
 
-def _existing_tools() -> list[SimpleNamespace]:
-    return [SimpleNamespace(id=_TOOL_ID)]
+def _existing_tools() -> list[ToolProviderApiEntity]:
+    return [ToolProviderApiEntity.model_construct(id=_TOOL_ID)]
 
 
 def test_describe_answers_404_for_an_unknown_tool(

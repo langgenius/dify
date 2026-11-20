@@ -1,7 +1,5 @@
 import uuid
 from collections.abc import Callable
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -16,10 +14,12 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.mcp_providers import McpProviderApi, McpProviderRefreshApi, McpProvidersApi
 from core.entities.mcp_provider import MCPConfiguration
-from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from libs.oauth_bearer import AuthContext
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from models.tools import MCPToolProvider
+from services.tools.mcp_tools_manage_service import MCPToolManageService, ReconnectResult
 from tests.helpers.unit.model_factories import make_account, make_tenant
 
 _PROVIDER_ID = "3f9a0b1e-1234-4a67-9abc-def012345678"
@@ -66,10 +66,10 @@ def _entity() -> ToolProviderApiEntity:
         id=_PROVIDER_ID,
         author="caller",
         name="fetch",
-        description=MagicMock(en_US="Fetch tools"),
+        description=I18nObject(en_US="Fetch tools"),
         icon="\U0001f310",
         type=ToolProviderType.MCP,
-        tools=[SimpleNamespace(name="fetch_url")],
+        tools=[ToolApiEntity.model_construct(name="fetch_url")],
         labels=[],
         server_url="https://mcp.example.com/*****",
         server_identifier="fetch",
@@ -81,6 +81,28 @@ def _entity() -> ToolProviderApiEntity:
         identity_mode="off",
         updated_at=1_700_000_000,
     )
+
+
+def _provider(**overrides: object) -> MCPToolProvider:
+    fields = {
+        "name": "fetch",
+        "server_identifier": "fetch",
+        "server_url": "https://mcp.example.com/sse",
+        "server_url_hash": "hash",
+        "icon": "\U0001f310",
+        "tenant_id": "ws",
+        "user_id": "caller",
+    }
+    return MCPToolProvider(**(fields | overrides))
+
+
+def _service(session: Session, monkeypatch: pytest.MonkeyPatch, **methods: Callable) -> MCPToolManageService:
+    """A real MCPToolManageService with the named methods replaced, wired as the controller's service."""
+    service = MCPToolManageService(session=session)
+    for name, replacement in methods.items():
+        monkeypatch.setattr(service, name, replacement)
+    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    return service
 
 
 def _patch_describe(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,10 +130,12 @@ def _patch_describe(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_describe_masks_secrets(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    service = MagicMock()
-    service.list_providers.return_value = [SimpleNamespace(id=_PROVIDER_ID)]
-    service.get_provider_by_id.return_value = SimpleNamespace(id=_PROVIDER_ID)
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    _service(
+        sqlite_session,
+        monkeypatch,
+        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+        get_provider_by_id=lambda **_k: _provider(),
+    )
     monkeypatch.setattr(mcp_providers.ToolTransformService, "mcp_provider_to_user_provider", lambda _p: _entity())
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))
 
@@ -129,9 +153,7 @@ def test_describe_masks_secrets(app: Flask, monkeypatch: pytest.MonkeyPatch, sql
 def test_describe_answers_404_for_an_unknown_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    service = MagicMock()
-    service.list_providers.return_value = []
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    _service(sqlite_session, monkeypatch, list_providers=lambda **_k: [])
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))
 
     api = McpProviderApi()
@@ -146,11 +168,15 @@ def test_create_runs_the_short_transaction_then_reconnects(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     created: dict = {}
-    service = MagicMock()
-    service.create_provider.side_effect = lambda **kwargs: created.update(kwargs) or SimpleNamespace(id=_PROVIDER_ID)
-    service.get_provider_by_id.return_value = SimpleNamespace(authed=False, tools="")
-    reconnect = SimpleNamespace(authed=True, tools='[{"name": "fetch_url"}]')
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    _service(
+        sqlite_session,
+        monkeypatch,
+        create_provider=lambda **kwargs: (
+            created.update(kwargs) or ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)
+        ),
+        get_provider_by_id=lambda **_k: _provider(),
+    )
+    reconnect = ReconnectResult(authed=True, tools='[{"name": "fetch_url"}]', encrypted_credentials="")
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))
     monkeypatch.setattr(MCPToolManageService, "reconnect_with_url", staticmethod(lambda **_k: reconnect))
     _patch_describe(monkeypatch)
@@ -169,10 +195,14 @@ def test_set_validates_the_url_outside_the_transaction(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     order: list[str] = []
-    service = MagicMock()
-    service.get_provider_for_url_validation.side_effect = lambda **_k: order.append("validation_data") or "data"
-    service.get_provider_by_id.return_value = SimpleNamespace(identity_mode="off")
-    service.update_provider.side_effect = lambda **_k: order.append("update")
+    _service(
+        sqlite_session,
+        monkeypatch,
+        get_provider_for_url_validation=lambda **_k: order.append("validation_data") or "data",
+        get_provider_by_id=lambda **_k: ToolProviderApiEntity.model_construct(identity_mode="off"),
+        update_provider=lambda **_k: order.append("update"),
+        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+    )
 
     class _OrderedSession(_NullSession):
         def __enter__(self) -> "_OrderedSession":
@@ -182,8 +212,6 @@ def test_set_validates_the_url_outside_the_transaction(
         def commit(self) -> None:
             return None
 
-    service.list_providers.return_value = [SimpleNamespace(id=_PROVIDER_ID)]
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
     monkeypatch.setattr(mcp_providers, "_session", lambda: _OrderedSession(sqlite_session))
     monkeypatch.setattr(
         MCPToolManageService,
@@ -206,9 +234,7 @@ def test_set_validates_the_url_outside_the_transaction(
 def test_delete_answers_404_for_an_unknown_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    service = MagicMock()
-    service.list_providers.return_value = []
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    _service(sqlite_session, monkeypatch, list_providers=lambda **_k: [])
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))
 
     api = McpProviderApi()
@@ -220,9 +246,13 @@ def test_delete_answers_404_for_an_unknown_id(
 
 
 def test_refresh_refetches_tools(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    service = MagicMock()
-    service.list_providers.return_value = [SimpleNamespace(id=_PROVIDER_ID)]
-    monkeypatch.setattr(mcp_providers, "_service", lambda _session: service)
+    called: list[dict] = []
+    _service(
+        sqlite_session,
+        monkeypatch,
+        list_providers=lambda **_k: [ToolProviderApiEntity.model_construct(id=_PROVIDER_ID)],
+        list_provider_tools=lambda **kwargs: called.append(kwargs),
+    )
     monkeypatch.setattr(mcp_providers, "_session", lambda: _NullSession(sqlite_session))
     _patch_describe(monkeypatch)
 
@@ -230,7 +260,7 @@ def test_refresh_refetches_tools(app: Flask, monkeypatch: pytest.MonkeyPatch, sq
     with app.test_request_context(f"/openapi/v1/workspaces/ws/mcp-providers/{_PROVIDER_ID}:refresh", method="POST"):
         response = _handler(api.post)(api, _context(sqlite_session), "ws", _PROVIDER_ID)
 
-    service.list_provider_tools.assert_called_once_with(tenant_id="ws", provider_id=_PROVIDER_ID)
+    assert called == [{"tenant_id": "ws", "provider_id": _PROVIDER_ID}]
     assert isinstance(response, McpProviderResponse)
 
 

@@ -1,6 +1,5 @@
 import uuid
 from collections.abc import Callable
-from types import SimpleNamespace
 
 import pytest
 from flask import Flask
@@ -162,7 +161,9 @@ def test_set_renames_through_the_path_name(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     updated: list[tuple] = []
-    monkeypatch.setattr(ApiToolManageService, "list_api_tools", lambda *_a: [SimpleNamespace(name="weather-v2")])
+    monkeypatch.setattr(
+        ApiToolManageService, "list_api_tools", lambda *_a: [ToolProviderApiEntity.model_construct(name="weather-v2")]
+    )
     monkeypatch.setattr(ApiToolManageService, "update_api_tool_provider", lambda *a: updated.append(a))
     monkeypatch.setattr(ApiToolManageService, "get_api_tool_provider", lambda *_a, **_k: _provider_dict())
 
