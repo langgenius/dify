@@ -154,11 +154,20 @@ describe('CommentThread', () => {
   it('leaves editing on Escape and keeps the thread open', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<CommentThreadFixture comment={createComment()} onClose={onClose} onReply={vi.fn()} />)
+    render(
+      <CommentThreadFixture
+        comment={createComment()}
+        onClose={onClose}
+        onReply={vi.fn()}
+        onCommentEdit={vi.fn()}
+      />,
+    )
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
     await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
-    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editComment')
+    const editor = await screen.findByPlaceholderText(
+      'workflowComments.comments.placeholder.editComment',
+    )
     await waitFor(() => expect(editor).toHaveFocus())
     await user.keyboard('{Escape}')
 
@@ -185,7 +194,9 @@ describe('CommentThread', () => {
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
     await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
-    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editComment')
+    const editor = await screen.findByPlaceholderText(
+      'workflowComments.comments.placeholder.editComment',
+    )
     await waitFor(() => expect(editor).toHaveFocus())
     await user.clear(editor)
     await user.type(editor, 'Updated root comment')
@@ -234,7 +245,9 @@ describe('CommentThread', () => {
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
     await user.click(await screen.findByText('workflowComments.comments.actions.editReply'))
-    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editReply')
+    const editor = await screen.findByPlaceholderText(
+      'workflowComments.comments.placeholder.editReply',
+    )
     await waitFor(() => expect(editor).toHaveFocus())
     await user.clear(editor)
     await user.type(editor, 'Updated reply')

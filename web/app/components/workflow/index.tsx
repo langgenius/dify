@@ -295,6 +295,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleCommentCancel,
       handleCommentIconClick,
       handleActiveCommentClose,
+      handleActiveCommentClosed,
       handleCommentResolve,
       handleCommentDelete,
       handleCommentUpdate,
@@ -327,16 +328,14 @@ export const Workflow: FC<WorkflowProps> = memo(
       [activeComment, handleCommentIconClick, visibleComments],
     )
     const [commentThreadHandle] = useState(() => createPopoverHandle())
-    const activeCommentIndex = activeComment
-      ? visibleComments.findIndex((comment) => comment.id === activeComment.id)
+    const activeCommentId = useStore((s) => s.activeCommentId)
+    const activeCommentIndex = activeCommentId
+      ? visibleComments.findIndex((comment) => comment.id === activeCommentId)
       : -1
     const isCommentThreadOpen = activeComment !== null && activeCommentIndex !== -1
     const canGoPrevComment = activeCommentIndex > 0
     const canGoNextComment =
       activeCommentIndex !== -1 && activeCommentIndex < visibleComments.length - 1
-    // The popup keeps showing the last comment while it animates closed.
-    const [threadComment, setThreadComment] = useState(activeComment)
-    if (isCommentThreadOpen && activeComment !== threadComment) setThreadComment(activeComment)
 
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
@@ -683,14 +682,14 @@ export const Workflow: FC<WorkflowProps> = memo(
           />
         )}
         {visibleComments.map((comment) =>
-          comment.id === threadComment?.id ||
+          comment.id === activeComment?.id ||
           showUserComments ||
           controlMode === ControlMode.Comment ? (
             <CommentIcon
               key={comment.id}
               comment={comment}
               threadHandle={commentThreadHandle}
-              isActive={isCommentThreadOpen && comment.id === activeComment?.id}
+              isActive={isCommentThreadOpen && comment.id === activeCommentId}
               onPositionUpdate={(position) => handleCommentPositionUpdate(comment.id, position)}
             />
           ) : null,
@@ -698,7 +697,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         <Popover
           handle={commentThreadHandle}
           open={isCommentThreadOpen}
-          triggerId={isCommentThreadOpen ? getCommentMarkerId(activeComment.id) : null}
+          triggerId={activeCommentId ? getCommentMarkerId(activeCommentId) : null}
           onOpenChange={(open, { trigger }) => {
             if (!open) {
               handleActiveCommentClose()
@@ -710,31 +709,31 @@ export const Workflow: FC<WorkflowProps> = memo(
             if (comment) handleCommentIconClick(comment)
           }}
           onOpenChangeComplete={(open) => {
-            if (!open) setThreadComment(null)
+            if (!open) handleActiveCommentClosed()
           }}
         >
           <PopoverPortal>
             <PopoverPositioner {...commentThreadPlacement}>
-              {threadComment && (
+              {activeComment && (
                 <CommentThread
-                  comment={threadComment}
+                  comment={activeComment}
                   loading={activeCommentLoading}
                   replySubmitting={replySubmitting}
                   replyUpdating={replyUpdating}
-                  onResolve={() => handleCommentResolve(threadComment.id)}
+                  onResolve={() => handleCommentResolve(activeComment.id)}
                   onDelete={handleCommentDelete}
                   onCommentEdit={(content, ids) =>
-                    handleCommentUpdate(threadComment.id, content, ids ?? [])
+                    handleCommentUpdate(activeComment.id, content, ids ?? [])
                   }
                   onPrev={canGoPrevComment ? () => handleVisibleCommentNavigate('prev') : undefined}
                   onNext={canGoNextComment ? () => handleVisibleCommentNavigate('next') : undefined}
                   onReply={(content, ids) =>
-                    handleCommentReply(threadComment.id, content, ids ?? [])
+                    handleCommentReply(activeComment.id, content, ids ?? [])
                   }
                   onReplyEdit={(replyId, content, ids) =>
-                    handleCommentReplyUpdate(threadComment.id, replyId, content, ids ?? [])
+                    handleCommentReplyUpdate(activeComment.id, replyId, content, ids ?? [])
                   }
-                  onReplyDelete={(replyId) => handleCommentReplyDelete(threadComment.id, replyId)}
+                  onReplyDelete={(replyId) => handleCommentReplyDelete(activeComment.id, replyId)}
                   canGoPrev={canGoPrevComment}
                   canGoNext={canGoNextComment}
                 />

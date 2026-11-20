@@ -279,6 +279,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           e.preventDefault()
           e.stopPropagation()
         }
+        // The field stays editable while sending; only one submission runs at a time.
+        if (loading) return
 
         if (value.trim()) {
           try {
@@ -290,7 +292,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           }
         }
       },
-      [value, mentionedUserIds, onSubmit],
+      [loading, value, mentionedUserIds, onSubmit],
     )
 
     const handleKeyDown = useCallback(
@@ -316,6 +318,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
             return
           } else if (e.key === 'Escape') {
+            // The mention list is part of this editor, so the editor owns closing it.
             e.preventDefault()
             e.stopPropagation()
             setShowMentionDropdown(false)
@@ -402,7 +405,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               minRows={isEditing ? 2 : 1}
               maxRows={isEditing || isMultiline ? 4 : 1}
               value={value}
-              disabled={disabled || loading}
+              disabled={disabled}
               onChange={(e) => handleContentChange(e.target.value)}
               aria-controls={isMentionMenuOpen ? listboxId : undefined}
               aria-activedescendant={

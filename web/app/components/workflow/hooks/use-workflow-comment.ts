@@ -594,12 +594,17 @@ export const useWorkflowComment = () => {
     [comments, handleCommentIconClick],
   )
 
+  // Closing deselects the comment; its detail stays for the thread's closing transition
+  // until handleActiveCommentClosed clears it.
   const handleActiveCommentClose = useCallback(() => {
-    setActiveComment(null)
     setActiveCommentLoading(false)
     setActiveCommentId(null)
     activeCommentIdRef.current = null
-  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
+  }, [setActiveCommentId, setActiveCommentLoading])
+
+  const handleActiveCommentClosed = useCallback(() => {
+    if (activeCommentIdRef.current === null) setActiveComment(null)
+  }, [setActiveComment])
 
   const handleCreateComment = useCallback(
     (mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }) => {
@@ -620,6 +625,7 @@ export const useWorkflowComment = () => {
     handleCommentCancel,
     handleCommentIconClick,
     handleActiveCommentClose,
+    handleActiveCommentClosed,
     handleCommentResolve,
     handleCommentDelete,
     handleCommentNavigate,

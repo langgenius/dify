@@ -19,14 +19,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiArrowDownSLine,
-  RiArrowUpSLine,
-  RiCheckboxCircleFill,
-  RiCheckboxCircleLine,
-  RiDeleteBinLine,
-  RiMoreFill,
-} from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -118,7 +110,8 @@ export function CommentThread({
 }: CommentThreadProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
   const setCommentPreviewHovering = useStore((state) => state.setCommentPreviewHovering)
-  // The comment a delete confirmation was opened for; navigating away dismisses it.
+  // The comment a delete confirmation belongs to. It stays open only while that
+  // comment is the one shown, so deleting it and moving on closes the dialog.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -159,7 +152,7 @@ export function CommentThread({
                     ns: 'workflowComments',
                   })}
                 >
-                  <RiDeleteBinLine className="size-4" />
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 </button>
               }
             />
@@ -182,9 +175,9 @@ export function CommentThread({
                   })}
                 >
                   {comment.resolved ? (
-                    <RiCheckboxCircleFill className="size-4" />
+                    <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
                   ) : (
-                    <RiCheckboxCircleLine className="size-4" />
+                    <span aria-hidden className="i-ri-checkbox-circle-line size-4" />
                   )}
                 </button>
               }
@@ -208,7 +201,7 @@ export function CommentThread({
                     ns: 'workflowComments',
                   })}
                 >
-                  <RiArrowUpSLine className="size-4" />
+                  <span aria-hidden className="i-ri-arrow-up-s-line size-4" />
                 </button>
               }
             />
@@ -230,7 +223,7 @@ export function CommentThread({
                     ns: 'workflowComments',
                   })}
                 >
-                  <RiArrowDownSLine className="size-4" />
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
                 </button>
               }
             />
@@ -251,10 +244,11 @@ export function CommentThread({
       <AlertDialog
         open={deletingCommentId === comment.id}
         onOpenChange={(open, eventDetails) => {
-          if (!open && loading) {
-            eventDetails.cancel()
-            return
-          }
+          if (open) return
+          if (loading) eventDetails.cancel()
+          else setDeletingCommentId(null)
+        }}
+        onOpenChangeComplete={(open) => {
           if (!open) setDeletingCommentId(null)
         }}
       >
@@ -273,10 +267,8 @@ export function CommentThread({
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={loading}
-              onClick={async () => {
-                if (!deletingCommentId) return
-                await onDelete?.(deletingCommentId)
-                setDeletingCommentId(null)
+              onClick={() => {
+                if (deletingCommentId) return onDelete?.(deletingCommentId)
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -302,6 +294,7 @@ type CommentThreadSessionProps = Pick<
   replyInputRef: RefObject<HTMLTextAreaElement | null>
 }
 
+/** One comment's thread body: its messages, the reply draft and reply deletion. */
 function CommentThreadSession({
   comment,
   loading = false,
@@ -320,7 +313,14 @@ function CommentThreadSession({
   })
   const currentUserId = userProfile.id
   const { t } = useTranslation(['common', 'workflowComments'])
-  // Async completions focus this session's own reply box, never one a later comment mounted.
+  const [replyContent, setReplyContent] = useState('')
+  // Reply deletion: the confirmation stays open until the user cancels or the reply is gone.
+  const [deletingReply, setDeletingReply] = useState<{ id: string; cancelled: boolean } | null>(
+    null,
+  )
+  const messageListRef = useRef<HTMLDivElement>(null)
+  const previousReplyCountRef = useRef<number | undefined>(undefined)
+  // This session's own reply box; the shared ref also lets the popup focus it on open.
   const ownReplyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const attachReplyInput = useCallback(
     (textarea: HTMLTextAreaElement | null) => {
@@ -329,160 +329,20 @@ function CommentThreadSession({
     },
     [replyInputRef],
   )
-  const [replyContent, setReplyContent] = useState('')
-  const [editingCommentContent, setEditingCommentContent] = useState('')
-  const [activeReplyMenuId, setActiveReplyMenuId] = useState<string | null>(null)
-  const [editingReply, setEditingReply] = useState<{ id: string; content: string }>({
-    id: '',
-    content: '',
-  })
-  const [deletingReplyId, setDeletingReplyId] = useState<string | null>(null)
-  const [isCommentEditing, setIsCommentEditing] = useState(false)
-  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
+  const focusReply = () => ownReplyInputRef.current?.focus()
 
-  // Get mentionable users from store
-  const mentionUsersFromStore = useStore((state) =>
-    appId ? state.mentionableUsersCache[appId] : undefined,
-  )
-  const mentionUsers = mentionUsersFromStore ?? []
-
-  // Extract all mentionable names for highlighting
-  const mentionableNames = useMemo(() => {
-    const names = mentionUsers
-      .map((user) => user.name?.trim())
-      .filter((name): name is string => Boolean(name))
-    return Array.from(new Set(names))
-  }, [mentionUsers])
-
-  const handleReplySubmit = useCallback(
-    async (content: string, mentionedUserIds: string[]) => {
-      if (!onReply || replySubmitting) return
-
-      setReplyContent('')
-
-      try {
-        await onReply(content, mentionedUserIds)
-
-        // P0: Restore focus to reply input after successful submission
-        setTimeout(() => {
-          ownReplyInputRef.current?.focus()
-        }, 0)
-      } catch (error) {
-        console.error('Failed to send reply', error)
-        setReplyContent(content)
-      }
-    },
-    [onReply, replySubmitting],
-  )
-
-  const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
-    setEditingReply({ id: reply.id, content: reply.content })
-    setIsCommentEditing(false)
-    setActiveReplyMenuId(null)
-  }, [])
-
-  const handleStartCommentEdit = useCallback(() => {
-    setEditingCommentContent(comment.content)
-    setEditingReply({ id: '', content: '' })
-    setIsCommentEditing(true)
-    setActiveReplyMenuId(null)
-  }, [comment.content])
-
-  const handleCancelEdit = useCallback(() => {
-    setEditingReply({ id: '', content: '' })
-
-    // P1: Restore focus to reply input after canceling edit
-    setTimeout(() => {
-      ownReplyInputRef.current?.focus()
-    }, 0)
-  }, [])
-
-  const handleCancelCommentEdit = useCallback(() => {
-    setEditingCommentContent('')
-    setIsCommentEditing(false)
-
-    setTimeout(() => {
-      ownReplyInputRef.current?.focus()
-    }, 0)
-  }, [])
-
-  const handleCommentEditSubmit = useCallback(
-    async (content: string, mentionedUserIds: string[]) => {
-      if (!onCommentEdit) return
-      const trimmed = content.trim()
-      if (!trimmed) return
-
-      setIsSubmittingEdit(true)
-      try {
-        await onCommentEdit(trimmed, mentionedUserIds)
-        setEditingCommentContent('')
-        setIsCommentEditing(false)
-
-        setTimeout(() => {
-          ownReplyInputRef.current?.focus()
-        }, 0)
-      } catch (error) {
-        console.error('Failed to edit comment', error)
-      } finally {
-        setIsSubmittingEdit(false)
-      }
-    },
-    [onCommentEdit],
-  )
-
-  const handleEditSubmit = useCallback(
-    async (content: string, mentionedUserIds: string[]) => {
-      if (!onReplyEdit || !editingReply) return
-      const trimmed = content.trim()
-      if (!trimmed) return
-
-      setIsSubmittingEdit(true)
-      try {
-        await onReplyEdit(editingReply.id, trimmed, mentionedUserIds)
-        setEditingReply({ id: '', content: '' })
-
-        // P1: Restore focus to reply input after saving edit
-        setTimeout(() => {
-          ownReplyInputRef.current?.focus()
-        }, 0)
-      } catch (error) {
-        console.error('Failed to edit reply', error)
-      } finally {
-        setIsSubmittingEdit(false)
-      }
-    },
-    [editingReply, onReplyEdit],
+  const mentionUsers = useStore((state) => (appId ? state.mentionableUsersCache[appId] : undefined))
+  const mentionNames = useMemo(
+    () =>
+      Array.from(
+        new Set((mentionUsers ?? []).map((user) => user.name?.trim()).filter(Boolean)),
+      ) as string[],
+    [mentionUsers],
   )
 
   const replies = comment.replies || []
-  const replyWasDeleted =
-    deletingReplyId !== null && !loading && !replies.some((reply) => reply.id === deletingReplyId)
-  const isOwnComment = comment.created_by_account?.id === currentUserId
-  const messageListRef = useRef<HTMLDivElement>(null)
-  // Choosing "Edit" unmounts the row menu; the edit field takes focus as it mounts, so that
-  // menu must not hand focus back to the marker it falls back to.
-  const editOpeningRef = useRef(false)
-  const menuFinalFocus = () => !editOpeningRef.current
-  const attachEditField = useCallback((textarea: HTMLTextAreaElement | null) => {
-    if (!textarea) return
-    editOpeningRef.current = false
-    textarea.focus()
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-  }, [])
-  const previousReplyCountRef = useRef<number | undefined>(undefined)
-
-  // Close menu when scrolling
-  useEffect(() => {
-    const container = messageListRef.current
-    if (!container || !activeReplyMenuId) return
-
-    const handleScroll = () => {
-      setActiveReplyMenuId(null)
-    }
-
-    container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [activeReplyMenuId])
+  const deletedReplyGone =
+    deletingReply !== null && !replies.some((reply) => reply.id === deletingReply.id)
 
   // Scroll to the newest message when the session opens and when a reply arrives.
   useEffect(() => {
@@ -496,190 +356,56 @@ function CommentThreadSession({
     previousReplyCountRef.current = replies.length
   }, [replies.length])
 
+  const handleReplySubmit = async (content: string, mentionedUserIds: string[]) => {
+    if (!onReply || replySubmitting) return
+    setReplyContent('')
+    try {
+      await onReply(content, mentionedUserIds)
+    } catch (error) {
+      console.error('Failed to send reply', error)
+      setReplyContent(content)
+    }
+  }
+
   return (
     <>
       <CommentThreadList ref={messageListRef}>
-        <CommentThreadItem>
-          {isOwnComment && !isCommentEditing && (
-            <Menu
-              open={activeReplyMenuId === comment.id}
-              onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
-            >
-              <MenuTrigger
-                className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
-                aria-label={t(($) => $['comments.aria.commentActions'], {
-                  ns: 'workflowComments',
-                })}
-              >
-                <RiMoreFill className="size-4" />
-              </MenuTrigger>
-              <MenuContent
-                align="end"
-                className="w-36 backdrop-blur-[10px]"
-                finalFocus={menuFinalFocus}
-              >
-                <MenuItem
-                  className="px-3"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    editOpeningRef.current = true
-                    handleStartCommentEdit()
-                  }}
-                >
-                  {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
-                </MenuItem>
-              </MenuContent>
-            </Menu>
-          )}
-          {isCommentEditing ? (
-            <div className="flex gap-3">
-              <CollaboratorAvatar
-                size="sm"
-                className="shrink-0"
-                collaborator={toCommentCollaborator(
-                  {
-                    id: comment.created_by_account?.id ?? '',
-                    name:
-                      comment.created_by_account?.name ||
-                      t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                    avatar_url: comment.created_by_account?.avatar_url ?? null,
-                  },
-                  currentUserId,
-                )}
-              />
-              <div className="min-w-0 flex-1">
-                <CommentComposerFrame>
-                  <MentionInput
-                    ref={attachEditField}
-                    value={editingCommentContent}
-                    onChange={setEditingCommentContent}
-                    onSubmit={handleCommentEditSubmit}
-                    onCancel={handleCancelCommentEdit}
-                    placeholder={t(($) => $['comments.placeholder.editComment'], {
-                      ns: 'workflowComments',
-                    })}
-                    disabled={loading}
-                    loading={isSubmittingEdit}
-                    isEditing={true}
-                  />
-                </CommentComposerFrame>
-              </div>
-            </div>
-          ) : (
-            <ThreadMessage
-              author={comment.created_by_account}
-              createdAt={comment.created_at ?? comment.updated_at ?? 0}
-              content={comment.content}
-              mentionNames={mentionableNames}
-            />
-          )}
-        </CommentThreadItem>
-        {replies.length > 0 && (
-          <div>
-            {replies.map((reply) => {
-              const isReplyEditing = editingReply?.id === reply.id
-              const isOwnReply = reply.created_by_account?.id === currentUserId
-              return (
-                <CommentThreadItem key={reply.id}>
-                  {isOwnReply && !isReplyEditing && (
-                    <Menu
-                      open={activeReplyMenuId === reply.id}
-                      onOpenChange={(open) => {
-                        setActiveReplyMenuId(open ? reply.id : null)
-                      }}
-                    >
-                      <MenuTrigger
-                        className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
-                        data-reply-menu
-                        aria-label={t(($) => $['comments.aria.replyActions'], {
-                          ns: 'workflowComments',
-                        })}
-                      >
-                        <RiMoreFill className="size-4" />
-                      </MenuTrigger>
-                      <MenuContent
-                        align="end"
-                        className="w-36 backdrop-blur-[10px]"
-                        data-reply-menu
-                        finalFocus={menuFinalFocus}
-                      >
-                        <MenuItem
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            editOpeningRef.current = true
-                            handleStartEdit(reply)
-                          }}
-                        >
-                          {t(($) => $['comments.actions.editReply'], {
-                            ns: 'workflowComments',
-                          })}
-                        </MenuItem>
-                        <MenuItem
-                          variant="destructive"
-                          disabled={!onReplyDelete}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setDeletingReplyId(reply.id)
-                          }}
-                        >
-                          {t(($) => $['comments.actions.deleteReply'], {
-                            ns: 'workflowComments',
-                          })}
-                        </MenuItem>
-                      </MenuContent>
-                    </Menu>
-                  )}
-                  {isReplyEditing ? (
-                    <div className="flex gap-3">
-                      <CollaboratorAvatar
-                        size="sm"
-                        className="shrink-0"
-                        collaborator={toCommentCollaborator(
-                          {
-                            id: reply.created_by_account?.id ?? '',
-                            name:
-                              reply.created_by_account?.name ||
-                              t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                            avatar_url: reply.created_by_account?.avatar_url ?? null,
-                          },
-                          currentUserId,
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <CommentComposerFrame>
-                          <MentionInput
-                            ref={attachEditField}
-                            value={editingReply?.content ?? ''}
-                            onChange={(newContent) =>
-                              setEditingReply((prev) =>
-                                prev ? { ...prev, content: newContent } : prev,
-                              )
-                            }
-                            onSubmit={handleEditSubmit}
-                            onCancel={handleCancelEdit}
-                            placeholder={t(($) => $['comments.placeholder.editReply'], {
-                              ns: 'workflowComments',
-                            })}
-                            disabled={loading}
-                            loading={replyUpdating || isSubmittingEdit}
-                            isEditing={true}
-                          />
-                        </CommentComposerFrame>
-                      </div>
-                    </div>
-                  ) : (
-                    <ThreadMessage
-                      author={reply.created_by_account}
-                      createdAt={reply.created_at ?? 0}
-                      content={reply.content}
-                      mentionNames={mentionableNames}
-                    />
-                  )}
-                </CommentThreadItem>
-              )
+        <CommentThreadEntry
+          account={comment.created_by_account}
+          createdAt={comment.created_at ?? comment.updated_at ?? 0}
+          content={comment.content}
+          mentionNames={mentionNames}
+          isOwn={comment.created_by_account?.id === currentUserId}
+          disabled={loading}
+          actionsLabel={t(($) => $['comments.aria.commentActions'], { ns: 'workflowComments' })}
+          editLabel={t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
+          editPlaceholder={t(($) => $['comments.placeholder.editComment'], {
+            ns: 'workflowComments',
+          })}
+          onSave={onCommentEdit}
+          onEditEnd={focusReply}
+        />
+        {replies.map((reply) => (
+          <CommentThreadEntry
+            key={reply.id}
+            account={reply.created_by_account}
+            createdAt={reply.created_at ?? 0}
+            content={reply.content}
+            mentionNames={mentionNames}
+            isOwn={reply.created_by_account?.id === currentUserId}
+            disabled={loading}
+            saving={replyUpdating}
+            actionsLabel={t(($) => $['comments.aria.replyActions'], { ns: 'workflowComments' })}
+            editLabel={t(($) => $['comments.actions.editReply'], { ns: 'workflowComments' })}
+            editPlaceholder={t(($) => $['comments.placeholder.editReply'], {
+              ns: 'workflowComments',
             })}
-          </div>
-        )}
+            onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
+            onEditEnd={focusReply}
+            deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
+            onDelete={onReplyDelete && (() => setDeletingReply({ id: reply.id, cancelled: false }))}
+          />
+        ))}
       </CommentThreadList>
       {onReply && (
         <CommentReplyBar
@@ -706,19 +432,18 @@ function CommentThreadSession({
         </CommentReplyBar>
       )}
       <AlertDialog
-        open={deletingReplyId !== null && !replyWasDeleted}
-        onOpenChangeComplete={(open) => {
-          if (!open) setDeletingReplyId(null)
-        }}
+        open={deletingReply !== null && !deletingReply.cancelled && !deletedReplyGone}
         onOpenChange={(open, eventDetails) => {
-          if (!open && loading) {
-            eventDetails.cancel()
-            return
-          }
-          if (!open) setDeletingReplyId(null)
+          if (open) return
+          if (loading) eventDetails.cancel()
+          else setDeletingReply((current) => current && { ...current, cancelled: true })
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) setDeletingReply(null)
         }}
       >
-        <AlertDialogContent finalFocus={replyWasDeleted ? ownReplyInputRef : undefined}>
+        {/* Once the reply is gone its row and menu are too, so focus goes to the reply box. */}
+        <AlertDialogContent finalFocus={deletedReplyGone ? ownReplyInputRef : undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' })}
@@ -734,7 +459,7 @@ function CommentThreadSession({
             <AlertDialogConfirmButton
               loading={loading}
               onClick={() => {
-                if (deletingReplyId) return onReplyDelete?.(deletingReplyId)
+                if (deletingReply) return onReplyDelete?.(deletingReply.id)
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -744,4 +469,144 @@ function CommentThreadSession({
       </AlertDialog>
     </>
   )
+}
+
+type CommentThreadEntryProps = {
+  account: WorkflowCommentReply['created_by_account']
+  createdAt: number
+  content: string
+  mentionNames: string[]
+  isOwn: boolean
+  disabled: boolean
+  saving?: boolean
+  actionsLabel: string
+  editLabel: string
+  editPlaceholder: string
+  onSave?: (content: string, mentionedUserIds: string[]) => Promise<void> | void
+  /** Called after an edit is saved or cancelled. */
+  onEditEnd: () => void
+  deleteLabel?: string
+  onDelete?: () => void
+}
+
+/** One message in a thread. Its author gets an actions menu with Edit and, for replies, Delete. */
+function CommentThreadEntry({
+  account,
+  createdAt,
+  content,
+  mentionNames,
+  isOwn,
+  disabled,
+  saving = false,
+  actionsLabel,
+  editLabel,
+  editPlaceholder,
+  onSave,
+  onEditEnd,
+  deleteLabel,
+  onDelete,
+}: CommentThreadEntryProps) {
+  const { t } = useTranslation(['workflowComments'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const [draft, setDraft] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const editing = draft !== null
+
+  const endEdit = () => {
+    setDraft(null)
+    onEditEnd()
+  }
+
+  const handleSave = async (value: string, mentionedUserIds: string[]) => {
+    const trimmed = value.trim()
+    if (!onSave || !trimmed) return
+    setSavingDraft(true)
+    try {
+      await onSave(trimmed, mentionedUserIds)
+      endEdit()
+    } catch (error) {
+      console.error('Failed to save comment edit', error)
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  return (
+    <CommentThreadItem>
+      {isOwn && !editing && (
+        <Menu>
+          <MenuTrigger
+            className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+            aria-label={actionsLabel}
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </MenuTrigger>
+          <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
+            <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
+              {editLabel}
+            </MenuItem>
+            {onDelete && (
+              <MenuItem className="px-3" variant="destructive" onClick={onDelete}>
+                {deleteLabel}
+              </MenuItem>
+            )}
+          </MenuContent>
+        </Menu>
+      )}
+      {editing ? (
+        <div className="flex gap-3">
+          <CollaboratorAvatar
+            size="sm"
+            className="shrink-0"
+            collaborator={toCommentCollaborator(
+              {
+                id: account?.id ?? '',
+                name:
+                  account?.name ||
+                  t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+                avatar_url: account?.avatar_url ?? null,
+              },
+              currentUserId,
+            )}
+          />
+          <div className="min-w-0 flex-1">
+            <CommentComposerFrame>
+              <MentionInput
+                ref={focusAtEnd}
+                value={draft}
+                onChange={setDraft}
+                onSubmit={handleSave}
+                onCancel={endEdit}
+                placeholder={editPlaceholder}
+                disabled={disabled}
+                loading={saving || savingDraft}
+                isEditing
+              />
+            </CommentComposerFrame>
+          </div>
+        </div>
+      ) : (
+        <ThreadMessage
+          author={account}
+          createdAt={createdAt}
+          content={content}
+          mentionNames={mentionNames}
+        />
+      )}
+    </CommentThreadItem>
+  )
+}
+
+// An edit field opens focused with its text ready to extend. The menu that started the
+// edit returns focus in a microtask as it closes; queueing after it lets the field win.
+function focusAtEnd(textarea: HTMLTextAreaElement | null) {
+  if (!textarea) return
+  queueMicrotask(() => {
+    if (!textarea.isConnected) return
+    textarea.focus()
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+  })
 }

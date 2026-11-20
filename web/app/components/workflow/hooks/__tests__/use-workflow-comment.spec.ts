@@ -459,8 +459,13 @@ describe('useWorkflowComment', () => {
       result.current.handleActiveCommentClose()
     })
     expect(store.getState().activeCommentId).toBeNull()
-    expect(store.getState().activeCommentDetail).toBeNull()
     expect(store.getState().activeCommentDetailLoading).toBe(false)
+    // The detail stays for the thread's closing transition, then clears once it ends.
+    expect(store.getState().activeCommentDetail).not.toBeNull()
+    act(() => {
+      result.current.handleActiveCommentClosed()
+    })
+    expect(store.getState().activeCommentDetail).toBeNull()
   })
 
   it('runs resolve, delete, and reply lifecycle handlers with collaboration sync', async () => {

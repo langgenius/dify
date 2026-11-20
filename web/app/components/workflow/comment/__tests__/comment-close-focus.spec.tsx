@@ -76,27 +76,26 @@ function CommentCanvas() {
     activeCommentLoading,
     handleCommentIconClick,
     handleActiveCommentClose,
+    handleActiveCommentClosed,
     handleCommentReply,
     handleCommentPositionUpdate,
     handleCommentNavigate,
   } = useWorkflowComment()
-  const activeIndex = activeComment
-    ? comments.findIndex((item) => item.id === activeComment.id)
+  const activeCommentId = useStore((state) => state.activeCommentId)
+  const activeIndex = activeCommentId
+    ? comments.findIndex((item) => item.id === activeCommentId)
     : -1
   const open = activeComment !== null && activeIndex !== -1
-  // Like the canvas, keep showing the last comment until the popup finishes closing.
-  const [threadComment, setThreadComment] = useState(activeComment)
-  if (open && activeComment !== threadComment) setThreadComment(activeComment)
 
   return (
     <div id="workflow-container">
       {comments.map((item) =>
-        item.id === threadComment?.id || showUserComments ? (
+        item.id === activeComment?.id || showUserComments ? (
           <CommentIcon
             key={item.id}
             comment={item}
             threadHandle={threadHandle}
-            isActive={open && item.id === activeComment?.id}
+            isActive={open && item.id === activeCommentId}
             onPositionUpdate={(position) => handleCommentPositionUpdate(item.id, position)}
           />
         ) : null,
@@ -104,7 +103,7 @@ function CommentCanvas() {
       <Popover
         handle={threadHandle}
         open={open}
-        triggerId={open ? getCommentMarkerId(activeComment.id) : null}
+        triggerId={activeCommentId ? getCommentMarkerId(activeCommentId) : null}
         onOpenChange={(nextOpen, { trigger }) => {
           if (!nextOpen) return handleActiveCommentClose()
           const item = comments.find(
@@ -113,16 +112,16 @@ function CommentCanvas() {
           if (item) handleCommentIconClick(item)
         }}
         onOpenChangeComplete={(nextOpen) => {
-          if (!nextOpen) setThreadComment(null)
+          if (!nextOpen) handleActiveCommentClosed()
         }}
       >
         <PopoverPortal>
           <PopoverPositioner {...commentThreadPlacement}>
-            {threadComment && (
+            {activeComment && (
               <CommentThread
-                comment={threadComment}
+                comment={activeComment}
                 loading={activeCommentLoading}
-                onReply={(content, ids) => handleCommentReply(threadComment.id, content, ids)}
+                onReply={(content, ids) => handleCommentReply(activeComment.id, content, ids)}
                 onPrev={activeIndex > 0 ? () => handleCommentNavigate('prev') : undefined}
                 onNext={
                   activeIndex < comments.length - 1
