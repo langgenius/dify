@@ -131,7 +131,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 {t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
                 <Badge
                   className={cn(
-                    'ml-1 h-4.5',
+                    'ms-1 h-4.5',
                     !hasSetIndexType && indexType === IndexingType.QUALIFIED
                       ? 'border-text-accent-secondary text-text-accent-secondary'
                       : '',
@@ -140,7 +140,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 >
                   {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                 </Badge>
-                <span className="ml-auto">
+                <span className="ms-auto">
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>
               </div>

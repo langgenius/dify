@@ -29,7 +29,7 @@ export function AgentBuildDraftChangesPanel({
 
   return (
     <section className="flex w-full max-w-full flex-col px-2 pt-2">
-      <div className="flex h-6 min-w-0 items-center gap-3 pr-8 pl-2">
+      <div className="flex h-6 min-w-0 items-center gap-3 ps-2 pe-8">
         <p className="min-w-0 truncate system-sm-semibold text-text-primary">
           {t(($) => $['agentDetail.configure.buildDraft.title'])}
         </p>

@@ -19,7 +19,7 @@ export function CurrentDraftItem({
       aria-current={isActive ? 'true' : undefined}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.5 pl-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'flex w-full items-start gap-1 rounded-lg py-1 ps-2 pe-1.5 text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
     >

@@ -74,7 +74,7 @@ export function PluginTagsFilter({
                 key={option.name}
                 className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
               >
-                <Checkbox className="mr-1" value={option.name} />
+                <Checkbox className="me-1" value={option.name} />
                 <div className="px-1 system-sm-medium text-text-secondary">{option.label}</div>
               </label>
             ))}

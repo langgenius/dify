@@ -29,7 +29,7 @@ export function AgentPublishImpactDetails({
       <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
         <h2
           id={titleId}
-          className="w-full px-1 pr-8 system-xl-semibold wrap-break-word text-text-primary"
+          className="w-full px-1 pe-8 system-xl-semibold wrap-break-word text-text-primary"
         >
           {t(($) => $['agentDetail.configure.publishImpact.title'], {
             action: publishActionLabel,
@@ -74,7 +74,7 @@ function ReferenceLink({ reference }: { reference: AgentReferencingWorkflowRespo
       href={getWorkflowReferenceHref(reference)}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex min-w-0 items-center gap-2 rounded-lg py-1 pr-2.5 pl-2 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      className="flex min-w-0 items-center gap-2 rounded-lg py-1 ps-2 pe-2.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
       <span aria-hidden className="shrink-0">
         <AppIcon

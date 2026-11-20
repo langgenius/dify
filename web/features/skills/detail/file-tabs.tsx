@@ -36,7 +36,7 @@ export function FileTabs({
               <div
                 key={file.path}
                 className={cn(
-                  'group/tab flex h-11 max-w-53.5 shrink-0 items-center border-r-[0.5px] border-divider-subtle',
+                  'group/tab flex h-11 max-w-53.5 shrink-0 items-center border-e-[0.5px] border-divider-subtle',
                   selected && 'bg-components-panel-bg',
                   !closable && 'w-26.5',
                 )}
@@ -45,8 +45,8 @@ export function FileTabs({
                   type="button"
                   title={file.path}
                   className={cn(
-                    'flex h-full min-w-0 cursor-pointer items-center gap-1 py-2.5 pl-2.5 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
-                    closable ? 'pr-0.5' : 'pr-2.5',
+                    'flex h-full min-w-0 cursor-pointer items-center gap-1 py-2.5 ps-2.5 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+                    closable ? 'pe-0.5' : 'pe-2.5',
                   )}
                   onClick={() => onSelect(file.path)}
                 >
@@ -77,7 +77,7 @@ export function FileTabs({
                       name: file.path,
                     })}
                     className={cn(
-                      'mr-2 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                      'me-2 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                       selected
                         ? 'opacity-100'
                         : 'opacity-0 group-focus-within/tab:opacity-100 group-hover/tab:opacity-100',

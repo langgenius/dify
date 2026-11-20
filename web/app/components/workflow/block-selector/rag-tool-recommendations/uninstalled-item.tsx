@@ -26,9 +26,9 @@ function UninstalledItem({ payload }: UninstalledItemProps) {
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   return (
-    <div className="flex h-8 items-center rounded-lg pr-2 pl-3 hover:bg-state-base-hover">
+    <div className="flex h-8 items-center rounded-lg ps-3 pe-2 hover:bg-state-base-hover">
       <BlockIcon className="shrink-0" type={BlockEnum.Tool} toolIcon={payload.icon} />
-      <div className="ml-2 flex w-0 grow items-center">
+      <div className="ms-2 flex w-0 grow items-center">
         <div className="flex w-0 grow items-center gap-x-2">
           <span className="truncate system-sm-regular text-text-primary">
             {getLocalizedText(payload.label)}
