@@ -121,8 +121,9 @@ class WorkspaceProvisioningService:
         """After a verified acceptance, try to create the invitee's first owned workspace.
 
         The joined team must be the account's only active workspace. Preserve its
-        selection, skip when policy or quota blocks creation, and publish the usual
-        workspace-created effect only after a real creation commits.
+        selection and respect the workspace creation policy. The shared creation
+        path checks license capacity, but only Enterprise enforces a workspace
+        count limit. Publish the workspace-created effect only after creation commits.
         """
         with suppress(WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError):
             self._provision_activation_workspace(

@@ -25,8 +25,6 @@ from services.account.adapters import RedisInvitationTokenStore
 from services.billing_client import billing, saas
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_login_entities import LoginMode
-from services.entities.feature_entities import LicenseLimitationModel, LicenseModel
-from services.system_feature_service import SystemFeatureService
 from services.workspace import gateways
 from services.workspace.contracts import CreatedWorkspace
 from tests.helpers.billing_builders import subscription_info
@@ -202,7 +200,6 @@ def test_cloud_invitation_sign_in_provisions_personal_workspace_only_when_allowe
     [
         "first-workspace",
         "creation-disabled",
-        "quota-full",
         "prior-creation",
         "other-membership",
         "anonymous",
@@ -230,12 +227,6 @@ def test_accepting_invitation_can_provision_first_cloud_workspace_without_anothe
         "quota_get_quota_info",
         lambda **_: billing.QuotaGetInfoReply(trigger_event=quota, api_rate_limit=quota),
     )
-    if scenario == "quota-full":
-        monkeypatch.setattr(
-            SystemFeatureService,
-            "get_license",
-            lambda: LicenseModel(workspaces=LicenseLimitationModel(enabled=True, size=1, limit=1)),
-        )
     invitee = account_domain.accounts.create_account(
         "invitee@example.com", "Invitee", "en-US", password=PASSWORD, status=AccountStatus.UNINITIALIZED.value
     )
