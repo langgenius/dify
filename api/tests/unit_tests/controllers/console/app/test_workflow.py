@@ -296,6 +296,9 @@ class TestWorkflowCases:
         sqlite_session.commit()
 
         class OverLimitWorkflowService:
+            def prepare_draft_tool_publish(self, *, app_model: _workflow_App) -> None:
+                assert app_model.id == "app-1"
+
             def publish_workflow(self, **_kwargs: object) -> NoReturn:
                 raise TriggerNodeLimitExceededServiceError(count=3, limit=2)
 
