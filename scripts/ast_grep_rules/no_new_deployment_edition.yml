@@ -4,7 +4,6 @@ severity: error
 message: >-
   Reuse or add a named capability in api/services/feature_service.py,
   or use api/services/system_feature_service.py for deployment-wide system policies.
-  See docs/FEATURE_FLAGS.md#fixing-a-lint-error.
 # The guard resolves candidate names and compares complete Git source versions.
 # Keep comparisons broad so existing import aliases and raw-string checks are included.
 rule:

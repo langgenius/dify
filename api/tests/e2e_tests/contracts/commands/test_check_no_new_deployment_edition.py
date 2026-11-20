@@ -85,7 +85,6 @@ def test_rejects_new_dependencies_and_decisions(repo: Path, source: str) -> None
     assert "no-new-deployment-edition" in result.stderr
     assert "Reuse or add a named capability in api/services/feature_service.py" in result.stderr
     assert "api/services/system_feature_service.py for deployment-wide system policies" in result.stderr
-    assert "docs/FEATURE_FLAGS.md#fixing-a-lint-error" in result.stderr
 
 
 @pytest.mark.parametrize(
