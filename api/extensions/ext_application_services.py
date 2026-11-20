@@ -79,7 +79,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
+from repositories.conversation_repository import ConversationRepository
 from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -224,7 +224,8 @@ from services.retention.conversation.log_export_adapters import (
     open_conversation_log_export_csv,
     store_conversation_log_export_csv,
 )
-from services.retention.conversation.log_export_service import ConversationLogExportService
+from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
+from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
@@ -232,6 +233,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.retention.workflow_run.log_export_service import WorkflowLogExportService, WorkflowLogExportTask
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
@@ -394,6 +396,7 @@ class ApplicationServices:
     workspaces: WorkspaceServices
     triggers: TriggerServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_log_exports: WorkflowLogExportService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -698,7 +701,9 @@ def build_application_services(
         conversation_queries=conversation_queries,
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
-            tasks=RedisConversationLogExportTasks(redis=redis),
+            tasks=RedisLogExportTasks(
+                redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+            ),
             dispatch=dispatch_conversation_log_export,
             store_csv=store_conversation_log_export_csv,
             open_csv=open_conversation_log_export_csv,
@@ -915,6 +920,11 @@ def build_application_services(
         triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+        ),
+        workflow_log_exports=WorkflowLogExportService(
+            save_task=RedisLogExportTasks(
+                redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"
+            ).save,
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,

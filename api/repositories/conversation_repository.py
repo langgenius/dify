@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from uuid import UUID
 
 from pydantic import JsonValue
@@ -12,7 +12,7 @@ from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from graphon.enums import WorkflowExecutionStatus
-from libs.datetime_utils import naive_utc_now, utc_now
+from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
@@ -62,72 +62,9 @@ from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.retention.conversation.log_export_service import ConversationLogExportTask
-
-if TYPE_CHECKING:
-    from extensions.ext_redis import RedisClientWrapper
-    from services.retention.conversation.log_export_service import ConversationLogExportStatus
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
 _LOG_EXPORT_BATCH_SIZE = 500
-_TRANSITION_LOG_EXPORT_TASK = """
-local current = redis.call("GET", KEYS[1])
-if not current or cjson.decode(current).status ~= ARGV[1] then
-    return 0
-end
-return redis.call("SET", KEYS[1], ARGV[2], "XX", "KEEPTTL") and 1 or 0
-"""
-
-
-class RedisConversationLogExportTasks:
-    """Store temporary app exports and claim each task atomically."""
-
-    def __init__(self, *, redis: "RedisClientWrapper") -> None:
-        """Bind the configured Redis client."""
-        self._redis = redis
-
-    @staticmethod
-    def _key(*, tenant_id: str, app_id: str, task_id: str) -> str:
-        """Scope a task key to its owning workspace and app."""
-        return f"conversation_log_export:{tenant_id}:{app_id}:{task_id}"
-
-    @staticmethod
-    def _latest_key(*, tenant_id: str, app_id: str, requested_by: str) -> str:
-        """Locate the latest task ID for one requester in the app."""
-        return f"conversation_log_export_latest:{tenant_id}:{app_id}:{requested_by}"
-
-    def save(self, task: ConversationLogExportTask) -> None:
-        """Save a task before exposing it as the latest, with the same TTL for both keys."""
-        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
-        self._redis.setex(key, ttl_seconds, task.model_dump_json())
-        latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
-        self._redis.setex(latest_key, ttl_seconds, task.task_id)
-
-    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
-        """Load the matching live task for the workspace and app."""
-        raw = self._redis.get(self._key(tenant_id=tenant_id, app_id=app_id, task_id=task_id))
-        if raw is None:
-            return None
-        task = ConversationLogExportTask.model_validate_json(raw)
-        if (task.tenant_id, task.app_id, task.task_id) != (tenant_id, app_id, task_id) or task.expires_at <= utc_now():
-            return None
-        return task
-
-    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
-        """Follow the latest ID to a live task for the exact requester, app and workspace."""
-        raw = self._redis.get(self._latest_key(tenant_id=tenant_id, app_id=app_id, requested_by=requested_by))
-        if raw is None:
-            return None
-        task_id = raw.decode() if isinstance(raw, bytes) else raw
-        task = self.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        return task if task is not None and task.requested_by == requested_by else None
-
-    def transition(self, task: ConversationLogExportTask, *, from_status: "ConversationLogExportStatus") -> bool:
-        """Update only a task in the expected state, preserving its remaining TTL."""
-        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        transition = self._redis.register_script(_TRANSITION_LOG_EXPORT_TASK)
-        return bool(transition(keys=[key], args=[from_status.value, task.model_dump_json()]))
 
 
 class ConversationRepository:

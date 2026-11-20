@@ -1,9 +1,10 @@
 from datetime import datetime
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from dateutil.parser import isoparse
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -38,7 +39,7 @@ from models import App
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
-from services.workflow_app_log_query_service import WorkflowLogExportFilters, WorkflowLogExportScope
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 
 
 class WorkflowAppLogQuery(BaseModel):
@@ -233,6 +234,15 @@ class WorkflowLogExportPreviewResponse(ResponseModel):
     row_count: int | None = Field(ge=0, description="CSV rows, one per matched run. Null on count timeout.")
 
 
+class WorkflowLogExportCreatePayload(WorkflowLogExportPreviewQuery):
+    """Submit the same unpaginated filters used by the export preview."""
+
+
+class WorkflowLogExportTaskResponse(ResponseModel):
+    task_id: str
+    status: Literal["pending"]
+
+
 class WorkflowLogExportIdentityResponse(ResponseModel):
     id: str
     label: str
@@ -263,11 +273,13 @@ def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> 
     return scope
 
 
+register_schema_models(console_ns, WorkflowLogExportCreatePayload)
 register_response_schema_models(
     console_ns,
     WorkflowLogExportPreviewResponse,
     WorkflowLogExportIdentityResponse,
     WorkflowLogExportIdentitySearchResponse,
+    WorkflowLogExportTaskResponse,
 )
 
 
@@ -321,3 +333,33 @@ class WorkflowLogExportIdentityOptionsApi(Resource):
             scope=scope, keyword=query.keyword
         )
         return dump_response(WorkflowLogExportIdentitySearchResponse, {"data": matches})
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports")
+class WorkflowLogExportApi(Resource):
+    @error_responses(
+        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogExportValidationError
+    )
+    @console_ns.doc("create_workflow_log_export")
+    @console_ns.doc(description="Create a pending CSV export task for published runs in a Workflow app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[WorkflowLogExportCreatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.ACCEPTED, "Export task accepted", console_ns.models[WorkflowLogExportTaskResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def post(self, request_context: RequestContext, app_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
+        """Admit the app and caller and acknowledge the task after persisting the normalized filters."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            payload = WorkflowLogExportCreatePayload.model_validate(request.get_json(silent=True))
+        except ValidationError as exc:
+            raise _WorkflowLogExportValidationError(
+                exc.json(include_url=False, include_input=False, include_context=False)
+            ) from None
+        task = application_services().workflow_log_exports.create_task(
+            scope=scope,
+            requested_by=request_context.account_id,
+            filters=payload.to_filters(),
+        )
+        return dump_response(WorkflowLogExportTaskResponse, task), HTTPStatus.ACCEPTED

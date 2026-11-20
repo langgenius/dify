@@ -6,7 +6,8 @@ from typing import TextIO
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
 from services.retention.log_export_csv import write_log_export_csv
-from services.workflow_app_log_query_service import WorkflowAppLogQueryService, WorkflowLogExportFilters
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters
+from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 
 
 class WorkflowLogCsvWriter:

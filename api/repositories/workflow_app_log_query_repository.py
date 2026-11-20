@@ -26,6 +26,7 @@ from repositories.app.console_repository import find_console_app
 from repositories.log_export_count import execute_log_export_count
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentity
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
     WorkflowAppLogEndUser,
@@ -33,9 +34,7 @@ from services.workflow_app_log_query_service import (
     WorkflowAppLogPage,
     WorkflowAppLogQuery,
     WorkflowAppLogRunSummary,
-    WorkflowLogExportFilters,
     WorkflowLogExportRow,
-    WorkflowLogExportScope,
 )
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20

@@ -3,12 +3,8 @@
 import json
 import logging
 from collections.abc import Callable, Generator, Iterable
-from datetime import UTC, datetime, timedelta
-from enum import StrEnum
+from datetime import UTC
 from typing import Protocol, TextIO
-from uuid import uuid4
-
-from pydantic import BaseModel, ConfigDict
 
 from libs.datetime_utils import ensure_naive_utc, utc_now
 from machinery.context import RequestContext
@@ -18,13 +14,14 @@ from services.entities.conversation_entities import (
     ConversationLogExportRow,
 )
 from services.retention.log_export_csv import write_log_export_csv
+from services.retention.log_export_task import LogExportStatus as ConversationLogExportStatus
+from services.retention.log_export_task import LogExportTask
 
 logger = logging.getLogger(__name__)
 
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
 type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 
-_LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
 _LOG_CSV_APP_TYPES = {
     "chat": "Chatbot",
@@ -34,27 +31,7 @@ _LOG_CSV_APP_TYPES = {
 }
 
 
-class ConversationLogExportStatus(StrEnum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    READY = "ready"
-    FAILED = "failed"
-
-
-class ConversationLogExportTask(BaseModel):
-    """Persist the admitted owner, normalized filters and state of a temporary export."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    task_id: str
-    tenant_id: str
-    app_id: str
-    requested_by: str
-    filters: ConsoleConversationLogFilters
-    created_at: datetime
-    expires_at: datetime
-    status: ConversationLogExportStatus = ConversationLogExportStatus.PENDING
-    storage_key: str | None = None
+ConversationLogExportTask = LogExportTask[ConsoleConversationLogFilters]
 
 
 class UnsupportedConversationLogExportModeError(ValueError):
@@ -136,15 +113,11 @@ class ConversationLogExportService:
         """
         if scope.app_mode not in _LOG_CSV_APP_TYPES:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
-        created_at = utc_now()
-        task = ConversationLogExportTask(
-            task_id=str(uuid4()),
+        task = ConversationLogExportTask.pending(
             tenant_id=scope.tenant_id,
             app_id=scope.app_id,
             requested_by=requested_by,
             filters=filters,
-            created_at=created_at,
-            expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )
         try:
             self._tasks.save(task)

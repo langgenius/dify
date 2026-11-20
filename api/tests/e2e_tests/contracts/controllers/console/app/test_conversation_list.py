@@ -49,7 +49,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, DifySetup, Message, MessageAnnotation, MessageFeedback
 from models.utils.file_input_compat import restore_input_files
-from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
+from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
 from services.retention.conversation import log_export_adapters
@@ -58,6 +58,7 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
     ConversationLogExportTask,
 )
+from services.retention.log_export_task_cache import RedisLogExportTasks
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 type _Kind = Literal["chat", "completion", "export-preview", "export-latest", "identity-options"]
@@ -207,7 +208,9 @@ def harness(
         ),
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
-            tasks=RedisConversationLogExportTasks(redis=state.redis),
+            tasks=RedisLogExportTasks(
+                redis=state.redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+            ),
             dispatch=state.dispatch,
             store_csv=Mock(),
             open_csv=log_export_adapters.open_conversation_log_export_csv,

@@ -19,11 +19,10 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories import workflow_app_log_query_repository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
     WorkflowAppLogEndUser,
-    WorkflowLogExportFilters,
-    WorkflowLogExportScope,
 )
 
 
