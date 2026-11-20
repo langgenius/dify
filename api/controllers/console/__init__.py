@@ -57,16 +57,13 @@ api.document_generic_errors(
 
 
 @api.errorhandler(ActiveWorkspaceRequiredError)  # pyrefly: ignore[not-callable] - Flask-RESTX decorator typing
-def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError) -> tuple[dict[str, str | int], int]:
-    """Reject Console access that requires a workspace when none was resolved.
-
-    A valid account may have no usable membership. Keep the stable error code
-    and return a 403 without reporting this admission denial as a server failure.
-    """
-    status = HTTPStatus.FORBIDDEN
+def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError):
+    """Map a broken Console admission invariant without exposing internal details."""
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.INTERNAL_SERVER_ERROR
     return {
         "code": error.error_code,
-        "message": "An active workspace is required.",
+        "message": status.phrase,
         "status": status.value,
     }, status.value
 
@@ -113,7 +110,7 @@ for error_type in (
 # contract check admits the codes they serve.
 api.document_error_handler(
     ActiveWorkspaceRequiredError,
-    status=HTTPStatus.FORBIDDEN,
+    status=HTTPStatus.INTERNAL_SERVER_ERROR,
     code=ActiveWorkspaceRequiredError.error_code,
 )
 api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatus.BAD_REQUEST, code="bad_request")

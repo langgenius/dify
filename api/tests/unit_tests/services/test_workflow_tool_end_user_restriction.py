@@ -11,11 +11,9 @@ from enums import CloudPlan, DeploymentEdition
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
-from services.billing_client import billing
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 from services.workflow_service import WorkflowService
-from tests.helpers import billing_builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_workflow
 
@@ -249,9 +247,9 @@ def test_publish_checks_tool_after_external_validation(
     def validate_before_lock(*_args: object, **_kwargs: object) -> None:
         assert not locks
 
-    def billing_before_lock(*_args: object, **_kwargs: object) -> billing.GetSubscriptionInfoReply:
+    def billing_before_lock(*_args: object, **_kwargs: object) -> CloudPlan:
         assert not locks
-        return billing_builders.subscription_info(CloudPlan.PROFESSIONAL)
+        return CloudPlan.PROFESSIONAL
 
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:
@@ -260,7 +258,7 @@ def test_publish_checks_tool_after_external_validation(
             patch.object(service, "_validate_workflow_credentials", side_effect=validate_before_lock) as policy,
             patch("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", return_value=True),
             patch(
-                "services.workflow_service.BillingService.get_info", side_effect=billing_before_lock
+                "services.workflow_service.FeatureService.get_workspace_plan", side_effect=billing_before_lock
             ) as billing_request,
             patch("services.workflow_service.app_published_workflow_was_updated") as published,
         ):

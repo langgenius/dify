@@ -2,11 +2,13 @@
 
 from base64 import b64encode
 from collections.abc import Callable
+from contextlib import nullcontext
 from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
 from flask.testing import FlaskClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
@@ -20,14 +22,16 @@ from libs.passport import PassportService
 from libs.token import generate_csrf_token
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.account.adapters import RedisInvitationTokenStore
-from services.billing_client import saas
+from services.billing_client import billing, saas
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_login_entities import LoginMode
+from services.workspace import gateways
+from services.workspace.contracts import CreatedWorkspace
+from tests.helpers.billing_builders import subscription_info
 from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 PROFILE_PATH = "/console/api/account/profile"
-END_USER_PROFILE_PATH = "/console/api/account/end_user_profile"
 PASSWORD = "Example-password-2026"
 
 
@@ -99,19 +103,6 @@ def _password_login(
     return response
 
 
-def test_end_user_profile_requires_a_valid_session_and_csrf(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
-    """Neither anonymous nor CSRF-less requests may read the private account-only profile."""
-    app, account_domain = cloud_console
-    anonymous = app.test_client()
-    assert anonymous.get(END_USER_PROFILE_PATH).status_code == 401
-
-    account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
-    browser = _browser_session(app, account.id)
-    del browser.environ_base["HTTP_X_CSRF_TOKEN"]
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 401
-    assert account_domain.workspaces.list_ids_for_account(account.id) == ()
-
-
 def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
     cloud_console: tuple[DifyApp, AccountDomain],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -129,7 +120,6 @@ def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
     console_refresh = browser.post("/console/api/refresh-token")
     assert console_refresh.status_code == 401
     assert not console_refresh.headers.getlist("Set-Cookie")
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
     end_user_refresh = browser.post("/console/api/refresh-token", json={"mode": "end_user"})
     assert end_user_refresh.status_code == 200, end_user_refresh.json
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
@@ -160,15 +150,27 @@ def test_password_login_prepares_workspace_only_for_console(
     expected_names = ["End User's Workspace"] if mode == LoginMode.CONSOLE else []
     assert [workspace.name for workspace in workspaces] == expected_names
     assert browser.get(PROFILE_PATH).status_code == profile_status
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
 
 
-def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
+@pytest.mark.parametrize(
+    ("allow_create_workspace", "expected_profile_status", "expected_workspace_names"),
+    [
+        (True, 200, ["Invitee's Workspace"]),
+        (False, 401, []),
+    ],
+    ids=["creation-allowed", "creation-disabled"],
+)
+def test_cloud_invitation_sign_in_provisions_personal_workspace_only_when_allowed(
     cloud_console: tuple[DifyApp, AccountDomain],
+    config_overrides: Callable[..., None],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
+    allow_create_workspace: bool,
+    expected_profile_status: int,
+    expected_workspace_names: list[str],
 ) -> None:
-    """An invited End User gets an account-only session without workspace changes."""
+    """Invitation sign-in best-effort provisions a personal workspace without blocking when disallowed."""
     app, account_domain = cloud_console
+    config_overrides(ALLOW_CREATE_WORKSPACE=allow_create_workspace)
     inviter = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     team = account_domain.provisioning.create(name="Team", owner_email=inviter.email)
     invitee = account_domain.accounts.create_account(
@@ -184,12 +186,115 @@ def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
     console_login = _password_login(browser, invitee.email, invite_token=token)
     assert console_login.status_code == 200, console_login.json
     assert console_login.get_json()["result"] == "success"
-    assert browser.get(PROFILE_PATH).status_code == 401
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
-    assert account_domain.workspaces.list_ids_for_account(invitee.id) == ()
+    assert browser.get(PROFILE_PATH).status_code == expected_profile_status
+    check = browser.get(f"/console/api/activate/check?token={token}")
+    assert check.status_code == 200, check.json
+    assert check.headers["Cache-Control"] == "no-store"
+    assert check.get_json()["data"]["is_current_account"] is True
+    active_workspaces = account_domain.workspaces.list_for_account(invitee.id)
+    assert [workspace.name for workspace in active_workspaces] == expected_workspace_names
 
 
-def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "first-workspace",
+        "creation-disabled",
+        "prior-creation",
+        "other-membership",
+        "anonymous",
+        "failure",
+    ],
+)
+def test_accepting_invitation_can_provision_first_cloud_workspace_without_another_login(
+    cloud_console: tuple[DifyApp, AccountDomain],
+    config_overrides: Callable[..., None],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    scenario: str,
+) -> None:
+    """Only a signed-in first-time Cloud invitee can provision, and the team stays current."""
+    app, account_domain = cloud_console
+    config_overrides(ALLOW_CREATE_WORKSPACE=scenario != "creation-disabled")
+    redis, commands = redis_transport
+    commands.side_effect = RedisCommandEmulator()
+    monkeypatch.setattr(redis, "lock", lambda *_args, **_kwargs: nullcontext())
+    monkeypatch.setattr(billing, "subscription_get_subscription_info", lambda **_: subscription_info())
+    quota = billing.QuotaFeatureInfo(usage=0, limit=0, reset_date=0)
+    monkeypatch.setattr(
+        billing,
+        "quota_get_quota_info",
+        lambda **_: billing.QuotaGetInfoReply(trigger_event=quota, api_rate_limit=quota),
+    )
+    invitee = account_domain.accounts.create_account(
+        "invitee@example.com", "Invitee", "en-US", password=PASSWORD, status=AccountStatus.UNINITIALIZED.value
+    )
+    origin = datetime(2020, 1, 1) if scenario == "prior-creation" else None
+    with sqlite_session_factory.begin() as session:
+        account = session.get(Account, invitee.id)
+        assert account is not None
+        account.first_workspace_created_at = origin
+        if scenario == "other-membership":
+            account.status = AccountStatus.ACTIVE
+        team = Tenant(name="Inviting team")
+        session.add(team)
+        team_id = team.id
+        if scenario == "other-membership":
+            existing = Tenant(name="Existing team")
+            session.add(existing)
+            session.add(TenantAccountJoin(tenant_id=existing.id, account_id=invitee.id, role=TenantAccountRole.NORMAL))
+    token = RedisInvitationTokenStore(redis=redis).create(
+        InvitationToken(invitee.id, invitee.email, team_id, "normal", False)
+    )
+    browser = app.test_client()
+    if scenario != "anonymous":
+        assert _password_login(browser, invitee.email, mode=LoginMode.END_USER).status_code == 200
+    assert browser.get(PROFILE_PATH).status_code == (200 if scenario == "other-membership" else 401)
+
+    emitted: list[str] = []
+
+    def observe_created(workspace: CreatedWorkspace) -> None:
+        with sqlite_session_factory() as session:
+            owner = session.get(Account, invitee.id)
+            assert owner is not None
+            assert owner.first_workspace_created_at == workspace.created_at
+        emitted.append(workspace.id)
+
+    def fail_key_write(_workspace_id: str) -> str:
+        raise OSError("Key store unavailable")
+
+    if scenario == "failure":
+        monkeypatch.setattr(gateways, "generate_key_pair", fail_key_write)
+    with gateways.tenant_was_created.connected_to(observe_created):
+        response = browser.post("/console/api/activate", json={"token": token})
+        assert response.status_code == 200, response.json
+        assert browser.post("/console/api/activate", json={"token": token}).status_code == 403
+    if scenario != "anonymous":
+        assert browser.get(PROFILE_PATH).status_code == 200
+
+    with sqlite_session_factory() as session:
+        owner = session.get(Account, invitee.id)
+        assert owner is not None
+        memberships = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == invitee.id)).all()
+        assert [row.tenant_id for row in memberships if row.current] == [team_id]
+        assert next(row for row in memberships if row.tenant_id == team_id).role == TenantAccountRole.NORMAL
+        owned = [row.tenant_id for row in memberships if row.role == TenantAccountRole.OWNER]
+        assert owned == emitted
+        if scenario == "first-workspace":
+            assert len(owned) == 1
+            personal = session.get(Tenant, owned[0])
+            assert personal is not None
+            assert personal.name == "Invitee's Workspace"
+            assert owner.first_workspace_created_at == personal.created_at
+        else:
+            assert not owned
+            assert owner.first_workspace_created_at == origin
+
+
+def test_workspace_less_session_is_rejected_by_console_profile_without_revocation(
+    cloud_console: tuple[DifyApp, AccountDomain],
+) -> None:
     """The Console profile probe returns 401 without revoking or upgrading the account-only session."""
     app, account_domain = cloud_console
     account = account_domain.accounts.create_account(
@@ -201,17 +306,10 @@ def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyA
     assert console_profile.status_code == 401
     assert console_profile.get_json() == {
         "code": "unauthorized",
-        "message": "An active workspace is required.",
+        "message": "Unauthorized.",
         "status": 401,
     }
     assert not console_profile.headers.getlist("Set-Cookie")
-    profile = browser.get(END_USER_PROFILE_PATH)
-    assert profile.status_code == 200
-    assert profile.headers["Cache-Control"] == "no-store"
-    profile_data = profile.get_json()
-    assert isinstance(profile_data, dict)
-    assert profile_data["id"] == account.id
-    assert profile_data["has_tenant"] is False
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
 
@@ -225,14 +323,14 @@ def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyA
     ],
 )
 def test_workspace_required_reads_do_not_provision(cloud_console: tuple[DifyApp, AccountDomain], path: str) -> None:
-    """Parallel Console reads must not upgrade a workspace-less session while the profile probe rejects it."""
+    """Parallel Console reads reject a workspace-less session with 401 and do not provision."""
     app, account_domain = cloud_console
     account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
 
     response = _browser_session(app, account.id).get(path)
 
-    assert response.status_code == 403, response.json
-    assert response.get_json()["code"] == "active_workspace_required"
+    assert response.status_code == 401, response.json
+    assert response.get_json()["code"] == "unauthorized"
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
 

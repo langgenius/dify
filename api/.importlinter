@@ -222,6 +222,34 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:guest-connection-expiry-boundary]
+name = Guest Connection expiry orchestration uses only its application ports
+type = forbidden
+source_modules =
+    services.end_user_connections.guest_expiry
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    celery
+    sqlalchemy
+    repositories
+    models
+    tasks
+allow_indirect_imports = True
+
+[importlinter:contract:guest-connection-cleanup-task-boundary]
+name = Guest Connection cleanup task uses the composition root rather than persistence
+type = forbidden
+source_modules =
+    tasks.guest_connection_cleanup_task
+forbidden_modules =
+    repositories
+    models
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:consumer-service-boundary]
 name = Account consumer use cases are framework and persistence neutral
 type = forbidden

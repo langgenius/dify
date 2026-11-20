@@ -188,19 +188,6 @@ Get account avatar url
 | 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /account/end_user_profile
-**Read private profile data for the admitted Account without provisioning a workspace**
-
-Get the signed-in Account profile without workspace admission.
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Account profile | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /account/init
 #### Request Body
 
@@ -20435,6 +20422,7 @@ Account not link tenant.
 | ---- | ---- | ----------- | -------- |
 | account_status | string |  | No |
 | email | string |  | Yes |
+| is_current_account | boolean |  | No |
 | requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
@@ -27573,6 +27561,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | expires_at | integer |  | Yes |
 | id | string |  | Yes |
 | last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
 | name | string |  | Yes |
 | provider | string |  | Yes |
 | updated_at | integer |  | Yes |

@@ -622,18 +622,32 @@ def test_password_login_returns_no_workspace_without_creating_one() -> None:
 
 
 @pytest.mark.parametrize("cloud_console", [False, True])
-def test_password_login_with_invitation_issues_a_session_without_a_workspace(cloud_console: bool) -> None:
+@pytest.mark.parametrize(
+    ("workspace_creation_allowed", "workspace_capacity", "expected_provisioned"),
+    [
+        (True, True, ["account-1"]),
+        (False, True, []),
+        (True, False, []),
+    ],
+    ids=["allowed", "creation-disabled", "workspace-limit-reached"],
+)
+def test_password_login_with_invitation_provisions_workspace_only_when_allowed(
+    cloud_console: bool,
+    workspace_creation_allowed: bool,
+    workspace_capacity: bool,
+    expected_provisioned: list[str],
+) -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account()]
     dependencies.invitations.invitation = LoginInvitation(email="user@example.com")
-    dependencies.policies.workspace_capacity = False
+    dependencies.policies.workspace_creation_allowed = workspace_creation_allowed
+    dependencies.policies.workspace_capacity = workspace_capacity
 
     result = dependencies.service(defer_workspace_creation=cloud_console).login_with_password(
         _password_command(invite_token="invite")
     )
 
-    assert dependencies.workspaces.active is False
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.workspaces_provisioning.account_ids == expected_provisioned
     assert result.workspace_found is None
     assert result.tokens == TOKENS
     assert dependencies.sessions.issued == ["account-1"]
@@ -652,7 +666,8 @@ def test_password_login_does_not_restore_membership_for_an_existing_workspace(in
 
     assert result.workspace_found is (None if invite_token else True)
     assert result.tokens == TOKENS
-    assert dependencies.workspaces.checks == ([] if invite_token else ["account-1"])
+    assert dependencies.workspaces.checks == ["account-1"]
+    assert dependencies.workspaces_provisioning.account_ids == []
 
 
 def test_password_login_enforces_workspace_capacity() -> None:
@@ -922,12 +937,18 @@ def test_email_code_login_creates_workspace_for_existing_account() -> None:
 
 
 @pytest.mark.parametrize(
-    ("workspace_creation_allowed", "workspace_capacity"),
-    [(False, True), (True, True), (True, False)],
+    ("workspace_creation_allowed", "workspace_capacity", "expected_provisioned"),
+    [
+        (False, True, []),
+        (True, True, ["account-1"]),
+        (True, False, []),
+    ],
     ids=["no-self-serve", "self-serve", "workspace-limit-reached"],
 )
-def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
-    workspace_creation_allowed: bool, workspace_capacity: bool
+def test_email_code_login_with_invitation_provisions_workspace_only_when_allowed(
+    workspace_creation_allowed: bool,
+    workspace_capacity: bool,
+    expected_provisioned: list[str],
 ) -> None:
     dependencies = Dependencies()
     dependencies.accounts.candidates = [_account(status="pending", password=False)]
@@ -938,8 +959,7 @@ def test_email_code_login_with_invitation_issues_a_session_without_provisioning(
     result = dependencies.service().login_with_email_code(_email_code_command(invite_token="invite-token"))
 
     assert result == TOKENS
-    assert dependencies.workspaces.active is False
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.workspaces_provisioning.account_ids == expected_provisioned
     assert dependencies.sessions.issued == ["account-1"]
 
 

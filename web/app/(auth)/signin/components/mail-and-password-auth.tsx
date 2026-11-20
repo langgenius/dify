@@ -62,6 +62,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         })
 
         if (isInvite) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
           if (!isEndUserSignIn(searchParams))

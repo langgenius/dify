@@ -214,6 +214,7 @@ def build_account_services(
             enabled=dify_config.RBAC_ENABLED,
         ),
         capacity=WorkspaceMemberCapacityGateway(workspaces=workspace_repository, redis=redis),
+        first_workspace_provisioning=workspace_provisioning if deployment_edition == DeploymentEdition.CLOUD else None,
     )
     return AccountServices(
         lifecycle=lifecycle,

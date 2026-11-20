@@ -222,7 +222,7 @@ def test_sign_in_with_invitation_issues_a_session_and_joins_only_on_acceptance(
         )
 
     assert dependencies.sessions.issued == ["account-1"]
-    assert dependencies.workspaces_provisioning.account_ids == []
+    assert dependencies.workspaces_provisioning.account_ids == (["account-1"] if workspace_creation_allowed else [])
     assert _memberships(sqlite_session_factory) == []
 
     activation.activate(

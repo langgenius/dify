@@ -208,24 +208,6 @@ export type EducationVerifyLimitError = ErrorResponse & {
   status: 429
 }
 
-export type AccountProfileResponse = {
-  avatar?: string | null
-  readonly avatar_url: string | null
-  created_at?: number | null
-  email: string
-  first_workspace_created_at?: number | null
-  has_owned_tenant?: boolean | null
-  has_tenant?: boolean | null
-  id: string
-  interface_language?: string | null
-  interface_theme?: string | null
-  is_password_set: boolean
-  last_login_at?: number | null
-  last_login_ip?: string | null
-  name: string
-  timezone?: string | null
-}
-
 export type AccountInitPayload = {
   interface_language: string
   invitation_code?: string | null
@@ -322,6 +304,24 @@ export type PersonalAccessTokenUpdatePayload = {
   resource_scope?: PersonalAccessTokenResourceScopePayload | null
   version: number
   workspace_scope?: PersonalAccessTokenWorkspaceScopePayload | null
+}
+
+export type AccountProfileResponse = {
+  avatar?: string | null
+  readonly avatar_url: string | null
+  created_at?: number | null
+  email: string
+  first_workspace_created_at?: number | null
+  has_owned_tenant?: boolean | null
+  has_tenant?: boolean | null
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
 }
 
 export type AccountProfilePatchPayload = {
@@ -710,28 +710,6 @@ export type GetAccountEducationVerifyResponses = {
 
 export type GetAccountEducationVerifyResponse =
   GetAccountEducationVerifyResponses[keyof GetAccountEducationVerifyResponses]
-
-export type GetAccountEndUserProfileData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/account/end_user_profile'
-}
-
-export type GetAccountEndUserProfileErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type GetAccountEndUserProfileError =
-  GetAccountEndUserProfileErrors[keyof GetAccountEndUserProfileErrors]
-
-export type GetAccountEndUserProfileResponses = {
-  200: AccountProfileResponse
-}
-
-export type GetAccountEndUserProfileResponse =
-  GetAccountEndUserProfileResponses[keyof GetAccountEndUserProfileResponses]
 
 export type PostAccountInitData = {
   body: AccountInitPayload

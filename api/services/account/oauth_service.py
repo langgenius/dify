@@ -1,7 +1,7 @@
 """Account OAuth sign-in with optional Console workspace provisioning."""
 
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, suppress
 from datetime import datetime
 from typing import Protocol
 
@@ -238,6 +238,14 @@ class AccountOAuthService:
 
         identity_claim.ensure_owned()
         self._integrations.link(invitation.account_id, provider=command.provider, open_id=identity.id)
+        identity_claim.ensure_owned()
+        with self._account_claims.acquire_account(invitation.account_id) as account_claim:
+            if not self._memberships.has_active_membership(invitation.account_id):
+                account_claim.ensure_owned()
+                if self._workspace_policy.is_creation_allowed():
+                    with suppress(OAuthWorkspaceCreationNotAllowedError):
+                        self._workspaces.activate_default_workspace(invitation.account_id)
+                account_claim.ensure_owned()
         identity_claim.ensure_owned()
         tokens = self._sessions.login(invitation.account_id, ip_address=command.ip_address)
         return OAuthInvitationResult(tokens=tokens, invite_token=invite_token)

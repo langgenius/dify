@@ -1,6 +1,7 @@
 """Account authentication with optional Console workspace admission."""
 
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from datetime import datetime
 from typing import Never, Protocol
 
@@ -203,10 +204,11 @@ class ConsoleAuthenticationService:
         self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
-        """Verify credentials and prepare a workspace only for ordinary Console sign-in.
+        """Verify credentials and prepare a workspace for Console sign-in.
 
         An explicit invitation must be live and match the email before issuing a session.
-        Invitation sign-in neither creates a personal workspace nor joins the invited workspace.
+        Invitation sign-in may provision a personal workspace when allowed, but never joins
+        the invited workspace. End User sign-in does not provision a workspace.
         """
         if command.mode == LoginMode.END_USER and command.invite_token is not None:
             raise ValueError("End User login cannot accept a workspace invitation.")
@@ -236,16 +238,22 @@ class ConsoleAuthenticationService:
             self._invalid_credentials(normalized_email, command.ip_address)
 
         workspace_found = None
-        if command.mode == LoginMode.CONSOLE and invitation_token is None:
-            workspace_found = self._workspaces.has_active_for_account(account.id)
-            if not workspace_found:
-                if self._defer_workspace_creation:
-                    self._activate_console_workspace(account.id)
-                    workspace_found = True
-                else:
-                    if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                        raise account_errors.LoginWorkspaceLimitError
-                    return PasswordLoginResult(tokens=None, workspace_found=False)
+        if command.mode == LoginMode.CONSOLE:
+            if invitation_token is not None:
+                self._provision_invitation_workspace_if_allowed(account.id)
+            else:
+                workspace_found = self._workspaces.has_active_for_account(account.id)
+                if not workspace_found:
+                    if self._defer_workspace_creation:
+                        self._activate_console_workspace(account.id)
+                        workspace_found = True
+                    else:
+                        if (
+                            self._policies.is_workspace_creation_allowed()
+                            and not self._policies.has_workspace_capacity()
+                        ):
+                            raise account_errors.LoginWorkspaceLimitError
+                        return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -293,10 +301,12 @@ class ConsoleAuthenticationService:
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:
-        """Verify the challenge, then prepare a workspace only for ordinary Console sign-in.
+        """Verify the challenge and prepare a personal workspace for Console sign-in.
 
-        A live matching invitation issues a session without provisioning or joining.
-        An invalid challenge, invitation, or Console admission never issues a session.
+        A live matching invitation never joins the invited workspace here; it provisions a
+        personal workspace only when policy and capacity allow and still issues a session
+        otherwise. An invalid challenge, invitation, or ordinary Console admission never
+        issues a session.
         """
         if command.mode == LoginMode.END_USER and command.invite_token is not None:
             raise ValueError("End User login cannot accept a workspace invitation.")
@@ -373,13 +383,11 @@ class ConsoleAuthenticationService:
                     ip_address=command.ip_address,
                 )
 
-        if (
-            command.mode == LoginMode.CONSOLE
-            and invitation_token is None
-            and self._defer_workspace_creation
-            and not self._workspaces.has_active_for_account(account_id)
-        ):
-            self._activate_console_workspace(account_id)
+        if command.mode == LoginMode.CONSOLE:
+            if invitation_token is not None:
+                self._provision_invitation_workspace_if_allowed(account_id)
+            elif self._defer_workspace_creation and not self._workspaces.has_active_for_account(account_id):
+                self._activate_console_workspace(account_id)
 
         tokens = self._issue_session(
             account_id=account_id,
@@ -437,6 +445,21 @@ class ConsoleAuthenticationService:
 
     def _preferred_account(self, email: str) -> LoginAccountSnapshot | None:
         return next(iter(self._accounts.list_for_login(email)), None)
+
+    def _provision_invitation_workspace_if_allowed(self, account_id: str) -> None:
+        """Best-effort personal workspace provisioning during invitation sign-in.
+
+        Carries over legacy invite-time personal workspace creation to sign-in:
+        creates a default workspace when policy and capacity allow and the account
+        has no active workspace, and silently skips when creation is disallowed or
+        at capacity so invitation acceptance is never blocked.
+        """
+        if self._workspaces.has_active_for_account(account_id):
+            return
+        if not self._policies.is_workspace_creation_allowed() or not self._policies.has_workspace_capacity():
+            return
+        with suppress(WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError):
+            self._workspace_provisioning.activate(account_id)
 
     def _activate_console_workspace(self, account_id: str) -> None:
         """Prepare a workspace for a verified Console account before issuing credentials.
