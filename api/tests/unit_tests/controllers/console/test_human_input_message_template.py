@@ -265,10 +265,12 @@ def test_enterprise_test_channel_discovery_does_not_fall_back_to_workspace_confi
     client, account = channel_client
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(mail, "is_inited", lambda: mail_available)
+    tenant_id = account.current_tenant_id
+    assert tenant_id is not None
     with sqlite_session_factory.begin() as session:
         session.add(
             HumanInputEmailProvider(
-                tenant_id=account.current_tenant_id,
+                tenant_id=tenant_id,
                 provider=EmailProviderType.RESEND,
                 sender_email="sender@example.com",
                 sender_name="Sender",
