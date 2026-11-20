@@ -124,7 +124,7 @@ export function AgentSkillItem({
           type="button"
           aria-label={skill.name}
           disabled={skill.isMissing}
-          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-default"
+          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-start outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-default"
           onClick={handleOpenPreview}
         >
           <span
@@ -150,7 +150,7 @@ export function AgentSkillItem({
         </button>
         {skill.isMissing && (
           <MissingReferenceWarning
-            className="absolute top-1/2 right-1 -translate-y-1/2"
+            className="absolute inset-e-1 top-1/2 -translate-y-1/2"
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
@@ -169,7 +169,7 @@ export function AgentSkillItem({
                     name: skill.name,
                   })}
                   className={cn(
-                    'pointer-events-none absolute top-1/2 right-1 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+                    'pointer-events-none absolute inset-e-1 top-1/2 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
                     isRemoveHighlighted && 'text-text-destructive!',
                   )}
                   onClick={(event) => event.stopPropagation()}

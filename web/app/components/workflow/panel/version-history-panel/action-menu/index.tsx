@@ -156,7 +156,7 @@ function ActionMenuItem({ item, onClick, isDestructive = false }: ActionMenuItem
         >
           <span
             aria-hidden
-            className="i-custom-public-common-sparkles-soft flex size-3.5 items-center bg-clip-content bg-origin-content mask-clip-content mask-origin-content py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+            className="i-custom-public-common-sparkles-soft flex size-3.5 items-center bg-clip-content bg-origin-content mask-clip-content mask-origin-content py-px ps-0.75 text-components-premium-badge-indigo-text-stop-0"
           />
           <span className="p-1 system-xs-medium">
             {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
@@ -184,7 +184,7 @@ function ActionMenu(props: ActionMenuProps) {
     <Menu open={open} onOpenChange={setOpen}>
       <MenuTrigger
         ref={triggerRef}
-        className="absolute top-1 right-1 z-10 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+        className="absolute inset-e-1 top-1 z-10 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
         render={
           <IconButton
             size="md"

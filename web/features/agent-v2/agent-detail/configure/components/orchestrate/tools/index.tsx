@@ -243,7 +243,7 @@ function AddToolMenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      className="flex w-full items-start gap-2 rounded-lg py-2 ps-2 pe-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
       <span
         aria-hidden

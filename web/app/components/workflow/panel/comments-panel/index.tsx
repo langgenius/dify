@@ -70,7 +70,7 @@ const CommentsPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg',
+        'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg',
       )}
     >
       <div className="flex items-center justify-between p-4 pb-2">
@@ -94,10 +94,10 @@ const CommentsPanel = () => {
             />
           </button>
           {showFilter && (
-            <div className="absolute top-9 right-10 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
+            <div className="absolute inset-e-10 top-9 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
               <button
                 className={cn(
-                  'flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  'flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
                   !showOnlyMine && 'bg-components-panel-on-panel-item-bg',
                 )}
                 onClick={() => {
@@ -112,7 +112,7 @@ const CommentsPanel = () => {
               </button>
               <button
                 className={cn(
-                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
                   showOnlyMine && 'bg-components-panel-on-panel-item-bg',
                 )}
                 onClick={() => {
@@ -172,7 +172,7 @@ const CommentsPanel = () => {
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">
                   <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
-                  <div className="ml-2 flex items-center">
+                  <div className="ms-2 flex items-center">
                     {c.resolved ? (
                       <RiCheckboxCircleFill className="size-4 text-text-secondary" />
                     ) : (

@@ -1185,7 +1185,7 @@ export function WebsiteCrawlPreview({
               <Field name="sourceName" className="gap-1.5">
                 <FieldLabel>
                   {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
-                  <span className="ml-0.5 text-text-destructive">*</span>
+                  <span className="ms-0.5 text-text-destructive">*</span>
                 </FieldLabel>
                 <Input
                   ref={sourceNameInputRef}
@@ -1246,7 +1246,7 @@ export function WebsiteCrawlPreview({
                 type="button"
                 variant="ghost-accent"
                 size="small"
-                className="ml-auto shrink-0"
+                className="ms-auto shrink-0"
                 loading={stopping}
                 aria-labelledby={stopButtonLabelId}
                 onClick={() => void stop()}

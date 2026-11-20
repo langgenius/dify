@@ -38,7 +38,7 @@ export const PromptMenuItem = memo(
         }}
       >
         {icon}
-        <div className="ml-1 text-[13px] text-text-secondary">{title}</div>
+        <div className="ms-1 text-[13px] text-text-secondary">{title}</div>
       </div>
     )
   },
