@@ -3,11 +3,10 @@ import logging
 from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from functools import cached_property
 from types import EllipsisType
 from typing import Any, NotRequired, TypedDict, cast
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import JsonValue
 from sqlalchemy import delete, select
@@ -100,11 +99,6 @@ def _initialize_created_agent_access(created: _CreatedApp) -> None:
 _CREATED_APP_ACCESS_INITIALIZERS: dict[AppMode, Callable[[_CreatedApp], None]] = {
     AppMode.AGENT: _initialize_created_agent_access,
 }
-
-
-# Only a prompt's opening clause can become a name, so nothing past this point
-# can affect the result.
-_NAME_PROMPT_SCAN_LIMIT = 2000
 
 
 class AppModelConfigResponseView:
@@ -243,16 +237,11 @@ class AppService:
         the account's timezone and console language shaping the
         ``New app · Sep 7, 14:02`` fallback. Missing or invalid timezones use UTC.
         """
-        if params.name:
-            return params.name
-        try:
-            now = datetime.now(ZoneInfo(account.timezone or "UTC"))
-        except (ZoneInfoNotFoundError, ValueError):
-            now = datetime.now(UTC)
-        return naming.derive_app_name(
-            (params.prompt or "")[:_NAME_PROMPT_SCAN_LIMIT],
-            now=now,
-            language=account.interface_language or "en-US",
+        return naming.resolve_creation_name(
+            name=params.name,
+            prompt=params.prompt,
+            timezone=account.timezone,
+            language=account.interface_language,
         )
 
     def create_app(

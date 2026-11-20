@@ -304,7 +304,10 @@ def test_create_from_prompt_uses_derived_name_in_app_and_site(
     copy_source: tuple[RequestContext, str],
 ) -> None:
     context, _ = copy_source
-    gateway = AppLifecycleGateway(session_factory=sqlite_session_factory)
+    gateway = AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
     app = gateway.create(
         context,
         CreateAppParams(mode="workflow", prompt="Refund approval for ecommerce orders"),

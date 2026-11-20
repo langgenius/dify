@@ -11,12 +11,16 @@ rather than the fallback. N3 freezes whatever name approval lands on.
 """
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Long enough to stay meaningful, short enough for a sidebar card. The spec's
 # example cut ("Refund approval for ecommerce orders" -> "Refund approval for
 # ecommerce") is this limit applied at the preceding word boundary.
 MAX_NAME_LENGTH = 30
+
+# Only the opening clause can become a name.
+_NAME_PROMPT_SCAN_LIMIT = 2000
 
 # Where the first clause ends; the rest is elaboration. ASCII terminators count
 # only at a word break so "v1.5" and "gpt-4o-mini" survive, while CJK ones are
@@ -138,6 +142,21 @@ def derive_app_name(prompt: str, *, now: datetime, language: str = _DEFAULT_LANG
         # without case are unaffected.
         candidate = candidate[0].upper() + candidate[1:]
     return candidate
+
+
+def resolve_creation_name(*, name: str | None, prompt: str | None, timezone: str | None, language: str | None) -> str:
+    """Preserve a supplied name or derive one for the account's locale and timezone.
+
+    Missing or invalid timezones use UTC. Empty prompts receive the localized
+    timestamped fallback.
+    """
+    if name:
+        return name
+    try:
+        now = datetime.now(ZoneInfo(timezone or "UTC"))
+    except (ZoneInfoNotFoundError, ValueError):
+        now = datetime.now(UTC)
+    return derive_app_name((prompt or "")[:_NAME_PROMPT_SCAN_LIMIT], now=now, language=language or _DEFAULT_LANGUAGE)
 
 
 def normalize_proposed_name(name: str) -> str:

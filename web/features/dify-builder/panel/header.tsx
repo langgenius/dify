@@ -38,11 +38,13 @@ export const DifyBuilderPanelHeader = ({
       <div className="relative flex shrink-0 items-center gap-2">
         <DebugLogExport />
         <Infotip>
-          <InfotipTrigger
-            aria-label={t(($) => $.helpTitle, { ns: 'difyBuilder' })}
-            iconSize="large"
-            className="size-7 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent"
-          />
+          <div className="grid size-7 place-items-center rounded-md hover:bg-state-base-hover has-data-popup-open:bg-state-accent-active">
+            <InfotipTrigger
+              aria-label={t(($) => $.helpTitle, { ns: 'difyBuilder' })}
+              size="lg"
+              className="text-text-tertiary hover:text-text-secondary data-popup-open:text-text-accent"
+            />
+          </div>
           <InfotipContent side="bottom" align="end" sideOffset={8} className="w-58">
             <PopoverTitle className="system-xs-semibold text-text-primary">
               {t(($) => $.helpTitle, { ns: 'difyBuilder' })}
