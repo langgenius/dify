@@ -628,7 +628,7 @@ export function AgentKnowledgeRetrievalDialog({
   const filterRef = useRef<HTMLInputElement>(null)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       {/* A fixed height keeps the centered dialog still while knowledge is ticked;
           growing would re-center it and slide the list under the pointer. */}
       <DialogContent initialFocus={filterRef} className="h-160 max-h-[80dvh] w-xl overflow-hidden">

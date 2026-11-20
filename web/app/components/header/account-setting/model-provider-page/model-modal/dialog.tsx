@@ -14,6 +14,7 @@ export function ModelCredentialDialog() {
   return (
     <Dialog
       handle={modelCredentialDialog}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && form.current?.isPending() && details.reason !== 'imperative-action') {
           details.cancel()
