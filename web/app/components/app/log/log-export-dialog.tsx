@@ -52,7 +52,7 @@ type LogExportSelection = {
 
 const defaultSelection: LogExportSelection = {
   scope: 'current',
-  period: '9',
+  period: '2',
   startDate: '',
   endDate: '',
   identityMode: 'all',
