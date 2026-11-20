@@ -6,6 +6,7 @@ import type {
   AgentKnowledgeRetrievalConfig,
   AgentKnowledgeSetConfig,
   AgentSoulConfig,
+  AgentSoulModelConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
@@ -598,6 +599,14 @@ const getModelProviderPluginId = (
 
   return model.provider ? `langgenius/${model.provider}` : ''
 }
+
+/** Converts a selected model into the Agent Soul model format without Agent-specific fields. */
+export const toAgentSoulModelConfig = (model: AgentComposerModel): AgentSoulModelConfig => ({
+  model_provider: model.provider,
+  model: model.model,
+  plugin_id: getModelProviderPluginId(model),
+  ...(model.model_settings && { model_settings: model.model_settings }),
+})
 
 export const formStateToAgentSoulConfig = ({
   baseConfig,

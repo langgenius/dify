@@ -5,7 +5,9 @@ queue + streamed response over the EasyUI chat pipeline), but the backing
 config comes from the bound Agent Soul and the answer is produced by
 ``AgentAppRunner`` calling the dify-agent backend rather than an in-process
 LLM/ReAct loop. Build-chat finalization uses this same streamed path and only
-changes the runtime exit policy carried to the backend.
+changes the runtime exit policy carried to the backend. Build chat and
+finalization turns may name a request-scoped build model that replaces the
+Agent Soul model for that turn only.
 """
 
 from __future__ import annotations
@@ -65,7 +67,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.model import load_annotation_reply_config
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
@@ -108,6 +110,13 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             session=session,
             conversation=conversation,
         )
+        build_model = self._resolve_build_model(
+            args.get("build_model"),
+            config_version_kind=agent_config_version_kind,
+        )
+        # The build model must pass the same model availability checks as the
+        # Agent Soul model below, so it replaces the model before config synthesis.
+        agent_soul = self._with_build_model(agent_soul, build_model)
         session_scope_config_version_id = self._session_scope_config_version_id(
             invoke_from=invoke_from,
             config_version_id=agent_config_id,
@@ -177,6 +186,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_version_kind=agent_config_version_kind,
             agent_session_scope_config_version_id=session_scope_config_version_id,
             agent_llm_gateway_enabled=True,
+            agent_build_model=build_model,
         )
 
         conversation, message = self._init_generate_records(
@@ -283,6 +293,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         snapshot_id=application_generate_entity.agent_config_snapshot_id,
                         session=session,
                     )
+                agent_soul = self._with_build_model(agent_soul, application_generate_entity.agent_build_model)
 
                 runner = self._build_runner()
                 image_detail_config = (
@@ -517,6 +528,43 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         if binding is None or binding.agent_id != agent_id:
             raise AgentAppGeneratorError("Conversation participant Binding is unavailable")
         return binding
+
+    @staticmethod
+    def _resolve_build_model(
+        raw_build_model: object,
+        *,
+        config_version_kind: Literal["snapshot", "draft", "build_draft"],
+    ) -> AgentSoulModelConfig | None:
+        """Validate the optional request-scoped model for a Build chat turn.
+
+        Invariant: only a per-user build-draft turn may run on a model other
+        than its Agent Soul model, so Preview, published, and API runs always
+        execute the configured model.
+
+        Accepts ``None`` (no override) or a mapping shaped like the Agent Soul
+        ``model`` field. Returns ``None`` when no build model was requested,
+        otherwise the validated model. Raises ``AgentAppGeneratorError`` when a
+        build model is requested for any other config version kind, and
+        ``pydantic.ValidationError`` when the value is malformed. Pure: no I/O.
+        """
+        if raw_build_model is None:
+            return None
+        if config_version_kind != "build_draft":
+            raise AgentAppGeneratorError("build_model is only supported for Agent build chat")
+        return AgentSoulModelConfig.model_validate(raw_build_model)
+
+    @staticmethod
+    def _with_build_model(agent_soul: AgentSoulConfig, build_model: AgentSoulModelConfig | None) -> AgentSoulConfig:
+        """Return the Agent Soul a turn executes with.
+
+        Returns ``agent_soul`` unchanged when ``build_model`` is ``None``;
+        otherwise a copy that differs only in ``model``. The input object and
+        the persisted draft it was loaded from are never modified, so applying
+        or publishing the build draft keeps the Agent's configured model.
+        """
+        if build_model is None:
+            return agent_soul
+        return agent_soul.model_copy(update={"model": build_model})
 
     @staticmethod
     def _session_scope_config_version_id(*, invoke_from: InvokeFrom, config_version_id: str) -> str | None:
