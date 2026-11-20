@@ -3,6 +3,7 @@ import type { DeepPartial } from '@/test/console/system-features'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -32,6 +33,7 @@ type InvitationData = {
     workspace_name: string
     workspace_id: string
     email: string
+    is_current_account: boolean
   }
 }
 
@@ -66,7 +68,11 @@ async function renderForm({
   } else {
     seedAccountProfileQuery(queryClient, profile)
   }
-  if (invitation) queryClient.setQueryData(['signin', 'invite-check', 'invite-token'], invitation)
+  if (invitation)
+    queryClient.setQueryData(
+      consoleQuery.activate.check.get.queryKey({ input: { query: { token: 'invite-token' } } }),
+      invitation,
+    )
 
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     queryClient,
@@ -86,6 +92,7 @@ const invitation: InvitationData = {
     workspace_name: 'Acme',
     workspace_id: 'workspace-id',
     email: 'invitee@example.com',
+    is_current_account: false,
   },
 }
 
@@ -125,12 +132,15 @@ it.each([
   await vi.waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/'))
 })
 
-it('redirects the matching logged-in account to invitation settings case-insensitively', async () => {
+it('redirects the matching signed-in account to invitation settings without requiring a workspace profile', async () => {
   navigation.search = 'invite_token=invite-token'
 
   await renderForm({
-    profile: { id: 'account-id', email: 'Invitee@Example.com' },
-    invitation,
+    profile: 'signed-out',
+    invitation: {
+      ...invitation,
+      data: { ...invitation.data, is_current_account: true },
+    },
   })
 
   await vi.waitFor(() =>
@@ -140,12 +150,15 @@ it('redirects the matching logged-in account to invitation settings case-insensi
   )
 })
 
-it('keeps a different logged-in account on the invitation sign-in form', async () => {
+it('keeps a different or unauthenticated visitor on the invitation sign-in form', async () => {
   navigation.search = 'invite_token=invite-token'
 
   const screen = await renderForm({
     profile: { id: 'account-id', email: 'current@example.com' },
-    invitation,
+    invitation: {
+      ...invitation,
+      data: { ...invitation.data, is_current_account: false },
+    },
   })
 
   await expect.element(screen.getByRole('button', { name: 'login.signBtn' })).toBeVisible()

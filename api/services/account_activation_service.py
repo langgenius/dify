@@ -89,7 +89,9 @@ class AccountActivationService:
         self._member_access_sync = member_access_sync
         self._capacity = capacity
 
-    def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
+    def check(
+        self, invitation: InvitationLookup, *, authenticated_account_id: str | None = None
+    ) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
         if resolved is None:
             return ActivationCheckResult(is_valid=False)
@@ -103,6 +105,9 @@ class AccountActivationService:
                 email=resolved.account_email,
                 account_status=resolved.account_status,
                 requires_setup=self._requires_setup(resolved),
+                is_current_account=(
+                    authenticated_account_id is not None and authenticated_account_id == resolved.account_id
+                ),
             ),
         )
 

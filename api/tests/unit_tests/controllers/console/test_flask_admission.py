@@ -27,7 +27,6 @@ from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 PROFILE_PATH = "/console/api/account/profile"
-END_USER_PROFILE_PATH = "/console/api/account/end_user_profile"
 PASSWORD = "Example-password-2026"
 
 
@@ -99,19 +98,6 @@ def _password_login(
     return response
 
 
-def test_end_user_profile_requires_a_valid_session_and_csrf(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
-    """Neither anonymous nor CSRF-less requests may read the private account-only profile."""
-    app, account_domain = cloud_console
-    anonymous = app.test_client()
-    assert anonymous.get(END_USER_PROFILE_PATH).status_code == 401
-
-    account = account_domain.accounts.create_account("end-user@example.com", "End User", "en-US")
-    browser = _browser_session(app, account.id)
-    del browser.environ_base["HTTP_X_CSRF_TOKEN"]
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 401
-    assert account_domain.workspaces.list_ids_for_account(account.id) == ()
-
-
 def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
     cloud_console: tuple[DifyApp, AccountDomain],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
@@ -129,7 +115,6 @@ def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
     console_refresh = browser.post("/console/api/refresh-token")
     assert console_refresh.status_code == 401
     assert not console_refresh.headers.getlist("Set-Cookie")
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
     end_user_refresh = browser.post("/console/api/refresh-token", json={"mode": "end_user"})
     assert end_user_refresh.status_code == 200, end_user_refresh.json
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
@@ -160,14 +145,13 @@ def test_password_login_prepares_workspace_only_for_console(
     expected_names = ["End User's Workspace"] if mode == LoginMode.CONSOLE else []
     assert [workspace.name for workspace in workspaces] == expected_names
     assert browser.get(PROFILE_PATH).status_code == profile_status
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
 
 
 def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
     cloud_console: tuple[DifyApp, AccountDomain],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
-    """An invited End User gets an account-only session without workspace changes."""
+    """An invited End User gets an account-only session verified through invitation check without workspace changes."""
     app, account_domain = cloud_console
     inviter = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     team = account_domain.provisioning.create(name="Team", owner_email=inviter.email)
@@ -185,11 +169,16 @@ def test_cloud_invitation_sign_in_does_not_prepare_a_workspace(
     assert console_login.status_code == 200, console_login.json
     assert console_login.get_json()["result"] == "success"
     assert browser.get(PROFILE_PATH).status_code == 401
-    assert browser.get(END_USER_PROFILE_PATH).status_code == 200
+    check = browser.get(f"/console/api/activate/check?token={token}")
+    assert check.status_code == 200, check.json
+    assert check.headers["Cache-Control"] == "no-store"
+    assert check.get_json()["data"]["is_current_account"] is True
     assert account_domain.workspaces.list_ids_for_account(invitee.id) == ()
 
 
-def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyApp, AccountDomain]) -> None:
+def test_workspace_less_session_is_rejected_by_console_profile_without_revocation(
+    cloud_console: tuple[DifyApp, AccountDomain],
+) -> None:
     """The Console profile probe returns 401 without revoking or upgrading the account-only session."""
     app, account_domain = cloud_console
     account = account_domain.accounts.create_account(
@@ -205,13 +194,6 @@ def test_workspace_less_session_uses_end_user_profile(cloud_console: tuple[DifyA
         "status": 401,
     }
     assert not console_profile.headers.getlist("Set-Cookie")
-    profile = browser.get(END_USER_PROFILE_PATH)
-    assert profile.status_code == 200
-    assert profile.headers["Cache-Control"] == "no-store"
-    profile_data = profile.get_json()
-    assert isinstance(profile_data, dict)
-    assert profile_data["id"] == account.id
-    assert profile_data["has_tenant"] is False
     assert account_domain.workspaces.list_ids_for_account(account.id) == ()
 
 

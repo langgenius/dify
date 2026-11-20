@@ -38,7 +38,6 @@ import {
   zGetAccountEducationAutocompleteResponse,
   zGetAccountEducationResponse,
   zGetAccountEducationVerifyResponse,
-  zGetAccountEndUserProfileResponse,
   zGetAccountIntegratesResponse,
   zGetAccountPersonalAccessTokenResourcesQuery,
   zGetAccountPersonalAccessTokenResourcesResponse,
@@ -322,28 +321,6 @@ export const education = {
   verify: verify2,
 }
 
-/**
- * Read private profile data for the admitted Account without provisioning a workspace
- *
- * Get the signed-in Account profile without workspace admission.
- */
-export const get6 = oc
-  .route({
-    description: 'Get the signed-in Account profile without workspace admission.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAccountEndUserProfile',
-    path: '/account/end_user_profile',
-    summary: 'Read private profile data for the admitted Account without provisioning a workspace',
-    tags: ['console'],
-  })
-  .output(zGetAccountEndUserProfileResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
-export const endUserProfile = {
-  get: get6,
-}
-
 export const post8 = oc
   .route({
     inputStructure: 'detailed',
@@ -365,7 +342,7 @@ export const init = {
   post: post8,
 }
 
-export const get7 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -376,7 +353,7 @@ export const get7 = oc
   .output(zGetAccountIntegratesResponse)
 
 export const integrates = {
-  get: get7,
+  get: get6,
 }
 
 /**
@@ -411,7 +388,7 @@ export const password = {
 /**
  * List account-visible candidates for the validated search, type, and cursor
  */
-export const get8 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -424,10 +401,10 @@ export const get8 = oc
   .output(zGetAccountPersonalAccessTokenResourcesResponse)
 
 export const personalAccessTokenResources = {
-  get: get8,
+  get: get7,
 }
 
-export const get9 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -439,7 +416,7 @@ export const get9 = oc
   .output(zGetAccountPersonalAccessTokenWorkspacesResponse)
 
 export const personalAccessTokenWorkspaces = {
-  get: get9,
+  get: get8,
 }
 
 export const delete2 = oc
@@ -454,7 +431,7 @@ export const delete2 = oc
   .input(z.object({ params: zDeleteAccountPersonalAccessTokensByTokenIdPath }))
   .output(zDeleteAccountPersonalAccessTokensByTokenIdResponse)
 
-export const get10 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -483,11 +460,11 @@ export const patch = oc
 
 export const byTokenId = {
   delete: delete2,
-  get: get10,
+  get: get9,
   patch,
 }
 
-export const get11 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -516,7 +493,7 @@ export const post10 = oc
   .output(zPostAccountPersonalAccessTokensResponse)
 
 export const personalAccessTokens = {
-  get: get11,
+  get: get10,
   post: post10,
   byTokenId,
 }
@@ -526,7 +503,7 @@ export const personalAccessTokens = {
  *
  * Get the Console Account profile. A session without an active workspace returns 401.
  */
-export const get12 = oc
+export const get11 = oc
   .route({
     description:
       'Get the Console Account profile. A session without an active workspace returns 401.',
@@ -553,7 +530,7 @@ export const patch2 = oc
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const profile = {
-  get: get12,
+  get: get11,
   patch: patch2,
 }
 
@@ -562,7 +539,6 @@ export const account = {
   changeEmail,
   delete: delete_,
   education,
-  endUserProfile,
   init,
   integrates,
   password,

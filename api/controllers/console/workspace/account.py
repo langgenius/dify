@@ -4,7 +4,7 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
 
-from flask import make_response, request
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from werkzeug.exceptions import NotFound
@@ -68,7 +68,7 @@ from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to
 from machinery.context import AccountRequestContext, RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
-from services.entities.account_entities import AccountProfile, AccountSnapshot
+from services.entities.account_entities import AccountSnapshot
 from services.errors.billing import BillingUpstreamError
 
 
@@ -272,29 +272,6 @@ class AccountInitApi(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _load_account_profile(context: AccountRequestContext | RequestContext) -> AccountProfile:
-    """Read the admitted account's profile without changing membership or credentials."""
-    try:
-        return application_services().accounts.profile.get(context)
-    except account_errors.AccountNotFoundError as error:
-        raise AccountNotFound() from error
-
-
-@console_ns.route("/account/end_user_profile")
-class EndUserAccountProfileApi(Resource):
-    @console_ns.doc(description="Get the signed-in Account profile without workspace admission.")
-    @error_responses(AccountNotFound)
-    @console_ns.response(HTTPStatus.OK, "Account profile", console_ns.models[AccountProfileResponse.__name__])
-    @console_account_admission(
-        require_valid_enterprise_license=True, require_active_workspace=False, require_initialized=False
-    )
-    def get(self, request_context: RequestContext):
-        """Read private profile data for the admitted Account without provisioning a workspace."""
-        response = make_response(dump_response(AccountProfileResponse, _load_account_profile(request_context)))
-        response.headers["Cache-Control"] = "no-store"
-        return response
-
-
 @console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
     @console_ns.doc(description="Get the Console Account profile. A session without an active workspace returns 401.")
@@ -303,7 +280,11 @@ class AccountProfileApi(Resource):
     @console_account_admission(require_valid_enterprise_license=True)
     def get(self, request_context: RequestContext):
         """Return the profile for an admitted Console workspace without provisioning one."""
-        return dump_response(AccountProfileResponse, _load_account_profile(request_context))
+        try:
+            account = application_services().accounts.profile.get(request_context)
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        return dump_response(AccountProfileResponse, account)
 
     @error_responses(AccountNotFound)
     @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
