@@ -126,6 +126,7 @@ class OpenApiErrorCode(StrEnum):
     UPLOAD_ALREADY_RECEIVED = "upload_already_received"
     UPLOAD_TOO_LARGE = "upload_too_large"
     UPLOAD_NOT_A_ZIP = "upload_not_a_zip"
+    UPLOAD_FIELD_TOO_LONG = "upload_field_too_long"
     UPLOAD_ARCHIVE_INVALID = "upload_archive_invalid"
     TRANSFERS_BUSY = "transfers_busy"
 
@@ -693,6 +694,12 @@ class UploadTooLarge(OpenApiError):  # noqa: N818
     code = 413
     error_code = OpenApiErrorCode.UPLOAD_TOO_LARGE
     description = "The file is larger than this server allows."
+
+
+class UploadFieldTooLong(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.UPLOAD_FIELD_TOO_LONG
+    description = "The file's name or type is longer than this server stores."
 
 
 class UploadNotAZip(OpenApiError):  # noqa: N818

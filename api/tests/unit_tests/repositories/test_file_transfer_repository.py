@@ -1,12 +1,13 @@
 from dataclasses import replace
 from datetime import datetime, timedelta
 
+import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.file_transfer import FileTransfer
+from models.file_transfer import MIME_TYPE_MAX_LENGTH, NAME_MAX_LENGTH, FileTransfer
 from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
-from services.file_transfer import StoredFile, Transfer, TransferDirection
+from services.file_transfer import StoredFile, StoredText, Transfer, TransferDirection, TransferTextTooLongError
 
 _NOW = datetime(2026, 11, 20, 10, 0)
 _LIFE = timedelta(minutes=40)
@@ -123,3 +124,31 @@ def test_delete_removes_the_rows(sqlite_session_factory: sessionmaker[Session]) 
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(FileTransfer)) == 1
     assert repository.get(transfer_id=kept.id, now=_NOW) == kept
+
+
+_LONGEST = {StoredText.NAME: NAME_MAX_LENGTH, StoredText.MIME_TYPE: MIME_TYPE_MAX_LENGTH}
+
+
+def _with_text(text: StoredText, length: int) -> StoredFile:
+    value = "x" * length
+    if text is StoredText.NAME:
+        return replace(_FILE, name=value)
+    return replace(_FILE, mime_type=value)
+
+
+@pytest.mark.parametrize("text", list(StoredText))
+def test_a_name_or_type_longer_than_its_column_is_refused_before_writing(
+    text: StoredText, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repository = SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory)
+    transfer = _create(repository)
+    longer = _with_text(text, _LONGEST[text] + 1)
+
+    with pytest.raises(TransferTextTooLongError) as claimed:
+        repository.claim(transfer_id=transfer.id, file=longer)
+    with pytest.raises(TransferTextTooLongError):
+        _create(repository, file=longer, direction=TransferDirection.OUT)
+
+    assert (claimed.value.text, claimed.value.limit) == (text, _LONGEST[text])
+    assert repository.owned(owner_id="owner") == [transfer]
+    assert repository.claim(transfer_id=transfer.id, file=_with_text(text, _LONGEST[text])) is True

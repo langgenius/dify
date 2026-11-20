@@ -15,6 +15,7 @@ from services.file_transfer.contracts import (
     IncomingFile,
     LoadedTransfer,
     StoredFile,
+    StoredText,
     Transfer,
     TransferAlreadyReceivedError,
     TransferArchiveError,
@@ -27,6 +28,7 @@ from services.file_transfer.contracts import (
     TransferNotFoundError,
     TransferNotReceivedError,
     TransferRepository,
+    TransferTextTooLongError,
     TransferTicket,
     TransferTooLargeError,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "IncomingFile",
     "LoadedTransfer",
     "StoredFile",
+    "StoredText",
     "Transfer",
     "TransferAlreadyReceivedError",
     "TransferArchiveError",
@@ -50,6 +53,7 @@ __all__ = [
     "TransferNotFoundError",
     "TransferNotReceivedError",
     "TransferRepository",
+    "TransferTextTooLongError",
     "TransferTicket",
     "TransferTooLargeError",
 ]
