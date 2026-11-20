@@ -11,7 +11,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react'
-import type { SkillFileMutationCoordinator } from './mutations'
+import type { SkillDraftMutationCoordinator } from '../mutations'
 import type { SkillFileClipboard } from './transfer'
 import type { SkillDropOperation, SkillDropTarget } from './tree-dnd'
 import type { FileTreeInlineAction, FileTreeNode } from './tree-model'
@@ -72,24 +72,24 @@ import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob, uploadSkillFile } from '../../client'
 import { getSkillErrorCode } from '../../error'
 import { SkillReferencesPanel } from '../../references'
+import {
+  invalidateSkillDetail,
+  refreshSkillDetailAfterConflict,
+  setSkillDetailCache,
+} from '../cache'
+import { runSkillDraftMutation } from '../mutations'
 import { SkillDetailSidebarActions } from '../sidebar-actions'
 import { SkillDisplayNameEditor } from '../skill-display-name-editor'
 import { SkillTagsEditor } from '../tags-editor'
 import { getCreatedSkillFileMimeType, isDirectory } from './file-format'
-import {
-  invalidateSkillDetail,
-  refreshSkillDetailAfterConflict,
-  runSkillFileMutation,
-  setSkillDetailCache,
-} from './mutations'
-import {
-  getDraggedSkillPaths,
-  isEditableKeyboardTarget,
-  skillFileHotkeys,
-  skillFileMenuPopupClassName,
-} from './transfer'
+import { getDraggedSkillPaths, isEditableKeyboardTarget, skillFileHotkeys } from './transfer'
 import { SkillDropDestinationHint, SkillUploadStatusPanel } from './tree-dnd'
-import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './tree-items'
+import {
+  FileTreeItem,
+  FileTreeNameInput,
+  RootFileActionMenuItems,
+  skillFileMenuPopupClassName,
+} from './tree-items'
 import {
   findFileByPath,
   flattenFileTree,
@@ -155,7 +155,7 @@ export function SkillFileTree({
   canDelete,
   collapsed,
   detail,
-  fileMutationCoordinator,
+  draftMutationCoordinator,
   files,
   onCollapsedChange,
   onSelect,
@@ -167,7 +167,7 @@ export function SkillFileTree({
   canDelete: boolean
   collapsed: boolean
   detail: SkillDetailResponse | undefined
-  fileMutationCoordinator: SkillFileMutationCoordinator
+  draftMutationCoordinator: SkillDraftMutationCoordinator
   files: SkillFileResponse[]
   onCollapsedChange: (collapsed: boolean) => void
   onSelect: (path: string, files?: SkillFileResponse[], mode?: 'pinned' | 'preview') => void
@@ -340,7 +340,7 @@ export function SkillFileTree({
   ) => {
     if (!detail || fileMutation.isPending) return
 
-    void runSkillFileMutation(fileMutationCoordinator, (expectedUpdatedAt) =>
+    void runSkillDraftMutation(draftMutationCoordinator, (expectedUpdatedAt) =>
       fileMutation.mutateAsync({
         params: {
           skill_id: skillId,
@@ -542,8 +542,8 @@ export function SkillFileTree({
         patchUploadItem(item.id, { progress: 100, status: 'saving' })
 
         const path = item.path
-        const nextDetail = await runSkillFileMutation(
-          fileMutationCoordinator,
+        const nextDetail = await runSkillDraftMutation(
+          draftMutationCoordinator,
           (expectedUpdatedAt) =>
             fileMutation.mutateAsync({
               params: {
@@ -582,7 +582,7 @@ export function SkillFileTree({
           errorMessage = t(($) => $['skillManagement.detail.uploadLateConflict'])
           try {
             const refreshedDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
-            fileMutationCoordinator.latestDetail = refreshedDetail
+            draftMutationCoordinator.latestDetail = refreshedDetail
             latestDetail = refreshedDetail
             suggestedPath = createAvailableUploadPath(
               item.path,
@@ -789,8 +789,8 @@ export function SkillFileTree({
         const targetPath = joinSkillPath(targetDirectory, getPathBaseName(sourcePath))
         if (sourcePath === targetPath) continue
 
-        const nextDetail = await runSkillFileMutation(
-          fileMutationCoordinator,
+        const nextDetail = await runSkillDraftMutation(
+          draftMutationCoordinator,
           (expectedUpdatedAt) =>
             fileMutation.mutateAsync({
               params: {
@@ -830,7 +830,7 @@ export function SkillFileTree({
     if (!detail || fileMutation.isPending) return
 
     try {
-      let latestDetail = fileMutationCoordinator.latestDetail ?? detail
+      let latestDetail = draftMutationCoordinator.latestDetail ?? detail
       const copyablePaths = getMovablePaths(sourcePaths, targetDirectory).filter((sourcePath) => {
         const file = findFileByPath(latestDetail.files ?? [], sourcePath)
         return file && !isDirectory(file)
@@ -855,8 +855,8 @@ export function SkillFileTree({
           try {
             let nextDetail: SkillDetailResponse
             if (sourceFile.tool_file_id) {
-              nextDetail = await runSkillFileMutation(
-                fileMutationCoordinator,
+              nextDetail = await runSkillDraftMutation(
+                draftMutationCoordinator,
                 (expectedUpdatedAt) =>
                   fileMutation.mutateAsync({
                     params: {
@@ -883,8 +883,8 @@ export function SkillFileTree({
                     versionId: null,
                   })
                 ).text())
-              nextDetail = await runSkillFileMutation(
-                fileMutationCoordinator,
+              nextDetail = await runSkillDraftMutation(
+                draftMutationCoordinator,
                 (expectedUpdatedAt) =>
                   fileMutation.mutateAsync({
                     params: {
@@ -910,7 +910,7 @@ export function SkillFileTree({
             if (hasRetriedConflict || getSkillErrorCode(error) !== 'skill_conflict') throw error
 
             latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
-            fileMutationCoordinator.latestDetail = latestDetail
+            draftMutationCoordinator.latestDetail = latestDetail
             hasRetriedConflict = true
           }
         }
@@ -1305,7 +1305,7 @@ export function SkillFileTree({
                   <SkillDisplayNameEditor
                     detail={detail}
                     editing={skillRenameEditing}
-                    fileMutationCoordinator={fileMutationCoordinator}
+                    draftMutationCoordinator={draftMutationCoordinator}
                     onEditingChange={setSkillRenameEditing}
                     readonly={readonly}
                     skillId={skillId}
@@ -1332,7 +1332,7 @@ export function SkillFileTree({
             </div>
             <SkillTagsEditor
               detail={detail}
-              fileMutationCoordinator={fileMutationCoordinator}
+              draftMutationCoordinator={draftMutationCoordinator}
               readonly={readonly}
               skillId={skillId}
             />

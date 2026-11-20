@@ -27,9 +27,10 @@ import {
   skillFileDragPathsType,
   skillFileDragType,
   skillFileHotkeys,
-  skillFileMenuPopupClassName,
 } from './transfer'
 import { setSkillFileDragPreview } from './tree-drag-preview'
+
+export const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'
 
 export function FileTreeNameInput({
   file,

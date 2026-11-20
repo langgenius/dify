@@ -49,7 +49,6 @@ import { AgentMetadataFilter } from './metadata-filter'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type Props = {
-  workflowNodeId?: string
   item: AgentKnowledgeRetrievalItem
   onChange: (patch: Partial<AgentKnowledgeRetrievalItem>) => void
   errors?: KnowledgeValidationResult['byId'][string]
@@ -154,7 +153,6 @@ const createMetadataCondition = ({
 })
 
 function ClassicSettingsFields({
-  workflowNodeId,
   item,
   onChange,
   errors,
@@ -385,7 +383,6 @@ function ClassicSettingsFields({
       <div className="-mx-4 py-2">
         {/* Keep saved conditions until an explicit edit; catalog loading must not prune them. */}
         <AgentMetadataFilter
-          workflowNodeId={workflowNodeId}
           metadataList={metadataList}
           metadataFilterMode={metadataFilterMode}
           metadataFilteringConditions={metadataFilteringConditions}
@@ -448,7 +445,7 @@ function ClassicSettingsFields({
 }
 
 /** Only mounted inside the shared binding dialog's advanced settings. */
-export function ClassicKnowledgeSettings({ item, onChange, errors, workflowNodeId }: Props) {
+export function ClassicKnowledgeSettings({ item, onChange, errors }: Props) {
   const { t } = useTranslation(['common'])
   const ids = item.datasetRefs?.flatMap((dataset) => (dataset.id ? [dataset.id] : [])) ?? []
   const queries = useQueries({
@@ -526,7 +523,6 @@ export function ClassicKnowledgeSettings({ item, onChange, errors, workflowNodeI
     )
   return (
     <ClassicSettingsFields
-      workflowNodeId={workflowNodeId}
       item={item}
       onChange={onChange}
       errors={errors}

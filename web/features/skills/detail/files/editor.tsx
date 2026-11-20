@@ -6,7 +6,7 @@ import type {
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent, InputEvent, KeyboardEvent } from 'react'
-import type { SkillFileMutationCoordinator } from './mutations'
+import type { SkillDraftMutationCoordinator } from '../mutations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -27,8 +27,8 @@ import {
   getSkillErrorDetailNumber,
   getSkillErrorDetailString,
 } from '../../error'
+import { refreshSkillDetailAfterConflict, setSkillDetailCache } from '../cache'
 import {
-  CsvTablePreview,
   EditableMetadataEntry,
   EditableMetadataField,
   MarkdownBodyReferencePreview,
@@ -36,7 +36,6 @@ import {
   MarkdownModeSwitch,
   MarkdownSourceEditor,
   ReferenceFilesPicker,
-  VersionActionBar,
 } from '../markdown/editor'
 import {
   addMarkdownMetadata,
@@ -66,8 +65,11 @@ import {
   getReferenceTargets,
   getReferenceText,
 } from '../markdown/references'
+import { runSkillDraftMutation } from '../mutations'
 import { SkillPublishBar, SkillPublishBottomActions } from '../publishing/bar'
 import { SkillPublishConfirmPanel } from '../publishing/confirm-panel'
+import { SkillVersionActionBar } from '../versions/action-bar'
+import { SkillCsvPreview } from './csv-preview'
 import {
   getSkillCodeLanguage,
   getSkillFileIconClass,
@@ -79,11 +81,6 @@ import {
   isTextFile,
   parseCsvRows,
 } from './file-format'
-import {
-  refreshSkillDetailAfterConflict,
-  runSkillFileMutation,
-  setSkillDetailCache,
-} from './mutations'
 import { SkillFileTabs } from './tabs'
 import { findFileByPath, getPathBaseName, getPathDirName } from './tree-model'
 
@@ -102,7 +99,7 @@ export function SkillFileEditor({
   canPublish,
   detail,
   file,
-  fileMutationCoordinator,
+  draftMutationCoordinator,
   hasLocalUnpublishedChanges,
   onLocalUnpublishedChangesChange,
   onPromoteFile,
@@ -127,7 +124,7 @@ export function SkillFileEditor({
   canPublish: boolean
   detail: SkillDetailResponse | undefined
   file: SkillFileResponse | undefined
-  fileMutationCoordinator: SkillFileMutationCoordinator
+  draftMutationCoordinator: SkillDraftMutationCoordinator
   hasLocalUnpublishedChanges: boolean
   onLocalUnpublishedChangesChange: (hasChanges: boolean) => void
   onPromoteFile: (path: string) => void
@@ -351,8 +348,8 @@ export function SkillFileEditor({
       setHasSaveConflict(false)
       setSaveStatus('saving')
       try {
-        const nextCachedDetail = await runSkillFileMutation(
-          fileMutationCoordinator,
+        const nextCachedDetail = await runSkillDraftMutation(
+          draftMutationCoordinator,
           async (expectedUpdatedAt) =>
             saveDraftFile({
               params: {
@@ -421,7 +418,7 @@ export function SkillFileEditor({
               ...currentDetail,
               updated_at: latestUpdatedAt,
             }
-            fileMutationCoordinator.latestDetail = recoveredDetail
+            draftMutationCoordinator.latestDetail = recoveredDetail
 
             const latestContent =
               latestFile?.content != null
@@ -456,7 +453,7 @@ export function SkillFileEditor({
     },
     [
       canEdit,
-      fileMutationCoordinator,
+      draftMutationCoordinator,
       isSavingDraft,
       onDraftDetailChange,
       onSaveConflictConfirm,
@@ -503,7 +500,7 @@ export function SkillFileEditor({
         ),
       }
       detailRef.current = detailToApply
-      fileMutationCoordinator.latestDetail = detailToApply
+      draftMutationCoordinator.latestDetail = detailToApply
       const appliedFile = findFileByPath(detailToApply.files ?? [], filePath)
       if (appliedFile) fileRef.current = appliedFile
       setSkillDetailCache(queryClient, skillId, detailToApply)
@@ -520,7 +517,7 @@ export function SkillFileEditor({
     setSaveStatus('saved')
     setExternalContentRevision((revision) => revision + 1)
   }, [
-    fileMutationCoordinator,
+    draftMutationCoordinator,
     filePath,
     onDraftDetailChange,
     queryClient,
@@ -1390,7 +1387,7 @@ export function SkillFileEditor({
             />
           </div>
         ) : isCsv ? (
-          <CsvTablePreview rows={csvRows} />
+          <SkillCsvPreview rows={csvRows} />
         ) : isTextFile(file) ? (
           <div className="relative h-full">
             <textarea
@@ -1517,7 +1514,7 @@ export function SkillFileEditor({
         </SkillPublishBottomActions>
       )}
       {readonly && selectedVersion && (
-        <VersionActionBar
+        <SkillVersionActionBar
           version={selectedVersion}
           onRestored={onVersionRestored}
           onExit={onExitVersion}

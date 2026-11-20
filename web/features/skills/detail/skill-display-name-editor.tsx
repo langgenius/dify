@@ -1,26 +1,27 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './files/mutations'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
-import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from './files/mutations'
+import { invalidateSkillDetail, setSkillDetailCache } from './cache'
+import { runSkillDraftMutation } from './mutations'
 
 export function SkillDisplayNameEditor({
   detail,
   editing,
-  fileMutationCoordinator,
+  draftMutationCoordinator,
   onEditingChange,
   readonly,
   skillId,
 }: {
   detail: SkillDetailResponse
   editing: boolean
-  fileMutationCoordinator: SkillFileMutationCoordinator
+  draftMutationCoordinator: SkillDraftMutationCoordinator
   onEditingChange: (editing: boolean) => void
   readonly: boolean
   skillId: string
@@ -69,8 +70,8 @@ export function SkillDisplayNameEditor({
 
     submittingRef.current = true
     try {
-      const nextDetail = await runSkillFileMutation(
-        fileMutationCoordinator,
+      const nextDetail = await runSkillDraftMutation(
+        draftMutationCoordinator,
         async (expectedUpdatedAt) => {
           return metadataMutation.mutateAsync({
             params: {

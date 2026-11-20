@@ -34,6 +34,7 @@ import { OutputEditCard } from './components/agent-output-variables/edit-card'
 import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { WorkflowAgentMetadataFilter } from './components/knowledge-metadata-filter'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import {
   useAgentRosterDetail,
@@ -678,6 +679,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
                 <WorkflowInlineAgentEditor
+                  metadataFilter={WorkflowAgentMetadataFilter}
                   agentId={inlineAgentId ?? undefined}
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}

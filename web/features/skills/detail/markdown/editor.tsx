@@ -1,10 +1,6 @@
 'use client'
 
-import type {
-  SkillFileResponse,
-  SkillVersionResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
+import type { SkillFileResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   ChangeEvent,
   ComponentPropsWithoutRef,
@@ -16,22 +12,15 @@ import type {
   RefObject,
 } from 'react'
 import type { MarkdownProps } from '@/app/components/base/markdown'
-import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { visit } from 'unist-util-visit'
 import { Markdown } from '@/app/components/base/markdown'
-import useTimestamp from '@/hooks/use-timestamp'
-import { consoleQuery } from '@/service/console'
 import { getSkillFileIconClass, isDirectory } from '../files/file-format'
 import { getPathBaseName } from '../files/tree-model'
-import { RestoreVersionDialogContent } from '../versions/restore-dialog'
-import { getSkillVersionTitle } from '../versions/title'
 import styles from './editor.module.css'
 import {
   getMarkdownLiveEditorSelectionOffset,
@@ -1074,158 +1063,6 @@ export function MarkdownLiveBodyEditor({
           }}
         />
       )}
-    </div>
-  )
-}
-
-export function CsvTablePreview({ rows }: { rows: string[][] }) {
-  const columnCount = rows.reduce((count, row) => Math.max(count, row.length), 0)
-
-  if (rows.length === 0 || columnCount === 0) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-default">
-        <span className="system-sm-regular text-text-tertiary">-</span>
-      </div>
-    )
-  }
-
-  const [headerRow, ...bodyRows] = rows
-  const headers = Array.from({ length: columnCount }, (_, index) => headerRow?.[index] ?? '')
-  const columnKeys = Array.from({ length: columnCount }, (_, index) => `column-${index + 1}`)
-
-  return (
-    <div className="flex h-full flex-col gap-1 overflow-hidden bg-background-default p-1">
-      <div className="flex h-6 shrink-0 items-center">
-        <button
-          type="button"
-          className="flex h-6 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        >
-          <span aria-hidden className="i-ri-table-line size-3.5" />
-          workspace
-          <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
-        </button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <table className="min-w-full border-separate border-spacing-0 border-s border-t border-divider-subtle text-start">
-          <thead className="sticky top-0 z-10 bg-background-section">
-            <tr>
-              {headers.map((header, index) => (
-                <th
-                  key={columnKeys[index]}
-                  scope="col"
-                  className="h-7 max-w-72 min-w-32 border-e border-b border-divider-subtle px-2 py-1 text-start system-xs-medium text-text-secondary"
-                >
-                  <span className="block truncate" title={header || undefined}>
-                    {header || `#${index + 1}`}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {bodyRows.map((row) => (
-              <tr key={row.join('\u0000')} className="hover:bg-state-base-hover">
-                {columnKeys.map((columnKey, columnIndex) => {
-                  const value = row[columnIndex] ?? ''
-
-                  return (
-                    <td
-                      key={columnKey}
-                      className="h-7 max-w-72 min-w-32 border-e border-b border-divider-subtle px-2 py-1 align-top system-xs-regular text-text-secondary"
-                    >
-                      <span
-                        className="block wrap-break-word whitespace-pre-wrap"
-                        title={value || undefined}
-                      >
-                        {value || '-'}
-                      </span>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-export function VersionActionBar({
-  onExit,
-  onRestored,
-  version,
-}: {
-  onExit: () => void
-  onRestored: () => void
-  version: SkillVersionResponse
-}) {
-  const actionsRef = useRef<AlertDialogActions>(null)
-  const restoreMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
-      onSuccess: () => {
-        actionsRef.current?.close()
-        onRestored()
-      },
-    }),
-  )
-  const { t } = useTranslation(['skill'])
-  const { formatTime } = useTimestamp()
-  const publishedBy = version.published_by_name ?? version.published_by ?? '-'
-  const publishedAt = formatTime(
-    version.created_at,
-    t(($) => $['skillManagement.dateTimeFormat']),
-  )
-
-  return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
-      <div className="pointer-events-auto flex h-14 w-107 max-w-[calc(100%-2rem)] items-center gap-4 rounded-xl border border-divider-subtle bg-background-default px-4 shadow-xl">
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate system-sm-semibold text-text-primary">
-              {getSkillVersionTitle(version)}
-            </span>
-            <span className="border-state-accent-border shrink-0 rounded-[5px] border bg-state-accent-hover px-1.5 py-0.5 system-2xs-semibold-uppercase text-text-accent">
-              {t(($) => $['skillManagement.detail.viewOnly'])}
-            </span>
-          </div>
-          <div className="mt-0.5 truncate system-xs-regular text-text-tertiary">
-            {t(($) => $['skillManagement.detail.versionPublishedMeta'], {
-              name: publishedBy,
-              time: publishedAt,
-            })}
-          </div>
-        </div>
-        <AlertDialog
-          actionsRef={actionsRef}
-          onOpenChange={(_open, details) => {
-            if (restoreMutation.isPending && details.reason !== 'imperative-action')
-              details.cancel()
-          }}
-        >
-          <AlertDialogTrigger
-            render={
-              <Button variant="primary" className="h-9 px-5" loading={restoreMutation.isPending} />
-            }
-          >
-            {t(($) => $['skillManagement.detail.restoreVersion'])}
-          </AlertDialogTrigger>
-          <RestoreVersionDialogContent
-            versionTitle={getSkillVersionTitle(version)}
-            isPending={restoreMutation.isPending}
-            onConfirm={() =>
-              restoreMutation.mutate({
-                params: { skill_id: version.skill_id },
-                body: { version_id: version.id, version_name: version.version_name },
-              })
-            }
-          />
-        </AlertDialog>
-        <Button variant="secondary" className="h-9 px-4" onClick={onExit}>
-          <span aria-hidden className="i-ri-history-line size-4" />
-          {t(($) => $['skillManagement.detail.exitVersions'])}
-        </Button>
-      </div>
     </div>
   )
 }

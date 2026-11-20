@@ -1,9 +1,12 @@
 # Marketplace
 
-This module owns Marketplace availability, URLs, asset addresses, and shared generated queries.
+Marketplace owns deployment availability, navigation and asset addresses, and
+shared generated queries. Console consumers use the capability-gated client so
+disabling Marketplace disables its links and requests together.
 
-- `client.ts` gates links and queries with the deployment capability. Search selectors receive the generated `MarketplacePlugin` response shape; this boundary does not impose a plugin card or installation model.
-- `links.ts` owns navigation addresses; `api.ts` owns API and asset addresses.
-- Plugin card conversion belongs to `app/components/plugins/marketplace/plugin-card-adapter.ts`. Plugin UI and other presentation consumers apply that adapter after reading Marketplace data. The shared feature does not import plugin UI types or utilities.
+Search results retain the generated Marketplace response shape. Plugin cards and
+installation surfaces own their presentation conversion; the shared capability
+must not depend on their UI types or utilities.
 
-The Marketplace import rule enforces availability-sensitive access through `client.ts` for Console consumers. Marketplace's own UI and service transport retain their scoped exceptions.
+The existing Marketplace import rule protects availability-sensitive Console
+access. Marketplace's own UI and service transport retain their scoped exceptions.

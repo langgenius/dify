@@ -10,6 +10,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { WorkflowAgentMetadataFilter } from '@/app/components/workflow/nodes/agent-v2/components/knowledge-metadata-filter'
 import { toast } from '@/app/notifications'
 import { WorkflowInlineAgentEditor } from '@/features/agent-v2/agent-editor/workflow-panel'
 import { AgentScope } from '@/features/agent-v2/analytics'
@@ -176,6 +177,7 @@ function renderWorkspace({
     { agent_id: 'agent-1', data: [] },
   )
   const props: ComponentProps<typeof WorkflowInlineAgentEditor> = {
+    metadataFilter: WorkflowAgentMetadataFilter,
     agentId: 'agent-1',
     resource: { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
     inlineComposerState: composer ?? undefined,

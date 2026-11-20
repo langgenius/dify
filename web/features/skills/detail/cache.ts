@@ -2,40 +2,10 @@ import type {
   SkillDetailResponse,
   SkillResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { InfiniteData, useQueryClient } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
 
-export type SkillFileMutationCoordinator = {
-  latestDetail: SkillDetailResponse | undefined
-  queue: Promise<void>
-  skillId: string
-}
-
-export function runSkillFileMutation(
-  coordinator: SkillFileMutationCoordinator,
-  mutation: (expectedUpdatedAt: number) => Promise<SkillDetailResponse>,
-) {
-  const operation = coordinator.queue.then(async () => {
-    const latestDetail = coordinator.latestDetail
-    if (!latestDetail) throw new Error('skill detail is required')
-
-    const nextDetail = await mutation(latestDetail.updated_at)
-    if (!coordinator.latestDetail || nextDetail.updated_at >= coordinator.latestDetail.updated_at)
-      coordinator.latestDetail = nextDetail
-
-    return nextDetail
-  })
-  coordinator.queue = operation.then(
-    () => undefined,
-    () => undefined,
-  )
-  return operation
-}
-
-export function invalidateSkillDetail(
-  queryClient: ReturnType<typeof useQueryClient>,
-  skillId: string,
-) {
+export function invalidateSkillDetail(queryClient: QueryClient, skillId: string) {
   void queryClient.invalidateQueries({
     queryKey: consoleQuery.workspaces.current.skills.bySkillId.get.key({
       type: 'query',
@@ -62,7 +32,7 @@ export function invalidateSkillDetail(
 }
 
 export function setSkillDetailCache(
-  queryClient: ReturnType<typeof useQueryClient>,
+  queryClient: QueryClient,
   skillId: string,
   detail: SkillDetailResponse,
 ) {
@@ -84,10 +54,7 @@ type SkillListCachePage = {
   data?: SkillResponse[]
 }
 
-function updateSkillListCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  detail: SkillDetailResponse,
-) {
+function updateSkillListCache(queryClient: QueryClient, detail: SkillDetailResponse) {
   const updateSkill = (skill: SkillResponse): SkillResponse => {
     if (skill.id !== detail.id) return skill
 
@@ -149,7 +116,7 @@ function refetchSkillDetail(skillId: string) {
 }
 
 export async function refreshSkillDetailAfterConflict(
-  queryClient: ReturnType<typeof useQueryClient>,
+  queryClient: QueryClient,
   skillId: string,
   options: { updateCache?: boolean } = {},
 ) {

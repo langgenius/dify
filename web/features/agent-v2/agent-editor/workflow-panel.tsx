@@ -9,6 +9,7 @@ import type {
   AgentComposerBindingResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentWorkflowMetadataFilter } from './configuration/knowledge/metadata-filter-context'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-editor/preview/chat-conversation'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -61,10 +62,12 @@ import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refre
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
+import { AgentMetadataFilterContext } from './configuration/knowledge/metadata-filter-context'
 import { useAgentEditorModel } from './model'
 import { useWorkflowInlineAgentConfigureSync } from './workflow-sync'
 
 type WorkflowInlineAgentEditorProps = {
+  metadataFilter: AgentWorkflowMetadataFilter
   agentId?: string
   resource?: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   inlineComposerState?: WorkflowAgentComposerResponse
@@ -75,7 +78,8 @@ type WorkflowInlineAgentEditorProps = {
 }
 
 export function WorkflowInlineAgentEditor(props: WorkflowInlineAgentEditorProps) {
-  const { agentId, inlineComposerState, nodeId } = props
+  const { metadataFilter, ...editorProps } = props
+  const { agentId, inlineComposerState, nodeId } = editorProps
   const composerState = inlineComposerState
   const agentSoulConfig = composerState?.agent_soul as AgentSoulConfig | undefined
   const activeConfigSnapshot =
@@ -93,18 +97,20 @@ export function WorkflowInlineAgentEditor(props: WorkflowInlineAgentEditorProps)
   const composerSessionKey = `${nodeId}:${agentId}`
 
   return (
-    <ScopeProvider
-      key={composerSessionKey}
-      atoms={workflowInlineAgentConfigureScopedAtoms}
-      name="WorkflowInlineAgentConfigure"
-    >
-      <WorkflowInlineAgentComposerSession
-        {...props}
-        activeConfigSnapshot={activeConfigSnapshot}
-        agentId={agentId}
-        agentSoulConfig={agentSoulConfig}
-      />
-    </ScopeProvider>
+    <AgentMetadataFilterContext value={{ component: metadataFilter, nodeId }}>
+      <ScopeProvider
+        key={composerSessionKey}
+        atoms={workflowInlineAgentConfigureScopedAtoms}
+        name="WorkflowInlineAgentConfigure"
+      >
+        <WorkflowInlineAgentComposerSession
+          {...editorProps}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentId={agentId}
+          agentSoulConfig={agentSoulConfig}
+        />
+      </ScopeProvider>
+    </AgentMetadataFilterContext>
   )
 }
 
@@ -113,7 +119,7 @@ function WorkflowInlineAgentComposerSession({
   agentSoulConfig,
   activeConfigSnapshot,
   ...props
-}: Omit<WorkflowInlineAgentEditorProps, 'agentId'> & {
+}: Omit<WorkflowInlineAgentEditorProps, 'agentId' | 'metadataFilter'> & {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig?: AgentSoulConfig
@@ -175,7 +181,7 @@ function WorkflowInlineAgentEditorContent({
   onSaved,
   onSaveInlineToRoster,
   open,
-}: Omit<WorkflowInlineAgentEditorProps, 'agentId'> & {
+}: Omit<WorkflowInlineAgentEditorProps, 'agentId' | 'metadataFilter'> & {
   agentId: string
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>

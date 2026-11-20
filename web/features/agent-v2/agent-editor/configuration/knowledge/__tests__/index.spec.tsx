@@ -8,6 +8,8 @@ import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { ReactFlowProvider } from 'reactflow'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { WorkflowAgentMetadataFilter } from '@/app/components/workflow/nodes/agent-v2/components/knowledge-metadata-filter'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -41,9 +43,10 @@ import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
+import { AgentMetadataFilterContext } from '../metadata-filter-context'
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: (_nodeId: string, { filterVar }: { filterVar: (value: Var) => boolean }) => ({
+  default: vi.fn((_nodeId: string, { filterVar }: { filterVar: (value: Var) => boolean }) => ({
     availableVars: [
       {
         nodeId: 'start',
@@ -62,7 +65,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
         data: { type: BlockEnum.Start, title: 'Start', desc: '' },
       } satisfies Node,
     ],
-  }),
+  })),
 }))
 
 const render = createNuqsTestRenderer(renderWithConsoleQuery)
@@ -97,6 +100,7 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 beforeEach(() => {
+  vi.mocked(useAvailableVarList).mockClear()
   getRules.mockReset().mockResolvedValue({
     data: [
       {
@@ -205,9 +209,21 @@ function setup(
     >
       <AgentOrchestrateViewingVersionContext value={viewingVersion}>
         <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <ReactFlowProvider>
-            <AgentKnowledgeRetrieval workflowNodeId={workflowNodeId} />
-          </ReactFlowProvider>
+          <AgentMetadataFilterContext
+            value={
+              workflowNodeId
+                ? { nodeId: workflowNodeId, component: WorkflowAgentMetadataFilter }
+                : null
+            }
+          >
+            {workflowNodeId ? (
+              <ReactFlowProvider>
+                <AgentKnowledgeRetrieval />
+              </ReactFlowProvider>
+            ) : (
+              <AgentKnowledgeRetrieval />
+            )}
+          </AgentMetadataFilterContext>
         </AgentOrchestrateReadOnlyContext>
       </AgentOrchestrateViewingVersionContext>
       <Snapshot label={label} />
@@ -296,8 +312,13 @@ describe('shared knowledge binding dialog', () => {
         ],
         { enabled: false, workflowNodeId: 'agent-node' },
       )
+      expect(useAvailableVarList).not.toHaveBeenCalled()
       const dialog = await open(user)
+      expect(useAvailableVarList).not.toHaveBeenCalled()
       await advanced(user, dialog)
+      await waitFor(() =>
+        expect(useAvailableVarList).toHaveBeenCalledWith('agent-node', expect.any(Object)),
+      )
       await user.click(await screen.findByRole('button', { name: /metadata.panel.conditions/ }))
       await user.click(screen.getByRole('button', { name: 'Constant' }))
       await user.click(screen.getByText('Variable', { exact: true }))
@@ -344,6 +365,24 @@ describe('shared knowledge binding dialog', () => {
       }
     },
   )
+
+  it('edits standalone metadata without a Workflow graph scope', async () => {
+    const user = userEvent.setup()
+    setupClassic({
+      id: 'classic',
+      name: 'Saved search',
+      datasetRefs: [{ id: 'dataset-1' }],
+      metadataFilterMode: MetadataFilteringModeEnum.manual,
+    })
+    const dialog = await open(user)
+    await advanced(user, dialog)
+    expect(
+      await screen.findByRole('button', { name: /metadata.panel.conditions/ }),
+    ).toBeInTheDocument()
+    expect(useAvailableVarList).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
+    expect(snapshot().knowledge.sets[0].name).toBe('Saved search')
+  })
 
   it('discards Classic selections and advanced edits on cancel', async () => {
     const user = userEvent.setup()

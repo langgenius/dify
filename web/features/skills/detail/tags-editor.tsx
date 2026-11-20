@@ -1,7 +1,7 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './files/mutations'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import type { TagComboboxItem } from '@/features/tag-management/tag-option'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,7 +21,8 @@ import { isCreateTagOption } from '@/features/tag-management/tag-option'
 import { TagSearchContentView } from '@/features/tag-management/tag-search-content'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from './files/mutations'
+import { invalidateSkillDetail, setSkillDetailCache } from './cache'
+import { runSkillDraftMutation } from './mutations'
 
 const SKILL_TAG_CREATE_OPTION_PREFIX = '\u0000skill-tag-create:'
 
@@ -29,12 +30,12 @@ const getSkillTagOptionId = (tag: string) => `skill-tag:${tag.trim().toLocaleLow
 
 export function SkillTagsEditor({
   detail,
-  fileMutationCoordinator,
+  draftMutationCoordinator,
   readonly,
   skillId,
 }: {
   detail: SkillDetailResponse | undefined
-  fileMutationCoordinator: SkillFileMutationCoordinator
+  draftMutationCoordinator: SkillDraftMutationCoordinator
   readonly: boolean
   skillId: string
 }) {
@@ -106,7 +107,7 @@ export function SkillTagsEditor({
     if (!detail || isSavingTags) return
     setIsSavingTags(true)
 
-    void runSkillFileMutation(fileMutationCoordinator, (expectedUpdatedAt) =>
+    void runSkillDraftMutation(draftMutationCoordinator, (expectedUpdatedAt) =>
       metadataMutation.mutateAsync({
         params: {
           skill_id: skillId,

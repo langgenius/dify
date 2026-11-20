@@ -1,7 +1,7 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './files/mutations'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import {
   AlertDialog,
   AlertDialogConfirmButton,
@@ -21,10 +21,10 @@ import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useSkillPermissions } from '../permissions'
 import { SkillBuilderPanel } from './builder/panel'
+import { setSkillDetailCache } from './cache'
 import { deriveSkillDetailFromDraftFiles } from './draft'
 import { SkillFileEditor } from './files/editor'
 import { isDirectory } from './files/file-format'
-import { setSkillDetailCache } from './files/mutations'
 import { SkillFileTree } from './files/tree'
 import { findFileByPath, getFirstTextFile } from './files/tree-model'
 import { SkillDetailSkeleton } from './skeleton'
@@ -51,7 +51,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     publishedAt: number
     versionNumber: number
   } | null>(null)
-  const fileMutationCoordinator = useMemo<SkillFileMutationCoordinator>(
+  const draftMutationCoordinator = useMemo<SkillDraftMutationCoordinator>(
     () => ({
       latestDetail: undefined,
       queue: Promise.resolve(),
@@ -114,10 +114,10 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }, [baseDetail, publishedOverride])
   if (
     detail &&
-    (!fileMutationCoordinator.latestDetail ||
-      detail.updated_at > fileMutationCoordinator.latestDetail.updated_at)
+    (!draftMutationCoordinator.latestDetail ||
+      detail.updated_at > draftMutationCoordinator.latestDetail.updated_at)
   )
-    fileMutationCoordinator.latestDetail = detail
+    draftMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
@@ -312,7 +312,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           canEdit={canEdit}
           collapsed={sidebarCollapsed}
           detail={detail}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           files={activeFiles}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
@@ -325,7 +325,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
           file={selectedFile}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}

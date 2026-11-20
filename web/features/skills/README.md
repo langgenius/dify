@@ -1,26 +1,18 @@
 # Skills
 
-Workspace Skill management, including the list, file editing, publishing, and version restoration.
+Workspace Skill management owns list actions, file editing, publishing, and
+version restoration. Routes enter through the list page and the keyed detail
+route; changing Skill identity creates a new detail session.
 
-## Public entrypoints
+The detail session owns one shared draft mutation queue. File operations,
+metadata changes, and tag changes must serialize against the same latest
+`updated_at` snapshot. Splitting the UI must not give those flows independent
+queues. Successful writes update the detail and list caches together; conflict
+recovery reads an authoritative detail snapshot.
 
-- `list/page.tsx` owns the list route, filtering, pagination, import, and card actions.
-- `detail/route.tsx` binds the route identity and remounts the detail session when the Skill changes.
-- `permissions.ts` owns navigation visibility and action permissions.
-- `error.ts` owns Skill error interpretation, including Agent V2's Skill operations.
+File operations, Markdown editing, Builder conversations, publishing, and version
+restoration own their local behavior. Read-only reference presentation is shared
+within this feature rather than imported from one route's internals.
 
-## Internal owners
-
-`list/` keeps its card presentation, tag binding, toolbar, import dialog, and query coordination together. `references.tsx` owns read-only reference presentation shared by list cards and detail publishing; neither surface imports the other's internals.
-
-`detail/page.tsx` coordinates the selected files, active version, panel visibility, and shared file-mutation queue. Its child workflows own the corresponding implementation:
-
-- `files/`: file tree, clipboard and drag/drop, uploads, editor, tabs, and mutation/cache coordination.
-- `markdown/`: SKILL.md frontmatter, file references, and source/live editing.
-- `builder/`: assistant conversation and attachment policy.
-- `publishing/`: publish actions and reference confirmation.
-- `versions/`: version browsing and restoration.
-
-`draft.ts` derives the editable draft's metadata from SKILL.md. Metadata and display-name controls stay with the detail session. Query and mutation callers retain generated contracts; `client.ts` owns the existing binary upload/download and assistant stream transport.
-
-Import concrete owners within this feature. Other features consume only the public entrypoints; do not assemble a Skill editor from detail components or import local mutation/cache internals.
+Other features consume Skills permissions and error interpretation. They do not
+compose the detail editor from internal components or mutation/cache helpers.

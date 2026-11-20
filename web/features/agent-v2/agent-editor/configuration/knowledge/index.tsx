@@ -61,7 +61,7 @@ function AgentKnowledgeRetrievalRow({
   )
 }
 
-export function AgentKnowledgeRetrieval({ workflowNodeId }: { workflowNodeId?: string }) {
+export function AgentKnowledgeRetrieval() {
   const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const enabled = useAtomValue(agentKnowledgeFsEnabledAtom)
@@ -124,7 +124,6 @@ export function AgentKnowledgeRetrieval({ workflowNodeId }: { workflowNodeId?: s
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
-        workflowNodeId={workflowNodeId}
         open={isDialogOpen && !readOnly}
         knowledgeFsEnabled={enabled}
         initialBindings={retrievals}

@@ -1,27 +1,3 @@
-import type {
-  DefaultModel,
-  FormValue,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-
-export type SkillBuilderModel = DefaultModel & {
-  model_settings?: FormValue
-}
-
-export type BuilderChatMessage = {
-  attachments?: SkillBuilderAttachment[]
-  content: string
-  id: string
-  progressStages?: string[]
-  rawContent?: string
-  reasoningContent?: string
-  role: 'assistant' | 'user'
-  suggestedDisplayName?: string
-  suggestedName?: string
-  suggestions?: string[]
-  thinkingDurationSeconds?: number
-  tone?: 'error'
-}
-
 export type SkillBuilderAttachment = {
   id: string
   mimeType: string

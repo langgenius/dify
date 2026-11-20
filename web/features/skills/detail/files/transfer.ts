@@ -10,8 +10,6 @@ export const skillFileHotkeys = {
   paste: { command: 'Mod+V' satisfies HotkeyChord },
 } as const
 
-export const skillFileMenuPopupClassName = 'w-[168px] data-ending-style:transition-none'
-
 export const skillFileDragType = 'application/x-dify-skill-file-path'
 
 export const skillFileDragPathsType = 'application/x-dify-skill-file-paths'

@@ -4,8 +4,11 @@ import type {
   SkillDetailResponse,
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './attachments'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { SkillBuilderAttachment } from './attachments'
+import type {
+  DefaultModel,
+  FormValue,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
@@ -24,9 +27,9 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { sendSkillAssistMessage, uploadSkillFile } from '../../client'
 import { isSkillErrorRecord } from '../../error'
+import { setSkillDetailCache } from '../cache'
 import { isDefaultSkillBuilderDraft } from '../draft'
 import { isTextFile } from '../files/file-format'
-import { setSkillDetailCache } from '../files/mutations'
 import { findFileByPath } from '../files/tree-model'
 import {
   isAllowedSkillBuilderAttachment,
@@ -36,6 +39,25 @@ import {
   skillBuilderMaxImageAttachmentBytes,
 } from './attachments'
 import { SkillBuilderGridTexture } from './grid-texture'
+
+type SkillBuilderModel = DefaultModel & {
+  model_settings?: FormValue
+}
+
+type BuilderChatMessage = {
+  attachments?: SkillBuilderAttachment[]
+  content: string
+  id: string
+  progressStages?: string[]
+  rawContent?: string
+  reasoningContent?: string
+  role: 'assistant' | 'user'
+  suggestedDisplayName?: string
+  suggestedName?: string
+  suggestions?: string[]
+  thinkingDurationSeconds?: number
+  tone?: 'error'
+}
 
 const skillBuilderProgressStages = [
   'reading_draft',
