@@ -40,17 +40,23 @@ function Tour() {
   const [open, setOpen] = useState(true)
   const [targets, setTargets] = useState<Record<string, HTMLElement | null>>({})
   const nextRef = useRef<HTMLButtonElement>(null)
+  const [targetRefs] = useState(() =>
+    Object.fromEntries(
+      steps.map(({ id }) => [
+        id,
+        (element: HTMLElement | null) =>
+          setTargets((current) =>
+            current[id] === element ? current : { ...current, [id]: element },
+          ),
+      ]),
+    ),
+  )
   const step = steps[index]!
 
   return (
     <div className="flex gap-40">
       {steps.map(({ id, title }) => (
-        <Button
-          key={id}
-          ref={(element) => {
-            if (targets[id] !== element) setTargets((current) => ({ ...current, [id]: element }))
-          }}
-        >
+        <Button key={id} ref={targetRefs[id]}>
           {title}
         </Button>
       ))}
