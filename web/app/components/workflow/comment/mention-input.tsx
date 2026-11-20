@@ -662,7 +662,22 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                   onClick={() => insertMention(user)}
                 >
                   <Avatar size="sm" className="shrink-0" aria-hidden="true">
-                    <AvatarFallback>{getAvatarInitial(user.name)}</AvatarFallback>
+                    <AvatarFallback
+                      render={(props, { imageLoadingStatus }) => {
+                        const showInitial = !user.avatar_url || imageLoadingStatus === 'error'
+                        return (
+                          <span
+                            {...props}
+                            className={cn(
+                              props.className,
+                              !showInitial && 'bg-background-section-burn',
+                            )}
+                          >
+                            {showInitial && getAvatarInitial(user.name)}
+                          </span>
+                        )
+                      }}
+                    />
                     <AvatarImage src={user.avatar_url || undefined} alt="" />
                   </Avatar>
                   <div className="min-w-0 flex-1">
