@@ -39,6 +39,7 @@ export function DemoMembers({ open, onOpenChange, triggerRef }: DemoMembersProps
         side="bottom"
         align="end"
         sideOffset={6}
+        data-collaboration-demo-members=""
         className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
       >
         <div className="px-3 pt-1.5 pb-1 system-xs-medium-uppercase text-text-tertiary">

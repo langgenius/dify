@@ -89,24 +89,26 @@ export default function CollaborationDemoPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background-body">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-subtle bg-components-panel-bg px-4">
-        <h1 className="system-md-semibold text-text-primary">{t(($) => $.title)}</h1>
-        <Button onClick={exitDemo}>{t(($) => $.exit)}</Button>
-      </div>
       <div className="relative min-h-0 flex-1">
         <WorkflowPreview {...graph} miniMapToRight>
           <DemoCanvasLayer frame={frame} playing={playback.playing} />
         </WorkflowPreview>
 
-        <div className="absolute inset-e-3 top-3 z-10">
-          <DemoMembers
-            open={membersOpen}
-            onOpenChange={setMembersOpen}
-            triggerRef={setMembersTarget}
-          />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-14 items-center justify-between px-3">
+          <h1 className="pointer-events-auto system-md-semibold text-text-primary">
+            {t(($) => $.title)}
+          </h1>
+          <div className="pointer-events-auto flex items-center gap-2">
+            <DemoMembers
+              open={membersOpen}
+              onOpenChange={setMembersOpen}
+              triggerRef={setMembersTarget}
+            />
+            <Button onClick={exitDemo}>{t(($) => $.exit)}</Button>
+          </div>
         </div>
 
-        <div className="absolute inset-s-3 top-3 z-10 flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
+        <div className="absolute inset-s-3 top-14 z-10 flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
           <Toggle
             pressed={step === 'playing'}
             onPressedChange={(pressed) => pressed && startPlayback()}
@@ -144,29 +146,19 @@ export default function CollaborationDemoPage() {
           <DemoEndPanel state={endState} onReplay={playback.restart} onClose={exitDemo} />
         )}
 
-        {step === 'members' && (
+        {step !== 'playing' && (
           <DemoStepGuide
-            target={membersTarget}
-            side="inline-start"
-            step={1}
-            title={t(($) => $['steps.members.title'])}
-            description={t(($) => $['steps.members.description'])}
-            actionLabel={t(($) => $['steps.members.action'])}
+            step={step}
+            target={step === 'members' ? membersTarget : commentTarget}
+            highlightSelectors={
+              step === 'members' && membersOpen ? ['[data-collaboration-demo-members]'] : undefined
+            }
             onAction={() => {
+              if (step === 'comment') return startPlayback()
               setMembersOpen(false)
               setStep('comment')
             }}
-          />
-        )}
-        {step === 'comment' && (
-          <DemoStepGuide
-            target={commentTarget}
-            side="inline-end"
-            step={2}
-            title={t(($) => $['steps.comment.title'])}
-            description={t(($) => $['steps.comment.description'])}
-            actionLabel={t(($) => $['steps.comment.action'])}
-            onAction={startPlayback}
+            onExit={exitDemo}
           />
         )}
       </div>
