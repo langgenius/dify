@@ -16,7 +16,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -80,6 +80,7 @@ export default function CheckCode() {
         })
 
         if (invite_token) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
           const profileQueryOptions = userProfileQueryOptions()

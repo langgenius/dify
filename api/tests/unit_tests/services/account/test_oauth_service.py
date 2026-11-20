@@ -748,9 +748,27 @@ def test_pending_account_is_not_activated_when_workspace_creation_fails() -> Non
     assert harness.runtime.logins == []
 
 
-def test_valid_invitation_links_and_logs_in_invited_account() -> None:
+@pytest.mark.parametrize(
+    ("has_workspace", "creation_allowed", "creation_error", "expected_operations"),
+    [
+        (False, True, None, [("owner", "invited-account")]),
+        (True, True, None, []),
+        (False, False, None, []),
+        (False, True, OAuthWorkspaceCreationNotAllowedError(), []),
+    ],
+    ids=["provisions-default", "existing-workspace", "creation-disabled", "limit-or-denied"],
+)
+def test_valid_invitation_links_provisions_when_allowed_and_logs_in_invited_account(
+    has_workspace: bool,
+    creation_allowed: bool,
+    creation_error: Exception | None,
+    expected_operations: list[tuple[str, str]],
+) -> None:
     harness = _harness(identity=OAuthIdentity("provider-user", "User", "Invitee@Example.com"))
     harness.invitations.invitation = OAuthInvitation("invited-account", "invitee@example.com", "active")
+    harness.memberships.workspace_ids = ("existing-workspace",) if has_workspace else ()
+    harness.policy.creation_allowed = creation_allowed
+    harness.runtime.workspace_creation_error = creation_error
 
     result = harness.service.complete_authorization(_command(invite_token="invite-token"))
 
@@ -760,7 +778,7 @@ def test_valid_invitation_links_and_logs_in_invited_account() -> None:
     assert harness.runtime.logins == [("invited-account", "203.0.113.10")]
     assert harness.integrations.identity_lookups == []
     assert harness.invitations.resolutions == ["invite-token"]
-    assert harness.runtime.workspace_operations == []
+    assert harness.runtime.workspace_operations == expected_operations
 
 
 def test_resolvable_invitation_requires_matching_email() -> None:

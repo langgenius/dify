@@ -34,7 +34,6 @@ import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
-import { isInvitationForAccount } from '../utils/invitation-account'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 const languageItems = languages
@@ -53,18 +52,6 @@ export default function InviteSettingsPage() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const {
-    data: accountProfile,
-    isPending: isProfilePending,
-    error: profileError,
-  } = useQuery(
-    consoleQuery.account.endUserProfile.get.queryOptions({
-      context: { silent: true, handleUnauthorizedLocally: true },
-      throwOnError: (err) => !isUnauthorizedError(err),
-      retry: false,
-      refetchOnWindowFocus: false,
-    }),
-  )
   const locale = useLocale()
   const [name, setName] = useState('')
   const [isActivating, setIsActivating] = useState(false)
@@ -83,18 +70,13 @@ export default function InviteSettingsPage() {
       input: { query: checkParams.params },
       enabled: !!token,
       retry: false,
+      refetchOnWindowFocus: false,
     }),
   )
-  const isInvitationForCurrentAccount = isInvitationForAccount(
-    checkRes?.data?.email,
-    accountProfile?.email,
+  const isInvitationForCurrentAccount = Boolean(
+    checkRes?.is_valid && checkRes.data?.is_current_account,
   )
-  const shouldReturnToSignIn =
-    !isProfilePending &&
-    Boolean(
-      checkRes?.is_valid &&
-      (isUnauthorizedError(profileError) || (accountProfile && !isInvitationForCurrentAccount)),
-    )
+  const shouldReturnToSignIn = Boolean(checkRes?.is_valid && !isInvitationForCurrentAccount)
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
   const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
@@ -144,6 +126,7 @@ export default function InviteSettingsPage() {
       if (error) {
         setIsActivating(false)
         if (isUnauthorizedError(error)) {
+          queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin?${searchParams.toString()}`)
           return
         }
@@ -158,7 +141,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         if (requiresAccountSetup) await setLocaleOnClient(language!)
-        queryClient.removeQueries({ queryKey: consoleQuery.account.endUserProfile.get.key() })
+        queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
@@ -181,7 +164,7 @@ export default function InviteSettingsPage() {
     router,
   ])
 
-  if (isProfilePending || shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
+  if (shouldReturnToSignIn || !checkRes) return <LoadingPlaceholder />
   if (!checkRes.is_valid) {
     return (
       <div className="flex flex-col">

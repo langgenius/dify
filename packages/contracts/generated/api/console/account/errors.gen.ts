@@ -272,8 +272,6 @@ export const post7Errors = {
   education_activate_limit: { status: 429, data: zEducationActivateLimitError },
 }
 
-export const get6Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
 export const post8Errors = {
   account_already_inited: { status: 400, data: zAccountAlreadyInitedError },
   account_not_found: { status: 400, data: zAccountNotFoundError },
@@ -287,6 +285,6 @@ export const post9Errors = {
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
 }
 
-export const get12Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
+export const get11Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
 
 export const patch2Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }

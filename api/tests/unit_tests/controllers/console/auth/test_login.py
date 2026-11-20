@@ -596,12 +596,14 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
     app.register_blueprint(console_bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, identity.load_user)
+    ext_login.bind_account_only_loader(app, identity.load_account)
     monkeypatch.setattr(ext_login.session_factory, "create_session", sqlite_session_factory)
     monkeypatch.setattr(
         login, "application_services", lambda: SimpleNamespace(accounts=SimpleNamespace(authentication=authentication))
     )
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
-    loaded = identity.load_user(account.id)
+    assert identity.load_user(account.id) is None
+    loaded = identity.load_account(account.id)
     assert loaded is not None
     assert loaded.current_tenant_id is None
     initial = sessions.issue(account.id)

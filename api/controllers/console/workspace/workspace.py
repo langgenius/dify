@@ -26,20 +26,16 @@ from controllers.console.error import (
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
-from controllers.console.flask_admission import (
-    console_account_admission,
-    console_account_identity_admission,
-    console_admin_admission,
-)
+from controllers.console.flask_admission import console_account_admission, console_admin_admission
 from controllers.console.workspace.error import CurrentWorkspaceArchivedError
-from controllers.console.wraps import model_validate, only_edition_cloud
+from controllers.console.wraps import model_validate
 from enums import CloudPlan, DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
-from machinery.context import AccountRequestContext, RequestContext
+from machinery.context import RequestContext
 from services.errors import file as file_errors
 from services.errors.workspace import (
     WorkspaceArchivedError,
@@ -251,10 +247,13 @@ class WorkspaceActivationApi(Resource):
     @error_responses(AccountNotFound, NotAllowedCreateWorkspace, WorkspacesLimitExceeded)
     @console_ns.expect(console_ns.models[WorkspaceActivationPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Workspace ready", console_ns.models[WorkspaceActivationResponse.__name__])
-    @console_account_identity_admission
-    @only_edition_cloud
+    @console_account_admission(
+        editions=frozenset({DeploymentEdition.CLOUD}),
+        require_active_workspace=False,
+        require_initialized=False,
+    )
     @model_validate(WorkspaceActivationPayload)
-    def post(self, args: WorkspaceActivationPayload, context: AccountRequestContext):
+    def post(self, args: WorkspaceActivationPayload, context: RequestContext):
         try:
             result = application_services().workspaces.provisioning.activate(context.account_id, name=args.name)
         except WorkspaceOwnerNotFoundError as error:
