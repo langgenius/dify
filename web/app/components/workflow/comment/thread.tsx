@@ -15,7 +15,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -34,11 +33,11 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
+import { UserAvatar } from '@/app/components/base/user-avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { getAvatarInitial } from '@/utils/avatar'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
 
@@ -153,12 +152,13 @@ function ThreadMessage({
   return (
     <div className={cn('flex gap-3 pt-1', className)}>
       <div className="shrink-0">
-        <Avatar size="md" aria-hidden="true">
-          <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-            {getAvatarInitial(authorName)}
-          </AvatarFallback>
-          <AvatarImage src={avatarUrl || undefined} alt="" />
-        </Avatar>
+        <UserAvatar
+          size="md"
+          name={authorName}
+          src={avatarUrl}
+          fallbackColor={userColor}
+          aria-hidden="true"
+        />
       </div>
       <div className="min-w-0 flex-1 pb-4 text-text-primary last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -594,15 +594,15 @@ function CommentThreadComponent({
             {isCommentEditing ? (
               <div className="flex gap-3 pt-1">
                 <div className="shrink-0">
-                  <Avatar size="md" aria-hidden="true">
-                    <AvatarFallback>
-                      {getAvatarInitial(
-                        comment.created_by_account?.name ||
-                          t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                      )}
-                    </AvatarFallback>
-                    <AvatarImage src={comment.created_by_account?.avatar_url || undefined} alt="" />
-                  </Avatar>
+                  <UserAvatar
+                    size="md"
+                    name={
+                      comment.created_by_account?.name ||
+                      t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+                    }
+                    src={comment.created_by_account?.avatar_url}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
@@ -696,18 +696,15 @@ function CommentThreadComponent({
                     {isReplyEditing ? (
                       <div className="flex gap-3 pt-1">
                         <div className="shrink-0">
-                          <Avatar size="md" aria-hidden="true">
-                            <AvatarFallback>
-                              {getAvatarInitial(
-                                reply.created_by_account?.name ||
-                                  t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                              )}
-                            </AvatarFallback>
-                            <AvatarImage
-                              src={reply.created_by_account?.avatar_url || undefined}
-                              alt=""
-                            />
-                          </Avatar>
+                          <UserAvatar
+                            size="md"
+                            name={
+                              reply.created_by_account?.name ||
+                              t(($) => $['comments.fallback.user'], { ns: 'workflowComments' })
+                            }
+                            src={reply.created_by_account?.avatar_url}
+                            aria-hidden="true"
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1 shadow-md backdrop-blur-[10px]">
@@ -759,12 +756,12 @@ function CommentThreadComponent({
         {onReply && (
           <div className="border-t border-components-panel-border px-4 py-3">
             <div className="flex items-center gap-3">
-              <Avatar size="md" aria-hidden="true">
-                <AvatarFallback>
-                  {getAvatarInitial(userProfile?.name || t(($) => $.you, { ns: 'common' }))}
-                </AvatarFallback>
-                <AvatarImage src={userProfile?.avatar_url || undefined} alt="" />
-              </Avatar>
+              <UserAvatar
+                size="md"
+                name={userProfile?.name || t(($) => $.you, { ns: 'common' })}
+                src={userProfile?.avatar_url}
+                aria-hidden="true"
+              />
               <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-0.5 shadow-sm">
                 <MentionInput
                   ref={replyInputRef}
