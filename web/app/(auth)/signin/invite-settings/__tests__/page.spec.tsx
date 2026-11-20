@@ -149,7 +149,7 @@ describe('Invitation activation', () => {
         },
         { context: { silent: true, handleUnauthorizedLocally: true } },
       )
-      expect(mocks.profile).toHaveBeenCalled()
+      expect(mocks.profile).not.toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
     },
   )

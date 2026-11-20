@@ -77,7 +77,7 @@ class _Harness:
     account: Account
     tenant: Tenant
     target: App
-    redis: Mock = field(default_factory=lambda: Mock(spec=RedisClientWrapper))
+    redis: Mock = field(default_factory=Mock)
     dispatch: Mock = field(default_factory=Mock)
     sessions: list[Session] = field(default_factory=list)
     after_account_load: Callable[[], None] | None = None
@@ -198,6 +198,9 @@ def harness(
         assert all(not previous.in_transaction() and not previous.identity_map for previous in state.sessions)
         state.sessions.append(session)
 
+    redis_client = RedisClientWrapper()
+    for method in ("get", "setex", "register_script"):
+        setattr(redis_client, method, getattr(state.redis, method))
     conversations = ConversationRepository(session_factory=factory)
     app.extensions["application_services"] = _Services(
         conversation_queries=ConversationQueryService(
@@ -207,7 +210,7 @@ def harness(
         ),
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
-            tasks=RedisConversationLogExportTasks(redis=state.redis),
+            tasks=RedisConversationLogExportTasks(redis=redis_client),
             dispatch=state.dispatch,
             store_csv=Mock(),
             open_csv=log_export_adapters.open_conversation_log_export_csv,

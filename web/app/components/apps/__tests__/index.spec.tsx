@@ -113,6 +113,10 @@ const marketplaceTemplate = {
   },
 } satisfies Awaited<ReturnType<typeof marketplaceClient.templateDetail>>
 
+beforeAll(async () => {
+  await import('@/app/components/explore/try-app')
+})
+
 beforeEach(() => {
   api.params = new URLSearchParams()
   api.push.mockReset()

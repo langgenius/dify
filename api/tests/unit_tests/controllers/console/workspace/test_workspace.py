@@ -218,6 +218,7 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     app.register_blueprint(console_bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, identity.load_user)
+    ext_login.bind_account_only_loader(app, identity.load_account)
     monkeypatch.setattr(ext_login.session_factory, "create_session", account_domain.repository._session_factory)
     tokens = RedisAccountSessionGateway(redis=redis).issue(account.id)
     client = app.test_client()

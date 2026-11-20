@@ -11,6 +11,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models.enums import (
@@ -25,14 +26,38 @@ from models.enums import (
 from models.model import AppMode, EndUser, MessageFeedback
 from models.workflow import WorkflowRun, WorkflowType
 from repositories import conversation_repository
-from repositories.conversation_repository import ConversationRepository
+from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
 from services.entities.conversation_entities import ConsoleConversationLogFilters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
+    ConversationLogExportStatus,
     ConversationLogExportTask,
-    ConversationLogExportTaskStore,
 )
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+
+
+class RecordingTaskStore:
+    def __init__(self, task: ConversationLogExportTask, *, can_claim: bool) -> None:
+        self.task = task
+        self.can_claim = can_claim
+        self.transitions: list[tuple[ConversationLogExportStatus, ConversationLogExportTask]] = []
+
+    def save(self, task: ConversationLogExportTask) -> None:
+        raise AssertionError(f"Worker must not create task {task.task_id}")
+
+    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
+        assert (tenant_id, app_id, task_id) == (self.task.tenant_id, self.task.app_id, self.task.task_id)
+        return self.task
+
+    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
+        raise AssertionError(f"Unexpected latest task lookup: {tenant_id}/{app_id}/{requested_by}")
+
+    def transition(self, task: ConversationLogExportTask, *, from_status: ConversationLogExportStatus) -> bool:
+        self.transitions.append((from_status, task))
+        if not self.can_claim or self.task.status != from_status:
+            return False
+        self.task = task
+        return True
 
 
 @pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])
@@ -50,9 +75,7 @@ def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost",
         created_at=created_at,
         expires_at=created_at + timedelta(days=1),
     )
-    tasks = Mock(spec=ConversationLogExportTaskStore)
-    tasks.get.return_value = task
-    tasks.transition.return_value = outcome != "claim_lost"
+    tasks = RecordingTaskStore(task, can_claim=outcome != "claim_lost")
     store_csv = Mock(side_effect=OSError("upload failed") if outcome == "failed" else None)
     service = ConversationLogExportService(
         conversations=Mock(), tasks=tasks, dispatch=Mock(), store_csv=store_csv, open_csv=Mock()
@@ -64,21 +87,20 @@ def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost",
     else:
         service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
 
-    claim = tasks.transition.call_args_list[0]
-    assert claim.args[0].status == "processing"
-    assert claim.kwargs == {"from_status": "pending"}
+    claim_from, claim = tasks.transitions[0]
+    assert claim.status == "processing"
+    assert claim_from == "pending"
     if outcome == "claim_lost":
-        tasks.transition.assert_called_once()
+        assert len(tasks.transitions) == 1
         store_csv.assert_not_called()
     else:
         store_csv.assert_called_once()
         storage_key = "conversation-log-exports/tenant-1/app-1/task-1.csv"
         assert store_csv.call_args.args[0] == storage_key
-        completion = tasks.transition.call_args_list[1]
-        assert completion.args[0].status == outcome
-        assert completion.args[0].storage_key == (storage_key if outcome == "ready" else None)
-        assert completion.kwargs == {"from_status": "processing"}
-        tasks.get.return_value = completion.args[0]
+        completion_from, completion = tasks.transitions[1]
+        assert completion.status == outcome
+        assert completion.storage_key == (storage_key if outcome == "ready" else None)
+        assert completion_from == "processing"
         service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
         store_csv.assert_called_once()
 
@@ -193,7 +215,7 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     service = ConversationLogExportService(
         conversations=repository,
-        tasks=Mock(spec=ConversationLogExportTaskStore),
+        tasks=RedisConversationLogExportTasks(redis=RedisClientWrapper()),
         dispatch=Mock(),
         store_csv=Mock(),
         open_csv=Mock(),

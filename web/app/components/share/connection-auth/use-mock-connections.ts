@@ -6,6 +6,7 @@ import type RequiredServices from '../connections/required-services'
 import type { RequiredConnectionService } from '../connections/required-services'
 import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
+import { v4 } from 'uuid'
 import { getServiceConnectionStatus } from '../connections/connection-status'
 import { createMockServices, mockRequest } from './mock-data'
 
@@ -37,7 +38,7 @@ export default function useMockConnections() {
 
   const onConnect: Actions['onConnect'] = (serviceId, method, values) => {
     if (method === 'api-key') validateMockKey(values)
-    const id = crypto.randomUUID()
+    const id = v4()
     updateService(serviceId, (service) => {
       const accountCount = service.availableConnections.filter(
         (connection) => connection.method === 'oauth',
