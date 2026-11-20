@@ -623,15 +623,23 @@ def test_junk_in_the_zip_is_dropped_by_the_existing_folder_code(
     assert _imported_paths(world, openapi_app, members, monkeypatch) == ["SKILL.md"]
 
 
-@pytest.mark.parametrize("path", ["../x.md", "/abs.md", "a\\b.md"])
+@pytest.mark.parametrize(("path", "refused"), [("../x.md", "../x.md"), ("/abs.md", "/abs.md"), ("..\\x.md", "../x.md")])
 def test_a_hostile_path_in_the_zip_gets_the_operations_own_path_error(
-    path: str, world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+    path: str, refused: str, world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with pytest.raises(SkillPackageInvalid) as error:
         _imported_paths(world, openapi_app, {"SKILL.md": b"a", path: b"x"}, monkeypatch)
 
     assert error.value.details is not None
-    assert [detail.loc for detail in error.value.details] == [[path]]
+    assert [detail.loc for detail in error.value.details] == [[refused]]
+
+
+def test_a_windows_zip_with_backslash_paths_is_imported(
+    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    members = {"SKILL.md": b"a", "scripts\\run.py": b"b"}
+
+    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["SKILL.md", "scripts/run.py"]
 
 
 def test_a_zip_of_the_folder_itself_keeps_its_extra_first_segment(
