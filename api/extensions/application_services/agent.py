@@ -27,6 +27,7 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
+from services.app.agent_build_session_service import AgentBuildSessionService
 from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
@@ -41,6 +42,7 @@ from services.file_request_service import FileRequestService
 from services.model_provider.service import ModelProviderService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +54,7 @@ class AgentAppServices:
     collection: AgentAppCollectionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
+    build_session: AgentBuildSessionService
 
 
 def _can_restore_version(
@@ -64,6 +67,7 @@ def _can_restore_version(
 def build_agent_app_services(
     *, database_client: sessionmaker[Session], rbac_members: MemberService
 ) -> AgentAppServices:
+    """Wire Agent App use cases to the shared repository and their post-commit effects."""
     apps = AgentAppRepository(
         session_factory=database_client, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
     )
@@ -91,6 +95,7 @@ def build_agent_app_services(
             detail=detail,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        build_session=AgentBuildSessionService(store=apps, collect_resources=enqueue_agent_resource_collection),
         sandbox=AgentAppSandboxService(
             bindings=AgentSandboxRepository(session_factory=database_client, apps=apps),
             files=AgentSandboxFileGateway(
