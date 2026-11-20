@@ -661,3 +661,12 @@ def test_a_malformed_id_in_a_body_field_answers_like_an_unknown_one(
 
     assert (response.status_code, response.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
     assert recording_files.received == []
+
+
+@pytest.mark.usefixtures("every_slot_taken")
+def test_a_wrong_download_token_is_refused_before_a_slot_is_needed(world: TransferWorld) -> None:
+    parked = world.park()
+
+    response = world.get(f"{_HOST}/openapi/v1/transfers/{parked.transfer.id}?token=nope")
+
+    assert (response.status_code, response.get_json()["code"]) == (404, OpenApiErrorCode.UPLOAD_NOT_FOUND)
