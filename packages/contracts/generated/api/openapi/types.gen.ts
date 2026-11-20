@@ -1130,6 +1130,8 @@ export type MessageMetadata = {
   usage?: UsageInfo | null
 }
 
+export type ModelConfigFrom = 'custom-model' | 'predefined-model'
+
 export type ModelCredentialCreatePayload = {
   credentials: {
     [key: string]: unknown
@@ -1208,7 +1210,7 @@ export type ModelRow = {
 }
 
 export type ModelSettingsPutPayload = {
-  config_from: 'custom-model' | 'predefined-model'
+  config_from: ModelConfigFrom
   enabled: boolean
   load_balancing: LoadBalancingPayload
   model: string
@@ -1216,13 +1218,13 @@ export type ModelSettingsPutPayload = {
 }
 
 export type ModelSettingsQuery = {
-  config_from: 'custom-model' | 'predefined-model'
+  config_from: ModelConfigFrom
   model: string
   model_type: ModelType
 }
 
 export type ModelSettingsResponse = {
-  config_from: 'custom-model' | 'predefined-model'
+  config_from: ModelConfigFrom
   enabled: boolean
   load_balancing: LoadBalancingSettings
   model: string

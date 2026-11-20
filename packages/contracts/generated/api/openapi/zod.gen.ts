@@ -1462,6 +1462,13 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * ModelConfigFrom
+ *
+ * Which credential table a model's load-balancing entries point at, as the console's config_from.
+ */
+export const zModelConfigFrom = z.enum(['custom-model', 'predefined-model'])
+
+/**
  * ModelProviderDetailResponse
  */
 export const zModelProviderDetailResponse = z.object({
@@ -1581,7 +1588,7 @@ export const zModelRefQuery = z.object({
  * ModelSettingsPutPayload
  */
 export const zModelSettingsPutPayload = z.object({
-  config_from: z.enum(['custom-model', 'predefined-model']),
+  config_from: zModelConfigFrom,
   enabled: z.boolean(),
   load_balancing: zLoadBalancingPayload,
   model: z.string(),
@@ -1592,7 +1599,7 @@ export const zModelSettingsPutPayload = z.object({
  * ModelSettingsQuery
  */
 export const zModelSettingsQuery = z.object({
-  config_from: z.enum(['custom-model', 'predefined-model']),
+  config_from: zModelConfigFrom,
   model: z.string(),
   model_type: zModelType,
 })
@@ -1601,7 +1608,7 @@ export const zModelSettingsQuery = z.object({
  * ModelSettingsResponse
  */
 export const zModelSettingsResponse = z.object({
-  config_from: z.enum(['custom-model', 'predefined-model']),
+  config_from: zModelConfigFrom,
   enabled: z.boolean(),
   load_balancing: zLoadBalancingSettings,
   model: z.string(),

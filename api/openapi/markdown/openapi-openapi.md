@@ -4245,6 +4245,14 @@ Strict (extra='forbid').
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
 
+#### ModelConfigFrom
+
+Which credential table a model's load-balancing entries point at, as the console's config_from.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelConfigFrom | string | Which credential table a model's load-balancing entries point at, as the console's config_from. |  |
+
 #### ModelCredentialCreatePayload
 
 | Name | Type | Description | Required |
@@ -4342,7 +4350,7 @@ The model a credential or settings op addresses, as query parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_from | string, <br>**Available values:** "custom-model", "predefined-model" | predefined-model: entries point at provider credentials; custom-model: at the model's own<br>*Enum:* `"custom-model"`, `"predefined-model"` | Yes |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
 | enabled | boolean |  | Yes |
 | load_balancing | [LoadBalancingPayload](#loadbalancingpayload) | Load-balancing settings to replace the stored ones | Yes |
 | model | string | Model name, as in get.model | Yes |
@@ -4352,7 +4360,7 @@ The model a credential or settings op addresses, as query parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_from | string, <br>**Available values:** "custom-model", "predefined-model" | predefined-model: entries point at provider credentials; custom-model: at the model's own<br>*Enum:* `"custom-model"`, `"predefined-model"` | Yes |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
 | model | string | Model name, as in get.model | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 
@@ -4360,7 +4368,7 @@ The model a credential or settings op addresses, as query parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_from | string, <br>**Available values:** "custom-model", "predefined-model" | predefined-model: entries point at provider credentials; custom-model: at the model's own<br>*Enum:* `"custom-model"`, `"predefined-model"` | Yes |
+| config_from | [ModelConfigFrom](#modelconfigfrom) | predefined-model: entries point at provider credentials; custom-model: at the model's own | Yes |
 | enabled | boolean | False while the model is disabled for this workspace | Yes |
 | load_balancing | [LoadBalancingSettings](#loadbalancingsettings) |  | Yes |
 | model | string | Model name, as in get.model | Yes |
