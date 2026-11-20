@@ -3042,8 +3042,10 @@ Get chat conversations with pagination and filtering
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -3060,6 +3062,26 @@ Get chat conversations with pagination and filtering
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/chat-conversations/identity-options
+**Return up to 20 matches per identity type for the admitted chat app**
+
+Search for end users or workspace accounts with visible chat logs in this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| keyword | query | Part of an end-user ID or account name, or an exact internal ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Matching identities | **application/json**: [ConversationLogIdentitySearchResponse](#conversationlogidentitysearchresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -3270,6 +3292,124 @@ Stop a running completion message generation
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/conversation-log-exports
+**Validate an admitted app's export filters and acknowledge the task after publication**
+
+Create a pending CSV export task for one chat app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationLogExportCreatePayload](#conversationlogexportcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Export task accepted | **application/json**: [ConversationLogExportTaskResponse](#conversationlogexporttaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/latest
+**Return only the admitted account's latest task, or null if it is missing or expired**
+
+Read the caller's latest live CSV export and its submitted filters for this app
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Latest export | **application/json**: [ConversationLogExportLatestResponse](#conversationlogexportlatestresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/preview
+**Preview a conversation log export for a workspace Owner or Admin with application Logs access**
+
+Count the conversations and rows that match the application's chat Logs filters
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
+| annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
+| keyword | query | Search keyword | No | string |
+| sort_by | query | Sort field and direction | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export preview | **application/json**: [ConversationLogExportPreviewResponse](#conversationlogexportpreviewresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}
+**Return the state of a live export task for an admitted app**
+
+Get the current status of a chat app's CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export task status | **application/json**: [ConversationLogExportStatusResponse](#conversationlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}/file
+**Admit the app and ready task before redirecting or streaming the CSV**
+
+Download a completed CSV directly from object storage or from the Console API
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | CSV attachment | **text/csv**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 302 | Redirect to a pre-signed CSV download URL<br>**Headers:**<br>**Location**: Pre-signed object storage URL<br> |  |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportFileNotFoundError](#conversationlogexportfilenotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConversationLogExportTaskNotReadyError](#conversationlogexporttasknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-variables
@@ -24471,8 +24611,10 @@ HTTP failure with only provider-supplied diagnostic identifiers.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
@@ -25057,6 +25199,12 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### ConsoleLogIdentitySource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConsoleLogIdentitySource | string |  |  |
+
 #### ConsoleSegmentListResponse
 
 | Name | Type | Description | Required |
@@ -25195,6 +25343,12 @@ Query params for selecting contacts in workflow editors.
 | annotation_id | string |  | Yes |
 | created_at | integer |  | No |
 
+#### ConversationAnnotationStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationAnnotationStatus | string |  |  |
+
 #### ConversationCursorNotFoundError
 
 The conversation cursor is not in the current list. Refresh the list and try again.
@@ -25251,6 +25405,116 @@ The conversation has no message from which to generate a name.
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
+
+#### ConversationLogExportCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| message_count | integer | CSV data rows across all matched conversations | Yes |
+
+#### ConversationLogExportCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
+| annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| keyword | string | Search keyword | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+
+#### ConversationLogExportFileNotFoundError
+
+Conversation log export file not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportFileNotFoundError |  | Conversation log export file not found. |  |
+
+#### ConversationLogExportFiltersResponse
+
+Submitted filters for the export, with any date bounds in UTC.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | Yes |
+| annotation_status | [ConversationAnnotationStatus](#conversationannotationstatus) |  | Yes |
+| end | string |  | Yes |
+| end_user_ids | [ string ] |  | Yes |
+| keyword | string |  | Yes |
+| start | string |  | Yes |
+
+#### ConversationLogExportLatestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task | [ConversationLogExportLatestTaskResponse](#conversationlogexportlatesttaskresponse) | Null if the caller has no live export task | Yes |
+
+#### ConversationLogExportLatestTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
+| status | [ConversationLogExportStatus](#conversationlogexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogExportPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| counts | [ConversationLogExportCountsResponse](#conversationlogexportcountsresponse) | Null if the count query timed out | Yes |
+
+#### ConversationLogExportStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportStatus | string |  |  |
+
+#### ConversationLogExportStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [ConversationLogExportStatus](#conversationlogexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogExportTaskNotFoundError
+
+Conversation log export task not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotFoundError |  | Conversation log export task not found. |  |
+
+#### ConversationLogExportTaskNotReadyError
+
+The conversation log export is not ready for download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotReadyError |  | The conversation log export is not ready for download. |  |
+
+#### ConversationLogExportTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogIdentityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
+#### ConversationLogIdentitySearchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ConversationLogIdentityResponse](#conversationlogidentityresponse) ] |  | Yes |
 
 #### ConversationMessageDetail
 
@@ -38801,6 +39065,12 @@ Retain the addressed saved field; valid only for updates and saved tests.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string |  | Yes |
+
+#### UnprocessableEntityError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnprocessableEntityError |  |  |  |
 
 #### UnsupportedAudioTypeError
 

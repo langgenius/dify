@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Literal, overload
 
 from flask import Flask
@@ -88,6 +89,10 @@ class Storage:
     def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
 
+    def save_file(self, filename: str, source: Path) -> None:
+        """Upload a completed local file through the configured storage backend."""
+        self.storage_runner.save_file(filename, source)
+
     @overload
     def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
 
@@ -125,11 +130,13 @@ class Storage:
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         return self.storage_runner.generate_presigned_url(
             filename,
             expires_in=expires_in,
             content_type=content_type,
+            download_filename=download_filename,
         )
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:

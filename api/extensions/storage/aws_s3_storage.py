@@ -1,8 +1,11 @@
 import logging
 from collections.abc import Generator
+from pathlib import Path
 from typing import override
+from urllib.parse import quote
 
 import boto3
+from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
@@ -60,6 +63,16 @@ class AwsS3Storage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
     @override
+    def save_file(self, filename: str, source: Path) -> None:
+        """Upload a completed local file with one multipart transfer at a time."""
+        self.client.upload_file(
+            str(source),
+            self.bucket_name,
+            filename,
+            Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
+        )
+
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
@@ -106,10 +119,13 @@ class AwsS3Storage(BaseStorage):
         *,
         expires_in: int,
         content_type: str | None = None,
+        download_filename: str | None = None,
     ) -> str:
         params = {"Bucket": self.bucket_name, "Key": filename}
         if content_type:
             params["ResponseContentType"] = content_type
+        if download_filename:
+            params["ResponseContentDisposition"] = f"attachment; filename*=UTF-8''{quote(download_filename)}"
 
         return self.client.generate_presigned_url(
             "get_object",

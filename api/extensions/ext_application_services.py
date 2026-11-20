@@ -90,7 +90,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.conversation_repository import ConversationRepository
+from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
 from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.end_user_connection_repository import EndUserConnectionRepository
@@ -243,6 +243,12 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.retention.conversation.log_export_adapters import (
+    dispatch_conversation_log_export,
+    open_conversation_log_export_csv,
+    store_conversation_log_export_csv,
+)
+from services.retention.conversation.log_export_service import ConversationLogExportService
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
@@ -385,6 +391,7 @@ class ApplicationServices:
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
     conversation_queries: ConversationQueryService
+    conversation_log_exports: ConversationLogExportService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -795,6 +802,13 @@ def build_application_services(
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
         conversation_queries=conversation_queries,
+        conversation_log_exports=ConversationLogExportService(
+            conversations=conversations,
+            tasks=RedisConversationLogExportTasks(redis=redis),
+            dispatch=dispatch_conversation_log_export,
+            store_csv=store_conversation_log_export_csv,
+            open_csv=open_conversation_log_export_csv,
+        ),
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,

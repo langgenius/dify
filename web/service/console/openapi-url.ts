@@ -6,6 +6,10 @@ const repeatedQueryArrayRules = [
   { path: /\/apps$/, fields: ['tag_ids', 'creator_ids'] },
   { path: /\/apps\/starred$/, fields: ['tag_ids', 'creator_ids'] },
   { path: /\/apps\/[^/]+\/annotations$/, fields: ['annotation_id'] },
+  {
+    path: /\/apps\/[^/]+\/(?:chat-conversations|conversation-log-exports\/preview)$/,
+    fields: ['end_user_ids', 'account_ids'],
+  },
   { path: /\/datasets$/, fields: ['ids', 'tag_ids', 'creator_ids'] },
   { path: /\/datasets\/[^/]+\/documents$/, fields: ['document_id'] },
   { path: /\/datasets\/[^/]+\/documents\/status\/[^/]+\/batch$/, fields: ['document_id'] },
