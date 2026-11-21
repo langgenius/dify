@@ -4,9 +4,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.client import DifyAgentHTTPError, DifyAgentNotFoundError, DifyAgentTimeoutError
-from sqlalchemy import select, text
+from pytest_mock import MockerFixture
+from sqlalchemy import event, select, text
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
     Agent,
@@ -239,13 +240,14 @@ def test_build_apply_fails_fast_without_source_binding(unbound_session: Session)
 
 
 def test_home_snapshot_collection_database_failure_propagates(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    sqlite_session.execute(text(f"DROP TABLE {AgentHomeSnapshot.__tablename__}"))
-    sqlite_session.commit()
+    with sqlite_session_factory() as session:
+        session.execute(text(f"DROP TABLE {AgentHomeSnapshot.__tablename__}"))
+        session.commit()
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
+        sqlite_session_factory,
     )
 
     with pytest.raises(OperationalError, match="no such table"):
@@ -258,43 +260,47 @@ def test_home_snapshot_collection_database_failure_propagates(
 @pytest.mark.parametrize("snapshot_state", ["missing", "active"])
 def test_home_snapshot_collection_non_retired_target_is_idempotent_noop(
     monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
     snapshot_state: str,
 ) -> None:
     if snapshot_state == "active":
-        sqlite_session.add(
-            AgentHomeSnapshot(
-                id="home-1",
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                snapshot_ref="snapshot-ref-1",
-                status=AgentWorkingResourceStatus.ACTIVE,
+        with sqlite_session_factory() as session:
+            session.add(
+                AgentHomeSnapshot(
+                    id="home-1",
+                    tenant_id="tenant-1",
+                    agent_id="agent-1",
+                    snapshot_ref="snapshot-ref-1",
+                    status=AgentWorkingResourceStatus.ACTIVE,
+                )
             )
-        )
-        sqlite_session.commit()
-    delete = MagicMock()
+            session.commit()
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
+        sqlite_session_factory,
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+    delete_spy = mocker.spy(AgentHomeSnapshotService, "delete")
 
     AgentHomeSnapshotService.collect_retired_home_snapshot(
         tenant_id="tenant-1",
         home_snapshot_id="home-1",
     )
 
-    delete.assert_not_called()
-    rows = sqlite_session.scalars(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == "home-1")).all()
-    if snapshot_state == "active":
-        assert [row.status for row in rows] == [AgentWorkingResourceStatus.ACTIVE]
-        assert rows[0].retired_at is None
-    else:
-        assert rows == []
+    delete_spy.assert_not_called()
+    with sqlite_session_factory() as session:
+        rows = session.scalars(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == "home-1")).all()
+        if snapshot_state == "active":
+            assert [row.status for row in rows] == [AgentWorkingResourceStatus.ACTIVE]
+            assert rows[0].retired_at is None
+        else:
+            assert rows == []
 
 
 def test_home_snapshot_collection_backend_failure_propagates_and_preserves_retired_snapshot(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     snapshot = AgentHomeSnapshot(
         id="home-1",
@@ -303,15 +309,22 @@ def test_home_snapshot_collection_backend_failure_propagates_and_preserves_retir
         snapshot_ref="snapshot-ref-1",
         status=AgentWorkingResourceStatus.RETIRED,
     )
-    sqlite_session.add(snapshot)
-    sqlite_session.commit()
+    with sqlite_session_factory() as session:
+        session.add(snapshot)
+        session.commit()
     error = RuntimeError("Agent backend unavailable")
-    delete = MagicMock(side_effect=error)
+
+    class _FailingClient:
+        def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+            del snapshot_ref
+            raise error
+
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
+        sqlite_session_factory,
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(_FailingClient()))
+    delete_spy = mocker.spy(AgentHomeSnapshotService, "delete")
 
     with pytest.raises(RuntimeError) as exc_info:
         AgentHomeSnapshotService.collect_retired_home_snapshot(
@@ -320,13 +333,17 @@ def test_home_snapshot_collection_backend_failure_propagates_and_preserves_retir
         )
 
     assert exc_info.value is error
-    stored_snapshot = sqlite_session.get(AgentHomeSnapshot, snapshot.id)
-    assert stored_snapshot is not None
-    assert stored_snapshot.status is AgentWorkingResourceStatus.RETIRED
+    delete_spy.assert_called_once_with(snapshot_ref=snapshot.snapshot_ref)
+    with sqlite_session_factory() as session:
+        stored_snapshot = session.get(AgentHomeSnapshot, snapshot.id)
+        assert stored_snapshot is not None
+        assert stored_snapshot.status is AgentWorkingResourceStatus.RETIRED
 
 
 def test_home_snapshot_collection_ignores_config_references(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     snapshot = AgentHomeSnapshot(
         id="home-1",
@@ -344,28 +361,37 @@ def test_home_snapshot_collection_ignores_config_references(
         home_snapshot_id=snapshot.id,
         config_snapshot=AgentSoulConfig(),
     )
-    sqlite_session.add_all([snapshot, draft, config_snapshot])
-    sqlite_session.commit()
-    delete = MagicMock()
+    with sqlite_session_factory() as session:
+        session.add_all([snapshot, draft, config_snapshot])
+        session.commit()
+
+    class _Client:
+        def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+            del snapshot_ref
+
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
+        sqlite_session_factory,
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(_Client()))
+    delete_spy = mocker.spy(AgentHomeSnapshotService, "delete")
 
     AgentHomeSnapshotService.collect_retired_home_snapshot(
         tenant_id="tenant-1",
         home_snapshot_id=snapshot.id,
     )
 
-    delete.assert_called_once_with(snapshot_ref=snapshot.snapshot_ref)
-    assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is None
-    assert sqlite_session.get(AgentConfigDraft, draft.id) is not None
-    assert sqlite_session.get(AgentConfigSnapshot, config_snapshot.id) is not None
+    delete_spy.assert_called_once_with(snapshot_ref=snapshot.snapshot_ref)
+    with sqlite_session_factory() as session:
+        assert session.get(AgentHomeSnapshot, snapshot.id) is None
+        assert session.get(AgentConfigDraft, draft.id) is not None
+        assert session.get(AgentConfigSnapshot, config_snapshot.id) is not None
 
 
 def test_home_snapshot_collection_final_delete_failure_propagates(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     snapshot = AgentHomeSnapshot(
         id="home-1",
@@ -374,31 +400,56 @@ def test_home_snapshot_collection_final_delete_failure_propagates(
         snapshot_ref="snapshot-ref-1",
         status=AgentWorkingResourceStatus.RETIRED,
     )
-    sqlite_session.add(snapshot)
-    sqlite_session.commit()
-    sqlite_session.execute(
-        text(
-            "CREATE TRIGGER reject_home_snapshot_delete BEFORE DELETE ON agent_home_snapshots "
-            "BEGIN SELECT RAISE(ABORT, 'home snapshot delete blocked'); END"
-        )
-    )
-    sqlite_session.commit()
-    delete = MagicMock()
+    with sqlite_session_factory() as session:
+        session.add(snapshot)
+        session.commit()
+
+    def _block_home_snapshot_delete(mapper: object, connection: object, target: object) -> None:
+        del mapper, connection
+        if isinstance(target, AgentHomeSnapshot):
+            raise IntegrityError("home snapshot delete blocked", params=None, orig=Exception())
+
+    event.listen(AgentHomeSnapshot, "before_delete", _block_home_snapshot_delete)
+
+    class _Client:
+        def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+            del snapshot_ref
+
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
+        sqlite_session_factory,
     )
-    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(_Client()))
+    delete_spy = mocker.spy(AgentHomeSnapshotService, "delete")
 
-    with pytest.raises(IntegrityError, match="home snapshot delete blocked"):
-        AgentHomeSnapshotService.collect_retired_home_snapshot(
-            tenant_id="tenant-1",
-            home_snapshot_id="home-1",
-        )
+    try:
+        with pytest.raises(IntegrityError, match="home snapshot delete blocked"):
+            AgentHomeSnapshotService.collect_retired_home_snapshot(
+                tenant_id="tenant-1",
+                home_snapshot_id="home-1",
+            )
+    finally:
+        event.remove(AgentHomeSnapshot, "before_delete", _block_home_snapshot_delete)
 
-    delete.assert_called_once_with(snapshot_ref="snapshot-ref-1")
-    sqlite_session.rollback()
-    assert sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == "home-1")) is not None
+    delete_spy.assert_called_once_with(snapshot_ref="snapshot-ref-1")
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == "home-1")) is not None
+
+
+def test_home_snapshot_service_delete_delegates_to_backend_client(
+    monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    class _Client:
+        def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+            del snapshot_ref
+
+    client = _Client()
+    client_spy = mocker.spy(client, "delete_home_snapshot_sync")
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+
+    AgentHomeSnapshotService.delete(snapshot_ref="snapshot-ref-test")
+
+    client_spy.assert_called_once_with("snapshot-ref-test")
 
 
 def _apply_with_client_error(monkeypatch: pytest.MonkeyPatch, session: Session, error: Exception) -> None:
