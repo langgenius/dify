@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 import core.rag.extractor.extract_processor as processor_module
+from core.db.session_factory import get_session_maker
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -350,6 +351,7 @@ class TestExtractProcessorDatasourceRouting:
         assert docs[0].page_content == "extracted-by-NotionExtractor"
         assert factory.calls[-1][0] == "NotionExtractor"
         assert factory.calls[-1][2]["notion_access_token"] == "secret"
+        assert factory.calls[-1][2]["session_maker"] is get_session_maker()
 
     @pytest.mark.parametrize(
         ("provider", "expected"),

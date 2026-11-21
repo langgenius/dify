@@ -30,6 +30,9 @@ from models.dataset import Document as DocumentModel
 from models.enums import DataSourceType, DocumentCreatedFrom
 from tests.helpers.unit.core.datasource.factories import datasource_entity, provider_entity
 
+# Unbound, so any query or flush through it fails: for extractors that must not touch the database.
+_NO_DATABASE: sessionmaker[Session] = sessionmaker()
+
 
 def _notion_database_response(data: Mapping[str, object]) -> httpx.Response:
     """Associate database fixtures with the request required for HTTP status checks."""
@@ -159,13 +162,19 @@ def _extraction_input(document: DocumentModel) -> StoredDocumentExtractionInput:
 class TestNotionProviderCases:
     @staticmethod
     @pytest.fixture
-    def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-        """Bind a real session for Notion document metadata persistence."""
+    def database(sqlite_engine: Engine) -> Iterator[Session]:
+        """Open a session on the SQLite database the injected session maker writes to."""
 
         TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
         with Session(sqlite_engine, expire_on_commit=False) as session:
-            monkeypatch.setattr(notion_extractor_module.db, "session", session)
             yield session
+
+    @staticmethod
+    @pytest.fixture
+    def session_maker(sqlite_engine: Engine) -> sessionmaker[Session]:
+        """Session maker the extractor uses for its own last_edited_time update."""
+
+        return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
     @staticmethod
     @pytest.fixture
@@ -217,6 +226,7 @@ class TestNotionProviderCases:
                 notion_access_token="explicit-token-abc",
                 document_model=mock_document_model,
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             # Assert
@@ -248,6 +258,7 @@ class TestNotionProviderCases:
                 notion_token_loader=lambda: providers.get_stored_notion_access_token(
                     tenant_id="tenant-789", credential_id="cred-123"
                 ),
+                session_maker=_NO_DATABASE,
             )
 
             # Assert
@@ -284,6 +295,7 @@ class TestNotionProviderCases:
                 notion_token_loader=lambda: providers.get_stored_notion_access_token(
                     tenant_id="tenant-789", credential_id=None
                 ),
+                session_maker=_NO_DATABASE,
             )
 
             # Assert
@@ -318,6 +330,7 @@ class TestNotionProviderCases:
                     notion_token_loader=lambda: providers.get_stored_notion_access_token(
                         tenant_id="tenant-789", credential_id=None
                     ),
+                    session_maker=_NO_DATABASE,
                 )
             assert "Must specify `integration_token`" in str(exc_info.value)
 
@@ -341,6 +354,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         def _create_response(self, data: Mapping[str, object], status_code: int = 200) -> httpx.Response:
@@ -537,6 +551,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         def _create_database_page(
@@ -748,6 +763,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         @patch("httpx.request")
@@ -891,7 +907,9 @@ class TestNotionProviderCases:
             )
 
         @pytest.fixture
-        def extractor_page(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
+        def extractor_page(
+            self, mock_document_model: StoredDocumentExtractionInput, session_maker: sessionmaker[Session]
+        ) -> NotionExtractor:
             """Create a NotionExtractor instance for page testing."""
             return NotionExtractor(
                 notion_workspace_id="workspace-123",
@@ -901,10 +919,13 @@ class TestNotionProviderCases:
                 notion_access_token="test-token",
                 document_model=mock_document_model,
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
 
         @pytest.fixture
-        def extractor_database(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
+        def extractor_database(
+            self, mock_document_model: StoredDocumentExtractionInput, session_maker: sessionmaker[Session]
+        ) -> NotionExtractor:
             """Create a NotionExtractor instance for database testing."""
             return NotionExtractor(
                 notion_workspace_id="workspace-123",
@@ -914,6 +935,7 @@ class TestNotionProviderCases:
                 notion_access_token="test-token",
                 document_model=mock_document_model,
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
 
         @patch("httpx.request")
@@ -1012,7 +1034,11 @@ class TestNotionProviderCases:
 
         @patch("httpx.request")
         def test_extract_page_complete_workflow(
-            self, mock_request: Mock, database: Session, persisted_document: DocumentModel
+            self,
+            mock_request: Mock,
+            database: Session,
+            persisted_document: DocumentModel,
+            session_maker: sessionmaker[Session],
         ) -> None:
             """Test complete page extraction workflow."""
             # Arrange
@@ -1024,6 +1050,7 @@ class TestNotionProviderCases:
                 notion_access_token="test-token",
                 document_model=_extraction_input(persisted_document),
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
 
             # Mock last edited time request
@@ -1084,6 +1111,7 @@ class TestNotionProviderCases:
             mock_post: Mock,
             database: Session,
             persisted_document: DocumentModel,
+            session_maker: sessionmaker[Session],
         ) -> None:
             """Test complete database extraction workflow."""
             # Arrange
@@ -1095,6 +1123,7 @@ class TestNotionProviderCases:
                 notion_access_token="test-token",
                 document_model=_extraction_input(persisted_document),
                 notion_token_loader=lambda: "token",
+                session_maker=session_maker,
             )
 
             # Mock last edited time request
@@ -1146,6 +1175,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
             # Act & Assert
@@ -1172,6 +1202,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         @patch("httpx.request")
@@ -1340,6 +1371,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         def _create_block_with_rich_text(
@@ -1515,6 +1547,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         def _create_database_page_with_properties(
@@ -1714,6 +1747,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         @pytest.mark.parametrize(
@@ -1861,6 +1895,7 @@ class TestNotionProviderCases:
                 tenant_id="tenant-789",
                 notion_access_token="test-token",
                 notion_token_loader=lambda: "token",
+                session_maker=_NO_DATABASE,
             )
 
         @patch("httpx.request")

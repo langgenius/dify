@@ -8,11 +8,11 @@ from typing import Any, cast, override
 import httpx
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import update
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 
 logger = logging.getLogger(__name__)
@@ -58,9 +58,11 @@ class NotionExtractor(BaseExtractor):
         credential_id: str | None = None,
         *,
         notion_token_loader: Callable[[], str],
+        session_maker: sessionmaker[Session],
     ):
         self._notion_access_token = None
         self._document_model = document_model
+        self._session_maker = session_maker
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
@@ -354,16 +356,18 @@ class NotionExtractor(BaseExtractor):
         if data_source_info:
             data_source_info["last_edited_time"] = last_edited_time
 
-        db.session.execute(
-            update(DocumentModel)
-            .where(
-                DocumentModel.id == document_model.id,
-                DocumentModel.tenant_id == document_model.tenant_id,
-                DocumentModel.dataset_id == document_model.dataset_id,
+        # Opened only after the Notion API call above, and committed right away so the
+        # document row is not locked while the page content is fetched afterwards.
+        with self._session_maker() as session, session.begin():
+            session.execute(
+                update(DocumentModel)
+                .where(
+                    DocumentModel.id == document_model.id,
+                    DocumentModel.tenant_id == document_model.tenant_id,
+                    DocumentModel.dataset_id == document_model.dataset_id,
+                )
+                .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
             )
-            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
-        )
-        db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:
         assert self._notion_access_token is not None, "Notion access token is required"
