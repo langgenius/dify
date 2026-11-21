@@ -7,7 +7,7 @@ from typing import Any, Protocol
 from libs.url_utils import normalize_api_base_url
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.datasets.retrieval import retrieval_methods
+from services.knowledge.datasets.retrieval import DeclaredRetrievalMethods, retrieval_methods
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.resource_scope import DatasetRef
 
@@ -85,6 +85,7 @@ class DatasetApplicationService:
         service_api_url: str,
         vector_store: str | None,
         tidb_fulltext: bool,
+        declared_retrieval_methods: DeclaredRetrievalMethods | None = None,
     ) -> None:
         self._dataset_access = dataset_access
         self._operations = operations
@@ -92,6 +93,7 @@ class DatasetApplicationService:
         self._service_api_url = service_api_url
         self._vector_store = vector_store
         self._tidb_fulltext = tidb_fulltext
+        self._declared_retrieval_methods = declared_retrieval_methods
 
     def _dataset(self, context: RequestContext, dataset_id: str) -> DatasetRef:
         dataset = self._dataset_access.require_accessible(context, dataset_id)
@@ -167,5 +169,8 @@ class DatasetApplicationService:
         self, context: RequestContext, *, vector_type: str | None = None, is_mock: bool = False
     ) -> dict[str, list[str]]:
         return retrieval_methods(
-            vector_type if is_mock else self._vector_store, is_mock=is_mock, tidb_fulltext=self._tidb_fulltext
+            vector_type if is_mock else self._vector_store,
+            is_mock=is_mock,
+            tidb_fulltext=self._tidb_fulltext,
+            declared_methods=self._declared_retrieval_methods,
         )

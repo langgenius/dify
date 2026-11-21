@@ -160,3 +160,19 @@ def test_invalid_vector_store(store: str | None) -> None:
         ValueError, match=("(?:Unsupported vector db type unsupported\\.|Vector store type is not configured\\.)")
     ):
         retrieval_methods(store)
+
+
+def test_retrieval_settings_use_injected_declarations(operations: MagicMock, access: MagicMock) -> None:
+    lookup = MagicMock(return_value=["semantic_search", "full_text_search"])
+    service = DatasetApplicationService(
+        dataset_access=access,
+        operations=operations,
+        rbac_enabled=True,
+        service_api_url="",
+        vector_store="acme",
+        tidb_fulltext=False,
+        declared_retrieval_methods=lookup,
+    )
+
+    assert service.retrieval_settings(CONTEXT) == {"retrieval_method": ["semantic_search", "full_text_search"]}
+    lookup.assert_called_once_with("acme")
