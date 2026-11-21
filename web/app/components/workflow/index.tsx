@@ -723,7 +723,8 @@ export const Workflow: FC<WorkflowProps> = memo(
             if (comment) handleCommentIconClick(comment)
           }}
           onOpenChangeComplete={(open) => {
-            if (!open) handleActiveCommentClosed()
+            // A thread opened again before the close finished keeps its session.
+            if (!open && !isCommentThreadOpen) handleActiveCommentClosed()
           }}
         >
           <PopoverPortal>

@@ -797,13 +797,11 @@ export const useWorkflowComment = () => {
   // The thread finished closing, whether it was dismissed or its comment left the visible
   // list (deleted or filtered out); either way this viewing session is over.
   const handleActiveCommentClosed = useCallback(() => {
-    // Another thread opened while this one was closing; that session is not over.
-    if (workflowStore.getState().activeCommentId !== null) return
     setActiveComment(null)
     setActiveCommentLoading(false)
     setActiveCommentId(null)
     activeCommentIdRef.current = null
-  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading, workflowStore])
+  }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
 
   const handleCreateComment = useCallback(
     (mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }) => {

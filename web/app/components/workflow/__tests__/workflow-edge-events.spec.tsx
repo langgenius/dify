@@ -40,6 +40,10 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete
     >(),
+  resolveComment:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post
+    >(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -60,6 +64,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
       'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
       'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': api.resolveComment,
     }),
   }
 })
@@ -107,6 +112,7 @@ beforeEach(() => {
   api.comment.mockReset()
   api.deleteComment.mockReset().mockResolvedValue({ result: 'success' })
   api.deleteReply.mockReset().mockResolvedValue({ result: 'success' })
+  api.resolveComment.mockReset()
 })
 afterEach(async () => {
   await act(async () => cleanup())
@@ -462,12 +468,51 @@ it('switches the open thread when another comment is opened from its hover previ
     expect(element).not.toBeNull()
     return element as HTMLElement
   })
+  // The thread switches in place: it is never closed on the way to the other comment.
+  let closedOnTheWay = false
+  const observer = new MutationObserver(() => {
+    if (!document.querySelector('[role="dialog"]')) closedOnTheWay = true
+  })
+  observer.observe(document.body, { childList: true, subtree: true })
   await user.click(within(preview).getByText('Review by Bob'))
 
   await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('Review by Bob'))
-  // It stays open rather than closing as the previous thread finishes closing.
   await new Promise((resolve) => setTimeout(resolve, 300))
+  observer.disconnect()
   expect(screen.getByRole('dialog')).toHaveTextContent('Review by Bob')
+  expect(closedOnTheWay).toBe(false)
+})
+
+it('does not reopen a thread that closed because it was resolved while resolved threads are hidden', async () => {
+  const user = userEvent.setup()
+  const first = comment('user-1', 'Alice')
+  let resolved = false
+  api.comments.mockImplementation(async () => ({
+    data: [{ ...first, resolved, mention_count: 0, reply_count: 0, participants: [] }],
+  }))
+  api.comment.mockImplementation(async () => ({ ...first, resolved }))
+  api.resolveComment.mockImplementation(async () => {
+    resolved = true
+    return { id: first.id, resolved: true, resolved_at: 1, resolved_by: first.id }
+  })
+  const { store } = renderSubject({
+    collaborationEnabled: true,
+    initialStoreState: { showUserComments: true, showResolvedComments: false },
+  })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  )
+  await user.click(
+    within(await screen.findByRole('dialog')).getByRole('button', {
+      name: 'workflowComments.comments.aria.resolveComment',
+    }),
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(store.getState().activeCommentId).toBeNull())
+
+  act(() => store.getState().setShowResolvedComments(true))
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 it('closes the thread through its popover when the last comment is deleted', async () => {
