@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, replace
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -933,6 +933,13 @@ class AgentObservabilityQueries:
         }
 
     def get_statistics_summary(self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams) -> dict[str, Any]:
+        # The console sends minute-precision bounds ("YYYY-MM-DD HH:MM") and
+        # the statistics end bound is exclusive, so a message created inside
+        # the final minute of the selected end date would be dropped. Treat
+        # the end bound as inclusive of the minute it names. An end of
+        # exactly midnight therefore includes the first minute of that day.
+        if params.end is not None:
+            params = replace(params, end=params.end + timedelta(minutes=1))
         source_filter = self.resolve_source_filter(params.source)
         rows = self._load_daily_statistics(app=app, agent_id=agent_id, params=params, source_filter=source_filter)
         charts = self._build_charts(rows)
