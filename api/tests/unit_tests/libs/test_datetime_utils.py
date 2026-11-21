@@ -9,6 +9,7 @@ from libs.datetime_utils import (
     measure_time,
     naive_utc_now,
     parse_time_range,
+    to_utc_iso,
     to_utc_timestamp,
     utc_now,
 )
@@ -395,3 +396,16 @@ class TestParseTimeRange:
         assert end is not None
         assert start.tzinfo == datetime.UTC
         assert end.tzinfo == datetime.UTC
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (datetime.datetime(2026, 11, 20, 10, 0), "2026-11-20T10:00:00Z"),
+        (datetime.datetime(2026, 11, 20, 10, 0, tzinfo=datetime.UTC), "2026-11-20T10:00:00Z"),
+        (None, None),
+    ],
+    ids=["naive-utc", "aware-utc", "absent"],
+)
+def test_to_utc_iso_marks_utc_with_z(value: datetime.datetime | None, expected: str | None) -> None:
+    assert to_utc_iso(value) == expected

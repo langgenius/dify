@@ -7,7 +7,9 @@ feed a response no fixture can produce.
 
 from __future__ import annotations
 
+import copy
 import dataclasses
+import hashlib
 import json
 import re
 import time
@@ -26,7 +28,10 @@ from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, registere
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
+    FOLDER_UPLOAD_ID_SCHEMA,
     MCP_INSTRUCTIONS,
+    UPLOAD_ID_EXAMPLE,
+    UPLOAD_ID_SCHEMA,
     CallTool,
     FoundOps,
     McpCaller,
@@ -37,9 +42,11 @@ from controllers.openapi._mcp_tools import (
     run_tool,
     tool_list,
 )
+from controllers.openapi._upload import has_binary_leaf
 from controllers.openapi.app_start import START_MODES
-from controllers.openapi.auth.spec import Effect
+from controllers.openapi.auth.spec import Effect, Kind
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
+from controllers.openapi.transfers import PREPARE_UPLOAD_OP
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
@@ -50,7 +57,15 @@ from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
 from services.run_job_service import RunJobService, RunResult
+from services.skill_management_service import PublishedSkillArchive, SkillManagementService
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
+from tests.unit_tests.controllers.openapi.test_transfers import (
+    _HOST,
+    TransferWorld,
+    _RecordingFiles,
+    recording_files,
+    world,
+)
 from tests.unit_tests.services.run_job_fakes import (
     RUN_TIME_LIMIT,
     InMemoryRedis,
@@ -58,17 +73,20 @@ from tests.unit_tests.services.run_job_fakes import (
     RecordingTaskControl,
 )
 
+__all__ = ["recording_files", "world"]
+
 _PERSONAL = "dpat_x"
 _WORKSPACE = "sk-x"
 _ACCOUNT = "dfoa_x"
 _UNKNOWN_PREFIX = "zz-x"
-_STREAMING_AND_FILE = ("run.console_app.workflow", "get.run.event", "export.skill")
+_STREAMING = ("run.console_app.workflow", "get.run.event")
+_FILE_OPS = ("export.skill", "upload.console_app.file", "import.skill")
 _INTERNAL = "switch.workspace"
 _ACCOUNT_ONLY = "describe.account"
 _NEEDS_ACCOUNT_SCOPE = "invite.workspace.member"
 _START_WORKFLOW = "start.console_app.workflow"
 _LIST_APPS = "get.console_app"
-_FILE_REQUIRED = "upload.console_app.file"
+_UPLOAD = "upload.console_app.file"
 
 
 @pytest.fixture
@@ -83,15 +101,19 @@ def _ids(found: FoundOps) -> list[str]:
 
 @pytest.mark.usefixtures("in_request")
 @pytest.mark.parametrize("token", [None, _PERSONAL, _WORKSPACE, _ACCOUNT, _UNKNOWN_PREFIX])
-def test_streaming_and_file_ops_are_never_listed(token: str | None) -> None:
+def test_streams_are_never_listed(token: str | None) -> None:
     listed = callable_ops(token)
-    for op in _STREAMING_AND_FILE:
-        assert op not in listed
+
+    assert not [op for op in _STREAMING if op in listed]
+    assert not [op for op, entry in listed.items() if entry["kind"] == Kind.SSE]
 
 
 @pytest.mark.usefixtures("in_request")
-def test_ops_with_a_required_file_input_are_never_listed() -> None:
-    assert _FILE_REQUIRED not in callable_ops(None)
+def test_file_operations_are_listed() -> None:
+    listed = callable_ops(_ACCOUNT)
+
+    assert [op for op in _FILE_OPS if op in listed] == list(_FILE_OPS)
+    assert PREPARE_UPLOAD_OP in listed
 
 
 @pytest.mark.usefixtures("in_request")
@@ -159,7 +181,16 @@ def test_find_returns_at_most_twenty() -> None:
 
 
 @pytest.mark.usefixtures("in_request")
-def test_describe_returns_schema_and_examples_without_file_fields() -> None:
+def test_a_file_field_is_described_as_an_upload_id() -> None:
+    described = describe_op(_UPLOAD, token=_ACCOUNT)
+
+    assert described["input"]["properties"]["file"] == UPLOAD_ID_SCHEMA
+    assert "file" in described["input"]["required"]
+    assert described["examples"][0]["input"]["file"] == UPLOAD_ID_EXAMPLE
+
+
+@pytest.mark.usefixtures("in_request")
+def test_named_file_fields_keep_their_shape_with_upload_ids() -> None:
     before = registered_op(_START_WORKFLOW).entry
     file_names = {name for name, bind in before["bind"].items() if bind == Bind.FILE}
     assert file_names
@@ -167,16 +198,74 @@ def test_describe_returns_schema_and_examples_without_file_fields() -> None:
     described = describe_op(_START_WORKFLOW, token=_ACCOUNT)
 
     assert set(described) == {"op", "summary", "effect", "tool", "input", "examples"}
-    assert described["op"] == _START_WORKFLOW
-    assert not file_names & set(described["input"]["properties"])
-    assert not file_names & set(described["input"]["required"])
-    assert described["input"]["properties"]
-    assert described["examples"] == before["examples"]
-    assert registered_op(_START_WORKFLOW).entry["input"] == before["input"]
+    assert file_names <= set(described["input"]["properties"])
+    assert not has_binary_leaf(described["input"])
+    assert UPLOAD_ID_SCHEMA["description"] in json.dumps(described["input"])
+    for example in described["examples"]:
+        for name in file_names & set(example["input"]):
+            assert set(_string_leaves(example["input"][name])) == {UPLOAD_ID_EXAMPLE}
+
+
+_UPLOAD_IDS_BY_NAME = {
+    "type": "object",
+    "additionalProperties": {"anyOf": [UPLOAD_ID_SCHEMA, {"type": "array", "items": UPLOAD_ID_SCHEMA}]},
+}
 
 
 @pytest.mark.usefixtures("in_request")
-@pytest.mark.parametrize("op", [*_STREAMING_AND_FILE, _INTERNAL, "no.such.op"])
+def test_a_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op("import.skill", token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]
+    assert files["description"] == "The skill folder; SKILL.md at its root"
+    assert "type" not in files
+    assert "additionalProperties" not in files
+
+
+@pytest.mark.usefixtures("in_request")
+def test_an_optional_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op(_START_WORKFLOW, token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [{"anyOf": [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]}, {"type": "null"}]
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize(
+    ("op", "field", "expected"),
+    [
+        (_UPLOAD, "file", UPLOAD_ID_SCHEMA),
+        (_START_WORKFLOW, "attachments", [{"type": "array", "items": UPLOAD_ID_SCHEMA}, {"type": "null"}]),
+    ],
+)
+def test_a_single_file_or_list_field_takes_no_folder_upload_id(op: str, field: str, expected: object) -> None:
+    described = describe_op(op, token=_ACCOUNT)["input"]["properties"][field]
+
+    assert described.get("anyOf", described) == expected
+    assert FOLDER_UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("op", [_UPLOAD, _START_WORKFLOW, "import.skill"])
+def test_describe_does_not_change_the_shared_entry(op: str) -> None:
+    before = copy.deepcopy(registered_op(op).entry)
+
+    describe_op(op, token=_ACCOUNT)
+
+    assert registered_op(op).entry == before
+
+
+def _string_leaves(node: object) -> list[str]:
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, list):
+        return [leaf for item in node for leaf in _string_leaves(item)]
+    if isinstance(node, dict):
+        return [leaf for item in node.values() for leaf in _string_leaves(item)]
+    return []
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("op", [*_STREAMING, _INTERNAL, "no.such.op"])
 def test_describe_of_a_hidden_op_is_unknown(op: str) -> None:
     with pytest.raises(UnknownOp):
         describe_op(op, token=_ACCOUNT)
@@ -724,3 +813,68 @@ def test_the_instructions_say_what_to_do_when_the_workspace_list_is_empty() -> N
     assert "give the token access to the workspace" in step_one
     assert "workspace id" in step_one
     assert "Do not guess" in step_one
+
+
+# Files beside the call, through the four tools.
+
+_SKILL_ID = "11111111-1111-4111-8111-111111111111"
+_SKILL_ZIP = b"PK\x05\x06" + b"\0" * 18
+
+
+def test_a_file_result_reaches_the_agent_as_json(
+    openapi_app: Flask,
+    world: TransferWorld,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(ENABLE_SKILL=True)
+
+    def export_draft_archive(_service: SkillManagementService, **_kwargs: object) -> PublishedSkillArchive:
+        return PublishedSkillArchive(filename="skill.zip", mime_type="application/zip", payload=_SKILL_ZIP)
+
+    monkeypatch.setattr(SkillManagementService, "export_draft_archive", export_draft_archive)
+
+    with openapi_app.test_request_context(base_url=_HOST):
+        result = _run(
+            CallTool.READ,
+            {"op": "export.skill", "input": {"workspace_id": world.caller.workspace_id, "skill_id": _SKILL_ID}},
+        )
+
+    assert result.isError is False
+    file = json.loads(_text(result))["file"]
+    assert file["sha256"] == hashlib.sha256(_SKILL_ZIP).hexdigest()
+    assert world.get(file["download_url"]).data == _SKILL_ZIP
+
+
+def test_send_use_and_fetch_through_the_four_tools(
+    openapi_app: Flask, world: TransferWorld, recording_files: _RecordingFiles
+) -> None:
+    with openapi_app.test_request_context(base_url=_HOST):
+        prepared = json.loads(_text(_run(CallTool.WRITE, {"op": PREPARE_UPLOAD_OP, "input": {}})))
+    sent = world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+    with openapi_app.test_request_context(base_url=_HOST):
+        used = _run(CallTool.WRITE, {"op": _UPLOAD, "input": {"app_id": world.caller.app_id, "file": prepared["id"]}})
+
+    assert sent.status_code == 200
+    assert used.isError is False
+    assert json.loads(_text(used))["name"] == "r.pdf"
+    assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
+
+
+def test_a_refused_id_reaches_the_agent_with_its_reason(
+    openapi_app: Flask, world: TransferWorld, recording_files: _RecordingFiles
+) -> None:
+    with openapi_app.test_request_context(base_url=_HOST):
+        prepared = json.loads(_text(_run(CallTool.WRITE, {"op": PREPARE_UPLOAD_OP, "input": {}})))
+        used = _run(CallTool.WRITE, {"op": _UPLOAD, "input": {"app_id": world.caller.app_id, "file": prepared["id"]}})
+
+    assert used.isError is True
+    body = json.loads(_text(used))
+    assert body["code"] == "upload_not_received"
+    assert "no file reached this server" in body["message"]
+    assert recording_files.received == []
+
+
+def test_the_instructions_name_prepare_upload_and_the_three_times() -> None:
+    for name in (PREPARE_UPLOAD_OP, "upload_before", "download_before", "expires_at", '"folder": true'):
+        assert name in MCP_INSTRUCTIONS

@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
@@ -6,6 +7,7 @@ from uuid import UUID
 
 import pytest
 from flask import Flask
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
@@ -165,3 +167,47 @@ def test_upload_maps_other_value_errors_to_bad_request(
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error
+
+
+@dataclass(frozen=True)
+class _StoredFile:
+    id: str
+    name: str
+    size: int
+
+
+@dataclass
+class _TransactionWatchingFiles:
+    session: Session
+    in_transaction_at_upload: list[bool] = field(default_factory=list)
+
+    def upload_file(self, *, filename: str, content: bytes, mimetype: str, user: object) -> _StoredFile:
+        del mimetype, user
+        self.in_transaction_at_upload.append(self.session.in_transaction())
+        return _StoredFile(id=str(UUID(int=1)), name=filename, size=len(content))
+
+
+@dataclass(frozen=True)
+class _FilesOnly:
+    files: _TransactionWatchingFiles
+
+
+def test_the_login_read_transaction_is_ended_before_the_part_is_stored(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    from controllers.openapi import _files as module
+
+    files = _TransactionWatchingFiles(session=sqlite_session)
+    monkeypatch.setattr(module, "application_services", lambda: _FilesOnly(files=files))
+    sqlite_session.execute(text("SELECT 1"))
+    below_the_guard = unwrap(AppFileUploadApi.post, stop=lambda view: view is not AppFileUploadApi.post)
+
+    with app.test_request_context(
+        "/openapi/v1/apps/app-1/files",
+        method="POST",
+        data={"file": (BytesIO(b"hello"), "note.txt", "text/plain")},
+        content_type="multipart/form-data",
+    ):
+        below_the_guard(AppFileUploadApi(), app_id="app-1", ctx=_context(_caller(), sqlite_session))
+
+    assert files.in_transaction_at_upload == [False]

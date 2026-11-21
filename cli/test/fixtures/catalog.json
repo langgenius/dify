@@ -1968,6 +1968,29 @@
       "method": "GET",
       "path": "/openapi/v1/apps/{app_id}/jobs/{job_id}:wait",
       "summary": "Wait for a background job to finish or pause, and read its state"
+    },
+    "prepare.upload": {
+      "bind": {
+        "folder": "body"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "default": false,
+            "description": "Leave out for one file. true when the upload is a zip of a folder's contents; the server unpacks it.",
+            "title": "Folder",
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "POST",
+      "path": "/openapi/v1/transfers",
+      "summary": "Get a place to send a local file or a zipped folder, and an id to use in a file field"
     }
   }
 }

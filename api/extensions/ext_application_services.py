@@ -2,6 +2,7 @@
 
 import json
 import logging
+import secrets
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -86,6 +87,7 @@ from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.file_grant_repository import FileGrantRepository
+from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
@@ -173,6 +175,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.file_transfer import FileTransferService, TransferLimits
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -274,6 +277,7 @@ from tasks.mail_inner_task import enqueue_inner_mail
 logger = logging.getLogger(__name__)
 
 _EXTENSION_KEY = "application_services"
+_TRANSFER_TOKEN_BYTES = 32
 
 
 # TODO: Normalize EnterpriseService.WebAppAuth result/error contracts in the SDK,
@@ -388,6 +392,7 @@ class ApplicationServices:
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
     run_jobs: RunJobService
+    file_transfers: FileTransferService
     app_audio: AppAudio
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
@@ -439,6 +444,30 @@ def _build_oauth_device_service(
         external_approval_limiter=RedisExternalApprovalLimiter(redis=redis),
         settings=DifyConfigOAuthDeviceSettings(),
     )
+
+
+def _build_file_transfer_service(*, database_client: sessionmaker[Session]) -> FileTransferService:
+    return FileTransferService(
+        transfers=SQLAlchemyFileTransferRepository(session_factory=database_client),
+        blobs=storage,
+        limits=TransferLimits(
+            ttl=timedelta(seconds=dify_config.FILE_TRANSFER_TTL_SECONDS),
+            upload_link_life=timedelta(seconds=dify_config.FILE_TRANSFER_UPLOAD_LINK_SECONDS),
+            download_link_life=timedelta(seconds=dify_config.FILE_TRANSFER_DOWNLOAD_LINK_SECONDS),
+            max_bytes=dify_config.FILE_TRANSFER_MAX_BYTES,
+            max_unpacked_bytes=dify_config.FILE_TRANSFER_MAX_UNPACKED_BYTES,
+            max_unpacked_files=dify_config.FILE_TRANSFER_MAX_UNPACKED_FILES,
+            max_per_owner=dify_config.FILE_TRANSFER_MAX_PER_OWNER,
+            max_active=dify_config.FILE_TRANSFER_MAX_ACTIVE,
+            busy_retry_after=timedelta(seconds=dify_config.FILE_TRANSFER_BUSY_RETRY_AFTER_SECONDS),
+        ),
+        now=naive_utc_now,
+        new_token=_new_transfer_token,
+    )
+
+
+def _new_transfer_token() -> str:
+    return secrets.token_urlsafe(_TRANSFER_TOKEN_BYTES)
 
 
 def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
@@ -907,6 +936,7 @@ def build_application_services(
             max_waiters=dify_config.OPENAPI_JOB_MAX_WAITERS,
             run_time_limit=timedelta(seconds=dify_config.WORKFLOW_MAX_EXECUTION_TIME),
         ),
+        file_transfers=_build_file_transfer_service(database_client=database_client),
         app_audio=AppAudioRuntime(session_factory=database_client),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(

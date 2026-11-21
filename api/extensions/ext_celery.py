@@ -381,6 +381,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
             "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
         }
+    if dify_config.ENABLE_CLEAN_FILE_TRANSFERS_TASK:
+        imports.append("schedule.clean_file_transfers_task")
+        beat_schedule["clean_file_transfers_task"] = {
+            "task": "schedule.clean_file_transfers_task.clean_file_transfers_task",
+            "schedule": timedelta(minutes=dify_config.FILE_TRANSFER_CLEAN_INTERVAL_MINUTES),
+        }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {

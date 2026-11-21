@@ -1826,6 +1826,7 @@ export const zOpenApiErrorCode = z.enum([
   'credential_invalid',
   'credential_not_found',
   'credential_oauth_only',
+  'download_link_expired',
   'draft_changed',
   'draft_not_found',
   'dsl_invalid',
@@ -1882,11 +1883,20 @@ export const zOpenApiErrorCode = z.enum([
   'skills_disabled',
   'too_many_files',
   'too_many_requests',
+  'transfers_busy',
   'trigger_workflow_service_mode_unavailable',
   'unauthorized',
   'unknown',
   'unsupported_file_type',
   'unsupported_media_type',
+  'upload_already_received',
+  'upload_archive_invalid',
+  'upload_field_too_long',
+  'upload_link_expired',
+  'upload_not_a_zip',
+  'upload_not_found',
+  'upload_not_received',
+  'upload_too_large',
   'version_not_found',
   'version_not_restorable',
   'webapp_access_mode_console_only',
@@ -2763,6 +2773,65 @@ export const zToolListQuery = z.object({
   provider: z.string().nullish(),
   provider_type: zToolSource.nullish(),
   query: z.string().optional().default(''),
+})
+
+/**
+ * TransferredFile
+ */
+export const zTransferredFile = z.object({
+  download_before: z.string(),
+  download_url: z.string(),
+  expires_at: z.string(),
+  id: z.string(),
+  name: z.string(),
+  sha256: z.string(),
+  size: z.int(),
+})
+
+/**
+ * FileResultResponse
+ */
+export const zFileResultResponse = z.object({
+  file: zTransferredFile,
+})
+
+/**
+ * UploadCommands
+ */
+export const zUploadCommands = z.object({
+  powershell: z.string(),
+  sh: z.string(),
+})
+
+/**
+ * UploadPreparePayload
+ */
+export const zUploadPreparePayload = z.object({
+  folder: z.boolean().optional().default(false),
+})
+
+/**
+ * UploadPrepared
+ */
+export const zUploadPrepared = z.object({
+  expires_at: z.string(),
+  id: z.string(),
+  max_bytes: z.int(),
+  upload_before: z.string(),
+  upload_commands: zUploadCommands,
+  upload_url: z.string(),
+})
+
+/**
+ * UploadReceived
+ */
+export const zUploadReceived = z.object({
+  expires_at: z.string(),
+  id: z.string(),
+  name: z.string(),
+  next: z.string(),
+  sha256: z.string(),
+  size: z.int(),
 })
 
 /**
@@ -4202,6 +4271,31 @@ export const zGetPermittedExternalAppsByAppIdQuery = z.object({
  * Permitted external app description
  */
 export const zGetPermittedExternalAppsByAppIdResponse = zAppDescribeResponse
+
+export const zPostTransfersBody = zUploadPreparePayload
+
+/**
+ * Upload prepared
+ */
+export const zPostTransfersResponse = zUploadPrepared
+
+export const zGetTransfersByTransferIdPath = z.object({
+  transfer_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetTransfersByTransferIdResponse = z.record(z.string(), z.unknown())
+
+export const zPostTransfersByTransferIdPath = z.object({
+  transfer_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostTransfersByTransferIdResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
