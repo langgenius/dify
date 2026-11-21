@@ -1,9 +1,9 @@
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol, Self
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -29,14 +29,7 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from libs.helper import generate_text_hash
 from libs.pagination import PaginatedResult
 from machinery.context import RequestContext
-from models.dataset import (
-    ChildChunk,
-    Dataset,
-    Document,
-    DocumentSegment,
-    DocumentSegmentSummary,
-    SegmentAttachmentBinding,
-)
+from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
@@ -495,6 +488,16 @@ class VectorProbe:
     batches: list[tuple[str, ...]] = field(default_factory=list)
     summary_jobs: list[SummaryJob] = field(default_factory=list)
 
+    resolve_vector_type = staticmethod(Vector.resolve_vector_type)
+
+    def __call__(self, dataset: Dataset, *, session: Session | None, vector_type: str) -> Self:
+        """Accept only detached Qdrant requests for this workspace; return the recorder without external I/O."""
+        assert dataset.tenant_id == "workspace-1"
+        assert session is None
+        assert vector_type == "qdrant"
+        assert not self.active_transactions
+        return self
+
     def add_texts(self, documents: Sequence[IndexDocument], **_kwargs: object) -> None:
         assert not self.active_transactions, "Index I/O must not hold a DB transaction"
         self.writes += len(documents)
@@ -525,6 +528,7 @@ type IndexingProbe = tuple[DatasetSegmentApplicationService, SQLAlchemySegmentRe
 def indexing_probe(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[IndexingProbe]:
+    """Given fresh SQLite sessions, expose the real segment service and record writes outside DB transactions."""
     from services.knowledge.segments import indexing as indexing_module
     from services.knowledge.summaries import adapters as summary_module
     from tasks import regenerate_segment_summary_task as summary_task_module
@@ -544,13 +548,6 @@ def indexing_probe(
     event.listen(engine, "rollback", finish)
     probe = VectorProbe(active)
 
-    def vector(dataset: Dataset, *, session: Session | None, vector_type: str) -> VectorProbe:
-        assert dataset.tenant_id == "workspace-1"
-        assert session is None
-        assert vector_type == "qdrant"
-        assert not active
-        return probe
-
     class TokenModel:
         def get_text_embedding_num_tokens(self, texts: Sequence[str]) -> list[int]:
             assert not active
@@ -562,28 +559,8 @@ def indexing_probe(
             assert not active
             return TokenModel()
 
-    monkeypatch.setattr(indexing_module, "Vector", vector)
-    vectorize_summary = summary_module.SummaryIndexAdapter.vectorize_summary
-
-    def vectorize(
-        record: DocumentSegmentSummary,
-        segment: DocumentSegment,
-        dataset: Dataset,
-        session: Session | None = None,
-        *,
-        new_session: Callable[[], Session] | None = None,
-        vector_factory: Callable[[], Vector] | None = None,
-    ) -> None:
-        vectorize_summary(
-            record,
-            segment,
-            dataset,
-            session=session,
-            new_session=new_session or sqlite_session_factory,
-            vector_factory=vector_factory or (lambda: cast(Vector, probe)),
-        )
-
-    monkeypatch.setattr(summary_module.SummaryIndexAdapter, "vectorize_summary", staticmethod(vectorize))
+    monkeypatch.setattr(indexing_module, "Vector", probe)
+    monkeypatch.setattr(summary_module, "Vector", probe)
     monkeypatch.setattr(indexing_module.ModelManager, "for_tenant", lambda **_kwargs: ModelLookup())
     repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
     summary_redis = IndexRedisStub()

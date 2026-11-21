@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Literal
 
 import pytest
 from redis import Redis
@@ -253,16 +252,26 @@ def test_result_is_discarded_when_segment_changes_during_generation(
         assert summary_queue.tokens
 
 
-@pytest.mark.parametrize("owner", ["tenant_id", "dataset_id", "document_id"])
+@pytest.mark.parametrize(
+    ("tenant_id", "dataset_id", "document_id"),
+    [
+        pytest.param("foreign-owner", "dataset-1", "document-1", id="tenant_id"),
+        pytest.param("tenant-1", "foreign-owner", "document-1", id="dataset_id"),
+        pytest.param("tenant-1", "dataset-1", "foreign-owner", id="document_id"),
+    ],
+)
 def test_task_rejects_foreign_owner_chain(
     summary_queue: SummaryQueue,
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
-    owner: Literal["tenant_id", "dataset_id", "document_id"],
+    tenant_id: str,
+    dataset_id: str,
+    document_id: str,
 ) -> None:
+    """A delivery with one foreign owner ID must clear its token without invoking the model."""
     summary_queue.schedule(sqlite_session_factory)
     args = summary_queue.jobs[-1].copy()
-    args[owner] = "foreign-owner"
+    args.update(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
     generations: list[str] = []
 
     def generate(segment: DocumentSegment, *_args: object, **_kwargs: object) -> tuple[str, LLMUsage]:
