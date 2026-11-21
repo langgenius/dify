@@ -3,6 +3,7 @@ from collections.abc import Callable
 import pytest
 
 from core.moderation.base import ModerationAction, ModerationOutputsResult
+from core.moderation.factory import ModerationFactory
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_code_based_extension import code_based_extension
 from services.moderation_invocation_errors import ModerationUnavailableInvocationError
@@ -32,6 +33,29 @@ def make_handler(evaluator: RecordingEvaluator) -> OutputModeration:
         app_id="app-1",
         rule=ModerationRule(type="api", config={}),
         output_evaluator=evaluator,
+    )
+
+
+def make_keyword_handler(
+    *,
+    injected_evaluator: bool = False,
+    output_evaluator: Callable[[str], ModerationOutputsResult] | None = None,
+) -> OutputModeration:
+    code_based_extension.init()
+    rule = ModerationRule(
+        type="keywords",
+        config={
+            "keywords": "blocked",
+            "inputs_config": {"enabled": False, "preset_response": ""},
+            "outputs_config": {"enabled": True, "preset_response": "Refused"},
+        },
+    )
+    backend = ModerationFactory("keywords", "app-1", "tenant-1", rule.config)
+    return OutputModeration(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        rule=rule,
+        output_evaluator=output_evaluator or (backend.moderation_for_outputs if injected_evaluator else None),
     )
 
 
@@ -148,20 +172,86 @@ def test_resumed_output_preserves_the_existing_prefix(config_overrides: Callable
 
 
 def test_independent_legacy_keyword_backend_retains_replacement() -> None:
-    code_based_extension.init()
-    handler = OutputModeration(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        rule=ModerationRule(
-            type="keywords",
-            config={
-                "keywords": "blocked",
-                "inputs_config": {"enabled": False, "preset_response": ""},
-                "outputs_config": {"enabled": True, "preset_response": "Refused"},
-            },
-        ),
-    )
+    handler = make_keyword_handler()
     assert handler.moderation_completion("blocked") == ("Refused", True)
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("injected_evaluator", [False, True])
+def test_keyword_spanning_output_segment_boundary_is_rejected(
+    config_overrides: Callable[..., None], streaming: bool, injected_evaluator: bool
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5, MODERATION_NON_STREAM_SEGMENT_SIZE=5)
+    handler = make_keyword_handler(injected_evaluator=injected_evaluator)
+
+    if streaming:
+        emitted: list[str] = []
+        for token in ("xxblo", "cked-safe"):
+            text, replacement = handler.append_new_token(token)
+            emitted.append(text)
+            if replacement is not None:
+                emitted.append(replacement)
+        final, flagged = handler.moderation_completion("xxblocked-safe")
+        assert "blocked" not in "".join(emitted)
+    else:
+        final, flagged = handler.moderation_completion("xxblocked-safe")
+
+    assert (final, flagged) == ("Refused", True)
+
+
+@pytest.mark.parametrize("injected_evaluator", [False, True])
+def test_keyword_spanning_multiple_stream_buffers_is_rejected(
+    config_overrides: Callable[..., None], injected_evaluator: bool
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=2)
+    handler = make_keyword_handler(injected_evaluator=injected_evaluator)
+    released: list[str] = []
+
+    for token in ("xx", "bl", "oc", "ke", "d-safe"):
+        text, replacement = handler.append_new_token(token)
+        released.append(text)
+        if replacement is not None:
+            released.append(replacement)
+        assert "blocked" not in "".join(released)
+
+    assert handler.moderation_completion("xxblocked-safe") == ("Refused", True)
+
+
+def test_keyword_boundary_context_includes_existing_stream_prefix(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    handler = make_keyword_handler()
+
+    text, replacement = handler.append_new_token("cked-safe", prefix="xxblo")
+
+    assert text == ""
+    assert replacement == "Refused"
+    assert handler.moderation_completion("xxblocked-safe") == ("Refused", True)
+
+
+def test_keyword_override_preserves_existing_prefix_across_boundary(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator(ModerationAction.OVERRIDDEN)
+    handler = make_keyword_handler(output_evaluator=evaluator)
+
+    text, replacement = handler.append_new_token("cked-safe", prefix="xxblo")
+
+    assert text == ""
+    assert replacement == "xxmasked-"
+    assert handler.moderation_completion("xxblocked-safe") == ("xxmasked-safe", True)
+    assert evaluator.calls == ["xxblocked-", "ocked-safe"]
+
+
+def test_keyword_stream_overlap_preserves_safe_output(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    handler = make_keyword_handler()
+    output = "several safe chunks without a configured match"
+
+    for token in ("several ", "safe chunks ", "without a configured match"):
+        handler.append_new_token(token)
+
+    assert handler.moderation_completion(output) == (output, False)
 
 
 def test_empty_completion_does_not_issue_an_empty_check() -> None:
@@ -180,3 +270,11 @@ def test_a_flagged_verdict_stays_flagged_when_its_replacement_matches_the_source
         tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="api", config={}), output_evaluator=evaluate
     )
     assert handler.moderation_completion("blocked") == ("blocked", True)
+
+
+def test_keyword_non_stream_preserves_safe_output(config_overrides: Callable[..., None]) -> None:
+    config_overrides(MODERATION_NON_STREAM_SEGMENT_SIZE=5)
+    handler = make_keyword_handler()
+    output = "several safe chunks without a configured match"
+
+    assert handler.moderation_completion(output) == (output, False)
