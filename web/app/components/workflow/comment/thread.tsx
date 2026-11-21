@@ -653,7 +653,7 @@ function CommentThreadEntry({
 type UnsentReplyEntryProps = {
   reply: ThreadReply
   mentionNames: string[]
-  onRetry?: () => void
+  onRetry?: () => Promise<void> | void
   onDiscard?: () => void
 }
 
@@ -663,7 +663,9 @@ type UnsentReplyEntryProps = {
  */
 function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentReplyEntryProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
-  const failed = reply.send_state === 'failed'
+  // While a retry checks the server and sends again, the reply shows as sending.
+  const [retrying, setRetrying] = useState(false)
+  const failed = reply.send_state === 'failed' && !retrying
   return (
     <CommentThreadItem aria-busy={!failed || undefined}>
       <div className={cn(!failed && 'opacity-60')}>
@@ -683,7 +685,14 @@ function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentRep
             <button
               type="button"
               className="system-xs-medium text-text-accent hover:underline"
-              onClick={onRetry}
+              onClick={async () => {
+                setRetrying(true)
+                try {
+                  await onRetry()
+                } finally {
+                  setRetrying(false)
+                }
+              }}
             >
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </button>

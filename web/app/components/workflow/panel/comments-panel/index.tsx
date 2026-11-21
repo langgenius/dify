@@ -18,7 +18,6 @@ import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
 import {
   editorAppIdAtom,
@@ -74,10 +73,7 @@ const CommentsPanel = () => {
   // Resolving leaves the selection alone; the user may have opened another thread since.
   const handleResolve = (comment: WorkflowCommentBasic) => {
     if (comment.resolved || !appId) return
-    resolveComment.mutate(
-      { params: { app_id: appId, comment_id: comment.id } },
-      { onSuccess: () => collaborationManager.emitCommentsUpdate(appId) },
-    )
+    resolveComment.mutate({ params: { app_id: appId, comment_id: comment.id } })
   }
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments

@@ -400,4 +400,158 @@ describe('WorkflowCommentLayer', () => {
     expect(retryComposer).toHaveValue('Not created')
     expect(store.getState().pendingComment).not.toBeNull()
   })
+
+  it('writes a reply sent from one thread into that thread after switching to another', async () => {
+    setServer(listItem('comment-1', 'First thread'), listItem('comment-2', 'Second thread'))
+    let finishSend!: () => void
+    api.reply.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishSend = () => resolve(saveReplyOnServer('For the first'))
+        }),
+    )
+    const { queryClient } = renderLayer()
+    const user = userEvent.setup()
+    const markers = await screen.findAllByRole('button', {
+      name: `workflow.keyboard.openComment:{"name":"${author.name}"}`,
+    })
+    await user.click(markers[0]!)
+    await screen.findByRole('dialog', { name: 'workflowComments.comments.panelTitle' })
+    await sendReply(user, 'For the first')
+    await user.click(
+      screen.getByRole('button', { name: 'workflowComments.comments.aria.nextComment' }),
+    )
+    await screen.findByText('Second thread', { selector: 'p, div, span' })
+
+    await act(async () => finishSend())
+    const repliesOf = (commentId: string) =>
+      queryClient
+        .getQueryData(
+          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+            input: { params: { app_id: 'app-1', comment_id: commentId } },
+          }),
+        )
+        ?.replies.map((reply) => reply.content)
+    await waitFor(() => expect(repliesOf('comment-1')).toContain('For the first'))
+    expect(repliesOf('comment-2') ?? []).not.toContain('For the first')
+  })
+
+  it('reconciles once after concurrent sends settle, keeping both replies', async () => {
+    const finishers: Array<() => void> = []
+    api.reply.mockImplementation(
+      ({ body }: { body: { content: string } }) =>
+        new Promise((resolve) => {
+          finishers.push(() =>
+            resolve(saveReplyOnServer(body.content, `reply-${finishers.length}`)),
+          )
+        }),
+    )
+    renderLayer()
+    const { user, thread } = await openThread()
+    await sendReply(user, 'One')
+    await sendReply(user, 'Two')
+    const listFetches = api.comments.mock.calls.length
+
+    await act(async () => finishers[0]!())
+    await act(async () => finishers[1]!())
+
+    await waitFor(() => expect(api.comments.mock.calls.length).toBeGreaterThan(listFetches))
+    await waitFor(() => {
+      expect(within(thread).getAllByText('One')).toHaveLength(1)
+      expect(within(thread).getAllByText('Two')).toHaveLength(1)
+    })
+  })
+
+  it('sends a failed reply again once however often retry is pressed', async () => {
+    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    renderLayer()
+    const { user, thread } = await openThread()
+    await sendReply(user, 'Once')
+    const retry = await within(thread).findByRole('button', { name: 'common.operation.retry' })
+
+    api.reply.mockImplementation(async () => saveReplyOnServer('Once'))
+    await user.dblClick(retry)
+
+    await waitFor(() =>
+      expect(within(thread).queryByText('workflowComments.comments.status.notSent')).toBeNull(),
+    )
+    expect(api.reply).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps a new reply’s failure when an older reply has the same text', async () => {
+    saveReplyOnServer('OK', 'reply-old')
+    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    renderLayer()
+    const { user, thread } = await openThread()
+    await within(thread).findByText('OK')
+
+    await sendReply(user, 'OK')
+
+    expect(
+      await within(thread).findByText('workflowComments.comments.status.notSent'),
+    ).toBeVisible()
+    expect(within(thread).getAllByText('OK')).toHaveLength(2)
+  })
+
+  it('tells collaborators about a resolve even after its thread has closed', async () => {
+    api.resolve.mockImplementation(async ({ params }: { params: { comment_id: string } }) => {
+      server.list = server.list.map((item) =>
+        item.id === params.comment_id ? { ...item, resolved: true } : item,
+      )
+      return { id: params.comment_id, resolved: true, resolved_at: 5, resolved_by: author.id }
+    })
+    renderLayer()
+    const { user, thread } = await openThread()
+
+    await user.click(
+      within(thread).getByRole('button', { name: 'workflowComments.comments.aria.resolveComment' }),
+    )
+
+    // Resolved comments are hidden, so the thread closes.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'workflowComments.comments.panelTitle' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(collaboration.emit).toHaveBeenCalledWith('app-1')
+  })
+
+  it('follows every pointer move while a draft comment is dragged', async () => {
+    const { store } = renderLayer()
+    await screen.findByRole('button', { name: /workflow.keyboard.openComment/ })
+    act(() =>
+      store.setState({ pendingComment: { pageX: 10, pageY: 10, elementX: 10, elementY: 10 } }),
+    )
+    const handle = await screen.findByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+
+    act(() => {
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          clientX: 0,
+          clientY: 0,
+          pointerId: 1,
+        }),
+      )
+    })
+    for (const x of [10, 20, 30]) {
+      act(() => {
+        window.dispatchEvent(
+          new PointerEvent('pointermove', { clientX: x, clientY: 0, pointerId: 1 }),
+        )
+      })
+      expect(store.getState().pendingComment?.elementX).toBe(10 + x)
+    }
+  })
+
+  it('keeps showing the comment when the thread’s first load fails', async () => {
+    api.comment.mockRejectedValue(new Error('Network error'))
+    renderLayer()
+    const { thread } = await openThread()
+
+    await waitFor(() => expect(api.comment).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(within(thread).getByText('First thread')).toBeVisible()
+  })
 })

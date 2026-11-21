@@ -1212,7 +1212,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   post: {
                     // Resolving shows on the comment at once and is put back if it fails. The
                     // list, which decides whether the comment stays on the canvas, changes only
-                    // once the server has it. Comments reconcile when the last write settles.
+                    // once the server has it.
                     mutationOptions: {
                       onMutate: async ({ params }, context) => {
                         const detailKey =
@@ -1263,24 +1263,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                                 }
                               : list,
                         )
-                      },
-                      onSettled: (_data, _error, { params }, _result, context) => {
-                        const comments = consoleQuery.apps.byAppId.workflow.comments
-                        if (
-                          context.client.isMutating({
-                            mutationKey: comments.key({ type: 'mutation' }),
-                          }) > 1
-                        )
-                          return
-                        const input = { params: { app_id: params.app_id } }
-                        return Promise.all([
-                          context.client.invalidateQueries({
-                            queryKey: comments.get.key({ input }),
-                          }),
-                          context.client.invalidateQueries({
-                            queryKey: comments.byCommentId.get.key({ input }),
-                          }),
-                        ])
                       },
                     },
                   },
