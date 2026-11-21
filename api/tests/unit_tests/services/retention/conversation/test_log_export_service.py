@@ -78,7 +78,21 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
 
     output = StringIO(newline="")
     assert export.write_csv(context, app.id, filters=filters, output=output) == counts.message_count
-    first, second = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
+    reader = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
+    assert reader.fieldnames == [
+        "app_id",
+        "app_type",
+        "end_user_id",
+        "account_id",
+        "account_name",
+        "message_id",
+        "created_at",
+        "user_input",
+        "app_response",
+        "feedback_rating",
+        "feedback_content",
+    ]
+    first, second = reader
     assert first["app_type"] == "Text Generator"
     assert first["account_id"] == account.id
     assert first["message_id"] == "generation-1"
@@ -86,6 +100,33 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
     assert first["app_response"] == "Generated result"
     assert second["message_id"] == "generation-2"
     assert second["user_input"] == "Legacy prompt"
+
+
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
+def test_chat_csv_header_includes_conversation_and_message_ids_on_an_empty_export(
+    sqlite_session_factory: sessionmaker[Session], mode: AppMode
+) -> None:
+    account = make_account(timezone="UTC")
+    app = make_app(mode=mode)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([account, app])
+    context = RequestContext(request_id="test", trace_id=None, account_id=account.id, active_workspace_id=app.tenant_id)
+    export = ConversationLogExportService(
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        tasks=Mock(),
+        dispatch=Mock(),
+        store_csv=Mock(),
+        open_csv=Mock(),
+    )
+    output = StringIO(newline="")
+    filters = ConsoleConversationLogFilters(
+        keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at"
+    )
+
+    assert export.write_csv(context, app.id, filters=filters, output=output) == 0
+    (header,) = csv.reader(StringIO(output.getvalue().removeprefix("\ufeff")))
+    assert {"conversation_id", "message_id"} <= set(header)
+    assert {"agent_id", "run_id", "status", "trigger_by", "source"}.isdisjoint(header)
 
 
 @pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])
@@ -277,7 +318,6 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         "account_id",
         "account_name",
         "conversation_id",
-        "run_id",
         "message_id",
         "created_at",
         "user_input",
@@ -285,9 +325,6 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         "feedback_rating",
         "feedback_content",
         "status",
-        "trigger_by",
-        "source",
-        "agent_id",
     ]
     first, second, account_row = list(reader)
     assert [first["message_id"], second["message_id"], account_row["message_id"]] == [

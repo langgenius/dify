@@ -26,11 +26,21 @@ from services.retention.log_export_task import (
     save_and_dispatch_log_export_task,
 )
 
-_LOG_CSV_APP_TYPES = {
-    "chat": "Chatbot",
-    "advanced-chat": "Chatflow",
-    "agent-chat": "Agent",
-    "completion": "Text Generator",
+_LOG_CSV_IDENTITY_COLUMNS = ("app_id", "app_type", "end_user_id", "account_id", "account_name")
+_LOG_CSV_MESSAGE_COLUMNS = (
+    "message_id",
+    "created_at",
+    "user_input",
+    "app_response",
+    "feedback_rating",
+    "feedback_content",
+)
+_CHAT_LOG_CSV_COLUMNS = (*_LOG_CSV_IDENTITY_COLUMNS, "conversation_id", *_LOG_CSV_MESSAGE_COLUMNS)
+_LOG_CSV_LAYOUTS = {
+    "chat": ("Chatbot", _CHAT_LOG_CSV_COLUMNS),
+    "advanced-chat": ("Chatflow", (*_CHAT_LOG_CSV_COLUMNS, "status")),
+    "agent-chat": ("Agent", _CHAT_LOG_CSV_COLUMNS),
+    "completion": ("Text Generator", (*_LOG_CSV_IDENTITY_COLUMNS, *_LOG_CSV_MESSAGE_COLUMNS)),
 }
 
 
@@ -85,7 +95,7 @@ class ConversationLogExportService:
         Require time filters converted from the caller's timezone to UTC. Propagate a
         publication failure and mark the task failed if it is still pending.
         """
-        if scope.app_mode not in _LOG_CSV_APP_TYPES:
+        if scope.app_mode not in _LOG_CSV_LAYOUTS:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
         task = ConversationLogExportTask.pending(
             tenant_id=scope.tenant_id,
@@ -133,15 +143,16 @@ class ConversationLogExportService:
         filters: ConsoleConversationLogFilters,
         output: TextIO,
     ) -> int:
-        """Write the app's filtered logs to a UTF-8 text stream and return its data row count.
+        """Write the app's filtered logs with its mode's columns and return the data row count.
 
         Require an admitted caller and a writable stream opened with newline="". The caller
         owns the stream and publishes it only after success, since a failure may leave partial output.
         """
         scope = self.get_scope(context, app_id)
-        app_type = _LOG_CSV_APP_TYPES.get(scope.app_mode)
-        if app_type is None:
+        layout = _LOG_CSV_LAYOUTS.get(scope.app_mode)
+        if layout is None:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
+        app_type, columns = layout
 
         rows = self._conversations.iter_console_log_export_rows(scope=scope, filters=filters)
         return write_log_export_csv(
@@ -166,4 +177,5 @@ class ConversationLogExportService:
                 }
                 for row in rows
             ),
+            columns=columns,
         )

@@ -9,6 +9,20 @@ from services.retention.log_export_csv import write_log_export_csv
 from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 
+_LOG_CSV_COLUMNS = (
+    "app_id",
+    "app_type",
+    "end_user_id",
+    "account_id",
+    "account_name",
+    "run_id",
+    "created_at",
+    "user_input",
+    "app_response",
+    "status",
+    "trigger_by",
+)
+
 
 class WorkflowLogCsvWriter:
     """Resolve the app and write one CSV row per run matching the submitted filters."""
@@ -19,7 +33,7 @@ class WorkflowLogCsvWriter:
     def write_csv(
         self, context: RequestContext, app_id: str, *, filters: WorkflowLogExportFilters, output: TextIO
     ) -> int:
-        """Require a live Workflow app in the caller's workspace and an open text stream."""
+        """Write Workflow-run columns for an admitted Workflow app and return the data row count."""
         scope = self._logs.get_log_export_scope(context, app_id)
         rows = self._logs.iter_log_export_rows(scope=scope, filters=filters)
         return write_log_export_csv(
@@ -40,4 +54,5 @@ class WorkflowLogCsvWriter:
                 }
                 for row in rows
             ),
+            columns=_LOG_CSV_COLUMNS,
         )

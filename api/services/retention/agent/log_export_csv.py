@@ -9,6 +9,22 @@ from machinery.context import RequestContext
 from services.agent.observability_contracts import AgentLogExportFilters, AgentObservability
 from services.retention.log_export_csv import write_log_export_csv
 
+_LOG_CSV_COLUMNS = (
+    "app_type",
+    "end_user_id",
+    "account_id",
+    "conversation_id",
+    "message_id",
+    "created_at",
+    "user_input",
+    "app_response",
+    "feedback_rating",
+    "feedback_content",
+    "status",
+    "source",
+    "agent_id",
+)
+
 
 class AgentLogCsvWriter:
     """Write one row per matching WebApp message or Workflow Agent execution."""
@@ -20,7 +36,7 @@ class AgentLogCsvWriter:
     def write_csv(
         self, context: RequestContext, agent_id: str, *, filters: AgentLogExportFilters, output: TextIO
     ) -> int:
-        """Write rows for an admitted Agent to an open UTF-8 text stream and return the row count.
+        """Write Agent-specific columns and rows for an admitted Agent and return the row count.
 
         The caller owns the stream and publishes it only on success, since an error
         may leave partial output.
@@ -46,4 +62,5 @@ class AgentLogCsvWriter:
                     }
                     for row in rows
                 ),
+                columns=_LOG_CSV_COLUMNS,
             )

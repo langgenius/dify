@@ -351,7 +351,21 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     assert (
         task.storage_key == f"workflow-log-exports/{export_client.tenant_id}/{export_client.app_id}/{task.task_id}.csv"
     )
-    (row,) = csv.DictReader(StringIO(export_client.files[task.storage_key]))
+    reader = csv.DictReader(StringIO(export_client.files[task.storage_key].removeprefix("\ufeff")))
+    assert reader.fieldnames == [
+        "app_id",
+        "app_type",
+        "end_user_id",
+        "account_id",
+        "account_name",
+        "run_id",
+        "created_at",
+        "user_input",
+        "app_response",
+        "status",
+        "trigger_by",
+    ]
+    (row,) = reader
     assert (row["app_type"], row["run_id"], row["status"], row["trigger_by"]) == (
         "Workflow",
         export_client.run_id,

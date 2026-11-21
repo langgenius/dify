@@ -598,15 +598,28 @@ class TestAgentObservabilityQueriesCases:
         output = StringIO(newline="")
         assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 3
         assert output.getvalue().startswith("\ufeff")
-        rows = {row["message_id"]: row for row in csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))}
+        reader = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
+        assert reader.fieldnames == [
+            "app_type",
+            "end_user_id",
+            "account_id",
+            "conversation_id",
+            "message_id",
+            "created_at",
+            "user_input",
+            "app_response",
+            "feedback_rating",
+            "feedback_content",
+            "status",
+            "source",
+            "agent_id",
+        ]
+        rows = {row["message_id"]: row for row in reader}
 
         assert rows.keys() == {message.id, execution.id, account_execution.id}
         assert rows[message.id]["source"] == "WebApp"
         assert rows[execution.id]["source"] == rows[account_execution.id]["source"] == "Workflow"
-        assert all(
-            row["agent_id"] == agent.id and row["app_id"] == "" and row["app_type"] == "New Agent"
-            for row in rows.values()
-        )
+        assert all(row["agent_id"] == agent.id and row["app_type"] == "New Agent" for row in rows.values())
         webapp = rows[message.id]
         assert webapp["end_user_id"] == "customer-001"
         assert webapp["message_id"] == message.id
