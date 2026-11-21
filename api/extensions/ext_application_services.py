@@ -726,6 +726,7 @@ def build_application_services(
             dispatch=partial(dispatch_log_export, export_kind="agent"),
             store_csv=store_log_export_csv,
             write_csv=AgentLogCsvWriter(logs=agent_observability).write_csv,
+            open_csv=open_log_export_csv,
         ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,

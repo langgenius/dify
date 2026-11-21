@@ -18,7 +18,7 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
-from constants import HEADER_NAME_CSRF_TOKEN
+from constants import COOKIE_NAME_ACCESS_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
 from controllers.console.agent.roster import (
@@ -27,6 +27,7 @@ from controllers.console.agent.roster import (
     AgentInviteOptionsApi,
     AgentLogEndUserOptionsApi,
     AgentLogExportApi,
+    AgentLogExportFileApi,
     AgentLogExportLatestApi,
     AgentLogExportPreviewApi,
     AgentLogExportTaskApi,
@@ -44,7 +45,8 @@ from events.app_event import app_was_updated
 from extensions.ext_application_services import build_application_services
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
-from libs.datetime_utils import naive_utc_now
+from extensions.storage.storage_type import StorageType
+from libs.datetime_utils import naive_utc_now, utc_now
 from libs.external_api import ExternalApi
 from libs.passport import PassportService
 from libs.token import _real_cookie_name, generate_csrf_token
@@ -165,6 +167,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentLogExportApi, "/agent/<uuid:agent_id>/log-exports")
         api.add_resource(AgentLogExportLatestApi, "/agent/<uuid:agent_id>/log-exports/latest")
         api.add_resource(AgentLogExportTaskApi, "/agent/<uuid:agent_id>/log-exports/<uuid:task_id>")
+        api.add_resource(AgentLogExportFileApi, "/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/file")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
@@ -514,6 +517,82 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
     assert expired.status_code == HTTPStatus.NOT_FOUND
     assert expired.json["code"] == "agent_log_export_task_not_found"
     assert harness.client.get(f"{path}/latest", headers=harness.headers).json == {"task": None}
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY])
+def test_agent_log_export_file_downloads_from_a_browser_session(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, edition: DeploymentEdition
+) -> None:
+    agent_id, _ = harness.create_agent()
+    task = AgentLogExportTask.pending(
+        tenant_id=harness.tenant_id,
+        app_id=agent_id,
+        requested_by=harness.account_id,
+        filters=AgentLogExportFilters(sources=(), end_user_ids=(), start=None, end=None),
+    )
+    task_key = f"agent_log_export:{harness.tenant_id}:{agent_id}:{task.task_id}"
+    cache = {task_key: task.model_dump_json()}
+    monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: cache.get(key))
+    monkeypatch.setattr(roster_controller, "is_cloud_edition_billing_paid_plan", lambda _tenant_id: True)
+    storage = Mock()
+    storage.exists.return_value = True
+    url = "https://storage.example.test/agent-logs.csv?signature=signed"
+    storage.generate_presigned_url.return_value = url
+    payload = b"\xef\xbb\xbfagent_id,message_id\r\nagent,message\r\n"
+    storage.load.return_value = (chunk for chunk in (payload[:16], payload[16:]))
+    monkeypatch.setattr(log_export_adapters, "storage", storage)
+    path = f"/console/api/agent/{agent_id}/log-exports/{task.task_id}/file"
+    browser = harness.client.application.test_client()
+
+    with config_overrides_context(DEPLOYMENT_EDITION=edition, STORAGE_TYPE=StorageType.S3):
+        assert browser.get(path).status_code == HTTPStatus.UNAUTHORIZED
+        browser.set_cookie(
+            _real_cookie_name(COOKIE_NAME_ACCESS_TOKEN), harness.headers["Authorization"].removeprefix("Bearer ")
+        )
+        assert browser.get(path.removesuffix("/file")).status_code == HTTPStatus.UNAUTHORIZED
+        pending = browser.get(path)
+        assert (pending.status_code, pending.json["code"]) == (
+            HTTPStatus.CONFLICT,
+            "agent_log_export_task_not_ready",
+        )
+        storage.exists.assert_not_called()
+        storage.load.assert_not_called()
+
+        storage_key = f"agent-log-exports/{harness.tenant_id}/{agent_id}/{task.task_id}.csv"
+        cache[task_key] = task.model_copy(
+            update={
+                "status": LogExportStatus.READY,
+                "storage_key": storage_key,
+                "expires_at": utc_now() + timedelta(minutes=2),
+            }
+        ).model_dump_json()
+        filename = f"agent-logs-{task.task_id}.csv"
+        with browser.get(path) as response:
+            assert response.headers["Cache-Control"] == "no-store"
+            if edition == DeploymentEdition.CLOUD:
+                assert response.status_code == HTTPStatus.FOUND
+                assert response.headers["Location"] == url
+                expires_in = storage.generate_presigned_url.call_args.kwargs["expires_in"]
+                assert 0 < expires_in <= 120
+                storage.generate_presigned_url.assert_called_once_with(
+                    storage_key,
+                    expires_in=expires_in,
+                    content_type="text/csv; charset=utf-8",
+                    download_filename=filename,
+                )
+                storage.load.assert_not_called()
+            else:
+                assert response.status_code == HTTPStatus.OK
+                assert response.mimetype == "text/csv"
+                assert response.headers["Content-Disposition"] == f"attachment; filename={filename}"
+                assert response.data == payload
+                storage.load.assert_called_once_with(storage_key, stream=True)
+                storage.generate_presigned_url.assert_not_called()
+
+        storage.exists.return_value = False
+        storage.load.side_effect = FileNotFoundError
+        missing = browser.get(path)
+        assert (missing.status_code, missing.json["code"]) == (HTTPStatus.NOT_FOUND, "agent_log_export_file_not_found")
 
 
 def test_unpublished_stored_enabled_state_is_hidden_and_can_be_disabled(harness: Harness) -> None:

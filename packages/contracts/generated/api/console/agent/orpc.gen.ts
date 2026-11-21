@@ -7,7 +7,9 @@ import {
   zAgentBuildSandboxNotFoundError,
   zAgentHomeSnapshotCreateFailedError,
   zAgentHomeSnapshotTooLargeError,
+  zAgentLogExportFileNotFoundError,
   zAgentLogExportTaskNotFoundError,
+  zAgentLogExportTaskNotReadyError,
   zAgentModelNotConfiguredError,
   zAgentNameConflictError,
   zAgentNotFoundError,
@@ -112,6 +114,8 @@ import {
   zGetAgentByAgentIdConfigSkillsPath,
   zGetAgentByAgentIdConfigSkillsQuery,
   zGetAgentByAgentIdConfigSkillsResponse,
+  zGetAgentByAgentIdLogExportsByTaskIdFilePath,
+  zGetAgentByAgentIdLogExportsByTaskIdFileResponse,
   zGetAgentByAgentIdLogExportsByTaskIdPath,
   zGetAgentByAgentIdLogExportsByTaskIdResponse,
   zGetAgentByAgentIdLogExportsLatestPath,
@@ -1197,11 +1201,41 @@ export const preview3 = {
 }
 
 /**
+ * Authorize the Agent and its ready export before redirecting or streaming the CSV
+ *
+ * Download a completed Agent log CSV from object storage or the Console API
+ */
+export const get21 = oc
+  .route({
+    description: 'Download a completed Agent log CSV from object storage or the Console API',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdLogExportsByTaskIdFile',
+    path: '/agent/{agent_id}/log-exports/{task_id}/file',
+    summary: 'Authorize the Agent and its ready export before redirecting or streaming the CSV',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdLogExportsByTaskIdFilePath }))
+  .output(zGetAgentByAgentIdLogExportsByTaskIdFileResponse)
+  .errors({
+    agent_log_export_file_not_found: { status: 404, data: zAgentLogExportFileNotFoundError },
+    agent_log_export_task_not_found: { status: 404, data: zAgentLogExportTaskNotFoundError },
+    agent_log_export_task_not_ready: { status: 409, data: zAgentLogExportTaskNotReadyError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
+
+export const file = {
+  get: get21,
+}
+
+/**
  * Return the state of a live task scoped to the admitted workspace and Agent
  *
  * Get the current status of an Agent log export task
  */
-export const get21 = oc
+export const get22 = oc
   .route({
     description: 'Get the current status of an Agent log export task',
     inputStructure: 'detailed',
@@ -1221,7 +1255,8 @@ export const get21 = oc
   })
 
 export const byTaskId2 = {
-  get: get21,
+  get: get22,
+  file,
 }
 
 /**
@@ -1264,7 +1299,7 @@ export const logExports = {
 /**
  * Return the admitted Agent's available log sources
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1278,13 +1313,13 @@ export const get22 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logSources = {
-  get: get22,
+  get: get23,
 }
 
 /**
  * Return matching end users with visible logs in the admitted Agent's WebApp or Workflow sources
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1304,13 +1339,13 @@ export const get23 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const identityOptions = {
-  get: get23,
+  get: get24,
 }
 
 /**
  * Return the admitted Agent's messages for a conversation
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1329,7 +1364,7 @@ export const get24 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const messages = {
-  get: get24,
+  get: get25,
 }
 
 export const byConversationId = {
@@ -1339,7 +1374,7 @@ export const byConversationId = {
 /**
  * Return the admitted Agent's conversation logs
  */
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1355,7 +1390,7 @@ export const get25 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const logs = {
-  get: get25,
+  get: get26,
   identityOptions,
   byConversationId,
 }
@@ -1363,7 +1398,7 @@ export const logs = {
 /**
  * Get Agent App message details by ID
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     description: 'Get Agent App message details by ID',
     inputStructure: 'detailed',
@@ -1380,7 +1415,7 @@ export const get26 = oc
   })
 
 export const byMessageId2 = {
-  get: get26,
+  get: get27,
 }
 
 export const messages2 = {
@@ -1412,7 +1447,7 @@ export const publish = {
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     description: "List workflow apps that reference this Agent App's bound Agent (read-only)",
     inputStructure: 'detailed',
@@ -1426,7 +1461,7 @@ export const get27 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const referencingWorkflows = {
-  get: get27,
+  get: get28,
 }
 
 /**
@@ -1463,7 +1498,7 @@ export const download4 = {
 /**
  * Read a text/binary preview file in an Agent App conversation sandbox
  */
-export const get28 = oc
+export const get29 = oc
   .route({
     description: 'Read a text/binary preview file in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -1487,13 +1522,13 @@ export const get28 = oc
   })
 
 export const read = {
-  get: get28,
+  get: get29,
 }
 
 /**
  * List a directory in an Agent App conversation sandbox
  */
-export const get29 = oc
+export const get30 = oc
   .route({
     description: 'List a directory in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -1517,7 +1552,7 @@ export const get29 = oc
   })
 
 export const files3 = {
-  get: get29,
+  get: get30,
   download: download4,
   read,
 }
@@ -1525,7 +1560,7 @@ export const files3 = {
 /**
  * Get basic information for an Agent App conversation sandbox
  */
-export const get30 = oc
+export const get31 = oc
   .route({
     description: 'Get basic information for an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -1542,14 +1577,14 @@ export const get30 = oc
   })
 
 export const sandbox = {
-  get: get30,
+  get: get31,
   files: files3,
 }
 
 /**
  * Return Agent monitoring data using the admitted account's timezone
  */
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1568,7 +1603,7 @@ export const get31 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const summary = {
-  get: get31,
+  get: get32,
 }
 
 export const statistics = {
@@ -1578,7 +1613,7 @@ export const statistics = {
 /**
  * Get available TTS voices for an Agent and language
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description: 'Get available TTS voices for an Agent and language',
     inputStructure: 'detailed',
@@ -1603,7 +1638,7 @@ export const get32 = oc
   })
 
 export const voices = {
-  get: get32,
+  get: get33,
 }
 
 /**
@@ -1643,7 +1678,7 @@ export const textToAudio = {
   voices,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1674,11 +1709,11 @@ export const post20 = oc
   })
 
 export const trace = {
-  get: get33,
+  get: get34,
   post: post20,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1699,7 +1734,7 @@ export const get34 = oc
   })
 
 export const traceCapabilities = {
-  get: get34,
+  get: get35,
 }
 
 export const delete5 = oc
@@ -1725,7 +1760,7 @@ export const delete5 = oc
     unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
   })
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1807,7 +1842,7 @@ export const post21 = oc
 
 export const traceConfig = {
   delete: delete5,
-  get: get35,
+  get: get36,
   patch,
   post: post21,
 }
@@ -1844,7 +1879,7 @@ export const retry = {
   post: post22,
 }
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1865,7 +1900,7 @@ export const get36 = oc
   })
 
 export const byMessageId3 = {
-  get: get36,
+  get: get37,
   retry,
 }
 
@@ -1892,7 +1927,7 @@ export const restore = {
   post: post23,
 }
 
-export const get37 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1908,11 +1943,11 @@ export const get37 = oc
   })
 
 export const byVersionId = {
-  get: get37,
+  get: get38,
   restore,
 }
 
-export const get38 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1925,7 +1960,7 @@ export const get38 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const versions = {
-  get: get38,
+  get: get39,
   byVersionId,
 }
 
@@ -1949,7 +1984,7 @@ export const delete6 = oc
 /**
  * Return the admitted Agent's detail and its Build conversation
  */
-export const get39 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1983,7 +2018,7 @@ export const put3 = oc
 
 export const byAgentId = {
   delete: delete6,
-  get: get39,
+  get: get40,
   put: put3,
   apiAccess,
   apiEnable,
@@ -2014,7 +2049,7 @@ export const byAgentId = {
   versions,
 }
 
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2043,7 +2078,7 @@ export const post24 = oc
   })
 
 export const agent = {
-  get: get40,
+  get: get41,
   post: post24,
   inviteOptions,
   byAgentId,

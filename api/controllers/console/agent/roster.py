@@ -2,7 +2,7 @@ from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
-from flask import abort, request
+from flask import Response, abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -41,6 +42,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
@@ -122,7 +124,12 @@ from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
-from services.retention.log_export_task import LogExportStatus, LogExportTaskNotFoundError
+from services.retention.log_export_task import (
+    LogExportFileNotFoundError,
+    LogExportStatus,
+    LogExportTaskNotFoundError,
+    LogExportTaskNotReadyError,
+)
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -358,6 +365,18 @@ class AgentLogExportTaskNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class AgentLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "agent_log_export_task_not_ready"
+    description = "The Agent log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class AgentLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "agent_log_export_file_not_found"
+    description = "Agent log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AgentAppPartial(GenericAppPartial):
     permission_keys: list[str]
     app_id: str | None = None
@@ -484,6 +503,7 @@ register_response_schema_models(
     AgentLogExportTaskResponse,
     AgentLogExportStatusResponse,
     AgentLogExportLatestResponse,
+    BinaryFileResponse,
     AgentLogMessageListResponse,
     AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
@@ -1224,6 +1244,47 @@ class AgentLogExportTaskApi(Resource):
         except LogExportTaskNotFoundError as exc:
             raise AgentLogExportTaskNotFoundHTTPError() from exc
         return dump_response(AgentLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/file")
+class AgentLogExportFileApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentLogExportTaskNotFoundHTTPError,
+        AgentLogExportTaskNotReadyHTTPError,
+        AgentLogExportFileNotFoundHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc("download_agent_log_export")
+    @console_ns.doc(description="Download a completed Agent log CSV from object storage or the Console API")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Export task ID"})
+    @console_ns.produces(["text/csv"])
+    @console_ns.response(HTTPStatus.OK, "CSV attachment", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.FOUND,
+        "Redirect to a pre-signed CSV download URL",
+        headers={"Location": {"description": "Pre-signed object storage URL", "type": "string"}},
+    )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID, task_id: UUID) -> Response:
+        """Authorize the Agent and its ready export before redirecting or streaming the CSV."""
+        _require_agent_log_export_access(context)
+        filename = f"agent-logs-{task_id}.csv"
+        try:
+            download = application_services().agent_log_exports.download_csv(
+                context, str(agent_id), task_id=str(task_id), filename=filename
+            )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except LogExportTaskNotFoundError as exc:
+            raise AgentLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotReadyError as exc:
+            raise AgentLogExportTaskNotReadyHTTPError() from exc
+        except LogExportFileNotFoundError as exc:
+            raise AgentLogExportFileNotFoundHTTPError() from exc
+        # response-contract:ignore signed redirect or streamed CSV attachment
+        return log_export_file_response(download, filename=filename)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")

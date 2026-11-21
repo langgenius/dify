@@ -1,15 +1,18 @@
-"""Create, prepare, and read temporary CSV export tasks for an admitted Agent."""
+"""Manage temporary CSV exports for an admitted Agent."""
 
 from collections.abc import Callable
 
 from machinery.context import RequestContext
 from services.agent.observability_contracts import AgentLogExportFilters, AgentLogExportQuery, AgentObservability
 from services.retention.log_export_task import (
+    LogExportDownload,
     LogExportTask,
     LogExportTaskNotFoundError,
     LogExportTaskStore,
+    OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    open_ready_log_export_csv,
     prepare_log_export_task,
     save_and_dispatch_log_export_task,
 )
@@ -28,13 +31,15 @@ class AgentLogExportService:
         dispatch: Callable[[AgentLogExportTask], None],
         store_csv: StoreLogExportFile,
         write_csv: WriteLogExportCsv[AgentLogExportFilters],
+        open_csv: OpenLogExportFile,
     ) -> None:
-        """Bind Agent log reads, task persistence, dispatch and CSV preparation."""
+        """Bind Agent log reads, task persistence, dispatch and CSV storage."""
         self._logs = logs
         self._tasks = tasks
         self._dispatch = dispatch
         self._store_csv = store_csv
         self._write_csv = write_csv
+        self._open_csv = open_csv
 
     def create_task(self, context: RequestContext, agent_id: str, query: AgentLogExportQuery) -> AgentLogExportTask:
         """Resolve the admitted scope and filters, then save and dispatch the pending task."""
@@ -62,6 +67,11 @@ class AgentLogExportService:
         return self._tasks.get_latest(
             tenant_id=context.active_workspace_id, app_id=agent_id, requested_by=context.account_id
         )
+
+    def download_csv(self, context: RequestContext, agent_id: str, *, task_id: str, filename: str) -> LogExportDownload:
+        """Open a ready task in the admitted Agent's scope or return its short-lived download URL."""
+        task = self.get_task(context, agent_id, task_id=task_id)
+        return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Load the workspace's task by its Agent ID and prepare the CSV if it is still pending."""

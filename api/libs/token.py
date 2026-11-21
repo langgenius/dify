@@ -25,6 +25,7 @@ CSRF_WHITE_LIST = [
     re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
     re.compile(r"/console/api/workflow-run-archives/downloads/[a-f0-9]+/file"),
     re.compile(r"/console/api/apps/[a-f0-9-]+/(?:conversation|workflow)-log-exports/[a-f0-9-]+/file"),
+    re.compile(r"/console/api/agent/[a-f0-9-]+/log-exports/[a-f0-9-]+/file"),
 ]
 
 

@@ -523,6 +523,37 @@ export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * AgentLogExportFileNotFoundError
+ *
+ * Agent log export file not found.
+ */
+export const zAgentLogExportFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_file_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentLogExportTaskNotReadyError
+ *
+ * The Agent log export is not ready for download.
+ */
+export const zAgentLogExportTaskNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_task_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -4631,6 +4662,16 @@ export const zGetAgentByAgentIdLogExportsByTaskIdPath = z.object({
  * Export task status
  */
 export const zGetAgentByAgentIdLogExportsByTaskIdResponse = zAgentLogExportStatusResponse
+
+export const zGetAgentByAgentIdLogExportsByTaskIdFilePath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * CSV attachment
+ */
+export const zGetAgentByAgentIdLogExportsByTaskIdFileResponse = zBinaryFileResponse
 
 export const zGetAgentByAgentIdLogSourcesPath = z.object({
   agent_id: z.uuid(),

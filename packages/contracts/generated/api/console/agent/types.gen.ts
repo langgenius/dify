@@ -490,6 +490,18 @@ export type AgentLogExportTaskNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type BinaryFileResponse = Blob | File
+
+export type AgentLogExportFileNotFoundError = ErrorResponse & {
+  code: 'agent_log_export_file_not_found'
+  status: 404
+}
+
+export type AgentLogExportTaskNotReadyError = ErrorResponse & {
+  code: 'agent_log_export_task_not_ready'
+  status: 409
+}
+
 export type AgentLogSourceListResponse = {
   data: Array<AgentLogSourceResponse>
   groups: Array<AgentLogSourceGroupResponse>
@@ -4040,6 +4052,37 @@ export type GetAgentByAgentIdLogExportsByTaskIdResponses = {
 
 export type GetAgentByAgentIdLogExportsByTaskIdResponse =
   GetAgentByAgentIdLogExportsByTaskIdResponses[keyof GetAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}/file'
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404:
+    | AgentLogExportFileNotFoundError
+    | AgentLogExportTaskNotFoundError
+    | AgentNotFoundError
+    | ErrorResponse
+  409: AgentLogExportTaskNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileError =
+  GetAgentByAgentIdLogExportsByTaskIdFileErrors[keyof GetAgentByAgentIdLogExportsByTaskIdFileErrors]
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdFileResponse =
+  GetAgentByAgentIdLogExportsByTaskIdFileResponses[keyof GetAgentByAgentIdLogExportsByTaskIdFileResponses]
 
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never
