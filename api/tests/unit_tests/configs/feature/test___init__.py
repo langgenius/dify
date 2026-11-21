@@ -144,3 +144,7 @@ def test_paid_plan_file_size_limit_can_be_configured_separately() -> None:
 
     assert config.UPLOAD_FILE_SIZE_LIMIT == 23
     assert config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN == 50
+
+
+def test_openapi_job_max_waiters_defaults_to_two() -> None:
+    assert _IsolatedAuthConfig().OPENAPI_JOB_MAX_WAITERS == 2
