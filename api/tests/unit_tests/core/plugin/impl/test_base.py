@@ -3,6 +3,7 @@ from collections.abc import Callable
 from urllib.parse import quote
 
 import pytest
+from pydantic import BaseModel
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
@@ -26,6 +27,17 @@ class _ResponseStub:
 
     def json(self):
         return self._payload
+
+
+class _ResponseData(BaseModel):
+    provider: str
+    output_schema: dict[str, str] | None = None
+
+
+class _TransformedEnvelope(BaseModel):
+    code: int
+    message: str
+    data: _ResponseData
 
 
 class _StreamContext:
@@ -121,6 +133,22 @@ class TestBasePluginClientImpl:
 
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
+
+    def test_request_with_plugin_daemon_response_serializes_base_model_transformer(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        response_payload = {"code": 0, "message": "", "data": {"provider": "org/plugin"}}
+        mocker.patch.object(client, "_request", return_value=_ResponseStub(response_payload))
+
+        def transformer(payload: dict[str, object]) -> _TransformedEnvelope:
+            return _TransformedEnvelope.model_validate(payload)
+
+        result = client._request_with_plugin_daemon_response(
+            "GET", "plugin/tenant/path", dict[str, object], transformer=transformer
+        )
+
+        assert type(result) is dict
+        assert result == {"provider": "org/plugin"}
+        assert "output_schema" not in result
 
     def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self, mocker: MockerFixture):
         client = BasePluginClient()

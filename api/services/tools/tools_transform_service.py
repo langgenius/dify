@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -73,27 +73,25 @@ class ToolTransformService:
 
     @staticmethod
     def repack_provider(
-        tenant_id: str, provider: dict[str, Any] | ToolProviderApiEntity | PluginDatasourceProviderEntity
-    ):
-        """
-        repack provider
-
-        :param tenant_id: the tenant id
-        :param provider: the provider dict
+        tenant_id: str,
+        provider: ToolProviderApiEntity | PluginDatasourceProviderEntity,
+        get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
+    ) -> None:
+        """Inputs: Tenant ID, provider entity, and plugin-icon URL callback.
+        Preconditions: Callback accepts tenant and filename strings.
+        Result/effects: Only applicable icon fields mutate; non-icon fields stay unchanged.
+        Failure: Resolver/formatter errors propagate; earlier in-place rewrites remain.
+        :param tenant_id: the tenant id used for plugin icon URLs
+        :param provider: the provider entity to repack
+        :param get_plugin_icon_url: callback for plugin-owned icon URLs
         """
         match provider:
-            case dict() if "icon" in provider:
-                provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
-                )
             case ToolProviderApiEntity():
                 if provider.plugin_id:
                     if isinstance(provider.icon, str):
-                        provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+                        provider.icon = get_plugin_icon_url(tenant_id, provider.icon)
                     if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                        provider.icon_dark = PluginService.get_plugin_icon_url(
-                            tenant_id=tenant_id, filename=provider.icon_dark
-                        )
+                        provider.icon_dark = get_plugin_icon_url(tenant_id, provider.icon_dark)
                 else:
                     provider.icon = ToolTransformService.get_tool_provider_icon_url(
                         provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
@@ -105,8 +103,8 @@ class ToolTransformService:
             case PluginDatasourceProviderEntity():
                 if provider.plugin_id:
                     if isinstance(provider.declaration.identity.icon, str):
-                        provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
-                            tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                        provider.declaration.identity.icon = get_plugin_icon_url(
+                            tenant_id, provider.declaration.identity.icon
                         )
 
     @classmethod

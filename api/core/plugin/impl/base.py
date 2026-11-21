@@ -308,7 +308,7 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        transformer: Callable[[dict[str, Any]], Mapping[str, Any] | BaseModel] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
@@ -333,7 +333,13 @@ class BasePluginClient:
         try:
             json_response = response.json()
             if transformer:
-                json_response = transformer(json_response)
+                transformed = transformer(json_response)
+                if isinstance(transformed, BaseModel):
+                    # A boundary transformer may hand back the typed payload it
+                    # parsed; the envelope still receives plain JSON fields.
+                    json_response = transformed.model_dump(exclude_unset=True)
+                else:
+                    json_response = transformed
             json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
