@@ -39,6 +39,75 @@ def _image_part(name: str, blob: bytes = b"image-bytes") -> Part:
     return Part(PackURI(f"/word/media/{name}"), "image/png", blob)
 
 
+@pytest.mark.parametrize("location", ["block", "inline", "cell-block", "cell-inline", "nested", "table"])
+def test_extract_preserves_content_control_display_values(
+    tmp_path: Path, unbound_session: Session, location: str
+) -> None:
+    """Extract a saved DOCX with controls, retaining each display value in order."""
+    doc = Document()
+    doc.add_paragraph("BEFORE")
+    table = None
+    if location.startswith("cell") or location == "table":
+        table = doc.add_table(rows=1, cols=1)
+        paragraph = table.cell(0, 0).paragraphs[0]
+    else:
+        paragraph = doc.add_paragraph()
+    paragraph.add_run("LEFT")
+    value = paragraph.add_run("CONTROL_VALUE")
+    paragraph.add_run("RIGHT")
+    element = value._r if location.endswith("inline") or location == "inline" else paragraph._p
+    if location == "table":
+        assert table is not None
+        element = table._tbl
+
+    for _ in range(2 if location == "nested" else 1):
+        parent = element.getparent()
+        assert parent is not None
+        control = OxmlElement("w:sdt")
+        properties = OxmlElement("w:sdtPr")
+        alias = OxmlElement("w:alias")
+        alias.set(qn("w:val"), "NOT_A_DISPLAY_VALUE")
+        properties.append(alias)
+        control.append(properties)
+        content = OxmlElement("w:sdtContent")
+        parent.replace(element, control)
+        content.append(element)
+        control.append(content)
+        element = control
+
+    doc.add_paragraph("AFTER")
+    path = tmp_path / "controls.docx"
+    doc.save(str(path))
+    original_bytes = path.read_bytes()
+    assert b"CONTROL_VALUE" in Document(str(path)).element.xml.encode()
+
+    text = WordExtractor(str(path), "tenant", "user", session=unbound_session).extract()[0].page_content
+
+    assert text.count("CONTROL_VALUE") == 1
+    assert text.index("BEFORE") < text.index("LEFT") < text.index("CONTROL_VALUE") < text.index("RIGHT")
+    assert text.index("RIGHT") < text.index("AFTER")
+    assert "NOT_A_DISPLAY_VALUE" not in text
+    assert path.read_bytes() == original_bytes
+    if location.startswith("cell") or location == "table":
+        assert "| LEFTCONTROL_VALUERIGHT |" in text
+
+
+def test_extract_empty_content_control_keeps_surrounding_text(tmp_path: Path, unbound_session: Session) -> None:
+    """An empty display container contributes no invented text or metadata."""
+    doc = Document()
+    paragraph = doc.add_paragraph("BEFORE")
+    control = OxmlElement("w:sdt")
+    control.append(OxmlElement("w:sdtContent"))
+    paragraph._p.append(control)
+    paragraph.add_run("AFTER")
+    path = tmp_path / "empty-control.docx"
+    doc.save(str(path))
+
+    assert (
+        WordExtractor(str(path), "tenant", "user", session=unbound_session).extract()[0].page_content == "BEFOREAFTER"
+    )
+
+
 def _generate_table_with_merged_cells():
     doc = Document()
 
@@ -901,3 +970,39 @@ def test_extract_ignores_non_image_relationship_with_image_in_target(
     assert content == "Visible text"
     assert sqlite_session.scalars(select(UploadFile)).all() == []
     assert not local_image_storage.exists("image_files/")
+
+
+@pytest.mark.parametrize("in_cell", [False, True])
+def test_extract_content_control_keeps_images_and_hyperlinks(
+    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage, in_cell: bool
+) -> None:
+    """Read rich display content through the existing image/link extraction paths."""
+    doc = Document()
+    paragraph = doc.add_table(rows=1, cols=1).cell(0, 0).paragraphs[0] if in_cell else doc.add_paragraph()
+    png = io.BytesIO()
+    Image.new("RGB", (2, 2), "blue").save(png, format="PNG")
+    png.seek(0)
+    paragraph.add_run().add_picture(png)
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("r:id"), doc.part.relate_to("https://dify.ai", RT.HYPERLINK, is_external=True))
+    run = OxmlElement("w:r")
+    text = OxmlElement("w:t")
+    _set_oxml_text(text, "Dify")
+    run.append(text)
+    hyperlink.append(run)
+    paragraph._p.append(hyperlink)
+    control = OxmlElement("w:sdt")
+    display = OxmlElement("w:sdtContent")
+    for child in list(paragraph._p):
+        display.append(child)
+    control.append(display)
+    paragraph._p.append(control)
+    path = tmp_path / "rich-control.docx"
+    doc.save(str(path))
+
+    content = WordExtractor(str(path), "tenant", "user", session=sqlite_session).extract()[0].page_content
+
+    upload = sqlite_session.scalars(select(UploadFile)).one()
+    assert content.count(f"![image](http://files.local/files/{upload.id}/file-preview)") == 1
+    assert content.count("[Dify](https://dify.ai)") == 1
+    assert local_image_storage.load_once(upload.key) == png.getvalue()
