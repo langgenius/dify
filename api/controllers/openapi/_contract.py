@@ -115,14 +115,6 @@ def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
         ) from exc
 
 
-def _end_admission_read(ctx: object) -> None:
-    """Postcondition: on a route whose handler gets the ORM context, the login step's read transaction is
-    ended, so the body's files (multipart parts or transfers) are never read while it holds a connection.
-    """
-    if isinstance(ctx, Context):
-        end_read_transaction(ctx.session)
-
-
 def _list_fields(model: type[BaseModel]) -> tuple[str, ...]:
     """Query fields typed as a list, which a repeated parameter fills."""
     return tuple(
@@ -145,7 +137,11 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
                 if body_file_fields:
-                    _end_admission_read(kwargs.get("ctx"))
+                    # End the login step's read transaction, so the body's files (multipart parts or transfers)
+                    # are never read while it holds a connection.
+                    ctx = kwargs.get("ctx")
+                    if isinstance(ctx, Context):
+                        end_read_transaction(ctx.session)
                 if body is not None:
                     kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:

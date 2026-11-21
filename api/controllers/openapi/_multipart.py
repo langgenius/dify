@@ -73,11 +73,6 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
     target[leaf] = value
 
 
-def _with_transfers(body: dict[str, Any], *, file_fields: Collection[str]) -> dict[str, Any]:
-    """Postcondition: ``body`` with every string inside a file field, at any depth, replaced by its parts."""
-    return {name: _resolved(value, field=name) if name in file_fields else value for name, value in body.items()}
-
-
 def _resolved(value: Any, *, field: str) -> Any:
     if isinstance(value, str):
         return parts_of(value, field=field)
@@ -93,7 +88,8 @@ def body_from_request(*, file_fields: Collection[str] = ()) -> dict[str, Any]:
         sent = request.get_json(silent=True) or {}
         if not isinstance(sent, dict):
             return sent
-        return _with_transfers(sent, file_fields=file_fields)
+        # Every string inside a file field, at any depth, is replaced by its parts.
+        return {name: _resolved(value, field=name) if name in file_fields else value for name, value in sent.items()}
     body: dict[str, Any] = {name: _json_part(name, raw, file_fields=file_fields) for name, raw in request.form.items()}
     for name in request.files:
         _place(body, name, request.files.getlist(name), file_fields=file_fields)

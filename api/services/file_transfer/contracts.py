@@ -12,18 +12,10 @@ from libs.archive_writer import ArchiveError
 
 
 class TransferDirection(StrEnum):
-    """Which way the bytes move; link_name names the transfer's one link."""
+    """Which way the bytes move."""
 
-    link_name: str
-
-    IN = ("in", "upload")
-    OUT = ("out", "download")
-
-    def __new__(cls, value: str, link_name: str) -> TransferDirection:
-        member = str.__new__(cls, value)
-        member._value_ = value
-        member.link_name = link_name
-        return member
+    IN = "in"
+    OUT = "out"
 
 
 class StoredText(StrEnum):
@@ -180,14 +172,12 @@ class TransferNotReceivedError(FileTransferError):
 
 class TransferLinkExpiredError(FileTransferError):
     def __init__(self, transfer_id: str, *, direction: TransferDirection) -> None:
-        self.transfer_id = transfer_id
         self.direction = direction
-        super().__init__(f"The {direction.link_name} link of transfer {transfer_id} has expired.")
+        super().__init__(f"The link of transfer {transfer_id} has expired.")
 
 
 class TransferAlreadyReceivedError(FileTransferError):
     def __init__(self, transfer_id: str) -> None:
-        self.transfer_id = transfer_id
         super().__init__(f"Transfer {transfer_id} already holds a different file.")
 
 

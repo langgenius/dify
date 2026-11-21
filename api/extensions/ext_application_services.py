@@ -462,12 +462,8 @@ def _build_file_transfer_service(*, database_client: sessionmaker[Session]) -> F
             busy_retry_after=timedelta(seconds=dify_config.FILE_TRANSFER_BUSY_RETRY_AFTER_SECONDS),
         ),
         now=naive_utc_now,
-        new_token=_new_transfer_token,
+        new_token=lambda: secrets.token_urlsafe(_TRANSFER_TOKEN_BYTES),
     )
-
-
-def _new_transfer_token() -> str:
-    return secrets.token_urlsafe(_TRANSFER_TOKEN_BYTES)
 
 
 def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:

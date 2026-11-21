@@ -8,7 +8,6 @@ stays the op's: an unknown token or none sees every entry that passes the first 
 
 from __future__ import annotations
 
-import copy
 import json
 import re
 from collections.abc import Callable, Mapping
@@ -150,11 +149,6 @@ _RULES: Final[tuple[_HiddenWhen, ...]] = (
 )
 
 
-def _file_names(entry: CatalogOp) -> set[str]:
-    """Postcondition: the input names the entry binds as file uploads."""
-    return {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
-
-
 def callable_ops(token: str | None) -> dict[str, CatalogOp]:
     """The catalog entries the bearer's token kind can call.
 
@@ -252,7 +246,7 @@ def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
     entry = callable_ops(token).get(op)
     if entry is None:
         raise UnknownOp(op)
-    files = _file_names(entry)
+    files = {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
     examples = [{**example, _INPUT_KEY: _example_input(example[_INPUT_KEY], files)} for example in entry["examples"]]
     return {
         _OP_KEY: op,
@@ -270,7 +264,7 @@ def _with_upload_ids(node: Any) -> Any:
     if isinstance(node, list):
         return [_with_upload_ids(item) for item in node]
     if not isinstance(node, Mapping):
-        return copy.deepcopy(node)
+        return node
     if is_binary_leaf(node):
         return dict(UPLOAD_ID_SCHEMA)
     rewritten = {key: _with_upload_ids(value) for key, value in node.items()}

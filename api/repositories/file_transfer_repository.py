@@ -77,7 +77,11 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
         row.updated_at = now
         if file is not None:
             _check_text(file)
-            _write_file(row, file)
+            row.name = file.name
+            row.mime_type = file.mime_type
+            row.size = file.size
+            row.sha256 = file.sha256
+            row.received_at = file.received_at
         with self._session_factory.begin() as session:
             session.add(row)
             session.flush()
@@ -191,11 +195,3 @@ def _is_uuid(value: str) -> bool:
     except ValueError:
         return False
     return True
-
-
-def _write_file(row: FileTransfer, file: StoredFile) -> None:
-    row.name = file.name
-    row.mime_type = file.mime_type
-    row.size = file.size
-    row.sha256 = file.sha256
-    row.received_at = file.received_at
