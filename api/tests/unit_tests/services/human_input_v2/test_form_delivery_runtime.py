@@ -15,6 +15,7 @@ import sqlalchemy as sa
 from celery import Task
 from flask.testing import FlaskClient
 from pydantic import JsonValue
+from pytest_mock import MockerFixture, MockType
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -1464,6 +1465,53 @@ def test_global_expiration_stops_run_without_requesting_node_resume(
         assert run.finished_at is not None
         assert session.get_one(WorkflowPause, pause.id).resumed_at == run.finished_at
     assert not enqueue_calls
+
+
+_LOGSTORE_RUN_MODULE = "extensions.logstore.repositories.logstore_api_workflow_run_repository"
+
+
+def _use_logstore_run_repository(monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> MockType:
+    """Configure the LogStore run repository and return its patched LogStore client.
+
+    Run control reads and changes SQL rows only, so the flows under test must not call the client.
+    """
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    apply_config_overrides(
+        monkeypatch, API_WORKFLOW_RUN_REPOSITORY=f"{_LOGSTORE_RUN_MODULE}.LogstoreAPIWorkflowRunRepository"
+    )
+    return mocker.patch(f"{_LOGSTORE_RUN_MODULE}.AliyunLogStore").return_value
+
+
+def test_global_expiration_stops_run_when_run_history_uses_logstore(
+    context: Context, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    from services.human_input_v2 import form_service
+
+    result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
+    with context.sessions.begin() as session:
+        form = session.get_one(HumanInputForm, result.form.id)
+        form.expiration_time = naive_utc_now() - timedelta(seconds=1)
+        form.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
+        run = session.get_one(WorkflowRun, _RUN)
+        run.status = WorkflowExecutionStatus.PAUSED
+        pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="pause")
+        session.add(pause)
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
+    monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
+    logstore_client = _use_logstore_run_repository(monkeypatch, mocker)
+    context.handle_timeouts()
+    with context.sessions() as session:
+        assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.EXPIRED
+        run = session.get_one(WorkflowRun, _RUN)
+        assert run.status == WorkflowExecutionStatus.STOPPED
+        assert session.get_one(WorkflowPause, pause.id).resumed_at == run.finished_at
+    assert not enqueue_calls
+    assert logstore_client.mock_calls == []
 
 
 def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2962,6 +3010,28 @@ def test_console_approval_preserves_first_submission(
         assert form.submission.raw_submission_inputs == {"note": " First "}
         assert form.submission.normalized_submission_data == {"note": StringSegment(value=" First ")}
     assert enqueue_calls == [{"payload": {"workflow_run_id": _RUN}}]
+
+
+def test_console_approval_is_accepted_when_run_history_uses_logstore(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
+) -> None:
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    token = console_approval[1]
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    logstore_client = _use_logstore_run_repository(monkeypatch, mocker)
+    HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
+        account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
+    )
+
+    assert enqueue_calls == [{"payload": {"workflow_run_id": _RUN}}]
+    assert logstore_client.mock_calls == []
 
 
 @pytest.mark.parametrize(

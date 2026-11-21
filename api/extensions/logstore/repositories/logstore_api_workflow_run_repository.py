@@ -20,7 +20,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast, override
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -28,11 +28,24 @@ from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import WorkflowExecutionStatus
+from graphon.enums import WorkflowType as GraphonWorkflowType
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun, WorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowArchiveLog,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+    WorkflowType,
+)
+from repositories.api_workflow_run_repository import (
+    APIWorkflowRunRepository,
+    AppWorkflowRunStats,
+    RunsWithRelatedCountsDict,
+    WorkflowRunCleanupRef,
+)
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.types import (
@@ -154,6 +167,14 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     - Use finished_at IS NOT NULL for deduplication (10-100x faster)
     - Use window functions only when running status is required
     - Proper time range filtering for LogStore queries
+
+    Invariant: LogStore keeps the append-only run history. SQL keeps the run rows that
+    the core repository writes synchronously, and the pause, archive and app log tables.
+    History reads (pagination, counts, statistics and by-ID lookups) query LogStore; a
+    by-ID lookup returns the SQL row of a task-bound run first, and falls back to SQL when
+    dual-read is enabled. Run control, retention and archive members act only on the SQL
+    rows, through ``DifyAPISQLAlchemyWorkflowRunRepository``, and never query or write
+    LogStore, whose records expire through the logstore TTL.
     """
 
     def __init__(self, session_maker: sessionmaker):
@@ -233,6 +254,318 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         self, expiration: datetime, resumption_expiration: datetime, limit: int | None = None
     ) -> Sequence[str]:
         return self._control_repository.prune_pauses(expiration, resumption_expiration, limit)
+
+    # Run control works on SQL rows in the caller's Session: LogStore cannot lock
+    # a run or change it together with its pause.
+    @override
+    def get_workflow_run_by_id_for_update(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """Lock and return the SQL run in the tenant/app scope, or ``None`` when it is absent there.
+
+        The lock is taken in the caller's ``session`` and lasts until the caller ends the
+        transaction. LogStore is not queried.
+        """
+        return self._control_repository.get_workflow_run_by_id_for_update(
+            session, tenant_id=tenant_id, app_id=app_id, run_id=run_id
+        )
+
+    @override
+    def stop_workflow_run(
+        self,
+        session: Session,
+        *,
+        run: WorkflowRun,
+        error: str,
+        finished_at: datetime,
+    ) -> None:
+        """Mark the locked SQL ``run`` STOPPED and invalidate its active pause in the caller's ``session``.
+
+        The caller commits. No LogStore record is written.
+        """
+        self._control_repository.stop_workflow_run(session, run=run, error=error, finished_at=finished_at)
+
+    @override
+    def has_active_workflow_pause(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+    ) -> bool:
+        """Return whether the SQL run has an unresumed pause in the tenant/app scope.
+
+        Reads in the caller's ``session`` without managing its transaction, and changes nothing.
+        """
+        return self._control_repository.has_active_workflow_pause(
+            session, tenant_id=tenant_id, app_id=app_id, run_id=run_id
+        )
+
+    @override
+    def get_legacy_pause_reasons(self, session: Session, pause_id: str) -> Sequence[DifyPauseReason]:
+        """Load the V1 reasons of an already-authorized SQL pause in the caller's ``session``. Read-only."""
+        return self._control_repository.get_legacy_pause_reasons(session, pause_id)
+
+    # Retention and app deletion read and remove SQL rows only. LogStore records are
+    # append-only and expire through the logstore TTL.
+    @override
+    def get_expired_runs_batch(
+        self,
+        tenant_id: str,
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[WorkflowRun]:
+        """Return up to ``batch_size`` of the tenant's SQL runs created before ``before_date``. Read-only."""
+        return self._control_repository.get_expired_runs_batch(tenant_id, before_date, batch_size)
+
+    @override
+    def delete_runs_by_ids(
+        self,
+        run_ids: Sequence[str],
+    ) -> int:
+        """Delete the SQL runs with ``run_ids``, commit, and return the number deleted.
+
+        Like the SQL repository, this applies no tenant filter: callers pass IDs they have
+        already scoped.
+        """
+        return self._control_repository.delete_runs_by_ids(run_ids)
+
+    @override
+    def delete_runs_by_app(
+        self,
+        tenant_id: str,
+        app_id: str,
+        batch_size: int = 1000,
+    ) -> int:
+        """Delete the app's SQL runs, committing each batch of ``batch_size``, and return the total deleted."""
+        return self._control_repository.delete_runs_by_app(tenant_id, app_id, batch_size)
+
+    @override
+    def get_runs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[GraphonWorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+        tenant_prefixes: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
+        run_shard_index: int | None = None,
+        run_shard_total: int | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """Return the next keyset batch of ended SQL runs in the window, with the SQL filters. Read-only."""
+        return self._control_repository.get_runs_batch_by_time_range(
+            start_from,
+            end_before,
+            last_seen,
+            batch_size,
+            run_types=run_types,
+            tenant_ids=tenant_ids,
+            tenant_prefixes=tenant_prefixes,
+            workflow_ids=workflow_ids,
+            run_shard_index=run_shard_index,
+            run_shard_total=run_shard_total,
+        )
+
+    @override
+    def get_cleanup_refs_batch_by_time_range(
+        self,
+        start_from: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        run_types: Sequence[GraphonWorkflowType] | None = None,
+        tenant_ids: Sequence[str] | None = None,
+        workflow_ids: Sequence[str] | None = None,
+        upper_bound: tuple[datetime, str] | None = None,
+    ) -> Sequence[WorkflowRunCleanupRef]:
+        """Return the next keyset batch of cleanup refs for ended SQL runs in the window. Read-only."""
+        return self._control_repository.get_cleanup_refs_batch_by_time_range(
+            start_from,
+            end_before,
+            last_seen,
+            batch_size,
+            run_types=run_types,
+            tenant_ids=tenant_ids,
+            workflow_ids=workflow_ids,
+            upper_bound=upper_bound,
+        )
+
+    @override
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Delete the SQL ``runs`` and their related SQL records in one transaction, and return the counts.
+
+        The optional callbacks run inside that transaction.
+        """
+        return self._control_repository.delete_runs_with_related(
+            runs, delete_node_executions=delete_node_executions, delete_trigger_logs=delete_trigger_logs
+        )
+
+    @override
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Delete the SQL ``runs`` and their related SQL records in the caller's ``session``.
+
+        Returns the counts. The caller commits or rolls back; this member does neither.
+        """
+        return self._control_repository.delete_runs_with_related_in_session(
+            session, runs, delete_node_executions=delete_node_executions, delete_trigger_logs=delete_trigger_logs
+        )
+
+    @override
+    def delete_runs_with_related_by_ids(
+        self,
+        run_ids: Sequence[str],
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Delete the SQL runs with ``run_ids`` and their related SQL records in one transaction.
+
+        Returns the counts. The optional callbacks run inside that transaction.
+        """
+        return self._control_repository.delete_runs_with_related_by_ids(
+            run_ids, delete_node_executions=delete_node_executions, delete_trigger_logs=delete_trigger_logs
+        )
+
+    @override
+    def count_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Count the SQL ``runs`` and their related SQL records. Changes nothing."""
+        return self._control_repository.count_runs_with_related(
+            runs, count_node_executions=count_node_executions, count_trigger_logs=count_trigger_logs
+        )
+
+    @override
+    def count_runs_with_related_by_ids(
+        self,
+        run_ids: Sequence[str],
+        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """Count the SQL runs with ``run_ids`` and their related SQL records. Changes nothing."""
+        return self._control_repository.count_runs_with_related_by_ids(
+            run_ids, count_node_executions=count_node_executions, count_trigger_logs=count_trigger_logs
+        )
+
+    # Archive and restore use tables that exist only in SQL.
+    @override
+    def get_archived_run_ids(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> set[str]:
+        """Return the subset of ``run_ids`` that have SQL archive logs, read in the caller's ``session``."""
+        return self._control_repository.get_archived_run_ids(session, run_ids)
+
+    @override
+    def get_archived_logs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowArchiveLog]:
+        """Return up to ``limit`` SQL archive logs in the time range, read in the caller's ``session``."""
+        return self._control_repository.get_archived_logs_by_time_range(
+            session, tenant_ids, start_date, end_date, limit
+        )
+
+    @override
+    def get_archived_log_by_run_id(
+        self,
+        run_id: str,
+    ) -> WorkflowArchiveLog | None:
+        """Return the SQL archive log of ``run_id``, or ``None`` when the run has none. Read-only."""
+        return self._control_repository.get_archived_log_by_run_id(run_id)
+
+    @override
+    def delete_archive_log_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> int:
+        """Delete the SQL archive log of ``run_id`` in the caller's ``session``; return 0 or 1.
+
+        The caller commits.
+        """
+        return self._control_repository.delete_archive_log_by_run_id(session, run_id)
+
+    @override
+    def get_pause_records_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowPause]:
+        """Return the SQL pause records of ``run_id``, read in the caller's ``session``."""
+        return self._control_repository.get_pause_records_by_run_id(session, run_id)
+
+    @override
+    def get_pause_reason_records_by_run_id(
+        self,
+        session: Session,
+        pause_ids: Sequence[str],
+    ) -> Sequence[WorkflowPauseReason]:
+        """Return the SQL pause reason records of ``pause_ids``, read in the caller's ``session``."""
+        return self._control_repository.get_pause_reason_records_by_run_id(session, pause_ids)
+
+    @override
+    def get_app_logs_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowAppLog]:
+        """Return the SQL workflow app logs of ``run_id``, read in the caller's ``session``."""
+        return self._control_repository.get_app_logs_by_run_id(session, run_id)
+
+    @override
+    def create_archive_logs(
+        self,
+        session: Session,
+        run: WorkflowRun,
+        app_logs: Sequence[WorkflowAppLog],
+        trigger_metadata: str | None,
+    ) -> int:
+        """Add the SQL archive log records of ``run`` in the caller's ``session`` and return how many.
+
+        The caller commits.
+        """
+        return self._control_repository.create_archive_logs(session, run, app_logs, trigger_metadata)
+
+    @override
+    def get_archived_runs_by_time_range(
+        self,
+        session: Session,
+        tenant_ids: Sequence[str] | None,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int,
+    ) -> Sequence[WorkflowRun]:
+        """Return up to ``limit`` SQL runs in the time range that already have archive logs. Read-only."""
+        return self._control_repository.get_archived_runs_by_time_range(
+            session, tenant_ids, start_date, end_date, limit
+        )
 
     @override
     def get_paginated_workflow_runs(
@@ -529,6 +862,95 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         with sessionmaker(db.engine).begin() as session:
             stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
             return session.scalar(stmt)
+
+    @override
+    def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """Get a run by ID within one tenant, without application isolation.
+
+        Follows the precedence of ``get_workflow_run_by_id``:
+
+        1. The tenant-scoped SQL row of a task-bound run (``task_id`` set) is returned without
+           a LogStore query, because task-bound runs keep their control state in SQL.
+        2. Otherwise the newest LogStore record with this ``id`` and ``tenant_id``.
+        3. When LogStore has no such record, or its query raises, the SQL row read in step 1
+           when dual-read is enabled.
+
+        Precondition: ``tenant_id`` is the caller's tenant. The SQL read uses the injected
+        session maker and does not commit, so a returned SQL row keeps its loaded attributes.
+
+        Returns:
+            The run visible in this tenant, from SQL (task-bound, or the dual-read fallback) or
+            from LogStore. ``None`` when no source that applies has the run in this tenant.
+
+        Raises:
+            Exception: the LogStore query error, when dual-read is disabled. No path writes.
+        """
+        control = self._control_repository.get_workflow_run_by_id_and_tenant_id(tenant_id, run_id)
+        if control is not None and control.task_id is not None:
+            return control
+
+        try:
+            latest = self._get_latest_logstore_run_in_tenant(tenant_id, run_id)
+        except Exception:
+            logger.exception(
+                "Failed to get workflow run by ID and tenant from LogStore: run_id=%s, tenant_id=%s",
+                run_id,
+                tenant_id,
+            )
+            if self._enable_dual_read:
+                return control
+            raise
+
+        if latest is not None:
+            return latest
+        return control if self._enable_dual_read else None
+
+    def _get_latest_logstore_run_in_tenant(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """Return the LogStore record of ``run_id`` in ``tenant_id`` with the highest ``log_version``.
+
+        Read-only. The record is converted to a ``WorkflowRun`` that no session tracks.
+
+        Returns:
+            The newest record, or ``None`` when the tenant has no record of the run.
+
+        Raises:
+            Exception: whatever the LogStore client raises for the query.
+        """
+        if self.logstore_client.supports_pg_protocol:
+            escaped_run_id = escape_identifier(run_id)
+            escaped_tenant_id = escape_identifier(tenant_id)
+            sql_query = f"""
+                SELECT * FROM (
+                    SELECT *,
+                        ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                    FROM "{AliyunLogStore.workflow_execution_logstore}"
+                    WHERE id = '{escaped_run_id}'
+                      AND tenant_id = '{escaped_tenant_id}'
+                      AND __time__ > 0
+                ) AS subquery WHERE rn = 1
+                LIMIT 100
+            """
+            results = self.logstore_client.execute_sql(
+                sql=sql_query,
+                logstore=AliyunLogStore.workflow_execution_logstore,
+            )
+        else:
+            query = f"id:{escape_logstore_query_value(run_id)} and tenant_id:{escape_logstore_query_value(tenant_id)}"
+            results = self.logstore_client.get_logs(
+                logstore=AliyunLogStore.workflow_execution_logstore,
+                from_time=0,
+                to_time=int(time.time()),
+                query=query,
+                line=100,
+                reverse=False,
+            )
+
+        if not results:
+            return None
+        # PG results are deduplicated by the query; SDK results may hold several log versions.
+        if self.logstore_client.supports_pg_protocol or len(results) == 1:
+            return _dict_to_workflow_run(results[0])
+        return _dict_to_workflow_run(max(results, key=lambda result: int(result.get("log_version", 0))))
 
     @override
     def get_workflow_runs_count(
