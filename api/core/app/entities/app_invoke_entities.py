@@ -212,7 +212,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig = None  # type: ignore
+    app_config: EasyUIBasedAppConfig
     model_conf: ModelConfigWithCredentialsEntity
 
     query: str = ""
