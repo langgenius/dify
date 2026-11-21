@@ -13,7 +13,6 @@ from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.entities import Rule
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import Document
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -41,6 +40,8 @@ class SegmentIndexingGateway:
         delete_task: Callable[..., object],
         enable_task: Callable[..., object],
         disable_task: Callable[..., object],
+        schedule_summary_regeneration: Callable[[SegmentRef, str | None], object],
+        cancel_summary_regeneration: Callable[[str], None],
     ) -> None:
         self._segments = segments
         self._uploads = uploads
@@ -49,6 +50,8 @@ class SegmentIndexingGateway:
         self._delete_task = delete_task
         self._enable_task = enable_task
         self._disable_task = disable_task
+        self._schedule_summary_regeneration = schedule_summary_regeneration
+        self._cancel_summary_regeneration = cancel_summary_regeneration
 
     def count_tokens(self, dataset: SegmentDatasetRecord, text: str) -> int:
         if dataset.indexing_technique != "high_quality":
@@ -272,20 +275,9 @@ class SegmentIndexingGateway:
         if summary is None or (previous is not None and summary == previous.summary_content):
             if not (content_changed and previous and setting and setting.get("enable") is True):
                 return
-            try:
-                self._segments.save_summary(segment_ref, previous.summary_content or "")
-                summary, _ = ParagraphIndexProcessor.generate_summary_from_inputs(
-                    snapshot.dataset.tenant_id,
-                    snapshot.segment.content,
-                    setting,
-                    document_language=snapshot.document.doc_language,
-                    image_loader=lambda: self._segments.get_summary_images(segment_ref),
-                )
-                if not summary.strip():
-                    raise ValueError("Generated summary is empty")
-            except Exception as error:
-                self._segments.save_summary(segment_ref, previous.summary_content or "", error=str(error))
-                raise
+            self._schedule_summary_regeneration(segment_ref, snapshot.segment.index_node_hash)
+            return
+        self._cancel_summary_regeneration(segment_ref.segment_id)
         if not summary.strip():
             if previous and previous.summary_index_node_id:
                 try:
