@@ -1,5 +1,6 @@
 import type { Role } from '@/models/access-control'
 import { userEvent } from 'vite-plus/test/browser'
+import { consoleQuery } from '@/service/console'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
@@ -21,6 +22,10 @@ const fake = setupFakeApi(() => ({
                 const saved = { ...customRole, ...body, id: params.role_id }
                 roles = roles.map((role) => (role.id === saved.id ? saved : role))
                 return saved
+              },
+              delete: async ({ params }) => {
+                roles = roles.filter((role) => role.id !== params.role_id)
+                return { result: 'success' }
               },
             },
           },
@@ -100,6 +105,51 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
   await expect
     .element(dialog.getByRole('button', { name: 'permission.permissionList.clearAll' }))
     .not.toBeInTheDocument()
+})
+
+it('retains a failed role deletion for retry and closes before the list refresh finishes', async () => {
+  const { delete: remove } = fake.console.workspaces.current.rbac.roles.byRoleId
+  const first = hold(remove)
+  const retry = hold(remove)
+  const { screen, queryClient } = await renderRolePage()
+  onTestFinished(() => queryClient.clear())
+
+  const actions = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  await actions.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  const confirm = dialog.getByRole('button', { name: 'common.operation.delete' })
+  await confirm.click()
+  await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await userEvent.keyboard('{Enter}{Escape}')
+  await expect.element(dialog).toBeVisible()
+  expect(await first.arrived).toEqual({ params: { role_id: customRole.id } })
+  expect(remove).toHaveBeenCalledOnce()
+
+  first.reject(apiError({ status: 500, message: 'Delete failed' }))
+  await expect.element(confirm).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await retry.arrived
+  expect(remove).toHaveBeenCalledTimes(2)
+  const refresh = hold(fake.console.workspaces.current.rbac.roles.get)
+  retry.release()
+
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  const addRole = screen.getByRole('button', { name: 'permission.role.addRole' })
+  await expect.element(addRole).toHaveFocus()
+  refresh.reject(apiError({ status: 500, message: 'List refresh failed' }))
+  const listKey = consoleQuery.workspaces.current.rbac.roles.get.key({ type: 'infinite' })
+  await expect
+    .poll(() => queryClient.getQueryCache().find({ queryKey: listKey, exact: false })?.state.status)
+    .toBe('error')
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  await expect.element(addRole).toHaveFocus()
 })
 
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
