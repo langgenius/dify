@@ -7,6 +7,7 @@ from typing import Any, TypedDict, cast
 from pydantic import BaseModel
 from sqlalchemy import update
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -101,8 +102,9 @@ def handle(sender: Message, **kwargs):
     - update_provider_last_used_at_when_message_created
     - deduct_quota_when_message_created
 
-    By performing all Provider updates in a single transaction, we ensure
-    consistency and efficiency when updating Provider records.
+    Quota updates share one transaction. The provider last_used write uses a
+    separate transaction so a failure there is logged and does not roll back
+    the saved message.
     """
     message = sender
     application_generate_entity = kwargs.get("application_generate_entity")
@@ -197,26 +199,43 @@ def handle(sender: Message, **kwargs):
                     )
                     updates_to_perform.append(quota_update)
 
-    # Execute all updates
+    # last_used is bookkeeping. Keep it out of the message transaction so a
+    # database error cannot roll back an answer that was already streamed.
+    last_used_updates = [operation for operation in updates_to_perform if operation.values.quota_used is None]
+    other_updates = [operation for operation in updates_to_perform if operation.values.quota_used is not None]
+
     start_time = time_module.perf_counter()
+    last_used_failed = False
+    if last_used_updates:
+        try:
+            _execute_provider_updates(last_used_updates)
+        except SQLAlchemyError:
+            last_used_failed = True
+            logger.warning(
+                "Provider last_used update failed after %s s; saved answer will be kept. "
+                "Updates: %s, Tenant: %s, Provider: %s",
+                time_module.perf_counter() - start_time,
+                len(last_used_updates),
+                tenant_id,
+                provider_name,
+                exc_info=True,
+            )
+
     try:
-        _execute_provider_updates(updates_to_perform)
+        if other_updates:
+            _execute_provider_updates(other_updates)
 
-        # Log successful completion with timing
-        duration = time_module.perf_counter() - start_time
-
-        logger.info(
-            "Provider updates completed successfully. Updates: %s, Duration: %s s, Tenant: %s, Provider: %s",
-            len(updates_to_perform),
-            duration,
-            tenant_id,
-            provider_name,
-        )
-
+        if not last_used_failed:
+            duration = time_module.perf_counter() - start_time
+            logger.info(
+                "Provider updates completed successfully. Updates: %s, Duration: %s s, Tenant: %s, Provider: %s",
+                len(updates_to_perform),
+                duration,
+                tenant_id,
+                provider_name,
+            )
     except Exception:
-        # Log failure with timing and context
         duration = time_module.perf_counter() - start_time
-
         logger.exception(
             "Provider updates failed after %s s. Updates: %s, Tenant: %s, Provider: %s",
             duration,
