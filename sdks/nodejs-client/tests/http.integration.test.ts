@@ -1,4 +1,5 @@
 import type { AddressInfo } from 'node:net'
+import type { DifyResponse } from '../src/types/common'
 import { createServer } from 'node:http'
 import { Readable } from 'node:stream'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
@@ -39,6 +40,12 @@ describe('HttpClient integration', () => {
       ) {
         res.writeHead(200, { 'content-type': 'application/json', 'x-request-id': 'req-json' })
         res.end(JSON.stringify({ ok: true }))
+        return
+      }
+
+      if (req.method === 'DELETE' && req.url === '/conversations/conv') {
+        res.writeHead(204, { 'x-request-id': 'req-delete-conversation' })
+        res.end()
         return
       }
 
@@ -145,6 +152,20 @@ describe('HttpClient integration', () => {
 
     expect(response.data).toEqual({ received: 'hello world' })
     expect(requests.at(-1)?.body.toString('utf8')).toBe('hello world')
+  })
+
+  it('returns typed null data for a 204 conversation delete', async () => {
+    const response: DifyResponse<null> = await new ChatClient(client).deleteConversation(
+      'conv',
+      'u',
+    )
+
+    expect(response).toMatchObject({
+      status: 204,
+      data: null,
+      requestId: 'req-delete-conversation',
+    })
+    expect(requests.at(-1)?.body.toString('utf8')).toBe(JSON.stringify({ user: 'u' }))
   })
 
   it('parses real sse responses into text', async () => {
