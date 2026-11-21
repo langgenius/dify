@@ -219,7 +219,7 @@ class Dataset(TypeBase, kw_only=True):
     )
 
     @property
-    def index_struct_dict(self):
+    def index_struct_dict(self) -> dict[str, Any] | None:
         return json.loads(self.index_struct) if self.index_struct else None
 
     @property

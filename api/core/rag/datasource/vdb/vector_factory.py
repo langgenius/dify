@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class AbstractVectorFactory(ABC):
     @abstractmethod
     def init_vector(
-        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+        self, dataset: Dataset, attributes: list[str], embeddings: Embeddings, *, session: Session | None
     ) -> BaseVector:
         """Initialize the backend using the caller's session for metadata reads.
 
@@ -118,11 +118,21 @@ class Vector:
     def __init__(
         self,
         dataset: Dataset,
-        attributes: list | None = None,
+        attributes: list[str] | None = None,
         *,
         session: Session | None,
         vector_type: str | None = None,
-    ):
+        embeddings: Embeddings | None = None,
+    ) -> None:
+        """Initialize this dataset's vector processor and embedding dependency.
+
+        ``dataset`` must be loaded. ``attributes=None`` selects the default metadata projection;
+        ``vector_type=None`` requires a session and resolves the backend from the dataset/configuration.
+        A supplied embedding adapter is used as-is; otherwise the dataset-backed lazy loader defers
+        model materialization until an embed method is called. On success, the selected factory has
+        initialized the processor with these dependencies. Raises ``ValueError`` when type resolution
+        needs a missing session; factory-loading errors propagate unchanged.
+        """
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -142,11 +152,10 @@ class Vector:
                 "original_chunk_id",
             ]
         self._dataset = dataset
-        # Use a lazy proxy so cleanup paths (delete_by_ids / delete / text_exists)
+        # Use a lazy proxy by default so cleanup paths (delete_by_ids / delete / text_exists)
         # never transitively trigger billing API calls during ``Vector(dataset, session=...)``
-        # construction. The real embedding model is materialized only when an
-        # ``embed_*`` method is actually invoked (i.e. create / search paths).
-        self._embeddings: Embeddings = _LazyEmbeddings(dataset)
+        # construction. An explicitly supplied adapter is retained without materializing a model.
+        self._embeddings: Embeddings = embeddings if embeddings is not None else _LazyEmbeddings(dataset)
         self._attributes = attributes
         self._session = session
         if vector_type is not None:
