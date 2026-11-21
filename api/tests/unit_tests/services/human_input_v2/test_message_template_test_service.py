@@ -8,7 +8,6 @@ import re
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 from urllib.parse import urlsplit
 
@@ -139,6 +138,11 @@ class _Context:
         match = re.search(r"https://console\.example\.com/human-input/[A-Za-z0-9_-]+", message)
         assert match is not None, message
         return match.group()
+
+
+@dataclass(frozen=True)
+class _DatabaseEngine:
+    engine: Engine
 
 
 @pytest.fixture
@@ -275,7 +279,7 @@ def test_discovery_composition_selects_sources_for_each_edition(
 ) -> None:
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", edition)
     monkeypatch.setattr(mail, "is_inited", lambda: True)
-    monkeypatch.setattr(message_template_test_composition, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(message_template_test_composition, "db", _DatabaseEngine(sqlite_engine))
     with context.sessions.begin() as session:
         session.add(
             HumanInputIMChannel(
