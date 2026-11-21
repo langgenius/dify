@@ -28,7 +28,7 @@ File upload is not available over MCP. A file is passed to an app as a URL in it
 
 ## Notes
 
-- An MCP connector ships `connector-meta.json`, `mcp.json` and an icon (`icon.svg`, `icon.png` or `icon.jpg`), plus `token-schema.json` when `auth_mode` is `token`. `cli.json` is only for CLI connectors.
+- An MCP connector ships `connector-meta.json`, `mcp.json` and `icon.png`, plus `token-schema.json` when `auth_mode` is `token`.
 - `skill-meta.json` holds the skill header fields only WorkBuddy reads. The script adds them to the packaged `SKILL.md`. Keep them out of the skill in `skills/`.
 - `skill-intro.md` (optional) is text only for this connector's agent, such as how to log in. The script inserts it at the top of the packaged `SKILL.md` body.
 - Bump `version` in `connector-meta.json` on every submission.
