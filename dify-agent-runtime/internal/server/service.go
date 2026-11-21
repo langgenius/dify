@@ -824,6 +824,8 @@ func (s *Service) jobResultFromView(view *JobStatusView, row *JobRow, window *Ou
 	}
 }
 
+// resolveCwd returns a canonical directory within a canonical allowed root.
+// This boundary applies even when cwd is omitted or path isolation is disabled.
 func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 	var cwd string
 	if rawCwd != nil && *rawCwd != "" {
@@ -832,12 +834,61 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		cwd = s.config.DefaultCwd
 	}
 
-	info, err := os.Stat(cwd)
-	if err != nil || !info.IsDir() {
-		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
+	displayCwd := cwd
+	if !filepath.IsAbs(cwd) {
+		if cwd == "" || !filepath.IsAbs(s.config.DefaultCwd) {
+			return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+		}
+		// Anchor at DefaultCwd, never the daemon's cwd. Do not clean or Join:
+		// symlink/.. must resolve through the symlink before traversing its parent.
+		cwd = s.config.DefaultCwd + string(filepath.Separator) + cwd
 	}
-	abs, _ := filepath.Abs(cwd)
-	return abs, nil
+	realCwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+	}
+	for _, root := range s.config.allowedCwdRoots() {
+		realRoot, err := resolveExistingDir(root)
+		// Optional roots, such as /workspace on non-container hosts, may be absent.
+		if err != nil {
+			continue
+		}
+		if realCwd == realRoot {
+			return realRoot, nil
+		}
+		rootPrefix := realRoot
+		if !strings.HasSuffix(realRoot, string(filepath.Separator)) {
+			rootPrefix += string(filepath.Separator)
+		}
+		// Check the canonical root boundary before inspecting the candidate's type.
+		if strings.HasPrefix(realCwd, rootPrefix) {
+			info, err := os.Stat(realCwd)
+			if err != nil || !info.IsDir() {
+				return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", displayCwd))
+			}
+			return realCwd, nil
+		}
+	}
+	return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is outside allowed workspace roots: %s", displayCwd))
+}
+
+// resolveExistingDir canonicalizes and validates a trusted configured root.
+func resolveExistingDir(path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("directory path must be absolute: %s", path)
+	}
+	realPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", err
+	}
+	info, err := os.Stat(realPath)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("not a directory: %s", path)
+	}
+	return realPath, nil
 }
 
 func (s *Service) allocateJobDir() (string, string, error) {

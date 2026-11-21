@@ -29,6 +29,8 @@ const (
 	DefaultPipeReadyTimeout              = 10 * time.Second
 	DefaultSQLiteBusyTimeoutMs           = 5000
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
+	DefaultWorkspaceCwd                  = "/workspace"
+	AllowedCwdRootsEnv                   = "SHELLCTL_ALLOWED_CWD_ROOTS"
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 45.0
 	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
@@ -46,6 +48,7 @@ type Config struct {
 	MaxWaitTimeout               time.Duration
 	IdleFlushDuration            time.Duration
 	DefaultCwd                   string
+	AllowedCwdRoots              []string // Empty uses the current DefaultCwd and /workspace.
 	DefaultTerminalCols          int
 	DefaultTerminalRows          int
 	DefaultListLimit             int
@@ -73,6 +76,10 @@ func DefaultConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	allowedCwdRoots, err := parseAllowedCwdRoots(os.Getenv(AllowedCwdRootsEnv))
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Listen:                       DefaultListen,
@@ -84,6 +91,7 @@ func DefaultConfig() (*Config, error) {
 		MaxWaitTimeout:               time.Duration(DefaultMaxWaitTimeoutSeconds * float64(time.Second)),
 		IdleFlushDuration:            time.Duration(DefaultIdleFlushSeconds * float64(time.Second)),
 		DefaultCwd:                   homeDir,
+		AllowedCwdRoots:              allowedCwdRoots,
 		DefaultTerminalCols:          DefaultTerminalCols,
 		DefaultTerminalRows:          DefaultTerminalRows,
 		DefaultListLimit:             DefaultListLimit,
@@ -107,6 +115,32 @@ func DefaultConfig() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func parseAllowedCwdRoots(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	roots := strings.Split(raw, ",")
+	for i, root := range roots {
+		root = strings.TrimSpace(root)
+		if root == "" || !filepath.IsAbs(root) {
+			return nil, fmt.Errorf("%s: each root must be a non-empty absolute path, got %q", AllowedCwdRootsEnv, root)
+		}
+		roots[i] = filepath.Clean(root)
+	}
+	return roots, nil
+}
+
+func (c *Config) allowedCwdRoots() []string {
+	if len(c.AllowedCwdRoots) > 0 {
+		return c.AllowedCwdRoots
+	}
+	// Derive defaults here so callers can override DefaultCwd after DefaultConfig.
+	if c.DefaultCwd != "" {
+		return []string{c.DefaultCwd, DefaultWorkspaceCwd}
+	}
+	return []string{DefaultWorkspaceCwd}
 }
 
 // JobsDir returns the path to the jobs artifact directory.
