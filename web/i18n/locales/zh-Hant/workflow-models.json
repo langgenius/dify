@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "請在保存結構之前完成當前欄位的編輯",
   "nodes.llm.model": "模型",
   "nodes.llm.notSetContextInPromptTip": "要啟用上下文功能，請在提示中填寫上下文變數。",
+  "nodes.llm.outputVars.finish_reason": "模型停止生成的原因",
   "nodes.llm.outputVars.output": "生成內容",
   "nodes.llm.outputVars.reasoning_content": "推理內容",
   "nodes.llm.outputVars.usage": "模型用量信息",

@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "कृपया स्कीमा को सहेजने से पहले वर्तमान फ़ील्ड को संपादित करना पूरा करें",
   "nodes.llm.model": "मॉडल",
   "nodes.llm.notSetContextInPromptTip": "संदर्भ सुविधा को सक्षम करने के लिए, कृपया प्रॉम्प्ट में संदर्भ वेरिएबल भरें।",
+  "nodes.llm.outputVars.finish_reason": "मॉडल ने जनरेशन क्यों रोका",
   "nodes.llm.outputVars.output": "सामग्री उत्पन्न करें",
   "nodes.llm.outputVars.reasoning_content": "तर्क सामग्री",
   "nodes.llm.outputVars.usage": "मॉडल उपयोग जानकारी",

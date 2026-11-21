@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Пожалуйста, завершите редактирование текущего поля перед сохранением схемы.",
   "nodes.llm.model": "модель",
   "nodes.llm.notSetContextInPromptTip": "Чтобы включить функцию контекста, пожалуйста, заполните переменную контекста в PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Причина, по которой модель завершила генерацию",
   "nodes.llm.outputVars.output": "Создать контент",
   "nodes.llm.outputVars.reasoning_content": "Содержимое рассуждений",
   "nodes.llm.outputVars.usage": "Информация об использовании модели",

@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "لطفاً قبل از ذخیره طرح، ویرایش فیلد فعلی را تکمیل کنید.",
   "nodes.llm.model": "مدل",
   "nodes.llm.notSetContextInPromptTip": "برای فعال‌سازی ویژگی زمینه، لطفاً متغیر Context را در پرامپت قرار دهید.",
+  "nodes.llm.outputVars.finish_reason": "دلیل توقف تولید متن توسط مدل",
   "nodes.llm.outputVars.output": "محتوای تولیدشده",
   "nodes.llm.outputVars.reasoning_content": "محتوای استدلال",
   "nodes.llm.outputVars.usage": "اطلاعات مصرف مدل",

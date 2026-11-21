@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Lütfen şemayı kaydetmeden önce mevcut alanı düzenlemeyi tamamlayın.",
   "nodes.llm.model": "model",
   "nodes.llm.notSetContextInPromptTip": "Bağlam özelliğini etkinleştirmek için lütfen PROMPT içinde bağlam değişkenini doldurun.",
+  "nodes.llm.outputVars.finish_reason": "Modelin üretimi durdurma nedeni",
   "nodes.llm.outputVars.output": "İçerik Üret",
   "nodes.llm.outputVars.reasoning_content": "Akıl yürütme içeriği",
   "nodes.llm.outputVars.usage": "Model Kullanım Bilgileri",

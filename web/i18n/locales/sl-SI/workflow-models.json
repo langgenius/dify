@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Prosimo, da dokončate urejanje trenutnega polja, preden shranite shemo.",
   "nodes.llm.model": "model",
   "nodes.llm.notSetContextInPromptTip": "Da omogočite funkcijo konteksta, prosimo izpolnite spremenljivko konteksta v PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Razlog, zakaj je model končal generiranje",
   "nodes.llm.outputVars.output": "Ustvari vsebino",
   "nodes.llm.outputVars.reasoning_content": "Vsebina razmišljanja",
   "nodes.llm.outputVars.usage": "Informacije o uporabi modela",

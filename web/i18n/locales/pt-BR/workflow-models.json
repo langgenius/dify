@@ -53,6 +53,7 @@
   "nodes.llm.jsonSchema.warningTips.saveSchema": "Por favor, termine de editar o campo atual antes de salvar o esquema.",
   "nodes.llm.model": "modelo",
   "nodes.llm.notSetContextInPromptTip": "Para ativar o recurso de contexto, preencha a variável de contexto no PROMPT.",
+  "nodes.llm.outputVars.finish_reason": "Motivo pelo qual o modelo parou de gerar",
   "nodes.llm.outputVars.output": "Conteúdo gerado",
   "nodes.llm.outputVars.reasoning_content": "Conteúdo de raciocínio",
   "nodes.llm.outputVars.usage": "Informações de uso do modelo",
