@@ -3672,11 +3672,19 @@ Button styles for user actions.
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | external_knowledge_api_id | string | External knowledge API id (required when `provider` is `external`). | No |
 | external_knowledge_id | string | External knowledge base id (required when `provider` is `external`). | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models; `economy` uses keyword indexing. | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | `high_quality` uses embedding models; `economy` uses keyword indexing. | No |
 | name | string | Knowledge base name | Yes |
-| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | `only_me` restricts to the creator, `all_team_members` grants workspace access, `partial_members` grants access to `partial_member_list` members. | No |
-| provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
+| permission | [DatasetPermission](#datasetpermission) | `only_me` restricts to the creator, `all_team_members` grants workspace access, `partial_members` grants access to `partial_member_list` members. | No |
+| provider | [DatasetProvider](#datasetprovider) | `vendor` for internal knowledge bases, `external` for external ones. | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+
+#### DatasetIndexingTechnique
+
+How a knowledge base indexes its documents.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetIndexingTechnique | string | How a knowledge base indexes its documents. |  |
 
 #### DatasetListQuery
 
@@ -3696,6 +3704,22 @@ Button styles for user actions.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### DatasetPermission
+
+Who can reach a knowledge base.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetPermission | string | Who can reach a knowledge base. |  |
+
+#### DatasetProvider
+
+Whether the knowledge base indexes locally or proxies an external knowledge API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetProvider | string | Whether the knowledge base indexes locally or proxies an external knowledge API. |  |
 
 #### DatasetResponse
 
@@ -3726,12 +3750,12 @@ Button styles for user actions.
 | external_knowledge_id | string |  | No |
 | external_retrieval_model | object |  | No |
 | icon_info | object |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" |  | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) |  | No |
 | is_multimodal | boolean |  | No |
 | name | string |  | No |
 | partial_member_list | [ object ] | Member ids granted access when `permission` is `partial_members`. | No |
-| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" |  | No |
-| provider | string, <br>**Available values:** "external", "vendor" | Read-only; ignored on update. | No |
+| permission | [DatasetPermission](#datasetpermission) |  | No |
+| provider | [DatasetProvider](#datasetprovider) | Read-only; ignored on update. | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
 | summary_index_setting | object |  | No |
 
@@ -3842,15 +3866,23 @@ instead of ``ErrorBody`` because device clients parse it.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model" | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
 | doc_language | string | Language of the document. | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
 | name | string | Document name. | No |
 | process_rule | object | Processing rules for chunking as a JSON object. | No |
 | retrieval_model | object | Retrieval model configuration. | No |
 | text | string | Document text content. | No |
+
+#### DocumentForm
+
+Chunking shape of a document.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentForm | string | Chunking shape of a document. |  |
 
 #### DocumentIndexingStatusResponse
 
@@ -3902,11 +3934,11 @@ instead of ``ErrorBody`` because device clients parse it.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model" | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
 | doc_language | string | Language of the document. | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
 | name | string | Document name. | No |
 | process_rule | object | Processing rules for chunking as a JSON object. | No |
 | retrieval_model | object | Retrieval model configuration. | No |

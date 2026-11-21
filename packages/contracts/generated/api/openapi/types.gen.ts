@@ -475,14 +475,16 @@ export type DatasetCreatePayload = {
   embedding_model_provider?: string | null
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
-  indexing_technique?: 'economy' | 'high_quality' | null
+  indexing_technique?: DatasetIndexingTechnique | null
   name: string
-  permission?: 'all_team_members' | 'only_me' | 'partial_members' | null
-  provider?: 'external' | 'vendor'
+  permission?: DatasetPermission | null
+  provider?: DatasetProvider
   retrieval_model?: {
     [key: string]: unknown
   } | null
 }
+
+export type DatasetIndexingTechnique = 'economy' | 'high_quality'
 
 export type DatasetListQuery = {
   limit?: number
@@ -498,6 +500,10 @@ export type DatasetListResponse = {
   page: number
   total: number
 }
+
+export type DatasetPermission = 'all_team_members' | 'only_me' | 'partial_members'
+
+export type DatasetProvider = 'external' | 'vendor'
 
 export type DatasetResponse = {
   created_at: number
@@ -529,14 +535,14 @@ export type DatasetUpdatePayload = {
   icon_info?: {
     [key: string]: unknown
   } | null
-  indexing_technique?: 'economy' | 'high_quality' | null
+  indexing_technique?: DatasetIndexingTechnique | null
   is_multimodal?: boolean | null
   name?: string | null
   partial_member_list?: Array<{
     [key: string]: string
   }> | null
-  permission?: 'all_team_members' | 'only_me' | 'partial_members' | null
-  provider?: 'external' | 'vendor' | null
+  permission?: DatasetPermission | null
+  provider?: DatasetProvider | null
   retrieval_model?: {
     [key: string]: unknown
   } | null
@@ -626,11 +632,11 @@ export type DocumentAndBatchResponse = {
 }
 
 export type DocumentCreateByTextPayload = {
-  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model' | null
+  doc_form?: DocumentForm | null
   doc_language?: string | null
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique?: 'economy' | 'high_quality' | null
+  indexing_technique?: DatasetIndexingTechnique | null
   name?: string | null
   process_rule?: {
     [key: string]: unknown
@@ -640,6 +646,8 @@ export type DocumentCreateByTextPayload = {
   } | null
   text?: string | null
 }
+
+export type DocumentForm = 'hierarchical_model' | 'qa_model' | 'text_model'
 
 export type DocumentIndexingStatusResponse = {
   batch: string
@@ -682,11 +690,11 @@ export type DocumentResponse = {
 }
 
 export type DocumentUpdateByTextPayload = {
-  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model' | null
+  doc_form?: DocumentForm | null
   doc_language?: string | null
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique?: 'economy' | 'high_quality' | null
+  indexing_technique?: DatasetIndexingTechnique | null
   name?: string | null
   process_rule?: {
     [key: string]: unknown

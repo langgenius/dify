@@ -1683,9 +1683,34 @@ class WorkflowToolResponse(BaseModel):
     privacy_policy: str | None
 
 
-_DATASET_PERMISSION = Literal["only_me", "all_team_members", "partial_members"]
-_DATASET_INDEXING_TECHNIQUE = Literal["high_quality", "economy"]
-_DOC_FORM = Literal["text_model", "hierarchical_model", "qa_model"]
+class DatasetPermission(StrEnum):
+    """Who can reach a knowledge base."""
+
+    ONLY_ME = "only_me"
+    ALL_TEAM_MEMBERS = "all_team_members"
+    PARTIAL_MEMBERS = "partial_members"
+
+
+class DatasetIndexingTechnique(StrEnum):
+    """How a knowledge base indexes its documents."""
+
+    HIGH_QUALITY = "high_quality"
+    ECONOMY = "economy"
+
+
+class DocumentForm(StrEnum):
+    """Chunking shape of a document."""
+
+    TEXT_MODEL = "text_model"
+    HIERARCHICAL_MODEL = "hierarchical_model"
+    QA_MODEL = "qa_model"
+
+
+class DatasetProvider(StrEnum):
+    """Whether the knowledge base indexes locally or proxies an external knowledge API."""
+
+    VENDOR = "vendor"
+    EXTERNAL = "external"
 
 
 class DatasetCreatePayload(BaseModel):
@@ -1695,16 +1720,16 @@ class DatasetCreatePayload(BaseModel):
     description: str = Field(
         "", max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH, description="Knowledge base description"
     )
-    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = Field(
+    indexing_technique: DatasetIndexingTechnique | None = Field(
         default=None,
         description="`high_quality` uses embedding models; `economy` uses keyword indexing.",
     )
-    permission: _DATASET_PERMISSION | None = Field(
+    permission: DatasetPermission | None = Field(
         default="only_me",
         description="`only_me` restricts to the creator, `all_team_members` grants workspace access, "
         "`partial_members` grants access to `partial_member_list` members.",
     )
-    provider: Literal["vendor", "external"] = Field(
+    provider: DatasetProvider = Field(
         default="vendor", description="`vendor` for internal knowledge bases, `external` for external ones."
     )
     external_knowledge_api_id: str | None = Field(
@@ -1733,9 +1758,9 @@ class DatasetUpdatePayload(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=40)
     description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
-    permission: _DATASET_PERMISSION | None = None
-    provider: Literal["vendor", "external"] | None = Field(default=None, description="Read-only; ignored on update.")
-    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = None
+    permission: DatasetPermission | None = None
+    provider: DatasetProvider | None = Field(default=None, description="Read-only; ignored on update.")
+    indexing_technique: DatasetIndexingTechnique | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(
@@ -1786,13 +1811,13 @@ class DocumentTextPayload(BaseModel):
     process_rule: dict[str, Any] | None = Field(
         default=None, description="Processing rules for chunking as a JSON object."
     )
-    doc_form: _DOC_FORM | None = Field(
+    doc_form: DocumentForm | None = Field(
         default=None,
         description="`text_model` for standard chunking, `hierarchical_model` for parent-child, "
         "`qa_model` for question-answer pairs. Defaults to the knowledge base's form.",
     )
     doc_language: str | None = Field(default=None, description="Language of the document.")
-    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = Field(
+    indexing_technique: DatasetIndexingTechnique | None = Field(
         default=None,
         description="Required for the first document when the knowledge base has no technique; "
         "later documents inherit the knowledge base's.",

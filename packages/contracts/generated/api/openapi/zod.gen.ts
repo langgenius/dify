@@ -517,23 +517,11 @@ export const zCustomModelRow = z.object({
 })
 
 /**
- * DatasetCreatePayload
+ * DatasetIndexingTechnique
+ *
+ * How a knowledge base indexes its documents.
  */
-export const zDatasetCreatePayload = z.object({
-  description: z.string().max(400).optional().default(''),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
-  name: z.string().min(1).max(40),
-  permission: z
-    .enum(['all_team_members', 'only_me', 'partial_members'])
-    .nullish()
-    .default('only_me'),
-  provider: z.enum(['external', 'vendor']).optional().default('vendor'),
-  retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-})
+export const zDatasetIndexingTechnique = z.enum(['economy', 'high_quality'])
 
 /**
  * DatasetListQuery
@@ -542,6 +530,36 @@ export const zDatasetListQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
   query: z.string().optional().default(''),
+})
+
+/**
+ * DatasetPermission
+ *
+ * Who can reach a knowledge base.
+ */
+export const zDatasetPermission = z.enum(['all_team_members', 'only_me', 'partial_members'])
+
+/**
+ * DatasetProvider
+ *
+ * Whether the knowledge base indexes locally or proxies an external knowledge API.
+ */
+export const zDatasetProvider = z.enum(['external', 'vendor'])
+
+/**
+ * DatasetCreatePayload
+ */
+export const zDatasetCreatePayload = z.object({
+  description: z.string().max(400).optional().default(''),
+  embedding_model: z.string().nullish(),
+  embedding_model_provider: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish(),
+  external_knowledge_id: z.string().nullish(),
+  indexing_technique: zDatasetIndexingTechnique.nullish(),
+  name: z.string().min(1).max(40),
+  permission: zDatasetPermission.nullish().default('only_me'),
+  provider: zDatasetProvider.optional().default('vendor'),
+  retrieval_model: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -574,12 +592,12 @@ export const zDatasetUpdatePayload = z.object({
   external_knowledge_id: z.string().nullish(),
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  indexing_technique: zDatasetIndexingTechnique.nullish(),
   is_multimodal: z.boolean().nullish(),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
-  permission: z.enum(['all_team_members', 'only_me', 'partial_members']).nullish(),
-  provider: z.enum(['external', 'vendor']).nullish(),
+  permission: zDatasetPermission.nullish(),
+  provider: zDatasetProvider.nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
 })
@@ -687,14 +705,21 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * DocumentForm
+ *
+ * Chunking shape of a document.
+ */
+export const zDocumentForm = z.enum(['hierarchical_model', 'qa_model', 'text_model'])
+
+/**
  * DocumentCreateByTextPayload
  */
 export const zDocumentCreateByTextPayload = z.object({
-  doc_form: z.enum(['hierarchical_model', 'qa_model', 'text_model']).nullish(),
+  doc_form: zDocumentForm.nullish(),
   doc_language: z.string().nullish(),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  indexing_technique: zDatasetIndexingTechnique.nullish(),
   name: z.string().min(1).nullish(),
   process_rule: z.record(z.string(), z.unknown()).nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
@@ -751,11 +776,11 @@ export const zDocumentAndBatchResponse = z.object({
  * DocumentUpdateByTextPayload
  */
 export const zDocumentUpdateByTextPayload = z.object({
-  doc_form: z.enum(['hierarchical_model', 'qa_model', 'text_model']).nullish(),
+  doc_form: zDocumentForm.nullish(),
   doc_language: z.string().nullish(),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  indexing_technique: zDatasetIndexingTechnique.nullish(),
   name: z.string().nullish(),
   process_rule: z.record(z.string(), z.unknown()).nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
