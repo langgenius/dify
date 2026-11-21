@@ -69,18 +69,6 @@ export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) =
   )
 }
 
-export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.delete({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
-export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.useCheck.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
 export const createExternalKnowledgeBase = (
   { body }: { body: CreateKnowledgeBaseReq },
   context?: ConsoleClientContext,
