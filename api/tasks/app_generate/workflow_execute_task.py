@@ -13,6 +13,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.base_app_queue_manager import QueuedEventsHint, queued_events_hint
 from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.streaming_utils import STREAM_COMPLETE_SIGNAL
@@ -30,6 +31,7 @@ from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState
+from libs.broadcast_channel.channel import Topic
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import set_login_user
 from libs.helper import to_timestamp
@@ -362,6 +364,63 @@ def _get_error_message(event: str | Mapping[str, Any] | BaseModel) -> str | None
     return message if isinstance(message, str) and message else None
 
 
+# Events the publisher keeps state about. They are handed to the transport at once, so that the state says what
+# subscribers have actually been sent.
+_STREAM_STATE_EVENTS = frozenset({"workflow_started", "workflow_finished", "workflow_paused", "message_end", "error"})
+# How many encoded events may wait for the ones queued behind them before they are sent anyway.
+_MAX_PENDING_STREAM_EVENTS = 32
+
+
+class _PendingStreamEvents:
+    """Encoded stream events on their way to the transport, sent together when more are already queued.
+
+    Every event costs the worker and the API process a round trip of their own when it is published alone.
+    An event is held back only while the listener says another one is queued behind it, never while the
+    listener waits: it calls back before it waits on an empty queue. With an event source that says nothing,
+    every event is published as it arrives.
+    """
+
+    def __init__(self, topic: Topic) -> None:
+        self._topic = topic
+        self._payloads: list[bytes] = []
+        self._deferred_error: Exception | None = None
+        self._hint = QueuedEventsHint(before_wait=self._flush_before_listener_waits)
+
+    @contextlib.contextmanager
+    def announced_to_listener(self) -> Generator[None]:
+        token = queued_events_hint.set(self._hint)
+        try:
+            yield
+        finally:
+            queued_events_hint.reset(token)
+
+    def add(self, payload: bytes, *, may_wait: bool) -> None:
+        self._payloads.append(payload)
+        if not (may_wait and self._hint.more_queued and len(self._payloads) < _MAX_PENDING_STREAM_EVENTS):
+            self.flush()
+
+    def flush(self) -> None:
+        if not self._payloads:
+            return
+        payloads, self._payloads = self._payloads, []
+        if len(payloads) == 1:
+            self._topic.publish(payloads[0])
+        else:
+            self._topic.publish_many(payloads)
+
+    def raise_deferred_error(self) -> None:
+        if self._deferred_error is not None:
+            error, self._deferred_error = self._deferred_error, None
+            raise error
+
+    def _flush_before_listener_waits(self) -> None:
+        # Runs inside the event source. A publish error is raised from the publishing loop, which has the fallback.
+        try:
+            self.flush()
+        except Exception as exc:
+            self._deferred_error = exc
+
+
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel],
     workflow_run_id: str | uuid.UUID,
@@ -433,35 +492,41 @@ def _publish_streaming_response(
     stream_failed = False
     last_task_id = normalized_workflow_run_id
     stream_error_message: str | None = None
+    pending = _PendingStreamEvents(topic)
 
     try:
-        for event in response_stream:
-            event_name = _get_event_name(event)
-            task_id = _get_task_id(event)
-            if task_id is not None:
-                last_task_id = task_id
+        with pending.announced_to_listener():
+            for event in response_stream:
+                pending.raise_deferred_error()
+                event_name = _get_event_name(event)
+                task_id = _get_task_id(event)
+                if task_id is not None:
+                    last_task_id = task_id
 
-            try:
-                if isinstance(event, BaseModel):
-                    payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
-                else:
-                    payload = json.dumps(event, ensure_ascii=False, default=str)
-            except (TypeError, ValueError):
-                stream_failed = True
-                logger.exception("error while encoding event")
-                continue
+                try:
+                    if isinstance(event, BaseModel):
+                        payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+                    else:
+                        payload = json.dumps(event, ensure_ascii=False, default=str)
+                except (TypeError, ValueError):
+                    stream_failed = True
+                    logger.exception("error while encoding event")
+                    continue
 
-            topic.publish(payload.encode())
+                pending.add(payload.encode(), may_wait=event_name not in _STREAM_STATE_EVENTS)
 
-            if event_name == "workflow_started":
-                started_published = True
-            elif event_name in terminal_events:
-                terminal_published = True
-            elif event_name == "message_end":
-                message_end_published = True
-            elif event_name == "error":
-                stream_failed = True
-                stream_error_message = _get_error_message(event) or stream_error_message
+                if event_name == "workflow_started":
+                    started_published = True
+                elif event_name in terminal_events:
+                    terminal_published = True
+                elif event_name == "message_end":
+                    message_end_published = True
+                elif event_name == "error":
+                    stream_failed = True
+                    stream_error_message = _get_error_message(event) or stream_error_message
+
+        pending.flush()
+        pending.raise_deferred_error()
 
         if (
             app_mode == AppMode.ADVANCED_CHAT
@@ -473,6 +538,9 @@ def _publish_streaming_response(
             topic.publish(STREAM_COMPLETE_SIGNAL)
             return
     except Exception as exc:
+        # What was waiting when the stream broke is still sent, ahead of any fallback.
+        with contextlib.suppress(Exception):
+            pending.flush()
         if not terminal_published:
             logger.exception(
                 "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",

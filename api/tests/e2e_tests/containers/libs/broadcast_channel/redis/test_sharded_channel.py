@@ -106,6 +106,27 @@ class TestShardedRedisBroadcastChannelIntegration:
         assert len(received_messages) == 1
         assert received_messages[0] == message
 
+    def test_publish_many_delivers_messages_in_order(self, broadcast_channel: BroadcastChannel) -> None:
+        """Messages sent together arrive as separate messages, in the order given."""
+        topic = broadcast_channel.topic(self._get_test_topic_name())
+        subscription = topic.subscribe()
+        messages = [f"message {index}".encode() for index in range(5)]
+        received: list[bytes] = []
+
+        try:
+            assert subscription.receive(timeout=0.05) is None  # starts the listener
+            time.sleep(0.2)  # let the subscription become active
+            topic.as_producer().publish_many(messages)
+            deadline = time.monotonic() + 5.0
+            while len(received) < len(messages) and time.monotonic() < deadline:
+                message = subscription.receive(timeout=0.1)
+                if message is not None:
+                    received.append(message)
+        finally:
+            subscription.close()
+
+        assert received == messages
+
     def test_multiple_subscribers_same_topic(self, broadcast_channel: BroadcastChannel):
         """Test message broadcasting to multiple sharded subscribers."""
         topic_name = self._get_test_topic_name()

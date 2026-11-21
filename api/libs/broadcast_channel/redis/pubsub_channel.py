@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
@@ -48,6 +49,17 @@ class Topic:
 
     def publish(self, payload: bytes) -> None:
         self._client.publish(self._redis_topic, payload)
+
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        # A cluster client keeps one command per message: pipelined PUBLISH routing is not covered by tests here.
+        if len(payloads) < 2 or isinstance(self._client, RedisCluster):
+            for payload in payloads:
+                self.publish(payload)
+            return
+        pipeline = self._client.pipeline(transaction=False)
+        for payload in payloads:
+            pipeline.publish(self._redis_topic, payload)
+        pipeline.execute()
 
     def as_subscriber(self) -> Subscriber:
         return self

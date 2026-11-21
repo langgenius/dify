@@ -4,6 +4,8 @@ import queue
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from contextvars import ContextVar
 from enum import IntEnum, auto
 from typing import Any
 
@@ -47,6 +49,29 @@ class PublishFrom(IntEnum):
     TASK_PIPELINE = auto()
 
 
+class QueuedEventsHint:
+    """What `AppQueueManager.listen` tells a consumer that forwards its events to a transport.
+
+    A consumer that wants to send events which are already queued in one round trip sets an instance as
+    `queued_events_hint` around its iteration. `listen` then says, for each event it yields, whether more
+    are queued behind it, and calls `before_wait` every time it is about to wait on an empty queue, so
+    that whatever the consumer still holds goes out first. Without a hint `listen` behaves as before.
+    """
+
+    __slots__ = ("_before_wait", "more_queued")
+
+    def __init__(self, before_wait: Callable[[], None]) -> None:
+        self.more_queued: bool = False
+        self._before_wait = before_wait
+
+    def before_wait(self) -> None:
+        self.more_queued = False
+        self._before_wait()
+
+
+queued_events_hint: ContextVar[QueuedEventsHint | None] = ContextVar("queued_events_hint", default=None)
+
+
 class AppQueueManager(ABC):
     def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom):
         if not user_id:
@@ -81,13 +106,18 @@ class AppQueueManager(ABC):
         self._execution_coordinator.start_watchdog()
         start_time = time.monotonic()
         last_ping_time: int | float = 0
+        hint = queued_events_hint.get()
         try:
             while True:
                 try:
+                    if hint is not None and self._q.empty():
+                        hint.before_wait()
                     message = self._q.get(timeout=1)
                     if message is None:
                         break
 
+                    if hint is not None:
+                        hint.more_queued = not self._q.empty()
                     yield message
                 except queue.Empty:
                     continue

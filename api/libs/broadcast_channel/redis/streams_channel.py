@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import queue
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Self, override
 
 from extensions.redis_names import serialize_redis_name
@@ -61,6 +61,21 @@ class StreamsTopic:
 
     def publish(self, payload: bytes) -> None:
         self._client.xadd(self._key, {b"data": payload}, maxlen=self.max_length)
+        self._refresh_retention()
+
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        # A cluster client keeps one command per message: pipelined XADD routing is not covered by tests here.
+        if len(payloads) < 2 or isinstance(self._client, RedisCluster):
+            for payload in payloads:
+                self.publish(payload)
+            return
+        pipeline = self._client.pipeline(transaction=False)
+        for payload in payloads:
+            pipeline.xadd(self._key, {b"data": payload}, maxlen=self.max_length)
+        pipeline.execute()
+        self._refresh_retention()
+
+    def _refresh_retention(self) -> None:
         if self._retention_seconds > 0:
             try:
                 self._client.expire(self._key, self._retention_seconds)

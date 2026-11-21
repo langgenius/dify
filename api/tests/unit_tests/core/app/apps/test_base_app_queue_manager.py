@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom, QueuedEventsHint, queued_events_hint
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -194,3 +194,52 @@ def test_message_queue_keeps_legacy_stop_for_non_graphengine_chat() -> None:
     with patch.object(manager, "_is_stopped", return_value=True):
         with pytest.raises(GenerateTaskStoppedError):
             manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
+
+
+def test_listen_tells_a_forwarding_consumer_what_is_queued_and_calls_back_before_it_waits() -> None:
+    manager = _workflow_queue_manager(AppMode.WORKFLOW.value)
+    seen: list[object] = []
+
+    def before_wait() -> None:
+        # End the stream here: the listener is about to wait on an empty queue.
+        seen.append("before wait")
+        manager.stop_listen(execution_state=AppExecutionState.TERMINAL)
+
+    hint = QueuedEventsHint(before_wait=before_wait)
+    token = queued_events_hint.set(hint)
+    try:
+        with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+            mock_redis.get.return_value = None
+            manager.publish(QueueTextChunkEvent(text="first"), PublishFrom.APPLICATION_MANAGER)
+            manager.publish(QueueTextChunkEvent(text="second"), PublishFrom.APPLICATION_MANAGER)
+            for message in manager.listen():
+                assert isinstance(message.event, QueueTextChunkEvent)
+                seen.append((message.event.text, hint.more_queued))
+    finally:
+        queued_events_hint.reset(token)
+
+    assert seen == [("first", True), ("second", False), "before wait"]
+
+
+def test_listen_without_a_hint_yields_queued_events_as_before() -> None:
+    manager = _workflow_queue_manager(AppMode.WORKFLOW.value)
+
+    with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
+        mock_redis.get.return_value = None
+        manager.publish(QueueTextChunkEvent(text="only"), PublishFrom.APPLICATION_MANAGER)
+        manager.stop_listen(execution_state=AppExecutionState.TERMINAL)
+        messages = list(manager.listen())
+
+    assert queued_events_hint.get() is None
+    assert [message.event.text for message in messages if isinstance(message.event, QueueTextChunkEvent)] == ["only"]
+
+
+def test_queued_events_hint_forgets_what_was_queued_once_the_listener_waits() -> None:
+    calls: list[str] = []
+    hint = QueuedEventsHint(before_wait=lambda: calls.append("flush"))
+    hint.more_queued = True
+
+    hint.before_wait()
+
+    assert calls == ["flush"]
+    assert not hint.more_queued
