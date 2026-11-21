@@ -1481,3 +1481,187 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     assert results[0].metadata.segment_id == segment_id
     assert current_scope is not None
     assert segment_id in current_scope.granted_retriever_segment_ids
+
+
+@pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetDocument, DocumentSegment)], indirect=True)
+def test_retrieve_refills_top_k_after_summary_segment_deduplication(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    vector_engine: Engine,
+) -> None:
+    dataset = _dataset()
+    dataset.summary_index_setting = {"enable": True}
+    source = _dataset_document(document_id="source-document", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    segments = [
+        _segment(segment_id=segment_id, document_id=source.id, index_node_id=f"node-{segment_id}")
+        for segment_id in ("segment-a", "segment-b", "segment-c")
+    ]
+    sqlite_session.add_all([dataset, source, *segments])
+    sqlite_session.commit()
+
+    def summary_hit(segment_id: str, doc_id: str, score: float) -> Document:
+        return Document(
+            page_content=f"summary-{doc_id}",
+            metadata={
+                "dataset_id": dataset.id,
+                "document_id": source.id,
+                "doc_id": doc_id,
+                "is_summary": True,
+                "original_chunk_id": segment_id,
+                "score": score,
+            },
+            provider="dify",
+        )
+
+    candidates = [
+        summary_hit("segment-a", "summary-a", 0.95),
+        create_mock_document(
+            "original-a",
+            "node-segment-a",
+            0.9,
+            additional_metadata={"dataset_id": dataset.id, "document_id": source.id},
+        ),
+        summary_hit("segment-b", "summary-b", 0.85),
+        create_mock_document(
+            "original-b",
+            "node-segment-b",
+            0.8,
+            additional_metadata={"dataset_id": dataset.id, "document_id": source.id},
+        ),
+        create_mock_document(
+            "original-c",
+            "node-segment-c",
+            0.7,
+            additional_metadata={"dataset_id": dataset.id, "document_id": source.id},
+        ),
+    ]
+    candidate_limits: list[int] = []
+
+    def retrieve_candidates(
+        cls,
+        retrieval_method: RetrievalMethod,
+        dataset_id: str,
+        query: str,
+        dataset: Dataset | None = None,
+        top_k: int = 4,
+        score_threshold: float | None = 0.0,
+        reranking_model: retrieval_service_module.RerankingModelDict | None = None,
+        reranking_mode: str = "reranking_model",
+        weights: retrieval_service_module.WeightsDict | None = None,
+        document_ids_filter: list[str] | None = None,
+        attachment_ids: list[str] | None = None,
+    ) -> list[Document]:
+        assert retrieval_method == RetrievalMethod.HYBRID_SEARCH
+        assert dataset is not None
+        assert dataset_id == dataset.id
+        assert query == "query"
+        assert score_threshold == 0.0
+        assert reranking_model is None
+        assert reranking_mode == "reranking_model"
+        assert weights is None
+        assert document_ids_filter is None
+        assert attachment_ids is None
+        candidate_limits.append(top_k)
+        return candidates[:top_k]
+
+    monkeypatch.setattr(RetrievalService, "_get_dataset", classmethod(lambda _cls, _dataset_id: dataset))
+    monkeypatch.setattr(RetrievalService, "_retrieve_candidates", classmethod(retrieve_candidates))
+
+    results = RetrievalService.retrieve(RetrievalMethod.HYBRID_SEARCH, dataset.id, "query", top_k=2)
+    formatted = RetrievalService.format_retrieval_documents(sqlite_session, results)
+
+    assert candidate_limits == [4]
+    assert {record.segment.id for record in formatted} == {"segment-a", "segment-b"}
+    assert len(formatted) == 2
+
+
+@pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetDocument, DocumentSegment)], indirect=True)
+def test_retrieve_expands_candidate_pool_when_summary_hits_still_collapse_below_top_k(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    vector_engine: Engine,
+) -> None:
+    dataset = _dataset()
+    dataset.summary_index_setting = {"enable": True}
+    source = _dataset_document(document_id="source-document", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    segments = [
+        _segment(segment_id=segment_id, document_id=source.id, index_node_id=f"node-{segment_id}")
+        for segment_id in ("segment-a", "segment-b")
+    ]
+    sqlite_session.add_all([dataset, source, *segments])
+    sqlite_session.commit()
+
+    candidates = [
+        Document(
+            page_content=f"summary-a-{index}",
+            metadata={
+                "dataset_id": dataset.id,
+                "document_id": source.id,
+                "doc_id": f"summary-a-{index}",
+                "is_summary": True,
+                "original_chunk_id": "segment-a",
+                "score": 0.99 - index / 100,
+            },
+            provider="dify",
+        )
+        for index in range(4)
+    ]
+    candidates.extend(
+        [
+            Document(
+                page_content="summary-b",
+                metadata={
+                    "dataset_id": dataset.id,
+                    "document_id": source.id,
+                    "doc_id": "summary-b",
+                    "is_summary": True,
+                    "original_chunk_id": "segment-b",
+                    "score": 0.8,
+                },
+                provider="dify",
+            ),
+            create_mock_document(
+                "original-b",
+                "node-segment-b",
+                0.75,
+                additional_metadata={"dataset_id": dataset.id, "document_id": source.id},
+            ),
+        ]
+    )
+    candidate_limits: list[int] = []
+
+    def retrieve_candidates(
+        cls,
+        retrieval_method: RetrievalMethod,
+        dataset_id: str,
+        query: str,
+        dataset: Dataset | None = None,
+        top_k: int = 4,
+        score_threshold: float | None = 0.0,
+        reranking_model: retrieval_service_module.RerankingModelDict | None = None,
+        reranking_mode: str = "reranking_model",
+        weights: retrieval_service_module.WeightsDict | None = None,
+        document_ids_filter: list[str] | None = None,
+        attachment_ids: list[str] | None = None,
+    ) -> list[Document]:
+        assert retrieval_method == RetrievalMethod.HYBRID_SEARCH
+        assert dataset is not None
+        assert dataset_id == dataset.id
+        assert query == "query"
+        assert score_threshold == 0.0
+        assert reranking_model is None
+        assert reranking_mode == "reranking_model"
+        assert weights is None
+        assert document_ids_filter is None
+        assert attachment_ids is None
+        candidate_limits.append(top_k)
+        return candidates[:top_k]
+
+    monkeypatch.setattr(RetrievalService, "_get_dataset", classmethod(lambda _cls, _dataset_id: dataset))
+    monkeypatch.setattr(RetrievalService, "_retrieve_candidates", classmethod(retrieve_candidates))
+
+    results = RetrievalService.retrieve(RetrievalMethod.HYBRID_SEARCH, dataset.id, "query", top_k=2)
+    formatted = RetrievalService.format_retrieval_documents(sqlite_session, results)
+
+    assert candidate_limits == [4, 8]
+    assert {record.segment.id for record in formatted} == {"segment-a", "segment-b"}
