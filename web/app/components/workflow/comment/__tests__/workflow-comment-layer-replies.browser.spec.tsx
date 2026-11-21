@@ -131,6 +131,71 @@ describe('replies', () => {
     expect(thread(screen).getByText('OK').elements()).toHaveLength(2)
   })
 
+  it('keeps a reply that was saved while the thread could not load', async () => {
+    api.detailFails = true
+    api.reply.mockImplementationOnce(async () => ({ id: 'reply-saved', created_at: 200 }))
+    const screen = await renderLayer()
+    await openThread(screen)
+
+    await sendReply(screen, 'Saved while offline')
+
+    const reply = thread(screen).getByText('Saved while offline')
+    await expect.poll(() => reply.element().closest('[aria-busy="true"]')).toBeNull()
+    await expect
+      .element(thread(screen).getByText('workflowComments.comments.status.notSent'))
+      .not.toBeInTheDocument()
+  })
+
+  it('keeps each send’s own outcome when the same text is sent twice', async () => {
+    api.reply
+      .mockImplementationOnce(async () => saveReplyOnServer('first', 'OK', 'reply-ok'))
+      .mockRejectedValueOnce(new Error('Network error'))
+    const screen = await renderLayer()
+    await openThread(screen)
+
+    await sendReply(screen, 'OK')
+    await sendReply(screen, 'OK')
+
+    await expect
+      .element(thread(screen).getByText('workflowComments.comments.status.notSent'))
+      .toBeVisible()
+    expect(thread(screen).getByText('OK').elements()).toHaveLength(2)
+  })
+
+  it('keeps an edited comment’s text when an older read lands and the marker then moves', async () => {
+    const gate = deferred<void>()
+    const send = deferred<{ id: string; created_at: number }>()
+    api.reply.mockReturnValueOnce(send.promise)
+    api.update.mockImplementation(async ({ body }: { body: { content: string } }) => {
+      server.current.list[0]!.content = body.content
+      return {}
+    })
+    const screen = await renderLayer()
+    await openThread(screen)
+    // A collaborator's change starts a read; a reply still sending holds off reconciling.
+    api.listGate = gate.promise
+    collaboration.handler?.()
+    await sendReply(screen, 'Still sending')
+
+    await thread(screen).getByLabelText('workflowComments.comments.aria.commentActions').click()
+    await screen.getByText('workflowComments.comments.actions.editComment').click()
+    const editor = screen.getByPlaceholder('workflowComments.comments.placeholder.editComment')
+    await editor.fill('Edited')
+    await thread(screen).getByRole('button', { name: 'common.operation.save' }).click()
+    await expect.element(thread(screen).getByText('Edited')).toBeVisible()
+    gate.resolve()
+    api.listGate = undefined
+
+    await userEvent.keyboard('{Escape}')
+    await expect.element(thread(screen)).not.toBeInTheDocument()
+    markers(screen).first().element().focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{Tab}')
+    await expect.poll(() => api.update.mock.calls.length).toBe(2)
+    expect(api.update.mock.calls[1]![0]).toMatchObject({ body: { content: 'Edited' } })
+    send.resolve(saveReplyOnServer('first', 'Still sending'))
+  })
+
   it('keeps a reply in its own thread when another thread is opened before it is saved', async () => {
     const send = deferred<{ id: string; created_at: number }>()
     api.reply.mockReturnValueOnce(send.promise)

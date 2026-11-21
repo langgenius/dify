@@ -395,7 +395,13 @@ function CommentThreadSession({
               key={getReplyKey(reply)}
               reply={reply}
               mentionNames={mentionNames}
-              onRetry={onReplyRetry && (() => onReplyRetry(reply.id))}
+              onRetry={
+                onReplyRetry &&
+                (() => {
+                  onReplyRetry(reply.id)
+                  focusReply()
+                })
+              }
               onDiscard={
                 onReplyDiscard &&
                 (() => {

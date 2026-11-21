@@ -13,6 +13,8 @@ export const api = {
   resolve: vi.fn(),
   reply: vi.fn(),
   detailFails: false,
+  // While set, a list read answers with the list as it was when asked, once the gate opens.
+  listGate: undefined as undefined | Promise<unknown>,
 }
 export const collaboration = {
   handler: undefined as undefined | (() => void),
@@ -63,9 +65,11 @@ export const saveReplyOnServer = (commentId: string, content: string, id = `repl
 }
 
 export const consoleResponses = {
-  'apps.byAppId.workflow.comments.get': async () => ({
-    data: server.current.list.map((item) => ({ ...item })),
-  }),
+  'apps.byAppId.workflow.comments.get': async () => {
+    const data = server.current.list.map((item) => ({ ...item }))
+    await api.listGate
+    return { data }
+  },
   'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
   'apps.byAppId.workflow.comments.byCommentId.get': async ({
     params,
@@ -93,6 +97,7 @@ export const fakeCollaborationManager = {
 export function resetFakeServer() {
   vi.clearAllMocks()
   api.detailFails = false
+  api.listGate = undefined
   collaboration.handler = undefined
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))
 }
