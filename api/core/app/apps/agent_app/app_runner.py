@@ -49,7 +49,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
-from extensions.ext_database import db
+from core.db.session_factory import create_session
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -344,23 +344,24 @@ class _AgentProcessRecorder:
         if not final_answer or self._answer_thought_id is None:
             return
 
-        row = db.session.get(MessageAgentThought, self._answer_thought_id)
-        if row is None:
-            return
+        with create_session() as session:
+            row = session.get(MessageAgentThought, self._answer_thought_id)
+            if row is None:
+                return
 
-        answer = row.answer or ""
-        overlap = _suffix_prefix_overlap_length(answer, final_answer)
-        if overlap == 0:
-            return
+            answer = row.answer or ""
+            overlap = _suffix_prefix_overlap_length(answer, final_answer)
+            if overlap == 0:
+                return
 
-        row.answer = answer[:-overlap]
-        if _is_empty_answer_only_thought(row):
-            db.session.delete(row)
-            self._answer_thought_id = None
-            db.session.commit()
-            return
+            row.answer = answer[:-overlap]
+            if _is_empty_answer_only_thought(row):
+                session.delete(row)
+                self._answer_thought_id = None
+                session.commit()
+                return
 
-        db.session.commit()
+            session.commit()
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=self._answer_thought_id), PublishFrom.APPLICATION_MANAGER
         )
@@ -534,9 +535,10 @@ class _AgentProcessRecorder:
             created_by=self._dify_context.user_id,
         )
         self._next_position += 1
-        db.session.add(row)
-        db.session.commit()
-        thought_id = str(row.id)
+        with create_session() as session:
+            session.add(row)
+            session.commit()
+            thought_id = str(row.id)
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
         )
@@ -553,25 +555,26 @@ class _AgentProcessRecorder:
         observation: str | None = None,
         answer_delta: str | None = None,
     ) -> None:
-        row = db.session.get(MessageAgentThought, thought_id)
-        if row is None:
-            return
+        with create_session() as session:
+            row = session.get(MessageAgentThought, thought_id)
+            if row is None:
+                return
 
-        if thought_delta:
-            row.thought = f"{row.thought or ''}{thought_delta}"
-        if tool:
-            row.tool = tool
-            row.tool_labels_str = _tool_labels(tool)
-        if tool_input is not None:
-            row.tool_input = tool_input
-        if tool_input_delta:
-            row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
-        if observation is not None:
-            row.observation = observation
-        if answer_delta:
-            row.answer = f"{row.answer or ''}{answer_delta}"
+            if thought_delta:
+                row.thought = f"{row.thought or ''}{thought_delta}"
+            if tool:
+                row.tool = tool
+                row.tool_labels_str = _tool_labels(tool)
+            if tool_input is not None:
+                row.tool_input = tool_input
+            if tool_input_delta:
+                row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
+            if observation is not None:
+                row.observation = observation
+            if answer_delta:
+                row.answer = f"{row.answer or ''}{answer_delta}"
 
-        db.session.commit()
+            session.commit()
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
         )
@@ -737,7 +740,6 @@ class AgentAppRunner:
         try:
             process_recorder.trim_answer_suffix(answer)
         except Exception:
-            db.session.rollback()
             logger.warning(
                 "Failed to trim Agent App answer text: run_id=%s message_id=%s",
                 terminal.run_id,
@@ -869,7 +871,6 @@ class AgentAppRunner:
             try:
                 process_recorder.append_answer_text(content_delta)
             except Exception:
-                db.session.rollback()
                 logger.warning(
                     "Failed to persist Agent App answer text: run_id=%s message_id=%s",
                     run_id,
@@ -951,7 +952,6 @@ class AgentAppRunner:
                             try:
                                 process_recorder.handle_stream_event(internal_event)
                             except Exception:
-                                db.session.rollback()
                                 logger.warning(
                                     "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
                                     run_id,
@@ -1111,32 +1111,32 @@ class AgentAppRunner:
             # answer through another session. Merge usage with that latest row
             # under the same short lock used by its save, not an identity-cache
             # snapshot that can erase the intent or newer reported usage.
-            message = db.session.get(Message, message_id, populate_existing=True, with_for_update=True)
-            if message is None:
-                logger.warning("Cannot persist Agent App usage: message not found: %s", message_id)
-                return
-            message.message_tokens = usage.prompt_tokens
-            message.message_unit_price = usage.prompt_unit_price
-            message.message_price_unit = usage.prompt_price_unit
-            message.answer_tokens = usage.completion_tokens
-            message.answer_unit_price = usage.completion_unit_price
-            message.answer_price_unit = usage.completion_price_unit
-            message.total_price = usage.total_price
-            message.currency = usage.currency
-            if usage.latency > 0:
-                message.provider_response_latency = usage.latency
+            with create_session() as session:
+                message = session.get(Message, message_id, populate_existing=True, with_for_update=True)
+                if message is None:
+                    logger.warning("Cannot persist Agent App usage: message not found: %s", message_id)
+                    return
+                message.message_tokens = usage.prompt_tokens
+                message.message_unit_price = usage.prompt_unit_price
+                message.message_price_unit = usage.prompt_price_unit
+                message.answer_tokens = usage.completion_tokens
+                message.answer_unit_price = usage.completion_unit_price
+                message.answer_price_unit = usage.completion_price_unit
+                message.total_price = usage.total_price
+                message.currency = usage.currency
+                if usage.latency > 0:
+                    message.provider_response_latency = usage.latency
 
-            try:
-                metadata = json.loads(message.message_metadata) if message.message_metadata else {}
-            except (json.JSONDecodeError, TypeError):
-                metadata = {}
-            if not isinstance(metadata, dict):
-                metadata = {}
-            metadata["usage"] = usage.model_dump(mode="json")
-            message.message_metadata = json.dumps(metadata, ensure_ascii=False)
-            db.session.commit()
+                try:
+                    metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+                except (json.JSONDecodeError, TypeError):
+                    metadata = {}
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                metadata["usage"] = usage.model_dump(mode="json")
+                message.message_metadata = json.dumps(metadata, ensure_ascii=False)
+                session.commit()
         except Exception:
-            db.session.rollback()
             logger.warning("Failed to persist partial Agent App usage: message_id=%s", message_id, exc_info=True)
 
     def _save_session(
