@@ -1,14 +1,19 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import {
-  RiCheckboxCircleFill,
-  RiCheckboxCircleLine,
-  RiCheckLine,
-  RiCloseLine,
-  RiFilter3Line,
-} from '@remixicon/react'
+import { RiCheckboxCircleFill, RiCheckboxCircleLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,8 +24,10 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
+type CommentFilter = 'all' | 'mine'
+
 const CommentsPanel = () => {
-  const { t } = useTranslation(['workflowComments'])
+  const { t } = useTranslation(['common', 'workflowComments'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)
@@ -30,7 +37,6 @@ const CommentsPanel = () => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
-  const [showFilter, setShowFilter] = useState(false)
 
   const handleSelect = useCallback(
     (comment: WorkflowCommentBasic) => {
@@ -77,84 +83,63 @@ const CommentsPanel = () => {
         <div className="system-xl-semibold leading-6 font-semibold text-text-primary">
           {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
         </div>
-        <div className="relative flex items-center gap-2">
-          <button
-            className={cn(
-              'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
-              hasActiveFilter && 'bg-state-accent-active',
-            )}
-            aria-label={t(($) => $['comments.aria.filterComments'], { ns: 'workflowComments' })}
-            onClick={() => setShowFilter((v) => !v)}
-          >
-            <RiFilter3Line
-              className={cn(
-                'size-4 text-text-secondary group-hover:text-text-accent',
-                hasActiveFilter && 'text-text-accent',
-              )}
+        <div className="flex items-center gap-2">
+          <Menu>
+            <MenuTrigger
+              render={
+                <IconButton
+                  variant={hasActiveFilter ? 'ghost-accent' : 'default'}
+                  aria-label={t(($) => $['comments.aria.filterComments'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  <span aria-hidden className="i-ri-filter-3-line size-4" />
+                </IconButton>
+              }
             />
-          </button>
-          {showFilter && (
-            <div className="absolute inset-e-10 top-9 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
-              <button
-                className={cn(
-                  'flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
-                  !showOnlyMine && 'bg-components-panel-on-panel-item-bg',
-                )}
-                onClick={() => {
-                  setShowOnlyMine(false)
-                  setShowFilter(false)
-                }}
+            <MenuContent align="end">
+              <MenuRadioGroup<CommentFilter>
+                value={showOnlyMine ? 'mine' : 'all'}
+                onValueChange={(value) => setShowOnlyMine(value === 'mine')}
               >
-                <span className="text-text-secondary">
+                <MenuRadioItem<CommentFilter> value="all" closeOnClick>
                   {t(($) => $['comments.filter.all'], { ns: 'workflowComments' })}
-                </span>
-                {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
-              </button>
-              <button
-                className={cn(
-                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
-                  showOnlyMine && 'bg-components-panel-on-panel-item-bg',
-                )}
-                onClick={() => {
-                  setShowOnlyMine(true)
-                  setShowFilter(false)
-                }}
-              >
-                <span className="text-text-secondary">
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
+                <MenuRadioItem<CommentFilter> value="mine" closeOnClick>
                   {t(($) => $['comments.filter.onlyYourThreads'], { ns: 'workflowComments' })}
-                </span>
-                {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
-              </button>
-              <Separator orientation="horizontal" className="my-1 h-[0.5px]" />
-              <div
-                className="flex w-full items-center justify-between rounded-md p-2"
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
+              </MenuRadioGroup>
+              <MenuSeparator />
+              <MenuCheckboxItem
+                checked={showResolvedComments}
+                closeOnClick={false}
+                className="justify-between"
+                onCheckedChange={setShowResolvedComments}
               >
-                <span className="text-sm text-text-secondary">
-                  {t(($) => $['comments.filter.showResolved'], { ns: 'workflowComments' })}
-                </span>
+                {t(($) => $['comments.filter.showResolved'], { ns: 'workflowComments' })}
+                {/* The item owns the checkbox semantics; the switch only shows its state. */}
                 <Switch
-                  size="md"
                   checked={showResolvedComments}
-                  onCheckedChange={(checked: boolean) => {
-                    setShowResolvedComments(checked)
-                  }}
+                  readOnly
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  className="pointer-events-none"
                 />
-              </div>
-            </div>
-          )}
+              </MenuCheckboxItem>
+            </MenuContent>
+          </Menu>
           <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-          <div
-            className="flex size-6 cursor-pointer items-center justify-center"
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => {
               setControlMode(ControlMode.Pointer)
               setActiveCommentId(null)
             }}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
         </div>
       </div>
       <div className="grow overflow-y-auto px-1">

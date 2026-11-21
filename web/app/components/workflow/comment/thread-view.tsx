@@ -2,6 +2,7 @@ import type { PopoverPopupProps } from '@langgenius/dify-ui/popover'
 import type { ComponentProps, ReactNode } from 'react'
 import type { Collaborator } from '../collaboration/components/collaborator-avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverClose, PopoverPopup, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { CommentComposerFrame } from './comment-composer'
@@ -44,11 +45,12 @@ export function CommentThreadPopup({
         <div className="flex items-center">
           {actions}
           <PopoverClose
-            aria-label={closeLabel}
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </PopoverClose>
+            render={
+              <IconButton size="lg" aria-label={closeLabel}>
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
         </div>
       </div>
       {children}

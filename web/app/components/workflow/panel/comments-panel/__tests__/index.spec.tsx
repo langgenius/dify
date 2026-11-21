@@ -78,7 +78,9 @@ it('filters to the current user and routes the chosen thread', async () => {
     screen.getByRole('button', { name: 'workflowComments.comments.aria.filterComments' }),
   )
   await user.click(
-    screen.getByRole('button', { name: 'workflowComments.comments.filter.onlyYourThreads' }),
+    await screen.findByRole('menuitemradio', {
+      name: 'workflowComments.comments.filter.onlyYourThreads',
+    }),
   )
   expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
   await user.click(screen.getByText('my open thread'))
@@ -97,10 +99,16 @@ it('hides and restores resolved comments when the filter changes', async () => {
   await user.click(
     screen.getByRole('button', { name: 'workflowComments.comments.aria.filterComments' }),
   )
-  await user.click(screen.getByRole('switch'))
+  const showResolved = await screen.findByRole('menuitemcheckbox', {
+    name: 'workflowComments.comments.filter.showResolved',
+  })
+  expect(showResolved).toHaveAttribute('aria-checked', 'true')
+  await user.click(showResolved)
   expect(store.getState().showResolvedComments).toBe(false)
+  // The menu stays open so the filter can be toggled back.
+  expect(showResolved).toHaveAttribute('aria-checked', 'false')
   expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
   expect(screen.getByText('my open thread')).toBeInTheDocument()
-  await user.click(screen.getByRole('switch'))
+  await user.click(showResolved)
   expect(screen.getByText('others resolved thread')).toBeInTheDocument()
 })

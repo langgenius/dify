@@ -2810,10 +2810,10 @@
   },
   "web/app/components/workflow/panel/comments-panel/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/__tests__/hooks/misc.spec.ts": {

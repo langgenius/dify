@@ -18,6 +18,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   Popover,
@@ -136,6 +137,11 @@ export function CommentThread({
     [setCommentPreviewHovering],
   )
 
+  const deleteLabel = t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })
+  const resolveLabel = t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })
+  const previousLabel = t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })
+  const nextLabel = t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })
+
   return (
     <CommentThreadPopup
       initialFocus={sessionProps.onReply ? replyInputRef : undefined}
@@ -144,101 +150,76 @@ export function CommentThread({
       title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
       closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
       actions={
-        <>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={deletePending}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                  )}
-                  onClick={() => setDeletingCommentId(comment.id)}
-                  aria-label={t(($) => $['comments.aria.deleteComment'], {
-                    ns: 'workflowComments',
-                  })}
-                >
-                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                </button>
-              }
-            />
-            <TooltipContent>
-              {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={comment.resolved}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                  )}
-                  onClick={onResolve}
-                  aria-label={t(($) => $['comments.aria.resolveComment'], {
-                    ns: 'workflowComments',
-                  })}
-                >
-                  {comment.resolved ? (
-                    <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
-                  ) : (
-                    <span aria-hidden className="i-ri-checkbox-circle-line size-4" />
-                  )}
-                </button>
-              }
-            />
-            <TooltipContent>
-              {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
-            </TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="mx-2 h-3.5" />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={!canGoPrev}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                  )}
-                  onClick={onPrev}
-                  aria-label={t(($) => $['comments.aria.previousComment'], {
-                    ns: 'workflowComments',
-                  })}
-                >
-                  <span aria-hidden className="i-ri-arrow-up-s-line size-4" />
-                </button>
-              }
-            />
-            <TooltipContent>
-              {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  disabled={!canGoNext}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-                  )}
-                  onClick={onNext}
-                  aria-label={t(($) => $['comments.aria.nextComment'], {
-                    ns: 'workflowComments',
-                  })}
-                >
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-                </button>
-              }
-            />
-            <TooltipContent>
-              {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
-            </TooltipContent>
-          </Tooltip>
-        </>
+        // One tooltip serves every header button; each trigger passes its own label.
+        <Tooltip>
+          {({ payload }) => (
+            <>
+              <TooltipTrigger
+                payload={deleteLabel}
+                render={
+                  <IconButton
+                    size="lg"
+                    tone="destructive"
+                    aria-label={deleteLabel}
+                    disabled={deletePending}
+                    onClick={() => setDeletingCommentId(comment.id)}
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipTrigger
+                payload={resolveLabel}
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={resolveLabel}
+                    disabled={comment.resolved}
+                    onClick={onResolve}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'size-4',
+                        comment.resolved
+                          ? 'i-ri-checkbox-circle-fill'
+                          : 'i-ri-checkbox-circle-line',
+                      )}
+                    />
+                  </IconButton>
+                }
+              />
+              <Separator orientation="vertical" className="mx-2 h-3.5" />
+              <TooltipTrigger
+                payload={previousLabel}
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={previousLabel}
+                    disabled={!canGoPrev}
+                    onClick={onPrev}
+                  >
+                    <span aria-hidden className="i-ri-arrow-up-s-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipTrigger
+                payload={nextLabel}
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={nextLabel}
+                    disabled={!canGoNext}
+                    onClick={onNext}
+                  >
+                    <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                  </IconButton>
+                }
+              />
+              {typeof payload === 'string' && <TooltipContent>{payload}</TooltipContent>}
+            </>
+          )}
+        </Tooltip>
       }
     >
       <CommentThreadSession
