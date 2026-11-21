@@ -82,7 +82,12 @@ class DocumentOperations(Protocol):
         self, ref: DatasetRef, document_ids: Sequence[str]
     ) -> AbstractContextManager[DocumentZip]: ...
     def create_documents(
-        self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        settings: Mapping[str, Any],
+        *,
+        created_from: str = "web",
     ) -> dict[str, Any]: ...
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]: ...
     def delete_document(self, ref: DocumentRef) -> None: ...
@@ -182,9 +187,16 @@ class DatasetDocumentApplicationService:
         return self._operations.build_download_zip(self._dataset(context, dataset_id), document_ids)
 
     def create_documents(
-        self, context: RequestContext, *, dataset_id: str, settings: Mapping[str, Any]
+        self,
+        context: RequestContext,
+        *,
+        dataset_id: str,
+        settings: Mapping[str, Any],
+        created_from: str = "web",
     ) -> dict[str, Any]:
-        return self._operations.create_documents(context, self._dataset(context, dataset_id), settings)
+        return self._operations.create_documents(
+            context, self._dataset(context, dataset_id), settings, created_from=created_from
+        )
 
     def initialize_dataset(self, context: RequestContext, *, settings: Mapping[str, Any]) -> dict[str, Any]:
         return self._operations.initialize_dataset(context, settings)

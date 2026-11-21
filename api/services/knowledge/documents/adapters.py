@@ -24,7 +24,7 @@ from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models import Account, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
-from models.enums import IndexingStatus
+from models.enums import DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_doc_form,
     get_document_hit_count,
@@ -128,6 +128,7 @@ def _created_response(dataset: Dataset, documents: Sequence[Document], batch: st
 def _indexing_status(document: Document, counts: tuple[int, int]) -> dict[str, Any]:
     return {
         "id": document.id,
+        "display_status": document.display_status,
         "processing_started_at": document.processing_started_at,
         "parsing_completed_at": document.parsing_completed_at,
         "cleaning_completed_at": document.cleaning_completed_at,
@@ -351,7 +352,13 @@ class SQLAlchemyDocumentOperations:
             )
 
     def _persist_creation(
-        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        config: KnowledgeConfig,
+        *,
+        initialize: bool,
+        created_from: str,
     ) -> tuple[dict[str, Any], DocumentIndexingJobs]:
         """Keep ORM values local and materialize the response before closing the session."""
         jobs: DocumentIndexingJobs | None = None
@@ -364,7 +371,7 @@ class SQLAlchemyDocumentOperations:
                     else _require_dataset(session, ref)
                 )
                 documents, batch, jobs = DocumentService.save_prepared_documents(
-                    dataset, config, account, session=session
+                    dataset, config, account, created_from=created_from, session=session
                 )
                 if initialize:
                     dataset.name = documents[0].name[:18] + "..."
@@ -384,7 +391,13 @@ class SQLAlchemyDocumentOperations:
             raise
 
     def _run_creation(
-        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        config: KnowledgeConfig,
+        *,
+        initialize: bool,
+        created_from: str = DocumentCreatedFrom.WEB,
     ) -> dict[str, Any]:
         lock = (
             nullcontext()
@@ -394,7 +407,9 @@ class SQLAlchemyDocumentOperations:
         result = None
         try:
             with lock:
-                result, jobs = self._persist_creation(context, ref, config, initialize=initialize)
+                result, jobs = self._persist_creation(
+                    context, ref, config, initialize=initialize, created_from=created_from
+                )
                 # No session or ORM entity crosses the task boundary. Keep the
                 # creation lock until committed documents have been dispatched.
                 DocumentService.dispatch_document_indexing(jobs)
@@ -412,13 +427,20 @@ class SQLAlchemyDocumentOperations:
         assert result is not None
         return result
 
-    def create_documents(self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]) -> dict[str, Any]:
+    def create_documents(
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        settings: Mapping[str, Any],
+        *,
+        created_from: str = DocumentCreatedFrom.WEB,
+    ) -> dict[str, Any]:
         config = KnowledgeConfig.model_validate(settings)
         DocumentService.document_create_args_validate(config)
         with _translate_errors():
             snapshot = self._creation_dataset(context, ref, config)
             config = DocumentService.prepare_document_creation(snapshot, config)
-            return self._run_creation(context, ref, config, initialize=False)
+            return self._run_creation(context, ref, config, initialize=False, created_from=created_from)
 
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]:
         config = KnowledgeConfig.model_validate(settings)

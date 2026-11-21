@@ -1663,6 +1663,247 @@ names no provider and 400 for invalid input.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/datasets
+**List the workspace's knowledge bases, optionally filtered by name**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to match in the knowledge base name | No | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge bases | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets
+**Create an empty knowledge base**
+
+`provider=external` binds an external
+knowledge API instead of indexing documents locally.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetCreatePayload](#datasetcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Knowledge base created | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Delete a knowledge base and its documents**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Read one knowledge base by id**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [PATCH] /workspaces/{workspace_id}/datasets/{dataset_id}
+**Update a knowledge base**
+
+Only the fields present in the body change.
+
+Indexing settings are fixed after creation; changing them rebuilds the
+whole index and is not exposed here.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetUpdatePayload](#datasetupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base updated | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}
+**Aggregate indexing status of every document created under `batch`:**
+
+`failed` if any document failed, `available` once all complete.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| batch | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing statuses | **application/json**: [DocumentIndexingStatusResponse](#documentindexingstatusresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/documents
+**List the documents of a knowledge base**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| query | query | Words to match in the document name | No | string |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Documents | **application/json**: [DocumentListResponse](#documentlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}
+**Delete a document from the knowledge base**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}
+**Read one document, including its indexing status**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document | **application/json**: [DocumentResponse](#documentresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText
+**Replace a document's content and re-index it**
+
+Fields left out keep
+their current values; providing `text` replaces the document body.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentUpdateByTextPayload](#documentupdatebytextpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document updated | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText
+**Create a document from raw text**
+
+Indexing runs asynchronously; track
+it with the document's `display_status` or the batch indexing-status op.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentCreateByTextPayload](#documentcreatebytextpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document created | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/default-models/{model_type}
 **Read the workspace's default model of one model type**
 
@@ -3425,6 +3666,103 @@ Button styles for user actions.
 | model | string |  | Yes |
 | model_type | string |  | Yes |
 
+#### DatasetCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Knowledge base description | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| external_knowledge_api_id | string | External knowledge API id (required when `provider` is `external`). | No |
+| external_knowledge_id | string | External knowledge base id (required when `provider` is `external`). | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | `high_quality` uses embedding models; `economy` uses keyword indexing. | No |
+| name | string | Knowledge base name | Yes |
+| permission | [DatasetPermission](#datasetpermission) | `only_me` restricts to the creator, `all_team_members` grants workspace access, `partial_members` grants access to `partial_member_list` members. | No |
+| provider | [DatasetProvider](#datasetprovider) | `vendor` for internal knowledge bases, `external` for external ones. | No |
+| retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+
+#### DatasetIndexingTechnique
+
+How a knowledge base indexes its documents.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetIndexingTechnique | string | How a knowledge base indexes its documents. |  |
+
+#### DatasetListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to match in the knowledge base name | No |
+
+#### DatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DatasetResponse](#datasetresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### DatasetPermission
+
+Who can reach a knowledge base.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetPermission | string | Who can reach a knowledge base. |  |
+
+#### DatasetProvider
+
+Whether the knowledge base indexes locally or proxies an external knowledge API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetProvider | string | Whether the knowledge base indexes locally or proxies an external knowledge API. |  |
+
+#### DatasetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| description | string |  | Yes |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| external_knowledge_api_id | string |  | Yes |
+| external_knowledge_id | string |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| name | string |  | Yes |
+| permission | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model | object |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### DatasetUpdatePayload
+
+Patchable knowledge-base settings.
+
+Indexing settings are fixed after creation: `indexing_technique`,
+`embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+they are absent here and rejected as unknown fields.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| external_knowledge_api_id | string | External knowledge API id; required on every update of an external knowledge base. | No |
+| external_knowledge_id | string | External knowledge base id; required on every update of an external knowledge base. | No |
+| external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
+| icon_info | object | Icon metadata as a JSON object. | No |
+| name | string |  | No |
+| partial_member_list | [ object ] | Member ids granted access when `permission` is `partial_members`. | No |
+| permission | [DatasetPermission](#datasetpermission) |  | No |
+| retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+| summary_index_setting | object | Summary index settings as a JSON object. | No |
+
 #### DefaultModelPayload
 
 | Name | Type | Description | Required |
@@ -3520,6 +3858,114 @@ instead of ``ErrorBody`` because device clients parse it.
 | token | string |  | Yes |
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
+
+#### DocumentAndBatchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
+
+#### DocumentBatchItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_segments | integer |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| total_segments | integer |  | Yes |
+
+#### DocumentCreateByTextPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| doc_language | string | Language of the document. | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
+| name | string | Document name. | Yes |
+| process_rule | object | Processing rules for chunking as a JSON object. | No |
+| retrieval_model | object | Retrieval model configuration. | No |
+| text | string | Document text content. | Yes |
+
+#### DocumentDisplayStatus
+
+Public document status shared with the legacy service API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentDisplayStatus | string | Public document status shared with the legacy service API. |  |
+
+#### DocumentForm
+
+Chunking shape of a document.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentForm | string | Chunking shape of a document. |  |
+
+#### DocumentIndexingStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| documents | [ [DocumentBatchItem](#documentbatchitem) ] |  | Yes |
+| error | string |  | Yes |
+
+#### DocumentListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| query | string | Words to match in the document name | No |
+
+#### DocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DocumentResponse](#documentresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### DocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | Yes |
+| completed_at | integer |  | Yes |
+| created_at | integer |  | Yes |
+| data_source_type | string |  | Yes |
+| dataset_id | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| doc_form | string |  | Yes |
+| doc_language | string |  | Yes |
+| document_process_rule | object |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### DocumentUpdateByTextPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
+| doc_language | string | Language of the document. | No |
+| embedding_model | string |  | No |
+| embedding_model_provider | string |  | No |
+| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
+| name | string | Document name. | No |
+| process_rule | object | Processing rules for chunking as a JSON object. | No |
+| retrieval_model | object | Retrieval model configuration. | No |
+| text | string | Document text content. | No |
 
 #### DraftWorkflowRunPayload
 

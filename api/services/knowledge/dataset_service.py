@@ -637,7 +637,9 @@ class DatasetService:
         if permission:
             dataset.permission = permission
 
-        # Validate and update external knowledge configuration
+        # Validate and update external knowledge configuration. The service
+        # requires both binding ids on every update, so the OpenAPI payload
+        # documents them as required rather than defaulting to the stored row.
         external_knowledge_id = data.get("external_knowledge_id", None)
         external_knowledge_api_id = data.get("external_knowledge_api_id", None)
 
@@ -3206,13 +3208,14 @@ class DocumentService:
 
     @classmethod
     def document_create_args_validate(cls, knowledge_config: KnowledgeConfig):
-        if not knowledge_config.data_source and not knowledge_config.process_rule:
+        """Validate supplied ingestion settings; a rename may reuse the stored source and rule."""
+        is_rename = bool(knowledge_config.original_document_id and knowledge_config.name)
+        if not knowledge_config.data_source and not knowledge_config.process_rule and not is_rename:
             raise ValueError("Data source or Process rule is required")
-        else:
-            if knowledge_config.data_source:
-                DocumentService.data_source_args_validate(knowledge_config)
-            if knowledge_config.process_rule:
-                DocumentService.process_rule_args_validate(knowledge_config)
+        if knowledge_config.data_source:
+            DocumentService.data_source_args_validate(knowledge_config)
+        if knowledge_config.process_rule:
+            DocumentService.process_rule_args_validate(knowledge_config)
 
     @classmethod
     def data_source_args_validate(cls, knowledge_config: KnowledgeConfig):
@@ -3976,20 +3979,27 @@ class DatasetPermissionService:
 
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list, *, session: Session):
+        """Gate a dataset permission update for the calling user.
+
+        Dataset operators may only re-assert the dataset's current permission:
+        a `requested_permission` of `None` means "leave unchanged" — the update
+        adapter omits unset fields. Asserting `partial_members` requires a
+        non-empty member list identical to the stored selection; any other
+        divergence is denied.
+        """
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
 
-        if user.is_dataset_operator and dataset.permission != requested_permission:
-            raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
-
-        if user.is_dataset_operator and requested_permission == "partial_members":
-            if not requested_partial_member_list:
-                raise ValueError("Partial member list is required when setting to partial members.")
-
-            local_member_list = cls.get_dataset_partial_member_list(dataset.id, session)
-            request_member_list = [user["user_id"] for user in requested_partial_member_list]
-            if set(local_member_list) != set(request_member_list):
-                raise ValueError("Dataset operators cannot change the dataset permissions.")
+        if user.is_dataset_operator:
+            if requested_permission is not None and dataset.permission != requested_permission:
+                raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
+            if requested_permission == DatasetPermissionEnum.PARTIAL_TEAM:
+                if not requested_partial_member_list:
+                    raise ValueError("Partial member list is required when setting to partial members.")
+                local_member_list = cls.get_dataset_partial_member_list(dataset.id, session)
+                request_member_list = [user["user_id"] for user in requested_partial_member_list]
+                if set(local_member_list) != set(request_member_list):
+                    raise ValueError("Dataset operators cannot change the dataset permissions.")
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id, session: Session):
