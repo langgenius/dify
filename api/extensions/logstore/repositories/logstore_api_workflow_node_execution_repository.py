@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, override
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
@@ -19,7 +19,11 @@ from extensions.logstore.sql_escape import escape_identifier, escape_logstore_qu
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
     WorkflowNodeExecutionPayloads,
@@ -130,6 +134,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
     Provides service-layer database operations for WorkflowNodeExecutionModel
     using LogStore SQL queries with optimized deduplication strategies.
+
+    Invariant: LogStore keeps the append-only execution history. SQL keeps the rows
+    that must stay transactional (synchronous caller records, dual-write copies and
+    their offloads) and the run stop state. History reads query LogStore and overlay
+    the SQL stop state. Maintenance members (retention, deletion and offload lookup)
+    act only on the SQL rows, through DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+    and never query or write LogStore, whose records expire through the logstore TTL.
     """
 
     def __init__(self, session_maker: sessionmaker | None = None):
@@ -137,11 +148,27 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Initialize the repository with LogStore client.
 
         Args:
-            session_maker: SQLAlchemy sessionmaker for synchronous Agent caller records.
+            session_maker: SQLAlchemy sessionmaker for the SQL rows and stop state described on
+                the class. ``None`` keeps LogStore history reads available without the stop-state
+                overlay, and makes every maintenance member raise ``ValueError``.
         """
         logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
         self._session_maker = session_maker
+
+    def _sql_repository(self) -> DifyAPISQLAlchemyWorkflowNodeExecutionRepository:
+        """Return the SQL repository for the rows this repository keeps in SQL.
+
+        Precondition: the repository was built with a session maker.
+        Postcondition: the returned repository opens its sessions from that session maker;
+        nothing has been read or written yet.
+
+        Raises:
+            ValueError: ``session_maker`` is ``None``. No record is read or changed.
+        """
+        if self._session_maker is None:
+            raise ValueError("session_maker is required to manage SQL workflow node execution records")
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(self._session_maker)
 
     def _apply_stopped_run(
         self, executions: Sequence[WorkflowNodeExecutionModel], tenant_id: str, workflow_run_id: str
@@ -155,12 +182,89 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
     @override
     def delete_executions_by_app(self, tenant_id: str, app_id: str, batch_size: int = 1000) -> int:
-        """Delete SQL caller records; append-only Logstore traces retain their configured TTL."""
-        if self._session_maker is None:
-            raise ValueError("session_maker is required to delete SQL workflow caller records")
-        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(self._session_maker).delete_executions_by_app(
+        """Delete SQL caller records; append-only Logstore traces retain their configured TTL.
+
+        The SQL repository commits each batch and returns the total number of deleted rows.
+        Raises ``ValueError`` without a session maker, before any record changes.
+        """
+        return self._sql_repository().delete_executions_by_app(
             tenant_id=tenant_id, app_id=app_id, batch_size=batch_size
         )
+
+    @override
+    def delete_expired_executions(
+        self,
+        tenant_id: str,
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> int:
+        """Delete the tenant's SQL node executions created before ``before_date``.
+
+        The SQL repository commits each batch of at most ``batch_size`` rows and returns the
+        total number deleted. LogStore traces are left to their TTL. Raises ``ValueError``
+        without a session maker, before any record changes.
+        """
+        return self._sql_repository().delete_expired_executions(
+            tenant_id=tenant_id, before_date=before_date, batch_size=batch_size
+        )
+
+    @override
+    def get_expired_executions_batch(
+        self,
+        tenant_id: str,
+        before_date: datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """Return up to ``batch_size`` of the tenant's SQL node executions created before ``before_date``.
+
+        Read-only. The rows come from SQL, so they are the records that a later
+        ``delete_executions_by_ids`` call removes; LogStore traces are not returned.
+        Raises ``ValueError`` without a session maker.
+        """
+        return self._sql_repository().get_expired_executions_batch(
+            tenant_id=tenant_id, before_date=before_date, batch_size=batch_size
+        )
+
+    @override
+    def delete_executions_by_ids(self, execution_ids: Sequence[str]) -> int:
+        """Delete the SQL node executions with ``execution_ids`` and return the number deleted.
+
+        Like the SQL repository, this applies no tenant filter: callers pass IDs they have
+        already scoped. LogStore is not touched. Raises ``ValueError`` without a session maker,
+        before any record changes.
+        """
+        return self._sql_repository().delete_executions_by_ids(execution_ids)
+
+    @override
+    def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """Count the SQL node executions and offloads of ``run_ids`` in the caller's ``session``.
+
+        Returns ``(node_executions, offloads)`` and changes nothing; LogStore traces are not
+        counted. Raises ``ValueError`` without a session maker.
+        """
+        return self._sql_repository().count_by_runs(session, run_ids)
+
+    @override
+    def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
+        """Delete the SQL node executions and offloads of ``run_ids`` in the caller's ``session``.
+
+        Returns ``(node_executions_deleted, offloads_deleted)``. The caller owns the transaction,
+        and LogStore traces are left to their TTL. Raises ``ValueError`` without a session maker,
+        before any statement runs.
+        """
+        return self._sql_repository().delete_by_runs(session, run_ids)
+
+    @override
+    def get_offloads_by_execution_ids(
+        self,
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        """Return the SQL offload records of ``node_execution_ids`` from the caller's ``session``.
+
+        Read-only. Raises ``ValueError`` without a session maker.
+        """
+        return self._sql_repository().get_offloads_by_execution_ids(session, node_execution_ids)
 
     @override
     def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
