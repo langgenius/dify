@@ -23,7 +23,15 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import (
+    AgentBehindApp,
+    DatasetId,
+    PlainApp,
+    RBACCheck,
+    RBACPermission,
+    ResourceLocator,
+    Workspace,
+)
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -1735,7 +1743,7 @@ _DATASET_EDIT_ROLES = frozenset(
 
 
 def _req_dataset_write(
-    permission: RBACPermission, locator: object, *, extra: tuple[Requirement, ...] = ()
+    permission: RBACPermission, locator: ResourceLocator, *, extra: tuple[Requirement, ...] = ()
 ) -> tuple[Requirement, ...]:
     return (
         CheckSubject(allowed=_ACCOUNT),
