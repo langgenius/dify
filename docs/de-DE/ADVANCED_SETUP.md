@@ -55,3 +55,9 @@ Stellen Sie Dify mit einem Klick in AKS bereit, indem Sie [Azure Devops Pipeline
 ### Bereitstellung mit Sealos
 
 Stellen Sie Dify mit einem Klick über den [Sealos App Store](https://sealos.io/products/app-store/dify/) bereit
+
+## Dify-Ressourcen als Code verwalten
+
+Verwalten Sie Workspace-Ressourcen — Apps (DSL), Modell-/Tool-Zugangsdaten, Plugins und App-API-Schlüssel — als Code und wenden Sie dieselbe Konfiguration auf mehrere Umgebungen an.
+
+- [Inoffizieller Terraform Provider von @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

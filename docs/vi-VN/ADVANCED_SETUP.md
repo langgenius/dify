@@ -54,3 +54,9 @@ Triển khai Dify lên AKS chỉ với một cú nhấp chuột bằng [Azure De
 ### Triển khai với Sealos
 
 Triển khai Dify chỉ với một cú nhấp chuột từ [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
+## Quản lý tài nguyên Dify dưới dạng mã
+
+Quản lý tài nguyên workspace — ứng dụng (DSL), thông tin xác thực model/tool, plugin và app API key — dưới dạng mã và áp dụng cùng một cấu hình cho nhiều môi trường.
+
+- [Terraform Provider không chính thức bởi @wylswz](https://github.com/wylswz/dify-unofficial-terraform-provider)

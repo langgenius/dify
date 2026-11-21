@@ -57,3 +57,9 @@ Grafana में Dify के PostgreSQL डेटाबेस को डेट�
 ### Sealos के साथ डिप्लॉय करें
 
 [Sealos App Store](https://sealos.io/products/app-store/dify/) के साथ एक क्लिक में Dify को डिप्लॉय करें।
+
+## कोड के रूप में Dify संसाधनों का प्रबंधन
+
+वर्कस्पेस संसाधनों — ऐप्स (DSL), मॉडल/टूल क्रेडेंशियल, प्लगइन और ऐप API कुंजियाँ — को कोड के रूप में प्रबंधित करें और एक ही कॉन्फ़िगरेशन को कई वातावरणों पर लागू करें।
+
+- [@wylswz द्वारा अनौपचारिक Terraform Provider](https://github.com/wylswz/dify-unofficial-terraform-provider)
