@@ -1414,10 +1414,12 @@ def test_malformed_sse_frame_does_not_reconnect() -> None:
     [_run_succeeded_event(), _run_failed_event("failed"), RunCancelledEvent(id="2-0", run_id="run-1")],
 )
 @pytest.mark.parametrize("close_error", [None, httpx.ReadError, httpx.StreamError, httpx.ReadTimeout])
-def test_async_stream_events_yields_terminal_event(
-    terminal_event: RunEvent, close_error: type[httpx.HTTPError] | None
+@pytest.mark.parametrize("sync", [True, False])
+def test_stream_events_yields_terminal_event(
+    terminal_event: RunEvent, close_error: type[httpx.HTTPError] | None, sync: bool
 ) -> None:
-    stream = OpenAsyncStream(
+    stream_type = OpenSyncStream if sync else OpenAsyncStream
+    stream = stream_type(
         _event_frame(terminal_event),
         close_error=close_error("response close failed") if close_error is not None else None,
     )
@@ -1439,7 +1441,19 @@ def test_async_stream_events_yields_terminal_event(
             await events.aclose()
         await http_client.aclose()
 
-    asyncio.run(scenario())
+    if sync:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", sync_http_client=http_client)
+            events = client.stream_events_sync("run-1")
+            try:
+                assert next(events) == terminal_event
+                assert stream.closed
+                with pytest.raises(StopIteration):
+                    _ = next(events)
+            finally:
+                events.close()
+    else:
+        asyncio.run(scenario())
 
 
 def test_async_stream_events_closes_response_when_the_iterator_is_closed() -> None:
@@ -1459,6 +1473,7 @@ def test_async_stream_events_closes_response_when_the_iterator_is_closed() -> No
 
 
 @pytest.mark.parametrize("exit_method", ["aclose", "athrow"])
+@pytest.mark.parametrize("sync", [True, False])
 @pytest.mark.parametrize(
     ("close_error", "expected_error"),
     [
@@ -1467,10 +1482,11 @@ def test_async_stream_events_closes_response_when_the_iterator_is_closed() -> No
         (httpx.ReadTimeout, DifyAgentTimeoutError),
     ],
 )
-def test_async_stream_events_does_not_reconnect_when_interrupted_close_fails(
-    exit_method: str, close_error: type[httpx.HTTPError], expected_error: type[DifyAgentClientError]
+def test_stream_events_does_not_reconnect_when_interrupted_close_fails(
+    exit_method: str, close_error: type[httpx.HTTPError], expected_error: type[DifyAgentClientError], sync: bool
 ) -> None:
-    stream = OpenAsyncStream(
+    stream_type = OpenSyncStream if sync else OpenAsyncStream
+    stream = stream_type(
         _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
         close_error=close_error("response close failed"),
     )
@@ -1496,7 +1512,24 @@ def test_async_stream_events_does_not_reconnect_when_interrupted_close_fails(
                 assert stream.closed
                 assert calls == 1
 
-    asyncio.run(scenario())
+    if sync:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", sync_http_client=http_client)
+            events = client.stream_events_sync("run-1", reconnect_delay_seconds=0)
+            try:
+                assert next(events).type == "run_started"
+                assert not stream.closed
+                with pytest.raises(expected_error):
+                    if exit_method == "aclose":
+                        events.close()
+                    else:
+                        events.throw(ValueError("caller stopped"))
+                assert stream.closed
+                assert calls == 1
+            finally:
+                events.close()
+    else:
+        asyncio.run(scenario())
 
 
 def test_async_stream_events_enforces_total_timeout_before_connecting() -> None:
