@@ -1406,6 +1406,29 @@ job is missing, expired or not the caller's for this app.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /mcp
+**Serve one MCP JSON-RPC message**
+
+Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+(result, or error for an unsupported protocol version or tool name); 202 with no body for
+a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
+any other unparsable message; 413 with a JSON-RPC error when the body is above
+``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
+before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
+cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
+read, when an ``Origin`` header is present and is neither this server's own nor in
+``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged). ``initialize`` and ``tools/list``
+answer as any request on this surface does, with its error body and headers: 401 for a missing
+or invalid bearer, 429 with Retry-After above the per-token limit, 403 for a broken licence, 503
+when bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /node-types
 #### Responses
 

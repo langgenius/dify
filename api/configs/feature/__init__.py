@@ -727,6 +727,7 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
+    @property
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
 
