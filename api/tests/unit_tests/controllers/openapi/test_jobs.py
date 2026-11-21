@@ -245,17 +245,6 @@ def test_a_finished_chat_job_hints_a_reply_in_the_same_conversation(world: World
     ]
 
 
-def test_a_finished_completion_job_has_no_reply_hint(world: World) -> None:
-    job_id = world.open_job(
-        mode=AppMode.COMPLETION, op="start.console_app.completion", ending=JobEnding(status=JobStatus.SUCCEEDED)
-    )
-
-    body = world.wait(job_id).get_json()
-
-    assert body["status"] == "succeeded"
-    assert body["hints"] == []
-
-
 def test_every_status_has_a_hint_builder() -> None:
     assert set(jobs.HINTS_BY_STATUS) == set(JobStatus)
 

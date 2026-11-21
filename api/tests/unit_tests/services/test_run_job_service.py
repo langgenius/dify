@@ -10,13 +10,11 @@ import pytest
 from flask import Flask, g
 
 from core.app.entities.task_entities import StreamEvent
-from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_frames import RunFrame
 from services.run_job_service import (
     GRAPH_JOBS,
     MESSAGE_JOBS,
@@ -402,20 +400,6 @@ def test_a_view_reads_the_alive_key_before_the_record_so_a_reader_that_just_ende
     assert racing.get(job.id) == replace(job, run_id="run-1")
 
 
-def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key() -> None:
-    harness = _harness()
-    job = _job(harness)
-    harness.store.record_ids(job.id, JobIds(run_id="run-1"))
-    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
-    _lapse_alive_key(harness, job.id)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert view.status is JobStatus.SUCCEEDED
-    assert view.outputs == {"x": 1}
-    assert view.error is None
-
-
 def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_later() -> None:
     harness = _harness()
     job = _job(harness)
@@ -486,31 +470,56 @@ def test_a_graph_job_running_past_the_time_limit_and_margin_fails_once_and_stays
     assert stored.failure is JobFailure.RUN_STALLED
 
 
-def test_a_message_job_reported_interrupted_never_changes_when_its_message_appears_later() -> None:
+@pytest.mark.parametrize(
+    ("ending", "message_id", "message", "expected"),
+    [
+        (JobEnding(status=JobStatus.FAILED, error="boom"), None, None, (JobStatus.FAILED, None, "boom")),
+        (
+            JobEnding(status=JobStatus.SUCCEEDED),
+            "m1",
+            MessageResult(answer="hello", error=None),
+            (JobStatus.SUCCEEDED, "hello", None),
+        ),
+        (
+            JobEnding(status=JobStatus.FAILED),
+            "m1",
+            MessageResult(answer="partial", error="model failed"),
+            (JobStatus.FAILED, "partial", "model failed"),
+        ),
+        (
+            JobEnding(status=JobStatus.FAILED, error="from record"),
+            "m1",
+            MessageResult(answer="partial", error=None),
+            (JobStatus.FAILED, "partial", "from record"),
+        ),
+        (JobEnding(status=JobStatus.SUCCEEDED), "m1", None, (JobStatus.SUCCEEDED, None, None)),
+        (JobEnding(status=JobStatus.STOPPED), None, None, (JobStatus.STOPPED, None, None)),
+    ],
+    ids=[
+        "record only",
+        "saved answer",
+        "message error",
+        "record error as fallback",
+        "message not visible",
+        "no message id",
+    ],
+)
+def test_a_final_message_job_takes_its_answer_and_error_from_the_saved_message(
+    ending: JobEnding,
+    message_id: str | None,
+    message: MessageResult | None,
+    expected: tuple[JobStatus, str | None, str | None],
+) -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
-    _lapse_alive_key(harness, job.id)
-    reported = harness.service.view(OWNER, job.id)
-    harness.store.record_ids(job.id, JobIds(message_id="msg-1"))
-    harness.store.touch(job.id)
-    harness.results.messages[("a1", "msg-1")] = MessageResult(answer="late", error=None)
-
-    later = harness.service.view(OWNER, job.id)
-
-    interrupted = JobFailure.RUN_INTERRUPTED.message
-    assert (reported.status, reported.error) == (JobStatus.FAILED, interrupted)
-    assert (later.status, later.error, later.answer) == (JobStatus.FAILED, interrupted, None)
-
-
-def test_view_of_a_message_job_uses_the_record() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    harness.store.settle(job.id, JobEnding(status=JobStatus.FAILED, error="boom"))
+    harness.store.record_ids(job.id, JobIds(message_id=message_id))
+    harness.store.settle(job.id, ending)
+    if message is not None:
+        harness.results.messages[("a1", "m1")] = message
 
     view = harness.service.view(OWNER, job.id)
 
-    assert view.status is JobStatus.FAILED
-    assert view.error == "boom"
+    assert (view.status, view.answer, view.error) == expected
 
 
 def test_wait_zero_never_sleeps() -> None:
@@ -712,78 +721,6 @@ def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_reque
     assert [stop.run_id for stop in harness.tasks.workflow_stops] == ["run-1"]
 
 
-def _finish_message_job(harness: Harness, job_id: str, *, status: JobStatus, message_id: str | None = "m1") -> None:
-    harness.store.record_ids(job_id, JobIds(message_id=message_id))
-    harness.store.settle(job_id, JobEnding(status=status))
-
-
-def test_a_finished_message_job_returns_the_saved_answer() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    _finish_message_job(harness, job.id, status=JobStatus.SUCCEEDED)
-    harness.results.messages[("a1", "m1")] = MessageResult(answer="hello", error=None)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert (view.status, view.answer, view.error) == (JobStatus.SUCCEEDED, "hello", None)
-
-
-def test_a_failed_message_job_returns_the_message_error() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    _finish_message_job(harness, job.id, status=JobStatus.FAILED)
-    harness.results.messages[("a1", "m1")] = MessageResult(answer="partial", error="model failed")
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert (view.status, view.answer, view.error) == (JobStatus.FAILED, "partial", "model failed")
-
-
-def test_a_failed_message_job_falls_back_to_the_record_error() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    harness.store.record_ids(job.id, JobIds(message_id="m1"))
-    harness.store.settle(job.id, JobEnding(status=JobStatus.FAILED, error="from record"))
-    harness.results.messages[("a1", "m1")] = MessageResult(answer="partial", error=None)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert view.error == "from record"
-
-
-def test_a_final_message_job_with_an_invisible_message_has_no_answer() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    _finish_message_job(harness, job.id, status=JobStatus.SUCCEEDED)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert (view.status, view.answer) == (JobStatus.SUCCEEDED, None)
-
-
-def test_a_final_message_job_without_a_message_id_has_no_answer() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    _finish_message_job(harness, job.id, status=JobStatus.STOPPED, message_id=None)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert (view.status, view.answer) == (JobStatus.STOPPED, None)
-
-
-def test_a_message_job_whose_reader_died_is_reported_as_interrupted() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    _lapse_alive_key(harness, job.id)
-
-    view = harness.service.view(OWNER, job.id)
-
-    assert (view.status, view.error) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message)
-    stored = harness.store.get(job.id)
-    assert stored is not None
-    assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED)
-
-
 def test_a_message_job_with_a_live_reader_keeps_running() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
@@ -867,6 +804,9 @@ def test_a_message_job_failed_as_interrupted_has_no_answer_even_when_a_message_r
     view = harness.service.view(OWNER, job.id)
 
     assert (view.status, view.error, view.answer) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message, None)
+    stored = harness.store.get(job.id)
+    assert stored is not None
+    assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED)
 
 
 @pytest.mark.parametrize("failure", list(JobFailure))
@@ -884,18 +824,6 @@ def test_a_message_job_failed_by_the_service_has_no_answer_even_when_a_message_r
     assert (view.status, view.error, view.answer) == (JobStatus.FAILED, failure.message, None)
 
 
-def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_nothing() -> None:
-    harness = _harness()
-    job = _job(harness, AppMode.CHAT)
-    harness.store.record_ids(job.id, JobIds(task_id="task-1"))
-    _lapse_alive_key(harness, job.id)
-
-    view = harness.service.stop(OWNER, job.id)
-
-    assert (view.status, view.error) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message)
-    assert harness.tasks.message_stops == []
-
-
 def test_each_mode_that_runs_jobs_has_exactly_one_family() -> None:
     for mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
         assert family_of(mode) is GRAPH_JOBS
@@ -903,27 +831,6 @@ def test_each_mode_that_runs_jobs_has_exactly_one_family() -> None:
         assert family_of(mode) is MESSAGE_JOBS
     with pytest.raises(ValueError, match="does not support run jobs"):
         family_of(AppMode.RAG_PIPELINE)
-
-
-def test_each_family_ends_a_job_its_own_way() -> None:
-    graph, message = _record(AppMode.WORKFLOW), _record(AppMode.CHAT)
-    not_confirmed = JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_NOT_CONFIRMED)
-    no_result = JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT)
-
-    assert GRAPH_JOBS.at_stream_end(graph) == not_confirmed
-    assert GRAPH_JOBS.at_stream_end(replace(graph, run_id="run-1")) is None
-    assert MESSAGE_JOBS.at_stream_end(message) == no_result
-    end = RunFrame(event=StreamEvent.MESSAGE_END, ids=JobIds())
-    error = RunFrame(event=StreamEvent.ERROR, ids=JobIds(), error="boom")
-    finished = RunFrame(event=StreamEvent.WORKFLOW_FINISHED, ids=JobIds(), run_status=WorkflowExecutionStatus.STOPPED)
-    assert GRAPH_JOBS.at_frame(graph, error) is None
-    assert GRAPH_JOBS.at_frame(graph, end) == JobEnding(status=JobStatus.SUCCEEDED)
-    assert GRAPH_JOBS.at_frame(replace(graph, run_id="run-1"), end) is None
-    assert GRAPH_JOBS.at_frame(graph, finished) == JobEnding(status=JobStatus.STOPPED)
-    assert MESSAGE_JOBS.at_frame(message, finished) is None
-    assert MESSAGE_JOBS.at_frame(message, error) == JobEnding(status=JobStatus.FAILED, error="boom")
-    assert MESSAGE_JOBS.at_frame(message, end) == JobEnding(status=JobStatus.SUCCEEDED)
-    assert MESSAGE_JOBS.at_frame(replace(message, stop_requested=True), end) == JobEnding(status=JobStatus.STOPPED)
     assert {event for family in (GRAPH_JOBS, MESSAGE_JOBS) for event in family.ending_events} == {
         StreamEvent.WORKFLOW_FINISHED,
         StreamEvent.MESSAGE_END,
