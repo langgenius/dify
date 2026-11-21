@@ -4,7 +4,7 @@ import json
 import sys
 import uuid
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
@@ -102,6 +102,16 @@ def test_translate_maps_value_error_to_a_fixed_bad_request() -> None:
 _TEST_APP_ID = str(uuid.uuid4())
 _TEST_TENANT_ID = str(uuid.uuid4())
 _TEST_ACCOUNT_ID = str(uuid.uuid4())
+
+
+@dataclass(slots=True)
+class _ApplicationServicesStub:
+    files: object
+
+
+@dataclass(slots=True)
+class _FileServiceStub:
+    upload_file: Callable[..., UploadFile]
 
 
 def _make_app() -> App:
@@ -322,6 +332,76 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
     assert args["query"] == ""
     assert {"attachments", "auto_generate_name"}.isdisjoint(args)
+
+
+def test_run_discards_uploads_when_generation_is_rejected_before_streaming(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    generate_mock = _generate_stub(monkeypatch, [])
+    generate_mock.side_effect = AppInvokeQuotaExceededError("request limit reached")
+
+    def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
+        return make_upload_file(file_id=f"uf-{filename}", extension=filename.rsplit(".", 1)[-1], mime_type=mimetype)
+
+    upload_service = _FileServiceStub(upload_file=upload_file)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"],
+        "application_services",
+        lambda: _ApplicationServicesStub(files=upload_service),
+    )
+    discarded: list[list[str]] = []
+    monkeypatch.setattr(app_run, "discard_uploaded_files", lambda ids: discarded.append(list(ids)), raising=False)
+    api = CompletionRunApi()
+    body = CompletionRunPayload(
+        inputs={
+            "existing": {
+                "transfer_method": "local_file",
+                "upload_file_id": "existing-id",
+                "type": "document",
+            }
+        },
+        files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+        attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
+    )
+
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
+        with pytest.raises(TooManyRequests):
+            _post_handler(api)(api, _ctx(AppMode.COMPLETION), app_id=_TEST_APP_ID, body=body)
+
+    assert discarded == [["uf-r.pdf", "uf-p.jpg"]]
+
+
+def test_run_discards_file_parts_when_attachment_materialization_fails(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    generate_mock = _generate_stub(monkeypatch, [])
+
+    def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
+        if filename == "p.jpg":
+            raise ValueError("attachment upload failed")
+        return make_upload_file(file_id="uf-r.pdf", extension="pdf", mime_type=mimetype)
+
+    upload_service = _FileServiceStub(upload_file=upload_file)
+    monkeypatch.setattr(
+        sys.modules["controllers.openapi._files"],
+        "application_services",
+        lambda: _ApplicationServicesStub(files=upload_service),
+    )
+    discarded: list[list[str]] = []
+    monkeypatch.setattr(app_run, "discard_uploaded_files", lambda ids: discarded.append(list(ids)), raising=False)
+    api = CompletionRunApi()
+    body = CompletionRunPayload(
+        inputs={},
+        files={"doc": FileStorage(stream=BytesIO(b"pdf"), filename="r.pdf", content_type="application/pdf")},
+        attachments=[FileStorage(stream=BytesIO(b"jpg"), filename="p.jpg", content_type="image/jpeg")],
+    )
+
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/completion:run", method="POST"):
+        with pytest.raises(BadRequest, match="attachment upload failed"):
+            _post_handler(api)(api, _ctx(AppMode.COMPLETION), app_id=_TEST_APP_ID, body=body)
+
+    assert discarded == [["uf-r.pdf"]]
+    generate_mock.assert_not_called()
 
 
 def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

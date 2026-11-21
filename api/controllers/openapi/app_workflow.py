@@ -30,7 +30,7 @@ from controllers.openapi._errors import (
     VersionNotRestorable,
     require_uuid,
 )
-from controllers.openapi._files import end_read_transaction, merge_files
+from controllers.openapi._files import discard_uploaded_files, end_read_transaction, merge_files
 from controllers.openapi._hints import cursor_after, next_page_hint, page_after
 from controllers.openapi._models import (
     AdvancedChatNodeRunPayload,
@@ -408,6 +408,13 @@ def _node_run_guards(mode: AppMode) -> tuple[Requirement, ...]:
 def run_draft_node(
     ctx: Context, node_id: str, *, inputs: dict[str, Any], query: str, files: UploadParts | None = None
 ) -> WorkflowRunNodeExecutionResponse:
+    """Run one draft node and discard newly uploaded files if the service rejects its inputs.
+
+    The node must not be a container node. A successful service call returns its
+    execution response; a ``ValueError`` from execution is reported as a bad
+    request after request-created uploads are deleted. Existing file references
+    supplied in ``inputs`` are never part of the deletion set.
+    """
     workflow_service = WorkflowService()
     draft = require_draft(ctx)
     try:
@@ -420,7 +427,8 @@ def run_draft_node(
         raise BadRequest("Loop and iteration nodes can't run alone; test them with a full draft run")
     if files:
         end_read_transaction(ctx.session)
-    user_inputs = merge_files(inputs, files, ctx.caller)
+    uploaded_file_ids: list[str] = []
+    user_inputs = merge_files(inputs, files, ctx.caller, uploaded_file_ids=uploaded_file_ids)
     try:
         execution = workflow_service.run_draft_workflow_node(
             app_model=ctx.app,
@@ -431,6 +439,7 @@ def run_draft_node(
             query=query,
         )
     except ValueError as exc:
+        discard_uploaded_files(uploaded_file_ids)
         raise BadRequest(str(exc)) from exc
     return WorkflowRunNodeExecutionResponse.model_validate(
         node_execution_response_source(execution, session=ctx.session), from_attributes=True

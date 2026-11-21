@@ -13,7 +13,9 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -21,7 +23,10 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from jsonschema import Draft202012Validator
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from controllers.common.human_input_v2_errors import HumanInputV2InvalidInputError
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import build_catalog
 from controllers.openapi._contract import op_of
@@ -42,9 +47,35 @@ from core.workflow.nodes.human_input import ParagraphInputConfig, UserActionConf
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, EndUser, UploadFile
+from services.file_service import FileService
+from services.human_input_service import FormNotFoundError, InvalidFormDataError
+from tests.helpers.unit.model_factories import make_upload_file
 
 _MODULE = "controllers.openapi.human_input_form"
+
+
+@dataclass(slots=True)
+class _ApplicationServicesStub:
+    files: object
+
+
+@dataclass(slots=True)
+class _AuthorizedFormStub:
+    app_id: str
+    tenant_id: str
+
+
+class _FileServiceStub:
+    def __init__(self, upload_file):
+        self._upload_file = upload_file
+        self.deleted_file_ids: list[str] = []
+
+    def upload_file(self, **kwargs):
+        return self._upload_file(**kwargs)
+
+    def delete_file(self, file_id: str) -> None:
+        self.deleted_file_ids.append(file_id)
 
 
 def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context:
@@ -217,6 +248,126 @@ class TestOpenApiHumanInputFormPost:
         )
         assert result == FormSubmitResponse()
 
+    def test_v2_post_discards_upload_when_submission_is_rejected(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        from werkzeug.datastructures import FileStorage
+
+        from controllers.openapi import _files
+        from services.human_input_v2.submission_service import (
+            HumanInputFormError,
+            HumanInputFormErrorCode,
+        )
+
+        _mock_service(monkeypatch, None)
+        from services import file_service as file_service_module
+
+        uploaded_keys: list[str] = []
+        deleted_keys: list[str] = []
+        monkeypatch.setattr(file_service_module.storage, "save", lambda key, _content: uploaded_keys.append(key))
+        monkeypatch.setattr(file_service_module.storage, "delete", lambda key: deleted_keys.append(key))
+        monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed-url")
+        upload_service = FileService(session_factory=sqlite_session.get_bind())
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
+
+        submission_service = Mock()
+        submission_service.authorize_openapi_form.return_value = _AuthorizedFormStub(
+            app_id="app-1", tenant_id="tenant-1"
+        )
+        submission_service.submit_openapi_form.side_effect = HumanInputFormError(
+            HumanInputFormErrorCode.INVALID_INPUT, form_id="form-1"
+        )
+        monkeypatch.setattr(sys.modules[_MODULE], "HumanInputSubmissionService", lambda **_: submission_service)
+
+        body = OpenApiFormSubmitPayload(
+            action="approve",
+            inputs={},
+            files={"attachment": FileStorage(BytesIO(b"proof"), filename="proof.txt", content_type="text/plain")},
+        )
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
+            with pytest.raises(HumanInputV2InvalidInputError):
+                api.post.__handler__(
+                    api,
+                    _context(_make_end_user("eu-repro"), CreatorUserRole.END_USER),
+                    app_id="app-1",
+                    form_token="tok-1",
+                    body=body,
+                )
+
+        [file_key] = uploaded_keys
+        assert deleted_keys == [file_key]
+        assert (
+            sqlite_session.scalar(
+                select(UploadFile.id).where(UploadFile.tenant_id == "tenant-1", UploadFile.key == file_key)
+            )
+            is None
+        )
+
+    def test_legacy_post_discards_upload_when_input_validation_fails(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from werkzeug.datastructures import FileStorage
+
+        from controllers.openapi import _files
+
+        service = _mock_service(monkeypatch, _make_form())
+        service.submit_form_by_token.side_effect = InvalidFormDataError("invalid file input")
+        upload_service = _FileServiceStub(
+            lambda **_: make_upload_file(file_id="uploaded-file", extension="txt", mime_type="text/plain")
+        )
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
+
+        body = OpenApiFormSubmitPayload(
+            action="approve",
+            inputs={},
+            files={"attachment": FileStorage(BytesIO(b"proof"), filename="proof.txt", content_type="text/plain")},
+        )
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
+            with pytest.raises(InvalidFormDataError):
+                api.post.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    form_token="tok-1",
+                    body=body,
+                )
+
+        assert upload_service.deleted_file_ids == ["uploaded-file"]
+
+    def test_legacy_post_discards_upload_when_form_is_not_found(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from werkzeug.datastructures import FileStorage
+
+        from controllers.openapi import _files
+
+        service = _mock_service(monkeypatch, _make_form())
+        service.submit_form_by_token.side_effect = FormNotFoundError()
+        upload_service = _FileServiceStub(
+            lambda **_: make_upload_file(file_id="uploaded-file", extension="txt", mime_type="text/plain")
+        )
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
+
+        body = OpenApiFormSubmitPayload(
+            action="approve",
+            inputs={},
+            files={"attachment": FileStorage(BytesIO(b"proof"), filename="proof.txt", content_type="text/plain")},
+        )
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
+            with pytest.raises(HumanInputFormNotFound):
+                api.post.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    form_token="tok-1",
+                    body=body,
+                )
+
+        assert upload_service.deleted_file_ids == ["uploaded-file"]
+
 
 class TestSubmitFollowRunHint:
     def _submit(
@@ -281,7 +432,7 @@ class TestCheckFormSurface:
     def _run(self, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
-        CheckFormSurface().run(ctx.subject, ctx, Mock())
+        CheckFormSurface().run(ctx.subject, ctx, None)
 
     def test_admits_a_web_app_recipient(self, monkeypatch: pytest.MonkeyPatch):
         self._run(monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
