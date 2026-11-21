@@ -24,8 +24,8 @@
       "type": "password",
       "required": true,
       "placeholder": "dpat_...",
-      "description": "创建令牌时，在访问范围中选择你要让智能体使用的工作区。建议使用个人访问令牌。工作区访问令牌只能查找和运行应用，不能管理插件、模型供应商和工具凭据，也不能填写暂停运行中的人工介入表单。",
-      "description_en": "When you create the token, give it access to the workspace you want the agent to use. A personal access token is recommended. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run."
+      "description": "建议使用个人访问令牌。令牌的应用访问范围决定智能体能查找和运行哪些应用；管理插件、模型供应商或工具凭据需要令牌有工作区访问权限。工作区访问令牌只能查找和运行应用，不能管理插件、模型供应商和工具凭据，也不能填写暂停运行中的人工介入表单。",
+      "description_en": "A personal access token is recommended. Its app access decides which apps the agent can find and run; it needs workspace access to manage plugins, model providers or tool credentials. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run."
     }
   ]
 }

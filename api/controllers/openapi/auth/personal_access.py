@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden, ServiceUnavailable, Unauthorized
 from constants.oauth_bearer import TokenType
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app
+from controllers.openapi.auth.loaders import load_app, load_workspace, route_has_app, route_has_workspace
 from controllers.openapi.auth.requirements import Rank, Requirement
 from controllers.openapi.auth.subjects import Subject
 from extensions.ext_application_services import application_services
@@ -68,7 +68,7 @@ class CheckPersonalAccess(Requirement):
                 app = load_app(ctx)
                 app_id = app.id
                 workspace_id = app.tenant_id
-            else:
+            elif route_has_workspace(ctx):
                 workspace_id = load_workspace(ctx).id
         try:
             grant = application_services().personal_access_tokens.authorize(

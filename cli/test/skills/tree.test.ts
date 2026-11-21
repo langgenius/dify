@@ -220,10 +220,13 @@ describe('skill MCP page', () => {
     expect(runs).toMatch(/use a new key/)
   })
 
-  it('says what an empty workspace list means and not to guess an id', async () => {
+  it('finds apps without a workspace and does not limit workspace access to settings', async () => {
     const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
     const reach = page.split('\n').find((line) => line.startsWith('- **Reach.**')) ?? ''
-    expect(reach).toMatch(/empty workspace list/)
-    expect(reach).toMatch(/do not guess/i)
+    expect(reach).toMatch(/`get\.console_app`[^.]*needs no workspace/)
+    expect(reach).toMatch(/may be empty/)
+    expect(reach).toMatch(/workspace access is needed for plugins, model providers and tool credentials/i)
+    expect(reach).not.toMatch(/needed only/i)
+    expect(page).not.toMatch(/give it access to the workspace/)
   })
 })

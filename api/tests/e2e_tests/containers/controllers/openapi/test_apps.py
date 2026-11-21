@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from typing import Protocol, cast
 from uuid import uuid4
@@ -11,9 +12,11 @@ from werkzeug.exceptions import NotFound
 
 from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse
 from controllers.openapi.apps import AppDescribeApi, AppListApi
-from machinery.context import AppRequestContext, RequestContext
-from models import Account, App
+from controllers.openapi.auth.requirements import CheckWorkspaceMember
+from machinery.context import AppRequestContext
+from models import Account, App, Tenant
 from services.app_service import AppService, CreateAppParams
+from tests.e2e_tests.containers.controllers.openapi.conftest import add_tenant_for_account, context_for
 
 
 class _Endpoint[T](Protocol):
@@ -26,14 +29,15 @@ def _create_app(
     *,
     name: str,
     enable_api: bool = True,
+    tenant: Tenant | None = None,
 ) -> App:
-    """Create a workflow app in the account's owner tenant.
+    """Create a workflow app in ``tenant``, by default the account's current tenant.
 
     Workflow mode is used because its template seeds no ``model_config``, so
     ``AppService.create_app`` never reaches ``ModelManager`` — keeping the
     fixture free of model-runtime patching.
     """
-    tenant = account.current_tenant
+    tenant = tenant or account.current_tenant
     assert tenant is not None
     params = CreateAppParams(
         name=name,
@@ -67,7 +71,7 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                RequestContext("request", None, account.id, tenant.id),
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(tenant.id)),
             )
 
@@ -89,7 +93,7 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                RequestContext("request", None, account.id, tenant.id),
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(tenant.id), name=str(target.id)),
             )
 
@@ -112,12 +116,38 @@ class TestAppList:
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}"):
             result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                RequestContext("request", None, outsider.id, outsider_tenant.id),
+                context_for(outsider, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
                 query=AppListQuery(workspace_id=str(outsider_tenant.id), name=str(foreign_app.id)),
             )
 
         assert result.total == 0
         assert result.data == []
+
+    def test_without_a_workspace_lists_the_apps_of_every_workspace_of_the_account(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
+        account = make_account()
+        first = _create_app(db_session_with_containers, account, name="In first", enable_api=True)
+        second_tenant = add_tenant_for_account(account, session=db_session_with_containers)
+        second = _create_app(
+            db_session_with_containers, account, name="In second", enable_api=True, tenant=second_tenant
+        )
+        stranger = make_account()
+        _create_app(db_session_with_containers, stranger, name="Not mine", enable_api=True)
+
+        api = AppListApi()
+        with app.test_request_context("/openapi/v1/apps"):
+            result = inspect.unwrap(AppListApi.get)(
+                api,
+                context_for(account, session=db_session_with_containers, requirements=(CheckWorkspaceMember(),)),
+                query=AppListQuery(),
+            )
+        assert isinstance(result, AppListResponse)
+
+        assert result.total == 2
+        assert sorted((row.id, row.workspace_id) for row in result.data) == sorted(
+            [(first.id, first.tenant_id), (second.id, str(second_tenant.id))]
+        )
 
 
 class TestAppDescribe:

@@ -7,7 +7,7 @@ QwenWork's marketplace takes one fixed address per connector, and Dify has no si
 - A Dify release that includes the `/openapi/v1/mcp` endpoint.
 - `OPENAPI_ENABLED=true` on the Dify server.
 - Your Dify host name.
-- A personal access token (prefix `dpat_`, recommended) or a workspace access token. When you create the token, choose access to the workspace you want the agent to use: a token with no workspace access sees an empty workspace list.
+- A personal access token (prefix `dpat_`, recommended) or a workspace access token. The token's app access decides which apps the agent can find and run. Workspace access is needed for plugins, model providers and tool credentials.
 - An HTTPS address with a valid certificate. QwenWork documents that marketplace connectors refuse plain HTTP, self-signed certificates and internal addresses. It does not document this for enterprise or desktop custom connectors.
 
 ## Enterprise connector (admin console, 企业旗舰版 (Enterprise Ultimate))

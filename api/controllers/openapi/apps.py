@@ -8,7 +8,7 @@ from typing import Any, Final
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
@@ -39,6 +39,8 @@ from controllers.openapi.app_webapp import (
     WebAppAccessApi,
     WorkflowWebAppApi,
 )
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import route_has_workspace
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     CheckAppApiEnabled,
@@ -49,13 +51,13 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
     CheckWorkspaceRole,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
-from services.app.query_service import AppDiscoveryQuery
-from services.errors.app import AppDiscoveryNotFoundError
+from services.app.query_service import AppDiscoveryQuery, AppListLogin
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 from services.errors.base import NoPermissionError
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
@@ -163,33 +165,49 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        context="workspace",
+        context="orm",
         op="get.console_app",
         pat_policy=PersonalAccessTokenPolicy.RESOURCE_DISCOVERY,
         kind=Kind.LIST,
-        summary="List apps in a workspace",
+        summary="List the apps this login may use, in one workspace or in all of them",
         examples=(
-            Example(title="List apps in the pinned workspace, first page", input={"page": 1, "limit": 20}),
+            Example(
+                title="List the apps this login may use in every workspace, first page", input={"page": 1, "limit": 20}
+            ),
+            Example(
+                title="List the apps of one workspace, first page",
+                input={"workspace_id": "<workspace_id>", "page": 1, "limit": 20},
+            ),
             Example(
                 title="Find workflow apps whose name contains a word",
                 input={"mode": "workflow", "name": "summary"},
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
             CheckScope(Scope.APPS_READ),
             CheckWorkspaceMember(),
         ),
         query=AppListQuery,
         returns=(HTTPStatus.OK, AppListResponse, "App list"),
     )
-    def get(self, ctx: RequestContext, *, query: AppListQuery):
-        result = application_services().apps.discovery.list_apps(
-            ctx, AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name)
-        )
+    def get(self, ctx: Context, *, query: AppListQuery):
+        try:
+            result = application_services().apps.discovery.list_apps_for(
+                _app_list_login(ctx),
+                AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name),
+            )
+        except PermittedAppsUnavailableError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         return AppListResponse.build(
             page=result.page,
             limit=result.per_page,
             total=result.total,
             items=[app_list_row(entry) for entry in result.items],
         )
+
+
+def _app_list_login(ctx: Context) -> AppListLogin:
+    """The caller's identity, with the workspace the request addressed or the one the login is bound to."""
+    workspace_id = str(ctx.workspace.id) if route_has_workspace(ctx) else ctx.subject.bound_workspace_id(ctx)
+    return AppListLogin(kind=ctx.subject.subject_type, caller=ctx.caller_identity, workspace_id=workspace_id)

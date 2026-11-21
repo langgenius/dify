@@ -71,6 +71,10 @@ class Subject(ABC):
     @abstractmethod
     def webapp_user_id(self, session: Session) -> str | None: ...
 
+    def bound_workspace_id(self, ctx: Context) -> str | None:
+        """The workspace this login is bound to whatever the request names; None for a login that may act in many."""
+        return None
+
 
 class AccountSubject(Subject):
     subject_type = SubjectType.ACCOUNT
@@ -167,6 +171,11 @@ class ResourceAccessSubject(Subject):
     @override
     def webapp_user_id(self, session: Session) -> str | None:
         return None
+
+    @override
+    def bound_workspace_id(self, ctx: Context) -> str | None:
+        """A workspace token's own workspace, which admission loaded from its grant."""
+        return str(ctx.workspace.id)
 
 
 def subject_from_auth(auth: AuthContext) -> Subject:

@@ -1879,7 +1879,7 @@ export const get35 = oc
     path: '/apps',
     tags: ['openapi'],
   })
-  .input(z.object({ query: zGetAppsQuery }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 export const apps = {
