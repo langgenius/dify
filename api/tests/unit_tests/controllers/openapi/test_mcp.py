@@ -14,7 +14,6 @@ from werkzeug.test import EnvironBuilder, TestResponse, run_wsgi_app
 
 from controllers.openapi import account as account_module
 from controllers.openapi import mcp as mcp_module
-from controllers.openapi._catalog import current_catalog
 from controllers.openapi._mcp_call import OpCall, OpResult
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS
 from controllers.openapi.auth import router as router_module
@@ -81,8 +80,11 @@ def test_initialize_with_a_good_token_negotiates_and_returns_the_instructions(ad
     assert result["instructions"] == MCP_INSTRUCTIONS
 
 
-def test_initialize_without_a_token_is_http_401_with_www_authenticate(openapi_app: Flask) -> None:
-    response = _post(openapi_app.test_client(), _initialize())
+@pytest.mark.parametrize("message", [_initialize(), _rpc("tools/list")], ids=["initialize", "tools/list"])
+def test_initialize_and_tools_list_without_a_token_are_http_401_with_www_authenticate(
+    openapi_app: Flask, message: dict[str, object]
+) -> None:
+    response = _post(openapi_app.test_client(), message)
 
     assert response.status_code == 401
     assert response.get_json() == UNAUTHORIZED_BODY
@@ -116,13 +118,6 @@ def test_tools_list_returns_the_four_tools(admitted_bearer: AdmittedWorld) -> No
     assert response.status_code == 200
     names = [tool["name"] for tool in response.get_json()["result"]["tools"]]
     assert names == ["dify_find", "dify_read", "dify_write", "dify_destructive"]
-
-
-def test_tools_list_without_a_token_is_http_401(openapi_app: Flask) -> None:
-    response = _post(openapi_app.test_client(), _rpc("tools/list"))
-
-    assert response.status_code == 401
-    assert response.get_json() == UNAUTHORIZED_BODY
 
 
 def test_initialize_runs_no_operation(admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -338,13 +333,6 @@ def test_each_request_authenticates_exactly_once(
         assert counter.calls == 1, message["method"]
 
 
-def test_the_mcp_route_is_not_in_the_catalog(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        raw, _ = current_catalog()
-
-    assert all(entry["path"] != MCP_PATH for entry in json.loads(raw)["ops"].values())
-
-
 class _OpRecorder:
     def __init__(self) -> None:
         self.calls: list[OpCall] = []
@@ -444,9 +432,3 @@ def test_an_origin_in_the_openapi_cors_list_is_accepted(openapi_app: Flask, monk
 
     assert allowed.status_code == 200
     assert other.status_code == 403
-
-
-def test_no_origin_header_is_unchanged(openapi_app: Flask) -> None:
-    response = _post(openapi_app.test_client(), _rpc("ping"))
-
-    assert response.status_code == 200

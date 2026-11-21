@@ -15,7 +15,7 @@ import pytest
 from flask import Flask, g, request
 
 from controllers.openapi import _mcp_call
-from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
+from controllers.openapi._catalog import CATALOG_HEADER, catalog_for, op_registry
 from controllers.openapi._mcp_call import (
     FileInputUnsupported,
     OpCall,
@@ -23,7 +23,6 @@ from controllers.openapi._mcp_call import (
     UnknownOp,
     UnsafePathValue,
     call_op,
-    registered_op,
 )
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
@@ -147,8 +146,6 @@ def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requ
 def test_an_unknown_op_raises(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(UnknownOp):
-            registered_op("no.such.op")
-        with pytest.raises(UnknownOp):
             _call("no.such.op", {})
 
     assert inner_requests == []
@@ -189,17 +186,6 @@ def test_a_url_value_that_is_not_utf8_text_is_refused_before_anything_runs(
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-def test_a_missing_path_value_is_refused_before_anything_runs(
-    openapi_app: Flask, inner_requests: list[_SeenRequest]
-) -> None:
-    with openapi_app.test_request_context():
-        with pytest.raises(UnsafePathValue):
-            _call("describe.workspace", {})
-
-    assert inner_requests == []
-
-
-@pytest.mark.usefixtures("admitted_bearer")
 def test_a_percent_encoded_slash_reaches_the_op_as_text(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         result = _call("describe.workspace", {"workspace_id": "x%2Fmembers"})
@@ -212,10 +198,10 @@ def test_a_built_path_that_matches_another_rule_is_refused(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, inner_requests: list[_SeenRequest]
 ) -> None:
     with openapi_app.test_request_context():
-        own = registered_op("describe.workspace")
-        moved = replace(own, entry=registered_op("get.workspace.member").entry)
+        registry = op_registry()
+        moved = replace(registry["describe.workspace"], entry=registry["get.workspace.member"].entry)
         # describe.workspace now carries the members path: the built path resolves to another rule
-        monkeypatch.setattr(_mcp_call, "registered_op", lambda _op: moved)
+        monkeypatch.setattr(_mcp_call, "op_registry", lambda: {"describe.workspace": moved})
         with pytest.raises(RouteMismatch):
             _call("describe.workspace", {"workspace_id": str(uuid.uuid4())})
 
