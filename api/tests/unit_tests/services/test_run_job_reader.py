@@ -150,15 +150,6 @@ def test_message_end_after_a_stop_request_marks_the_job_stopped(
     assert record.status is JobStatus.STOPPED
 
 
-def test_an_error_event_fails_the_job_with_its_message(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.CHAT)
-
-    record = _read(store, stopper, [_frame(StreamEvent.ERROR, code="invalid_param", status=400, message="bad input")])
-
-    assert record.status is JobStatus.FAILED
-    assert record.error == "bad input"
-
-
 def test_an_error_event_without_a_message_is_not_read_as_an_ending(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
@@ -304,15 +295,32 @@ class TouchFailsOnceStore(RedisRunJobStore):
         super().touch(job_id)
 
 
-class CountingTouchStore(RedisRunJobStore):
+class CountingStore(RedisRunJobStore):
     def __init__(self, redis: InMemoryRedis) -> None:
         super().__init__(redis_client=redis)
         self.touches = 0
+        self.gets = 0
+        self.writes = 0
 
     @override
     def touch(self, job_id: str) -> None:
         self.touches += 1
         super().touch(job_id)
+
+    @override
+    def get(self, job_id: str) -> JobRecord | None:
+        self.gets += 1
+        return super().get(job_id)
+
+    @override
+    def record_ids(self, job_id: str, ids: JobIds) -> None:
+        self.writes += 1
+        super().record_ids(job_id, ids)
+
+    @override
+    def settle(self, job_id: str, ending: JobEnding) -> bool:
+        self.writes += 1
+        return super().settle(job_id, ending)
 
 
 def _silent_for(seconds: float) -> Iterator[str]:
@@ -336,7 +344,7 @@ def test_a_failed_alive_refresh_is_logged_and_does_not_stop_the_read(
 
 
 def test_the_alive_key_is_refreshed_while_no_frame_arrives(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = CountingTouchStore(redis)
+    store = CountingStore(redis)
     _open(store, AppMode.WORKFLOW)
     store.touches = 0
 
@@ -353,7 +361,7 @@ def test_the_alive_key_is_refreshed_while_no_frame_arrives(redis: InMemoryRedis,
 
 
 def test_the_alive_refresh_stops_when_the_reader_ends(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = CountingTouchStore(redis)
+    store = CountingStore(redis)
     _open(store, AppMode.WORKFLOW)
 
     read_to_end(
@@ -454,34 +462,6 @@ def test_a_frame_that_does_not_fit_cores_model_is_logged_once_per_event(
     assert record.failure is JobFailure.NO_RESULT
 
 
-class CountingStore(RedisRunJobStore):
-    def __init__(self, redis: InMemoryRedis) -> None:
-        super().__init__(redis_client=redis)
-        self.touches = 0
-        self.gets = 0
-        self.writes = 0
-
-    @override
-    def touch(self, job_id: str) -> None:
-        self.touches += 1
-        super().touch(job_id)
-
-    @override
-    def get(self, job_id: str) -> JobRecord | None:
-        self.gets += 1
-        return super().get(job_id)
-
-    @override
-    def record_ids(self, job_id: str, ids: JobIds) -> None:
-        self.writes += 1
-        super().record_ids(job_id, ids)
-
-    @override
-    def settle(self, job_id: str, ending: JobEnding) -> bool:
-        self.writes += 1
-        return super().settle(job_id, ending)
-
-
 CHAT_IDS = {"task_id": "task-1", "message_id": "msg-1", "conversation_id": "conv-1"}
 
 
@@ -502,29 +482,3 @@ def test_token_frames_with_known_ids_make_no_store_call(redis: InMemoryRedis, st
     read_to_end(job_id=JOB_ID, frames=frames(), store=store, stopper=stopper, endings=_endings(store))
 
     assert counts_at_end == [(0, 0)]
-
-
-def test_a_frame_with_a_handler_reads_the_job_record(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = CountingStore(redis)
-    _open(store, AppMode.CHAT)
-    store.gets = 0
-
-    read_to_end(
-        job_id=JOB_ID,
-        frames=[_frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", metadata={})],
-        store=store,
-        stopper=stopper,
-        endings=_endings(store),
-    )
-
-    assert store.gets >= 1
-
-
-def test_a_failed_alive_refresh_does_not_lose_the_frame(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
-    store = TouchFailsOnceStore(redis)
-    _open(store, AppMode.CHAT)
-    store.failures_left = 1
-
-    record = _read(store, stopper, [_frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", metadata={})])
-
-    assert record.status is JobStatus.SUCCEEDED

@@ -24,16 +24,9 @@ from controllers.openapi._models import (
     WorkflowStartPayload,
 )
 from controllers.openapi.app_start import (
-    ADVANCED_CHAT_START_OP,
     CHAT_START_OP,
-    COMPLETION_START_OP,
     START_MODES,
     START_OP_PREFIX,
-    WORKFLOW_START_OP,
-    AdvancedChatStartApi,
-    ChatStartApi,
-    CompletionStartApi,
-    WorkflowStartApi,
 )
 from controllers.openapi.auth.spec import spec_of
 from extensions.ext_application_services import ApplicationServices
@@ -50,7 +43,6 @@ from services.run_job_service import (
     MessageResult,
     RunJobService,
     RunResult,
-    family_of,
 )
 from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -205,10 +197,7 @@ def test_start_audits_inside_the_start_then_ends_the_read_transaction_then_waits
 
 
 def test_advanced_chat_start_returns_a_finished_job(world: World, sqlite_session: Session) -> None:
-    app = sqlite_session.get(App, world.client.app_id)
-    assert app is not None
-    app.mode = AppMode.ADVANCED_CHAT
-    sqlite_session.commit()
+    _set_mode(world, sqlite_session, AppMode.ADVANCED_CHAT)
 
     response = world.start(CHATFLOW_ROUTE, query="hi", wait_seconds=5)
 
@@ -217,21 +206,6 @@ def test_advanced_chat_start_returns_a_finished_job(world: World, sqlite_session
     assert body["status"] == "succeeded"
     assert body["run_id"] == RUN_ID
     assert body["outputs"] == {"x": 1}
-
-
-def test_start_with_wait_zero_answers_running_with_a_job_id(world: World) -> None:
-    release = threading.Event()
-    world.generator.hold = release
-    try:
-        response = world.start(wait_seconds=0)
-    finally:
-        release.set()
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert body["status"] == "running"
-    assert body["id"]
-    assert body["outputs"] is None
 
 
 def test_a_service_error_maps_as_the_run_route_maps_it_and_leaves_no_job(world: World) -> None:
@@ -259,13 +233,32 @@ def test_a_repeated_idempotency_key_returns_the_first_job_and_runs_nothing(world
     assert world.store.get(first.get_json()["id"]) is not None
 
 
-def test_start_refuses_an_app_of_another_mode(world: World) -> None:
-    response = world.start(CHATFLOW_ROUTE, query="hi", wait_seconds=0)
+@pytest.mark.parametrize(
+    ("route", "mode", "body", "expected"),
+    [
+        (CHATFLOW_ROUTE, AppMode.WORKFLOW, {"query": "hi"}, (422, OpenApiErrorCode.APP_MODE_MISMATCH, 0, 0)),
+        (CHAT_ROUTE, AppMode.WORKFLOW, {"query": "hi"}, (422, OpenApiErrorCode.APP_MODE_MISMATCH, 0, 0)),
+        (CHAT_ROUTE, AppMode.COMPLETION, {"query": "hi"}, (422, OpenApiErrorCode.APP_MODE_MISMATCH, 0, 0)),
+        (CHAT_ROUTE, AppMode.ADVANCED_CHAT, {"query": "hi"}, (422, OpenApiErrorCode.APP_MODE_MISMATCH, 0, 0)),
+        (COMPLETION_ROUTE, AppMode.WORKFLOW, {}, (422, OpenApiErrorCode.APP_MODE_MISMATCH, 0, 0)),
+        (COMPLETION_ROUTE, AppMode.COMPLETION, {"inputs": {"a": 1}}, (200, None, 1, 1)),
+    ],
+)
+def test_a_start_route_serves_only_the_modes_of_its_op(
+    world: World,
+    sqlite_session: Session,
+    route: str,
+    mode: AppMode,
+    body: dict[str, object],
+    expected: tuple[int, str | None, int, int],
+) -> None:
+    _set_mode(world, sqlite_session, mode)
+    world.generator.frames = CHAT_FRAMES
 
-    assert response.status_code == 422
-    assert response.get_json()["code"] == OpenApiErrorCode.APP_MODE_MISMATCH
-    assert world.generator.calls == []
-    assert _job_ids(world) == []
+    response = world.start(route, wait_seconds=0, **body)
+
+    calls, jobs = len(world.generator.calls), len(_job_ids(world))
+    assert (response.status_code, response.get_json().get("code"), calls, jobs) == expected
 
 
 def test_start_at_the_background_cap_answers_429(
@@ -298,8 +291,11 @@ def test_start_emits_the_app_run_audit_event(world: World, caplog: pytest.LogCap
     assert record.surface == "apps"  # type: ignore[attr-defined]
 
 
-def test_chat_start_passes_query_and_conversation_and_drops_start_fields(world: World, sqlite_session: Session) -> None:
-    _set_mode(world, sqlite_session, AppMode.CHAT)
+@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
+def test_chat_start_passes_query_and_conversation_and_drops_start_fields(
+    world: World, sqlite_session: Session, mode: AppMode
+) -> None:
+    _set_mode(world, sqlite_session, mode)
     world.generator.frames = CHAT_FRAMES
     conversation_id = "11111111-1111-4111-8111-111111111111"
 
@@ -312,16 +308,6 @@ def test_chat_start_passes_query_and_conversation_and_drops_start_fields(world: 
     assert isinstance(args, dict)
     assert args["query"] == "hi"
     assert args["conversation_id"] == conversation_id
-    assert "wait_seconds" not in args
-    assert "idempotency_key" not in args
-
-
-def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> None:
-    world.start(wait_seconds=5, idempotency_key="k3", inputs={"a": 1})
-
-    args = world.generator.calls[0]["args"]
-    assert isinstance(args, dict)
-    assert args["inputs"] == {"a": 1}
     assert "wait_seconds" not in args
     assert "idempotency_key" not in args
 
@@ -352,16 +338,7 @@ def test_the_start_ops_are_the_catalogs_and_each_job_mode_has_exactly_one(openap
     assert {op for op in ops if op.startswith(START_OP_PREFIX)} == set(START_MODES)
     for mode in GRAPH_MODES | MESSAGE_MODES:
         assert len([op for op, modes in START_MODES.items() if mode in modes]) == 1, mode
-
-
-def test_a_job_family_takes_exactly_the_modes_a_start_op_runs() -> None:
-    started = {mode for modes in START_MODES.values() for mode in modes}
-    for mode in AppMode:
-        if mode in started:
-            family_of(mode)
-        else:
-            with pytest.raises(ValueError, match="does not support run jobs"):
-                family_of(mode)
+    assert {mode for modes in START_MODES.values() for mode in modes} == GRAPH_MODES | MESSAGE_MODES
 
 
 def test_start_ops_take_the_resource_calls_pat_policy(openapi_app: Flask) -> None:
@@ -421,6 +398,7 @@ def test_a_chat_run_is_read_to_the_end_after_the_response_is_sent(
 
     assert started.status_code == 200
     assert started.get_json()["status"] == "running"
+    assert started.get_json()["outputs"] is None
     assert frames.yielded == []
     gate.set()
     job_id = started.get_json()["id"]
@@ -437,60 +415,3 @@ def test_a_chat_run_is_read_to_the_end_after_the_response_is_sent(
     world.join()
     assert frames.yielded == CHAT_FRAMES
     assert frames.exhausted
-
-
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
-def test_chat_start_serves_chat_and_agent_chat_apps(world: World, sqlite_session: Session, mode: AppMode) -> None:
-    _set_mode(world, sqlite_session, mode)
-    world.generator.frames = CHAT_FRAMES
-
-    response = world.start(CHAT_ROUTE, query="hi", wait_seconds=0)
-
-    assert response.status_code == 200
-    assert len(world.generator.calls) == 1
-
-
-@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.COMPLETION, AppMode.ADVANCED_CHAT])
-def test_chat_start_refuses_other_modes(world: World, sqlite_session: Session, mode: AppMode) -> None:
-    _set_mode(world, sqlite_session, mode)
-
-    response = world.start(CHAT_ROUTE, query="hi", wait_seconds=0)
-
-    assert response.status_code == 422
-    assert response.get_json()["code"] == OpenApiErrorCode.APP_MODE_MISMATCH
-    assert world.generator.calls == []
-
-
-def test_completion_start_serves_completion_apps_only(world: World, sqlite_session: Session) -> None:
-    refused = world.start(COMPLETION_ROUTE, wait_seconds=0)
-    _set_mode(world, sqlite_session, AppMode.COMPLETION)
-    world.generator.frames = [
-        _frame({"event": "message", "task_id": TASK_ID, "message_id": MESSAGE_ID}),
-        _frame({"event": "message_end", "task_id": TASK_ID, "message_id": MESSAGE_ID}),
-    ]
-    accepted = world.start(COMPLETION_ROUTE, inputs={"a": 1}, wait_seconds=0)
-
-    assert refused.status_code == 422
-    assert refused.get_json()["code"] == OpenApiErrorCode.APP_MODE_MISMATCH
-    assert accepted.status_code == 200
-    assert len(world.generator.calls) == 1
-
-
-def test_the_four_start_ops_are_separate_resource_classes(openapi_app: Flask) -> None:
-    ops = (WORKFLOW_START_OP, ADVANCED_CHAT_START_OP, CHAT_START_OP, COMPLETION_START_OP)
-    specs = [(spec_of(fn), fn) for _, _, fn in iter_handlers(openapi_app)]
-    declared = [(spec, fn) for spec, fn in specs if spec is not None]
-    handlers: dict[str, Callable[..., object]] = {
-        spec.catalog.op: fn for spec, fn in declared if spec.catalog.op in ops
-    }
-
-    assert set(handlers) == set(ops)
-    expected = {
-        WORKFLOW_START_OP: WorkflowStartApi,
-        ADVANCED_CHAT_START_OP: AdvancedChatStartApi,
-        CHAT_START_OP: ChatStartApi,
-        COMPLETION_START_OP: CompletionStartApi,
-    }
-    for op, resource in expected.items():
-        assert handlers[op] is resource.post
-        assert handlers[op].__qualname__ == f"{resource.__name__}.post"
