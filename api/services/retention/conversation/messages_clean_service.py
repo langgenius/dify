@@ -25,6 +25,7 @@ from models.model import (
     MessageFile,
 )
 from models.web import SavedMessage
+from services.external_agents.retention import ExternalDeletionKind
 from services.retention.conversation.messages_clean_policy import (
     MessagesCleanPolicy,
     SimpleMessage,
@@ -477,6 +478,12 @@ class MessagesCleanService:
 
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
+                from extensions.application_services.external_agent_lifecycle import fence_external_parent
+
+                selected_ids = set(message_ids_to_delete)
+                for message in messages:
+                    if message.id in selected_ids and message.app_id in app_to_tenant:
+                        fence_external_parent(app_to_tenant[message.app_id], ExternalDeletionKind.MESSAGE, message.id)
                 with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                     delete_relations_start = time.monotonic()
                     # Delete related records first

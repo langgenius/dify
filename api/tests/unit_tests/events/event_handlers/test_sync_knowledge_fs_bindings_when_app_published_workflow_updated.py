@@ -13,6 +13,13 @@ from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpace
 from models.model import App
 from models.workflow import Workflow
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
+from tests.helpers.unit.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def enabled_knowledge_fs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Existing binding synchronization cases exercise an enabled deployment."""
+    apply_config_overrides(monkeypatch, KNOWLEDGE_FS_ENABLED=True, KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True)
 
 
 @dataclass

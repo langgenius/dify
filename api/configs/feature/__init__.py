@@ -19,6 +19,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings
 
+from .external_agents import ExternalAgentsConfig
 from .hosted_service import HostedServiceConfig
 
 logger = logging.getLogger(__name__)
@@ -1858,6 +1859,7 @@ class EvaluationConfig(BaseSettings):
 
 
 class FeatureConfig(
+    ExternalAgentsConfig,
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig

@@ -101,9 +101,13 @@ class DependenciesAnalysisService:
 
     @classmethod
     def get_leaked_dependencies(cls, tenant_id: str, dependencies: list[PluginDependency]) -> list[PluginDependency]:
+        """Return missing declared plugin dependencies in the current workspace.
+
+        An empty declared set has no missing members and performs no I/O. A
+        nonempty set still requires the daemon's real result; failures propagate.
         """
-        Check dependencies, returns the leaked dependencies in current workspace
-        """
+        if not dependencies:
+            return []
         required_plugin_unique_identifiers = []
         for dependency in dependencies:
             required_plugin_unique_identifiers.append(dependency.value.plugin_unique_identifier)
@@ -137,9 +141,14 @@ class DependenciesAnalysisService:
 
     @classmethod
     def generate_dependencies(cls, tenant_id: str, dependencies: list[str]) -> list[PluginDependency]:
+        """Resolve declared plugin IDs, without I/O for a dependency-free App.
+
+        Nonempty inputs preserve daemon validation and failure behavior. In
+        particular an External-only workflow does not require PluginInstaller
+        merely to serialize an empty dependency collection during copy/export.
         """
-        Generate dependencies through the list of plugin ids
-        """
+        if not dependencies:
+            return []
         dependencies = list(set(dependencies))
         manager = PluginInstaller()
         plugins = manager.fetch_plugin_installation_by_ids(tenant_id, dependencies)
@@ -185,9 +194,13 @@ class DependenciesAnalysisService:
 
     @classmethod
     def generate_latest_dependencies(cls, dependencies: list[str]) -> list[PluginDependency]:
+        """Resolve latest declared plugin versions when marketplace is enabled.
+
+        Empty input produces an empty result without an irrelevant remote call;
+        errors for nonempty enabled requests continue to propagate unchanged.
         """
-        Generate the latest version of dependencies
-        """
+        if not dependencies:
+            return []
         dependencies = list(set(dependencies))
         if not dify_config.MARKETPLACE_ENABLED:
             return []

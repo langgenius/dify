@@ -27,6 +27,7 @@ RUN apt-get update \
 # Install Python dependencies (workspace members under providers/vdb/)
 COPY api/pyproject.toml api/uv.lock ./
 COPY api/providers ./providers
+COPY packages/graphon /app/packages/graphon
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.

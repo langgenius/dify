@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalAgentCaptureSource } from './external-agent-capture-row'
 import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +14,7 @@ import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { ExternalAgentCaptureRow } from './external-agent-capture-row'
 import { ExternalTraceRow } from './external-trace-row'
 import MetaData from './meta'
 import StatusPanel from './status'
@@ -42,6 +44,7 @@ export type ResultPanelProps = {
   isListening?: boolean
   workflowRunId?: string
   externalTrace?: ExternalTraceSource
+  externalAgentCaptureSource?: ExternalAgentCaptureSource
   onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
@@ -71,6 +74,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   isListening = false,
   workflowRunId,
   externalTrace,
+  externalAgentCaptureSource,
   onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
@@ -178,6 +182,12 @@ const ResultPanel: FC<ResultPanelProps> = ({
           showSteps={showSteps}
         >
           {externalTrace && <ExternalTraceRow source={externalTrace} />}
+          {externalAgentCaptureSource && (
+            <ExternalAgentCaptureRow
+              key={`${externalAgentCaptureSource.appId}:${externalAgentCaptureSource.invocationId}`}
+              source={externalAgentCaptureSource}
+            />
+          )}
         </MetaData>
       </div>
     </div>

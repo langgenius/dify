@@ -160,6 +160,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
     from .agent import api_access as agent_api_access
     from .agent import composer as agent_composer
+    from .agent import external as external_agents
+    from .agent import external_observability, external_tests, external_workflow_bindings
     from .agent import roster as agent_roster
     from .agent import tracing as agent_tracing
     from .agent import tracing_runs as agent_tracing_runs
@@ -291,6 +293,10 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_run_archive,
         agent_api_access,
         agent_composer,
+        external_agents,
+        external_observability,
+        external_tests,
+        external_workflow_bindings,
         agent_roster,
         agent_tracing,
         agent_tracing_runs,
@@ -398,6 +404,10 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_run_archive,
     agent_api_access,
     agent_composer,
+    external_agents,
+    external_observability,
+    external_tests,
+    external_workflow_bindings,
     agent_roster,
     agent_tracing,
     agent_tracing_runs,
@@ -527,6 +537,10 @@ __all__ = [
     "evaluation",
     "extension",
     "external",
+    "external_agents",
+    "external_observability",
+    "external_tests",
+    "external_workflow_bindings",
     "feature",
     "file_scan",
     "forgot_password",

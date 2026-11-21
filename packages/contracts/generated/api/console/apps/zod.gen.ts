@@ -1402,6 +1402,25 @@ export const zDraftWorkflowNotSyncError = zErrorResponse.and(
 )
 
 /**
+ * ExternalWorkflowRebindPayload
+ */
+export const zExternalWorkflowRebindPayload = z.object({
+  expected_hash: z.string().min(1).max(255),
+  include_matching: z.boolean().optional().default(true),
+  target_agent_id: z.uuid(),
+})
+
+/**
+ * ExternalWorkflowRebindResponse
+ */
+export const zExternalWorkflowRebindResponse = z.object({
+  binding_epochs: z.record(z.string(), z.string().nullable()),
+  hash: z.string(),
+  node_ids: z.array(z.string()),
+  workflow_id: z.string(),
+})
+
+/**
  * HumanInputDeliveryTestPayload
  */
 export const zHumanInputDeliveryTestPayload = z.object({
@@ -3494,6 +3513,69 @@ export const zSimpleMessageDetail = z.object({
   inputs: z.record(z.string(), zAnyJsonValue),
   message: z.string(),
   query: z.string(),
+})
+
+/**
+ * ExternalTraceCapturePolicy
+ *
+ * Dispatch-frozen gates. A null source gate means there was no source App.
+ */
+export const zExternalTraceCapturePolicy = z.object({
+  source_app_capture_content: z.boolean().nullable(),
+  target_capture_content: z.boolean(),
+  version: z.literal(1),
+})
+
+/**
+ * ExternalTraceCaptureReason
+ */
+export const zExternalTraceCaptureReason = z.enum([
+  'content_not_available',
+  'legacy_snapshot_unavailable',
+  'payload_budget_exceeded',
+  'redaction_unavailable',
+  'source_app_disabled',
+  'target_content_disabled',
+])
+
+/**
+ * ExternalTraceCaptureStatus
+ */
+export const zExternalTraceCaptureStatus = z.enum([
+  'content_included',
+  'metadata_only',
+  'pending',
+  'unknown',
+])
+
+/**
+ * ExternalTraceTargetKind
+ */
+export const zExternalTraceTargetKind = z.enum(['app', 'asset'])
+
+/**
+ * ExternalTraceTargetCaptureResponse
+ */
+export const zExternalTraceTargetCaptureResponse = z.object({
+  capture_content: z.boolean(),
+  capture_policy: zExternalTraceCapturePolicy.nullable(),
+  config_revision: z.string(),
+  delivery_state: z.string().nullable(),
+  payload_revision: z.int().nullable(),
+  provider: z.string(),
+  reasons: z.array(zExternalTraceCaptureReason),
+  status: zExternalTraceCaptureStatus,
+  target_id: z.string(),
+  target_kind: zExternalTraceTargetKind,
+})
+
+/**
+ * ExternalTraceCaptureResponse
+ */
+export const zExternalTraceCaptureResponse = z.object({
+  invocation_id: z.string(),
+  targets: z.array(zExternalTraceTargetCaptureResponse),
+  targets_frozen: z.boolean(),
 })
 
 /**
@@ -7568,6 +7650,17 @@ export const zGetAppsByAppIdExportResponse = z.union([
   z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 ])
 
+export const zGetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCapturePath = z.object({
+  app_id: z.uuid(),
+  invocation_id: z.uuid(),
+})
+
+/**
+ * Frozen capture permissions and actual immutable payload state
+ */
+export const zGetAppsByAppIdExternalAgentInvocationsByInvocationIdTraceCaptureResponse =
+  zExternalTraceCaptureResponse
+
 export const zPostAppsByAppIdFeedbacksBody = zAppMessageFeedbackPayload
 
 export const zPostAppsByAppIdFeedbacksPath = z.object({
@@ -8462,6 +8555,20 @@ export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesPath = z.object({
  * Environment variables updated successfully
  */
 export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse = zSimpleResultResponse
+
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindBody =
+  zExternalWorkflowRebindPayload
+
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindPath = z.object({
+  app_id: z.uuid(),
+  node_id: z.string(),
+})
+
+/**
+ * Committed binding set
+ */
+export const zPostAppsByAppIdWorkflowsDraftExternalAgentBindingsByNodeIdRebindResponse =
+  zExternalWorkflowRebindResponse
 
 export const zPostAppsByAppIdWorkflowsDraftFeaturesBody = zWorkflowFeaturesPayload
 

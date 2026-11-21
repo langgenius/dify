@@ -26,7 +26,7 @@ import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
 import { configurableProviders, hasProviderForm } from './providers'
 import { usesAgentTracePipeline } from './resource'
-import { TracePolicy } from './trace-policy'
+import { AppContentAuthorization, TracePolicy } from './trace-policy'
 import { TracingIcon } from './tracing-icon'
 
 type ConfigPopupProps = {
@@ -156,21 +156,43 @@ export function ConfigPopup({
                 {policyError}
               </p>
             )}
+            {resource.kind === 'app' && usesAgentTracePipeline(resource) && (
+              <>
+                <Separator className="my-3 bg-divider-subtle" />
+                <AppContentAuthorization
+                  policy={policy}
+                  readOnly={readOnly}
+                  onChange={onPolicyChange}
+                />
+              </>
+            )}
             {agentTracingSection === 'unavailable' ? (
-              // Capture settings and provider support have no effect without Agent tracing.
+              // This availability gate concerns Native Agent internals, not the App content authorization above.
               <p
                 role="note"
                 className="my-3 flex gap-1.5 rounded-lg bg-background-section px-2.5 py-2 system-xs-regular text-text-tertiary"
               >
                 <span aria-hidden className="mt-px i-ri-information-2-line size-3.5 shrink-0" />
-                {t(($) => $['tracing.agentTracingUnavailable'])}
+                {t(
+                  ($) =>
+                    $[
+                      resource.kind === 'app'
+                        ? 'tracing.appAgentTracingUnavailable'
+                        : 'tracing.agentTracingUnavailable'
+                    ],
+                )}
               </p>
             ) : (
               <>
                 {agentTracingSection === 'settings' && (
                   <>
                     <Separator className="my-3 bg-divider-subtle" />
-                    <TracePolicy policy={policy} readOnly={readOnly} onChange={onPolicyChange} />
+                    <TracePolicy
+                      resourceKind={resource.kind}
+                      policy={policy}
+                      readOnly={readOnly}
+                      onChange={onPolicyChange}
+                    />
                   </>
                 )}
                 <Separator className="my-3 bg-divider-subtle" />

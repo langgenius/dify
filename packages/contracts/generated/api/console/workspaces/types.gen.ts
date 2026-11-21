@@ -3995,10 +3995,12 @@ export type EndpointProviderConfigScope =
   | 'workflow'
 
 export type DefaultValueType =
+  | 'array[boolean]'
   | 'array[file]'
   | 'array[number]'
   | 'array[object]'
   | 'array[string]'
+  | 'boolean'
   | 'number'
   | 'object'
   | 'string'
