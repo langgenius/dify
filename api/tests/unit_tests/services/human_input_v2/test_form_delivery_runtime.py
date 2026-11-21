@@ -654,6 +654,34 @@ def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(
     assert "<h1>H1</h1>" in email_send.messages[-1].html
 
 
+def test_im_link_form_token_stays_literal_when_body_renders_markdown(
+    context: Context, providers: tuple[Mock, EmailOutbox], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An IM link survives the provider's Markdown parser, so its form token is still usable."""
+    from core.human_input_v2.im_integration.adapters.entities import CardAssessment
+    from core.workflow.human_input_adapter import EmailDeliveryConfig
+    from services.human_input_v2.composition import build_human_input_delivery_service
+
+    _add_im(context)
+    adapter, _email_send = providers
+    adapter.dynamic_card_messaging.assess.return_value = CardAssessment(False, "file input")
+    created = context.prepare(_node(Contact(contact_id=_CONTACT)))
+    assert isinstance(created, CreatedForm)
+    # URL-safe base64 encodes this prefix as _g_-, which Markdown interprets as emphasis.
+    monkeypatch.setattr(secrets, "token_bytes", lambda _size: bytes.fromhex("fe0ffe" + "a1" * 29))
+    build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
+        form=created.form,
+        recipient=created.recipients[0],
+        message_template=created.message_template,
+    )
+
+    body = adapter.messaging.send_text.call_args.args[1]
+    url = re.search(r"https://console\.example\.com/human-input/\S+", body)
+    assert url is not None, body
+    html = EmailDeliveryConfig.render_markdown_body(body)
+    assert url[0] in html, html
+
+
 @pytest.mark.parametrize("contact_kind", ["workspace", "organization"])
 @pytest.mark.parametrize("app_web_url", ["https://app.example.com", ""])
 def test_account_contact_notifications_use_console_form_page(
