@@ -1935,6 +1935,39 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/skills/{skill_id}:publish",
       "summary": "Publish the draft as a new version"
+    },
+    "wait.job": {
+      "bind": {
+        "app_id": "path",
+        "job_id": "path",
+        "wait_seconds": "query"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "job_id": {
+            "type": "string"
+          },
+          "wait_seconds": {
+            "default": 25,
+            "description": "How long to wait for a final state; 0 answers at once",
+            "maximum": 45,
+            "minimum": 0,
+            "title": "Wait Seconds",
+            "type": "integer"
+          }
+        },
+        "required": ["app_id", "job_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/jobs/{job_id}:wait",
+      "summary": "Wait for a background job to finish or pause, and read its state"
     }
   }
 }
