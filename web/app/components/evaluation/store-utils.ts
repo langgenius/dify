@@ -208,9 +208,12 @@ const normalizeConditionItem = (
   if (!metricOption) return null
 
   const allowedOperators = getComparisonOperators(metricOption.valueType)
-  const rawOperator = typeof value.comparison_operator === 'string' ? value.comparison_operator : ''
-  const comparisonOperator = allowedOperators.includes(rawOperator as ComparisonOperator)
-    ? (rawOperator as ComparisonOperator)
+  let operator = typeof value.comparison_operator === 'string' ? value.comparison_operator : ''
+  if (operator === 'null') operator = 'is null'
+  else if (operator === 'not null') operator = 'is not null'
+
+  const comparisonOperator = allowedOperators.includes(operator as ComparisonOperator)
+    ? (operator as ComparisonOperator)
     : getDefaultComparisonOperator(metricOption.valueType)
 
   return {

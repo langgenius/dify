@@ -147,6 +147,51 @@ describe('evaluation store utils', () => {
     })
   })
 
+  it('preserves null checks when reopening and saving dataset evaluation settings', () => {
+    const conditions = [
+      {
+        variable_selector: ['dataset-1', 'context-precision'],
+        comparison_operator: 'null' as const,
+      },
+      {
+        variable_selector: ['dataset-1', 'context-recall'],
+        comparison_operator: 'not null' as const,
+      },
+    ]
+    const resource = buildStateFromEvaluationConfig('datasets', 'dataset-1', {
+      evaluation_model_provider: 'openai',
+      evaluation_model: 'gpt-4o-mini',
+      default_metrics: [
+        { metric: 'context-precision', value_type: 'number', node_info_list: [] },
+        { metric: 'context-recall', value_type: 'number', node_info_list: [] },
+      ],
+      judgment_config: { logical_operator: 'or', conditions },
+    })
+
+    expect(resource.judgmentConfig).toMatchObject({
+      logicalOperator: 'or',
+      conditions: [
+        {
+          variableSelector: ['dataset-1', 'context-precision'],
+          comparisonOperator: 'is null',
+          value: null,
+        },
+        {
+          variableSelector: ['dataset-1', 'context-recall'],
+          comparisonOperator: 'is not null',
+          value: null,
+        },
+      ],
+    })
+    expect(getIncompleteConditionIds(resource, 'datasets', 'dataset-1')).toEqual([])
+    expect(
+      buildEvaluationConfigPayload(resource, 'datasets', 'dataset-1')?.judgment_config,
+    ).toEqual({
+      logical_operator: 'or',
+      conditions,
+    })
+  })
+
   it('does not create implicit conditions for selected dataset metrics', () => {
     const resource = createResource({
       judgeModelId: 'openai::gpt-4o-mini',
