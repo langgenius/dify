@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from dataclasses import asdict
@@ -58,6 +59,10 @@ from services.agent.knowledge_datasets import (
 from services.agent.knowledge_spaces import sync_agent_app_knowledge_bindings, validate_agent_knowledge_spaces
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
+from services.agent.session_policy import (
+    apply_workflow_agent_session_policy_to_node_data,
+    merge_workflow_agent_session_policy,
+)
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
@@ -206,6 +211,15 @@ class AgentComposerService:
         account_id: str,
         payload: ComposerSavePayload,
     ) -> dict[str, Any]:
+        """Save one node job while serializing session-policy changes with graph saves.
+
+        Preconditions: the caller has admitted the tenant, App and account and
+        validated the Composer payload. Postconditions: all save strategies use
+        the persisted session generation, rotate it only for an actual mode
+        change, and atomically update the graph fields captured by future runs.
+        Validation failures leave the transaction uncommitted and never retire
+        running session resources.
+        """
         # Read and lock the latest draft before any ORM autoflush can write a cached snapshot.
         with session.no_autoflush:
             if payload.variant != ComposerVariant.WORKFLOW:
@@ -222,9 +236,12 @@ class AgentComposerService:
                 )
             if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
                 cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
-            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
+            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id, for_update=True)
             binding = cls._get_workflow_binding(
-                session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
+                session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, for_update=True
+            )
+            previous_node_job = (
+                WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict) if binding is not None else None
             )
             retirement_candidates = (
                 {binding.agent_id}
@@ -279,6 +296,16 @@ class AgentComposerService:
                         payload=payload,
                     )
 
+            binding.node_job_config = merge_workflow_agent_session_policy(
+                previous=previous_node_job,
+                node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+                requested_enabled=(
+                    payload.node_job.continue_agent_session
+                    if payload.node_job is not None and "continue_agent_session" in payload.node_job.model_fields_set
+                    else None
+                ),
+            )
+            cls._sync_workflow_session_policy_to_graph(workflow=workflow, binding=binding)
             session.flush()
             agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
             version_id = (
@@ -2215,8 +2242,17 @@ class AgentComposerService:
         }
 
     @classmethod
-    def _get_draft_workflow(cls, *, session: Session, tenant_id: str, app_id: str) -> Workflow:
-        workflow = session.scalar(
+    def _get_draft_workflow(
+        cls, *, session: Session, tenant_id: str, app_id: str, for_update: bool = False
+    ) -> Workflow:
+        """Load the owned draft, optionally serializing an admitted write.
+
+        Preconditions: tenant and App identify the same admitted owner chain.
+        Postconditions: reads return the draft or raise ValueError; writes lock
+        and refresh it before policy and graph mutation, matching graph-save
+        locking. The caller retains commit or rollback ownership.
+        """
+        stmt = (
             select(Workflow)
             .where(
                 Workflow.tenant_id == tenant_id,
@@ -2225,9 +2261,28 @@ class AgentComposerService:
             )
             .limit(1)
         )
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
+        workflow = session.scalar(stmt)
         if not workflow:
             raise ValueError("Draft workflow not found")
         return workflow
+
+    @staticmethod
+    def _sync_workflow_session_policy_to_graph(*, workflow: Workflow, binding: WorkflowAgentNodeBinding) -> None:
+        """Write a saved node's session policy into the same locked draft graph.
+
+        Preconditions: workflow and binding share the admitted owner and the
+        owning draft is locked. Postconditions: matching node session fields
+        equal the trusted job; other graph data and session resources remain
+        unchanged. Missing graph nodes do not create new nodes.
+        """
+        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        graph = workflow.graph_dict
+        for node in graph.get("nodes", []):
+            if isinstance(node, dict) and node.get("id") == binding.node_id and isinstance(node.get("data"), dict):
+                apply_workflow_agent_session_policy_to_node_data(node_data=node["data"], node_job=node_job)
+        workflow.graph = json.dumps(graph)
 
     @classmethod
     def _get_workflow_binding(
