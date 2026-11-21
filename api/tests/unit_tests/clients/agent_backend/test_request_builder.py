@@ -654,11 +654,11 @@ def test_knowledge_fs_requires_shell_and_can_coexist_with_classic_knowledge(mode
         asyncio.run(client.aclose())
 
 
-def test_agent_model_settings_returns_none_for_empty_input():
+def test_agent_model_settings_returns_none_for_empty_input() -> None:
     assert _agent_model_settings({}) is None
 
 
-def test_agent_model_settings_maps_known_keys_and_extra_body():
+def test_agent_model_settings_maps_known_keys_and_extra_body() -> None:
     result = _agent_model_settings(
         {
             "temperature": 0.7,
@@ -682,7 +682,7 @@ def test_agent_model_settings_maps_known_keys_and_extra_body():
     assert result["extra_body"] == {"enable_thinking": True}
 
 
-def test_agent_model_settings_rejects_invalid_value_types():
+def test_agent_model_settings_rejects_invalid_value_types() -> None:
     assert (
         _agent_model_settings(
             {
