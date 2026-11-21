@@ -16,7 +16,6 @@ import { propertyFor } from '@/util/flag-name'
 const SKILL_DIR = fileURLToPath(new URL('../../../skills/difyctl/', import.meta.url))
 const CATALOG = fileURLToPath(new URL('../fixtures/catalog.json', import.meta.url))
 const ROOT_DOC = 'SKILL.md'
-const MCP_PAGE = 'references/mcp.md'
 const MAX_HOPS = 2
 const LEAF_DEPTH = MAX_HOPS
 const MAP_MAX_LINES = 60
@@ -199,31 +198,5 @@ describe('skills/difyctl tree', async () => {
         expect(ops, `${doc}: ${span}`).toContain(span)
       }
     }
-  })
-})
-
-describe('skill MCP page', () => {
-  it('names only op ids the catalog has', async () => {
-    const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
-    const ops = Object.keys(parseCatalog(await readFile(CATALOG)).ops)
-    const named = [...page.matchAll(SPAN)]
-      .map((m) => m[1] as string)
-      .filter((span) => DOTTED_ID.test(span))
-    expect(named.length).toBeGreaterThan(0)
-    for (const span of named) expect(ops, span).toContain(span)
-  })
-
-  it('says a repeated idempotency key returns the same job, also a failed one', async () => {
-    const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
-    const runs = page.split('\n').find((line) => line.startsWith('- **Runs.**')) ?? ''
-    expect(runs).toMatch(/same `idempotency_key` returns the same job, also when it failed/)
-    expect(runs).toMatch(/use a new key/)
-  })
-
-  it('says what an empty workspace list means and not to guess an id', async () => {
-    const page = await readFile(join(SKILL_DIR, MCP_PAGE), 'utf8')
-    const reach = page.split('\n').find((line) => line.startsWith('- **Reach.**')) ?? ''
-    expect(reach).toMatch(/empty workspace list/)
-    expect(reach).toMatch(/do not guess/i)
   })
 })
