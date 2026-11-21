@@ -53,3 +53,10 @@ class DeploymentConfig(BaseSettings):
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",
     )
+
+    GC_FREEZE_AFTER_STARTUP: bool = Field(
+        description="Freeze the objects alive once an API or worker process has started. Each full garbage "
+        "collection then scans request state instead of the whole process, so the longest collector pauses "
+        "get shorter, but full collections run more often and total collector time is not lower",
+        default=False,
+    )

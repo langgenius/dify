@@ -12,6 +12,7 @@ import pytest
 from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
 from celery.exceptions import Retry
+from celery.signals import worker_ready
 
 from configs.feature import LoggingConfig
 from dify_app import DifyApp
@@ -501,6 +502,15 @@ class TestCommunityTelemetryCeleryCases:
         )
 
         _enqueue_initial_community_telemetry_heartbeat(sender)
+
+
+def test_worker_freezes_startup_objects_when_it_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr("extensions.ext_celery.freeze_startup_objects", lambda: calls.append("freeze"))
+
+    worker_ready.send(sender=object())
+
+    assert calls == ["freeze"]
 
 
 class TestKnowledgeFsCeleryCases:

@@ -70,6 +70,11 @@ CONSOLE_CORS_ALLOW_ORIGINS=${CONSOLE_CORS_ALLOW_ORIGINS-*}
 SERVER_WORKER_CLASS=${SERVER_WORKER_CLASS-gevent}
 GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT-360}
 CELERY_WORKER_AMOUNT=${CELERY_WORKER_AMOUNT-4}
+# Freeze the objects alive once an API or worker process has started. Each full garbage
+# collection then scans request state instead of the whole process, so the longest collector
+# pauses get shorter, but full collections run more often and total collector time is not lower.
+# Off by default; set to true to trade more frequent, shorter full collections for long pauses.
+# GC_FREEZE_AFTER_STARTUP=false
 
 # ------------------------------
 # Celery broker and KnowledgeFS dispatch
