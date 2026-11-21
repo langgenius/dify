@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from machinery.context import RequestContext
+from services.entities.conversation_entities import ConsoleLogIdentity
 
 
 class AgentObservabilityNotFoundError(Exception):
@@ -61,6 +62,16 @@ class AgentObservability(Protocol):
 
     def list_log_sources(self, context: RequestContext, agent_id: str) -> dict[str, object]:
         """Return the Agent's available runtime sources."""
+        ...
+
+    def search_log_end_users(
+        self, context: RequestContext, agent_id: str, *, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Return up to 20 end users with logs for the admitted Agent.
+
+        Require a nonblank keyword. Match the visible label by substring or the
+        full internal ID. Raise AgentObservabilityNotFoundError for an unavailable Agent.
+        """
         ...
 
     def count_export_logs(

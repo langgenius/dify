@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,6 +52,7 @@ from controllers.console.wraps import (
     model_validate,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_tenant_id,
     with_current_user,
 )
@@ -283,6 +284,22 @@ class AgentLogExportPreviewQuery(BaseModel):
         return sources
 
 
+class AgentLogEndUserSearchQuery(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    keyword: str = Field(min_length=1, max_length=255, description="Part of the end-user label or a full internal ID")
+
+
+class AgentLogEndUserOptionResponse(ResponseModel):
+    id: str
+    label: str
+    source: Literal["end-user"]
+
+
+class AgentLogEndUserSearchResponse(ResponseModel):
+    data: list[AgentLogEndUserOptionResponse]
+
+
 class AgentLogExportCountsResponse(ResponseModel):
     log_count: int
     row_count: int
@@ -411,6 +428,7 @@ register_response_schema_models(
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
+    AgentLogEndUserSearchResponse,
     AgentLogListResponse,
     AgentLogExportPreviewResponse,
     AgentLogMessageListResponse,
@@ -1030,6 +1048,25 @@ class AgentLogsApi(Resource):
         except ValueError as exc:
             abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogListResponse, payload)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/logs/identity-options")
+class AgentLogEndUserOptionsApi(Resource):
+    @error_responses(AgentNotFoundError)
+    @console_ns.doc("search_agent_log_end_users", params=query_params_from_model(AgentLogEndUserSearchQuery))
+    @console_ns.response(HTTPStatus.OK, "Matching end users", console_ns.models[AgentLogEndUserSearchResponse.__name__])
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid keyword")
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return matching end users with visible logs in the admitted Agent's WebApp or Workflow sources."""
+        query = validate_request(AgentLogEndUserSearchQuery)
+        try:
+            matches = application_services().agent_observability.search_log_end_users(
+                context, str(agent_id), keyword=query.keyword
+            )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentLogEndUserSearchResponse, {"data": matches})
 
 
 @console_ns.route("/agent/<uuid:agent_id>/log-exports/preview")

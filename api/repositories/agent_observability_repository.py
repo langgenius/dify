@@ -10,6 +10,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import Select, and_, func, or_, select
@@ -25,7 +26,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentScope, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
-from models.model import App, Conversation, Message, MessageFeedback
+from models.model import App, Conversation, EndUser, Message, MessageFeedback
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,
@@ -46,6 +47,10 @@ from services.agent.observability_contracts import (
     AgentObservabilityNotFoundError,
     AgentStatisticsQuery,
 )
+from services.entities.conversation_entities import ConsoleLogIdentity
+
+_LOG_END_USER_SEARCH_LIMIT = 20
+_WORKFLOW_END_USER_ROLES = (CreatorUserRole.END_USER, "end-user")
 
 
 @dataclass(frozen=True)
@@ -275,6 +280,50 @@ class AgentObservabilityQueries:
             return None
         return AgentLogExportCounts(log_count=int(counts[0]), row_count=int(counts[1]))
 
+    def search_log_end_users(self, *, app: App, agent_id: str, keyword: str) -> tuple[ConsoleLogIdentity, ...]:
+        """Return matching end users of the admitted runtime App or Agent's bound Workflow nodes."""
+        exact_match = EndUser.session_id == keyword
+        try:
+            internal_id = str(UUID(keyword))
+        except ValueError:
+            internal_id = None
+        if internal_id is not None:
+            exact_match = or_(exact_match, EndUser.id == internal_id)
+
+        params = AgentLogQueryParams()
+        source_filter = AgentSourceFilter(kind="all")
+        webapp_exists = (
+            self._select_webapp_log_rows(app=app, params=params, source_filter=source_filter)
+            .with_only_columns(Conversation.id)
+            .where(Conversation.from_end_user_id == EndUser.id)
+            .correlate(EndUser)
+            .exists()
+        )
+        workflow_exists = (
+            self._select_workflow_log_rows(
+                app=app, agent_id=agent_id, workflow_app=aliased(App), params=params, source_filter=source_filter
+            )
+            .with_only_columns(WorkflowNodeExecutionModel.id)
+            .where(
+                WorkflowNodeExecutionModel.created_by_role.in_(_WORKFLOW_END_USER_ROLES),
+                WorkflowNodeExecutionModel.created_by == EndUser.id,
+            )
+            .correlate(EndUser)
+            .exists()
+        )
+        pattern = f"%{escape_like_pattern(keyword)}%"
+        matches = self._session.execute(
+            select(EndUser.id, EndUser.session_id)
+            .where(
+                EndUser.tenant_id == app.tenant_id,
+                or_(exact_match, EndUser.session_id.ilike(pattern, escape="\\")),
+                or_(webapp_exists, workflow_exists),
+            )
+            .order_by(exact_match.desc(), EndUser.id)
+            .limit(_LOG_END_USER_SEARCH_LIMIT)
+        ).all()
+        return tuple(ConsoleLogIdentity(end_user_id, label, "end-user") for end_user_id, label in matches)
+
     def list_log_messages(
         self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
     ) -> dict[str, Any]:
@@ -455,7 +504,7 @@ class AgentObservabilityQueries:
         )
         if params.end_user_ids:
             statement = statement.where(
-                WorkflowNodeExecutionModel.created_by_role.in_((CreatorUserRole.END_USER, "end-user")),
+                WorkflowNodeExecutionModel.created_by_role.in_(_WORKFLOW_END_USER_ROLES),
                 WorkflowNodeExecutionModel.created_by.in_(params.end_user_ids),
             )
         statement = self._apply_workflow_node_filters(statement, params=params, workflow_app=workflow_app)
@@ -1417,6 +1466,22 @@ class SQLAlchemyAgentObservabilityRepository:
                 raise AgentObservabilityNotFoundError
             yield session, app
 
+    @contextmanager
+    def _existing_runtime(self, context: RequestContext, agent_id: str) -> Generator[tuple[Session, App]]:
+        """Resolve the admitted Agent's existing runtime App in a read session without provisioning state."""
+        tenant_id = context.active_workspace_id
+        with self._session_factory() as session:
+            agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            if agent is None:
+                raise AgentObservabilityNotFoundError
+            app_id = agent.backing_app_id
+            if app_id is None and agent.scope != AgentScope.WORKFLOW_ONLY:
+                app_id = agent.app_id
+            app = find_runtime_app(session, tenant_id=tenant_id, app_id=app_id) if app_id else None
+            if app is None:
+                raise AgentObservabilityNotFoundError
+            yield session, app
+
     @staticmethod
     def _timezone(session: Session, context: RequestContext) -> str:
         """Read the admitted account's timezone, falling back to UTC for an unset value."""
@@ -1450,17 +1515,7 @@ class SQLAlchemyAgentObservabilityRepository:
         self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
     ) -> AgentLogExportCounts | None:
         """Count the admitted Agent's existing runtime logs without provisioning a backing App."""
-        tenant_id = context.active_workspace_id
-        with self._session_factory() as session:
-            agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=agent_id)
-            if agent is None:
-                raise AgentObservabilityNotFoundError
-            app_id = agent.backing_app_id
-            if app_id is None and agent.scope != AgentScope.WORKFLOW_ONLY:
-                app_id = agent.app_id
-            app = find_runtime_app(session, tenant_id=tenant_id, app_id=app_id) if app_id else None
-            if app is None:
-                raise AgentObservabilityNotFoundError
+        with self._existing_runtime(context, agent_id) as (session, app):
             start, end = parse_time_range(query.start, query.end, self._timezone(session, context))
             return AgentObservabilityQueries(session).count_export_logs(
                 app=app,
@@ -1472,6 +1527,13 @@ class SQLAlchemyAgentObservabilityRepository:
                     end=end,
                 ),
             )
+
+    def search_log_end_users(
+        self, context: RequestContext, agent_id: str, *, keyword: str
+    ) -> tuple[ConsoleLogIdentity, ...]:
+        """Search the admitted Agent's visible end users and return detached identities."""
+        with self._existing_runtime(context, agent_id) as (session, app):
+            return AgentObservabilityQueries(session).search_log_end_users(app=app, agent_id=agent_id, keyword=keyword)
 
     def list_log_messages(
         self, context: RequestContext, agent_id: str, conversation_id: str, query: AgentLogQuery

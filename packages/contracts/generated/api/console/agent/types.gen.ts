@@ -477,6 +477,10 @@ export type AgentLogListResponse = {
   total: number
 }
 
+export type AgentLogEndUserSearchResponse = {
+  data: Array<AgentLogEndUserOptionResponse>
+}
+
 export type AgentLogMessageListResponse = {
   data: Array<AgentLogMessageItemResponse>
   has_more: boolean
@@ -1210,6 +1214,12 @@ export type AgentLogConversationItemResponse = {
   unread: boolean
   updated_at?: number | null
   user_rate?: number | null
+}
+
+export type AgentLogEndUserOptionResponse = {
+  id: string
+  label: string
+  source: 'end-user'
 }
 
 export type AgentLogMessageItemResponse = {
@@ -3972,6 +3982,33 @@ export type GetAgentByAgentIdLogsResponses = {
 
 export type GetAgentByAgentIdLogsResponse =
   GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
+export type GetAgentByAgentIdLogsIdentityOptionsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    keyword: string
+  }
+  url: '/agent/{agent_id}/logs/identity-options'
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  422: ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsError =
+  GetAgentByAgentIdLogsIdentityOptionsErrors[keyof GetAgentByAgentIdLogsIdentityOptionsErrors]
+
+export type GetAgentByAgentIdLogsIdentityOptionsResponses = {
+  200: AgentLogEndUserSearchResponse
+}
+
+export type GetAgentByAgentIdLogsIdentityOptionsResponse =
+  GetAgentByAgentIdLogsIdentityOptionsResponses[keyof GetAgentByAgentIdLogsIdentityOptionsResponses]
 
 export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
   body?: never

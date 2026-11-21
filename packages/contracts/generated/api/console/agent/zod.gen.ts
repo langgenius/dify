@@ -1315,6 +1315,22 @@ export const zAgentLogListResponse = z.object({
   total: z.int(),
 })
 
+/**
+ * AgentLogEndUserOptionResponse
+ */
+export const zAgentLogEndUserOptionResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: z.literal('end-user'),
+})
+
+/**
+ * AgentLogEndUserSearchResponse
+ */
+export const zAgentLogEndUserSearchResponse = z.object({
+  data: z.array(zAgentLogEndUserOptionResponse),
+})
+
 export const zAnyJsonValue = z.unknown()
 
 /**
@@ -4546,6 +4562,19 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
  * Agent logs
  */
 export const zGetAgentByAgentIdLogsResponse = zAgentLogListResponse
+
+export const zGetAgentByAgentIdLogsIdentityOptionsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdLogsIdentityOptionsQuery = z.object({
+  keyword: z.string().min(1).max(255),
+})
+
+/**
+ * Matching end users
+ */
+export const zGetAgentByAgentIdLogsIdentityOptionsResponse = zAgentLogEndUserSearchResponse
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
   agent_id: z.uuid(),

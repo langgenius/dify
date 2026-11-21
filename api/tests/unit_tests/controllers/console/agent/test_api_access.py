@@ -20,6 +20,7 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
+    AgentLogEndUserOptionsApi,
     AgentLogExportPreviewApi,
     AgentLogMessagesApi,
     AgentLogsApi,
@@ -143,6 +144,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentAppListApi, "/agent")
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
+        api.add_resource(AgentLogEndUserOptionsApi, "/agent/<uuid:agent_id>/logs/identity-options")
         api.add_resource(AgentLogExportPreviewApi, "/agent/<uuid:agent_id>/log-exports/preview")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
@@ -258,6 +260,23 @@ def test_unpublished_cannot_enable_and_foreign_agents_are_not_found(harness: Har
     foreign_id, _ = harness.create_agent(published=True, tenant_id=str(uuid4()))
     assert harness.get(foreign_id).status_code == HTTPStatus.NOT_FOUND
     assert harness.set(foreign_id, True).status_code == HTTPStatus.NOT_FOUND
+
+
+def test_log_end_user_search_requires_a_keyword_and_an_owned_agent(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent()
+    foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
+    path = f"/console/api/agent/{agent_id}/logs/identity-options"
+    response = harness.client.get(path, headers=harness.headers, query_string={"keyword": "001"})
+    assert response.status_code == HTTPStatus.OK
+    assert response.json == {"data": []}
+    response = harness.client.get(path, headers=harness.headers, query_string={"keyword": " "})
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    response = harness.client.get(
+        f"/console/api/agent/{foreign_id}/logs/identity-options",
+        headers=harness.headers,
+        query_string={"keyword": "001"},
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_log_export_preview_is_scoped_and_requires_export_entitlement(

@@ -40,8 +40,9 @@ from repositories.agent_observability_repository import (
     AgentStatisticsQueryParams,
 )
 from services.agent.observability_contracts import AgentLogExportCounts
+from services.entities.conversation_entities import ConsoleLogIdentity
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
 def _agent_observability_service_app(
@@ -512,6 +513,63 @@ class TestAgentObservabilityQueriesCases:
         assert queries.count_export_logs(
             app=app, agent_id="agent-1", params=AgentLogQueryParams(end=timestamp)
         ) == AgentLogExportCounts(log_count=0, row_count=0)
+
+    @staticmethod
+    def test_search_log_end_users_matches_both_sources_and_excludes_unrelated_identities(
+        sqlite_session: Session,
+    ) -> None:
+        app = _agent_observability_service_app()
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        web_user = make_end_user(end_user_id="d653b0af-e245-4d40-9dcc-5581459c0d5d", session_id="customer-001")
+        workflow_user = make_end_user(end_user_id="workflow-user", session_id="workflow-001")
+        debug_user = make_end_user(end_user_id="debug-user", session_id="debug-001")
+        account_user = make_end_user(end_user_id="account-user", session_id="account-001")
+        foreign_user = make_end_user(end_user_id="foreign-user", tenant_id="other-tenant", session_id="foreign-001")
+        unrelated_user = make_end_user(end_user_id="unrelated-user", session_id="unrelated-001")
+
+        web_conversation = _agent_observability_service_conversation()
+        web_conversation.from_end_user_id = web_user.id
+        debug_conversation = _agent_observability_service_conversation(conversation_id="debug-conversation")
+        debug_conversation.from_end_user_id = debug_user.id
+        debug_message = _agent_observability_service_message(
+            message_id="debug-message", conversation_id=debug_conversation.id
+        )
+        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+
+        executions = []
+        for user in (web_user, workflow_user, account_user, foreign_user):
+            execution = _agent_observability_service_node_execution(execution_id=f"execution-{user.id}")
+            execution.created_by = user.id
+            execution.created_by_role = CreatorUserRole.ACCOUNT if user is account_user else CreatorUserRole.END_USER
+            executions.append(execution)
+        sqlite_session.add_all(
+            [
+                app,
+                workflow_app,
+                web_user,
+                workflow_user,
+                debug_user,
+                account_user,
+                foreign_user,
+                unrelated_user,
+                web_conversation,
+                debug_conversation,
+                _agent_observability_service_message(),
+                debug_message,
+                _agent_observability_service_workflow_run(),
+                _agent_observability_service_workflow_binding(),
+                *executions,
+            ]
+        )
+        sqlite_session.flush()
+        queries = AgentObservabilityQueries(sqlite_session)
+        web_option = ConsoleLogIdentity(web_user.id, "customer-001", "end-user")
+        workflow_option = ConsoleLogIdentity(workflow_user.id, "workflow-001", "end-user")
+
+        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="001") == (web_option, workflow_option)
+        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="CUSTOMER") == (web_option,)
+        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword=web_user.id) == (web_option,)
+        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="%") == ()
 
     @staticmethod
     def test_list_webapp_conversation_logs_includes_feedback_rates(sqlite_session: Session) -> None:
