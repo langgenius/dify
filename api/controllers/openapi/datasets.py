@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from http import HTTPStatus
 from typing import Any, Final
 
@@ -112,7 +112,7 @@ _DOCUMENT_DELETE_GUARDS: Final = workspace_write_guards(
     locator=DatasetId(),
     extra=(CheckKnowledgeRateLimit(),),
 )
-_DOCUMENT_READ_GUARDS: Final = (
+_DATASET_READ_GUARDS: Final = (
     *WORKSPACE_READ_GUARDS,
     CheckRBACPermission(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())),
 )
@@ -207,11 +207,10 @@ def _document_settings(
     body: DocumentCreateByTextPayload | DocumentUpdateByTextPayload,
     *,
     original_document_id: str | None,
-) -> tuple[dict[str, Any], str | None]:
+) -> dict[str, Any]:
     """Translate the flat payload into `KnowledgeConfig` settings, uploading
     `text` as a file last — the same shape the console's create-by-upload path
-    produces. Returns the uploaded file id so the caller can remove it when the
-    service rejects the rest of the settings."""
+    produces."""
     defaults = _dataset_defaults(ctx, dataset_id)
     settings: dict[str, Any] = {
         "name": body.name,
@@ -230,7 +229,10 @@ def _document_settings(
     settings.update({key: value for key, value in extra_settings.items() if value is not None})
     if original_document_id is not None:
         settings["original_document_id"] = original_document_id
-    uploaded_file_id: str | None = None
+    else:
+        # `duplicate=False` keeps create from silently overwriting a same-name
+        # document; update passes `original_document_id` instead.
+        settings["duplicate"] = False
     if body.text is not None:
         upload_file = FileService(db.engine).upload_text(
             text=body.text,
@@ -238,14 +240,13 @@ def _document_settings(
             user_id=ctx.account.id,
             tenant_id=ctx.workspace.id,
         )
-        uploaded_file_id = upload_file.id
         settings["data_source"] = {
             "info_list": {
                 "data_source_type": "upload_file",
-                "file_info_list": {"file_ids": [uploaded_file_id]},
+                "file_info_list": {"file_ids": [upload_file.id]},
             }
         }
-    return {key: value for key, value in settings.items() if value is not None}, uploaded_file_id
+    return {key: value for key, value in settings.items() if value is not None}
 
 
 def _create_documents(
@@ -255,26 +256,21 @@ def _create_documents(
     *,
     original_document_id: str | None,
 ) -> dict[str, Any]:
-    uploaded_file_id: str | None = None
-    try:
-        with _document_errors():
-            settings, uploaded_file_id = _document_settings(
-                ctx, dataset_id, body, original_document_id=original_document_id
-            )
-            return application_services().knowledge.documents.create_documents(
-                ctx.request_context,
-                dataset_id=dataset_id,
-                settings=settings,
-                created_from=DocumentCreatedFrom.API,
-            )
-    except Exception:
-        # The text upload commits before the service sees the rest of the
-        # settings; remove it when creation is rejected without masking the
-        # service error.
-        if uploaded_file_id is not None:
-            with suppress(Exception):
-                FileService(db.engine).delete_file(uploaded_file_id)
-        raise
+    """Create or update a document from translated settings.
+
+    The text upload commits before `create_documents` runs and ingestion can
+    still raise afterwards, so a failure here cannot tell the caller whether the
+    uploaded file was consumed; the file is deliberately left in place rather
+    than risk deleting one the service already attached.
+    """
+    with _document_errors():
+        settings = _document_settings(ctx, dataset_id, body, original_document_id=original_document_id)
+        return application_services().knowledge.documents.create_documents(
+            ctx.request_context,
+            dataset_id=dataset_id,
+            settings=settings,
+            created_from=DocumentCreatedFrom.API,
+        )
 
 
 @openapi_ns.route(_COLLECTION)
@@ -324,6 +320,8 @@ class DatasetsApi(Resource):
         # provider) while dropping unset optional fields; `create_empty_dataset`
         # requires `description` even when the client omits it.
         values = body.model_dump(exclude_none=True, exclude={"retrieval_model"})
+        # The legacy adapter takes `indexing_technique` as an argument even when null.
+        values["indexing_technique"] = body.indexing_technique
         if "embedding_model" in values:
             values["embedding_model_name"] = values.pop("embedding_model")
         if body.retrieval_model is not None:
@@ -342,7 +340,7 @@ class DatasetApi(Resource):
         kind=Kind.OBJECT,
         summary="One knowledge base",
         examples=(Example(title="Read a knowledge base", input={"dataset_id": "<dataset_id>"}),),
-        requirements=WORKSPACE_READ_GUARDS,
+        requirements=_DATASET_READ_GUARDS,
         returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base"),
     )
     def get(self, ctx: Context, workspace_id: str, dataset_id: str):
@@ -426,7 +424,7 @@ class DatasetDocumentsApi(Resource):
         kind=Kind.LIST,
         summary="Documents in a knowledge base",
         examples=(Example(title="Find documents by name", input={"dataset_id": "<dataset_id>", "query": "guide"}),),
-        requirements=_DOCUMENT_READ_GUARDS,
+        requirements=_DATASET_READ_GUARDS,
         query=DocumentListQuery,
         returns=(HTTPStatus.OK, DocumentListResponse, "Documents"),
     )
@@ -463,7 +461,7 @@ class DatasetDocumentApi(Resource):
                 input={"dataset_id": "<dataset_id>", "document_id": "<document_id>"},
             ),
         ),
-        requirements=_DOCUMENT_READ_GUARDS,
+        requirements=_DATASET_READ_GUARDS,
         returns=(HTTPStatus.OK, DocumentResponse, "Document"),
     )
     def get(self, ctx: Context, workspace_id: str, dataset_id: str, document_id: str):
@@ -545,7 +543,7 @@ class DocumentBatchIndexingStatusApi(Resource):
                 input={"dataset_id": "<dataset_id>", "batch": "<batch>"},
             ),
         ),
-        requirements=_DOCUMENT_READ_GUARDS,
+        requirements=_DATASET_READ_GUARDS,
         returns=(HTTPStatus.OK, DocumentIndexingStatusResponse, "Indexing statuses"),
     )
     def get(self, ctx: Context, workspace_id: str, dataset_id: str, batch: str):

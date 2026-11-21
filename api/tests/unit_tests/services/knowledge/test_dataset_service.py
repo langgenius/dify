@@ -1669,6 +1669,24 @@ class TestDatasetServiceDatasetCases:
                     session=sqlite_session,
                 )
 
+            # Omitted fields mean "unchanged", matching the update adapter.
+            DatasetPermissionService.check_permission(operator, dataset, None, None, session=sqlite_session)
+            DatasetPermissionService.check_permission(
+                operator,
+                dataset,
+                DatasetPermissionEnum.PARTIAL_TEAM,
+                None,
+                session=sqlite_session,
+            )
+            with pytest.raises(ValueError, match="cannot change"):
+                DatasetPermissionService.check_permission(
+                    operator,
+                    dataset,
+                    DatasetPermissionEnum.PARTIAL_TEAM,
+                    [],
+                    session=sqlite_session,
+                )
+
         def test_update_partial_member_list_flush_failure_does_not_rollback_caller_session(
             self, sqlite_session: Session
         ) -> None:
@@ -2857,6 +2875,16 @@ class TestDatasetServiceDocumentCases:
 
             with pytest.raises(ValueError, match="Data source or Process rule is required"):
                 _dataset_service_document_DocumentService.document_create_args_validate(knowledge_config)
+
+        def test_document_create_args_validate_allows_rename_without_source_or_rule(self):
+            rename = _dataset_service_document_KnowledgeConfig(
+                indexing_technique="economy", name="New", original_document_id="doc-1"
+            )
+            _dataset_service_document_DocumentService.document_create_args_validate(rename)
+
+            without_document = _dataset_service_document_KnowledgeConfig(indexing_technique="economy", name="New")
+            with pytest.raises(ValueError, match="Data source or Process rule is required"):
+                _dataset_service_document_DocumentService.document_create_args_validate(without_document)
 
         def test_document_create_args_validate_delegates_to_sub_validators(self):
             knowledge_config = _dataset_service_document_KnowledgeConfig(

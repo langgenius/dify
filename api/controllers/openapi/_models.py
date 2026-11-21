@@ -1747,12 +1747,13 @@ class DatasetCreatePayload(BaseModel):
         description="`high_quality` uses embedding models; `economy` uses keyword indexing.",
     )
     permission: DatasetPermission | None = Field(
-        default="only_me",
+        default=DatasetPermission.ONLY_ME,
         description="`only_me` restricts to the creator, `all_team_members` grants workspace access, "
         "`partial_members` grants access to `partial_member_list` members.",
     )
     provider: DatasetProvider = Field(
-        default="vendor", description="`vendor` for internal knowledge bases, `external` for external ones."
+        default=DatasetProvider.VENDOR,
+        description="`vendor` for internal knowledge bases, `external` for external ones.",
     )
     external_knowledge_api_id: str | None = Field(
         default=None, description="External knowledge API id (required when `provider` is `external`)."
@@ -1900,7 +1901,7 @@ class DocumentUpdateByTextPayload(DocumentTextPayload):
     def _requires_a_change(self) -> Self:
         if self.text is not None and self.name is None:
             raise ValueError("name is required when text is provided")
-        if self.text is None and self.name is None and self.process_rule is None:
+        if self.text is None and not self.name and self.process_rule is None:
             raise ValueError("provide at least one of text, name, or process_rule")
         return self
 

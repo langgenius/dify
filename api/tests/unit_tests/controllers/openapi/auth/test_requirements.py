@@ -1617,6 +1617,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "mcp_providers.delete": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "mcp_providers.refresh": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "create.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "describe.dataset": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "set.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "delete.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "create.dataset_document": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -2035,7 +2036,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "create.dataset": _req_dataset_write(
         RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace(), extra=(CheckKnowledgeRateLimit(),)
     ),
-    "describe.dataset": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "describe.dataset": _REQ_DATASET_READ,
     "set.dataset": _req_dataset_write(RBACPermission.DATASET_EDIT, DatasetId(), extra=(CheckKnowledgeRateLimit(),)),
     "delete.dataset": _req_dataset_write(
         RBACPermission.DATASET_DELETE, DatasetId(), extra=(CheckKnowledgeRateLimit(),)

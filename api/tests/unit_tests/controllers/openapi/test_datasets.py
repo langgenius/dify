@@ -1,14 +1,61 @@
+import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
+from http import HTTPStatus
+from types import SimpleNamespace
+from typing import Protocol, cast
+from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 
+from constants.oauth_bearer import TokenType
+from controllers.openapi import datasets as datasets_module
 from controllers.openapi._models import (
     DatasetCreatePayload,
+    DatasetResponse,
     DocumentCreateByTextPayload,
     DocumentUpdateByTextPayload,
 )
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.datasets import _dataset_row, _display_status, _document_row
+from libs.oauth_bearer import AuthContext
+from tests.helpers.unit.model_factories import make_account, make_tenant
+
+
+class _EndpointView(Protocol):
+    __handler__: Callable[..., tuple[DatasetResponse, HTTPStatus]]
+
+
+def _ctx() -> Context:
+    auth = AuthContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        subject_email="caller@example.com",
+        subject_issuer="dify:account",
+        account_id=uuid.uuid4(),
+        client_id="difyctl",
+        token_id=uuid.uuid4(),
+        expires_at=None,
+    )
+    ctx = Context(AccountSubject(auth), Mock(), {"workspace_id": "ws-1"})
+    ctx._workspace = make_tenant(tenant_id="ws-1")
+    ctx._caller = make_account(account_id="acct-1")
+    return ctx
+
+
+def _services(
+    *,
+    create_dataset=None,
+    get_dataset=None,
+    create_documents=None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        knowledge=SimpleNamespace(
+            datasets=SimpleNamespace(create_dataset=create_dataset, get_dataset=get_dataset),
+            documents=SimpleNamespace(create_documents=create_documents),
+        )
+    )
 
 
 def _dataset(**extra: object) -> dict[str, object]:
@@ -98,3 +145,91 @@ def test_create_document_requires_name_and_text() -> None:
 def test_update_document_requires_a_change() -> None:
     with pytest.raises(ValidationError, match="provide at least one of text, name, or process_rule"):
         DocumentUpdateByTextPayload.model_validate({})
+    with pytest.raises(ValidationError, match="provide at least one of text, name, or process_rule"):
+        DocumentUpdateByTextPayload.model_validate({"name": ""})
+
+
+def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def create_dataset(_request_context, *, values):
+        captured.update(values)
+        return _dataset()
+
+    monkeypatch.setattr(datasets_module, "application_services", lambda: _services(create_dataset=create_dataset))
+
+    api = datasets_module.DatasetsApi()
+    response, status = cast(_EndpointView, api.post).__handler__(
+        api, _ctx(), workspace_id="ws-1", body=DatasetCreatePayload(name="Docs")
+    )
+
+    assert status == HTTPStatus.CREATED
+    assert response.name == "Docs"
+    # The legacy adapter takes `indexing_technique` even when null.
+    assert "indexing_technique" in captured
+    assert captured["indexing_technique"] is None
+
+
+def _stub_defaults_and_upload(monkeypatch: pytest.MonkeyPatch, file_service: Mock) -> None:
+    file_service.upload_text.return_value = SimpleNamespace(id="file-1")
+    monkeypatch.setattr(datasets_module, "db", SimpleNamespace(engine=Mock()))
+    monkeypatch.setattr(datasets_module, "FileService", lambda *_args: file_service)
+    monkeypatch.setattr(
+        datasets_module,
+        "application_services",
+        lambda: _services(get_dataset=lambda *_args, **_kwargs: _dataset()),
+    )
+
+
+def test_document_settings_marks_create_as_non_duplicate(monkeypatch: pytest.MonkeyPatch) -> None:
+    file_service = Mock()
+    _stub_defaults_and_upload(monkeypatch, file_service)
+
+    settings = datasets_module._document_settings(
+        _ctx(),
+        "ds-1",
+        DocumentCreateByTextPayload(name="guide.md", text="hello"),
+        original_document_id=None,
+    )
+
+    assert settings["duplicate"] is False
+    assert settings["data_source"]["info_list"]["file_info_list"]["file_ids"] == ["file-1"]
+
+
+def test_document_settings_update_does_not_mark_duplicate(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub_defaults_and_upload(monkeypatch, Mock())
+
+    settings = datasets_module._document_settings(
+        _ctx(),
+        "ds-1",
+        DocumentUpdateByTextPayload(name="renamed.md"),
+        original_document_id="doc-1",
+    )
+
+    assert settings["original_document_id"] == "doc-1"
+    assert "duplicate" not in settings
+
+
+def test_failed_ingestion_keeps_the_uploaded_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    file_service = Mock()
+    file_service.upload_text.return_value = SimpleNamespace(id="file-1")
+    monkeypatch.setattr(datasets_module, "db", SimpleNamespace(engine=Mock()))
+    monkeypatch.setattr(datasets_module, "FileService", lambda *_args: file_service)
+    monkeypatch.setattr(
+        datasets_module,
+        "application_services",
+        lambda: _services(
+            get_dataset=lambda *_args, **_kwargs: _dataset(),
+            create_documents=Mock(side_effect=RuntimeError("ingestion failed")),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="ingestion failed"):
+        datasets_module._create_documents(
+            _ctx(),
+            "ds-1",
+            DocumentCreateByTextPayload(name="guide.md", text="hello"),
+            original_document_id=None,
+        )
+
+    file_service.delete_file.assert_not_called()
