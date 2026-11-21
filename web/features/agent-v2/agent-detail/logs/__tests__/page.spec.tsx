@@ -6,6 +6,7 @@ import type {
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -30,6 +31,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.summary.get': () => initialWorkspaceSummary,
       'systemFeatures.get': async () =>
         createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
       'agent.byAgentId.logs.get': mocks.logsQueryFn,

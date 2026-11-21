@@ -6,6 +6,7 @@ import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import agentV2 from '@/i18n/locales/en-US/agent-v-2.json'
 import appLog from '@/i18n/locales/en-US/app-log.json'
 import common from '@/i18n/locales/en-US/common.json'
@@ -16,6 +17,10 @@ import { AgentLogsPage } from '../page'
 const mocks = vi.hoisted(() => ({
   logs: vi.fn(),
   sources: vi.fn(),
+  preview: vi.fn(),
+  create: vi.fn(),
+  latest: vi.fn(),
+  workspace: vi.fn(),
 }))
 
 vi.unmock('react-i18next')
@@ -26,8 +31,16 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.summary.get': mocks.workspace,
+      'agent.byAgentId.get': async () => ({ name: 'Agent log export test' }),
       'agent.byAgentId.logSources.get': mocks.sources,
       'agent.byAgentId.logs.get': mocks.logs,
+      'agent.byAgentId.logs.identityOptions.get': async () => ({
+        data: [{ id: 'end-user-1', label: 'customer-001', source: 'end-user' }],
+      }),
+      'agent.byAgentId.logExports.latest.get': mocks.latest,
+      'agent.byAgentId.logExports.preview.get': mocks.preview,
+      'agent.byAgentId.logExports.post': mocks.create,
     }),
   }
 })
@@ -42,10 +55,7 @@ const emptyLogs: AgentLogListResponse = {
 
 const emptySources: AgentLogSourceListResponse = { data: [], groups: [] }
 
-it('keeps log filters and pagination reachable at a 320 by 256 viewport', async () => {
-  await page.viewport(320, 256)
-  mocks.logs.mockResolvedValue(emptyLogs)
-  mocks.sources.mockResolvedValue(emptySources)
+async function createLogsI18n() {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -53,7 +63,16 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
-  const { queryClient } = createConsoleQueryWrapper()
+  return i18n
+}
+
+it('keeps log filters and pagination reachable at a 320 by 256 viewport', async () => {
+  await page.viewport(320, 256)
+  mocks.logs.mockResolvedValue(emptyLogs)
+  mocks.sources.mockResolvedValue(emptySources)
+  mocks.workspace.mockResolvedValue(initialWorkspaceSummary)
+  const i18n = await createLogsI18n()
+  const { queryClient } = createConsoleQueryWrapper({ currentWorkspace: initialWorkspaceSummary })
 
   try {
     const screen = await render(
@@ -75,6 +94,7 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
     const controls = [
       screen.getByRole('combobox', { name: 'Last 7 days' }),
       screen.getByRole('combobox', { name: 'Log source' }),
+      screen.getByRole('combobox', { name: 'End-user' }),
       screen.getByRole('searchbox', { name: 'Search logs' }),
       screen.getByRole('button', { name: /Sort by:/ }),
     ]
@@ -105,5 +125,51 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
   } finally {
     queryClient.clear()
     await page.viewport(1280, 720)
+  }
+})
+
+it('uses the selected End User for the list, CSV preview, and export task', async () => {
+  mocks.logs.mockResolvedValue(emptyLogs)
+  mocks.sources.mockResolvedValue(emptySources)
+  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 2 } })
+  mocks.create.mockResolvedValue({ task_id: 'test-export', status: 'pending' })
+  mocks.latest.mockResolvedValue({ task: null })
+  const workspace = { ...initialWorkspaceSummary, id: 'workspace-1', role: 'owner' } as const
+  mocks.workspace.mockResolvedValue(workspace)
+  const i18n = await createLogsI18n()
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'COMMUNITY' },
+    currentWorkspace: workspace,
+  })
+
+  try {
+    const screen = await render(
+      <QueryClientTestProvider queryClient={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <AgentLogsPage agentId="agent-1" />
+        </I18nextProvider>
+      </QueryClientTestProvider>,
+    )
+    const exportButton = screen.getByRole('button', { name: 'Export logs' })
+    await expect.element(exportButton).toBeVisible()
+    await screen.getByRole('combobox', { name: 'End-user' }).click()
+    const search = screen.getByRole('combobox', { name: 'Search', exact: true })
+    await search.fill('001')
+    await screen.getByRole('option', { name: 'customer-001' }).click()
+    await expect.element(search).toBeVisible()
+    await exportButton.click()
+    await expect
+      .poll(() => mocks.logs.mock.lastCall?.[0].query.end_user_ids)
+      .toEqual(['end-user-1'])
+
+    const dialog = screen.getByRole('dialog', { name: 'Export logs' })
+    await expect.element(dialog.getByText('Logs 1 · CSV rows 2.')).toBeVisible()
+    expect(mocks.preview.mock.lastCall?.[0].query.end_user_ids).toEqual(['end-user-1'])
+    await dialog.getByRole('button', { name: 'Export as CSV' }).click()
+    await expect
+      .poll(() => mocks.create.mock.lastCall?.[0].body.end_user_ids)
+      .toEqual(['end-user-1'])
+  } finally {
+    queryClient.clear()
   }
 })

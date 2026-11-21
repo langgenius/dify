@@ -4688,6 +4688,7 @@ export const zGetAgentByAgentIdLogsPath = z.object({
 
 export const zGetAgentByAgentIdLogsQuery = z.object({
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
@@ -4725,6 +4726,7 @@ export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesQuery = z.object({
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),

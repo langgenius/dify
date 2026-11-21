@@ -24,6 +24,7 @@ class AgentLogQuery:
     sort_order: str
     start: str | None
     end: str | None
+    end_user_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -27,36 +27,43 @@ import { consoleQuery } from '@/service/console'
 import { identityKey } from './log-filters'
 
 type LogIdentityPickerProps = {
-  appId: string
   options: LogIdentity[]
   value: LogIdentity[]
   onChange: (value: LogIdentity[]) => void
   disabled: boolean
 }
 
+type LogIdentitySearchTarget =
+  | { appId: string; workflow?: boolean; agentId?: never }
+  | { agentId: string; appId?: never; workflow?: never }
+
 function useLogIdentityMatches(
-  appId: string,
+  { appId, workflow, agentId }: LogIdentitySearchTarget,
   options: LogIdentity[],
   value: LogIdentity[],
   search: string,
-  workflow = false,
 ) {
   const searchTerm = search.trim()
   const keyword = useDebounce(searchTerm, { wait: 300 })
+  const canSearch = searchTerm !== '' && searchTerm === keyword
   const identityOptions = workflow
     ? consoleQuery.apps.byAppId.workflowAppLogs.identityOptions
     : consoleQuery.apps.byAppId.chatConversations.identityOptions
-  const searchOptions = useQuery(
+  const settings = { context: { silent: true }, retry: false, refetchOnWindowFocus: false } as const
+  const appSearch = useQuery(
     identityOptions.get.queryOptions({
-      input:
-        searchTerm && searchTerm === keyword
-          ? { params: { app_id: appId }, query: { keyword } }
-          : skipToken,
-      context: { silent: true },
-      retry: false,
-      refetchOnWindowFocus: false,
+      ...settings,
+      input: canSearch && appId ? { params: { app_id: appId }, query: { keyword } } : skipToken,
     }),
   )
+  const agentSearch = useQuery(
+    consoleQuery.agent.byAgentId.logs.identityOptions.get.queryOptions({
+      ...settings,
+      input:
+        canSearch && agentId ? { params: { agent_id: agentId }, query: { keyword } } : skipToken,
+    }),
+  )
+  const searchOptions = agentId ? agentSearch : appSearch
   const localSearch = searchTerm.toLowerCase()
   const localMatches = [...options, ...value].filter(
     ({ id, label }) =>
@@ -149,30 +156,23 @@ function LogIdentitySummary({
   )
 }
 
-export function LogIdentityField({
-  appId,
-  options,
-  value,
-  onChange,
-  disabled,
-  showLabel = false,
-  applyOnClose = false,
-  workflow = false,
-}: LogIdentityPickerProps & { showLabel?: boolean; applyOnClose?: boolean; workflow?: boolean }) {
-  const { t } = useTranslation(['appLog', 'common'])
+export function LogIdentityField(
+  props: LogIdentityPickerProps &
+    LogIdentitySearchTarget & { showLabel?: boolean; applyOnClose?: boolean },
+) {
+  const { agentId, options, value, onChange, disabled, showLabel, applyOnClose } = props
+  const { t } = useTranslation(['appLog', 'common', 'agentV2'])
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<LogIdentity[] | null>(null)
   const selected = draft ?? value
   const firstSelected = selected[0]
-  const { matches, searching, failed } = useLogIdentityMatches(
-    appId,
-    options,
-    selected,
-    search,
-    workflow,
-  )
-  const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
-  const placeholder = showLabel ? t(($) => $['export.identitiesAll'], { ns: 'appLog' }) : label
+  const { matches, searching, failed } = useLogIdentityMatches(props, options, selected, search)
+  const label = agentId
+    ? t(($) => $['agentDetail.logs.table.endUser'], { ns: 'agentV2' })
+    : t(($) => $['table.header.endUser'], { ns: 'appLog' })
+  const placeholder = showLabel
+    ? t(($) => $[agentId ? 'export.agentIdentitiesAll' : 'export.identitiesAll'], { ns: 'appLog' })
+    : label
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
   const selectionDescription =
     selected.length > 1
@@ -269,10 +269,10 @@ export function LogIdentityPicker({
   value,
   onChange,
   disabled,
-}: LogIdentityPickerProps) {
+}: LogIdentityPickerProps & { appId: string }) {
   const { t } = useTranslation(['appLog', 'common'])
   const [search, setSearch] = useState('')
-  const { matches, searching, failed } = useLogIdentityMatches(appId, options, value, search)
+  const { matches, searching, failed } = useLogIdentityMatches({ appId }, options, value, search)
   const selected = new Set(value.map(identityKey))
   const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
 

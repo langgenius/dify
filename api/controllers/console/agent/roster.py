@@ -221,6 +221,7 @@ class AgentLogsQuery(BaseModel):
             "or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported."
         ),
     )
+    end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
     sort_order: str = Field(default="desc", description="Sort order: asc or desc")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
@@ -1091,6 +1092,7 @@ def _agent_log_query() -> AgentLogQuery:
     query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
     query_data["sources"] = _query_values("sources", "source")
     query_data["statuses"] = _query_values("statuses", "status")
+    query_data["end_user_ids"] = _query_values("end_user_ids")
     query = AgentLogsQuery.model_validate(query_data)
     return AgentLogQuery(
         page=query.page,
@@ -1098,6 +1100,7 @@ def _agent_log_query() -> AgentLogQuery:
         keyword=query.keyword,
         statuses=tuple(query.statuses),
         sources=tuple(query.sources),
+        end_user_ids=tuple(str(end_user_id) for end_user_id in query.end_user_ids),
         sort_by=query.sort_by,
         sort_order=query.sort_order,
         start=query.start,

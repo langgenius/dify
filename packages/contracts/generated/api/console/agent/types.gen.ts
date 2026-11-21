@@ -4115,6 +4115,7 @@ export type GetAgentByAgentIdLogsData = {
   }
   query?: {
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -4179,6 +4180,7 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
   }
   query?: {
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number

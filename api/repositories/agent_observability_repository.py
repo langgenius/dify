@@ -1623,6 +1623,7 @@ class SQLAlchemyAgentObservabilityRepository:
             keyword=query.keyword,
             statuses=query.statuses,
             sources=query.sources,
+            end_user_ids=query.end_user_ids,
             sort_by=query.sort_by,
             sort_order=query.sort_order,
             start=start,
