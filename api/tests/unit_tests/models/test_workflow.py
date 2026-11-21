@@ -2238,3 +2238,44 @@ def test_resolve_workflow_app_tenant_id_reads_through_caller_session(sqlite_sess
 
     with pytest.raises(ValueError, match="Unable to resolve tenant_id"):
         _resolve_workflow_app_tenant_id(sqlite_session, "missing-app")
+
+
+def test_resolve_workflow_app_tenant_id_falls_back_to_rag_pipeline_draft_workflow(
+    sqlite_session: Session,
+) -> None:
+    workflow = _workflow_Workflow(
+        tenant_id="tenant-rag",
+        app_id="pipeline-1",
+        type=ModelWorkflowType("rag-pipeline"),
+        version="draft",
+        graph="{}",
+        _features="{}",
+        created_by="account-1",
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
+    )
+    sqlite_session.add(workflow)
+    sqlite_session.flush()
+
+    assert _resolve_workflow_app_tenant_id(sqlite_session, "pipeline-1") == "tenant-rag"
+
+
+def test_resolve_workflow_app_tenant_id_rejects_published_only_workflow(sqlite_session: Session) -> None:
+    workflow = _workflow_Workflow(
+        tenant_id="tenant-rag",
+        app_id="pipeline-2",
+        type=ModelWorkflowType("rag-pipeline"),
+        version="1",
+        graph="{}",
+        _features="{}",
+        created_by="account-1",
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
+    )
+    sqlite_session.add(workflow)
+    sqlite_session.flush()
+
+    with pytest.raises(ValueError, match="Unable to resolve tenant_id"):
+        _resolve_workflow_app_tenant_id(sqlite_session, "pipeline-2")
