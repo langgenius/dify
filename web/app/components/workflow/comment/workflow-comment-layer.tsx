@@ -411,46 +411,45 @@ function ShownThread({
     }),
   )
 
-  // A send stays in the mutation cache until the thread's detail has its saved reply, so a
-  // reply shows even while the detail cannot load, and keeps its row's key once it does.
+  // A saved reply keeps the key of its send row, so the row is not remounted.
+  const [sentKeys, setSentKeys] = useState<ReadonlyMap<string, string>>(() => new Map())
   const sendReply = useMutation(
     commentsApi.byCommentId.replies.post.mutationOptions({
       // A failed send stays until it is sent again or dropped.
       gcTime: Infinity,
       onMutate: async ({ params: target }) => {
         const cache = queryClient.getMutationCache()
-        for (const mutation of cache.findAll({
-          mutationKey: replySendKey,
-          status: 'success',
-          predicate: (send) => {
-            const { params } = send.state.variables as ReplySendVariables
-            const savedId = (send.state.data as { id: string }).id
-            return !!queryClient
-              .getQueryData(detailKeyOf(params))
-              ?.replies.some((reply) => reply.id === savedId)
-          },
-        }))
+        for (const mutation of cache.findAll({ mutationKey: replySendKey, status: 'success' }))
           cache.remove(mutation)
         await queryClient.cancelQueries({ queryKey: detailKeyOf(target) })
       },
-      onSuccess: (reply, variables) =>
-        updateDetail(queryClient, variables.params, (detail) =>
-          detail.replies.some((item) => item.id === reply.id)
-            ? detail
-            : {
-                ...detail,
-                replies: [
-                  ...detail.replies,
-                  {
-                    id: reply.id,
-                    content: variables.body.content,
-                    created_at: reply.created_at ?? Math.floor(Date.now() / 1000),
-                    created_by: author.id,
-                    created_by_account: author,
-                  },
-                ],
-              },
-        ),
+      // The saved reply takes the send row's place at once, under the same key. A thread
+      // whose detail never loaded starts one from its list item, as it was being shown.
+      onSuccess: (reply, variables) => {
+        const send = queryClient.getMutationCache().find({
+          mutationKey: replySendKey,
+          predicate: (mutation) => mutation.state.variables === variables,
+        })
+        if (send) setSentKeys((keys) => new Map(keys).set(reply.id, sendKeyOf(send)))
+        const saved = {
+          id: reply.id,
+          content: variables.body.content,
+          created_at: reply.created_at ?? Math.floor(Date.now() / 1000),
+          created_by: author.id,
+          created_by_account: author,
+        }
+        const { params } = variables
+        queryClient.setQueryData(detailKeyOf(params), (detail) => {
+          if (detail)
+            return detail.replies.some((item) => item.id === reply.id)
+              ? detail
+              : { ...detail, replies: [...detail.replies, saved] }
+          const comment = queryClient
+            .getQueryData(listKeyOf(params.app_id))
+            ?.data.find((item) => item.id === params.comment_id)
+          return comment && { ...comment, replies: [saved], mentions: [] }
+        })
+      },
     }),
   )
   const sends = useMutationState({
@@ -458,40 +457,31 @@ function ShownThread({
       mutationKey: replySendKey,
       predicate: (mutation) =>
         (mutation.state.variables as ReplySendVariables | undefined)?.params.comment_id ===
-        listItem.id,
+          listItem.id && mutation.state.status !== 'success',
     },
     select: (mutation): ThreadReply => {
       const variables = mutation.state.variables as ReplySendVariables
-      const saved = mutation.state.data as { id: string; created_at?: number } | undefined
       return {
-        id: saved?.id ?? sendKeyOf(mutation),
+        id: sendKeyOf(mutation),
         client_key: sendKeyOf(mutation),
         content: variables.body.content,
-        created_at: saved?.created_at ?? Math.floor(mutation.state.submittedAt / 1000),
+        created_at: Math.floor(mutation.state.submittedAt / 1000),
         created_by: author.id,
         created_by_account: author,
-        send_state:
-          mutation.state.status === 'success'
-            ? undefined
-            : mutation.state.status === 'error'
-              ? 'failed'
-              : 'pending',
+        send_state: mutation.state.status === 'error' ? 'failed' : 'pending',
       }
     },
   })
 
-  // A saved reply takes its send's row under the same key.
   const detail = detailQuery.data ?? { ...listItem, replies: [], mentions: [] }
-  const sendKeys = new Map(sends.map((send) => [send.id, send.client_key]))
-  const detailIds = new Set(detail.replies.map((reply) => reply.id))
   const comment = {
     ...detail,
     replies: [
       ...detail.replies.map((reply): ThreadReply => {
-        const clientKey = sendKeys.get(reply.id)
+        const clientKey = sentKeys.get(reply.id)
         return clientKey ? { ...reply, client_key: clientKey } : reply
       }),
-      ...sends.filter((send) => !detailIds.has(send.id)),
+      ...sends,
     ],
   }
 
@@ -544,13 +534,6 @@ function ShownThread({
           replies: current.replies.filter((reply) => reply.id !== reply_id),
           mentions: current.mentions.filter((mention) => mention.reply_id !== reply_id),
         }))
-        const cache = queryClient.getMutationCache()
-        const send = cache.find({
-          mutationKey: replySendKey,
-          predicate: (mutation) =>
-            (mutation.state.data as { id?: string } | undefined)?.id === reply_id,
-        })
-        if (send) cache.remove(send)
       },
     }),
   )

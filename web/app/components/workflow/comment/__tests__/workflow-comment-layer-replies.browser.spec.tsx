@@ -196,6 +196,38 @@ describe('replies', () => {
     send.resolve(saveReplyOnServer('first', 'Still sending'))
   })
 
+  it('keeps an unsaved edit of a sent reply while another reply is sent', async () => {
+    api.reply.mockImplementation(async ({ body }: { body: { content: string } }) =>
+      saveReplyOnServer('first', body.content),
+    )
+    const screen = await renderLayer()
+    await openThread(screen)
+    await sendReply(screen, 'First reply')
+    await expect.element(thread(screen).getByText('First reply')).toBeVisible()
+
+    await thread(screen).getByLabelText('workflowComments.comments.aria.replyActions').click()
+    await screen.getByText('workflowComments.comments.actions.editReply').click()
+    const editor = screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
+    await editor.fill('Half-written edit')
+    await sendReply(screen, 'Second reply')
+
+    await expect.element(thread(screen).getByText('Second reply')).toBeVisible()
+    await expect.element(editor).toHaveValue('Half-written edit')
+  })
+
+  it('drops a sent reply that is deleted elsewhere', async () => {
+    api.reply.mockImplementationOnce(async () => saveReplyOnServer('first', 'Gone soon'))
+    const screen = await renderLayer()
+    await openThread(screen)
+    await sendReply(screen, 'Gone soon')
+    await expect.element(thread(screen).getByText('Gone soon')).toBeVisible()
+
+    server.current.details.first!.replies = []
+    collaboration.handler?.()
+
+    await expect.element(thread(screen).getByText('Gone soon')).not.toBeInTheDocument()
+  })
+
   it('keeps a reply in its own thread when another thread is opened before it is saved', async () => {
     const send = deferred<{ id: string; created_at: number }>()
     api.reply.mockReturnValueOnce(send.promise)

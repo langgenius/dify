@@ -95,7 +95,7 @@ export const fakeCollaborationManager = {
 }
 
 export function resetFakeServer() {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   api.detailFails = false
   api.listGate = undefined
   collaboration.handler = undefined
