@@ -2,14 +2,15 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, Protocol, override
 
 from core.repositories.human_input_repository import (
     FormCreateParams,
     HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
@@ -37,6 +38,7 @@ from graphon.graph import Graph
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
@@ -63,7 +65,10 @@ class InMemoryPauseStore:
         return RuntimeState.from_snapshot(self._snapshot)
 
 
-class _TestFileReferenceFactory:
+class _TestFileReferenceFactory(DifyFileReferenceFactory):
+    """Build graph-layer file objects from submitted form mappings without persistence lookups."""
+
+    @override
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
         return File(
             file_id=mapping.get("id"),
@@ -98,7 +103,7 @@ class StaticForm(HumanInputFormEntity):
         return "token"
 
     @property
-    def recipients(self) -> list:
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return []
 
     @property
@@ -134,7 +139,7 @@ class StaticRepo(HumanInputFormRepository):
     def __init__(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
         self._forms_by_node_id = dict(forms_by_node_id)
 
-    def get_form(self, node_id: str) -> HumanInputFormEntity | None:
+    def get_form(self, node_id: str, *, form_id: str | None = None) -> HumanInputFormEntity | None:
         return self._forms_by_node_id.get(node_id)
 
     def set_forms(self, forms_by_node_id: Mapping[str, HumanInputFormEntity]) -> None:
@@ -197,32 +202,28 @@ def _build_graph(runtime_state: RuntimeState, repo: HumanInputFormRepository) ->
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
-    human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=_TestFileReferenceFactory(graph_init_params.run_context),
     )
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
-        data=human_data,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
         init_params=graph_init_params,
         runtime_state=runtime_state,
         hitl_callback=human_a_callback,
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
-    human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
-    human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        file_reference_factory=_TestFileReferenceFactory(),
+        file_reference_factory=_TestFileReferenceFactory(graph_init_params.run_context),
     )
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
-        data=human_data,
+        data=GraphonHumanInputNodeData.model_validate(human_data.model_dump()),
         init_params=graph_init_params,
         runtime_state=runtime_state,
         hitl_callback=human_b_callback,
