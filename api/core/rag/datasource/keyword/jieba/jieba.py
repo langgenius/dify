@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Any, override
 
@@ -217,7 +217,7 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(self, keyword_table: Mapping[str, Iterable[str]], query: str, k: int = 4) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
