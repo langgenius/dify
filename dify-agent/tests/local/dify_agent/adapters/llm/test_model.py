@@ -10,7 +10,13 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, TextPromptMessageContent
+from graphon.model_runtime.entities.message_entities import (
+    AudioPromptMessageContent,
+    DocumentPromptMessageContent,
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    VideoPromptMessageContent,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -18,17 +24,22 @@ from opentelemetry.trace import StatusCode
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
+    FilePart,
     InstructionPart,
     ImageUrl,
     ModelMessage,
     ModelMessagesTypeAdapter,
     ModelRequest,
     ModelResponse,
+    PartDeltaEvent,
+    PartStartEvent,
     RetryPromptPart,
     SpeechPart,
     SystemPromptPart,
     TextPart,
+    TextPartDelta,
     ThinkingPart,
+    ThinkingPartDelta,
     ToolAvailabilityDeltaPart,
     ToolCallPart,
     ToolReturnPart,
@@ -491,12 +502,13 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         *,
         user_id: str = "user-123",
         http_client: httpx.AsyncClient | None = None,
+        plugin_id: str = "langgenius/openai",
     ) -> DifyApiLLMProvider:
         if http_client is None:
             http_client = httpx.AsyncClient(trust_env=False)
             self._http_clients.append(http_client)
         return DifyApiLLMProvider(
-            plugin_id="langgenius/openai",
+            plugin_id=plugin_id,
             inner_api_url="http://dify-api",
             inner_api_key="inner-secret",
             execution_context=DifyExecutionContextLayerConfig(
@@ -1294,42 +1306,194 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
     async def test_request_collapses_text_only_assistant_history_parts_to_string_content(self) -> None:
-        messages = [
-            ModelRequest(parts=[UserPromptPart("initial request")]),
-            ModelResponse(
-                parts=[
-                    ThinkingPart(content="plan"),
-                    TextPart(content="answer"),
-                ]
+        cases = [
+            (
+                "text_only",
+                ModelResponse(parts=[TextPart(content="an"), TextPart(content="swer")]),
+                AssistantPromptMessage(content="answer"),
             ),
-            ModelRequest(parts=[UserPromptPart("follow up")]),
+            (
+                "thinking_and_text",
+                ModelResponse(parts=[ThinkingPart(content="plan"), TextPart(content="answer")]),
+                AssistantPromptMessage(content="answer"),
+            ),
+            (
+                "thinking_and_tool_call",
+                ModelResponse(
+                    parts=[
+                        ThinkingPart(content="plan"),
+                        ToolCallPart(tool_name="weather", args='{"city":"Paris"}', tool_call_id="tool-1"),
+                    ]
+                ),
+                AssistantPromptMessage(
+                    content="",
+                    tool_calls=[_tool_call("weather", '{"city":"Paris"}', call_id="tool-1")],
+                ),
+            ),
+            ("thinking_only", ModelResponse(parts=[ThinkingPart(content="plan")]), None),
+            (
+                "deepseek_thinking_and_text",
+                ModelResponse(
+                    parts=[
+                        ThinkingPart(content="\n<!--dify-deepseek-reasoning-->plan\n"),
+                        TextPart(content="PUBLIC_ANSWER"),
+                    ]
+                ),
+                AssistantPromptMessage(content="<think>\n<!--dify-deepseek-reasoning-->plan\n</think>PUBLIC_ANSWER"),
+            ),
+            (
+                "deepseek_thinking_and_tool_call",
+                ModelResponse(
+                    parts=[
+                        ThinkingPart(content="\n<!--dify-deepseek-reasoning-->plan\n"),
+                        ToolCallPart(tool_name="weather", args='{"city":"Paris"}', tool_call_id="tool-1"),
+                    ]
+                ),
+                AssistantPromptMessage(
+                    content="<think>\n<!--dify-deepseek-reasoning-->plan\n</think>",
+                    tool_calls=[_tool_call("weather", '{"city":"Paris"}', call_id="tool-1")],
+                ),
+            ),
+            (
+                "deepseek_thinking_preserves_payload_newlines",
+                ModelResponse(parts=[ThinkingPart(content="\n<!--dify-deepseek-reasoning-->\nline 1\n\n")]),
+                AssistantPromptMessage(content="<think>\n<!--dify-deepseek-reasoning-->\nline 1\n\n</think>"),
+            ),
+            (
+                "deepseek_thinking_without_transport_newlines",
+                ModelResponse(parts=[ThinkingPart(content="<!--dify-deepseek-reasoning-->direct")]),
+                AssistantPromptMessage(content="<think>\n<!--dify-deepseek-reasoning-->direct\n</think>"),
+            ),
         ]
 
-        def handler(request: httpx.Request) -> httpx.Response:
-            payload = json.loads(request.content.decode("utf-8"))
-            prompt_messages = payload["target"]["prompt_messages"]
+        for name, history, expected_message in cases:
+            for stream in (False, True):
+                with self.subTest(name=name, stream=stream):
+                    follow_up = (
+                        ModelRequest(parts=[ToolReturnPart(tool_name="weather", content="18C", tool_call_id="tool-1")])
+                        if history.tool_calls
+                        else ModelRequest(parts=[UserPromptPart("follow up")])
+                    )
+                    messages = [ModelRequest(parts=[UserPromptPart("initial request")]), history, follow_up]
+                    original_history = ModelMessagesTypeAdapter.dump_json(messages)
 
-            self.assertEqual([message["role"] for message in prompt_messages], ["user", "assistant", "user"])
-            self.assertEqual(prompt_messages[1]["content"], "<think>\nplan\n</think>answer")
+                    def handler(request: httpx.Request) -> httpx.Response:
+                        payload = json.loads(request.content)
+                        prompt_messages = payload["target"]["prompt_messages"]
+                        expected_roles = ["user"]
+                        if expected_message is not None:
+                            expected_roles.append("assistant")
+                        expected_roles.append("tool" if history.tool_calls else "user")
+                        self.assertEqual([message["role"] for message in prompt_messages], expected_roles)
+                        if expected_message is not None:
+                            self.assertEqual(prompt_messages[1]["content"], expected_message.content)
+                            self.assertEqual(
+                                prompt_messages[1]["tool_calls"],
+                                [call.model_dump(mode="json") for call in expected_message.tool_calls],
+                            )
+                        if history.tool_calls:
+                            self.assertEqual(prompt_messages[-1]["tool_call_id"], "tool-1")
+                            self.assertEqual(prompt_messages[-1]["content"], "18C")
+                        return build_stream_response(*single_text_chunk("adapter response"))
 
-            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+                    async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                        response = await self.invoke_adapter(messages, stream=stream)
 
-        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
-            adapter = DifyLLMAdapterModel(
-                "demo-model",
-                self.make_provider(),
-                model_provider="openai",
-            )
+                    self.assertEqual(response.text, "adapter response")
+                    self.assertEqual(ModelMessagesTypeAdapter.dump_json(messages), original_history)
 
-            response = await adapter.request(
-                messages,
-                model_settings=None,
-                model_request_parameters=ModelRequestParameters(),
-            )
+    async def test_request_stream_replays_deepseek_thinking_in_tool_round_trip(self) -> None:
+        contents = [
+            "<th",
+            "ink>\n<!",
+            "--dify-deep",
+            "seek-reasoning-->",
+            "\nInspect &lt;/think&gt; and &lt;!--dify-",
+            "deepseek-reasoning--&gt; safely.\n",
+            "\n</th",
+            "ink>PUBLIC_",
+            "ANSWER",
+        ]
+        expected_thinking = (
+            "\n<!--dify-deepseek-reasoning-->"
+            "\nInspect &lt;/think&gt; and &lt;!--dify-deepseek-reasoning--&gt; safely.\n\n"
+        )
+        expected_content = (
+            "<think>\n<!--dify-deepseek-reasoning-->"
+            "\nInspect &lt;/think&gt; and &lt;!--dify-deepseek-reasoning--&gt; safely.\n\n</think>PUBLIC_ANSWER"
+        )
+        tool_call = _tool_call("weather", '{"city":"Paris"}', call_id="tool-1")
 
-        self.assertEqual(response.model_name, "demo-model")
-        self.assertEqual(response.parts[0].part_kind, "text")
-        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+        for content_list in (False, True):
+            with self.subTest(content_list=content_list):
+                requests: list[dict[str, object]] = []
+                chunks = [
+                    LLMResultChunk(
+                        model="demo-model",
+                        delta=LLMResultChunkDelta(
+                            index=index,
+                            message=AssistantPromptMessage(
+                                content=[TextPromptMessageContent(data=content)] if content_list else content,
+                            ),
+                        ),
+                    )
+                    for index, content in enumerate(contents)
+                ]
+                chunks.append(_tool_chunk(tool_call, index=len(contents), finish_reason="tool_calls"))
+
+                def handler(request: httpx.Request) -> httpx.Response:
+                    requests.append(json.loads(request.content))
+                    if len(requests) == 1:
+                        return build_stream_response(*chunks)
+                    return build_stream_response(*single_text_chunk("The temperature is 18C."))
+
+                async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                    adapter = DifyLLMAdapterModel(
+                        "demo-model",
+                        self.make_provider(plugin_id="langgenius/deepseek"),
+                        model_provider="deepseek",
+                    )
+                    messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("Check the weather in Paris.")])]
+                    async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                        _ = [event async for event in stream]
+                        first_response = stream.get()
+
+                    self.assertEqual(
+                        [part.part_kind for part in first_response.parts], ["thinking", "text", "tool-call"]
+                    )
+                    self.assertEqual(cast(ThinkingPart, first_response.parts[0]).content, expected_thinking)
+                    self.assertEqual(first_response.text, "PUBLIC_ANSWER")
+                    self.assertEqual(first_response.finish_reason, "tool_call")
+                    self.assertEqual(first_response.tool_calls[0].tool_name, "weather")
+                    self.assertEqual(first_response.tool_calls[0].args, '{"city":"Paris"}')
+                    self.assertEqual(first_response.tool_calls[0].tool_call_id, "tool-1")
+                    messages.extend(
+                        [
+                            first_response,
+                            ModelRequest(
+                                parts=[ToolReturnPart(tool_name="weather", content="18C", tool_call_id="tool-1")]
+                            ),
+                        ]
+                    )
+                    original_history = ModelMessagesTypeAdapter.dump_json(messages)
+                    async with adapter.request_stream(messages, None, ModelRequestParameters()) as stream:
+                        _ = [event async for event in stream]
+                        second_response = stream.get()
+
+                self.assertEqual(len(requests), 2)
+                self.assertTrue(all(cast(dict[str, object], request["target"])["stream"] for request in requests))
+                prompt_messages = cast(
+                    list[dict[str, object]],
+                    cast(dict[str, object], requests[1]["target"])["prompt_messages"],
+                )
+                self.assertEqual([message["role"] for message in prompt_messages], ["user", "assistant", "tool"])
+                self.assertEqual(prompt_messages[1]["content"], expected_content)
+                self.assertEqual(prompt_messages[1]["tool_calls"], [tool_call.model_dump(mode="json")])
+                self.assertEqual(prompt_messages[2]["name"], "weather")
+                self.assertEqual(prompt_messages[2]["tool_call_id"], "tool-1")
+                self.assertEqual(prompt_messages[2]["content"], "18C")
+                self.assertEqual(second_response.text, "The temperature is 18C.")
+                self.assertEqual(ModelMessagesTypeAdapter.dump_json(messages), original_history)
 
     async def test_request_omits_empty_assistant_history_when_response_has_no_content_or_tool_calls(self) -> None:
         messages = [
@@ -1417,6 +1581,87 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         assert usage is not None
         self.assertEqual(usage.prompt_tokens, 6)
         self.assertEqual(usage.completion_tokens, 4)
+
+    async def test_request_stream_flushes_pending_thinking_tags_only_after_natural_eof(self) -> None:
+        inflight_usage = make_usage(prompt_tokens=6, completion_tokens=2)
+        final_usage = make_usage(prompt_tokens=6, completion_tokens=4)
+        cases = [
+            ("answer</thi", "text", "answer"),
+            ("<think>plan</thi", "thinking", "plan"),
+        ]
+        for content, part_kind, initial_content in cases:
+            for content_list in (False, True):
+                for usage_in_first_chunk in (False, True):
+                    for stop_early in (False, True):
+                        with self.subTest(
+                            content=content,
+                            content_list=content_list,
+                            usage_in_first_chunk=usage_in_first_chunk,
+                            stop_early=stop_early,
+                        ):
+                            chunks = [
+                                LLMResultChunk(
+                                    model="demo-model",
+                                    delta=LLMResultChunkDelta(
+                                        index=0,
+                                        message=AssistantPromptMessage(
+                                            content=[TextPromptMessageContent(data=content)]
+                                            if content_list
+                                            else content,
+                                        ),
+                                        usage=inflight_usage if usage_in_first_chunk else None,
+                                    ),
+                                ),
+                                LLMResultChunk(
+                                    model="demo-model",
+                                    delta=LLMResultChunkDelta(
+                                        index=1,
+                                        message=AssistantPromptMessage(content=""),
+                                        usage=final_usage,
+                                        finish_reason="stop",
+                                    ),
+                                ),
+                            ]
+                            body = _TrackingResponseBody([build_stream_response(chunk).content for chunk in chunks])
+                            adapter = self.make_streaming_adapter(body)
+                            streamed_parts: list[tuple[str, str]] = []
+
+                            async with adapter.request_stream(
+                                [ModelRequest(parts=[UserPromptPart("hello")])], None, ModelRequestParameters()
+                            ) as stream:
+                                async for event in stream:
+                                    # Final part snapshots can mask a missing flush delta.
+                                    if isinstance(event, PartStartEvent):
+                                        assert isinstance(event.part, TextPart | ThinkingPart)
+                                        streamed_parts.append((event.part.part_kind, event.part.content))
+                                    elif isinstance(event, PartDeltaEvent):
+                                        assert isinstance(event.delta, TextPartDelta | ThinkingPartDelta)
+                                        previous_kind, previous_content = streamed_parts[event.index]
+                                        self.assertEqual(event.delta.part_delta_kind, previous_kind)
+                                        streamed_parts[event.index] = (
+                                            previous_kind,
+                                            previous_content + (event.delta.content_delta or ""),
+                                        )
+                                    if stop_early:
+                                        break
+
+                            response = stream.get()
+                            expected_parts = [(part_kind, initial_content if stop_early else initial_content + "</thi")]
+                            self.assertEqual(streamed_parts, expected_parts)
+                            self.assertEqual(
+                                [
+                                    (part.part_kind, cast(TextPart | ThinkingPart, part).content)
+                                    for part in response.parts
+                                ],
+                                expected_parts,
+                            )
+                            self.assertEqual(body.close_count, 1)
+                            if stop_early:
+                                self.assertEqual(
+                                    adapter.accumulated_usage, inflight_usage if usage_in_first_chunk else None
+                                )
+                            else:
+                                self.assertEqual(adapter.accumulated_usage, final_usage)
 
     async def test_request_stream_closes_gateway_body_after_consumer_error_without_masking_it(self) -> None:
         body = _TrackingResponseBody(
@@ -1551,32 +1796,48 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 index=0,
                 message=AssistantPromptMessage(
                     content=[
+                        TextPromptMessageContent(data="before<think>plan</thi"),
                         ImagePromptMessageContent(
                             format="png",
                             mime_type="image/png",
                             url="https://example.com/assistant.png",
-                        )
+                        ),
                     ],
                 ),
                 usage=make_usage(),
             ),
         )
-        for close_error in (None, RuntimeError("gateway response close failed")):
-            with self.subTest(close_error=close_error):
-                body = _TrackingResponseBody([build_stream_response(chunk).content], close_error=close_error)
-                adapter = self.make_streaming_adapter(body)
+        for stream_response in (False, True):
+            for close_error in (None, RuntimeError("gateway response close failed")):
+                with self.subTest(stream=stream_response, close_error=close_error):
+                    body = _TrackingResponseBody([build_stream_response(chunk).content], close_error=close_error)
+                    adapter = self.make_streaming_adapter(body)
 
-                with self.assertRaisesRegex(UnexpectedModelBehavior, "URL-based assistant multimodal") as context:
-                    await adapter.request(
-                        [ModelRequest(parts=[UserPromptPart("hello")])],
-                        model_settings=None,
-                        model_request_parameters=ModelRequestParameters(),
-                    )
+                    with self.assertRaisesRegex(UnexpectedModelBehavior, "URL-based assistant multimodal") as context:
+                        messages = [ModelRequest(parts=[UserPromptPart("hello")])]
+                        if stream_response:
+                            events = []
+                            async with adapter.request_stream(
+                                messages, None, ModelRequestParameters()
+                            ) as streamed_response:
+                                async for event in streamed_response:
+                                    events.append(event)
+                        else:
+                            await adapter.request(messages, None, ModelRequestParameters())
 
-                self.assertEqual(body.close_count, 1)
-                self.assertEqual(adapter.accumulated_usage, make_usage())
-                if close_error is not None:
-                    self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
+                    if stream_response:
+                        self.assertEqual(events, [])
+                        self.assertEqual(
+                            [
+                                (part.part_kind, cast(TextPart | ThinkingPart, part).content)
+                                for part in streamed_response.get().parts
+                            ],
+                            [("text", "before"), ("thinking", "plan")],
+                        )
+                    self.assertEqual(body.close_count, 1)
+                    self.assertEqual(adapter.accumulated_usage, make_usage())
+                    if close_error is not None:
+                        self.assertIn(str(close_error), "\n".join(context.exception.__notes__))
 
     async def test_request_preserves_cancellation_while_waiting_for_gateway_data(self) -> None:
         for stream_response in (False, True):
@@ -1741,6 +2002,131 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
         self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning continues")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
+
+    async def test_request_normalizes_embedded_thinking_tags_across_chunk_content_forms(self) -> None:
+        cases = [
+            ("bare_close", ["</think>"], []),
+            ("padded_close", ["\n\n</think>"], [("text", "\n\n")]),
+            ("inline_close", ["before</think>after"], [("text", "beforeafter")]),
+            (
+                "close_after_thinking",
+                ["<think>reasoning</think>\n\n</think>answer"],
+                [("thinking", "reasoning"), ("text", "\n\nanswer")],
+            ),
+            (
+                "close_before_thinking",
+                ["before</think>middle<think>reasoning</think>after"],
+                [("text", "beforemiddle"), ("thinking", "reasoning"), ("text", "after")],
+            ),
+            ("split_close", ["</th", "ink>after"], [("text", "after")]),
+            (
+                "split_open_and_close",
+                ["<th", "ink>reasoning</thi", "nk>answer"],
+                [("thinking", "reasoning"), ("text", "answer")],
+            ),
+            (
+                "character_chunks",
+                list("<think>reasoning</think></think>answer"),
+                [("thinking", "reasoning"), ("text", "answer")],
+            ),
+            ("non_tag", ["a < b </div >"], [("text", "a < b </div >")]),
+            ("incomplete_close_at_eof", ["</thi"], [("text", "</thi")]),
+            ("incomplete_open_at_eof", ["before<th"], [("text", "before<th")]),
+            (
+                "incomplete_close_in_thinking_at_eof",
+                ["<think>reasoning</thi"],
+                [("thinking", "reasoning</thi")],
+            ),
+            (
+                "thinking_whitespace",
+                ["<think>\nreasoning\n</think>answer"],
+                [("thinking", "\nreasoning\n"), ("text", "answer")],
+            ),
+        ]
+
+        for name, contents, expected_parts in cases:
+            for stream in (False, True):
+                for content_list in (False, True):
+                    with self.subTest(name=name, stream=stream, content_list=content_list):
+                        chunks = [
+                            LLMResultChunk(
+                                model="demo-model",
+                                delta=LLMResultChunkDelta(
+                                    index=index,
+                                    message=AssistantPromptMessage(
+                                        content=[TextPromptMessageContent(data=content)] if content_list else content,
+                                    ),
+                                ),
+                            )
+                            for index, content in enumerate(contents)
+                        ]
+
+                        def handler(_request: httpx.Request) -> httpx.Response:
+                            return build_stream_response(*chunks)
+
+                        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                            response = await self.invoke_adapter(
+                                [ModelRequest(parts=[UserPromptPart("hello")])], stream=stream
+                            )
+
+                        self.assertEqual(
+                            [(part.part_kind, cast(TextPart | ThinkingPart, part).content) for part in response.parts],
+                            expected_parts,
+                        )
+
+    async def test_request_preserves_assistant_multimodal_content_handling(self) -> None:
+        media_types = [
+            (ImagePromptMessageContent, "png", "image/png"),
+            (AudioPromptMessageContent, "wav", "audio/wav"),
+            (VideoPromptMessageContent, "mp4", "video/mp4"),
+            (DocumentPromptMessageContent, "pdf", "application/pdf"),
+        ]
+        for content_type, file_format, mime_type in media_types:
+            for source in ("base64", "empty", "url"):
+                for stream in (False, True):
+                    with self.subTest(mime_type=mime_type, source=source, stream=stream):
+                        content = content_type(
+                            format=file_format,
+                            mime_type=mime_type,
+                            base64_data="aGVsbG8=" if source == "base64" else "",
+                            url="https://example.com/file" if source == "url" else "",
+                        )
+
+                        def handler(_request: httpx.Request) -> httpx.Response:
+                            return build_stream_response(
+                                LLMResultChunk(
+                                    model="demo-model",
+                                    delta=LLMResultChunkDelta(
+                                        index=0,
+                                        message=AssistantPromptMessage(
+                                            content=[
+                                                TextPromptMessageContent(data="before"),
+                                                content,
+                                                TextPromptMessageContent(data="after"),
+                                            ]
+                                        ),
+                                    ),
+                                )
+                            )
+
+                        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                            messages = [ModelRequest(parts=[UserPromptPart("hello")])]
+                            if source == "url":
+                                with self.assertRaisesRegex(UnexpectedModelBehavior, "URL-based assistant multimodal"):
+                                    await self.invoke_adapter(messages, stream=stream)
+                                continue
+                            response = await self.invoke_adapter(messages, stream=stream)
+
+                        if source == "empty":
+                            self.assertEqual([part.part_kind for part in response.parts], ["text"])
+                            self.assertEqual(response.text, "beforeafter")
+                        else:
+                            self.assertEqual([part.part_kind for part in response.parts], ["text", "file", "text"])
+                            self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
+                            self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
+                            file_part = cast(FilePart, response.parts[1])
+                            self.assertEqual(file_part.content.data, b"hello")
+                            self.assertEqual(file_part.content.media_type, mime_type)
 
     async def test_request_stream_yields_response_parts_and_usage(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
