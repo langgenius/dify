@@ -79,7 +79,7 @@ function CommentCanvas() {
     handleActiveCommentClosed,
     handleCommentReply,
     handleCommentPositionUpdate,
-    handleCommentNavigate,
+    handleCommentReveal,
   } = useWorkflowComment()
   const activeCommentId = useStore((state) => state.activeCommentId)
   const activeIndex = activeCommentId
@@ -122,10 +122,14 @@ function CommentCanvas() {
                 comment={activeComment}
                 loading={activeCommentLoading}
                 onReply={(content, ids) => handleCommentReply(activeComment.id, content, ids)}
-                onPrev={activeIndex > 0 ? () => handleCommentNavigate('prev') : undefined}
+                onPrev={
+                  activeIndex > 0
+                    ? () => handleCommentReveal(comments[activeIndex - 1]!)
+                    : undefined
+                }
                 onNext={
                   activeIndex < comments.length - 1
-                    ? () => handleCommentNavigate('next')
+                    ? () => handleCommentReveal(comments[activeIndex + 1]!)
                     : undefined
                 }
                 canGoPrev={activeIndex > 0}

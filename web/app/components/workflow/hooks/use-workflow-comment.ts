@@ -7,7 +7,7 @@ import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorAppIdAtom,
@@ -55,6 +55,7 @@ const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentD
 export const useWorkflowComment = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const reactflow = useReactFlow()
+  const flowStore = useStoreApi()
   const workflowStore = useWorkflowStore()
   const controlMode = useStore((s) => s.controlMode)
   const pendingComment = useStore((s) => s.pendingComment)
@@ -75,8 +76,6 @@ export const useWorkflowComment = () => {
   const replyUpdating = useStore((s) => s.replyUpdating)
   const setReplyUpdating = useStore((s) => s.setReplyUpdating)
   const setCommentDetailCache = useStore((s) => s.setCommentDetailCache)
-  const rightPanelWidth = useStore((s) => s.rightPanelWidth)
-  const nodePanelWidth = useStore((s) => s.nodePanelWidth)
   const mentionableUsers = useStore((state) =>
     appId ? (state.mentionableUsersCache[appId] ?? EMPTY_USERS) : EMPTY_USERS,
   )
@@ -328,28 +327,28 @@ export const useWorkflowComment = () => {
     if (!pendingComment && !isCommentPlacing && isCommentQuickAdd) setCommentQuickAdd(false)
   }, [isCommentPlacing, isCommentQuickAdd, pendingComment, setCommentQuickAdd])
 
-  // Brings a comment into view. Only for selecting a comment the user may not be looking at
-  // (thread navigation, the comments panel, the next one after a deletion); a marker that
-  // was clicked on the canvas is already where the user is looking.
+  // Brings a comment the user may not be looking at into view (thread navigation and the
+  // comments panel). It moves the canvas only when the
+  // marker is outside the area the side panels leave visible, and at once: this navigation
+  // is frequent and often keyboard-driven, and the open thread just moves to its new marker.
   const revealComment = useCallback(
     (comment: WorkflowCommentBasic) => {
-      const hasSelectedNode = reactflow.getNodes().some((node) => node.data?.selected)
-      const commentPanelWidth = controlMode === ControlMode.Comment ? 420 : 0
-      const fallbackPanelWidth = (hasSelectedNode ? nodePanelWidth : 0) + commentPanelWidth
-      const effectivePanelWidth = Math.max(rightPanelWidth ?? 0, fallbackPanelWidth)
-
-      const baseHorizontalOffsetPx = 220
-      const panelCompensationPx = effectivePanelWidth / 2
-      const desiredHorizontalOffsetPx = baseHorizontalOffsetPx + panelCompensationPx
-      const maxOffset = Math.max(0, window.innerWidth / 2 - 60)
-      const horizontalOffsetPx = Math.min(desiredHorizontalOffsetPx, maxOffset)
-
-      reactflow.setCenter(comment.position_x + horizontalOffsetPx, comment.position_y, {
-        zoom: 1,
-        duration: 600,
+      const { width, height } = flowStore.getState()
+      if (!width || !height) return
+      const visibleWidth = width - (workflowStore.getState().rightPanelWidth ?? 0)
+      const { x, y, zoom } = reactflow.getViewport()
+      const markerX = comment.position_x * zoom + x
+      const markerY = comment.position_y * zoom + y
+      const inView =
+        markerX >= 40 && markerX <= visibleWidth - 40 && markerY >= 40 && markerY <= height - 40
+      if (inView) return
+      reactflow.setViewport({
+        x: visibleWidth / 2 - comment.position_x * zoom,
+        y: height / 2 - comment.position_y * zoom,
+        zoom,
       })
     },
-    [controlMode, nodePanelWidth, reactflow, rightPanelWidth],
+    [flowStore, reactflow, workflowStore],
   )
 
   const handleCommentIconClick = useCallback(
@@ -451,25 +450,12 @@ export const useWorkflowComment = () => {
         setCommentDetailCache(updatedCache)
 
         // Read the list as it is now; it may have changed while the request ran.
-        const latestComments = workflowStore.getState().comments
-        const currentComments = latestComments.filter((c) => c.id !== commentId)
-        const commentIndex = latestComments.findIndex((c) => c.id === commentId)
-        const fallbackTarget =
-          commentIndex >= 0
-            ? (latestComments[commentIndex + 1] ?? latestComments[commentIndex - 1])
-            : undefined
-
         versions.list += 1
-        setComments(currentComments)
+        setComments(workflowStore.getState().comments.filter((c) => c.id !== commentId))
         loadComments()
 
-        if (fallbackTarget) {
-          handleCommentReveal(fallbackTarget)
-        } else if (currentComments.length > 0) {
-          const nextComment = currentComments[0]
-          handleCommentReveal(nextComment!)
-        } else {
-          // Deselect only; the detail clears once the thread finishes closing.
+        // The thread just closes; the detail clears once it finishes closing.
+        if (activeCommentIdRef.current === commentId) {
           setActiveCommentId(null)
           activeCommentIdRef.current = null
         }
@@ -479,7 +465,6 @@ export const useWorkflowComment = () => {
     },
     [
       appId,
-      handleCommentReveal,
       loadComments,
       setActiveCommentId,
       setCommentDetailCache,
@@ -793,18 +778,6 @@ export const useWorkflowComment = () => {
     [appId, patchCommentDetail, syncComment],
   )
 
-  const handleCommentNavigate = useCallback(
-    (direction: 'prev' | 'next') => {
-      const currentId = activeCommentIdRef.current
-      if (!currentId) return
-      const idx = comments.findIndex((c) => c.id === currentId)
-      if (idx === -1) return
-      const target = direction === 'prev' ? comments[idx - 1] : comments[idx + 1]
-      if (target) handleCommentReveal(target)
-    },
-    [comments, handleCommentReveal],
-  )
-
   // Closing deselects the comment; its detail stays for the thread's closing transition
   // until handleActiveCommentClosed clears it.
   const handleActiveCommentClose = useCallback(() => {
@@ -844,7 +817,6 @@ export const useWorkflowComment = () => {
     handleActiveCommentClosed,
     handleCommentResolve,
     handleCommentDelete,
-    handleCommentNavigate,
     handleCommentUpdate,
     handleCommentReply,
     handleCommentReplyRetry,

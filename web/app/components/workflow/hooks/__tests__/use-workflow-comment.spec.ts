@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ThreadReply } from '../../comment/pending-reply'
 import { act, waitFor } from '@testing-library/react'
-import { useReactFlow } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { createNode } from '../../__tests__/fixtures'
@@ -117,7 +117,11 @@ const createSeededQueryClient = () => {
   return queryClient
 }
 
-const useCommentCanvas = () => ({ ...useWorkflowComment(), flow: useReactFlow() })
+const useCommentCanvas = () => ({
+  ...useWorkflowComment(),
+  flow: useReactFlow(),
+  flowStore: useStoreApi(),
+})
 
 const renderWorkflowHook: typeof renderWorkflowFlowHook = (hook, options) =>
   renderWorkflowFlowHook(hook, {
@@ -438,16 +442,13 @@ describe('useWorkflowComment', () => {
     })
 
     await act(async () => {
-      await result.current.handleCommentNavigate('next')
+      await result.current.handleCommentReveal(commentB)
     })
 
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
-    await waitFor(() =>
-      expect(result.current.flow.getViewport()).toEqual({ x: -380, y: 170, zoom: 1 }),
-    )
-    expect(result.current.activeComment?.content).toBe('second detail')
+    await waitFor(() => expect(result.current.activeComment?.content).toBe('second detail'))
 
     act(() => {
       result.current.handleCreateComment({
@@ -544,13 +545,15 @@ describe('useWorkflowComment', () => {
     expect(mockDeleteWorkflowComment).toHaveBeenCalledWith({
       params: { app_id: 'app-1', comment_id: commentA.id },
     })
-    await waitFor(() => {
-      expect(store.getState().activeCommentId).toBe(commentB.id)
-    })
+    // Deleting closes the thread; it does not move on to another one.
+    expect(store.getState().activeCommentId).toBeNull()
+    expect(mockFetchWorkflowComment).not.toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ comment_id: commentB.id }) }),
+    )
     expect(mockEmitCommentsUpdate).toHaveBeenCalled()
   })
 
-  it('deselects the last deleted comment and leaves its detail for the closing thread', async () => {
+  it('deselects a deleted comment and leaves its detail for the closing thread', async () => {
     const commentA = baseComment()
     mockFetchWorkflowComments.mockResolvedValue({ data: [] })
     const { result, store } = renderWorkflowHook(useCommentCanvas, {
@@ -924,52 +927,46 @@ describe('useWorkflowComment', () => {
     expect(result.current.activeCommentLoading).toBe(false)
   })
 
-  it('ignores navigation when no active comment or active comment is absent from the list', async () => {
+  it('moves the canvas at once and only to reveal a comment out of view', async () => {
+    const commentA = baseComment()
+    const commentB: WorkflowCommentBasic = { ...baseComment(), id: 'comment-2', position_x: 100 }
+    const commentC: WorkflowCommentBasic = { ...baseComment(), id: 'comment-3', position_x: 2000 }
+    mockFetchWorkflowComments.mockResolvedValue({ data: [commentA, commentB, commentC] })
     const { result } = renderWorkflowHook(useCommentCanvas, {
       queryClient: createSeededQueryClient(),
       initialStoreState: {
-        comments: [baseComment()],
+        comments: [commentA, commentB, commentC],
+        rightPanelWidth: 200,
       },
     })
-
-    act(() => {
-      result.current.handleCommentNavigate('next')
-    })
-
-    expect(result.current.flow.getViewport()).toEqual({ x: 80, y: 160, zoom: 2 })
-
-    await act(async () => {
-      await result.current.handleCommentIconClick({ ...baseComment(), id: 'missing-comment' })
-    })
-    const viewport = result.current.flow.getViewport()
-
-    act(() => {
-      result.current.handleCommentNavigate('next')
-    })
-
-    expect(result.current.flow.getViewport()).toEqual(viewport)
-  })
-
-  it('keeps the canvas still when a marker opens its thread, and moves only to reveal another comment', async () => {
-    const commentA = baseComment()
-    const commentB: WorkflowCommentBasic = { ...baseComment(), id: 'comment-2', position_x: 400 }
-    mockFetchWorkflowComments.mockResolvedValue({ data: [commentA, commentB] })
-    const { result } = renderWorkflowHook(useCommentCanvas, {
-      queryClient: createSeededQueryClient(),
-      initialStoreState: { comments: [commentA, commentB] },
-    })
     await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => result.current.flowStore.setState({ width: 1000, height: 800 }))
     const initialViewport = result.current.flow.getViewport()
 
+    // Opening from a marker never moves the canvas.
     await act(async () => {
       await result.current.handleCommentIconClick(commentA)
     })
     expect(result.current.flow.getViewport()).toEqual(initialViewport)
 
-    act(() => {
-      result.current.handleCommentNavigate('next')
+    // The next comment is already in view, so the canvas stays put.
+    await act(async () => {
+      void result.current.handleCommentReveal(commentB)
+      await new Promise((resolve) => setTimeout(resolve, 50))
     })
-    await waitFor(() => expect(result.current.flow.getViewport()).not.toEqual(initialViewport))
+    expect(result.current.flow.getViewport()).toEqual(initialViewport)
+
+    // The one after is out of view: it is centered in the visible canvas area at once.
+    act(() => {
+      void result.current.handleCommentReveal(commentC)
+    })
+    await waitFor(() =>
+      expect(result.current.flow.getViewport()).toEqual({
+        x: 400 - 2000 * initialViewport.zoom,
+        y: 400 - 20 * initialViewport.zoom,
+        zoom: initialViewport.zoom,
+      }),
+    )
   })
 
   it('clears a pending comment when comment mode is left outside quick add', () => {
