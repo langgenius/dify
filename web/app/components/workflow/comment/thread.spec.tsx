@@ -61,6 +61,29 @@ describe('CommentThread', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps the comment readable and its actions usable while the thread loads', async () => {
+    const onResolve = vi.fn()
+
+    render(
+      <CommentThreadFixture
+        comment={{ ...createComment(), replies: [] }}
+        loading
+        onResolve={onResolve}
+        onReply={() => {}}
+      />,
+    )
+
+    expect(await screen.findByText(/original comment/)).toBeVisible()
+    expect(screen.queryByText('workflowComments.comments.loading')).not.toBeInTheDocument()
+    expect(document.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    const resolve = screen.getByRole('button', {
+      name: 'workflowComments.comments.aria.resolveComment',
+    })
+    expect(resolve).toBeEnabled()
+    fireEvent.click(resolve)
+    expect(onResolve).toHaveBeenCalledOnce()
+  })
+
   it('triggers header actions and closes on Escape', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
@@ -197,7 +220,7 @@ describe('CommentThread', () => {
     )
     await user.type(editor, ' more')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(editor).toBeDisabled()
+    expect(editor).toHaveAttribute('readonly')
     // Mentions cannot change the draft either while it saves.
     const mentionButtons = screen.getAllByRole('button', {
       name: 'workflowAgent.nodes.agent.task.mention',

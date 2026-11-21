@@ -16,8 +16,6 @@ export type CommentSliceShape = {
   setActiveCommentDetail: (comment: WorkflowCommentDetail | null) => void
   activeCommentDetailLoading: boolean
   setActiveCommentDetailLoading: (loading: boolean) => void
-  replySubmitting: boolean
-  setReplySubmitting: (loading: boolean) => void
   replyUpdating: boolean
   setReplyUpdating: (loading: boolean) => void
   commentDetailCache: Record<string, WorkflowCommentDetail>
@@ -40,8 +38,6 @@ export const createCommentSlice: StateCreator<CommentSliceShape> = (set) => ({
   activeCommentDetailLoading: false,
   setActiveCommentDetailLoading: (activeCommentDetailLoading) =>
     set({ activeCommentDetailLoading }),
-  replySubmitting: false,
-  setReplySubmitting: (replySubmitting) => set({ replySubmitting }),
   replyUpdating: false,
   setReplyUpdating: (replyUpdating) => set({ replyUpdating }),
   commentDetailCache: {},

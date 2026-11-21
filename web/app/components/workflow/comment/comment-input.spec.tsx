@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -91,8 +91,14 @@ describe('CommentInput', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('submits the real mention and clears the draft', async () => {
-    const onSubmit = vi.fn()
+  it('submits the real mention and keeps the text read-only until the comment is created', async () => {
+    let finishSubmit!: () => void
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSubmit = resolve
+        }),
+    )
 
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
@@ -103,6 +109,26 @@ describe('CommentInput', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
     expect(onSubmit).toHaveBeenCalledWith('@Bob Hello', ['user-2'])
-    expect(screen.getByRole('textbox')).toHaveValue('')
+    const textbox = screen.getByRole('textbox')
+    expect(textbox).toHaveValue('@Bob Hello')
+    expect(textbox).toHaveAttribute('readonly')
+    expect(textbox).toHaveAttribute('aria-busy', 'true')
+
+    await act(async () => finishSubmit())
+    expect(textbox).not.toHaveAttribute('readonly')
+  })
+
+  it('keeps the text to send again when creating the comment fails', async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error('Request failed'))
+
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
+
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox'), 'Hello')
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+    const textbox = screen.getByRole('textbox')
+    expect(textbox).toHaveValue('Hello')
+    expect(textbox).not.toHaveAttribute('readonly')
   })
 })

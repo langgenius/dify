@@ -6917,7 +6917,6 @@ export default interface Resources {
     'comments.filter.all': 'All'
     'comments.filter.onlyYourThreads': 'Only your threads'
     'comments.filter.showResolved': 'Show resolved'
-    'comments.loading': 'Loading…'
     'comments.noComments': 'No comments yet'
     'comments.panelTitle': 'Comment'
     'comments.placeholder.add': 'Add a comment'

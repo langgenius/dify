@@ -142,8 +142,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       )
     }, [mentionUsers, mentionQuery])
 
-    // A saving edit is frozen: its text, mention button and mention list all stop changing it.
-    const locked = disabled || (isEditing && loading)
+    // A draft that is being saved is frozen: its text, mention button and mention list all
+    // stop changing it, and it stays focused so a failed save can be retried from the keyboard.
+    const locked = disabled || loading
     const isMentionMenuOpen = !locked && showMentionDropdown && filteredMentionUsers.length > 0
 
     useEffect(() => {
@@ -256,7 +257,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           e.preventDefault()
           e.stopPropagation()
         }
-        // A composer stays editable while sending; only one submission runs at a time.
+        // Only one submission runs at a time.
         if (loading) return
 
         if (value.trim()) {
@@ -382,7 +383,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               minRows={isEditing ? 2 : 1}
               maxRows={isEditing || isMultiline ? 4 : 1}
               value={value}
-              disabled={locked}
+              disabled={disabled}
+              readOnly={locked}
+              aria-busy={loading || undefined}
               onChange={(e) => handleContentChange(e.target.value)}
               aria-controls={isMentionMenuOpen ? listboxId : undefined}
               aria-activedescendant={

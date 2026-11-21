@@ -6,7 +6,7 @@ export function CommentPlacementPreview({
   onSubmit,
   onCancel,
 }: {
-  onSubmit: (content: string, mentionedUserIds: string[]) => void
+  onSubmit: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   onCancel: () => void
 }) {
   const isCommentPlacing = useStore((state) => state.isCommentPlacing)

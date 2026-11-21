@@ -12,8 +12,6 @@ type CommentThreadPopupProps = Omit<PopoverPopupProps, 'title' | 'children' | 'r
   closeLabel: string
   /** Header buttons placed before the close button. */
   actions?: ReactNode
-  /** When set, covers the thread with this busy message. */
-  loadingLabel?: string
   /** The thread body, usually a `CommentThreadList` and a `CommentReplyBar`. */
   children?: ReactNode
 }
@@ -27,7 +25,6 @@ export function CommentThreadPopup({
   title,
   closeLabel,
   actions,
-  loadingLabel,
   className,
   children,
   ...props
@@ -55,11 +52,6 @@ export function CommentThreadPopup({
         </div>
       </div>
       {children}
-      {loadingLabel && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-components-panel-bg/70 text-sm text-text-tertiary">
-          {loadingLabel}
-        </div>
-      )}
     </PopoverPopup>
   )
 }

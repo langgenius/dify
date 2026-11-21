@@ -575,46 +575,163 @@ describe('useWorkflowComment', () => {
     expect(mockUpdateWorkflowCommentReply).not.toHaveBeenCalled()
   })
 
-  it.each(['create', 'update'] as const)(
-    'keeps reply %s pending until failure, then permits retry',
-    async (operation) => {
-      const request =
-        operation === 'create' ? mockCreateWorkflowCommentReply : mockUpdateWorkflowCommentReply
-      let rejectRequest!: (error: Error) => void
-      request.mockReturnValueOnce(
-        new Promise((_resolve, reject) => {
-          rejectRequest = reject
+  it('keeps a reply update pending until failure, then permits retry', async () => {
+    const request = mockUpdateWorkflowCommentReply
+    let rejectRequest!: (error: Error) => void
+    request.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectRequest = reject
+      }),
+    )
+    const { result } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    const submit = () =>
+      result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
+    const isPending = () => result.current.replyUpdating
+    let pending!: Promise<void>
+    act(() => {
+      pending = submit()
+    })
+    expect(isPending()).toBe(true)
+    await act(async () => {
+      rejectRequest(new Error('Request failed'))
+      await pending
+    })
+    expect(isPending()).toBe(false)
+    expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()
+    await act(async () => {
+      await submit()
+    })
+    expect(request).toHaveBeenCalledTimes(2)
+    expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
+    expect(isPending()).toBe(false)
+  })
+
+  it('shows a reply at once while it sends, and takes it back out if sending fails', async () => {
+    const commentA = baseComment()
+    const detail: WorkflowCommentDetail = { ...baseCommentDetail(), id: commentA.id, replies: [] }
+    let resolveFirst!: (value: { id: string; created_at: number }) => void
+    let rejectSecond!: (error: Error) => void
+    mockCreateWorkflowCommentReply
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
         }),
       )
-      const { result } = renderWorkflowHook(useCommentCanvas, {
-        queryClient: createSeededQueryClient(),
-      })
-      await waitFor(() => expect(result.current.loading).toBe(false))
-      const submit = () =>
-        operation === 'create'
-          ? result.current.handleCommentReply('comment-1', 'new reply')
-          : result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
-      const isPending = () =>
-        operation === 'create' ? result.current.replySubmitting : result.current.replyUpdating
-      let pending!: Promise<void>
-      act(() => {
-        pending = submit()
-      })
-      expect(isPending()).toBe(true)
-      await act(async () => {
-        rejectRequest(new Error('Request failed'))
-        await pending
-      })
-      expect(isPending()).toBe(false)
-      expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()
-      await act(async () => {
-        await submit()
-      })
-      expect(request).toHaveBeenCalledTimes(2)
-      expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
-      expect(isPending()).toBe(false)
-    },
-  )
+      .mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+          rejectSecond = reject
+        }),
+      )
+    mockFetchWorkflowComment.mockReturnValue(new Promise(() => {}))
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [commentA.id]: detail },
+      },
+    })
+    const replies = () => store.getState().activeCommentDetail?.replies ?? []
+
+    let first!: Promise<void>
+    let second!: Promise<void>
+    act(() => {
+      first = result.current.handleCommentReply(commentA.id, 'first')
+      second = result.current.handleCommentReply(commentA.id, 'second')
+    })
+    expect(replies().map((reply) => reply.content)).toEqual(['first', 'second'])
+    expect(replies().every((reply) => reply.id.startsWith('pending-'))).toBe(true)
+    const firstKey = replies()[0]!.id
+
+    await act(async () => {
+      resolveFirst({ id: 'reply-1', created_at: 2 })
+      await first
+    })
+    expect(replies()[0]).toMatchObject({ id: 'reply-1', client_key: firstKey })
+
+    await act(async () => {
+      rejectSecond(new Error('Request failed'))
+      await expect(second).rejects.toThrow('Request failed')
+    })
+    expect(replies().map((reply) => reply.id)).toEqual(['reply-1'])
+  })
+
+  it('ignores an older refetch that finishes after a newer write', async () => {
+    const commentA = baseComment()
+    const detail: WorkflowCommentDetail = { ...baseCommentDetail(), id: commentA.id }
+    let resolveStale!: (value: WorkflowCommentDetail) => void
+    mockFetchWorkflowComment
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStale = resolve
+        }),
+      )
+      .mockReturnValue(new Promise(() => {}))
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [commentA.id]: detail },
+      },
+    })
+
+    let staleRefresh!: Promise<void>
+    act(() => {
+      staleRefresh = result.current.refreshActiveComment(commentA.id)
+    })
+    await act(async () => {
+      await result.current.handleCommentUpdate(commentA.id, 'newer content')
+    })
+    await act(async () => {
+      resolveStale({ ...detail, content: 'older content' })
+      await staleRefresh
+    })
+
+    expect(store.getState().activeCommentDetail?.content).toBe('newer content')
+  })
+
+  it('removes a deleted thread from the list as it is when the request finishes', async () => {
+    const commentA = baseComment()
+    const commentB: WorkflowCommentBasic = { ...baseComment(), id: 'comment-2' }
+    const commentC: WorkflowCommentBasic = { ...baseComment(), id: 'comment-3' }
+    let finishDelete!: () => void
+    mockDeleteWorkflowComment.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishDelete = resolve
+      }),
+    )
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: { comments: [commentA, commentB] },
+    })
+
+    let deletion!: Promise<void>
+    act(() => {
+      deletion = result.current.handleCommentDelete(commentA.id)
+    })
+    // Another collaborator adds a thread while the deletion runs.
+    act(() => {
+      store.getState().setComments([commentA, commentB, commentC])
+    })
+    await act(async () => {
+      finishDelete()
+      await deletion
+    })
+
+    expect(store.getState().comments.map((comment) => comment.id)).toEqual([
+      commentB.id,
+      commentC.id,
+    ])
+  })
 
   it('shows thread changes once each request succeeds, without waiting for the refetches', async () => {
     const commentA = baseComment()
@@ -654,7 +771,6 @@ describe('useWorkflowComment', () => {
     await act(async () => {
       await result.current.handleCommentReply(commentA.id, ' new reply ')
     })
-    expect(result.current.replySubmitting).toBe(false)
     expect(store.getState().activeCommentDetail?.replies.map((reply) => reply.content)).toEqual([
       'old reply',
       'new reply',

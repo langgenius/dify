@@ -14,7 +14,8 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
-import { useStore } from '../store'
+import { createPendingReplyId, mergeFetchedReplies } from '../comment/pending-reply'
+import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 
 const EMPTY_USERS: UserProfile[] = []
@@ -39,6 +40,7 @@ const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentD
 export const useWorkflowComment = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const reactflow = useReactFlow()
+  const workflowStore = useWorkflowStore()
   const controlMode = useStore((s) => s.controlMode)
   const pendingComment = useStore((s) => s.pendingComment)
   const setPendingComment = useStore((s) => s.setPendingComment)
@@ -55,8 +57,6 @@ export const useWorkflowComment = () => {
   const setActiveComment = useStore((s) => s.setActiveCommentDetail)
   const activeCommentLoading = useStore((s) => s.activeCommentDetailLoading)
   const setActiveCommentLoading = useStore((s) => s.setActiveCommentDetailLoading)
-  const replySubmitting = useStore((s) => s.replySubmitting)
-  const setReplySubmitting = useStore((s) => s.setReplySubmitting)
   const replyUpdating = useStore((s) => s.replyUpdating)
   const setReplyUpdating = useStore((s) => s.setReplyUpdating)
   const commentDetailCache = useStore((s) => s.commentDetailCache)
@@ -77,6 +77,11 @@ export const useWorkflowComment = () => {
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
+  // Every write to a comment's detail or to the list takes a new version. A fetch only
+  // applies its result if nothing was written since it started, so a slow, older fetch
+  // never overwrites a newer write.
+  const detailVersionsRef = useRef(new Map<string, number>())
+  const listVersionRef = useRef(0)
 
   useEffect(() => {
     activeCommentIdRef.current = activeCommentId ?? null
@@ -86,35 +91,47 @@ export const useWorkflowComment = () => {
     commentDetailCacheRef.current = commentDetailCache
   }, [commentDetailCache])
 
-  const refreshActiveComment = useCallback(
+  const nextDetailVersion = useCallback((commentId: string) => {
+    const version = (detailVersionsRef.current.get(commentId) ?? 0) + 1
+    detailVersionsRef.current.set(commentId, version)
+    return version
+  }, [])
+
+  const fetchCommentDetail = useCallback(
     async (commentId: string) => {
       if (!appId) return
+      const version = nextDetailVersion(commentId)
 
       const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
         params: { app_id: appId, comment_id: commentId },
       })
+      if (detailVersionsRef.current.get(commentId) !== version) return
 
-      commentDetailCacheRef.current = {
-        ...commentDetailCacheRef.current,
-        [commentId]: detail,
-      }
+      const current = commentDetailCacheRef.current[commentId]
+      const next = current
+        ? { ...detail, replies: mergeFetchedReplies(current.replies, detail.replies) }
+        : detail
+      commentDetailCacheRef.current = { ...commentDetailCacheRef.current, [commentId]: next }
       setCommentDetailCache(commentDetailCacheRef.current)
       // Only apply the fetched detail if this comment is still the active one;
       // otherwise a refresh for another comment can clobber the current selection.
-      if (activeCommentIdRef.current === commentId) setActiveComment(detail)
+      if (activeCommentIdRef.current === commentId) setActiveComment(next)
     },
-    [appId, setActiveComment, setCommentDetailCache],
+    [appId, nextDetailVersion, setActiveComment, setCommentDetailCache],
   )
+
+  const refreshActiveComment = fetchCommentDetail
 
   const loadComments = useCallback(async () => {
     if (!appId || !isCollaborationEnabled) return
 
+    const version = ++listVersionRef.current
     setCommentsLoading(true)
     try {
       const response = await consoleClient.apps.byAppId.workflow.comments.get({
         params: { app_id: appId },
       })
-      setComments(response.data)
+      if (listVersionRef.current === version) setComments(response.data)
     } catch (error) {
       console.error('Failed to fetch comments:', error)
     } finally {
@@ -128,12 +145,13 @@ export const useWorkflowComment = () => {
     (commentId: string, update: (detail: WorkflowCommentDetail) => WorkflowCommentDetail) => {
       const detail = commentDetailCacheRef.current[commentId]
       if (!detail) return
+      nextDetailVersion(commentId)
       const next = update(detail)
       commentDetailCacheRef.current = { ...commentDetailCacheRef.current, [commentId]: next }
       setCommentDetailCache(commentDetailCacheRef.current)
       if (activeCommentIdRef.current === commentId) setActiveComment(next)
     },
-    [setActiveComment, setCommentDetailCache],
+    [nextDetailVersion, setActiveComment, setCommentDetailCache],
   )
 
   // Reconcile with the server in the background; nothing waits on it.
@@ -246,7 +264,8 @@ export const useWorkflowComment = () => {
           })),
         }
 
-        setComments([...comments, composedComment])
+        listVersionRef.current += 1
+        setComments([...workflowStore.getState().comments, composedComment])
         commentDetailCacheRef.current = {
           ...commentDetailCacheRef.current,
           [newComment.id]: composedDetail,
@@ -258,9 +277,8 @@ export const useWorkflowComment = () => {
         setPendingComment(null)
         setCommentQuickAdd(false)
       } catch (error) {
+        // The composer stays open with its text so it can be sent again.
         console.error('Failed to create comment:', error)
-        setPendingComment(null)
-        setCommentQuickAdd(false)
       }
     },
     [
@@ -269,8 +287,8 @@ export const useWorkflowComment = () => {
       setPendingComment,
       setCommentQuickAdd,
       reactflow,
-      comments,
       setComments,
+      workflowStore,
       userProfile,
       setCommentDetailCache,
       mentionableUserById,
@@ -321,17 +339,7 @@ export const useWorkflowComment = () => {
       setActiveCommentLoading(!cachedDetail)
 
       try {
-        const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
-          params: { app_id: appId, comment_id: comment.id },
-        })
-
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
-          [comment.id]: detail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
-
-        if (activeCommentIdRef.current === comment.id) setActiveComment(detail)
+        await fetchCommentDetail(comment.id)
       } catch (e) {
         console.warn('Failed to load workflow comment detail', e)
       } finally {
@@ -341,13 +349,13 @@ export const useWorkflowComment = () => {
     [
       appId,
       controlMode,
+      fetchCommentDetail,
       nodePanelWidth,
       reactflow,
       rightPanelWidth,
       setActiveComment,
       setActiveCommentId,
       setActiveCommentLoading,
-      setCommentDetailCache,
       setPendingComment,
     ],
   )
@@ -393,11 +401,16 @@ export const useWorkflowComment = () => {
         commentDetailCacheRef.current = updatedCache
         setCommentDetailCache(updatedCache)
 
-        const currentComments = comments.filter((c) => c.id !== commentId)
-        const commentIndex = comments.findIndex((c) => c.id === commentId)
+        // Read the list as it is now; it may have changed while the request ran.
+        const latestComments = workflowStore.getState().comments
+        const currentComments = latestComments.filter((c) => c.id !== commentId)
+        const commentIndex = latestComments.findIndex((c) => c.id === commentId)
         const fallbackTarget =
-          commentIndex >= 0 ? (comments[commentIndex + 1] ?? comments[commentIndex - 1]) : undefined
+          commentIndex >= 0
+            ? (latestComments[commentIndex + 1] ?? latestComments[commentIndex - 1])
+            : undefined
 
+        listVersionRef.current += 1
         setComments(currentComments)
         loadComments()
 
@@ -417,12 +430,12 @@ export const useWorkflowComment = () => {
     },
     [
       appId,
-      comments,
       handleCommentIconClick,
       loadComments,
       setActiveCommentId,
       setCommentDetailCache,
       setComments,
+      workflowStore,
     ],
   )
 
@@ -442,6 +455,7 @@ export const useWorkflowComment = () => {
       const updatedComments = comments.map((c) =>
         c.id === commentId ? { ...c, ...nextPosition } : c,
       )
+      listVersionRef.current += 1
       setComments(updatedComments)
 
       const cachedDetail = commentDetailCacheRef.current[commentId]
@@ -470,6 +484,7 @@ export const useWorkflowComment = () => {
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
         console.error('Failed to update comment position:', error)
+        listVersionRef.current += 1
         setComments(previousComments)
 
         if (cachedDetail) {
@@ -531,7 +546,27 @@ export const useWorkflowComment = () => {
       const trimmed = content.trim()
       if (!trimmed) return
 
-      setReplySubmitting(true)
+      // The reply shows at once under a local id and takes the server's id when it is saved.
+      const pendingId = createPendingReplyId()
+      patchCommentDetail(commentId, (detail) => ({
+        ...detail,
+        replies: [
+          ...detail.replies,
+          {
+            id: pendingId,
+            client_key: pendingId,
+            content: trimmed,
+            created_at: Math.floor(Date.now() / 1000),
+            created_by: userProfile.id,
+            created_by_account: {
+              id: userProfile.id,
+              name: userProfile.name,
+              email: userProfile.email,
+              avatar_url: userProfile.avatar_url || userProfile.avatar || null,
+            },
+          },
+        ],
+      }))
       try {
         const reply = await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
           params: { app_id: appId, comment_id: commentId },
@@ -542,21 +577,11 @@ export const useWorkflowComment = () => {
 
         patchCommentDetail(commentId, (detail) => ({
           ...detail,
-          replies: [
-            ...detail.replies,
-            {
-              id: reply.id,
-              content: trimmed,
-              created_at: normalizeTimestamp(reply.created_at),
-              created_by: userProfile.id,
-              created_by_account: {
-                id: userProfile.id,
-                name: userProfile.name,
-                email: userProfile.email,
-                avatar_url: userProfile.avatar_url || userProfile.avatar || null,
-              },
-            },
-          ],
+          replies: detail.replies.map((item) =>
+            item.id === pendingId
+              ? { ...item, id: reply.id, created_at: normalizeTimestamp(reply.created_at) }
+              : item,
+          ),
           mentions: [
             ...detail.mentions,
             ...mentionedUserIds.map((mentionedId) => ({
@@ -568,12 +593,15 @@ export const useWorkflowComment = () => {
         }))
         syncComment(commentId)
       } catch (error) {
-        console.error('Failed to create reply:', error)
-      } finally {
-        setReplySubmitting(false)
+        // Take the reply back out; the thread puts its text back in the reply box.
+        patchCommentDetail(commentId, (detail) => ({
+          ...detail,
+          replies: detail.replies.filter((item) => item.id !== pendingId),
+        }))
+        throw error
       }
     },
-    [appId, mentionableUserById, patchCommentDetail, setReplySubmitting, syncComment, userProfile],
+    [appId, mentionableUserById, patchCommentDetail, syncComment, userProfile],
   )
 
   const handleCommentReplyUpdate = useCallback(
@@ -678,7 +706,6 @@ export const useWorkflowComment = () => {
     pendingComment,
     activeComment,
     activeCommentLoading,
-    replySubmitting,
     replyUpdating,
     handleCommentSubmit,
     handleCommentCancel,

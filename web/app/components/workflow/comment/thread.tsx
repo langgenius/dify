@@ -5,6 +5,7 @@ import type {
   WorkflowCommentReply,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
+import type { ThreadReply } from './pending-reply'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -38,6 +39,7 @@ import { useStore } from '../store'
 import { CommentComposerFrame } from './comment-composer'
 import { MentionInput } from './mention-input'
 import { toCommentCollaborator } from './participants'
+import { getReplyKey, isPendingReply } from './pending-reply'
 import {
   CommentMessage,
   CommentReplyBar,
@@ -50,7 +52,6 @@ import { useMentionableUsers } from './use-mentionable-users'
 type CommentThreadProps = {
   comment: WorkflowCommentDetail
   loading?: boolean
-  replySubmitting?: boolean
   replyUpdating?: boolean
   onDelete?: (commentId: string) => Promise<void> | void
   onResolve?: () => Promise<void> | void
@@ -122,7 +123,8 @@ export function CommentThread({
   // comment is the one shown, so deleting it and moving on closes the dialog.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const [deletePending, setDeletePending] = useState(false)
-  const [resolvePending, setResolvePending] = useState(false)
+  // Keyed by comment, so a resolve still running for one thread never blocks the next.
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
@@ -139,9 +141,6 @@ export function CommentThread({
       onMouseLeave={() => setCommentPreviewHovering(false)}
       title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
       closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
-      loadingLabel={
-        loading ? t(($) => $['comments.loading'], { ns: 'workflowComments' }) : undefined
-      }
       actions={
         <>
           <Tooltip>
@@ -149,7 +148,7 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={loading}
+                  disabled={deletePending}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
@@ -171,17 +170,18 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={comment.resolved || loading || resolvePending}
+                  disabled={comment.resolved || resolvingId === comment.id}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
                   onClick={async () => {
                     if (!onResolve) return
-                    setResolvePending(true)
+                    const commentId = comment.id
+                    setResolvingId(commentId)
                     try {
                       await onResolve()
                     } finally {
-                      setResolvePending(false)
+                      setResolvingId((id) => (id === commentId ? null : id))
                     }
                   }}
                   aria-label={t(($) => $['comments.aria.resolveComment'], {
@@ -206,7 +206,7 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={!canGoPrev || loading}
+                  disabled={!canGoPrev}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
@@ -228,7 +228,7 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={!canGoNext || loading}
+                  disabled={!canGoNext}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
@@ -304,7 +304,6 @@ type CommentThreadSessionProps = Pick<
   CommentThreadProps,
   | 'comment'
   | 'loading'
-  | 'replySubmitting'
   | 'replyUpdating'
   | 'onCommentEdit'
   | 'onReply'
@@ -318,7 +317,6 @@ type CommentThreadSessionProps = Pick<
 function CommentThreadSession({
   comment,
   loading = false,
-  replySubmitting = false,
   replyUpdating = false,
   replyInputRef,
   onCommentEdit,
@@ -370,26 +368,27 @@ function CommentThreadSession({
   }, [replies.length])
 
   const handleReplySubmit = async (content: string, mentionedUserIds: string[]) => {
-    if (!onReply || replySubmitting) return
+    if (!onReply) return
+    // The reply shows in the thread at once, so the box clears for the next one. If it
+    // fails to send, its text comes back unless a new draft has been started.
     setReplyContent('')
     try {
       await onReply(content, mentionedUserIds)
     } catch (error) {
       console.error('Failed to send reply', error)
-      setReplyContent(content)
+      setReplyContent((draft) => draft || content)
     }
   }
 
   return (
     <>
-      <CommentThreadList ref={messageListRef}>
+      <CommentThreadList ref={messageListRef} aria-busy={loading || undefined}>
         <CommentThreadEntry
           account={comment.created_by_account}
           createdAt={comment.created_at ?? comment.updated_at ?? 0}
           content={comment.content}
           mentionNames={mentionNames}
           isOwn={comment.created_by_account?.id === currentUserId}
-          disabled={loading}
           actionsLabel={t(($) => $['comments.aria.commentActions'], { ns: 'workflowComments' })}
           editLabel={t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
           editPlaceholder={t(($) => $['comments.placeholder.editComment'], {
@@ -398,15 +397,15 @@ function CommentThreadSession({
           onSave={onCommentEdit}
           onEditEnd={focusReply}
         />
-        {replies.map((reply) => (
+        {replies.map((reply: ThreadReply) => (
           <CommentThreadEntry
-            key={reply.id}
+            key={getReplyKey(reply)}
+            pending={isPendingReply(reply)}
             account={reply.created_by_account}
             createdAt={reply.created_at ?? 0}
             content={reply.content}
             mentionNames={mentionNames}
             isOwn={reply.created_by_account?.id === currentUserId}
-            disabled={loading}
             saving={replyUpdating}
             actionsLabel={t(($) => $['comments.aria.replyActions'], { ns: 'workflowComments' })}
             editLabel={t(($) => $['comments.actions.editReply'], { ns: 'workflowComments' })}
@@ -449,7 +448,6 @@ function CommentThreadSession({
             placeholder={t(($) => $['comments.placeholder.reply'], {
               ns: 'workflowComments',
             })}
-            loading={replySubmitting}
           />
         </CommentReplyBar>
       )}
@@ -463,7 +461,8 @@ type CommentThreadEntryProps = {
   content: string
   mentionNames: string[]
   isOwn: boolean
-  disabled: boolean
+  /** Still sending: shown dimmed and without actions until the server has it. */
+  pending?: boolean
   saving?: boolean
   actionsLabel: string
   editLabel: string
@@ -484,7 +483,7 @@ function CommentThreadEntry({
   content,
   mentionNames,
   isOwn,
-  disabled,
+  pending = false,
   saving = false,
   actionsLabel,
   editLabel,
@@ -528,8 +527,8 @@ function CommentThreadEntry({
   }
 
   return (
-    <CommentThreadItem>
-      {isOwn && !editing && (
+    <CommentThreadItem aria-busy={pending || undefined} className={cn(pending && 'opacity-60')}>
+      {isOwn && !editing && !pending && (
         <Menu>
           <MenuTrigger
             ref={menuTriggerRef}
@@ -632,7 +631,6 @@ function CommentThreadEntry({
                 onSubmit={handleSave}
                 onCancel={endEdit}
                 placeholder={editPlaceholder}
-                disabled={disabled}
                 loading={saving || savingDraft}
                 isEditing
               />

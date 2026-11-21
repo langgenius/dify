@@ -13,7 +13,7 @@ import { MentionInput } from './mention-input'
 
 type CommentInputProps = {
   position: { x: number; y: number }
-  onSubmit: (content: string, mentionedUserIds: string[]) => void
+  onSubmit: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   onCancel: () => void
   autoFocus?: boolean
   disabled?: boolean
@@ -28,6 +28,7 @@ type CommentInputProps = {
 export const CommentInput: FC<CommentInputProps> = memo(
   ({ position, onSubmit, onCancel, autoFocus = true, disabled = false, onPositionChange }) => {
     const [content, setContent] = useState('')
+    const [submitting, setSubmitting] = useState(false)
     const [keyboardMoving, setKeyboardMoving] = useState(false)
     const moveDescriptionId = useId()
     const { t } = useTranslation(['workflow', 'workflowComments'])
@@ -64,10 +65,16 @@ export const CommentInput: FC<CommentInputProps> = memo(
       endHandler: undefined,
     })
 
+    // The text stays, read-only, while the comment is created: on success the composer
+    // closes into the new marker, and on failure the text is still there to send again.
     const handleMentionSubmit = useCallback(
-      (content: string, mentionedUserIds: string[]) => {
-        onSubmit(content, mentionedUserIds)
-        setContent('')
+      async (content: string, mentionedUserIds: string[]) => {
+        setSubmitting(true)
+        try {
+          await onSubmit(content, mentionedUserIds)
+        } finally {
+          setSubmitting(false)
+        }
       },
       [onSubmit],
     )
@@ -208,6 +215,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
             placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
             autoFocus={autoFocus}
             disabled={disabled}
+            loading={submitting}
           />
         </CommentComposerFrame>
       </div>
