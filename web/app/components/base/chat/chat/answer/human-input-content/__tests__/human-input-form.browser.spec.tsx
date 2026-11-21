@@ -95,6 +95,39 @@ it('submits the visible form values and keeps them available after a failed atte
   })
 })
 
+it('shows a select default and lets the recipient override it before submitting', async () => {
+  const onSubmit = vi.fn().mockResolvedValue(undefined)
+  await renderWithQueries(
+    <HumanInputForm
+      formData={formData({
+        form_content: '{{#$output.decision#}}',
+        inputs: [
+          {
+            type: InputVarType.select,
+            output_variable_name: 'decision',
+            default_value: 'reject',
+            option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },
+          },
+        ],
+      })}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  const select = page.getByRole('combobox', { name: 'decision' })
+  await expect.element(select).toHaveTextContent('reject')
+  const submit = page.getByRole('button', { name: 'Approve' })
+  await expect.element(submit).toBeEnabled()
+  await select.click()
+  await page.getByRole('option', { name: 'approve' }).click()
+  await submit.click()
+  expect(onSubmit).toHaveBeenCalledExactlyOnceWith('token-1', {
+    action: 'approve',
+    inputs: { decision: 'approve' },
+    form_version: undefined,
+  })
+})
+
 it('waits for every rendered select and file upload before enabling submission', async () => {
   const singleUpload = createDeferred<{ id: string }>()
   const listUpload = createDeferred<{ id: string }>()

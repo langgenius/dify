@@ -170,4 +170,34 @@ describe('SingleRunForm', () => {
       })
     })
   })
+
+  it('submits the configured select default in a single run without requiring a new selection', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <SingleRunForm
+        nodeName="Review"
+        data={createFormData({
+          form_content: 'Choose {{#$output.choice#}}',
+          inputs: [
+            {
+              type: InputVarType.select,
+              output_variable_name: 'choice',
+              default_value: 'reject',
+              option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },
+            },
+          ],
+        })}
+        onSubmit={onSubmit}
+      />,
+    )
+    expect(screen.getByRole('combobox', { name: 'choice' })).toHaveTextContent('reject')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        inputs: { choice: 'reject' },
+        action: 'approve',
+      }),
+    )
+  })
 })

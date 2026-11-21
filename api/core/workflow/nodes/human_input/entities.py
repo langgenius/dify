@@ -143,6 +143,15 @@ class ParagraphInputConfig(BaseInputConfig):
 
 class SelectInputConfig(BaseInputConfig):
     type: Literal[FormInputType.SELECT] = FormInputType.SELECT
+    default_value: str = Field(
+        default="",
+        # Unconfigured defaults must preserve existing and frozen form definitions.
+        exclude_if=lambda value: value == "",
+        description=(
+            "Optional preselected option. Used only when it belongs to the resolved option list; "
+            "an empty or unavailable value leaves the input unselected."
+        ),
+    )
     option_source: StringListSource = Field(
         description="Source of options for `select` inputs. Present only when `type` is `select`."
     )

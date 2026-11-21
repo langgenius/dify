@@ -57,6 +57,7 @@ export type ParagraphFormInput = BaseFormInputItem & {
 
 export type SelectFormInput = BaseFormInputItem & {
   type: typeof InputVarType.select
+  default_value?: string
   option_source: StringListSource
 }
 
@@ -94,6 +95,7 @@ export const normalizeHumanInputFormInput = (input: FormInputConfig): FormInputI
     return {
       type: InputVarType.select,
       output_variable_name: input.output_variable_name,
+      default_value: input.default_value,
       option_source: {
         type: input.option_source.type,
         value: input.option_source.value ?? [],

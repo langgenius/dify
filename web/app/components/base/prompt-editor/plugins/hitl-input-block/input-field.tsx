@@ -53,6 +53,7 @@ const InputField: React.FC<InputFieldProps> = ({
 }) => {
   const rootRef = useRef<HTMLFormElement>(null)
   const outputVariableNameInputId = React.useId()
+  const defaultOptionInputId = React.useId()
   const optionsErrorId = React.useId()
   const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
@@ -380,6 +381,22 @@ const InputField: React.FC<InputFieldProps> = ({
                 />
               </div>
             )}
+            <label
+              htmlFor={defaultOptionInputId}
+              className="mt-4 mb-1.5 block system-xs-medium text-text-secondary"
+            >
+              {t(($) => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflowHumanInput' })}
+            </label>
+            <Input
+              id={defaultOptionInputId}
+              value={tempPayload.default_value ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                setTempPayload((prev) =>
+                  isSelectFormInput(prev) ? { ...prev, default_value: value } : prev,
+                )
+              }}
+            />
           </div>
         )}
         {isFileFormInput(tempPayload) && (
