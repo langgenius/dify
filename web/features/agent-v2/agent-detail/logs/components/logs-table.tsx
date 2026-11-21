@@ -140,6 +140,10 @@ function AgentLogsTableBody({
       )}
       {isSuccess &&
         logs.map((log) => {
+          const endUser =
+            log.source?.type === 'webapp'
+              ? log.from_end_user_session_id || log.from_account_name
+              : log.end_user_id
           const isSelected = selectedLogId === log.id
 
           return (
@@ -179,7 +183,7 @@ function AgentLogsTableBody({
               <td className="px-3">
                 <LogSourceCell source={log.source} />
               </td>
-              <TableCell translate="no">{log.end_user_id || notAvailable}</TableCell>
+              <TableCell translate="no">{endUser || notAvailable}</TableCell>
               <TableCell className="tabular-nums">{log.message_count}</TableCell>
               <TableCell className="text-text-quaternary">
                 {formatRate(log.user_rate, notAvailable)}
