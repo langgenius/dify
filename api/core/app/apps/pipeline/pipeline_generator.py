@@ -937,58 +937,50 @@ class PipelineGenerator(BaseAppGenerator):
             return
         _visited_folder_ids.add(prefix)
 
-        result_generator = datasource_runtime.online_drive_browse_files(
-            user_id=user_id,
-            request=OnlineDriveBrowseFilesRequest(
-                bucket=bucket,
-                prefix=prefix,
-                max_keys=20,
-                next_page_parameters=next_page_parameters,
-            ),
-            provider_type=datasource_runtime.datasource_provider_type(),
-        )
-        is_truncated = False
-        has_files = False
-        for result in result_generator:
-            for files in result.result:
-                for file in files.files:
-                    has_files = True
-                    if file.type == "folder":
-                        if file.id in _visited_folder_ids:
-                            continue
-                        self._get_files_in_folder(
-                            datasource_runtime,
-                            file.id,
-                            bucket,
-                            user_id,
-                            all_files,
-                            datasource_info,
-                            None,
-                            _visited_folder_ids,
-                        )
-                    else:
-                        all_files.append(
-                            {
-                                "id": file.id,
-                                "name": file.name,
-                                "bucket": bucket,
-                                "credential_id": datasource_info.get("credential_id"),
-                            }
-                        )
-                is_truncated = files.is_truncated
-                next_page_parameters = files.next_page_parameters
-
-        # Guard: only follow pagination when the API actually returned files.
-        # An empty folder that incorrectly reports ``is_truncated=True`` would
-        # otherwise recurse forever on the same empty page.
-        if is_truncated and has_files:
-            self._get_files_in_folder(
-                datasource_runtime,
-                prefix,
-                bucket,
-                user_id,
-                all_files,
-                datasource_info,
-                next_page_parameters,
-                _visited_folder_ids,
+        while True:
+            result_generator = datasource_runtime.online_drive_browse_files(
+                user_id=user_id,
+                request=OnlineDriveBrowseFilesRequest(
+                    bucket=bucket,
+                    prefix=prefix,
+                    max_keys=20,
+                    next_page_parameters=next_page_parameters,
+                ),
+                provider_type=datasource_runtime.datasource_provider_type(),
             )
+            is_truncated = False
+            has_files = False
+            page_parameters = next_page_parameters
+            for result in result_generator:
+                for files in result.result:
+                    for file in files.files:
+                        has_files = True
+                        if file.type == "folder":
+                            if file.id in _visited_folder_ids:
+                                continue
+                            self._get_files_in_folder(
+                                datasource_runtime,
+                                file.id,
+                                bucket,
+                                user_id,
+                                all_files,
+                                datasource_info,
+                                None,
+                                _visited_folder_ids,
+                            )
+                        else:
+                            all_files.append(
+                                {
+                                    "id": file.id,
+                                    "name": file.name,
+                                    "bucket": bucket,
+                                    "credential_id": datasource_info.get("credential_id"),
+                                }
+                            )
+                    is_truncated = files.is_truncated
+                    next_page_parameters = files.next_page_parameters
+            # Fetch the next page of this folder in the loop, not by recursion: the folder is
+            # already in ``_visited_folder_ids``. Stop when the API returned no files (an empty
+            # folder that reports ``is_truncated=True``) or no new page parameters.
+            if not (is_truncated and has_files) or not next_page_parameters or next_page_parameters == page_parameters:
+                break
