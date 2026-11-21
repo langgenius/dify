@@ -146,6 +146,13 @@ describe('EditMetadataBatchModal', () => {
             body: { name, type: DataType.string },
           }),
         )
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+          ).not.toBeInTheDocument(),
+        )
+        expect(await screen.findByRole('option', { name: /existing_field/ })).toBeInTheDocument()
+        expect(mockToastNotify).not.toHaveBeenCalled()
       } else {
         expect(mockDoAddMetaData).not.toHaveBeenCalled()
         expect(mockToastNotify).toHaveBeenCalledWith({
