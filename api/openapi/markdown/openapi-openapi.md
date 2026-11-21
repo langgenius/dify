@@ -1878,7 +1878,7 @@ their current values; providing `text` replaces the document body.
 **Create a document from raw text**
 
 Indexing runs asynchronously; track
-it with the document's `indexing_status` or the batch indexing-status op.
+it with the document's `display_status` or the batch indexing-status op.
 
 #### Parameters
 

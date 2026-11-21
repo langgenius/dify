@@ -2244,12 +2244,12 @@ export const byDocumentId = {
  * Create a document from raw text
  *
  * Indexing runs asynchronously; track
- * it with the document's `indexing_status` or the batch indexing-status op.
+ * it with the document's `display_status` or the batch indexing-status op.
  */
 export const post29 = oc
   .route({
     description:
-      "Indexing runs asynchronously; track\nit with the document's `indexing_status` or the batch indexing-status op.",
+      "Indexing runs asynchronously; track\nit with the document's `display_status` or the batch indexing-status op.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByText',
