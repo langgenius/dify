@@ -3,12 +3,13 @@ import logging
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Thread
 from typing import Any
 
 from dify_trace_sdk.events import MessageCompleted
+from pydantic import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -74,6 +75,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
+from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -127,15 +129,31 @@ class MessageSnapshot:
     created_at: datetime
     status: MessageStatus
     answer: str
+    reasoning: Mapping[str, str] = field(default_factory=dict)
+    retriever_resources: tuple[RetrievalSourceMetadata, ...] = ()
 
     @classmethod
     def from_message(cls, message: Message) -> "MessageSnapshot":
+        metadata = message.message_metadata_dict if message.status == MessageStatus.PAUSED else {}
+        reasoning = metadata.get("reasoning")
+        resources = metadata.get("retriever_resources")
+        restored_resources: list[RetrievalSourceMetadata] = []
+        if isinstance(resources, list):
+            for resource in resources:
+                try:
+                    restored_resources.append(RetrievalSourceMetadata.model_validate(resource))
+                except ValidationError:
+                    logger.warning("Ignoring invalid saved retrieval source for message %s", message.id)
         return cls(
             id=message.id,
             query=message.query,
             created_at=message.created_at,
             status=message.status,
             answer=message.answer,
+            reasoning={key: text for key, text in reasoning.items() if isinstance(text, str)}
+            if isinstance(reasoning, dict)
+            else {},
+            retriever_resources=tuple(restored_resources),
         )
 
 
@@ -213,8 +231,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._seed_graph_runtime_state_from_queue_manager()
 
     def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
-        if message.status == MessageStatus.PAUSED and message.answer:
+        """Restore a paused message’s accumulated answer and source metadata for the next segment."""
+        if message.status == MessageStatus.PAUSED:
             self._task_state.answer = message.answer
+            self._task_state.metadata.reasoning.update(message.reasoning)
+            self._task_state.metadata.retriever_resources = message.retriever_resources
 
     def process(
         self,

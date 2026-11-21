@@ -286,6 +286,46 @@ def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> Non
     assert stored_message.status == MessageStatus.NORMAL
 
 
+def test_resume_preserves_saved_reasoning(unbound_session: Session) -> None:
+    message = _message(status=MessageStatus.PAUSED, answer="")
+    message.created_at = naive_utc_now()
+    message.query = "hello"
+    message.message_metadata = '{"reasoning":{"llm-before":"first pass"}}'
+    pipeline = _make_pipeline(message=MessageSnapshot.from_message(message))
+    pipeline._get_message = lambda **kwargs: message
+    assert pipeline._task_state.metadata.reasoning == {"llm-before": "first pass"}
+    pipeline._task_state.metadata.reasoning["llm-after"] = "second pass"
+
+    pipeline._save_message(session=unbound_session)
+
+    assert message.message_metadata_dict["reasoning"] == {
+        "llm-before": "first pass",
+        "llm-after": "second pass",
+    }
+
+
+def test_resume_preserves_saved_retriever_resources(unbound_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    message = _message(status=MessageStatus.PAUSED, answer="")
+    message.created_at = naive_utc_now()
+    message.query = "hello"
+    message.message_metadata = (
+        '{"retriever_resources":[{"dataset_id":"dataset","document_id":"document"},{"document_id":[]},null]}'
+    )
+    pipeline = _make_pipeline(message=MessageSnapshot.from_message(message))
+    monkeypatch.setattr(pipeline, "_get_message", lambda **kwargs: message)
+
+    pipeline._application_generate_entity.app_config.additional_features = AppAdditionalFeatures(
+        show_retrieve_source=True
+    )
+    event = QueueRetrieverResourcesEvent.model_validate(
+        {"retriever_resources": [{"dataset_id": "dataset", "document_id": "new-document"}]}
+    )
+    list(pipeline._handle_retriever_resources_event(event))
+    pipeline._save_message(session=unbound_session)
+
+    assert [resource["document_id"] for resource in message.retriever_resources] == ["document", "new-document"]
+
+
 def test_emit_message_trace_reports_the_completed_message() -> None:
     recorder = _TraceRecorder()
     pipeline = _build_message_pipeline(
@@ -885,7 +925,11 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.metadata.reasoning == {"llm-1": "first pass "}
 
     def test_handle_node_succeeded_event_accumulates_reasoning_across_passes(self):
-        pipeline = _make_pipeline()
+        message = _message(status=MessageStatus.PAUSED, answer="")
+        message.created_at = naive_utc_now()
+        message.query = "hello"
+        message.message_metadata = '{"reasoning":{"llm-1":"before pause "}}'
+        pipeline = _make_pipeline(message=MessageSnapshot.from_message(message))
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
         pipeline._save_output_for_event = lambda event, node_execution_id: None
@@ -902,7 +946,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         list(pipeline._handle_node_succeeded_event(_llm_event("pass one ")))
         list(pipeline._handle_node_succeeded_event(_llm_event("pass two")))
 
-        assert pipeline._task_state.metadata.reasoning == {"llm-1": "pass one pass two"}
+        assert pipeline._task_state.metadata.reasoning == {"llm-1": "before pause pass one pass two"}
 
     def test_iteration_and_loop_handlers(self):
         pipeline = _make_pipeline()
