@@ -11,7 +11,7 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from typing import cast, override
+from typing import Never, cast, override
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -677,3 +677,53 @@ def test_empty_parquet_preserves_header_only_or_missing_csv(
             assert archive.read("workflow-run-logs-2025-03/workflow_runs.csv") == b'"id"\n'
         else:
             assert not archive.namelist()
+
+
+def test_exhausted_busy_month_retry_marks_download_failed(
+    monkeypatch: pytest.MonkeyPatch, month_lease: WorkflowRunArchiveMonthLease
+) -> None:
+    from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthBusyError
+    from tasks import workflow_run_archive_download_tasks as tasks
+
+    task = _task()
+    cache = FakeTaskCache(task)
+
+    def busy_month(**_kwargs: object) -> Never:
+        raise WorkflowRunArchiveMonthBusyError("month busy")
+
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache, lease=month_lease, month_lock=busy_month)
+    monkeypatch.setattr(tasks, "WorkflowRunArchiveDownloadPreparer", lambda **_kwargs: preparer)
+    monkeypatch.setattr(tasks, "get_session_maker", lambda: None)
+    worker_task = tasks.prepare_workflow_run_archive_download_task
+    worker_task.push_request(id=task.celery_task_id, retries=5, called_directly=False)
+    try:
+        with pytest.raises(WorkflowRunArchiveMonthBusyError):
+            worker_task.run(tenant_id=TENANT_ID, download_id=task.download_id)
+    finally:
+        worker_task.pop_request()
+
+    assert cache.task is not None
+    assert cache.task.status == WorkflowRunArchiveDownloadStatus.FAILED
+
+
+@pytest.mark.parametrize(
+    ("status", "celery_task_id"),
+    [
+        (WorkflowRunArchiveDownloadStatus.PENDING, "replacement-task"),
+        (WorkflowRunArchiveDownloadStatus.PROCESSING, "celery-task-1"),
+        (WorkflowRunArchiveDownloadStatus.READY, "celery-task-1"),
+    ],
+)
+def test_busy_retry_failure_preserves_other_claims(
+    status: WorkflowRunArchiveDownloadStatus, celery_task_id: str, month_lease: WorkflowRunArchiveMonthLease
+) -> None:
+    current = _task().model_copy(update={"status": status, "celery_task_id": celery_task_id})
+    cache = FakeTaskCache(current)
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache, lease=month_lease)
+
+    preparer.fail_pending_busy_download(
+        tenant_id=TENANT_ID, download_id=current.download_id, celery_task_id="celery-task-1"
+    )
+
+    assert cache.task is current
+    assert cache.saved_tasks == []

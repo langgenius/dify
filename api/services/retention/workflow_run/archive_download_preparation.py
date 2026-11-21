@@ -134,6 +134,27 @@ class WorkflowRunArchiveDownloadPreparer:
                 )
                 return self._mark_failed(processing_task, error=str(exc))
 
+    def fail_pending_busy_download(self, *, tenant_id: str, download_id: str, celery_task_id: str) -> None:
+        """After busy retries exhaust, fail only the matching claim that is still pending."""
+        with self.cache.lock(tenant_id=tenant_id, download_id=download_id):
+            current = self.cache.get(tenant_id=tenant_id, download_id=download_id)
+            if (
+                current is not None
+                and current.celery_task_id == celery_task_id
+                and current.status == WorkflowRunArchiveDownloadStatus.PENDING
+            ):
+                now = datetime.datetime.now(datetime.UTC)
+                self.cache.save(
+                    current.model_copy(
+                        update={
+                            "status": WorkflowRunArchiveDownloadStatus.FAILED,
+                            "error": "The archive month is busy. Try preparing the download again.",
+                            "updated_at": now,
+                            "finished_at": now,
+                        }
+                    )
+                )
+
     def _prepare_claimed(
         self, task: WorkflowRunArchiveDownloadTask, lease: WorkflowRunArchiveMonthLease
     ) -> WorkflowRunArchiveDownloadTask:
