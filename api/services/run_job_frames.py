@@ -94,7 +94,6 @@ def encode_data_frame(payload: Mapping[str, Any]) -> str:
 def read_frame(frame: str) -> RunFrame | Misfit | None:
     """Read one frame of a run's stream.
 
-    Precondition: none.
     Postcondition: None for a frame without data (a ping); the frame's values when it fits core's model; otherwise
     a Misfit naming its event. Nothing is guessed from a frame that does not fit.
     """

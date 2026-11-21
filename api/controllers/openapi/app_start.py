@@ -10,18 +10,17 @@ from flask_restx import Resource
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
-from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
-from controllers.openapi._errors import JobCapacityReached, JobNotFound
+from controllers.openapi._errors import JobCapacityReached
 from controllers.openapi._files import end_read_transaction
 from controllers.openapi._models import AdvancedChatStartPayload, JobState, WorkflowStartPayload
-from controllers.openapi.app_run import RUN_GUARDS, generate_args, require_mode, run_stream
+from controllers.openapi.app_run import RUN_GUARDS, emit_run_audit, generate_args, require_mode, run_stream
 from controllers.openapi.auth.context import Context
-from controllers.openapi.jobs import job_owner, job_state
+from controllers.openapi.jobs import JOB_STATE_RESPONSE, job_owner, job_state_from
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from models.model import AppMode
-from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening
+from services.run_job_service import JobCapacityError, JobOpening
 
 START_OP_PREFIX: Final = "start.console_app."
 WORKFLOW_START_OP: Final = f"{START_OP_PREFIX}workflow"
@@ -34,8 +33,6 @@ START_MODES: Final[Mapping[str, tuple[AppMode, ...]]] = MappingProxyType(
     }
 )
 _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
-_JOB_STATE: Final = (200, JobState, "Job state")
-APPS_SURFACE: Final = "apps"
 
 
 type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload
@@ -48,13 +45,7 @@ def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
     Postcondition: the run's SSE frames; errors of the run service propagate.
     """
     stream = run_stream(ctx, generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
-    emit_app_run(
-        app_id=ctx.app.id,
-        tenant_id=ctx.app.tenant_id,
-        caller_kind=ctx.subject.caller_role,
-        mode=str(ctx.app.mode),
-        surface=APPS_SURFACE,
-    )
+    emit_run_audit(ctx)
     return stream
 
 
@@ -75,11 +66,7 @@ def start_job(ctx: Context, body: StartPayload, *, op: str) -> JobState:
     except JobCapacityError as ex:
         raise JobCapacityReached() from ex
     end_read_transaction(ctx.session)
-    try:
-        view = run_jobs.wait(owner, job_id, wait_seconds=body.wait_seconds)
-    except JobNotFoundError as ex:
-        raise JobNotFound() from ex
-    return job_state(view, app_id=ctx.app.id)
+    return job_state_from(lambda: run_jobs.wait(owner, job_id, wait_seconds=body.wait_seconds), app_id=ctx.app.id)
 
 
 @openapi_ns.route("/apps/<string:app_id>/workflow:start")
@@ -93,7 +80,7 @@ class WorkflowStartApi(Resource):
         requirements=RUN_GUARDS,
         body=WorkflowStartPayload,
         examples=(Example(title="Start a workflow", input={"app_id": "<app_id>", "inputs": {"topic": "report"}}),),
-        returns=_JOB_STATE,
+        returns=JOB_STATE_RESPONSE,
     )
     def post(self, ctx: Context, app_id: str, *, body: WorkflowStartPayload):
         return start_job(ctx, body, op=WORKFLOW_START_OP)
@@ -110,7 +97,7 @@ class AdvancedChatStartApi(Resource):
         requirements=RUN_GUARDS,
         body=AdvancedChatStartPayload,
         examples=(Example(title="Start a chatflow reply", input={"app_id": "<app_id>", "query": "Summarise it"}),),
-        returns=_JOB_STATE,
+        returns=JOB_STATE_RESPONSE,
     )
     def post(self, ctx: Context, app_id: str, *, body: AdvancedChatStartPayload):
         return start_job(ctx, body, op=ADVANCED_CHAT_START_OP)

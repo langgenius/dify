@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Final, Protocol
 
 from flask_restx import Resource
@@ -24,7 +24,7 @@ WAIT_JOB_OP: Final = "wait.job"
 STOP_JOB_OP: Final = "stop.job"
 WAIT_HINT_SUMMARY: Final = "Wait for the result"
 RESUMED_WAIT_HINT_SUMMARY: Final = "After submitting, wait for the resumed run"
-_JOB_STATE: Final = (200, JobState, "Job state")
+JOB_STATE_RESPONSE: Final = (200, JobState, "Job state")
 
 
 def job_owner(ctx: Context) -> JobOwner:
@@ -120,6 +120,15 @@ def job_state(view: JobView, *, app_id: str) -> JobState:
     )
 
 
+def job_state_from(call: Callable[[], JobView], *, app_id: str) -> JobState:
+    """Postcondition: the state of the job call() returns; JobNotFound when the service finds no such job."""
+    try:
+        view = call()
+    except JobNotFoundError as ex:
+        raise JobNotFound() from ex
+    return job_state(view, app_id=app_id)
+
+
 @openapi_ns.route("/apps/<string:app_id>/jobs/<string:job_id>:wait")
 class JobWaitApi(Resource):
     @endpoint(
@@ -130,7 +139,7 @@ class JobWaitApi(Resource):
         requirements=RUN_GUARDS,
         query=JobWaitQuery,
         examples=(Example(title="Wait for a job", input={"app_id": "<app_id>", "job_id": "<job_id>"}),),
-        returns=_JOB_STATE,
+        returns=JOB_STATE_RESPONSE,
     )
     def get(self, ctx: Context, app_id: str, job_id: str, *, query: JobWaitQuery):
         """Wait for a job of the caller.
@@ -142,11 +151,10 @@ class JobWaitApi(Resource):
         valid_id = require_uuid(job_id, not_found=JobNotFound)
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
-        try:
-            view = application_services().run_jobs.wait(owner, valid_id, wait_seconds=query.wait_seconds)
-        except JobNotFoundError as ex:
-            raise JobNotFound() from ex
-        return job_state(view, app_id=ctx.app.id)
+        run_jobs = application_services().run_jobs
+        return job_state_from(
+            lambda: run_jobs.wait(owner, valid_id, wait_seconds=query.wait_seconds), app_id=ctx.app.id
+        )
 
 
 @openapi_ns.route("/apps/<string:app_id>/jobs/<string:job_id>:stop")
@@ -159,7 +167,7 @@ class JobStopApi(Resource):
         summary="Ask a background job to stop, and read its state",
         requirements=RUN_GUARDS,
         examples=(Example(title="Stop a job", input={"app_id": "<app_id>", "job_id": "<job_id>"}),),
-        returns=_JOB_STATE,
+        returns=JOB_STATE_RESPONSE,
     )
     def post(self, ctx: Context, app_id: str, job_id: str):
         """Stop a job of the caller.
@@ -171,8 +179,4 @@ class JobStopApi(Resource):
         valid_id = require_uuid(job_id, not_found=JobNotFound)
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
-        try:
-            view = application_services().run_jobs.stop(owner, valid_id)
-        except JobNotFoundError as ex:
-            raise JobNotFound() from ex
-        return job_state(view, app_id=ctx.app.id)
+        return job_state_from(lambda: application_services().run_jobs.stop(owner, valid_id), app_id=ctx.app.id)

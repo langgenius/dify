@@ -34,7 +34,7 @@ _RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
 class RunJobRedis(Protocol):
     """The Redis calls the store makes; RedisClientWrapper satisfies it."""
 
-    def set(self, name: str, value: Any, ex: int | None = None, *, nx: bool = False) -> Any: ...
+    def set(self, name: str, value: Any, ex: int | None = None) -> Any: ...
 
     def hset(self, name: str, *, mapping: Mapping[str, str]) -> Any: ...
 
@@ -67,7 +67,7 @@ def _decode_ending(raw: Mapping[str, Any] | None) -> JobEnding | None:
 
 
 def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
-    """Rebuild a record from a hash. Precondition: none. Postcondition: None without the created record; otherwise
+    """Rebuild a record from a hash. Postcondition: None without the created record; otherwise
     the created record with every later change applied. Fields a newer version added are ignored."""
     stored = {_text(name): json.loads(_text(value)) for name, value in raw.items()}
     created = stored.pop(_CREATED_FIELD, None)
@@ -107,18 +107,13 @@ class RedisRunJobStore:
     def get(self, job_id: str) -> JobRecord | None:
         """Load a job.
 
-        Precondition: none.
         Postcondition: returns the stored record, or None when it is absent, expired or incomplete.
         """
-        raw = self._redis.hgetall(self._job_name(job_id))
-        if not raw:
-            return None
-        return _decode_record(raw)
+        return _decode_record(self._redis.hgetall(self._job_name(job_id)))
 
     def record_ids(self, job_id: str, ids: JobIds) -> None:
         """Store the run ids that are set.
 
-        Precondition: none.
         Postcondition: ids that are None are untouched; the job's TTL is renewed when anything was written; a job
         that no longer exists is not recreated.
         """
@@ -128,7 +123,6 @@ class RedisRunJobStore:
     def settle(self, job_id: str, ending: JobEnding) -> bool:
         """Give the job its ending, unless it already has one.
 
-        Precondition: none.
         Postcondition: true when the job existed without an ending: the ending field now holds this one (HSETNX, so
         exactly one of several racing calls writes) and the TTL is renewed. False with nothing written otherwise.
         """
@@ -143,13 +137,12 @@ class RedisRunJobStore:
     def request_stop(self, job_id: str) -> None:
         """Record that the owner asked the job to stop.
 
-        Precondition: none.
         Postcondition: stop_requested is true and the TTL renewed; a job that no longer exists is not recreated.
         """
         self._write(job_id, {"stop_requested": json.dumps(True)})
 
     def _write(self, job_id: str, fields: Mapping[str, str]) -> None:
-        """Set encoded fields of an existing job. Precondition: none. Postcondition: nothing is written when fields
+        """Set encoded fields of an existing job. Postcondition: nothing is written when fields
         is empty or the job is gone; otherwise the fields are set and the TTL renewed."""
         name = self._job_name(job_id)
         if not fields:
@@ -160,35 +153,33 @@ class RedisRunJobStore:
         self._redis.expire(name, JOB_TTL_SECONDS)
 
     def discard(self, job_id: str) -> None:
-        """Remove a job and its alive key. Precondition: none. Postcondition: both keys are gone."""
+        """Remove a job and its alive key. Postcondition: both keys are gone."""
         self._redis.delete(self._job_name(job_id), self._alive_name(job_id))
 
     def touch(self, job_id: str) -> None:
         """Refresh the alive key.
 
-        Precondition: none.
         Postcondition: the alive key exists and expires in ALIVE_TTL_SECONDS.
         """
         self._redis.set(self._alive_name(job_id), _ALIVE_VALUE, ex=ALIVE_TTL_SECONDS)
 
     def drop_alive(self, job_id: str) -> None:
-        """Delete the alive key. Precondition: none. Postcondition: is_alive is false until the next touch."""
+        """Delete the alive key. Postcondition: is_alive is false until the next touch."""
         self._redis.delete(self._alive_name(job_id))
 
     def is_alive(self, job_id: str) -> bool:
         """Report whether the alive key is present.
 
-        Precondition: none.
         Postcondition: true only if touch or create ran within ALIVE_TTL_SECONDS.
         """
         return bool(self._redis.exists(self._alive_name(job_id)))
 
     @staticmethod
     def _job_name(job_id: str) -> str:
-        """Job hash key. Precondition: none. Postcondition: the key."""
+        """Job hash key. Postcondition: the key."""
         return _JOB_KEY.format(job_id=job_id)
 
     @staticmethod
     def _alive_name(job_id: str) -> str:
-        """Alive key. Precondition: none. Postcondition: the key."""
+        """Alive key. Postcondition: the key."""
         return _ALIVE_KEY.format(job_id=job_id)

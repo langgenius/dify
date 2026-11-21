@@ -7,10 +7,11 @@ import threading
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field, replace
 from types import MappingProxyType
-from typing import Final, Protocol, runtime_checkable
+from typing import Final
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
+from libs.stream import close_stream
 from services.run_job_contracts import JobEnding, JobFailure, JobFamily, JobIds, JobRecord, JobStatus, RunJobStore
 from services.run_job_frames import Misfit, RunFrame, read_frame
 
@@ -31,14 +32,8 @@ RUN_STATUS_TO_JOB_STATUS: Final[Mapping[WorkflowExecutionStatus, JobStatus]] = M
 )
 
 
-class JobStopper(Protocol):
-    def stop(self, record: JobRecord) -> None:
-        """Precondition: record.task_id is set. Postcondition: the run behind the record is asked to stop."""
-
-
-@runtime_checkable
-class _Closable(Protocol):
-    def close(self) -> None: ...
+# Asks the run behind a record to stop. Precondition: record.task_id is set.
+type JobStopper = Callable[[JobRecord], None]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -110,7 +105,6 @@ ENDINGS_BY_FAMILY: Final[Mapping[JobFamily, Mapping[StreamEvent, _Handler]]] = {
 def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
     """Pick the ids that this frame carries and that were not stored yet.
 
-    Precondition: none.
     Postcondition: the JobIds fields to store, by name; neither argument is changed.
     """
     known = asdict(stored)
@@ -160,7 +154,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
         return
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
-            stopper.stop(record)
+            stopper(record)
     handler = ENDINGS_BY_FAMILY[record.family].get(read.event)
     if handler is None:
         return
@@ -170,18 +164,6 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     reading.unsaved = ending
     store.settle(job_id, ending)
     reading.unsaved = None
-
-
-def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
-    """Apply one frame, keeping a store or stopper failure from ending the read.
-
-    Precondition: the job exists.
-    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed.
-    """
-    try:
-        _consume(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
-    except Exception:
-        logger.exception("Run job %s frame handling failed", job_id)
 
 
 def _end_of_stream(job_id: str, store: RunJobStore, unsaved: JobEnding | None) -> None:
@@ -224,12 +206,6 @@ def _refresh_alive(job_id: str, store: RunJobStore) -> None:
         logger.exception("Run job %s alive refresh failed", job_id)
 
 
-def close_frames(frames: object) -> None:
-    """Postcondition: frames (a stream of any kind) is closed when it has a close method; otherwise nothing happens."""
-    if isinstance(frames, _Closable):
-        frames.close()
-
-
 def read_to_end(
     *,
     job_id: str,
@@ -258,11 +234,14 @@ def read_to_end(
     reading = _Reading()
     try:
         for frame in frames:
-            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
+            try:
+                _consume(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
+            except Exception:
+                logger.exception("Run job %s frame handling failed", job_id)
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:
         stop.set()
         alive.join()
-        close_frames(frames)
+        close_stream(frames)
     _end_of_stream(job_id, store, reading.unsaved)

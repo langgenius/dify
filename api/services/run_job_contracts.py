@@ -25,7 +25,6 @@ class JobStatus(StrEnum):
     def is_final(self) -> bool:
         """Report whether no further status change can follow.
 
-        Precondition: none.
         Postcondition: true exactly for SUCCEEDED, FAILED and STOPPED.
         """
         return self in (JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED)
@@ -83,7 +82,7 @@ class JobEnding:
     error: str | None = None
 
     def __post_init__(self) -> None:
-        """Precondition: none. Postcondition: raises ValueError unless status is final."""
+        """Postcondition: raises ValueError unless status is final."""
         if not self.status.is_final:
             raise ValueError(f"A job ending needs a final status, not {self.status}")
 
@@ -148,26 +147,26 @@ class RunJobStore(Protocol):
         its id exists. Atomic on the job's key."""
 
     def get(self, job_id: str) -> JobRecord | None:
-        """Precondition: none. Postcondition: the stored record, or None."""
+        """Postcondition: the stored record, or None."""
 
     def record_ids(self, job_id: str, ids: JobIds) -> None:
-        """Precondition: none. Postcondition: the ids that are set are stored; a missing job is not recreated."""
+        """Postcondition: the ids that are set are stored; a missing job is not recreated."""
 
     def settle(self, job_id: str, ending: JobEnding) -> bool:
-        """Precondition: none. Postcondition: true when the job existed without an ending and now holds this one;
+        """Postcondition: true when the job existed without an ending and now holds this one;
         false, with nothing written, otherwise. The ending is written once, atomically on the job's key."""
 
     def request_stop(self, job_id: str) -> None:
-        """Precondition: none. Postcondition: stop_requested is set; a missing job is not recreated."""
+        """Postcondition: stop_requested is set; a missing job is not recreated."""
 
     def discard(self, job_id: str) -> None:
-        """Precondition: none. Postcondition: the job and its alive key are gone."""
+        """Postcondition: the job and its alive key are gone."""
 
     def touch(self, job_id: str) -> None:
-        """Precondition: none. Postcondition: the alive key is refreshed."""
+        """Postcondition: the alive key is refreshed."""
 
     def drop_alive(self, job_id: str) -> None:
-        """Precondition: none. Postcondition: the alive key is gone."""
+        """Postcondition: the alive key is gone."""
 
     def is_alive(self, job_id: str) -> bool:
-        """Precondition: none. Postcondition: true while the alive key is live."""
+        """Postcondition: true while the alive key is live."""
