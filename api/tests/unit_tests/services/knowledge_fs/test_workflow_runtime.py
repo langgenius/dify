@@ -3,7 +3,7 @@
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Never, cast
 
 import pytest
 from flask import Flask
@@ -18,6 +18,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables import StringSegment
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.api_moderation_service import APIModerationService
 from services.knowledge_fs import runtime as runtime_module
 from services.knowledge_fs import workflow_runtime
 from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
@@ -81,6 +82,7 @@ class _FakeAccounts:
 @dataclass
 class _FakeApplicationServices:
     tracing: TracingServices
+    api_moderation: APIModerationService
     accounts: _FakeAccounts = field(default_factory=_FakeAccounts)
 
 
@@ -93,10 +95,20 @@ def test_application_registers_lazy_workflow_runtime_dependencies(monkeypatch: p
     monkeypatch.setattr(workflow_runtime.session_factory, "get_session_maker", lambda: session_maker)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: session_maker)
     tracing = build_tracing_services(database_client=session_maker)
+
+    def unexpected_moderation(*_args: object) -> Never:
+        raise AssertionError("workflow runtime registration must not run API moderation")
+
+    api_moderation = APIModerationService(
+        find_extension=unexpected_moderation,
+        decrypt_key=unexpected_moderation,
+        request_inputs=unexpected_moderation,
+        request_outputs=unexpected_moderation,
+    )
     monkeypatch.setattr(
         ext_application_services,
         "build_application_services",
-        lambda **_kwargs: _FakeApplicationServices(tracing=tracing),
+        lambda **_kwargs: _FakeApplicationServices(tracing=tracing, api_moderation=api_moderation),
     )
 
     ext_application_services.init_app(app)

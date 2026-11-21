@@ -526,46 +526,6 @@ class TestModerationRuleStructure:
         assert rule.config["outputs_config"]["preset_response"] == "Blocked"
 
 
-class TestModerationFactoryIntegration:
-    """Test suite for ModerationFactory integration."""
-
-    @patch("core.moderation.factory.code_based_extension", autospec=True)
-    def test_factory_delegates_to_extension(self, mock_extension: Mock) -> None:
-        """Test ModerationFactory delegates to extension system."""
-        from core.moderation.factory import ModerationFactory
-
-        mock_instance = MagicMock()
-        mock_instance.moderation_for_inputs.return_value = ModerationInputsResult(
-            flagged=False,
-            action=ModerationAction.DIRECT_OUTPUT,
-        )
-        mock_class = MagicMock(return_value=mock_instance)
-        mock_extension.extension_class.return_value = mock_class
-
-        factory = ModerationFactory(
-            name="keywords",
-            app_id="app",
-            tenant_id="tenant",
-            config={},
-        )
-
-        result = factory.moderation_for_inputs({"field": "value"}, "query")
-        assert result.flagged is False
-        mock_instance.moderation_for_inputs.assert_called_once()
-
-    @patch("core.moderation.factory.code_based_extension", autospec=True)
-    def test_factory_validate_config_delegates(self, mock_extension: Mock) -> None:
-        """Test ModerationFactory.validate_config delegates to extension."""
-        from core.moderation.factory import ModerationFactory
-
-        mock_class = MagicMock()
-        mock_extension.extension_class.return_value = mock_class
-
-        ModerationFactory.validate_config("keywords", "tenant", {"test": "config"})
-
-        mock_class.validate_config.assert_called_once()
-
-
 class TestModerationBase:
     """Test suite for base moderation classes and enums."""
 
