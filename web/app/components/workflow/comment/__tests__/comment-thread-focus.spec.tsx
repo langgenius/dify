@@ -19,14 +19,15 @@ import { CommentInput } from '../comment-input'
 import { getCommentMarkerId } from '../marker-id'
 import { CommentThread } from '../thread'
 import { commentThreadPlacement } from '../thread-placement'
+import { seedMentionableUsers } from './comment-query-data'
 import { CommentThreadFixture } from './comment-thread-fixture'
 
 let mentionableUsers: UserProfile[] = []
 const renderWithAccountProfile = (ui: Parameters<typeof renderWorkflowFlowComponent>[0]) => {
   const { queryClient } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  seedMentionableUsers(queryClient, mentionableUsers)
   return renderWorkflowFlowComponent(ui, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': mentionableUsers } },
   })
 }
 

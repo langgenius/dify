@@ -6,16 +6,17 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 
 const render = (ui: ReactElement, userId = 'user-1') => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: userId, name: 'User', avatar_url: 'avatar' },
   })
+  seedMentionableUsers(queryClient, [])
   return renderWorkflowFlowComponent(ui, {
     queryClient,
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
     reactFlowProps: {
       proOptions: { hideAttribution: true },
       fitView: false,

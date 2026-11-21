@@ -1,22 +1,11 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
-import {
-  createPopoverHandle,
-  Popover,
-  PopoverPortal,
-  PopoverPositioner,
-} from '@langgenius/dify-ui/popover'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
-import { useWorkflowComment } from '../../hooks/use-workflow-comment'
-import { useStore } from '../../store'
-import { CommentIcon } from '../comment-icon'
-import { getCommentMarkerId } from '../marker-id'
-import { CommentThread } from '../thread'
-import { commentThreadPlacement } from '../thread-placement'
+import { WorkflowCommentLayer } from '../workflow-comment-layer'
+import { seedMentionableUsers } from './comment-query-data'
 
 const mockFetchComments = vi.hoisted(() => vi.fn())
 const mockFetchComment = vi.hoisted(() => vi.fn())
@@ -35,13 +24,14 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflow.comments.get': mockFetchComments,
       'apps.byAppId.workflow.comments.byCommentId.get': mockFetchComment,
       'apps.byAppId.workflow.comments.byCommentId.put': mockUpdateComment,
+      'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
     }),
   }
 })
@@ -66,83 +56,6 @@ const comment: WorkflowCommentBasic = {
   participants: [],
 }
 
-// Mirrors the canvas entry: markers are triggers of one thread popover.
-function CommentCanvas() {
-  const showUserComments = useStore((state) => state.showUserComments)
-  const [threadHandle] = useState(() => createPopoverHandle())
-  const {
-    comments,
-    activeComment,
-    activeCommentLoading,
-    handleCommentIconClick,
-    handleActiveCommentClose,
-    handleActiveCommentClosed,
-    handleCommentReply,
-    handleCommentPositionUpdate,
-    handleCommentReveal,
-  } = useWorkflowComment()
-  const activeCommentId = useStore((state) => state.activeCommentId)
-  const activeIndex = activeCommentId
-    ? comments.findIndex((item) => item.id === activeCommentId)
-    : -1
-  const open = activeComment !== null && activeIndex !== -1
-
-  return (
-    <div id="workflow-container">
-      {comments.map((item) =>
-        item.id === activeComment?.id || showUserComments ? (
-          <CommentIcon
-            key={item.id}
-            comment={item}
-            threadHandle={threadHandle}
-            isActive={open && item.id === activeCommentId}
-            onPositionUpdate={handleCommentPositionUpdate}
-          />
-        ) : null,
-      )}
-      <Popover
-        handle={threadHandle}
-        open={open}
-        triggerId={activeCommentId ? getCommentMarkerId(activeCommentId) : null}
-        onOpenChange={(nextOpen, { trigger }) => {
-          if (!nextOpen) return handleActiveCommentClose()
-          const item = comments.find(
-            (candidate) => getCommentMarkerId(candidate.id) === trigger?.id,
-          )
-          if (item) handleCommentIconClick(item)
-        }}
-        onOpenChangeComplete={(nextOpen) => {
-          if (!nextOpen) handleActiveCommentClosed()
-        }}
-      >
-        <PopoverPortal>
-          <PopoverPositioner {...commentThreadPlacement}>
-            {activeComment && (
-              <CommentThread
-                comment={activeComment}
-                loading={activeCommentLoading}
-                onReply={(content, ids) => handleCommentReply(activeComment.id, content, ids)}
-                onPrev={
-                  activeIndex > 0
-                    ? () => handleCommentReveal(comments[activeIndex - 1]!)
-                    : undefined
-                }
-                onNext={
-                  activeIndex < comments.length - 1
-                    ? () => handleCommentReveal(comments[activeIndex + 1]!)
-                    : undefined
-                }
-                canGoPrev={activeIndex > 0}
-                canGoNext={activeIndex < comments.length - 1}
-              />
-            )}
-          </PopoverPositioner>
-        </PopoverPortal>
-      </Popover>
-    </div>
-  )
-}
-
 function renderCommentCanvas(comments = [comment]) {
   mockFetchComments.mockResolvedValue({ data: comments })
   mockFetchComment.mockImplementation(({ params }: { params: { comment_id: string } }) =>
@@ -155,15 +68,18 @@ function renderCommentCanvas(comments = [comment]) {
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1', name: 'Alice' })
   seedSystemFeatures(queryClient)
-  return renderWorkflowFlowComponent(<CommentCanvas />, {
-    queryClient,
-    resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
-    initialStoreState: {
-      comments,
-      showUserComments: true,
-      mentionableUsersCache: { 'app-1': [] },
+  seedMentionableUsers(queryClient, [])
+  const result = renderWorkflowFlowComponent(
+    <div id="workflow-container">
+      <WorkflowCommentLayer />
+    </div>,
+    {
+      queryClient,
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
+      initialStoreState: { showUserComments: true },
     },
-  })
+  )
+  return { ...result, queryClient }
 }
 
 describe('Comment keyboard focus lifecycle', () => {
@@ -182,7 +98,7 @@ describe('Comment keyboard focus lifecycle', () => {
       const user = userEvent.setup()
       renderCommentCanvas()
 
-      screen.getByRole('button', { name: /keyboard.openComment/ }).focus()
+      ;(await screen.findByRole('button', { name: /keyboard.openComment/ })).focus()
       expect(screen.getByRole('button', { name: /keyboard.openComment/ })).toHaveFocus()
       await user.keyboard(key)
 
@@ -216,16 +132,14 @@ describe('Comment keyboard focus lifecycle', () => {
     'closes %s before the thread and restores its marker on the next Escape',
     async (surface) => {
       const user = userEvent.setup()
-      const { store } = renderCommentCanvas()
+      const { queryClient } = renderCommentCanvas()
       act(() => {
-        store
-          .getState()
-          .setMentionableUsersCache('app-1', [
-            { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
-          ])
+        seedMentionableUsers(queryClient, [
+          { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+        ])
       })
 
-      screen.getByRole('button', { name: /keyboard.openComment/ }).focus()
+      ;(await screen.findByRole('button', { name: /keyboard.openComment/ })).focus()
       await user.keyboard('{Enter}')
       const reply = await screen.findByRole('textbox')
       await waitFor(() => expect(reply).toHaveFocus())
@@ -270,7 +184,7 @@ describe('Comment keyboard focus lifecycle', () => {
       },
     }
     renderCommentCanvas([comment, otherComment])
-    screen.getAllByRole('button', { name: /keyboard.openComment/ })[0]!.focus()
+    ;(await screen.findAllByRole('button', { name: /keyboard.openComment/ }))[0]!.focus()
     await user.keyboard('{Enter}')
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
 
@@ -292,7 +206,7 @@ describe('Comment keyboard focus lifecycle', () => {
   it('closes safely when comment markers have been hidden', async () => {
     const user = userEvent.setup()
     const { store } = renderCommentCanvas()
-    screen.getAllByRole('button', { name: /keyboard.openComment/ })[0]!.focus()
+    ;(await screen.findAllByRole('button', { name: /keyboard.openComment/ }))[0]!.focus()
     await user.keyboard('{Enter}')
     const reply = await screen.findByRole('textbox')
     await waitFor(() => expect(reply).toHaveFocus())

@@ -7,14 +7,15 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { WorkflowContext } from '../context'
 import { EditorResourceScope } from '../editor-resource/provider'
 import { createWorkflowStore } from '../store'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { MentionInput } from './mention-input'
 
 const render = (ui: ReactElement, cachedUsers?: UserProfile[]) => {
   const store = createWorkflowStore({})
-  if (cachedUsers) store.getState().setMentionableUsersCache('app-1', cachedUsers)
-  const { wrapper } = createConsoleQueryWrapper({
+  const { wrapper, queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1', name: 'Me', avatar_url: null },
   })
+  if (cachedUsers) seedMentionableUsers(queryClient, cachedUsers)
   return renderComponent(
     <EditorResourceScope
       resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
@@ -28,10 +29,10 @@ const mockFetchMentionableUsers = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflow.comments.mentionUsers.get': (...args: unknown[]) =>
         mockFetchMentionableUsers(...args),
     }),

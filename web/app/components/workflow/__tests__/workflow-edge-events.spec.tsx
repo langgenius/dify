@@ -54,12 +54,21 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflow.comments.get': api.comments,
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+      'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
+      'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
+      'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': api.resolveComment,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflow.comments.get': api.comments,
       'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
       'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
       'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
@@ -550,9 +559,8 @@ it('closes the thread through its popover when the last comment is deleted', asy
       screen.queryByRole('dialog', { name: 'workflowComments.comments.panelTitle' }),
     ).not.toBeInTheDocument(),
   )
-  // The detail stayed until the popover finished closing, then the canvas let it go.
+  // The thread showed the comment until it finished closing, then the selection ended.
   expect(store.getState().activeCommentId).toBeNull()
-  expect(store.getState().activeCommentDetail).toBeNull()
   expect(
     screen.queryByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
   ).not.toBeInTheDocument()

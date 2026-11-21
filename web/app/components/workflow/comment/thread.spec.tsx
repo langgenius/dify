@@ -6,22 +6,19 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
 
 const render = (ui: ReactElement) => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1', name: 'Alice', avatar_url: 'alice.png' },
   })
+  seedMentionableUsers(queryClient, [
+    { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: 'alice.png' },
+    { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: 'bob.png' },
+  ])
   return renderWorkflowFlowComponent(<div id="workflow-container">{ui}</div>, {
     queryClient,
-    initialStoreState: {
-      mentionableUsersCache: {
-        'app-1': [
-          { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: 'alice.png' },
-          { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: 'bob.png' },
-        ],
-      },
-    },
   })
 }
 

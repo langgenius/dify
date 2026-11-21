@@ -4,6 +4,7 @@ import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 import { CommentInput } from './comment-input'
 import 'reactflow/dist/style.css'
@@ -63,9 +64,9 @@ function renderFixture(draft = false) {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   return render(<Fixture draft={draft} />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
 }
 
@@ -145,9 +146,9 @@ it('keeps the marker size and its tip on the stored point when it becomes select
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   const screen = await render(<SelectableMarker />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
   const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
   await expect.element(marker).toBeVisible()

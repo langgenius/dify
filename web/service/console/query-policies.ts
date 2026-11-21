@@ -1205,6 +1205,83 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflow: {
+            comments: {
+              byCommentId: {
+                resolve: {
+                  post: {
+                    // Resolving shows on the comment at once and is put back if it fails. The
+                    // list, which decides whether the comment stays on the canvas, changes only
+                    // once the server has it. Comments reconcile when the last write settles.
+                    mutationOptions: {
+                      onMutate: async ({ params }, context) => {
+                        const detailKey =
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          })
+                        await context.client.cancelQueries({ queryKey: detailKey })
+                        context.client.setQueryData(detailKey, (detail) =>
+                          detail ? { ...detail, resolved: true } : detail,
+                        )
+                      },
+                      onError: (_error, { params }, _result, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          }),
+                          (detail) => (detail ? { ...detail, resolved: false } : detail),
+                        )
+                      },
+                      onSuccess: (result, { params }, _result, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          }),
+                          (detail) =>
+                            detail
+                              ? {
+                                  ...detail,
+                                  resolved: result.resolved,
+                                  resolved_at: result.resolved_at,
+                                  resolved_by: result.resolved_by,
+                                }
+                              : detail,
+                        )
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                            input: { params: { app_id: params.app_id } },
+                          }),
+                          (list) =>
+                            list
+                              ? {
+                                  ...list,
+                                  data: list.data.map((comment) =>
+                                    comment.id === params.comment_id
+                                      ? { ...comment, resolved: result.resolved }
+                                      : comment,
+                                  ),
+                                }
+                              : list,
+                        )
+                      },
+                      onSettled: (_data, _error, { params }, _result, context) => {
+                        const comments = consoleQuery.apps.byAppId.workflow.comments
+                        if (
+                          context.client.isMutating({
+                            mutationKey: comments.key({ type: 'mutation' }),
+                          }) > 1
+                        )
+                          return
+                        return context.client.invalidateQueries({
+                          queryKey: comments.key({ input: { params: { app_id: params.app_id } } }),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           annotations: {
             byAnnotationId: {
               post: {

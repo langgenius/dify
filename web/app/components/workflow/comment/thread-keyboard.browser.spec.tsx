@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
 
 const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
@@ -67,9 +68,9 @@ it('confirms reply deletion in its menu: cancel returns to the menu button, dele
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   const screen = await render(<Fixture onDelete={onDelete} />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
   const replyInput = screen.getByRole('textbox')
   await expect.element(replyInput).toHaveFocus()
@@ -119,9 +120,9 @@ it('moves focus into the edit field when a reply is edited from its menu, and ba
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   const screen = await render(<Fixture onDelete={() => {}} />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
   await expect.element(screen.getByRole('textbox')).toHaveFocus()
   // Focus the marker first, as a keyboard user who opened the thread from it would have.
@@ -152,15 +153,13 @@ it('closes the mention list before the thread on Escape', async () => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [
+    { id: 'bob', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+  ])
   const screen = await render(
     <CommentThreadFixture comment={comment} onClose={onClose} onReply={() => {}} />,
     {
       queryClient,
-      initialStoreState: {
-        mentionableUsersCache: {
-          'app-1': [{ id: 'bob', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
-        },
-      },
     },
   )
   const reply = screen.getByRole('textbox')

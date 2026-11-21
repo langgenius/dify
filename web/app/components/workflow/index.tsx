@@ -5,7 +5,6 @@ import type { Viewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
-import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
@@ -20,12 +19,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  createPopoverHandle,
-  Popover,
-  PopoverPortal,
-  PopoverPositioner,
-} from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
@@ -66,13 +59,8 @@ import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import CommentManager from './comment-manager'
-import { CommentIcon } from './comment/comment-icon'
-import { CommentInput } from './comment/comment-input'
 import { CommentCursor } from './comment/cursor'
-import { getCommentMarkerId } from './comment/marker-id'
-import { CommentPlacementPreview } from './comment/placement-preview'
-import { CommentThread } from './comment/thread'
-import { commentThreadPlacement } from './comment/thread-placement'
+import { WorkflowCommentLayer } from './comment/workflow-comment-layer'
 import { CUSTOM_EDGE, CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from './constants'
 import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
@@ -88,7 +76,6 @@ import { usePanelInteractions } from './hooks/use-panel-interactions'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
-import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
@@ -284,60 +271,11 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { workflowReadOnly } = useWorkflowReadOnly()
     const { nodesReadOnly } = useNodesReadOnly()
     const { eventEmitter } = useEventEmitterContextContext()
-    const {
-      comments,
-      pendingComment,
-      activeComment,
-      activeCommentLoading,
-      replyUpdating,
-      handleCommentSubmit,
-      handleCommentCancel,
-      handleCommentIconClick,
-      handleCommentReveal,
-      handleCommentReplyRetry,
-      handleCommentReplyDiscard,
-      handleActiveCommentClose,
-      handleActiveCommentClosed,
-      handleCommentResolve,
-      handleCommentDelete,
-      handleCommentUpdate,
-      handleCommentReply,
-      handleCommentReplyUpdate,
-      handleCommentReplyDelete,
-      handleCommentPositionUpdate,
-    } = useWorkflowComment()
-    const showUserComments = useStore((s) => s.showUserComments)
+    const pendingComment = useStore((s) => s.pendingComment)
     const showUserCursors = useStore((s) => s.showUserCursors)
-    const showResolvedComments = useStore((s) => s.showResolvedComments)
     const isCommentPreviewHovering = useStore((s) => s.isCommentPreviewHovering)
     const isCommentPlacing = useStore((s) => s.isCommentPlacing)
-    const setCommentPlacing = useStore((s) => s.setCommentPlacing)
-    const setCommentQuickAdd = useStore((s) => s.setCommentQuickAdd)
-    const setPendingCommentState = useStore((s) => s.setPendingComment)
     const isCommentInputActive = Boolean(pendingComment) || isCommentPlacing
-    const visibleComments = useMemo(() => {
-      if (showResolvedComments) return comments
-      return comments.filter((comment) => !comment.resolved)
-    }, [comments, showResolvedComments])
-    const handleVisibleCommentNavigate = useCallback(
-      (direction: 'prev' | 'next') => {
-        if (!activeComment) return
-        const idx = visibleComments.findIndex((comment) => comment.id === activeComment.id)
-        if (idx === -1) return
-        const target = direction === 'prev' ? visibleComments[idx - 1] : visibleComments[idx + 1]
-        if (target) handleCommentReveal(target)
-      },
-      [activeComment, handleCommentReveal, visibleComments],
-    )
-    const [commentThreadHandle] = useState(() => createPopoverHandle())
-    const activeCommentId = useStore((s) => s.activeCommentId)
-    const activeCommentIndex = activeCommentId
-      ? visibleComments.findIndex((comment) => comment.id === activeCommentId)
-      : -1
-    const isCommentThreadOpen = activeComment !== null && activeCommentIndex !== -1
-    const canGoPrevComment = activeCommentIndex > 0
-    const canGoNextComment =
-      activeCommentIndex !== -1 && activeCommentIndex < visibleComments.length - 1
 
     eventEmitter?.useSubscription((v: EventEmitterValue) => {
       if (typeof v === 'object' && v.type === WORKFLOW_DATA_UPDATE) {
@@ -394,19 +332,6 @@ export const Workflow: FC<WorkflowProps> = memo(
         syncWorkflowDraftOnUnmount()
       }
     }, [])
-
-    const handlePendingCommentPositionChange = useCallback(
-      (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
-        setPendingCommentState(position)
-      },
-      [setPendingCommentState],
-    )
-
-    const handleCommentPlacementCancel = useCallback(() => {
-      setPendingCommentState(null)
-      setCommentPlacing(false)
-      setCommentQuickAdd(false)
-    }, [setCommentPlacing, setCommentQuickAdd, setPendingCommentState])
 
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
@@ -668,95 +593,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           </AlertDialogContent>
         </AlertDialog>
         {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
-        <CommentPlacementPreview
-          onSubmit={handleCommentSubmit}
-          onCancel={handleCommentPlacementCancel}
-        />
-        {pendingComment && (
-          <CommentInput
-            position={{
-              x: pendingComment.elementX,
-              y: pendingComment.elementY,
-            }}
-            onSubmit={handleCommentSubmit}
-            onCancel={handleCommentCancel}
-            onPositionChange={handlePendingCommentPositionChange}
-          />
-        )}
-        {visibleComments.map((comment) =>
-          comment.id === activeComment?.id ||
-          showUserComments ||
-          controlMode === ControlMode.Comment ? (
-            <CommentIcon
-              key={comment.id}
-              comment={comment}
-              threadHandle={commentThreadHandle}
-              isActive={isCommentThreadOpen && comment.id === activeCommentId}
-              onPositionUpdate={handleCommentPositionUpdate}
-            />
-          ) : null,
-        )}
-        <Popover
-          handle={commentThreadHandle}
-          open={isCommentThreadOpen}
-          triggerId={activeCommentId ? getCommentMarkerId(activeCommentId) : null}
-          onOpenChange={(open, eventDetails) => {
-            if (!open) {
-              // A comment's hover preview stands in for its marker: pressing it switches the
-              // thread to that marker instead of closing this one first.
-              const target = eventDetails.event.target
-              if (
-                eventDetails.reason === 'outside-press' &&
-                target instanceof Element &&
-                target.closest('[data-role="comment-preview"]')
-              ) {
-                eventDetails.cancel()
-                return
-              }
-              handleActiveCommentClose()
-              return
-            }
-            const { trigger } = eventDetails
-            const comment = visibleComments.find(
-              (candidate) => getCommentMarkerId(candidate.id) === trigger?.id,
-            )
-            if (comment) handleCommentIconClick(comment)
-          }}
-          onOpenChangeComplete={(open) => {
-            // A thread opened again before the close finished keeps its session.
-            if (!open && !isCommentThreadOpen) handleActiveCommentClosed()
-          }}
-        >
-          <PopoverPortal>
-            <PopoverPositioner {...commentThreadPlacement}>
-              {activeComment && (
-                <CommentThread
-                  comment={activeComment}
-                  loading={activeCommentLoading}
-                  replyUpdating={replyUpdating}
-                  onResolve={() => handleCommentResolve(activeComment.id)}
-                  onDelete={handleCommentDelete}
-                  onCommentEdit={(content, ids) =>
-                    handleCommentUpdate(activeComment.id, content, ids ?? [])
-                  }
-                  onPrev={canGoPrevComment ? () => handleVisibleCommentNavigate('prev') : undefined}
-                  onNext={canGoNextComment ? () => handleVisibleCommentNavigate('next') : undefined}
-                  onReply={(content, ids) =>
-                    handleCommentReply(activeComment.id, content, ids ?? [])
-                  }
-                  onReplyEdit={(replyId, content, ids) =>
-                    handleCommentReplyUpdate(activeComment.id, replyId, content, ids ?? [])
-                  }
-                  onReplyDelete={(replyId) => handleCommentReplyDelete(activeComment.id, replyId)}
-                  onReplyRetry={(replyId) => handleCommentReplyRetry(activeComment.id, replyId)}
-                  onReplyDiscard={(replyId) => handleCommentReplyDiscard(activeComment.id, replyId)}
-                  canGoPrev={canGoPrevComment}
-                  canGoNext={canGoNextComment}
-                />
-              )}
-            </PopoverPositioner>
-          </PopoverPortal>
-        </Popover>
+        <WorkflowCommentLayer />
         {children}
         <WorkflowContextmenu>
           <WorkflowCanvas

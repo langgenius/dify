@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../__tests__/workflow-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentInput } from './comment-input'
 
 const mockConsoleState = vi.hoisted(() => ({
@@ -19,14 +20,12 @@ const mockConsoleState = vi.hoisted(() => ({
 const render = (ui: ReactElement) => {
   const queryClient = createConsoleQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  seedMentionableUsers(queryClient, [
+    { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: '' },
+  ])
   return renderWorkflowComponent(ui, {
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     queryClient,
-    initialStoreState: {
-      mentionableUsersCache: {
-        'app-1': [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: '' }],
-      },
-    },
   })
 }
 

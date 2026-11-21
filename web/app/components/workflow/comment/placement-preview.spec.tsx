@@ -1,11 +1,17 @@
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../__tests__/workflow-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentPlacementPreview } from './placement-preview'
 
 function renderPlacement(placing = true) {
   const onCancel = vi.fn()
+  const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient, { id: 'user-1', name: 'Alice', avatar_url: null })
+  seedMentionableUsers(queryClient, [])
   const result = renderWorkflowComponent(
     <HotkeysProvider>
       <button>Canvas action</button>
@@ -13,7 +19,7 @@ function renderPlacement(placing = true) {
       <input aria-label="Node input" />
       <CommentPlacementPreview onSubmit={vi.fn()} onCancel={onCancel} />
     </HotkeysProvider>,
-    { initialStoreState: { isCommentPlacing: placing, mentionableUsersCache: { 'app-1': [] } } },
+    { initialStoreState: { isCommentPlacing: placing }, queryClient },
   )
   return { ...result, onCancel }
 }

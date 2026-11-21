@@ -13,17 +13,26 @@ import {
 } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
+import {
+  editorAppIdAtom,
+  editorCollaborationEnabledAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useWorkflowComment } from '../../hooks/use-workflow-comment'
+import { consoleQuery } from '@/service/console'
 
 type CommentFilter = 'all' | 'mine'
+
+const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
 const CommentsPanel = () => {
   const { t } = useTranslation(['common', 'workflowComments'])
@@ -32,17 +41,22 @@ const CommentsPanel = () => {
   const setControlMode = useStore((s) => s.setControlMode)
   const showResolvedComments = useStore((s) => s.showResolvedComments)
   const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
-  const { comments, loading, handleCommentReveal, handleCommentResolve } = useWorkflowComment()
+  const appId = useAtomValue(editorAppIdAtom)
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
+    ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      enabled: isCollaborationEnabled,
+    }),
+    select: (list) => list.data,
+  })
+  const resolveComment = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.resolve.post.mutationOptions(),
+  )
+  const revealComment = useRevealComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
-
-  const handleSelect = useCallback(
-    (comment: WorkflowCommentBasic) => {
-      handleCommentReveal(comment)
-    },
-    [handleCommentReveal],
-  )
 
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -57,14 +71,14 @@ const CommentsPanel = () => {
     return data
   }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
-  const handleResolve = useCallback(
-    async (comment: WorkflowCommentBasic) => {
-      if (comment.resolved) return
-      // Resolving leaves the selection alone; the user may have opened another thread since.
-      await handleCommentResolve(comment.id)
-    },
-    [handleCommentResolve],
-  )
+  // Resolving leaves the selection alone; the user may have opened another thread since.
+  const handleResolve = (comment: WorkflowCommentBasic) => {
+    if (comment.resolved || !appId) return
+    resolveComment.mutate(
+      { params: { app_id: appId, comment_id: comment.id } },
+      { onSuccess: () => collaborationManager.emitCommentsUpdate(appId) },
+    )
+  }
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments
 
@@ -147,7 +161,7 @@ const CommentsPanel = () => {
                 'group mb-2 cursor-pointer rounded-xl bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover',
                 isActive && 'bg-components-panel-on-panel-item-bg-hover',
               )}
-              onClick={() => handleSelect(c)}
+              onClick={() => revealComment(c)}
             >
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">

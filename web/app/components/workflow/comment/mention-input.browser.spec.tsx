@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { MentionInput } from './mention-input'
 
 const users = [
@@ -33,10 +34,10 @@ async function renderDraft(props: Parameters<typeof Draft>[0] = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, users)
   const screen = await render(<Draft {...props} />, {
     queryClient,
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    initialStoreState: { mentionableUsersCache: { 'app-1': users } },
   })
   const textarea = screen.getByPlaceholder('Draft')
   await textarea.click()

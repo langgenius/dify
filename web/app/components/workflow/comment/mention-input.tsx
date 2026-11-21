@@ -10,7 +10,8 @@ import {
   PopoverPortal,
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import {
   forwardRef,
   memo,
@@ -25,12 +26,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { CommentComposerActions } from './comment-composer'
 import { highlightMentions } from './mention-highlight'
 import { toCommentCollaborator } from './participants'
-import { useMentionableUsers } from './use-mentionable-users'
 
 type MentionInputProps = {
   value: string
@@ -77,11 +79,14 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     // Expose textarea ref to parent component
     useImperativeHandle(forwardedRef, () => textareaRef.current!, [])
 
-    const mentionUsersFromStore = useMentionableUsers()
-    const mentionUsers = useMemo(
-      () => mentionUsersFromStore ?? EMPTY_USERS,
-      [mentionUsersFromStore],
+    const appId = useAtomValue(editorAppIdAtom)
+    const { data: mentionableUsers } = useQuery(
+      consoleQuery.apps.byAppId.workflow.comments.mentionUsers.get.queryOptions({
+        input: appId ? { params: { app_id: appId } } : skipToken,
+        select: (response) => response.users,
+      }),
     )
+    const mentionUsers = useMemo(() => mentionableUsers ?? EMPTY_USERS, [mentionableUsers])
 
     const [showMentionDropdown, setShowMentionDropdown] = useState(false)
     const [mentionQuery, setMentionQuery] = useState('')

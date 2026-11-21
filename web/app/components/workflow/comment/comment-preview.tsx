@@ -2,16 +2,18 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatarStack } from '../collaboration/components/collaborator-avatar'
 import { useStore } from '../store'
 import { highlightMentions } from './mention-highlight'
 import { getCommentParticipants } from './participants'
-import { useMentionableUsers } from './use-mentionable-users'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentBasic
@@ -21,7 +23,13 @@ type CommentPreviewProps = {
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { t } = useTranslation(['workflowComments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const mentionUsers = useMentionableUsers()
+  const appId = useAtomValue(editorAppIdAtom)
+  const { data: mentionUsers } = useQuery(
+    consoleQuery.apps.byAppId.workflow.comments.mentionUsers.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (response) => response.users,
+    }),
+  )
   const mentionNames = useMemo(
     () => (mentionUsers ?? []).map((user) => user.name).filter(Boolean),
     [mentionUsers],

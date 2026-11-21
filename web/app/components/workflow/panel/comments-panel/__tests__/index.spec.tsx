@@ -53,10 +53,10 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflow.comments.get': async () => ({ data: commentFixtures }),
       'apps.byAppId.workflow.comments.byCommentId.get': async ({
         params,
@@ -99,12 +99,7 @@ it('filters to the current user and routes the chosen thread', async () => {
   )
   expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
   await user.click(screen.getByText('my open thread'))
-  await waitFor(() => expect(store.getState().activeCommentDetailLoading).toBe(false))
-  expect(store.getState()).toMatchObject({
-    activeCommentId: 'c-1',
-    activeCommentDetail: { id: 'c-1', content: 'my open thread', replies: [], mentions: [] },
-    commentDetailCache: { 'c-1': { id: 'c-1' } },
-  })
+  expect(store.getState().activeCommentId).toBe('c-1')
 })
 
 it('hides and restores resolved comments when the filter changes', async () => {

@@ -1,6 +1,7 @@
 import { page } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentInput } from './comment-input'
 
 const renderDraft = async (x: number, y = 200) => {
@@ -8,6 +9,7 @@ const renderDraft = async (x: number, y = 200) => {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   const screen = await render(
     <div style={{ position: 'relative', width: 900, height: 500 }}>
       <CommentInput position={{ x, y }} onSubmit={() => {}} onCancel={() => {}} />
@@ -15,7 +17,6 @@ const renderDraft = async (x: number, y = 200) => {
     {
       queryClient,
       initialStoreState: {
-        mentionableUsersCache: { 'app-1': [] },
         workflowCanvasWidth: 900,
         rightPanelWidth: 400,
       },
