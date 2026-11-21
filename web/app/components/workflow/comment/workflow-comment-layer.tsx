@@ -205,7 +205,7 @@ export function WorkflowCommentLayer() {
           mentioned_user_ids: mentionedUserIds,
         },
       })
-      workflowStore.setState({ pendingComment: null, isCommentQuickAdd: false })
+      workflowStore.getState().setPendingComment(null)
     } catch (error) {
       console.error('Failed to create comment:', error)
     }
@@ -295,9 +295,7 @@ export function WorkflowCommentLayer() {
         <CommentInput
           position={{ x: pendingComment.elementX, y: pendingComment.elementY }}
           onSubmit={submitComment}
-          onCancel={() =>
-            workflowStore.setState({ pendingComment: null, isCommentQuickAdd: false })
-          }
+          onCancel={() => workflowStore.getState().setPendingComment(null)}
           onPositionChange={moveDraft}
         />
       )}
@@ -338,7 +336,7 @@ export function WorkflowCommentLayer() {
             (candidate) => getCommentMarkerId(candidate.id) === eventDetails.trigger?.id,
           )
           if (comment) {
-            workflowStore.setState({ pendingComment: null })
+            workflowStore.getState().setPendingComment(null)
             setActiveCommentId(comment.id)
           }
         }}
