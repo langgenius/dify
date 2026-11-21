@@ -31,6 +31,16 @@ import useGenData from './use-gen-data'
 
 const i18nPrefix = 'generate'
 
+// The auto-generation modal receives the app's model mode through the
+// configuration context, and for Agent apps that value is the app mode
+// 'agent-chat' — not a valid LLM mode. The backend validates
+// `model_config.mode` against `LLMMode` ('chat' | 'completion'), so an
+// unmapped 'agent-chat' fails /rule-generate with HTTP 400. Map it to
+// 'chat'; every other mode passes through unchanged.
+const normalizeInitialModelMode = (mode: ModelModeType): ModelModeType => {
+  return (mode as string) === 'agent-chat' ? 'chat' : mode
+}
+
 type IGetAutomaticResProps = {
   modelMode: ModelModeType
   isShow: boolean
@@ -85,7 +95,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: modelMode,
+      mode: normalizeInitialModelMode(modelMode),
       completion_params: {} as CompletionParams,
     }
   }, [defaultModel, modelMode, selectedModel, storedModel])
