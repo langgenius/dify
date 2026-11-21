@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import builtins
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from http import HTTPMethod
+from typing import Concatenate
 from unittest.mock import Mock
 
 import pytest
@@ -82,8 +84,23 @@ def openapi_app() -> Flask:
 
 
 @pytest.fixture
-def database_session(sqlite_session: Session):
+def database_session(sqlite_session: Session) -> Session:
     return sqlite_session
+
+
+def _handler[**P, R](api: object, method: str) -> Callable[Concatenate[object, P], R]:
+    """Return the undecorated view `@endpoint` stashed on the decorated one.
+
+    `_contract.py` attaches `__handler__` at decoration time, so it is absent from
+    the wrapped function's static type; reading it out of the attribute dict keeps
+    the access honest instead of suppressing the diagnostic. `Concatenate[object, P]`
+    carries the instance the view is called with, mirroring how the decorator stores
+    an unbound function.
+    """
+    view = type(api).__dict__[method]
+    handler: object = vars(view)["__handler__"]
+    assert callable(handler)
+    return handler
 
 
 def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
@@ -173,7 +190,7 @@ def _assert_validation_422(resp: TestResponse) -> None:
     ],
     ids=["invite.bad_email", "invite.extra_field", "role.extra_field"],
 )
-def test_payload_models_reject(model: type[BaseModel], payload: dict[str, object]):
+def test_payload_models_reject(model: type[BaseModel], payload: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         model.model_validate(payload)
 
@@ -202,7 +219,7 @@ def test_payload_models_reject(model: type[BaseModel], payload: dict[str, object
 )
 def test_invalid_request_is_422_on_the_wire(
     admitted_bearer: AdmittedWorld, method: HTTPMethod, path: str, body: dict[str, object] | None
-):
+) -> None:
     """Owner is not assignable, query models are `extra='forbid'`, and the form
     submit needs an action: each surfaces as 422 from `@accepts` inside the guard.
     """
@@ -225,7 +242,7 @@ def test_invalid_request_is_422_on_the_wire(
 # ---------------------------------------------------------------------------
 
 
-def test_members_list_returns_normalized_rows(database_session: Session):
+def test_members_list_returns_normalized_rows(database_session: Session) -> None:
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     member_id = str(uuid.uuid4())
@@ -239,7 +256,7 @@ def test_members_list_returns_normalized_rows(database_session: Session):
     members[0].name = "Mia"
     _persist_caller(database_session, acct_id)
 
-    result = api.get.__handler__(
+    result = _handler(api, "get")(
         api,
         _context(database_session, acct_id, ws_id),
         workspace_id=ws_id,
@@ -255,7 +272,7 @@ def test_members_list_returns_normalized_rows(database_session: Session):
     assert result.data[0].status == "active"
 
 
-def test_members_list_paginates_with_query_params(database_session: Session):
+def test_members_list_paginates_with_query_params(database_session: Session) -> None:
     """`page=2&limit=2` slices service output and reports total/has_more."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
@@ -266,7 +283,7 @@ def test_members_list_paginates_with_query_params(database_session: Session):
     _persist_workspace(database_session, ws_id, memberships)
     _persist_caller(database_session, acct_id)
 
-    result = api.get.__handler__(
+    result = _handler(api, "get")(
         api,
         _context(database_session, acct_id, ws_id),
         workspace_id=ws_id,
@@ -280,7 +297,9 @@ def test_members_list_paginates_with_query_params(database_session: Session):
     assert [d.id for d in result.data] == member_ids[2:4]
 
 
-def test_members_list_next_page_hint_reaches_the_wire(admitted_bearer: AdmittedWorld, database_session: Session):
+def test_members_list_next_page_hint_reaches_the_wire(
+    admitted_bearer: AdmittedWorld, database_session: Session
+) -> None:
     for i in range(4):
         member_id = str(uuid.uuid4())
         database_session.add_all(
@@ -336,7 +355,7 @@ def test_invite_happy_path_returns_invite_url_and_member_id(
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
     )
 
-    result = api.post.__handler__(
+    result = _handler(api, "post")(
         api,
         _context(database_session, acct_id, ws_id),
         workspace_id=ws_id,
@@ -442,7 +461,9 @@ def test_invitation_permission_rejection_precedes_quota_lookup(
     ],
     ids=["already_in_tenant", "register_error", "invalid_role"],
 )
-def test_invite_400_on_registration_refusal(monkeypatch: pytest.MonkeyPatch, database_session: Session, exc: Exception):
+def test_invite_400_on_registration_refusal(
+    monkeypatch: pytest.MonkeyPatch, database_session: Session, exc: Exception
+) -> None:
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -458,7 +479,7 @@ def test_invite_400_on_registration_refusal(monkeypatch: pytest.MonkeyPatch, dat
     )
 
     with pytest.raises(BadRequest):
-        api.post.__handler__(
+        _handler(api, "post")(
             api,
             _context(database_session, acct_id, ws_id),
             workspace_id=ws_id,
@@ -489,7 +510,7 @@ def test_delete_member_happy_path(
     )
 
     path_member_id = _member_id_variant(member_id, member_id_format)
-    result = api.delete.__handler__(
+    result = _handler(api, "delete")(
         api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=path_member_id
     )
 
@@ -507,7 +528,9 @@ def test_delete_member_happy_path(
         (AccountNotFoundError(), NotFound),
     ],
 )
-def test_delete_member_exception_mapping(monkeypatch, exc, expected, database_session: Session):
+def test_delete_member_exception_mapping(
+    monkeypatch: pytest.MonkeyPatch, exc: Exception, expected: type[Exception], database_session: Session
+) -> None:
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -524,7 +547,9 @@ def test_delete_member_exception_mapping(monkeypatch, exc, expected, database_se
     monkeypatch.setattr(workspaces_module.application_services().workspaces.members, "remove", Mock(side_effect=exc))
 
     with pytest.raises(expected):
-        api.delete.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id)
+        _handler(api, "delete")(
+            api, _context(database_session, acct_id, ws_id), workspace_id=ws_id, member_id=member_id
+        )
 
 
 @pytest.mark.parametrize("method", ["delete", "patch"])
@@ -542,10 +567,10 @@ def test_member_mutation_404_when_account_missing(database_session: Session, met
     ctx = _context(database_session, acct_id, ws_id)
     if method == "delete":
         with pytest.raises(NotFound, match="member not found"):
-            api.delete.__handler__(api, ctx, workspace_id=ws_id, member_id=member_id)
+            _handler(api, "delete")(api, ctx, workspace_id=ws_id, member_id=member_id)
     else:
         with pytest.raises(NotFound, match="member not found"):
-            api.patch.__handler__(
+            _handler(api, "patch")(
                 api,
                 ctx,
                 workspace_id=ws_id,
@@ -576,7 +601,7 @@ def test_update_role_happy_path(
         ],
     )
 
-    result = api.patch.__handler__(
+    result = _handler(api, "patch")(
         api,
         _context(database_session, acct_id, ws_id),
         workspace_id=ws_id,
@@ -671,7 +696,9 @@ def test_malformed_member_id_returns_404(admitted_bearer: AdmittedWorld, method:
         (AccountNotFoundError(), NotFound),
     ],
 )
-def test_update_role_exception_mapping(monkeypatch, exc, expected, database_session: Session):
+def test_update_role_exception_mapping(
+    monkeypatch: pytest.MonkeyPatch, exc: Exception, expected: type[Exception], database_session: Session
+) -> None:
     ws_id, member_id = str(uuid.uuid4()), str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMemberApi()
@@ -690,7 +717,7 @@ def test_update_role_exception_mapping(monkeypatch, exc, expected, database_sess
     )
 
     with pytest.raises(expected):
-        api.patch.__handler__(
+        _handler(api, "patch")(
             api,
             _context(database_session, acct_id, ws_id),
             workspace_id=ws_id,
