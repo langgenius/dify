@@ -47,7 +47,7 @@ function Fixture({ draft = false }: { draft?: boolean }) {
           <CommentMarkerFixture
             comment={current}
             onOpen={() => setOpened(true)}
-            onPositionUpdate={(next) =>
+            onPositionUpdate={(_commentId, next) =>
               setCurrent((value) => ({ ...value, position_x: next.x, position_y: next.y }))
             }
           />

@@ -692,7 +692,7 @@ export const Workflow: FC<WorkflowProps> = memo(
               comment={comment}
               threadHandle={commentThreadHandle}
               isActive={isCommentThreadOpen && comment.id === activeCommentId}
-              onPositionUpdate={(position) => handleCommentPositionUpdate(comment.id, position)}
+              onPositionUpdate={handleCommentPositionUpdate}
             />
           ) : null,
         )}

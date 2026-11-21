@@ -21,7 +21,8 @@ type CommentIconProps = {
   /** The canvas's comment thread popover; the marker is one of its triggers. */
   threadHandle: PopoverHandle<unknown>
   isActive?: boolean
-  onPositionUpdate?: (position: { x: number; y: number }) => void
+  /** Called with the marker's comment, so the canvas can pass one stable handler to all. */
+  onPositionUpdate?: (commentId: string, position: { x: number; y: number }) => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(
@@ -38,7 +39,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const isAuthor = comment.created_by_account?.id === currentUserId
     const [showPreview, setShowPreview] = useState(false)
     const previewOpen = showPreview && !isActive
-    // The preview mounts on its first hover and then stays, so it can animate closed too.
+    // The preview mounts when it opens and unmounts once its close transition ends, so it
+    // can animate both ways without every hovered marker keeping a hidden preview.
     const [previewMounted, setPreviewMounted] = useState(false)
     if (previewOpen && !previewMounted) setPreviewMounted(true)
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
@@ -50,8 +52,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       if (!position) return
       keyboardPositionRef.current = null
       setDragPosition(null)
-      onPositionUpdate?.(position)
-    }, [onPositionUpdate])
+      onPositionUpdate?.(comment.id, position)
+    }, [comment.id, onPositionUpdate])
     const dragStateRef = useRef<{
       offsetX: number
       offsetY: number
@@ -182,13 +184,14 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               x: finalScreenPosition.x,
               y: finalScreenPosition.y,
             })
-            onPositionUpdate(flowPosition)
+            onPositionUpdate(comment.id, flowPosition)
           }
         } else if (event.currentTarget.dataset.role === 'comment-preview' && !isActive) {
           threadHandle.open(markerId)
         }
       },
       [
+        comment.id,
         dragPosition,
         finishDrag,
         isActive,
@@ -318,7 +321,16 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         {previewMounted && (
           <div
             data-open={previewOpen || undefined}
-            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:scale-95 not-data-open:opacity-0 not-data-open:duration-100 motion-reduce:not-data-open:scale-100 starting:scale-95 starting:opacity-0 motion-reduce:starting:scale-100"
+            onTransitionEnd={(event) => {
+              // Opening transitions visibility too; only a finished close unmounts.
+              if (
+                !previewOpen &&
+                event.target === event.currentTarget &&
+                event.propertyName === 'visibility'
+              )
+                setPreviewMounted(false)
+            }}
+            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:opacity-0 not-data-open:duration-100 motion-safe:not-data-open:scale-95 starting:opacity-0 motion-safe:starting:scale-95"
             style={{
               left: canvasPosition.x,
               top: canvasPosition.y,
@@ -338,16 +350,6 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           </div>
         )}
       </>
-    )
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.comment.id === nextProps.comment.id &&
-      prevProps.comment.position_x === nextProps.comment.position_x &&
-      prevProps.comment.position_y === nextProps.comment.position_y &&
-      prevProps.threadHandle === nextProps.threadHandle &&
-      prevProps.isActive === nextProps.isActive &&
-      prevProps.onPositionUpdate === nextProps.onPositionUpdate
     )
   },
 )

@@ -56,7 +56,7 @@ describe('CommentIcon', () => {
         <CommentMarkerFixture
           comment={comment}
           onOpen={onClick}
-          onPositionUpdate={(position) => {
+          onPositionUpdate={(_commentId, position) => {
             onPositionUpdate(position)
             setComment((current) => ({
               ...current,
@@ -170,7 +170,7 @@ describe('CommentIcon', () => {
 
     fireEvent.click(marker)
 
-    expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith({ x: 5, y: 5 })
+    expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith(expect.any(String), { x: 5, y: 5 })
     expect(onClick).not.toHaveBeenCalled()
   })
 

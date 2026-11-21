@@ -3,7 +3,7 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -36,9 +36,16 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
     () => getCommentParticipants(comment, currentUserId),
     [comment, currentUserId],
   )
+  // The hover flag is shared by every preview, so a preview only clears it on unmount if
+  // it is the one being hovered.
+  const hoveringRef = useRef(false)
+  const setHovering = (hovering: boolean) => {
+    hoveringRef.current = hovering
+    setCommentPreviewHovering(hovering)
+  }
   useEffect(
     () => () => {
-      setCommentPreviewHovering(false)
+      if (hoveringRef.current) setCommentPreviewHovering(false)
     },
     [setCommentPreviewHovering],
   )
@@ -47,8 +54,8 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
     <div
       className="flex w-70 cursor-pointer flex-col gap-2 rounded-3xl rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[5px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
-      onMouseEnter={() => setCommentPreviewHovering(true)}
-      onMouseLeave={() => setCommentPreviewHovering(false)}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
     >
       <CollaboratorAvatarStack collaborators={participants} />
       <div className="flex flex-col gap-1">

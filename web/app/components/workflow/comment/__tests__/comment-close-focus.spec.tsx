@@ -96,7 +96,7 @@ function CommentCanvas() {
             comment={item}
             threadHandle={threadHandle}
             isActive={open && item.id === activeCommentId}
-            onPositionUpdate={(position) => handleCommentPositionUpdate(item.id, position)}
+            onPositionUpdate={handleCommentPositionUpdate}
           />
         ) : null,
       )}

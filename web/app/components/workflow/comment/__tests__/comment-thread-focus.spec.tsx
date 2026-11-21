@@ -101,7 +101,7 @@ describe('Comment thread focus', () => {
             comment={comment}
             threadHandle={handle}
             isActive={opened}
-            onPositionUpdate={(position) => {
+            onPositionUpdate={(_commentId, position) => {
               onPositionUpdate(position)
               setComment((current) => ({
                 ...current,
