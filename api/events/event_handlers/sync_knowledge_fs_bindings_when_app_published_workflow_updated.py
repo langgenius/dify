@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from core.db.session_factory import session_factory
 from domain.workflow.agent_node import is_dify_agent_node_data
 from events.app_event import app_published_workflow_was_updated
-from extensions.ext_database import db
 from models.knowledge_fs import AppKnowledgeFSSpaceJoin, KnowledgeFSAppSpaceJoinType
 from models.model import App
 from models.workflow import Workflow
@@ -18,10 +17,17 @@ from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 
 @app_published_workflow_was_updated.connect
-def handle(sender: object, **kwargs: object) -> None:
+def handle(sender: object, *, session: Session, **kwargs: object) -> None:
+    """Sync the app's KnowledgeFS workflow bindings inside the caller's publish transaction.
+
+    Preconditions: ``sender`` is the published ``App``, ``kwargs["published_workflow"]`` is the
+    newly published ``Workflow``, and ``session`` is the open session that is publishing it.
+    Postconditions: every read, flush, and binding sync goes through ``session``; this handler
+    does not commit, so the publish caller owns the transaction. When the workflow references no
+    control spaces and the app has no workflow binding, no sync is requested.
+    """
     app = cast(App, sender)
     published_workflow = cast(Workflow, kwargs["published_workflow"])
-    publish_session = cast(Session | None, kwargs.get("session"))
     control_space_ids = get_control_space_ids_from_workflow(published_workflow)
 
     # Agent bindings are copied to the published Workflow before this signal.
@@ -31,20 +37,18 @@ def handle(sender: object, **kwargs: object) -> None:
         isinstance(node, dict) and isinstance(node.get("data"), dict) and is_dify_agent_node_data(node["data"])
         for node in graph.get("nodes", [])
     ):
-        lookup_session = publish_session if publish_session is not None else cast(Session, db.session)
-        lookup_session.flush()
+        session.flush()
         control_space_ids = tuple(
             dict.fromkeys(
                 (
                     *control_space_ids,
-                    *collect_workflow_agent_knowledge_space_ids(session=lookup_session, workflow=published_workflow),
+                    *collect_workflow_agent_knowledge_space_ids(session=session, workflow=published_workflow),
                 )
             )
         )
 
     if not control_space_ids:
-        lookup_session = publish_session if publish_session is not None else cast(Session, db.session)
-        existing_binding = lookup_session.scalar(
+        existing_binding = session.scalar(
             select(AppKnowledgeFSSpaceJoin.id)
             .where(
                 AppKnowledgeFSSpaceJoin.tenant_id == app.tenant_id,
@@ -57,21 +61,13 @@ def handle(sender: object, **kwargs: object) -> None:
             return
 
     runtime = get_knowledge_fs_runtime(session_factory.get_session_maker())
-    if publish_session is None:
-        runtime.app_bindings.sync_workflow_bindings(
-            tenant_id=app.tenant_id,
-            actor_account_id=published_workflow.created_by,
-            app_id=app.id,
-            control_space_ids=list(control_space_ids),
-        )
-    else:
-        runtime.app_bindings.sync_workflow_bindings(
-            tenant_id=app.tenant_id,
-            actor_account_id=published_workflow.created_by,
-            app_id=app.id,
-            control_space_ids=list(control_space_ids),
-            session=publish_session,
-        )
+    runtime.app_bindings.sync_workflow_bindings(
+        tenant_id=app.tenant_id,
+        actor_account_id=published_workflow.created_by,
+        app_id=app.id,
+        control_space_ids=list(control_space_ids),
+        session=session,
+    )
 
 
 def get_control_space_ids_from_workflow(published_workflow: Workflow) -> tuple[str, ...]:
