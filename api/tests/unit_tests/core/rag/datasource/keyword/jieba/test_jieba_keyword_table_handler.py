@@ -126,3 +126,27 @@ def test_expand_tokens_with_subtokens_filters_stopwords_from_subtokens() -> None
     assert "alpha" in expanded
     assert "beta" in expanded
     assert "during" not in expanded
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("パスワードのリセット方法", {"パスワード", "リセット", "方法"}),
+        ("ＡＷＳのＥＣ２インスタンスを再起動する手順", {"AWS", "EC2"}),
+        ("ﾊﾟｽﾜｰﾄﾞのリセット方法", {"パスワード", "リセット", "方法"}),
+    ],
+)
+def test_extract_keywords_keeps_katakana_and_full_width_alphanumerics(text: str, expected: set[str]) -> None:
+    handler = JiebaKeywordTableHandler()
+
+    keywords = handler.extract_keywords(text, max_keywords_per_chunk=10)
+
+    assert expected <= keywords
+    assert not any(keyword.startswith("zzdifykeyword") for keyword in keywords)
+
+
+def test_protect_multilingual_tokens_leaves_plain_text_unchanged() -> None:
+    protected, replacements = JiebaKeywordTableHandler._protect_multilingual_tokens("hello world")
+
+    assert protected == "hello world"
+    assert replacements == {}
