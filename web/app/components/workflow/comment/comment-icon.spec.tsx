@@ -138,6 +138,18 @@ describe('CommentIcon', () => {
     expect(hovered).toHaveAttribute('data-open')
     await user.keyboard('{Escape}')
     expect(hovered).not.toHaveAttribute('data-open')
+
+    // The marker under the pointer does not reopen a dismissed preview until it is left.
+    const avatar = within(
+      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
+    ).getByRole('img', { name: 'Alice' })
+    fireEvent.mouseEnter(avatar)
+    expect(screen.queryByText('Hello')?.closest('[data-open]') ?? null).toBeNull()
+    await user.unhover(avatar)
+    await user.hover(avatar)
+    expect(screen.getByText('Hello').closest('[data-role="comment-preview"]')).toHaveAttribute(
+      'data-open',
+    )
   })
 
   it('converts pointer movement through the zoomed canvas before saving the authored position', () => {

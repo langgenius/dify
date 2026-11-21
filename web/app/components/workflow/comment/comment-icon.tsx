@@ -237,22 +237,34 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       [finishDrag],
     )
 
-    const handleMouseEnter = useCallback(() => {
-      if (isActive || isDragging) return
+    // A preview dismissed with Escape while the pointer is on it stays closed until the
+    // pointer leaves the marker; otherwise the marker under the pointer would reopen it.
+    const pointerOverRef = useRef(false)
+    const dismissedRef = useRef(false)
+    const openPreview = useCallback(() => {
+      if (isActive || isDragging || dismissedRef.current) return
       setShowPreview(true)
     }, [isActive, isDragging])
+    const handleMouseEnter = useCallback(() => {
+      pointerOverRef.current = true
+      openPreview()
+    }, [openPreview])
 
     // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
     useEffect(() => {
       if (!previewOpen) return
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') setShowPreview(false)
+        if (event.key !== 'Escape') return
+        dismissedRef.current = pointerOverRef.current
+        setShowPreview(false)
       }
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }, [previewOpen])
 
     const handleMouseLeave = useCallback(() => {
+      pointerOverRef.current = false
+      dismissedRef.current = false
       setShowPreview(false)
     }, [])
 
@@ -309,10 +321,11 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
           // Keyboard focus previews the comment like hovering does.
           onFocus={(event) => {
-            if (event.currentTarget.matches(':focus-visible')) handleMouseEnter()
+            if (event.currentTarget.matches(':focus-visible')) openPreview()
           }}
           onBlur={() => {
             finishKeyboardMove()
+            dismissedRef.current = false
             setShowPreview(false)
           }}
           onKeyUp={(event) => {
@@ -354,8 +367,15 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}
-            onMouseEnter={() => setShowPreview(true)}
-            onMouseLeave={() => setShowPreview(false)}
+            onMouseEnter={() => {
+              pointerOverRef.current = true
+              setShowPreview(true)
+            }}
+            onMouseLeave={() => {
+              // Leaving the preview may land back on the marker, so the dismissal holds.
+              pointerOverRef.current = false
+              setShowPreview(false)
+            }}
           >
             <CommentPreview
               comment={comment}

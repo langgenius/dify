@@ -97,7 +97,7 @@ const CommentsPanel = () => {
                 </IconButton>
               }
             />
-            <MenuContent align="end">
+            <MenuContent align="end" alignOffset={-17} sideOffset={12} className="min-w-46">
               <MenuRadioGroup<CommentFilter>
                 value={showOnlyMine ? 'mine' : 'all'}
                 onValueChange={(value) => setShowOnlyMine(value === 'mine')}
