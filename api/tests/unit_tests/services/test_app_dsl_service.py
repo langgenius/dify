@@ -370,6 +370,37 @@ def test_extract_workflow_dependencies_skips_workspace_tool_providers() -> None:
     assert AppDslService._extract_dependencies_from_workflow_graph(graph) == ["langgenius/time"]
 
 
+def test_extract_workflow_dependencies_ignores_a_rules_decision_model() -> None:
+    """F6: only an llm-mode decision node uses its model; rules mode keeps a leftover one."""
+    graph: dict[str, object] = {
+        "nodes": [
+            {
+                "data": {
+                    "type": "decision",
+                    "title": "Decision",
+                    "decide_by": "rules",
+                    "model": {
+                        "provider": "acme/leftover/leftover",
+                        "name": "m",
+                        "mode": "chat",
+                        "completion_params": {},
+                    },
+                }
+            },
+            {
+                "data": {
+                    "type": "decision",
+                    "title": "Decision",
+                    "decide_by": "llm",
+                    "model": {"provider": "acme/used/used", "name": "m", "mode": "chat", "completion_params": {}},
+                }
+            },
+        ]
+    }
+
+    assert AppDslService._extract_dependencies_from_workflow_graph(graph) == ["acme/used"]
+
+
 def test_extract_model_config_dependencies_skips_workspace_tool_providers() -> None:
     model_config = {
         "agent_mode": {

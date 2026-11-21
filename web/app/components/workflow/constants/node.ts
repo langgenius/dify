@@ -2,6 +2,7 @@ import agentV2Default from '@/app/components/workflow/nodes/agent-v2/default'
 import agentDefault from '@/app/components/workflow/nodes/agent/default'
 import assignerDefault from '@/app/components/workflow/nodes/assigner/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
+import decisionDefault from '@/app/components/workflow/nodes/decision/default'
 import documentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import httpRequestDefault from '@/app/components/workflow/nodes/http/default'
 import humanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
@@ -30,6 +31,7 @@ export const WORKFLOW_COMMON_NODES = [
   agentV2Default,
   questionClassifierDefault,
   ifElseDefault,
+  decisionDefault,
   iterationDefault,
   iterationStartDefault,
   loopDefault,

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask, request
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console.app import generator as generator_module
 from controllers.console.app.error import ProviderNotInitializeError
@@ -23,6 +24,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode
 from models.workflow import Workflow
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_workflow
 
 
@@ -881,3 +883,185 @@ def test_instruction_generate_exceptions(
         ):
             with pytest.raises(expected_exception):
                 method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")
+
+
+# ─ /decision-generate ─────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def decision_node_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The decision generator is served only while its deployment switch is on."""
+    apply_config_overrides(monkeypatch, ENABLE_DECISION_NODE=True)
+
+
+def _decision_generate_payload() -> dict:
+    return {
+        "instruction": "orders over 500 need approval, the rest pass",
+        "model_config": _generator_api_model_config_payload(),
+        "available_variables": [
+            {"value_selector": ["start", "amount"], "type": "number", "description": ""},
+            {"value_selector": ["start", "message"], "type": "string", "description": ""},
+        ],
+        "decide_by": None,
+        "outcomes": [],
+        "language": "en-US",
+    }
+
+
+def _decision_generate_result() -> dict:
+    return {
+        "decide_by": "rules",
+        "decide_by_reason": "Both results depend only on comparing a number.",
+        "outcomes": [
+            {
+                "id": "needs_approval",
+                "label": "Needs approval",
+                "when": {
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": "500"}
+                    ],
+                },
+            },
+            {
+                "id": "pass",
+                "label": "Pass",
+                "when": {
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"variable_selector": ["start", "amount"], "comparison_operator": "≤", "value": "500"}
+                    ],
+                },
+            },
+        ],
+        "otherwise": {"label": "Can't decide"},
+        "inputs": [],
+        "extras": [],
+        "error": "",
+    }
+
+
+@pytest.mark.usefixtures("decision_node_enabled")
+def test_decision_generate_returns_response_shape(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = generator_module.DecisionGenerateApi()
+    method = _generator_api_unwrap(api.post)
+
+    captured: dict = {}
+
+    def _generate(**kwargs):
+        captured.update(kwargs)
+        return _decision_generate_result()
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "generate_decision", _generate)
+
+    with app.test_request_context(
+        "/console/api/decision-generate",
+        method="POST",
+        json=_decision_generate_payload(),
+    ):
+        response = method(api, generator_module.DecisionGeneratePayload.model_validate(request.get_json()), "t1")
+
+    assert response == _decision_generate_result()
+    assert captured["tenant_id"] == "t1"
+    assert captured["args"].instruction == "orders over 500 need approval, the rest pass"
+    assert captured["args"].available_variables[0].value_selector == ["start", "amount"]
+    assert captured["args"].decide_by is None
+    assert captured["args"].language == "en-US"
+
+
+@pytest.mark.usefixtures("decision_node_enabled")
+def test_decision_generate_error_result_keeps_200_shape(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Model-side failures are a 200 with a short error, not a provider error mapping."""
+    api = generator_module.DecisionGenerateApi()
+    method = _generator_api_unwrap(api.post)
+
+    failure = {
+        "decide_by": "",
+        "decide_by_reason": "",
+        "outcomes": [],
+        "otherwise": {"label": ""},
+        "inputs": [],
+        "extras": [],
+        "error": "Failed to generate",
+    }
+    monkeypatch.setattr(generator_module.LLMGenerator, "generate_decision", lambda **_kwargs: failure)
+
+    with app.test_request_context(
+        "/console/api/decision-generate",
+        method="POST",
+        json=_decision_generate_payload(),
+    ):
+        response = method(api, generator_module.DecisionGeneratePayload.model_validate(request.get_json()), "t1")
+
+    assert response["error"] == "Failed to generate"
+    assert response["outcomes"] == []
+    assert response["otherwise"] == {"label": ""}
+
+
+def test_decision_generate_rejects_empty_instruction() -> None:
+    from pydantic import ValidationError
+
+    payload = _decision_generate_payload()
+    payload["instruction"] = "   "
+    with pytest.raises(ValidationError):
+        generator_module.DecisionGeneratePayload.model_validate(payload)
+
+
+def test_decision_generate_rejects_decision_model_mode() -> None:
+    from pydantic import ValidationError
+
+    payload = _decision_generate_payload()
+    payload["decide_by"] = "decision_model"
+    with pytest.raises(ValidationError):
+        generator_module.DecisionGeneratePayload.model_validate(payload)
+
+
+@pytest.mark.usefixtures("decision_node_enabled")
+def test_decision_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = generator_module.DecisionGenerateApi()
+    method = _generator_api_unwrap(api.post)
+
+    exceptions_to_test = [
+        (ProviderTokenNotInitError("token error"), generator_module.ProviderNotInitializeError),
+        (QuotaExceededError("quota error"), generator_module.ProviderQuotaExceededError),
+        (ModelCurrentlyNotSupportError("model error"), generator_module.ProviderModelCurrentlyNotSupportError),
+        (InvokeError("invoke error"), generator_module.CompletionRequestError),
+    ]
+
+    for err_to_raise, expected_exception in exceptions_to_test:
+
+        def _raise(*_args, _err=err_to_raise, **_kwargs):
+            raise _err
+
+        monkeypatch.setattr(generator_module.LLMGenerator, "generate_decision", _raise)
+
+        with app.test_request_context(
+            "/console/api/decision-generate",
+            method="POST",
+            json=_decision_generate_payload(),
+        ):
+            with pytest.raises(expected_exception):
+                method(api, generator_module.DecisionGeneratePayload.model_validate(request.get_json()), "t1")
+
+
+def test_decision_generate_is_not_found_while_the_switch_is_off(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, ENABLE_DECISION_NODE=False)
+    api = generator_module.DecisionGenerateApi()
+    method = _generator_api_unwrap(api.post)
+    calls: list[dict] = []
+
+    def _generate(**kwargs):
+        calls.append(kwargs)
+        return _decision_generate_result()
+
+    monkeypatch.setattr(generator_module.LLMGenerator, "generate_decision", _generate)
+
+    with app.test_request_context(
+        "/console/api/decision-generate",
+        method="POST",
+        json=_decision_generate_payload(),
+    ):
+        with pytest.raises(NotFound):
+            method(api, generator_module.DecisionGeneratePayload.model_validate(request.get_json()), "t1")
+
+    assert calls == []

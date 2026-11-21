@@ -114,6 +114,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.VariableAssigner,
   BlockEnum.VariableAggregator,
   BlockEnum.QuestionClassifier,
+  BlockEnum.Decision,
   BlockEnum.ParameterExtractor,
   BlockEnum.Iteration,
   BlockEnum.Loop,
@@ -182,6 +183,25 @@ export const QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
   {
     variable: 'usage',
     type: VarType.object,
+  },
+]
+
+export const DECISION_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'outcome',
+    type: VarType.string,
+  },
+  {
+    variable: 'outcome_id',
+    type: VarType.string,
+  },
+  {
+    variable: 'reason',
+    type: VarType.string,
+  },
+  {
+    variable: 'decided_by',
+    type: VarType.string,
   },
 ]
 

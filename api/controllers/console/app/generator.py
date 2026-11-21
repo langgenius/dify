@@ -6,7 +6,9 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from controllers.common.fields import ErrorMessageResponse, SimpleDataResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -28,7 +30,12 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
+from core.llm_generator.entities import (
+    DecisionGeneratePayload,
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+)
 from core.llm_generator.llm_generator import LLMGenerator
 from core.workflow.generator.types import WorkflowGenerateErrorCode
 from fields.base import ResponseModel
@@ -223,12 +230,65 @@ class StructuredOutputGenerateResponse(ResponseModel):
     error: str = Field(description="Failure reason, empty on success")
 
 
+class DecisionGenerateConditionResponse(ResponseModel):
+    """One rule condition, in the shape the If-Else node stores."""
+
+    variable_selector: list[str]
+    comparison_operator: str
+    value: str | list[str] | bool | None = None
+
+
+class DecisionGenerateRuleGroupResponse(ResponseModel):
+    """One rules-mode ``when``: conditions combined with a logical operator."""
+
+    logical_operator: str
+    conditions: list[DecisionGenerateConditionResponse] = Field(default_factory=list)
+
+
+class DecisionGenerateOutcomeResponse(ResponseModel):
+    """One generated outcome; ``when`` is a rule group (rules) or a sentence (llm)."""
+
+    id: str
+    label: str = ""
+    when: DecisionGenerateRuleGroupResponse | str | None = None
+
+
+class DecisionGenerateInputResponse(ResponseModel):
+    """One variable handed to the deciding model in llm mode."""
+
+    variable: str
+    value_selector: list[str]
+
+
+class DecisionGenerateOtherwiseResponse(ResponseModel):
+    """The fallback exit: only a label for "none of the above or unable to tell"."""
+
+    label: str = ""
+
+
+class DecisionGenerateResponse(ResponseModel):
+    """Draft-ready decision node configuration; the frontend writes it into the node, nothing is stored."""
+
+    decide_by: str = Field(description="'rules', 'llm', or empty when generation failed")
+    decide_by_reason: str = Field(default="", description="Why this mode fits the instruction")
+    outcomes: list[DecisionGenerateOutcomeResponse] = Field(default_factory=list)
+    otherwise: DecisionGenerateOtherwiseResponse = Field(default_factory=DecisionGenerateOtherwiseResponse)
+    inputs: list[DecisionGenerateInputResponse] = Field(
+        default_factory=list, description="Variables handed to the deciding model (llm mode only)"
+    )
+    extras: list[dict[str, Any]] = Field(
+        default_factory=list, description="Extra outputs, only when the instruction asks for them"
+    )
+    error: str = Field(default="", description="Failure reason, empty on success")
+
+
 register_enum_models(console_ns, LLMMode)
 register_schema_models(
     console_ns,
     RuleGeneratePayload,
     RuleCodeGeneratePayload,
     RuleStructuredOutputPayload,
+    DecisionGeneratePayload,
     InstructionGeneratePayload,
     InstructionTemplatePayload,
     WorkflowGeneratePayload,
@@ -240,6 +300,12 @@ register_response_schema_models(
     GeneratorResponse,
     RuleGenerateResponse,
     StructuredOutputGenerateResponse,
+    DecisionGenerateResponse,
+    DecisionGenerateOutcomeResponse,
+    DecisionGenerateRuleGroupResponse,
+    DecisionGenerateConditionResponse,
+    DecisionGenerateInputResponse,
+    DecisionGenerateOtherwiseResponse,
     SimpleDataResponse,
     WorkflowGenerateResponse,
     WorkflowGenerateRejectedResponse,
@@ -362,6 +428,62 @@ class RuleStructuredOutputGenerateApi(Resource):
             raise CompletionRequestError(e.description) from e
 
         return structured_output
+
+
+def _require_decision_node_enabled() -> None:
+    """Hide the decision generator while the deployment switch is off.
+
+    Precondition: none. Postcondition: returns only when ``ENABLE_DECISION_NODE``
+    is on; otherwise raises ``NotFound`` before any model is called.
+    """
+    if not dify_config.ENABLE_DECISION_NODE:
+        raise NotFound()
+
+
+@console_ns.route("/decision-generate")
+class DecisionGenerateApi(Resource):
+    """Generate a decision node's configuration from one sentence.
+
+    The result is draft-only: the frontend writes it into the node; nothing is
+    stored server-side. Model-side problems come back as HTTP 200 with a short
+    ``error``; transport and provider errors keep the generator error mapping.
+    While the ``ENABLE_DECISION_NODE`` switch is off the endpoint answers 404.
+    """
+
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
+    @console_ns.doc("generate_decision_config")
+    @console_ns.doc(description="Generate a decision node configuration from one sentence using LLM")
+    @console_ns.expect(console_ns.models[DecisionGeneratePayload.__name__])
+    @console_ns.response(
+        200,
+        "Decision configuration generated successfully",
+        console_ns.models[DecisionGenerateResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    @model_validate(DecisionGeneratePayload)
+    def post(self, req_data: DecisionGeneratePayload, current_tenant_id: str):
+        _require_decision_node_enabled()
+        try:
+            result = LLMGenerator.generate_decision(tenant_id=current_tenant_id, args=req_data)
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
+        except InvokeError as e:
+            raise CompletionRequestError(e.description) from e
+
+        return dump_response(DecisionGenerateResponse, result)
 
 
 @console_ns.route("/instruction-generate")

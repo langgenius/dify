@@ -13,6 +13,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     nodeType === BlockEnum.Code ||
     nodeType === BlockEnum.TemplateTransform ||
     nodeType === BlockEnum.QuestionClassifier ||
+    nodeType === BlockEnum.Decision ||
     nodeType === BlockEnum.HttpRequest ||
     nodeType === BlockEnum.Tool ||
     nodeType === BlockEnum.ParameterExtractor ||

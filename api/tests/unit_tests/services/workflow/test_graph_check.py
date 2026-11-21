@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 import pytest
 from sqlalchemy.orm import Session
@@ -158,6 +158,55 @@ def test_unknown_type_and_invalid_data_are_located() -> None:
     assert issues["w"].code is IssueCode.UNKNOWN_NODE_TYPE
     assert issues["l"].code is IssueCode.NODE_DATA_INVALID
     assert issues["l"].loc[:3] == ("nodes", "l", "data")
+
+
+def _decision_graph() -> dict[str, object]:
+    decision = _node(
+        "decision",
+        {
+            "type": "decision",
+            "title": "Decision",
+            "decide_by": "rules",
+            "outcomes": [
+                {
+                    "id": "large",
+                    "label": "Large",
+                    "when": {
+                        "logical_operator": "and",
+                        "conditions": [
+                            {"variable_selector": ["start", "amount"], "comparison_operator": ">", "value": "1"}
+                        ],
+                    },
+                }
+            ],
+            "otherwise": {"label": "Can't decide"},
+        },
+    )
+    return {
+        "nodes": [START, decision, END],
+        "edges": [
+            {"id": "e1", "source": "start", "target": "decision", "sourceHandle": "source"},
+            {"id": "e2", "source": "decision", "target": "end", "sourceHandle": "large"},
+            {"id": "e3", "source": "decision", "target": "end", "sourceHandle": "otherwise"},
+        ],
+    }
+
+
+def test_decision_node_is_an_error_while_its_switch_is_off(config_overrides: Callable[..., None]) -> None:
+    config_overrides(ENABLE_DECISION_NODE=False)
+
+    issues = check_graph(_decision_graph(), mode=AppMode.WORKFLOW)
+
+    assert [(i.code, i.code.severity, i.node_id, i.loc) for i in issues] == [
+        (IssueCode.UNKNOWN_NODE_TYPE, IssueSeverity.ERROR, "decision", ("nodes", "decision", "data", "type"))
+    ]
+    assert "ENABLE_DECISION_NODE" in issues[0].message
+
+
+def test_decision_node_is_clean_while_its_switch_is_on(config_overrides: Callable[..., None]) -> None:
+    config_overrides(ENABLE_DECISION_NODE=True)
+
+    assert _codes(_decision_graph()) == []
 
 
 def test_edges_must_point_at_nodes() -> None:

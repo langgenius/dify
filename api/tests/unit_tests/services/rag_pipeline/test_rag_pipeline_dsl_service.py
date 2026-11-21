@@ -412,6 +412,42 @@ def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(
     ]
 
 
+def test_extract_dependencies_from_workflow_graph_ignores_a_rules_decision_model(
+    service: RagPipelineDslService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F6: only an llm-mode decision node uses its model; rules mode keeps a leftover one."""
+    monkeypatch.setattr(
+        module.DependenciesAnalysisService,
+        "analyze_model_provider_dependency",
+        staticmethod(lambda provider: f"model:{provider}"),
+    )
+    graph: dict[str, object] = {
+        "nodes": [
+            {
+                "data": {
+                    "type": "decision",
+                    "decide_by": "rules",
+                    "model": {
+                        "provider": "acme/leftover/leftover",
+                        "name": "m",
+                        "mode": "chat",
+                        "completion_params": {},
+                    },
+                }
+            },
+            {
+                "data": {
+                    "type": "decision",
+                    "decide_by": "llm",
+                    "model": {"provider": "acme/used/used", "name": "m", "mode": "chat", "completion_params": {}},
+                }
+            },
+        ]
+    }
+
+    assert service._extract_dependencies_from_workflow_graph(graph) == ["model:acme/used/used"]
+
+
 def test_extract_dependencies_from_workflow_graph_covers_knowledge_variants(
     monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
 ) -> None:

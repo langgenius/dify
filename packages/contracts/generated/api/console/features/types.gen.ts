@@ -13,6 +13,7 @@ export type FeatureModel = {
   can_replace_logo: boolean
   documents_upload_quota: LimitationModel
   education: EducationModel
+  enable_decision_node: boolean
   enable_file_scan: boolean
   enable_knowledge_fs: boolean
   enable_skill: boolean

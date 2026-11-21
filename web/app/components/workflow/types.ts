@@ -37,6 +37,7 @@ export const BlockEnum = {
   KnowledgeRetrievalV2: 'knowledge-retrieval-v2',
   QuestionClassifier: 'question-classifier',
   IfElse: 'if-else',
+  Decision: 'decision',
   Code: 'code',
   TemplateTransform: 'template-transform',
   HttpRequest: 'http-request',

@@ -21,6 +21,13 @@ export const useAvailableNodesMetaData = () => {
       select: (features) => features.enable_knowledge_fs,
     }),
   )
+  // While the Decision node switch is off the block is not offered for creation,
+  // but the map keeps it so an existing Decision node still renders.
+  const { data: decisionNodeEnabled = false } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_decision_node,
+    }),
+  )
 
   const mergedNodesMetaData = useMemo(
     () => [
@@ -89,11 +96,13 @@ export const useAvailableNodesMetaData = () => {
 
   return useMemo(() => {
     return {
-      nodes: availableNodesMetaData,
+      nodes: decisionNodeEnabled
+        ? availableNodesMetaData
+        : availableNodesMetaData.filter((node) => node.metaData.type !== BlockEnum.Decision),
       nodesMap: {
         ...availableNodesMetaDataMap,
         [BlockEnum.VariableAssigner]: availableNodesMetaDataMap?.[BlockEnum.VariableAggregator],
       },
     }
-  }, [availableNodesMetaData, availableNodesMetaDataMap])
+  }, [availableNodesMetaData, availableNodesMetaDataMap, decisionNodeEnabled])
 }
