@@ -122,6 +122,13 @@ class AgentObservability(Protocol):
         """
         ...
 
+    def require_log_export_scope(self, context: RequestContext, agent_id: str) -> None:
+        """Require an existing Agent and runtime App in the caller's active workspace.
+
+        Raise AgentObservabilityNotFoundError without provisioning a backing App.
+        """
+        ...
+
     def iter_export_rows(
         self, context: RequestContext, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:

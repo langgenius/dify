@@ -1586,20 +1586,25 @@ class SQLAlchemyAgentObservabilityRepository:
                 raise AgentObservabilityNotFoundError
             yield session, app
 
+    @staticmethod
+    def _require_existing_runtime_app(session: Session, *, tenant_id: str, agent_id: str) -> App:
+        """Find the Agent's runtime App in the workspace or raise if either is unavailable."""
+        agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None:
+            raise AgentObservabilityNotFoundError
+        app_id = agent.backing_app_id
+        if app_id is None and agent.scope != AgentScope.WORKFLOW_ONLY:
+            app_id = agent.app_id
+        app = find_runtime_app(session, tenant_id=tenant_id, app_id=app_id) if app_id else None
+        if app is None:
+            raise AgentObservabilityNotFoundError
+        return app
+
     @contextmanager
     def _existing_runtime(self, context: RequestContext, agent_id: str) -> Generator[tuple[Session, App]]:
         """Resolve the admitted Agent's existing runtime App in a read session without provisioning state."""
-        tenant_id = context.active_workspace_id
         with self._session_factory() as session:
-            agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=agent_id)
-            if agent is None:
-                raise AgentObservabilityNotFoundError
-            app_id = agent.backing_app_id
-            if app_id is None and agent.scope != AgentScope.WORKFLOW_ONLY:
-                app_id = agent.app_id
-            app = find_runtime_app(session, tenant_id=tenant_id, app_id=app_id) if app_id else None
-            if app is None:
-                raise AgentObservabilityNotFoundError
+            app = self._require_existing_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
             yield session, app
 
     @staticmethod
@@ -1649,6 +1654,11 @@ class SQLAlchemyAgentObservabilityRepository:
         with self._existing_runtime(context, agent_id) as (session, _):
             AgentObservabilityQueries.resolve_source_filters(query.sources)
             return self._export_log_filters(session, context, query)
+
+    def require_log_export_scope(self, context: RequestContext, agent_id: str) -> None:
+        """Verify the admitted Agent and its runtime App before reading export task state."""
+        with self._session_factory() as session:
+            self._require_existing_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
 
     @classmethod
     def _export_log_filters(

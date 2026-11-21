@@ -75,6 +75,7 @@ from fields.agent_fields import (
 )
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
@@ -98,7 +99,12 @@ from services.agent.errors import (
     InvalidComposerConfigError,
     PlaintextSecretNotAllowedError,
 )
-from services.agent.observability_contracts import AgentLogExportQuery, AgentLogQuery, AgentObservabilityNotFoundError
+from services.agent.observability_contracts import (
+    AgentLogExportFilters,
+    AgentLogExportQuery,
+    AgentLogQuery,
+    AgentObservabilityNotFoundError,
+)
 from services.agent.observability_contracts import AgentStatisticsQuery as AgentObservabilityStatisticsQuery
 from services.agent.roster_service import AgentRosterService
 from services.agent.version_store import (
@@ -116,6 +122,7 @@ from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
+from services.retention.log_export_task import LogExportStatus, LogExportTaskNotFoundError
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -330,6 +337,27 @@ class AgentLogExportTaskResponse(ResponseModel):
     status: Literal["pending"]
 
 
+class AgentLogExportStatusResponse(ResponseModel):
+    task_id: str
+    status: LogExportStatus
+
+
+class AgentLogExportLatestTaskResponse(AgentLogExportStatusResponse):
+    filters: AgentLogExportFilters
+
+
+class AgentLogExportLatestResponse(ResponseModel):
+    task: AgentLogExportLatestTaskResponse | None = Field(
+        description="Null if the caller has no live export task for this Agent"
+    )
+
+
+class AgentLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "agent_log_export_task_not_found"
+    description = "Agent log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AgentAppPartial(GenericAppPartial):
     permission_keys: list[str]
     app_id: str | None = None
@@ -454,6 +482,8 @@ register_response_schema_models(
     AgentLogListResponse,
     AgentLogExportPreviewResponse,
     AgentLogExportTaskResponse,
+    AgentLogExportStatusResponse,
+    AgentLogExportLatestResponse,
     AgentLogMessageListResponse,
     AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
@@ -1156,6 +1186,44 @@ class AgentLogExportApi(Resource):
         except ValueError as exc:
             raise InvalidArgumentError(str(exc)) from exc
         return dump_response(AgentLogExportTaskResponse, task), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports/latest")
+class AgentLogExportLatestApi(Resource):
+    @error_responses(AgentNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc(
+        "get_latest_agent_log_export", description="Get the caller's latest Agent log export and its filters"
+    )
+    @console_ns.response(HTTPStatus.OK, "Latest export", console_ns.models[AgentLogExportLatestResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Return the caller's latest live task for an available Agent, or a null task."""
+        _require_agent_log_export_access(context)
+        try:
+            task = application_services().agent_log_exports.get_latest_task(context, str(agent_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentLogExportLatestResponse, {"task": task}), HTTPStatus.OK, {"Cache-Control": "no-store"}
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>")
+class AgentLogExportTaskApi(Resource):
+    @error_responses(AgentNotFoundError, AgentLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("get_agent_log_export_status", description="Get the current status of an Agent log export task")
+    @console_ns.response(HTTPStatus.OK, "Export task status", console_ns.models[AgentLogExportStatusResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(
+        self, context: RequestContext, agent_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Return the state of a live task scoped to the admitted workspace and Agent."""
+        _require_agent_log_export_access(context)
+        try:
+            task = application_services().agent_log_exports.get_task(context, str(agent_id), task_id=str(task_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except LogExportTaskNotFoundError as exc:
+            raise AgentLogExportTaskNotFoundHTTPError() from exc
+        return dump_response(AgentLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")

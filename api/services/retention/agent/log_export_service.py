@@ -1,4 +1,4 @@
-"""Create and prepare temporary CSV export tasks for an admitted Agent."""
+"""Create, prepare, and read temporary CSV export tasks for an admitted Agent."""
 
 from collections.abc import Callable
 
@@ -6,6 +6,7 @@ from machinery.context import RequestContext
 from services.agent.observability_contracts import AgentLogExportFilters, AgentLogExportQuery, AgentObservability
 from services.retention.log_export_task import (
     LogExportTask,
+    LogExportTaskNotFoundError,
     LogExportTaskStore,
     StoreLogExportFile,
     WriteLogExportCsv,
@@ -17,7 +18,7 @@ AgentLogExportTask = LogExportTask[AgentLogExportFilters]
 
 
 class AgentLogExportService:
-    """Schedule and prepare the caller's export within the Agent's workspace scope."""
+    """Manage CSV exports within the Agent's admitted workspace scope."""
 
     def __init__(
         self,
@@ -46,6 +47,21 @@ class AgentLogExportService:
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task
+
+    def get_task(self, context: RequestContext, agent_id: str, *, task_id: str) -> AgentLogExportTask:
+        """Return a live task in the admitted Agent's scope or raise if it is unavailable."""
+        self._logs.require_log_export_scope(context, agent_id)
+        task = self._tasks.get(tenant_id=context.active_workspace_id, app_id=agent_id, task_id=task_id)
+        if task is None:
+            raise LogExportTaskNotFoundError()
+        return task
+
+    def get_latest_task(self, context: RequestContext, agent_id: str) -> AgentLogExportTask | None:
+        """Return the caller's latest live task in the admitted Agent's scope, if one exists."""
+        self._logs.require_log_export_scope(context, agent_id)
+        return self._tasks.get_latest(
+            tenant_id=context.active_workspace_id, app_id=agent_id, requested_by=context.account_id
+        )
 
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Load the workspace's task by its Agent ID and prepare the CSV if it is still pending."""

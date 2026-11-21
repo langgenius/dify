@@ -511,6 +511,18 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
 )
 
 /**
+ * AgentLogExportTaskNotFoundError
+ *
+ * Agent log export task not found.
+ */
+export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_log_export_task_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -1274,6 +1286,19 @@ export const zAgentLogExportPreviewResponse = z.object({
 })
 
 /**
+ * LogExportStatus
+ */
+export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
+
+/**
+ * AgentLogExportStatusResponse
+ */
+export const zAgentLogExportStatusResponse = z.object({
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
  * AgentLogSourceResponse
  */
 export const zAgentLogSourceResponse = z.object({
@@ -1878,6 +1903,32 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
   prompt: z.string().nullish(),
+})
+
+/**
+ * AgentLogExportFilters
+ */
+export const zAgentLogExportFilters = z.object({
+  end: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  sources: z.array(z.string()),
+  start: z.iso.datetime().nullable(),
+})
+
+/**
+ * AgentLogExportLatestTaskResponse
+ */
+export const zAgentLogExportLatestTaskResponse = z.object({
+  filters: zAgentLogExportFilters,
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * AgentLogExportLatestResponse
+ */
+export const zAgentLogExportLatestResponse = z.object({
+  task: zAgentLogExportLatestTaskResponse.nullable(),
 })
 
 /**
@@ -4546,6 +4597,15 @@ export const zPostAgentByAgentIdLogExportsPath = z.object({
  */
 export const zPostAgentByAgentIdLogExportsResponse = zAgentLogExportTaskResponse
 
+export const zGetAgentByAgentIdLogExportsLatestPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Latest export
+ */
+export const zGetAgentByAgentIdLogExportsLatestResponse = zAgentLogExportLatestResponse
+
 export const zGetAgentByAgentIdLogExportsPreviewPath = z.object({
   agent_id: z.uuid(),
 })
@@ -4561,6 +4621,16 @@ export const zGetAgentByAgentIdLogExportsPreviewQuery = z.object({
  * Export preview
  */
 export const zGetAgentByAgentIdLogExportsPreviewResponse = zAgentLogExportPreviewResponse
+
+export const zGetAgentByAgentIdLogExportsByTaskIdPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export task status
+ */
+export const zGetAgentByAgentIdLogExportsByTaskIdResponse = zAgentLogExportStatusResponse
 
 export const zGetAgentByAgentIdLogSourcesPath = z.object({
   agent_id: z.uuid(),

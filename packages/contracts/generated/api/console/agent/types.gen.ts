@@ -472,8 +472,22 @@ export type PaidPlanRequiredError = ErrorResponse & {
   status: 403
 }
 
+export type AgentLogExportLatestResponse = {
+  task: AgentLogExportLatestTaskResponse | null
+}
+
 export type AgentLogExportPreviewResponse = {
   counts: AgentLogExportCountsResponse | null
+}
+
+export type AgentLogExportStatusResponse = {
+  status: LogExportStatus
+  task_id: string
+}
+
+export type AgentLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'agent_log_export_task_not_found'
+  status: 404
 }
 
 export type AgentLogSourceListResponse = {
@@ -1189,10 +1203,18 @@ export type AgentTextToSpeechFeatureConfig = {
   [key: string]: unknown
 }
 
+export type AgentLogExportLatestTaskResponse = {
+  filters: AgentLogExportFilters
+  status: LogExportStatus
+  task_id: string
+}
+
 export type AgentLogExportCountsResponse = {
   log_count: number
   row_count: number
 }
+
+export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
 
 export type AgentLogSourceResponse = {
   app_icon?: string | null
@@ -1850,6 +1872,13 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
   name: string
   provider: string
   [key: string]: unknown
+}
+
+export type AgentLogExportFilters = {
+  end: string | null
+  end_user_ids: Array<string>
+  sources: Array<string>
+  start: string | null
 }
 
 export type AgentLogFeedbackResponse = {
@@ -3930,6 +3959,31 @@ export type PostAgentByAgentIdLogExportsResponses = {
 export type PostAgentByAgentIdLogExportsResponse =
   PostAgentByAgentIdLogExportsResponses[keyof PostAgentByAgentIdLogExportsResponses]
 
+export type GetAgentByAgentIdLogExportsLatestData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/latest'
+}
+
+export type GetAgentByAgentIdLogExportsLatestErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsLatestError =
+  GetAgentByAgentIdLogExportsLatestErrors[keyof GetAgentByAgentIdLogExportsLatestErrors]
+
+export type GetAgentByAgentIdLogExportsLatestResponses = {
+  200: AgentLogExportLatestResponse
+}
+
+export type GetAgentByAgentIdLogExportsLatestResponse =
+  GetAgentByAgentIdLogExportsLatestResponses[keyof GetAgentByAgentIdLogExportsLatestResponses]
+
 export type GetAgentByAgentIdLogExportsPreviewData = {
   body?: never
   path: {
@@ -3960,6 +4014,32 @@ export type GetAgentByAgentIdLogExportsPreviewResponses = {
 
 export type GetAgentByAgentIdLogExportsPreviewResponse =
   GetAgentByAgentIdLogExportsPreviewResponses[keyof GetAgentByAgentIdLogExportsPreviewResponses]
+
+export type GetAgentByAgentIdLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}'
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdError =
+  GetAgentByAgentIdLogExportsByTaskIdErrors[keyof GetAgentByAgentIdLogExportsByTaskIdErrors]
+
+export type GetAgentByAgentIdLogExportsByTaskIdResponses = {
+  200: AgentLogExportStatusResponse
+}
+
+export type GetAgentByAgentIdLogExportsByTaskIdResponse =
+  GetAgentByAgentIdLogExportsByTaskIdResponses[keyof GetAgentByAgentIdLogExportsByTaskIdResponses]
 
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never
