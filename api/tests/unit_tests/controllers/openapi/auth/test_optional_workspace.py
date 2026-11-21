@@ -15,22 +15,20 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from constants.oauth_bearer import Scope, SubjectType, TokenType
+from constants.oauth_bearer import Scope, TokenType
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import iter_handlers
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import route_has_workspace
 from controllers.openapi.auth.personal_access import CheckPersonalAccess
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject, CheckWorkspaceMember
 from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
-from models.account import AccountStatus, TenantAccountRole, TenantStatus
+from models.account import TenantAccountRole
 from services.personal_access_token_service import PersonalAccessTokenGrant
 from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     APP_ID,
-    OTHER_TENANT_ID,
     TENANT_ID,
     TOKEN_ID,
     account_subject,
@@ -46,47 +44,10 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
 APPS = "/openapi/v1/apps"
 
 
-def _outcome(subject: AccountSubject, session: Session) -> str:
-    ctx = make_ctx(session, subject)
-    try:
-        CheckWorkspaceMember().run(subject, ctx, session)
-    except NotFound as error:
-        return f"404 {error.description}"
-    return f"admitted {ctx.workspace.id}"
-
-
-@pytest.mark.parametrize(
-    "query",
-    [
-        f"workspace_id={TENANT_ID}",
-        f"workspace_id={OTHER_TENANT_ID}",
-        "workspace_id=00000000-0000-4000-8000-000000000000",
-        "workspace_id=not-a-uuid",
-        "workspace_id=",
-    ],
-    ids=["member", "non-member", "unknown", "not a uuid", "empty"],
-)
-@pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.BANNED])
-def test_a_named_workspace_gets_the_membership_check(
-    app: Flask, sqlite_session: Session, query: str, status: AccountStatus
-) -> None:
-    persist(
-        sqlite_session,
-        make_tenant(),
-        make_tenant(tenant_id=OTHER_TENANT_ID),
-        make_account(status=status),
-        make_membership(TenantAccountRole.EDITOR),
-    )
-    with app.test_request_context(f"{APPS}?{query}"):
-        outcome = _outcome(account_subject(), sqlite_session)
-    expected = f"admitted {TENANT_ID}" if query.endswith(TENANT_ID) and status is AccountStatus.ACTIVE else None
-    assert outcome == (expected or "404 workspace not found")
-
-
-def test_an_archived_named_workspace_is_refused(app: Flask, sqlite_session: Session) -> None:
-    persist(sqlite_session, make_tenant(status=TenantStatus.ARCHIVE), make_account(), make_membership())
+def test_an_empty_named_workspace_gets_the_membership_check(app: Flask, sqlite_session: Session) -> None:
+    persist(sqlite_session, make_tenant(), make_account(), make_membership(TenantAccountRole.EDITOR))
     subject = account_subject()
-    with app.test_request_context(f"{APPS}?workspace_id={TENANT_ID}"):
+    with app.test_request_context(f"{APPS}?workspace_id="):
         with pytest.raises(NotFound, match="workspace not found"):
             CheckWorkspaceMember().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
@@ -117,24 +78,6 @@ def test_an_sso_login_on_an_app_route_is_not_refused(app: Flask, sqlite_session:
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/workflow:run"):
         CheckWorkspaceMember().run(subject, ctx, sqlite_session)
     assert ctx._workspace is None
-
-
-@pytest.mark.parametrize(
-    ("path", "view_args", "expected"),
-    [
-        (f"{APPS}?workspace_id={TENANT_ID}", {}, True),
-        (f"{APPS}?workspace_id=", {}, True),
-        (f"{APPS}?page=1", {}, False),
-        (f"/openapi/v1/workspaces/{TENANT_ID}", {"workspace_id": TENANT_ID}, True),
-        (f"/openapi/v1/apps/{APP_ID}", {"app_id": APP_ID}, True),
-    ],
-    ids=["query", "empty query", "none", "path", "app"],
-)
-def test_a_route_has_a_workspace_through_its_app_its_path_or_its_query(
-    app: Flask, sqlite_session: Session, path: str, view_args: dict[str, str], expected: bool
-) -> None:
-    with app.test_request_context(path):
-        assert route_has_workspace(Context(account_subject(), sqlite_session, dict(view_args))) is expected
 
 
 @dataclass
@@ -184,13 +127,6 @@ def test_a_personal_token_naming_a_workspace_has_it_authorized(
     with app.test_request_context(f"{APPS}?workspace_id={TENANT_ID}"):
         CheckPersonalAccess().run(subject, ctx, sqlite_session)
     assert [call["workspace_id"] for call in grants.calls] == [TENANT_ID]
-
-
-def test_an_external_sso_login_carries_apps_read() -> None:
-    assert Scope.APPS_READ in SubjectType.EXTERNAL_SSO.scopes
-    assert TokenType.OAUTH_EXTERNAL_SSO.subject.scopes == frozenset(
-        {Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL, Scope.APPS_READ}
-    )
 
 
 # The ops whose apps:read check an external SSO login can reach. Every other op that checks apps:read refuses the

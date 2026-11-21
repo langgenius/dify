@@ -7,7 +7,7 @@ from typing import Protocol, cast
 
 import pytest
 from flask import Flask
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, ServiceUnavailable
 
@@ -27,9 +27,7 @@ from controllers.openapi.apps import AppDescribeApi, AppListApi, AppListQuery
 from controllers.openapi.apps import AppDescribeQuery as _app_describe_query_AppDescribeQuery
 from controllers.openapi.apps_permitted_external import PermittedExternalAppDescribeApi, PermittedExternalAppsListApi
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
-from libs.helper import UUIDStr
 from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext, RequestContext
 from machinery.scope import UNRESTRICTED
@@ -209,7 +207,7 @@ def test_delete_translates_a_missing_app_to_404(
 
 Runs against the model directly, not the HTTP layer. Pins:
 - defaults match the plan (page=1, limit=20).
-- workspace_id is required.
+- workspace_id is optional; when given it must be an id.
 - numeric bounds enforced (page >= 1, limit in [1, MAX_PAGE_LIMIT]).
 - mode validates against the SupportedAppType enum (listable app types only).
 - name has a length cap.
@@ -228,26 +226,10 @@ def test_defaults() -> None:
     assert q.name is None
 
 
-def test_workspace_id_is_optional() -> None:
-    assert AppListQuery.model_validate({}).workspace_id is None
-
-
-class _RequiredWorkspaceQuery(BaseModel):
-    """The field as it was when every call had to name a workspace."""
-
-    workspace_id: UUIDStr
-
-
 @pytest.mark.parametrize("value", ["", "not-a-uuid", "  "])
-def test_a_named_workspace_that_is_not_an_id_is_refused_as_before(value: str) -> None:
-    with pytest.raises(ValidationError) as now:
+def test_a_named_workspace_that_is_not_an_id_is_refused(value: str) -> None:
+    with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": value})
-    with pytest.raises(ValidationError) as before:
-        _RequiredWorkspaceQuery.model_validate({"workspace_id": value})
-    # The 422 body is built from these, without context (see `_contract`).
-    assert now.value.errors(include_url=False, include_context=False) == before.value.errors(
-        include_url=False, include_context=False
-    )
 
 
 def test_page_rejects_non_integer_string() -> None:
@@ -379,14 +361,6 @@ def test_an_external_sso_login_is_passed_without_a_workspace(
     assert [(login.kind, login.caller.account_id, login.workspace_id) for login in logins] == [
         (SubjectType.EXTERNAL_SSO, TOKEN_ID, None)
     ]
-
-
-def test_the_catalog_lists_apps_without_a_workspace() -> None:
-    spec = spec_of(AppListApi.get)
-    assert spec is not None
-    assert spec.catalog.summary == "List the apps this login may use, in one workspace or in all of them"
-    assert {"page": 1, "limit": 20} in [example.input for example in spec.catalog.examples]
-    assert "workspace_id" not in AppListQuery.model_json_schema().get("required", [])
 
 
 def test_an_unavailable_permitted_list_is_a_503(

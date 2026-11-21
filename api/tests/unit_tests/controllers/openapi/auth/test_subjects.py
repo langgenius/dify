@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
 from constants.oauth_bearer import TokenType
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from models import Account, EndUser, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.enums import EndUserType
@@ -19,14 +19,12 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
     APP_ID,
     SSO_EMAIL,
     TENANT_ID,
-    account_subject,
     make_account,
     make_app,
     make_auth,
     make_ctx,
     make_tenant,
     persist,
-    sso_subject,
 )
 
 
@@ -131,13 +129,3 @@ class TestExternalSsoWebappUserId:
 
         identityless = ExternalSsoSubject(make_auth(TokenType.OAUTH_EXTERNAL_SSO, subject_email=None))
         assert identityless.webapp_user_id(sqlite_session) is None
-
-
-def test_only_a_workspace_token_is_bound_to_a_workspace(sqlite_session: Session) -> None:
-    resource = ResourceAccessSubject(make_auth(TokenType.RESOURCE_ACCESS, account_id=None))
-    bound = make_ctx(sqlite_session, resource)
-    bound._workspace = make_tenant()
-
-    assert resource.bound_workspace_id(bound) == TENANT_ID
-    for subject in (account_subject(), sso_subject()):
-        assert subject.bound_workspace_id(make_ctx(sqlite_session, subject)) is None

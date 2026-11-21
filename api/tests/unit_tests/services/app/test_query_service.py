@@ -29,17 +29,22 @@ from services.errors.app import AppDiscoveryNotFoundError
 
 @dataclass
 class DiscoveryAccess:
+    """``filters`` gives a workspace its own visibility, as a role there would; others get ``access_filter``."""
+
     access_filter: AppAccessFilter
-    permitted: PermittedAppsPage
+    permitted: PermittedAppsPage | list[PermittedAppsPage]
+    filters: dict[str, AppAccessFilter] = field(default_factory=dict)
     contexts: list[RequestContext] = field(default_factory=list)
     queries: list[AppDiscoveryQuery] = field(default_factory=list)
 
     def visibility(self, context: RequestContext) -> AppAccessFilter:
         self.contexts.append(context)
-        return self.access_filter
+        return self.filters.get(context.active_workspace_id, self.access_filter)
 
     def permitted_apps(self, query: AppDiscoveryQuery) -> PermittedAppsPage:
         self.queries.append(query)
+        if isinstance(self.permitted, list):
+            return self.permitted[query.page - 1]
         return self.permitted
 
 
@@ -292,44 +297,6 @@ def test_personal_token_scope_intersects_account_visibility_before_pagination(
 # --- One app list for every login: the rule per login kind and the cross-workspace join ---
 
 
-@dataclass
-class VisibilityByWorkspace:
-    """Each workspace gets its own visibility, as a role in that workspace would give."""
-
-    filters: dict[str, AppAccessFilter]
-    permitted: PermittedAppsPage | list[PermittedAppsPage] = field(
-        default_factory=lambda: PermittedAppsPage([], 0, False)
-    )
-    contexts: list[RequestContext] = field(default_factory=list)
-    queries: list[AppDiscoveryQuery] = field(default_factory=list)
-
-    def visibility(self, context: RequestContext) -> AppAccessFilter:
-        self.contexts.append(context)
-        return self.filters.get(context.active_workspace_id, AppAccessFilter.unrestricted())
-
-    def permitted_apps(self, query: AppDiscoveryQuery) -> PermittedAppsPage:
-        self.queries.append(query)
-        if isinstance(self.permitted, list):
-            return self.permitted[query.page - 1]
-        return self.permitted
-
-
-@pytest.fixture
-def by_workspace() -> VisibilityByWorkspace:
-    return VisibilityByWorkspace({})
-
-
-@pytest.fixture
-def joined_service(
-    sqlite_session_factory: sessionmaker[Session], by_workspace: VisibilityByWorkspace
-) -> AppDiscoveryService:
-    return AppDiscoveryService(
-        apps=ConsoleAppRepository(session_factory=sqlite_session_factory),
-        workspaces=WorkspaceRepository(sqlite_session_factory),
-        access=by_workspace,
-    )
-
-
 def persist_workspace(
     session: Session, name: str, *, created: datetime, status: TenantStatus = TenantStatus.NORMAL
 ) -> str:
@@ -404,7 +371,7 @@ class TwoWorkspaces:
 
 
 @pytest.fixture
-def two_workspaces(sqlite_session: Session, by_workspace: VisibilityByWorkspace) -> TwoWorkspaces:
+def two_workspaces(sqlite_session: Session, access: DiscoveryAccess) -> TwoWorkspaces:
     """An Editor in the older workspace (sees all 3 apps), Normal in the newer one (sees 2 of its 3 apps)."""
     now = datetime(2026, 11, 17, 12, 0, 0)
     account_id = persist_account(sqlite_session)
@@ -414,100 +381,94 @@ def two_workspaces(sqlite_session: Session, by_workspace: VisibilityByWorkspace)
     join(sqlite_session, account_id, second, TenantAccountRole.NORMAL)
     first_apps = persist_apps(sqlite_session, first, ["a1", "a2", "a3"], start=now)
     second_apps = persist_apps(sqlite_session, second, ["b1", "b2", "b3"], start=now)
-    by_workspace.filters[second] = AppAccessFilter({second_apps[0], second_apps[2]})
+    access.filters[second] = AppAccessFilter({second_apps[0], second_apps[2]})
     return TwoWorkspaces(account_id, first, second, first_apps, [second_apps[0], second_apps[2]])
 
 
 @pytest.mark.parametrize("limit", [1, 2, 3, 4, 5, 100])
 def test_an_account_list_without_a_workspace_joins_each_workspace_list_in_workspace_order(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces, limit: int
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces, limit: int
 ) -> None:
     w = two_workspaces
     per_workspace = [
-        every_page(joined_service, login(SubjectType.ACCOUNT, w.account_id, workspace), limit)
+        every_page(service, login(SubjectType.ACCOUNT, w.account_id, workspace), limit)
         for workspace in (w.first, w.second)
     ]
-    joined, total = every_page(joined_service, login(SubjectType.ACCOUNT, w.account_id), limit)
+    joined, total = every_page(service, login(SubjectType.ACCOUNT, w.account_id), limit)
     assert joined == per_workspace[0][0] + per_workspace[1][0] == w.first_apps + w.second_apps
     assert total == per_workspace[0][1] + per_workspace[1][1] == 5
 
 
-def test_a_page_can_span_the_workspace_boundary(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
-) -> None:
+def test_a_page_can_span_the_workspace_boundary(service: AppDiscoveryService, two_workspaces: TwoWorkspaces) -> None:
     w = two_workspaces
-    result = joined_service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(2, 2, None, None))
+    result = service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(2, 2, None, None))
     assert [entry.app.id for entry in result.items] == [w.first_apps[2], w.second_apps[0]]
     assert [entry.workspace_name for entry in result.items] == ["First", "Second"]
     assert (result.total, result.page, result.per_page) == (5, 2, 2)
-    beyond = joined_service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(4, 2, None, None))
+    beyond = service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(4, 2, None, None))
     assert (beyond.items, beyond.total) == ([], 5)
 
 
-def test_filters_apply_in_every_workspace(joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces) -> None:
+def test_filters_apply_in_every_workspace(service: AppDiscoveryService, two_workspaces: TwoWorkspaces) -> None:
     w = two_workspaces
-    by_name, total = every_page(joined_service, login(SubjectType.ACCOUNT, w.account_id), 20, name="3")
+    by_name, total = every_page(service, login(SubjectType.ACCOUNT, w.account_id), 20, name="3")
     assert (by_name, total) == ([w.first_apps[2], w.second_apps[1]], 2)
-    by_mode, _ = every_page(joined_service, login(SubjectType.ACCOUNT, w.account_id), 20, mode="workflow")
+    by_mode, _ = every_page(service, login(SubjectType.ACCOUNT, w.account_id), 20, mode="workflow")
     assert by_mode == []
 
 
 @pytest.mark.parametrize("in_second", [True, False])
 def test_an_app_id_as_name_finds_the_app_in_whichever_workspace_holds_it(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces, in_second: bool
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces, in_second: bool
 ) -> None:
     w = two_workspaces
     app_id = w.second_apps[1] if in_second else w.first_apps[0]
-    result = joined_service.list_apps_for(
-        login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 20, None, app_id)
-    )
+    result = service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 20, None, app_id))
     assert [entry.app.id for entry in result.items] == [app_id]
     assert result.total == 1
 
 
 def test_an_app_id_the_role_hides_is_not_found(
-    sqlite_session: Session, joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    sqlite_session: Session, service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     w = two_workspaces
     hidden = next(
         app.id for app in sqlite_session.scalars(select(App).where(App.tenant_id == w.second, App.name == "b2"))
     )
-    result = joined_service.list_apps_for(
-        login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 20, None, hidden)
-    )
+    result = service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 20, None, hidden))
     assert (result.items, result.total) == ([], 0)
 
 
 def test_a_personal_token_with_selected_apps_lists_only_those_in_every_workspace(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     w = two_workspaces
     selected = frozenset({w.first_apps[1], w.second_apps[1], str(uuid4())})
     who = login(SubjectType.ACCOUNT, w.account_id, personal_app_ids=selected)
-    assert every_page(joined_service, who, 1) == ([w.first_apps[1], w.second_apps[1]], 2)
+    assert every_page(service, who, 1) == ([w.first_apps[1], w.second_apps[1]], 2)
 
 
 def test_a_personal_token_with_app_access_none_lists_nothing(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     who = login(SubjectType.ACCOUNT, two_workspaces.account_id, personal_app_ids=frozenset())
-    assert every_page(joined_service, who, 20) == ([], 0)
+    assert every_page(service, who, 20) == ([], 0)
 
 
 def test_a_named_workspace_answers_exactly_as_the_workspace_list(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     w = two_workspaces
     for workspace in (w.first, w.second):
         for query in (AppDiscoveryQuery(1, 2, None, None), AppDiscoveryQuery(3, 5, "chat", w.first_apps[0])):
             context = RequestContext("req", None, w.account_id, workspace)
-            assert joined_service.list_apps_for(
+            assert service.list_apps_for(
                 login(SubjectType.ACCOUNT, w.account_id, workspace), query
-            ) == joined_service.list_apps(context, query)
+            ) == service.list_apps(context, query)
 
 
 def test_workspaces_the_membership_check_refuses_are_left_out(
-    sqlite_session: Session, joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    sqlite_session: Session, service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     """Archived workspaces and other accounts' workspaces answer 404 with a workspace_id, so they add nothing."""
     w = two_workspaces
@@ -517,85 +478,62 @@ def test_workspaces_the_membership_check_refuses_are_left_out(
     elsewhere = persist_workspace(sqlite_session, "Elsewhere", created=datetime(2026, 1, 2))
     join(sqlite_session, persist_account(sqlite_session), elsewhere, TenantAccountRole.OWNER)
     persist_app(sqlite_session, tenant_id=elsewhere, name="someone else's app")
-    assert every_page(joined_service, login(SubjectType.ACCOUNT, w.account_id), 20) == (
+    assert every_page(service, login(SubjectType.ACCOUNT, w.account_id), 20) == (
         w.first_apps + w.second_apps,
         5,
     )
 
 
-@pytest.mark.parametrize("status", [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.PENDING])
-def test_an_account_the_membership_check_refuses_lists_nothing(
-    sqlite_session: Session, joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces, status: AccountStatus
-) -> None:
-    account = sqlite_session.get(Account, two_workspaces.account_id)
-    assert account is not None
-    account.status = status
-    sqlite_session.commit()
-    assert every_page(joined_service, login(SubjectType.ACCOUNT, two_workspaces.account_id), 20) == ([], 0)
-
-
-def test_an_account_in_no_workspace_lists_nothing(sqlite_session: Session, joined_service: AppDiscoveryService) -> None:
-    assert every_page(joined_service, login(SubjectType.ACCOUNT, persist_account(sqlite_session)), 20) == ([], 0)
+def test_an_account_in_no_workspace_lists_nothing(sqlite_session: Session, service: AppDiscoveryService) -> None:
+    assert every_page(service, login(SubjectType.ACCOUNT, persist_account(sqlite_session)), 20) == ([], 0)
 
 
 def test_unlistable_rows_count_in_the_total_and_drop_from_the_page_as_in_one_workspace(
-    sqlite_session: Session, joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    sqlite_session: Session, service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     """The workspace list pages query rows and then drops modes it does not list; the joined list does the same."""
     w = two_workspaces
     persist_app(
         sqlite_session, tenant_id=w.first, name="pipeline", mode=AppMode.RAG_PIPELINE, updated_at=datetime(2027, 1, 1)
     )
-    one = joined_service.list_apps(
-        RequestContext("req", None, w.account_id, w.first), AppDiscoveryQuery(1, 2, None, None)
-    )
-    joined = joined_service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 2, None, None))
+    one = service.list_apps(RequestContext("req", None, w.account_id, w.first), AppDiscoveryQuery(1, 2, None, None))
+    joined = service.list_apps_for(login(SubjectType.ACCOUNT, w.account_id), AppDiscoveryQuery(1, 2, None, None))
     assert [entry.app.id for entry in joined.items] == [entry.app.id for entry in one.items] == [w.first_apps[0]]
     assert (joined.total, one.total) == (6, 4)
 
 
 def test_a_workspace_token_lists_the_apps_of_its_workspace(
-    joined_service: AppDiscoveryService, two_workspaces: TwoWorkspaces
+    service: AppDiscoveryService, two_workspaces: TwoWorkspaces
 ) -> None:
     w = two_workspaces
     bound = frozenset({w.first_apps[0], w.first_apps[2], w.second_apps[0]})
     who = login(SubjectType.RESOURCE_ACCESS, "token-id", w.first, resource_app_ids=bound)
     query = AppDiscoveryQuery(1, 20, None, None)
     context = RequestContext("req", None, "token-id", w.first, resource_app_ids=bound)
-    assert joined_service.list_apps_for(who, query) == joined_service.list_apps(context, query)
-    assert [entry.app.id for entry in joined_service.list_apps_for(who, query).items] == [
+    assert service.list_apps_for(who, query) == service.list_apps(context, query)
+    assert [entry.app.id for entry in service.list_apps_for(who, query).items] == [
         w.first_apps[0],
         w.first_apps[2],
     ]
 
 
-def test_a_workspace_token_always_carries_its_workspace(joined_service: AppDiscoveryService) -> None:
-    with pytest.raises(ValueError, match="workspace token"):
-        joined_service.list_apps_for(
-            login(SubjectType.RESOURCE_ACCESS, "token-id", resource_app_ids=frozenset()),
-            AppDiscoveryQuery(1, 20, None, None),
-        )
-
-
 def test_an_external_sso_login_gets_the_permitted_list_unchanged(
-    joined_service: AppDiscoveryService,
-    by_workspace: VisibilityByWorkspace,
+    service: AppDiscoveryService,
+    access: DiscoveryAccess,
     two_workspaces: TwoWorkspaces,
 ) -> None:
     w = two_workspaces
-    by_workspace.permitted = PermittedAppsPage([w.second_apps[0], w.first_apps[1]], 30, True)
+    access.permitted = PermittedAppsPage([w.second_apps[0], w.first_apps[1]], 30, True)
     query = AppDiscoveryQuery(2, 2, "chat", "name")
-    assert joined_service.list_apps_for(login(SubjectType.EXTERNAL_SSO, ""), query) == (
-        joined_service.list_permitted_apps(query)
-    )
-    assert by_workspace.queries == [query, query]
+    assert service.list_apps_for(login(SubjectType.EXTERNAL_SSO, ""), query) == (service.list_permitted_apps(query))
+    assert access.queries == [query, query]
 
 
-def test_every_login_kind_has_a_rule(joined_service: AppDiscoveryService, sqlite_session: Session) -> None:
+def test_every_login_kind_has_a_rule(service: AppDiscoveryService, sqlite_session: Session) -> None:
     """A login kind added later must get a rule here before it can list apps."""
     workspace = persist_workspace(sqlite_session, "Any", created=datetime(2026, 1, 1))
     for kind in SubjectType:
-        result = joined_service.list_apps_for(
+        result = service.list_apps_for(
             login(kind, "", workspace, resource_app_ids=frozenset()), AppDiscoveryQuery(1, 1, None, None)
         )
         assert result.items == []

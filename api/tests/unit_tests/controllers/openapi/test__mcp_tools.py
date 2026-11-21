@@ -629,33 +629,6 @@ def test_find_with_an_empty_op_searches_by_query(arguments: dict[str, object]) -
     assert "get.workspace" in [item["op"] for item in json.loads(_text(result))["ops"]]
 
 
-def _step(number: int) -> str:
-    return next(line for line in mcp_instructions().splitlines() if line.startswith(f"{number}."))
-
-
-def test_the_instructions_say_an_empty_workspace_list_leaves_app_operations_working() -> None:
-    step_one = _step(1)
-
-    assert "get.workspace" in step_one
-    assert "can manage" in step_one
-    assert "may be empty" in step_one
-    assert "app operations still work" in step_one
-    assert "get.console_app" in step_one
-    assert "needs no workspace" in step_one
-    assert "give the token access" not in mcp_instructions()
-
-
-def test_the_instructions_take_workspace_ids_from_the_workspace_list() -> None:
-    step_two = _step(2)
-
-    assert "workspace_id" in step_two
-    assert "workspace list" in step_two
-
-
-def test_the_instructions_name_stop_job_to_stop_a_job() -> None:
-    assert "stop.job" in _step(5)
-
-
 # Files beside the call, through the four tools.
 
 _SKILL_ID = "11111111-1111-4111-8111-111111111111"

@@ -1995,6 +1995,13 @@ _RESOURCE_RUN = (
     CheckAppAccess(),
 )
 
+# apps.list and apps.list.everywhere are one handler: a workspace is optional.
+_REQ_APPS_LIST: tuple[Requirement, ...] = (
+    CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
+    CheckScope(Scope.APPS_READ),
+    CheckWorkspaceMember(),
+)
+
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "knowledge_fs.tree": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -2048,16 +2055,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         ),
         CheckWorkspaceRole(_OWNER_ADMIN),
     ),
-    "apps.list": (
-        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
-        CheckScope(Scope.APPS_READ),
-        CheckWorkspaceMember(),
-    ),
-    "apps.list.everywhere": (
-        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
-        CheckScope(Scope.APPS_READ),
-        CheckWorkspaceMember(),
-    ),
+    "apps.list": _REQ_APPS_LIST,
+    "apps.list.everywhere": _REQ_APPS_LIST,
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],
