@@ -27,5 +27,6 @@
   "comments.replyCount_few": "{{count}} odgovori",
   "comments.replyCount_one": "{{count}} odgovor",
   "comments.replyCount_other": "{{count}} odgovorov",
-  "comments.replyCount_two": "{{count}} odgovora"
+  "comments.replyCount_two": "{{count}} odgovora",
+  "comments.status.notSent": "Ni poslano"
 }

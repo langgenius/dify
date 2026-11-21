@@ -2,6 +2,7 @@ import type {
   WorkflowCommentBasic,
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { ThreadReply } from '../comment/pending-reply'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -14,7 +15,7 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
-import { createPendingReplyId, mergeFetchedReplies } from '../comment/pending-reply'
+import { createLocalReplyId, mergeFetchedReplies } from '../comment/pending-reply'
 import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 
@@ -29,6 +30,20 @@ const normalizeTimestamp = (value: number | string | null | undefined): number =
   if (!Number.isNaN(parsed)) return parsed
 
   return Math.floor(Date.parse(value) / 1000)
+}
+
+// Every write to a comment's detail or to the list takes a new version, shared by every
+// user of the same workflow store. A fetch only applies its result if nothing was written
+// since it started, so a slow, older fetch never overwrites a newer write.
+type CommentVersions = { details: Map<string, number>; list: number }
+const commentVersionsByStore = new WeakMap<object, CommentVersions>()
+const getCommentVersions = (store: object) => {
+  let versions = commentVersionsByStore.get(store)
+  if (!versions) {
+    versions = { details: new Map(), list: 0 }
+    commentVersionsByStore.set(store, versions)
+  }
+  return versions
 }
 
 const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentDetail => ({
@@ -59,7 +74,6 @@ export const useWorkflowComment = () => {
   const setActiveCommentLoading = useStore((s) => s.setActiveCommentDetailLoading)
   const replyUpdating = useStore((s) => s.replyUpdating)
   const setReplyUpdating = useStore((s) => s.setReplyUpdating)
-  const commentDetailCache = useStore((s) => s.commentDetailCache)
   const setCommentDetailCache = useStore((s) => s.setCommentDetailCache)
   const rightPanelWidth = useStore((s) => s.rightPanelWidth)
   const nodePanelWidth = useStore((s) => s.nodePanelWidth)
@@ -75,27 +89,21 @@ export const useWorkflowComment = () => {
     select: (data) => data.profile,
   })
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
-  const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
-  // Every write to a comment's detail or to the list takes a new version. A fetch only
-  // applies its result if nothing was written since it started, so a slow, older fetch
-  // never overwrites a newer write.
-  const detailVersionsRef = useRef(new Map<string, number>())
-  const listVersionRef = useRef(0)
+  const versions = getCommentVersions(workflowStore)
 
   useEffect(() => {
     activeCommentIdRef.current = activeCommentId ?? null
   }, [activeCommentId])
 
-  useEffect(() => {
-    commentDetailCacheRef.current = commentDetailCache
-  }, [commentDetailCache])
-
-  const nextDetailVersion = useCallback((commentId: string) => {
-    const version = (detailVersionsRef.current.get(commentId) ?? 0) + 1
-    detailVersionsRef.current.set(commentId, version)
-    return version
-  }, [])
+  const nextDetailVersion = useCallback(
+    (commentId: string) => {
+      const version = (versions.details.get(commentId) ?? 0) + 1
+      versions.details.set(commentId, version)
+      return version
+    },
+    [versions],
+  )
 
   const fetchCommentDetail = useCallback(
     async (commentId: string) => {
@@ -105,19 +113,18 @@ export const useWorkflowComment = () => {
       const detail = await consoleClient.apps.byAppId.workflow.comments.byCommentId.get({
         params: { app_id: appId, comment_id: commentId },
       })
-      if (detailVersionsRef.current.get(commentId) !== version) return
+      if (versions.details.get(commentId) !== version) return
 
-      const current = commentDetailCacheRef.current[commentId]
+      const current = workflowStore.getState().commentDetailCache[commentId]
       const next = current
         ? { ...detail, replies: mergeFetchedReplies(current.replies, detail.replies) }
         : detail
-      commentDetailCacheRef.current = { ...commentDetailCacheRef.current, [commentId]: next }
-      setCommentDetailCache(commentDetailCacheRef.current)
+      setCommentDetailCache({ ...workflowStore.getState().commentDetailCache, [commentId]: next })
       // Only apply the fetched detail if this comment is still the active one;
       // otherwise a refresh for another comment can clobber the current selection.
       if (activeCommentIdRef.current === commentId) setActiveComment(next)
     },
-    [appId, nextDetailVersion, setActiveComment, setCommentDetailCache],
+    [appId, nextDetailVersion, setActiveComment, setCommentDetailCache, versions, workflowStore],
   )
 
   const refreshActiveComment = fetchCommentDetail
@@ -125,33 +132,41 @@ export const useWorkflowComment = () => {
   const loadComments = useCallback(async () => {
     if (!appId || !isCollaborationEnabled) return
 
-    const version = ++listVersionRef.current
+    const version = ++versions.list
     setCommentsLoading(true)
     try {
       const response = await consoleClient.apps.byAppId.workflow.comments.get({
         params: { app_id: appId },
       })
-      if (listVersionRef.current === version) setComments(response.data)
+      if (versions.list === version) setComments(response.data)
     } catch (error) {
       console.error('Failed to fetch comments:', error)
     } finally {
       setCommentsLoading(false)
     }
-  }, [appId, isCollaborationEnabled, setComments, setCommentsLoading])
+  }, [appId, isCollaborationEnabled, setComments, setCommentsLoading, versions])
 
   // Write a mutation's result into the cached detail right away, so the thread updates
   // as soon as the request succeeds instead of after the refetches.
+  // Unless told otherwise, a write invalidates fetches already running for the comment.
   const patchCommentDetail = useCallback(
-    (commentId: string, update: (detail: WorkflowCommentDetail) => WorkflowCommentDetail) => {
-      const detail = commentDetailCacheRef.current[commentId]
+    (
+      commentId: string,
+      update: (detail: WorkflowCommentDetail) => WorkflowCommentDetail,
+      { invalidate = true }: { invalidate?: boolean } = {},
+    ) => {
+      // A thread whose first load is still running has only its preview to build on.
+      const state = workflowStore.getState()
+      const detail =
+        state.commentDetailCache[commentId] ??
+        (state.activeCommentId === commentId ? state.activeCommentDetail : null)
       if (!detail) return
-      nextDetailVersion(commentId)
+      if (invalidate) nextDetailVersion(commentId)
       const next = update(detail)
-      commentDetailCacheRef.current = { ...commentDetailCacheRef.current, [commentId]: next }
-      setCommentDetailCache(commentDetailCacheRef.current)
+      setCommentDetailCache({ ...workflowStore.getState().commentDetailCache, [commentId]: next })
       if (activeCommentIdRef.current === commentId) setActiveComment(next)
     },
-    [nextDetailVersion, setActiveComment, setCommentDetailCache],
+    [nextDetailVersion, setActiveComment, setCommentDetailCache, workflowStore],
   )
 
   // Reconcile with the server in the background; nothing waits on it.
@@ -264,15 +279,16 @@ export const useWorkflowComment = () => {
           })),
         }
 
-        listVersionRef.current += 1
+        versions.list += 1
         setComments([...workflowStore.getState().comments, composedComment])
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
+        setCommentDetailCache({
+          ...workflowStore.getState().commentDetailCache,
           [newComment.id]: composedDetail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
+        })
 
         collaborationManager.emitCommentsUpdate(appId)
+        // The local write dropped any list fetch already running; fetch it again.
+        loadComments()
 
         setPendingComment(null)
         setCommentQuickAdd(false)
@@ -289,6 +305,8 @@ export const useWorkflowComment = () => {
       reactflow,
       setComments,
       workflowStore,
+      loadComments,
+      versions,
       userProfile,
       setCommentDetailCache,
       mentionableUserById,
@@ -308,16 +326,11 @@ export const useWorkflowComment = () => {
     if (!pendingComment && !isCommentPlacing && isCommentQuickAdd) setCommentQuickAdd(false)
   }, [isCommentPlacing, isCommentQuickAdd, pendingComment, setCommentQuickAdd])
 
-  const handleCommentIconClick = useCallback(
-    async (comment: WorkflowCommentBasic) => {
-      setPendingComment(null)
-
-      activeCommentIdRef.current = comment.id
-      setActiveCommentId(comment.id)
-
-      const cachedDetail = commentDetailCacheRef.current[comment.id]
-      setActiveComment(cachedDetail ?? toCommentDetailPreview(comment))
-
+  // Brings a comment into view. Only for selecting a comment the user may not be looking at
+  // (thread navigation, the comments panel, the next one after a deletion); a marker that
+  // was clicked on the canvas is already where the user is looking.
+  const revealComment = useCallback(
+    (comment: WorkflowCommentBasic) => {
       const hasSelectedNode = reactflow.getNodes().some((node) => node.data?.selected)
       const commentPanelWidth = controlMode === ControlMode.Comment ? 420 : 0
       const fallbackPanelWidth = (hasSelectedNode ? nodePanelWidth : 0) + commentPanelWidth
@@ -333,6 +346,19 @@ export const useWorkflowComment = () => {
         zoom: 1,
         duration: 600,
       })
+    },
+    [controlMode, nodePanelWidth, reactflow, rightPanelWidth],
+  )
+
+  const handleCommentIconClick = useCallback(
+    async (comment: WorkflowCommentBasic) => {
+      setPendingComment(null)
+
+      activeCommentIdRef.current = comment.id
+      setActiveCommentId(comment.id)
+
+      const cachedDetail = workflowStore.getState().commentDetailCache[comment.id]
+      setActiveComment(cachedDetail ?? toCommentDetailPreview(comment))
 
       if (!appId) return
 
@@ -348,11 +374,8 @@ export const useWorkflowComment = () => {
     },
     [
       appId,
-      controlMode,
       fetchCommentDetail,
-      nodePanelWidth,
-      reactflow,
-      rightPanelWidth,
+      workflowStore,
       setActiveComment,
       setActiveCommentId,
       setActiveCommentLoading,
@@ -360,10 +383,37 @@ export const useWorkflowComment = () => {
     ],
   )
 
+  // Selects a comment the user may not be looking at and brings it into view.
+  const handleCommentReveal = useCallback(
+    (comment: WorkflowCommentBasic) => {
+      revealComment(comment)
+      return handleCommentIconClick(comment)
+    },
+    [handleCommentIconClick, revealComment],
+  )
+
+  // Resolving shows at once: the thread marks itself resolved (and leaves the canvas when
+  // resolved comments are hidden). A failed request puts it back.
+  const setCommentResolved = useCallback(
+    (commentId: string, resolved: boolean) => {
+      patchCommentDetail(commentId, (detail) => ({ ...detail, resolved }))
+      versions.list += 1
+      setComments(
+        workflowStore
+          .getState()
+          .comments.map((comment) =>
+            comment.id === commentId ? { ...comment, resolved } : comment,
+          ),
+      )
+    },
+    [patchCommentDetail, setComments, versions, workflowStore],
+  )
+
   const handleCommentResolve = useCallback(
     async (commentId: string) => {
       if (!appId) return
 
+      setCommentResolved(commentId, true)
       try {
         const result = await consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post({
           params: { app_id: appId, comment_id: commentId },
@@ -377,12 +427,14 @@ export const useWorkflowComment = () => {
           resolved_at: result.resolved_at,
           resolved_by: result.resolved_by,
         }))
-        syncComment(commentId)
       } catch (error) {
         console.error('Failed to resolve comment:', error)
+        setCommentResolved(commentId, false)
+      } finally {
+        syncComment(commentId)
       }
     },
-    [appId, patchCommentDetail, syncComment],
+    [appId, patchCommentDetail, setCommentResolved, syncComment],
   )
 
   const handleCommentDelete = useCallback(
@@ -396,9 +448,8 @@ export const useWorkflowComment = () => {
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        const updatedCache = { ...commentDetailCacheRef.current }
+        const updatedCache = { ...workflowStore.getState().commentDetailCache }
         delete updatedCache[commentId]
-        commentDetailCacheRef.current = updatedCache
         setCommentDetailCache(updatedCache)
 
         // Read the list as it is now; it may have changed while the request ran.
@@ -410,15 +461,15 @@ export const useWorkflowComment = () => {
             ? (latestComments[commentIndex + 1] ?? latestComments[commentIndex - 1])
             : undefined
 
-        listVersionRef.current += 1
+        versions.list += 1
         setComments(currentComments)
         loadComments()
 
         if (fallbackTarget) {
-          handleCommentIconClick(fallbackTarget)
+          handleCommentReveal(fallbackTarget)
         } else if (currentComments.length > 0) {
           const nextComment = currentComments[0]
-          handleCommentIconClick(nextComment!)
+          handleCommentReveal(nextComment!)
         } else {
           // Deselect only; the detail clears once the thread finishes closing.
           setActiveCommentId(null)
@@ -430,11 +481,12 @@ export const useWorkflowComment = () => {
     },
     [
       appId,
-      handleCommentIconClick,
+      handleCommentReveal,
       loadComments,
       setActiveCommentId,
       setCommentDetailCache,
       setComments,
+      versions,
       workflowStore,
     ],
   )
@@ -455,17 +507,16 @@ export const useWorkflowComment = () => {
       const updatedComments = comments.map((c) =>
         c.id === commentId ? { ...c, ...nextPosition } : c,
       )
-      listVersionRef.current += 1
+      versions.list += 1
       setComments(updatedComments)
 
-      const cachedDetail = commentDetailCacheRef.current[commentId]
+      const cachedDetail = workflowStore.getState().commentDetailCache[commentId]
       const updatedDetail = cachedDetail ? { ...cachedDetail, ...nextPosition } : null
       if (updatedDetail) {
-        commentDetailCacheRef.current = {
-          ...commentDetailCacheRef.current,
+        setCommentDetailCache({
+          ...workflowStore.getState().commentDetailCache,
           [commentId]: updatedDetail,
-        }
-        setCommentDetailCache(commentDetailCacheRef.current)
+        })
 
         if (activeCommentIdRef.current === commentId) setActiveComment(updatedDetail)
       } else if (activeComment?.id === commentId) {
@@ -484,23 +535,35 @@ export const useWorkflowComment = () => {
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
         console.error('Failed to update comment position:', error)
-        listVersionRef.current += 1
+        versions.list += 1
         setComments(previousComments)
 
         if (cachedDetail) {
-          commentDetailCacheRef.current = {
-            ...commentDetailCacheRef.current,
+          setCommentDetailCache({
+            ...workflowStore.getState().commentDetailCache,
             [commentId]: cachedDetail,
-          }
-          setCommentDetailCache(commentDetailCacheRef.current)
+          })
 
           if (activeCommentIdRef.current === commentId) setActiveComment(cachedDetail)
         } else if (activeComment?.id === commentId) {
           setActiveComment(activeComment)
         }
+      } finally {
+        // The local writes dropped any list fetch already running; fetch it again.
+        loadComments()
       }
     },
-    [activeComment, appId, comments, setComments, setCommentDetailCache, setActiveComment],
+    [
+      activeComment,
+      appId,
+      comments,
+      loadComments,
+      setComments,
+      setCommentDetailCache,
+      setActiveComment,
+      versions,
+      workflowStore,
+    ],
   )
 
   const handleCommentUpdate = useCallback(
@@ -511,7 +574,7 @@ export const useWorkflowComment = () => {
 
       const targetComment = comments.find((c) => c.id === commentId)
       const targetDetail =
-        commentDetailCacheRef.current[commentId] ??
+        workflowStore.getState().commentDetailCache[commentId] ??
         (activeCommentIdRef.current === commentId ? activeComment : null)
       const positionX = targetDetail?.position_x ?? targetComment?.position_x
       const positionY = targetDetail?.position_y ?? targetComment?.position_y
@@ -537,7 +600,68 @@ export const useWorkflowComment = () => {
         console.error('Failed to update comment:', error)
       }
     },
-    [activeComment, appId, comments, patchCommentDetail, syncComment],
+    [activeComment, appId, comments, patchCommentDetail, syncComment, workflowStore],
+  )
+
+  // Sends a reply already shown in the thread under its local id. On success it takes the
+  // server's id; on failure it stays in the thread, marked failed, to be sent again.
+  const sendReply = useCallback(
+    async (commentId: string, localId: string, content: string, mentionedUserIds: string[]) => {
+      if (!appId) return
+      try {
+        const reply = await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
+          params: { app_id: appId, comment_id: commentId },
+          body: { content, mentioned_user_ids: mentionedUserIds },
+        })
+
+        collaborationManager.emitCommentsUpdate(appId)
+
+        patchCommentDetail(commentId, (detail) => {
+          // A refetch may already have brought the saved reply in.
+          const alreadyFetched = detail.replies.some((item) => item.id === reply.id)
+          const replies: ThreadReply[] = alreadyFetched
+            ? detail.replies.filter((item) => item.id !== localId)
+            : detail.replies.map((item: ThreadReply) =>
+                item.id === localId
+                  ? {
+                      ...item,
+                      id: reply.id,
+                      created_at: normalizeTimestamp(reply.created_at),
+                      send_state: undefined,
+                      mentioned_user_ids: undefined,
+                    }
+                  : item,
+              )
+          return {
+            ...detail,
+            replies,
+            mentions: [
+              ...detail.mentions,
+              ...mentionedUserIds.map((mentionedId) => ({
+                mentioned_user_id: mentionedId,
+                mentioned_user_account: mentionableUserById.get(mentionedId) ?? null,
+                reply_id: reply.id,
+              })),
+            ],
+          }
+        })
+      } catch (error) {
+        console.error('Failed to create reply:', error)
+        patchCommentDetail(
+          commentId,
+          (detail) => ({
+            ...detail,
+            replies: detail.replies.map((item: ThreadReply) =>
+              item.id === localId ? { ...item, send_state: 'failed' as const } : item,
+            ),
+          }),
+          { invalidate: false },
+        )
+      } finally {
+        syncComment(commentId)
+      }
+    },
+    [appId, mentionableUserById, patchCommentDetail, syncComment],
   )
 
   const handleCommentReply = useCallback(
@@ -546,62 +670,69 @@ export const useWorkflowComment = () => {
       const trimmed = content.trim()
       if (!trimmed) return
 
-      // The reply shows at once under a local id and takes the server's id when it is saved.
-      const pendingId = createPendingReplyId()
-      patchCommentDetail(commentId, (detail) => ({
-        ...detail,
-        replies: [
-          ...detail.replies,
-          {
-            id: pendingId,
-            client_key: pendingId,
-            content: trimmed,
-            created_at: Math.floor(Date.now() / 1000),
-            created_by: userProfile.id,
-            created_by_account: {
-              id: userProfile.id,
-              name: userProfile.name,
-              email: userProfile.email,
-              avatar_url: userProfile.avatar_url || userProfile.avatar || null,
-            },
-          },
-        ],
-      }))
-      try {
-        const reply = await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
-          params: { app_id: appId, comment_id: commentId },
-          body: { content: trimmed, mentioned_user_ids: mentionedUserIds },
-        })
-
-        collaborationManager.emitCommentsUpdate(appId)
-
-        patchCommentDetail(commentId, (detail) => ({
-          ...detail,
-          replies: detail.replies.map((item) =>
-            item.id === pendingId
-              ? { ...item, id: reply.id, created_at: normalizeTimestamp(reply.created_at) }
-              : item,
-          ),
-          mentions: [
-            ...detail.mentions,
-            ...mentionedUserIds.map((mentionedId) => ({
-              mentioned_user_id: mentionedId,
-              mentioned_user_account: mentionableUserById.get(mentionedId) ?? null,
-              reply_id: reply.id,
-            })),
-          ],
-        }))
-        syncComment(commentId)
-      } catch (error) {
-        // Take the reply back out; the thread puts its text back in the reply box.
-        patchCommentDetail(commentId, (detail) => ({
-          ...detail,
-          replies: detail.replies.filter((item) => item.id !== pendingId),
-        }))
-        throw error
+      // The reply shows at once under a local id, so the reply box is free for the next one.
+      const localId = createLocalReplyId()
+      const localReply: ThreadReply = {
+        id: localId,
+        client_key: localId,
+        send_state: 'pending',
+        mentioned_user_ids: mentionedUserIds,
+        content: trimmed,
+        created_at: Math.floor(Date.now() / 1000),
+        created_by: userProfile.id,
+        created_by_account: {
+          id: userProfile.id,
+          name: userProfile.name,
+          email: userProfile.email,
+          avatar_url: userProfile.avatar_url || userProfile.avatar || null,
+        },
       }
+      // Refetches keep unsent replies, so showing one does not invalidate them.
+      patchCommentDetail(
+        commentId,
+        (detail) => ({ ...detail, replies: [...detail.replies, localReply] }),
+        { invalidate: false },
+      )
+      await sendReply(commentId, localId, trimmed, mentionedUserIds)
     },
-    [appId, mentionableUserById, patchCommentDetail, syncComment, userProfile],
+    [appId, patchCommentDetail, sendReply, userProfile],
+  )
+
+  const handleCommentReplyRetry = useCallback(
+    async (commentId: string, localId: string) => {
+      const state = workflowStore.getState()
+      const detail =
+        state.commentDetailCache[commentId] ??
+        (state.activeCommentId === commentId ? state.activeCommentDetail : null)
+      const reply = detail?.replies.find((item) => item.id === localId) as ThreadReply | undefined
+      if (!reply || reply.send_state !== 'failed') return
+      patchCommentDetail(
+        commentId,
+        (current) => ({
+          ...current,
+          replies: current.replies.map((item: ThreadReply) =>
+            item.id === localId ? { ...item, send_state: 'pending' as const } : item,
+          ),
+        }),
+        { invalidate: false },
+      )
+      await sendReply(commentId, localId, reply.content, reply.mentioned_user_ids ?? [])
+    },
+    [patchCommentDetail, sendReply, workflowStore],
+  )
+
+  const handleCommentReplyDiscard = useCallback(
+    (commentId: string, localId: string) => {
+      patchCommentDetail(
+        commentId,
+        (detail) => ({
+          ...detail,
+          replies: detail.replies.filter((item) => item.id !== localId),
+        }),
+        { invalidate: false },
+      )
+    },
+    [patchCommentDetail],
   )
 
   const handleCommentReplyUpdate = useCallback(
@@ -671,9 +802,9 @@ export const useWorkflowComment = () => {
       const idx = comments.findIndex((c) => c.id === currentId)
       if (idx === -1) return
       const target = direction === 'prev' ? comments[idx - 1] : comments[idx + 1]
-      if (target) handleCommentIconClick(target)
+      if (target) handleCommentReveal(target)
     },
-    [comments, handleCommentIconClick],
+    [comments, handleCommentReveal],
   )
 
   // Closing deselects the comment; its detail stays for the thread's closing transition
@@ -710,6 +841,7 @@ export const useWorkflowComment = () => {
     handleCommentSubmit,
     handleCommentCancel,
     handleCommentIconClick,
+    handleCommentReveal,
     handleActiveCommentClose,
     handleActiveCommentClosed,
     handleCommentResolve,
@@ -717,6 +849,8 @@ export const useWorkflowComment = () => {
     handleCommentNavigate,
     handleCommentUpdate,
     handleCommentReply,
+    handleCommentReplyRetry,
+    handleCommentReplyDiscard,
     handleCommentReplyUpdate,
     handleCommentReplyDelete,
     handleCommentPositionUpdate,

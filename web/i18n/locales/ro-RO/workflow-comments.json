@@ -26,5 +26,6 @@
   "comments.placeholder.reply": "Reply",
   "comments.replyCount_few": "{{count}} răspunsuri",
   "comments.replyCount_one": "{{count}} răspuns",
-  "comments.replyCount_other": "{{count}} de răspunsuri"
+  "comments.replyCount_other": "{{count}} de răspunsuri",
+  "comments.status.notSent": "Netrimis"
 }

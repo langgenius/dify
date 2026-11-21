@@ -27,5 +27,6 @@
   "comments.replyCount_few": "{{count}} odpowiedzi",
   "comments.replyCount_many": "{{count}} odpowiedzi",
   "comments.replyCount_one": "{{count}} odpowiedź",
-  "comments.replyCount_other": "{{count}} odpowiedzi"
+  "comments.replyCount_other": "{{count}} odpowiedzi",
+  "comments.status.notSent": "Nie wysłano"
 }

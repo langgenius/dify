@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "ແກ້ໄຂການຕອບກັບ",
   "comments.placeholder.reply": "ຕອບກັບ",
   "comments.replyCount_one": "{{count}} ການຕອບກັບ",
-  "comments.replyCount_other": "{{count}} ການຕອບກັບ"
+  "comments.replyCount_other": "{{count}} ການຕອບກັບ",
+  "comments.status.notSent": "ບໍ່ໄດ້ສົ່ງ"
 }

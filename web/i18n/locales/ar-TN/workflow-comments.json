@@ -29,5 +29,6 @@
   "comments.replyCount_one": "{{count}} رد",
   "comments.replyCount_other": "{{count}} رد",
   "comments.replyCount_two": "ردّان ({{count}})",
-  "comments.replyCount_zero": "{{count}} ردود"
+  "comments.replyCount_zero": "{{count}} ردود",
+  "comments.status.notSent": "لم يتم الإرسال"
 }

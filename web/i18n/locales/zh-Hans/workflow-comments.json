@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "编辑回复",
   "comments.placeholder.reply": "回复",
   "comments.replyCount_one": "{{count}} 条回复",
-  "comments.replyCount_other": "{{count}} 条回复"
+  "comments.replyCount_other": "{{count}} 条回复",
+  "comments.status.notSent": "未发送"
 }

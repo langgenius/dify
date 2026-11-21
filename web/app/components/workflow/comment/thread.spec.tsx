@@ -1,5 +1,6 @@
 import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
+import type { ThreadReply } from './pending-reply'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -82,6 +83,51 @@ describe('CommentThread', () => {
     expect(resolve).toBeEnabled()
     fireEvent.click(resolve)
     expect(onResolve).toHaveBeenCalledOnce()
+  })
+
+  it('shows a sending reply dimmed and a failed one with retry and delete', async () => {
+    const user = userEvent.setup()
+    const onReplyRetry = vi.fn()
+    const onReplyDiscard = vi.fn()
+    const comment = createComment()
+    const author = comment.replies[0]!.created_by_account
+    const unsent: ThreadReply[] = [
+      {
+        id: 'local-1',
+        content: 'still sending',
+        created_by: 'user-1',
+        created_by_account: author,
+        send_state: 'pending',
+      },
+      {
+        id: 'local-2',
+        content: 'did not send',
+        created_by: 'user-1',
+        created_by_account: author,
+        send_state: 'failed',
+      },
+    ]
+
+    render(
+      <CommentThreadFixture
+        comment={{ ...comment, replies: [...comment.replies, ...unsent] }}
+        onReply={() => {}}
+        onReplyRetry={onReplyRetry}
+        onReplyDiscard={onReplyDiscard}
+      />,
+    )
+
+    expect((await screen.findByText('still sending')).closest('[aria-busy="true"]')).not.toBeNull()
+    // Unsent replies have no actions menu; only the saved reply does.
+    expect(
+      screen.getAllByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
+    ).toHaveLength(1)
+    expect(screen.getByText('workflowComments.comments.status.notSent')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(onReplyRetry).toHaveBeenCalledWith('local-2')
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    expect(onReplyDiscard).toHaveBeenCalledWith('local-2')
+    expect(screen.getByRole('textbox')).toHaveFocus()
   })
 
   it('triggers header actions and closes on Escape', async () => {

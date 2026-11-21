@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "返信を編集",
   "comments.placeholder.reply": "返信",
   "comments.replyCount_one": "{{count}} 件の返信",
-  "comments.replyCount_other": "{{count}} 件の返信"
+  "comments.replyCount_other": "{{count}} 件の返信",
+  "comments.status.notSent": "未送信"
 }

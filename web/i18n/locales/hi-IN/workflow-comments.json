@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "जवाब संपादित करें",
   "comments.placeholder.reply": "जवाब दें",
   "comments.replyCount_one": "{{count}} जवाब",
-  "comments.replyCount_other": "{{count}} जवाब"
+  "comments.replyCount_other": "{{count}} जवाब",
+  "comments.status.notSent": "नहीं भेजा गया"
 }

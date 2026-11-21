@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Edit balasan",
   "comments.placeholder.reply": "Balas",
   "comments.replyCount_one": "{{count}} balasan",
-  "comments.replyCount_other": "{{count}} balasan"
+  "comments.replyCount_other": "{{count}} balasan",
+  "comments.status.notSent": "Tidak terkirim"
 }

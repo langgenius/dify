@@ -26,7 +26,7 @@ const CommentsPanel = () => {
   const setControlMode = useStore((s) => s.setControlMode)
   const showResolvedComments = useStore((s) => s.showResolvedComments)
   const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
-  const { comments, loading, handleCommentIconClick, handleCommentResolve } = useWorkflowComment()
+  const { comments, loading, handleCommentReveal, handleCommentResolve } = useWorkflowComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
@@ -34,9 +34,9 @@ const CommentsPanel = () => {
 
   const handleSelect = useCallback(
     (comment: WorkflowCommentBasic) => {
-      handleCommentIconClick(comment)
+      handleCommentReveal(comment)
     },
-    [handleCommentIconClick],
+    [handleCommentReveal],
   )
 
   const { data: currentUserId } = useSuspenseQuery({

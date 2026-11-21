@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
   "comments.replyCount_one": "{{count}} การตอบกลับ",
-  "comments.replyCount_other": "{{count}} การตอบกลับ"
+  "comments.replyCount_other": "{{count}} การตอบกลับ",
+  "comments.status.notSent": "ส่งไม่สำเร็จ"
 }

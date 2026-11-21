@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Cavabı redaktə et",
   "comments.placeholder.reply": "Cavab ver",
   "comments.replyCount_one": "{{count}} cavab",
-  "comments.replyCount_other": "{{count}} cavab"
+  "comments.replyCount_other": "{{count}} cavab",
+  "comments.status.notSent": "Göndərilmədi"
 }

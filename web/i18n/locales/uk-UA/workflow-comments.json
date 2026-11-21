@@ -27,5 +27,6 @@
   "comments.replyCount_few": "{{count}} відповіді",
   "comments.replyCount_many": "{{count}} відповідей",
   "comments.replyCount_one": "{{count}} відповідь",
-  "comments.replyCount_other": "{{count}} відповіді"
+  "comments.replyCount_other": "{{count}} відповіді",
+  "comments.status.notSent": "Не надіслано"
 }

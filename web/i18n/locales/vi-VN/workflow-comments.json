@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
   "comments.replyCount_one": "{{count}} phản hồi",
-  "comments.replyCount_other": "{{count}} phản hồi"
+  "comments.replyCount_other": "{{count}} phản hồi",
+  "comments.status.notSent": "Chưa gửi"
 }

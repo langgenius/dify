@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
   "comments.replyCount_one": "{{count}} resposta",
-  "comments.replyCount_other": "{{count}} respostas"
+  "comments.replyCount_other": "{{count}} respostas",
+  "comments.status.notSent": "Não enviado"
 }

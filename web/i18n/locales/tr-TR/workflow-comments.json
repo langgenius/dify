@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "Yanıtı düzenle",
   "comments.placeholder.reply": "Yanıtla",
   "comments.replyCount_one": "{{count}} yanıt",
-  "comments.replyCount_other": "{{count}} yanıt"
+  "comments.replyCount_other": "{{count}} yanıt",
+  "comments.status.notSent": "Gönderilmedi"
 }

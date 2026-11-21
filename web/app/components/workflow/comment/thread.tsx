@@ -39,7 +39,7 @@ import { useStore } from '../store'
 import { CommentComposerFrame } from './comment-composer'
 import { MentionInput } from './mention-input'
 import { toCommentCollaborator } from './participants'
-import { getReplyKey, isPendingReply } from './pending-reply'
+import { getReplyKey } from './pending-reply'
 import {
   CommentMessage,
   CommentReplyBar,
@@ -54,7 +54,7 @@ type CommentThreadProps = {
   loading?: boolean
   replyUpdating?: boolean
   onDelete?: (commentId: string) => Promise<void> | void
-  onResolve?: () => Promise<void> | void
+  onResolve?: () => void
   onPrev?: () => void
   onNext?: () => void
   canGoPrev?: boolean
@@ -67,6 +67,10 @@ type CommentThreadProps = {
     mentionedUserIds?: string[],
   ) => Promise<void> | void
   onReplyDelete?: (replyId: string) => Promise<void> | void
+  /** Sends a reply that failed to send again. */
+  onReplyRetry?: (replyId: string) => Promise<void> | void
+  /** Drops a reply that failed to send. */
+  onReplyDiscard?: (replyId: string) => void
 }
 
 type ThreadMessageProps = {
@@ -123,8 +127,6 @@ export function CommentThread({
   // comment is the one shown, so deleting it and moving on closes the dialog.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const [deletePending, setDeletePending] = useState(false)
-  // Keyed by comment, so a resolve still running for one thread never blocks the next.
-  const [resolvingId, setResolvingId] = useState<string | null>(null)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
@@ -170,20 +172,11 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={comment.resolved || resolvingId === comment.id}
+                  disabled={comment.resolved}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
-                  onClick={async () => {
-                    if (!onResolve) return
-                    const commentId = comment.id
-                    setResolvingId(commentId)
-                    try {
-                      await onResolve()
-                    } finally {
-                      setResolvingId((id) => (id === commentId ? null : id))
-                    }
-                  }}
+                  onClick={onResolve}
                   aria-label={t(($) => $['comments.aria.resolveComment'], {
                     ns: 'workflowComments',
                   })}
@@ -309,6 +302,8 @@ type CommentThreadSessionProps = Pick<
   | 'onReply'
   | 'onReplyEdit'
   | 'onReplyDelete'
+  | 'onReplyRetry'
+  | 'onReplyDiscard'
 > & {
   replyInputRef: RefObject<HTMLTextAreaElement | null>
 }
@@ -323,6 +318,8 @@ function CommentThreadSession({
   onReply,
   onReplyEdit,
   onReplyDelete,
+  onReplyRetry,
+  onReplyDiscard,
 }: CommentThreadSessionProps) {
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -367,17 +364,12 @@ function CommentThreadSession({
     previousReplyCountRef.current = replies.length
   }, [replies.length])
 
-  const handleReplySubmit = async (content: string, mentionedUserIds: string[]) => {
+  // The reply shows in the thread at once, so the box clears for the next one. A reply
+  // that fails to send stays in the thread with its own retry.
+  const handleReplySubmit = (content: string, mentionedUserIds: string[]) => {
     if (!onReply) return
-    // The reply shows in the thread at once, so the box clears for the next one. If it
-    // fails to send, its text comes back unless a new draft has been started.
     setReplyContent('')
-    try {
-      await onReply(content, mentionedUserIds)
-    } catch (error) {
-      console.error('Failed to send reply', error)
-      setReplyContent((draft) => draft || content)
-    }
+    void onReply(content, mentionedUserIds)
   }
 
   return (
@@ -397,37 +389,52 @@ function CommentThreadSession({
           onSave={onCommentEdit}
           onEditEnd={focusReply}
         />
-        {replies.map((reply: ThreadReply) => (
-          <CommentThreadEntry
-            key={getReplyKey(reply)}
-            pending={isPendingReply(reply)}
-            account={reply.created_by_account}
-            createdAt={reply.created_at ?? 0}
-            content={reply.content}
-            mentionNames={mentionNames}
-            isOwn={reply.created_by_account?.id === currentUserId}
-            saving={replyUpdating}
-            actionsLabel={t(($) => $['comments.aria.replyActions'], { ns: 'workflowComments' })}
-            editLabel={t(($) => $['comments.actions.editReply'], { ns: 'workflowComments' })}
-            editPlaceholder={t(($) => $['comments.placeholder.editReply'], {
-              ns: 'workflowComments',
-            })}
-            onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
-            onEditEnd={focusReply}
-            deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
-            deleteConfirmLabel={t(($) => $['comments.confirm.deleteReplyTitle'], {
-              ns: 'workflowComments',
-            })}
-            onDelete={
-              onReplyDelete &&
-              (async () => {
-                await onReplyDelete(reply.id)
-                // The deleted row takes its menu with it, so focus moves on to the reply box.
-                focusReply()
-              })
-            }
-          />
-        ))}
+        {replies.map((reply: ThreadReply) =>
+          reply.send_state ? (
+            <UnsentReplyEntry
+              key={getReplyKey(reply)}
+              reply={reply}
+              mentionNames={mentionNames}
+              onRetry={onReplyRetry && (() => onReplyRetry(reply.id))}
+              onDiscard={
+                onReplyDiscard &&
+                (() => {
+                  onReplyDiscard(reply.id)
+                  focusReply()
+                })
+              }
+            />
+          ) : (
+            <CommentThreadEntry
+              key={getReplyKey(reply)}
+              account={reply.created_by_account}
+              createdAt={reply.created_at ?? 0}
+              content={reply.content}
+              mentionNames={mentionNames}
+              isOwn={reply.created_by_account?.id === currentUserId}
+              saving={replyUpdating}
+              actionsLabel={t(($) => $['comments.aria.replyActions'], { ns: 'workflowComments' })}
+              editLabel={t(($) => $['comments.actions.editReply'], { ns: 'workflowComments' })}
+              editPlaceholder={t(($) => $['comments.placeholder.editReply'], {
+                ns: 'workflowComments',
+              })}
+              onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
+              onEditEnd={focusReply}
+              deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
+              deleteConfirmLabel={t(($) => $['comments.confirm.deleteReplyTitle'], {
+                ns: 'workflowComments',
+              })}
+              onDelete={
+                onReplyDelete &&
+                (async () => {
+                  await onReplyDelete(reply.id)
+                  // The deleted row takes its menu with it, so focus moves on to the reply box.
+                  focusReply()
+                })
+              }
+            />
+          ),
+        )}
       </CommentThreadList>
       {onReply && (
         <CommentReplyBar
@@ -461,8 +468,6 @@ type CommentThreadEntryProps = {
   content: string
   mentionNames: string[]
   isOwn: boolean
-  /** Still sending: shown dimmed and without actions until the server has it. */
-  pending?: boolean
   saving?: boolean
   actionsLabel: string
   editLabel: string
@@ -483,7 +488,6 @@ function CommentThreadEntry({
   content,
   mentionNames,
   isOwn,
-  pending = false,
   saving = false,
   actionsLabel,
   editLabel,
@@ -527,8 +531,8 @@ function CommentThreadEntry({
   }
 
   return (
-    <CommentThreadItem aria-busy={pending || undefined} className={cn(pending && 'opacity-60')}>
-      {isOwn && !editing && !pending && (
+    <CommentThreadItem>
+      {isOwn && !editing && (
         <Menu>
           <MenuTrigger
             ref={menuTriggerRef}
@@ -644,6 +648,59 @@ function CommentThreadEntry({
           content={content}
           mentionNames={mentionNames}
         />
+      )}
+    </CommentThreadItem>
+  )
+}
+
+type UnsentReplyEntryProps = {
+  reply: ThreadReply
+  mentionNames: string[]
+  onRetry?: () => void
+  onDiscard?: () => void
+}
+
+/**
+ * A reply the server does not have yet. While sending it is dimmed; if sending failed it
+ * says so and offers to send it again or drop it.
+ */
+function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentReplyEntryProps) {
+  const { t } = useTranslation(['common', 'workflowComments'])
+  const failed = reply.send_state === 'failed'
+  return (
+    <CommentThreadItem aria-busy={!failed || undefined}>
+      <div className={cn(!failed && 'opacity-60')}>
+        <ThreadMessage
+          author={reply.created_by_account}
+          createdAt={reply.created_at ?? 0}
+          content={reply.content}
+          mentionNames={mentionNames}
+        />
+      </div>
+      {failed && (
+        <div className="mt-1 flex items-center gap-2 ps-9 system-xs-regular">
+          <span className="text-text-destructive">
+            {t(($) => $['comments.status.notSent'], { ns: 'workflowComments' })}
+          </span>
+          {onRetry && (
+            <button
+              type="button"
+              className="system-xs-medium text-text-accent hover:underline"
+              onClick={onRetry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </button>
+          )}
+          {onDiscard && (
+            <button
+              type="button"
+              className="system-xs-medium text-text-tertiary hover:underline"
+              onClick={onDiscard}
+            >
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </button>
+          )}
+        </div>
       )}
     </CommentThreadItem>
   )

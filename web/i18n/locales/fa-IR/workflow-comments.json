@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "ویرایش پاسخ",
   "comments.placeholder.reply": "پاسخ",
   "comments.replyCount_one": "{{count}} پاسخ",
-  "comments.replyCount_other": "{{count}} پاسخ"
+  "comments.replyCount_other": "{{count}} پاسخ",
+  "comments.status.notSent": "ارسال نشد"
 }

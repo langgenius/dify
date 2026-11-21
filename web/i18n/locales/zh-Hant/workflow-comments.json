@@ -25,5 +25,6 @@
   "comments.placeholder.editReply": "編輯回覆",
   "comments.placeholder.reply": "回覆",
   "comments.replyCount_one": "{{count}} 則回覆",
-  "comments.replyCount_other": "{{count}} 則回覆"
+  "comments.replyCount_other": "{{count}} 則回覆",
+  "comments.status.notSent": "未傳送"
 }

@@ -307,7 +307,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
         if (e.key === 'Escape' && isEditing && onCancel) {
           e.preventDefault()
           e.stopPropagation()
-          onCancel()
+          // Like the Cancel button, Escape waits for a running save.
+          if (!loading) onCancel()
           return
         }
 
@@ -323,6 +324,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
         insertMention,
         handleSubmit,
         isEditing,
+        loading,
         onCancel,
       ],
     )

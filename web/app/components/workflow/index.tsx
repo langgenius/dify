@@ -293,6 +293,9 @@ export const Workflow: FC<WorkflowProps> = memo(
       handleCommentSubmit,
       handleCommentCancel,
       handleCommentIconClick,
+      handleCommentReveal,
+      handleCommentReplyRetry,
+      handleCommentReplyDiscard,
       handleActiveCommentClose,
       handleActiveCommentClosed,
       handleCommentResolve,
@@ -322,9 +325,9 @@ export const Workflow: FC<WorkflowProps> = memo(
         const idx = visibleComments.findIndex((comment) => comment.id === activeComment.id)
         if (idx === -1) return
         const target = direction === 'prev' ? visibleComments[idx - 1] : visibleComments[idx + 1]
-        if (target) handleCommentIconClick(target)
+        if (target) handleCommentReveal(target)
       },
-      [activeComment, handleCommentIconClick, visibleComments],
+      [activeComment, handleCommentReveal, visibleComments],
     )
     const [commentThreadHandle] = useState(() => createPopoverHandle())
     const activeCommentId = useStore((s) => s.activeCommentId)
@@ -732,6 +735,8 @@ export const Workflow: FC<WorkflowProps> = memo(
                     handleCommentReplyUpdate(activeComment.id, replyId, content, ids ?? [])
                   }
                   onReplyDelete={(replyId) => handleCommentReplyDelete(activeComment.id, replyId)}
+                  onReplyRetry={(replyId) => handleCommentReplyRetry(activeComment.id, replyId)}
+                  onReplyDiscard={(replyId) => handleCommentReplyDiscard(activeComment.id, replyId)}
                   canGoPrev={canGoPrevComment}
                   canGoNext={canGoNextComment}
                 />
