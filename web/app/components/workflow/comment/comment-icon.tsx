@@ -6,7 +6,7 @@ import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -214,6 +214,16 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       setShowPreview(true)
     }, [isActive, isDragging])
 
+    // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
+    useEffect(() => {
+      if (!previewOpen) return
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') setShowPreview(false)
+      }
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [previewOpen])
+
     const handleMouseLeave = useCallback(() => {
       setShowPreview(false)
     }, [])
@@ -269,7 +279,14 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             }
             if (event.detail === 0) finishKeyboardMove()
           }}
-          onBlur={finishKeyboardMove}
+          // Keyboard focus previews the comment like hovering does.
+          onFocus={(event) => {
+            if (event.currentTarget.matches(':focus-visible')) handleMouseEnter()
+          }}
+          onBlur={() => {
+            finishKeyboardMove()
+            setShowPreview(false)
+          }}
           onKeyUp={(event) => {
             if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))
               finishKeyboardMove()
@@ -279,6 +296,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             if (!delta || !isAuthor || !onPositionUpdate) return
             event.preventDefault()
             event.stopPropagation()
+            // The preview sits over the marker; moving it should show where it goes.
+            setShowPreview(false)
             const current = keyboardPositionRef.current ?? {
               x: comment.position_x,
               y: comment.position_y,
@@ -299,7 +318,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         {previewMounted && (
           <div
             data-open={previewOpen || undefined}
-            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:scale-95 not-data-open:opacity-0 not-data-open:duration-100 motion-reduce:scale-100 starting:scale-95 starting:opacity-0"
+            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:scale-95 not-data-open:opacity-0 not-data-open:duration-100 motion-reduce:not-data-open:scale-100 starting:scale-95 starting:opacity-0 motion-reduce:starting:scale-100"
             style={{
               left: canvasPosition.x,
               top: canvasPosition.y,

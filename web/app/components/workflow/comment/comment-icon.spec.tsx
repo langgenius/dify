@@ -116,6 +116,28 @@ describe('CommentIcon', () => {
     expect(preview).not.toHaveAttribute('data-open')
   })
 
+  it('previews on keyboard focus too, and closes the preview with Escape', async () => {
+    const user = userEvent.setup()
+    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
+
+    await user.tab()
+    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')
+    expect(preview).toHaveAttribute('data-open')
+
+    await user.keyboard('{Escape}')
+    expect(preview).not.toHaveAttribute('data-open')
+
+    await user.hover(
+      within(screen.getByRole('button', { name: /workflow.keyboard.openComment/ })).getByRole(
+        'img',
+        { name: 'Alice' },
+      ),
+    )
+    expect(preview).toHaveAttribute('data-open')
+    await user.keyboard('{Escape}')
+    expect(preview).not.toHaveAttribute('data-open')
+  })
+
   it('converts pointer movement through the zoomed canvas before saving the authored position', () => {
     const comment = createComment({ position_x: 0, position_y: 0 })
     const onClick = vi.fn()
