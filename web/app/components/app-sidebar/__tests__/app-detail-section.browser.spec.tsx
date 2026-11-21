@@ -1,5 +1,4 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
@@ -24,26 +23,25 @@ async function renderSection({
   mode = 'chat',
   permissions = [],
   rbacEnabled = true,
-  deploymentEdition = 'COMMUNITY',
+  evaluation = 'unavailable',
   publishedWorkflow = false,
-  cloudPlan = 'professional',
 }: {
   mode?: AppDetailWithSite['mode']
   permissions?: string[]
   rbacEnabled?: boolean
-  deploymentEdition?: DeploymentEdition
+  evaluation?: 'enabled' | 'upgrade' | 'unavailable'
   publishedWorkflow?: boolean
-  cloudPlan?: 'sandbox' | 'professional'
 } = {}) {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, {
-    deployment_edition: deploymentEdition,
     rbac_enabled: rbacEnabled,
     enable_app_deploy: false,
   })
-  if (deploymentEdition === 'CLOUD')
-    seedFeatures(queryClient, { billing: { subscription: { plan: cloudPlan } } })
+  seedFeatures(queryClient, {
+    evaluation_enabled: evaluation === 'enabled',
+    evaluation_upgrade_available: evaluation === 'upgrade',
+  })
   seedWorkspacePermissionsQuery(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
@@ -153,7 +151,7 @@ describe('AppDetailSection', () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
       publishedWorkflow: true,
     })
 
@@ -166,7 +164,7 @@ describe('AppDetailSection', () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
     })
 
     const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
@@ -178,13 +176,12 @@ describe('AppDetailSection', () => {
     await expect.element(screen.getByText('evaluation.unavailableUntilPublished')).toBeVisible()
   })
 
-  it('explains why evaluation is disabled on a Cloud plan without access', async () => {
+  it('explains why evaluation is disabled when the workspace can upgrade into it', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'CLOUD',
+      evaluation: 'upgrade',
       publishedWorkflow: true,
-      cloudPlan: 'sandbox',
     })
 
     const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
@@ -197,14 +194,14 @@ describe('AppDetailSection', () => {
     const screen = await renderSection({
       mode: 'advanced-chat',
       permissions: [AppACLPermission.ViewLayout],
-      deploymentEdition: 'ENTERPRISE',
+      evaluation: 'enabled',
       publishedWorkflow: true,
     })
 
     await expect.element(screen.getByText('evaluation.title')).not.toBeInTheDocument()
   })
 
-  it('omits evaluation in Community edition', async () => {
+  it('omits evaluation when the workspace cannot use or upgrade into it', async () => {
     const screen = await renderSection({
       mode: 'workflow',
       permissions: [AppACLPermission.ViewLayout],

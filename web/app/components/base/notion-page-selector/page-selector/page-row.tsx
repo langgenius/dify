@@ -44,7 +44,7 @@ const NotionPageRow = ({
   return (
     <div
       className={cn(
-        'group flex cursor-pointer items-center rounded-md pr-0.5 pl-2 hover:bg-state-base-hover',
+        'group flex cursor-pointer items-center rounded-md ps-2 pe-0.5 hover:bg-state-base-hover',
         isPreviewed && 'bg-state-base-hover',
       )}
       style={style}
@@ -52,7 +52,7 @@ const NotionPageRow = ({
     >
       {selectionMode === 'multiple' ? (
         <Checkbox
-          className="mr-2 shrink-0"
+          className="me-2 shrink-0"
           checked={checked}
           disabled={disabled}
           aria-label={row.page.page_name}
@@ -60,7 +60,7 @@ const NotionPageRow = ({
         />
       ) : (
         <Radio
-          className="mr-2 shrink-0"
+          className="me-2 shrink-0"
           value={pageId}
           disabled={disabled}
           aria-label={row.page.page_name}
@@ -68,7 +68,7 @@ const NotionPageRow = ({
       )}
       {!searchValue && row.hasChild && (
         <div
-          className="mr-1 flex size-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+          className="me-1 flex size-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: row.depth * 8 }}
           onClick={() => onToggle(pageId)}
           data-testid={`notion-page-toggle-${pageId}`}
@@ -81,9 +81,9 @@ const NotionPageRow = ({
         </div>
       )}
       {!searchValue && !row.hasChild && row.parentExists && (
-        <div className="mr-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
+        <div className="me-1 size-5 shrink-0" style={{ marginLeft: row.depth * 8 }} />
       )}
-      <NotionIcon decorative className="mr-1 shrink-0" type="page" src={row.page.page_icon} />
+      <NotionIcon decorative className="me-1 shrink-0" type="page" src={row.page.page_icon} />
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}
@@ -92,7 +92,7 @@ const NotionPageRow = ({
       </div>
       {showPreview && (
         <div
-          className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs leading-4 font-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] group-hover:flex hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover"
+          className="ms-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs leading-4 font-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] group-hover:flex hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover"
           onClick={() => onPreview(pageId)}
           data-testid={`notion-page-preview-${pageId}`}
         >
@@ -101,7 +101,7 @@ const NotionPageRow = ({
       )}
       {searchValue && (
         <div
-          className="ml-1 max-w-30 shrink-0 truncate text-xs text-text-quaternary"
+          className="ms-1 max-w-30 shrink-0 truncate text-xs text-text-quaternary"
           title={breadcrumbs.join(' / ')}
         >
           {breadcrumbs.join(' / ')}

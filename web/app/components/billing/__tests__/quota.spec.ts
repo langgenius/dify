@@ -1,4 +1,10 @@
-import { getAppRunsQuota, getCountQuota, getTriggerEventsQuota } from '../quota'
+import {
+  getAppRunsQuota,
+  getCountQuota,
+  getTriggerEventsQuota,
+  getVectorSpaceQuota,
+  isQuotaReached,
+} from '../quota'
 
 describe('billing quotas', () => {
   beforeEach(() => {
@@ -23,6 +29,36 @@ describe('billing quotas', () => {
       usage: 0,
       limit: 0,
     })
+  })
+
+  it.each([
+    { name: 'count limit 0', quota: getCountQuota({ size: 5, limit: 0 }), reached: false },
+    { name: 'count limit -1', quota: getCountQuota({ size: 5, limit: -1 }), reached: false },
+    {
+      name: 'vector space limit -1',
+      quota: getVectorSpaceQuota({ size: 50, limit: -1 }),
+      reached: false,
+    },
+    {
+      name: 'vector space limit 0',
+      quota: getVectorSpaceQuota({ size: 0, limit: 0 }),
+      reached: true,
+    },
+    {
+      name: 'periodic limit -1',
+      quota: getAppRunsQuota({ usage: 9, limit: -1, reset_date: -1 }, 'team'),
+      reached: false,
+    },
+    {
+      name: 'periodic limit 0',
+      quota: getTriggerEventsQuota({ usage: 0, limit: 0, reset_date: -1 }, 'sandbox'),
+      reached: true,
+    },
+    { name: 'below the limit', quota: getCountQuota({ size: 4, limit: 5 }), reached: false },
+    { name: 'exactly at the limit', quota: getCountQuota({ size: 5, limit: 5 }), reached: true },
+    { name: 'over the limit', quota: getCountQuota({ size: 6, limit: 5 }), reached: true },
+  ])('reports whether the quota is reached for $name', ({ quota, reached }) => {
+    expect(isQuotaReached(quota)).toBe(reached)
   })
 
   it('shows trigger event resets only for the Professional plan', () => {

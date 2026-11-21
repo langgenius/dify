@@ -66,7 +66,7 @@ function TabHeaderItem({
       value={tab.key}
       disabled={tab.disabled}
       className={cn(
-        'z-10 mr-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
+        'z-10 me-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
         'data-active:cursor-default data-active:border-transparent data-active:text-text-accent',
         'data-disabled:text-text-disabled data-disabled:opacity-60',
       )}
@@ -266,13 +266,13 @@ function BlockSelectorPanels({
     <Tabs defaultValue={defaultTab} className="w-full min-w-0">
       <TabsList
         aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        className="relative w-full min-w-0 gap-0 bg-background-section-burn pt-1 pl-1"
+        className="relative w-full min-w-0 gap-0 bg-background-section-burn ps-1 pt-1"
       >
         {tabs.map((tab) => (
           <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
         ))}
         <TabsIndicator
-          className="pointer-events-none absolute left-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-s-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
           style={{
             top: 'var(--active-tab-top)',
             translate: 'var(--active-tab-left)',

@@ -259,7 +259,7 @@ it.each(['Resources', 'Workspaces'] as const)(
         ? {
             data: firstPage.data.map((item) => ({
               resource_id: item.id,
-              resource_type: 'dataset',
+              resource_type: 'app_deployment',
               display_name: item.name,
               workspace_id: token.id,
               workspace_name: 'Production',
@@ -286,7 +286,7 @@ it.each(['Resources', 'Workspaces'] as const)(
       async (operation: string, input: { query: { cursor?: number; resource_type?: string } }) => {
         if (!operation.includes(candidatePath))
           return { ...firstPage, data: [], total: 0, has_more: false }
-        if (scope === 'Resources' && input.query.resource_type !== 'dataset')
+        if (scope === 'Resources' && input.query.resource_type !== 'app')
           return { data: [], next_cursor: null, has_more: false }
         cursors.push(input.query.cursor ?? 0)
         if (cursors.length === 2) throw new Error('Later page unavailable')
@@ -301,8 +301,7 @@ it.each(['Resources', 'Workspaces'] as const)(
       .getByRole('radiogroup', { name: scope === 'Resources' ? scope : 'Manage workspaces' })
       .getByRole('radio', { name: 'Selected' })
       .click()
-    if (scope === 'Resources')
-      await dialog.getByRole('tab', { name: 'Knowledge bases 0 selected' }).click()
+    if (scope === 'Resources') await expect.element(dialog.getByRole('tab')).not.toBeInTheDocument()
     const selected = dialog.getByRole('checkbox', { name: 'Token 1', exact: true })
     await selected.click()
     const loadMore = dialog.getByRole('button', {
@@ -336,7 +335,7 @@ it.each(['Resources', 'Workspaces'] as const)(
               {
                 ...candidate,
                 resource_id: token.id,
-                resource_type: 'dataset',
+                resource_type: 'app_deployment',
                 workspace_name: 'Production',
               },
             ],

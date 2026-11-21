@@ -101,7 +101,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
           className={cn(
             'flex items-center rounded-lg border-[0.5px] px-2 whitespace-nowrap transition-colors motion-reduce:transition-none',
             value.length > 0
-              ? 'border-components-button-secondary-border bg-components-button-secondary-bg pr-7 shadow-xs hover:bg-state-base-hover data-popup-open:bg-state-base-hover'
+              ? 'border-components-button-secondary-border bg-components-button-secondary-bg pe-7 shadow-xs hover:bg-state-base-hover data-popup-open:bg-state-base-hover'
               : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
           )}
         >
@@ -111,7 +111,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
               key={creator.id}
               size="xs"
               aria-hidden="true"
-              className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
+              className={cn('border border-components-panel-bg', index > 0 && '-ms-1')}
             >
               <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
               <AvatarImage src={creator.avatar_url || undefined} alt="" />
@@ -127,7 +127,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
           <IconButton
             size="sm"
             aria-label={tApp(($) => $['studio.filters.reset'])}
-            className="absolute top-1/2 right-1 -translate-y-1/2"
+            className="absolute inset-e-1 top-1/2 -translate-y-1/2"
             onClick={clearSelection}
           >
             <span aria-hidden className="i-ri-close-circle-fill size-3.5" />

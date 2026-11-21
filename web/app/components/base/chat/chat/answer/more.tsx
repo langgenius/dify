@@ -18,14 +18,14 @@ const More: FC<MoreProps> = ({ more }) => {
       {more && (
         <>
           <div
-            className="mr-2 max-w-[25%] shrink-0 truncate"
+            className="me-2 max-w-[25%] shrink-0 truncate"
             title={`${t(($) => $['detail.timeConsuming'], { ns: 'appLog' })} ${more.latency}${t(($) => $['detail.second'], { ns: 'appLog' })}`}
             data-testid="more-latency"
           >
             {`${t(($) => $['detail.timeConsuming'], { ns: 'appLog' })} ${more.latency}${t(($) => $['detail.second'], { ns: 'appLog' })}`}
           </div>
           <div
-            className="mr-2 max-w-[25%] shrink-0 truncate"
+            className="me-2 max-w-[25%] shrink-0 truncate"
             title={`${t(($) => $['detail.tokenCost'], { ns: 'appLog' })} ${formatNumber(more.tokens)}`}
             data-testid="more-tokens"
           >
@@ -33,7 +33,7 @@ const More: FC<MoreProps> = ({ more }) => {
           </div>
           {!!more.tokens_per_second && (
             <div
-              className="mr-2 max-w-[25%] shrink-0 truncate"
+              className="me-2 max-w-[25%] shrink-0 truncate"
               title={`${more.tokens_per_second} tokens/s`}
               data-testid="more-tps"
             >

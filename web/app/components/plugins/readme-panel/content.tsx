@@ -94,7 +94,7 @@ export function ReadmePanelContent({ detail, title, closeButton }: ReadmePanelCo
               <div className="overflow-hidden rounded-xl border border-components-panel-border-subtle bg-components-panel-bg">
                 <Icon src={resolveDatasourceIcon(detail.declaration.identity.icon)} />
               </div>
-              <div className="ml-3 min-w-0 grow">
+              <div className="ms-3 min-w-0 grow">
                 <Title
                   title={
                     detail.declaration.identity.label[locale] ??

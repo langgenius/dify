@@ -6,13 +6,12 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -75,7 +74,11 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     return !datasetRes.is_published
   }, [datasetRes])
 
-  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
+  const { data: evaluationEntry } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  )
+  const isEvaluationVisible = evaluationEntry?.visible ?? false
+  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
@@ -115,7 +118,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      if (isEvaluationEdition(systemFeatures.deployment_edition)) {
+      if (isEvaluationVisible) {
         baseNavigation.unshift({
           name: t(($) => $.title, { ns: 'evaluation' }),
           href: `/datasets/${datasetId}/evaluation`,
@@ -153,7 +156,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     isButtonDisabledWithPipeline,
     datasetRes?.provider,
     datasetACLCapabilities,
-    systemFeatures.deployment_edition,
+    isEvaluationVisible,
     evaluationRequiresUpgrade,
   ])
 
