@@ -556,6 +556,8 @@ export const useWorkflowComment = () => {
         syncComment(commentId)
       } catch (error) {
         console.error('Failed to update comment:', error)
+        // The edit field stays open with its draft.
+        throw error
       }
     },
     [activeComment, appId, comments, patchCommentDetail, syncComment, workflowStore],
@@ -733,6 +735,8 @@ export const useWorkflowComment = () => {
         syncComment(commentId)
       } catch (error) {
         console.error('Failed to update reply:', error)
+        // The edit field stays open with its draft.
+        throw error
       } finally {
         setReplyUpdating(false)
       }

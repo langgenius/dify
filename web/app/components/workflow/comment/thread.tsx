@@ -343,7 +343,12 @@ function CommentThreadSession({
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
     else if (replies.length > previousReplyCount)
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      })
 
     previousReplyCountRef.current = replies.length
   }, [loading, replies.length])

@@ -185,6 +185,34 @@ describe('CommentThread', () => {
     }
   })
 
+  it('keeps the edit field and its draft when saving an edit fails', async () => {
+    const user = userEvent.setup()
+    const onReplyEdit = vi.fn().mockRejectedValue(new Error('Request failed'))
+    render(
+      <CommentThreadFixture
+        comment={createComment()}
+        onReply={() => {}}
+        onReplyEdit={onReplyEdit}
+      />,
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'workflowComments.comments.actions.editReply' }),
+    )
+    const editor = await screen.findByPlaceholderText(
+      'workflowComments.comments.placeholder.editReply',
+    )
+    await user.type(editor, ' edited')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() => expect(onReplyEdit).toHaveBeenCalled())
+    expect(
+      screen.getByPlaceholderText('workflowComments.comments.placeholder.editReply'),
+    ).toHaveValue('first reply edited')
+  })
+
   it('triggers header actions and closes on Escape', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()

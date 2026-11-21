@@ -616,7 +616,8 @@ describe('useWorkflowComment', () => {
     expect(isPending()).toBe(true)
     await act(async () => {
       rejectRequest(new Error('Request failed'))
-      await pending
+      // The failure reaches the edit field so it keeps its draft.
+      await expect(pending).rejects.toThrow('Request failed')
     })
     expect(isPending()).toBe(false)
     expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()

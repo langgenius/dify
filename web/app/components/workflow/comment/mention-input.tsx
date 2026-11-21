@@ -381,6 +381,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               ref={textareaRef}
               className="relative block w-full resize-none bg-transparent px-2 py-1.75 text-transparent caret-primary-500 outline-hidden placeholder:text-components-input-text-placeholder"
               placeholder={resolvedPlaceholder}
+              aria-label={resolvedPlaceholder}
               autoFocus={autoFocus}
               minRows={isEditing ? 2 : 1}
               maxRows={isEditing || isMultiline ? 4 : 1}

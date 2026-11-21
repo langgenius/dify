@@ -213,6 +213,10 @@ const OnlineUsers = () => {
         }
       />
       <PopoverContent
+        aria-label={t(($) => $['collaboration.viewCollaborators'], {
+          ns: 'workflow',
+          count: onlineUsers.length,
+        })}
         align="start"
         sideOffset={4}
         className="flex max-h-50 w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
