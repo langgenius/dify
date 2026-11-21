@@ -37,6 +37,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     })
     const isAuthor = comment.created_by_account?.id === currentUserId
     const [showPreview, setShowPreview] = useState(false)
+    const previewOpen = showPreview && !isActive
+    // The preview mounts on its first hover and then stays, so it can animate closed too.
+    const [previewMounted, setPreviewMounted] = useState(false)
+    if (previewOpen && !previewMounted) setPreviewMounted(true)
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
@@ -292,9 +296,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         )}
 
         {/* Preview panel */}
-        {showPreview && !isActive && (
+        {previewMounted && (
           <div
-            className="absolute z-20 -translate-y-full"
+            data-open={previewOpen || undefined}
+            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:scale-95 not-data-open:opacity-0 not-data-open:duration-100 motion-reduce:scale-100 starting:scale-95 starting:opacity-0"
             style={{
               left: canvasPosition.x,
               top: canvasPosition.y,

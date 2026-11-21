@@ -35,12 +35,12 @@ const normalizeTimestamp = (value: number | string | null | undefined): number =
 // Every write to a comment's detail or to the list takes a new version, shared by every
 // user of the same workflow store. A fetch only applies its result if nothing was written
 // since it started, so a slow, older fetch never overwrites a newer write.
-type CommentVersions = { details: Map<string, number>; list: number }
+type CommentVersions = { details: Map<string, number>; list: number; resolving: Set<string> }
 const commentVersionsByStore = new WeakMap<object, CommentVersions>()
 const getCommentVersions = (store: object) => {
   let versions = commentVersionsByStore.get(store)
   if (!versions) {
-    versions = { details: new Map(), list: 0 }
+    versions = { details: new Map(), list: 0, resolving: new Set() }
     commentVersionsByStore.set(store, versions)
   }
   return versions
@@ -116,9 +116,11 @@ export const useWorkflowComment = () => {
       if (versions.details.get(commentId) !== version) return
 
       const current = workflowStore.getState().commentDetailCache[commentId]
-      const next = current
+      const merged = current
         ? { ...detail, replies: mergeFetchedReplies(current.replies, detail.replies) }
         : detail
+      // A resolve still on its way keeps showing as resolved.
+      const next = versions.resolving.has(commentId) ? { ...merged, resolved: true } : merged
       setCommentDetailCache({ ...workflowStore.getState().commentDetailCache, [commentId]: next })
       // Only apply the fetched detail if this comment is still the active one;
       // otherwise a refresh for another comment can clobber the current selection.
@@ -392,28 +394,15 @@ export const useWorkflowComment = () => {
     [handleCommentIconClick, revealComment],
   )
 
-  // Resolving shows at once: the thread marks itself resolved (and leaves the canvas when
-  // resolved comments are hidden). A failed request puts it back.
-  const setCommentResolved = useCallback(
-    (commentId: string, resolved: boolean) => {
-      patchCommentDetail(commentId, (detail) => ({ ...detail, resolved }))
-      versions.list += 1
-      setComments(
-        workflowStore
-          .getState()
-          .comments.map((comment) =>
-            comment.id === commentId ? { ...comment, resolved } : comment,
-          ),
-      )
-    },
-    [patchCommentDetail, setComments, versions, workflowStore],
-  )
-
+  // Resolving shows on the thread at once. The comment leaves the list (and the canvas,
+  // when resolved comments are hidden) only once the server has it, so a failed request
+  // never closes a thread that still holds an unsent draft.
   const handleCommentResolve = useCallback(
     async (commentId: string) => {
       if (!appId) return
 
-      setCommentResolved(commentId, true)
+      versions.resolving.add(commentId)
+      patchCommentDetail(commentId, (detail) => ({ ...detail, resolved: true }))
       try {
         const result = await consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post({
           params: { app_id: appId, comment_id: commentId },
@@ -427,14 +416,23 @@ export const useWorkflowComment = () => {
           resolved_at: result.resolved_at,
           resolved_by: result.resolved_by,
         }))
+        versions.list += 1
+        setComments(
+          workflowStore
+            .getState()
+            .comments.map((comment) =>
+              comment.id === commentId ? { ...comment, resolved: result.resolved } : comment,
+            ),
+        )
       } catch (error) {
         console.error('Failed to resolve comment:', error)
-        setCommentResolved(commentId, false)
+        patchCommentDetail(commentId, (detail) => ({ ...detail, resolved: false }))
       } finally {
+        versions.resolving.delete(commentId)
         syncComment(commentId)
       }
     },
-    [appId, patchCommentDetail, setCommentResolved, syncComment],
+    [appId, patchCommentDetail, setComments, syncComment, versions, workflowStore],
   )
 
   const handleCommentDelete = useCallback(

@@ -106,11 +106,14 @@ describe('CommentIcon', () => {
     const comment = createComment()
     render(<CommentMarkerFixture comment={comment} onOpen={vi.fn()} isActive={false} />)
     const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
-    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
-    expect(screen.getByText('Hello')).toBeInTheDocument()
-
-    await user.unhover(within(marker).getByRole('img', { name: 'Alice' }))
     expect(screen.queryByText('Hello')).not.toBeInTheDocument()
+    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
+    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')
+    expect(preview).toHaveAttribute('data-open')
+
+    // The preview stays mounted once shown so it can animate closed.
+    await user.unhover(within(marker).getByRole('img', { name: 'Alice' }))
+    expect(preview).not.toHaveAttribute('data-open')
   })
 
   it('converts pointer movement through the zoomed canvas before saving the authored position', () => {

@@ -684,7 +684,7 @@ describe('useWorkflowComment', () => {
     expect(replies().map((reply) => reply.id)).toEqual(['reply-1', 'reply-2'])
   })
 
-  it('resolves a comment at once and puts it back if the request fails', async () => {
+  it('shows a resolve on the thread at once and puts it back if the request fails', async () => {
     const commentA = baseComment()
     const detail: WorkflowCommentDetail = { ...baseCommentDetail(), id: commentA.id }
     let rejectResolve!: (error: Error) => void
@@ -710,7 +710,8 @@ describe('useWorkflowComment', () => {
       resolving = result.current.handleCommentResolve(commentA.id)
     })
     expect(store.getState().activeCommentDetail?.resolved).toBe(true)
-    expect(store.getState().comments[0]?.resolved).toBe(true)
+    // It stays in the list, so its thread stays open, until the server has the resolve.
+    expect(store.getState().comments[0]?.resolved).toBe(false)
 
     await act(async () => {
       rejectResolve(new Error('Request failed'))
