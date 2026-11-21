@@ -25,6 +25,7 @@ const (
 	SnapshotStatusOK      = "ok"
 
 	maxSaveRequestBytes = 64 << 10
+	defaultStateTimeout = 180 * time.Second
 )
 
 type SaveRequest struct {
@@ -42,9 +43,9 @@ func decodeSaveExcludes(body io.Reader) ([]string, error) {
 	return req.Excludes, nil
 }
 
-// snapshotHandlers serves the native Home snapshot endpoints.
+// snapshotHandlers serializes Home Snapshot and cold state archive operations.
 //
-// SIZE CONTRACT: neither endpoint imposes a size limit. Consumers MUST bound
+// SIZE CONTRACT: these endpoints impose no archive size limit. Consumers MUST bound
 // the streams in their own logic.
 type snapshotHandlers struct {
 	config *Config
@@ -80,45 +81,73 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 			return
 		}
 
-		if !h.gate.TryLock() {
-			writeError(w, 409, "snapshot_busy", "another snapshot operation is in progress")
-			return
-		}
-		defer h.gate.Unlock()
-
-		home, err := h.resolveHome()
-		if err != nil {
-			writeError(w, 500, "home_unavailable", err.Error())
-			return
-		}
-		rc := http.NewResponseController(w)
-		if err := rc.SetWriteDeadline(time.Now().Add(h.config.SnapshotTimeout)); err != nil {
-			log.Printf("WARN snapshot save: set write deadline: %v", err)
-		}
-
-		ctx, cancel := context.WithTimeout(r.Context(), h.config.SnapshotTimeout)
-		defer cancel()
-
-		w.Header().Set("Trailer", TrailerSnapshotStatus+", "+TrailerSnapshotSha256+", "+TrailerSnapshotBytes)
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		hcw := &hashCountWriter{w: w, h: sha256.New()}
-		if err := snapshot.SaveHome(ctx, hcw, home, excludes); err != nil {
-			log.Printf("ERROR snapshot save: %v", err)
-			if hcw.n == 0 {
-				w.Header().Del("Trailer")
-				writeError(w, 500, "snapshot_failed", err.Error())
-				return
-			}
-			panic(http.ErrAbortHandler)
-		}
-		w.Header().Set(TrailerSnapshotStatus, SnapshotStatusOK)
-		w.Header().Set(TrailerSnapshotSha256, hex.EncodeToString(hcw.h.Sum(nil)))
-		w.Header().Set(TrailerSnapshotBytes, strconv.FormatInt(hcw.n, 10))
+		h.saveArchive(w, r, h.config.SnapshotTimeout, func(ctx context.Context, dst io.Writer, home string) error {
+			return snapshot.SaveHome(ctx, dst, home, excludes)
+		})
 	}
 }
 
+func (h *snapshotHandlers) handleStateSave() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.saveArchive(w, r, h.stateTimeout(), func(ctx context.Context, dst io.Writer, home string) error {
+			return snapshot.SaveState(ctx, dst, home, h.config.WorkspaceDir, h.config.StateDir, h.config.RuntimeDir)
+		})
+	}
+}
+
+func (h *snapshotHandlers) stateTimeout() time.Duration {
+	return max(defaultStateTimeout, h.config.SnapshotTimeout)
+}
+
+func (h *snapshotHandlers) saveArchive(w http.ResponseWriter, r *http.Request, timeout time.Duration, save func(context.Context, io.Writer, string) error) {
+	if !h.gate.TryLock() {
+		writeError(w, 409, "snapshot_busy", "another snapshot operation is in progress")
+		return
+	}
+	defer h.gate.Unlock()
+
+	home, err := h.resolveHome()
+	if err != nil {
+		writeError(w, 500, "home_unavailable", err.Error())
+		return
+	}
+	rc := http.NewResponseController(w)
+	if err := rc.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+		log.Printf("WARN snapshot save: set write deadline: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	w.Header().Set("Trailer", TrailerSnapshotStatus+", "+TrailerSnapshotSha256+", "+TrailerSnapshotBytes)
+	w.Header().Set("Content-Type", "application/octet-stream")
+
+	hcw := &hashCountWriter{w: w, h: sha256.New()}
+	if err := save(ctx, hcw, home); err != nil {
+		log.Printf("ERROR snapshot save: %v", err)
+		if hcw.n == 0 {
+			w.Header().Del("Trailer")
+			writeError(w, 500, "snapshot_failed", err.Error())
+			return
+		}
+		panic(http.ErrAbortHandler)
+	}
+	w.Header().Set(TrailerSnapshotStatus, SnapshotStatusOK)
+	w.Header().Set(TrailerSnapshotSha256, hex.EncodeToString(hcw.h.Sum(nil)))
+	w.Header().Set(TrailerSnapshotBytes, strconv.FormatInt(hcw.n, 10))
+}
+
 func (h *snapshotHandlers) handleSnapshotRestore() http.HandlerFunc {
+	return h.restoreArchive(h.config.SnapshotTimeout, snapshot.RestoreHome)
+}
+
+func (h *snapshotHandlers) handleStateRestore() http.HandlerFunc {
+	return h.restoreArchive(h.stateTimeout(), func(ctx context.Context, src io.Reader, home string) (snapshot.RestoreResult, error) {
+		return snapshot.RestoreState(ctx, src, home, h.config.WorkspaceDir, h.config.StateDir, h.config.RuntimeDir)
+	})
+}
+
+func (h *snapshotHandlers) restoreArchive(timeout time.Duration, restore func(context.Context, io.Reader, string) (snapshot.RestoreResult, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !h.gate.TryLock() {
 			writeError(w, 409, "snapshot_busy", "another snapshot operation is in progress")
@@ -133,14 +162,14 @@ func (h *snapshotHandlers) handleSnapshotRestore() http.HandlerFunc {
 		}
 
 		rc := http.NewResponseController(w)
-		if err := rc.SetReadDeadline(time.Now().Add(h.config.SnapshotTimeout)); err != nil {
+		if err := rc.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			log.Printf("WARN snapshot restore: set read deadline: %v", err)
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), h.config.SnapshotTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
 
-		result, err := snapshot.RestoreHome(ctx, r.Body, home)
+		result, err := restore(ctx, r.Body, home)
 		if err != nil {
 			log.Printf("ERROR snapshot restore: %v", err)
 			if errors.Is(err, snapshot.ErrMalformed) {
