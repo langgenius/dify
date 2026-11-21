@@ -91,10 +91,13 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
   const handleEditorChange = (value: string) => {
     if (isTruncated) return
     setJson(value)
-    if (jsonValueValidate(value, currentVar.value_type)) {
-      const parsed = JSON.parse(value)
-      debounceValueChange(currentVar.id, parsed)
+    /* An invalid draft is what the user is looking at: the save left pending by the last valid
+       edit must not land behind it and replace it with the stale value. */
+    if (!jsonValueValidate(value, currentVar.value_type)) {
+      cancelValueChange()
+      return
     }
+    debounceValueChange(currentVar.id, JSON.parse(value))
   }
 
   const handleFileChange = (value: any[]) => {
