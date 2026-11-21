@@ -2,6 +2,7 @@ from collections.abc import Callable, Mapping
 from typing import Any, override
 
 import pytest
+from sqlalchemy.orm import Session, scoped_session
 
 from core.extension.extensible import ExtensionModule
 from core.external_data_tool.base import ExternalDataTool
@@ -38,11 +39,18 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[Session],
+                query: str | None = None,
+            ) -> str:
                 return ""
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
@@ -63,7 +71,9 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
                 pass
 
             @override
@@ -73,4 +83,4 @@ class TestExternalDataTool:
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
         with pytest.raises(NotImplementedError):
-            tool.query({})
+            tool.query({}, sqlite_session)
