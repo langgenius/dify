@@ -421,7 +421,6 @@ def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
         data=RunFailedEventData(
             error="model failed",
             error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-            reason="model_error",
         ),
     )
 
@@ -439,9 +438,39 @@ def test_finalize_failed_run_maps_eval_result_and_arguments() -> None:
     assert eval_command[8:12] == ("1", "model failed", "1", "agent_run_limit_exceeded")
     payload = json.loads(cast(str, eval_command[12]))
     assert payload["data"]["error_type"] == "agent_run_limit_exceeded"
+    assert "reason" not in payload["data"]
     assert eval_command[13] == str(DEFAULT_RUN_RETENTION_SECONDS)
     assert eval_command[14] == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
     assert '"MAXLEN", "~", ARGV[9]' in cast(str, eval_command[1])
+
+
+@pytest.mark.parametrize("error_type", [None, *RunFailureType])
+def test_failed_run_persists_matching_record_and_event_classification(error_type: RunFailureType | None) -> None:
+    async def scenario() -> None:
+        async with AsyncFakeRedis() as client:
+            store = RedisRunStore(client, prefix="classified-failure", run_retention_seconds=60)
+            record = await store.create_run()
+
+            result = await store.finalize_run(
+                RunFailedEvent(
+                    run_id=record.run_id,
+                    data=RunFailedEventData(error="diagnostic failure text", error_type=error_type),
+                )
+            )
+            persisted = await store.get_run(record.run_id)
+            page = await store.get_events(record.run_id)
+
+            assert result.applied
+            assert persisted.status == "failed"
+            assert persisted.error_type is error_type
+            assert persisted.error == "diagnostic failure text"
+            assert len(page.events) == 1
+            terminal = page.events[0]
+            assert isinstance(terminal, RunFailedEvent)
+            assert terminal.data.error_type is error_type
+            assert terminal.data.error == persisted.error
+
+    asyncio.run(scenario())
 
 
 def test_request_cancellation_raises_when_record_is_missing() -> None:

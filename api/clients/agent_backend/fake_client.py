@@ -150,7 +150,6 @@ class FakeAgentBackendRunClient:
                         created_at=_FIXED_TIME,
                         data=RunFailedEventData(
                             error="fake failure",
-                            reason="unit_test",
                             session_snapshot=SessionSnapshot(),
                         ),
                     ),
