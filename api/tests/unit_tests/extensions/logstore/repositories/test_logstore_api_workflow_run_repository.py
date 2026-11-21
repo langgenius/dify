@@ -1,9 +1,12 @@
 import datetime
 import time
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from dataclasses import dataclass
 from typing import cast, override
 
 import pytest
+from pytest_mock import MockerFixture, MockType
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_run_repository import (
@@ -11,8 +14,11 @@ from extensions.logstore.repositories.logstore_api_workflow_run_repository impor
     _dict_to_workflow_run,
 )
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import WorkflowRunTriggeredFrom
-from repositories.api_workflow_run_repository import AppWorkflowRunStats
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowRun, WorkflowType
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
+from repositories.factory import DifyAPIRepositoryFactory
+from tests.helpers.unit.config_override import apply_config_overrides
 
 _START = datetime.datetime(2026, 8, 18, 2, 0, 0, tzinfo=datetime.UTC)
 _FINISH = _START + datetime.timedelta(seconds=30)
@@ -139,6 +145,104 @@ def test_stats_by_app_ids_skips_the_queries_without_apps() -> None:
 
     assert repository.get_stats_by_app_ids({}, _SOURCES, datetime.datetime(2026, 10, 14)) == {}
     assert client.sql == []
+
+
+@dataclass(frozen=True)
+class FallbackRepository:
+    """The configured LogStore run repository on the unit-test SQLite schema, with its client patched."""
+
+    repository: APIWorkflowRunRepository
+    logstore_client: MockType
+
+
+def _fallback_repository(
+    session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    dual_read: bool,
+) -> FallbackRepository:
+    """Persist a SQL run without a task binding, then build the repository as production does.
+
+    ``DifyAPIRepositoryFactory`` builds the configured LogStore class with this session maker.
+    Only the ``AliyunLogStore`` class is replaced; its client answers through the PG protocol.
+    """
+    with session_factory.begin() as session:
+        session.add(
+            WorkflowRun(
+                id="legacy-run",
+                tenant_id="tenant",
+                app_id="app",
+                workflow_id="workflow",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+                version="1",
+                graph="{}",
+                inputs="{}",
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="account",
+            )
+        )
+    monkeypatch.setenv("LOGSTORE_DUAL_READ_ENABLED", "true" if dual_read else "false")
+    module = "extensions.logstore.repositories.logstore_api_workflow_run_repository"
+    apply_config_overrides(monkeypatch, API_WORKFLOW_RUN_REPOSITORY=f"{module}.LogstoreAPIWorkflowRunRepository")
+    client = mocker.patch(f"{module}.AliyunLogStore").return_value
+    client.supports_pg_protocol = True
+    return FallbackRepository(
+        repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory),
+        logstore_client=client,
+    )
+
+
+_BY_ID_LOOKUPS: dict[str, Callable[[APIWorkflowRunRepository], WorkflowRun | None]] = {
+    "scoped": lambda repository: repository.get_workflow_run_by_id("tenant", "app", "legacy-run"),
+    "unscoped": lambda repository: repository.get_workflow_run_by_id_without_tenant("legacy-run"),
+}
+_LOGSTORE_FAILURES: dict[str, Exception | None] = {
+    "no-record": None,
+    "query-error": RuntimeError("LogStore is unavailable"),
+}
+
+
+@pytest.mark.parametrize("failure", sorted(_LOGSTORE_FAILURES))
+@pytest.mark.parametrize("lookup", sorted(_BY_ID_LOOKUPS))
+def test_dual_read_fallback_returns_the_sql_run_with_loaded_attributes(
+    lookup: str,
+    failure: str,
+    sqlite_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without a LogStore record, or when LogStore fails, dual-read returns the SQL row it read first."""
+    fallback = _fallback_repository(sqlite_session_factory, mocker, monkeypatch, dual_read=True)
+    fallback.logstore_client.execute_sql.return_value = list[dict[str, object]]()
+    fallback.logstore_client.execute_sql.side_effect = _LOGSTORE_FAILURES[failure]
+
+    run = _BY_ID_LOOKUPS[lookup](fallback.repository)
+
+    # Reading these attributes after the call is what raised DetachedInstanceError (#46494).
+    assert run is not None
+    assert (run.id, run.tenant_id, run.status) == ("legacy-run", "tenant", WorkflowExecutionStatus.SUCCEEDED)
+    assert fallback.logstore_client.execute_sql.call_count == 1
+
+
+@pytest.mark.parametrize("lookup", sorted(_BY_ID_LOOKUPS))
+def test_by_id_lookups_without_dual_read_do_not_fall_back_to_sql(
+    lookup: str,
+    sqlite_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without dual-read, a missing LogStore record gives ``None`` and a LogStore error propagates."""
+    fallback = _fallback_repository(sqlite_session_factory, mocker, monkeypatch, dual_read=False)
+    fallback.logstore_client.execute_sql.return_value = list[dict[str, object]]()
+
+    assert _BY_ID_LOOKUPS[lookup](fallback.repository) is None
+
+    fallback.logstore_client.execute_sql.side_effect = RuntimeError("LogStore is unavailable")
+    with pytest.raises(RuntimeError, match="LogStore is unavailable"):
+        _BY_ID_LOOKUPS[lookup](fallback.repository)
 
 
 @pytest.mark.parametrize("elapsed_time", ["0.0", "5.5"])

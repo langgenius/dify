@@ -340,8 +340,19 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a specific workflow run by ID with tenant and app isolation.
 
-        Uses query syntax to get raw logs and selects the one with max log_version in code.
-        Falls back to PostgreSQL if not found in LogStore (for data consistency during migration).
+        Precedence: the scoped SQL row of a task-bound run (``task_id`` set) is returned without
+        a LogStore query. Otherwise the newest LogStore record is returned, chosen by
+        ``log_version``. When LogStore has no record, or its query raises, dual-read returns the
+        scoped SQL row read first, for runs written before the LogStore migration.
+
+        The SQL row is read through the injected session maker without a commit, so a returned
+        SQL row keeps its loaded attributes. Nothing is written.
+
+        Returns:
+            The run, or ``None`` when no source that applies has it in this tenant and app.
+
+        Raises:
+            Exception: the LogStore query error, when dual-read is disabled.
         """
         logger.debug("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
 
@@ -404,7 +415,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                         tenant_id,
                         app_id,
                     )
-                    return self._fallback_get_workflow_run_by_id_with_tenant(run_id, tenant_id, app_id)
+                    return control
                 return None
 
             # For PG mode, results are already deduplicated by the SQL query
@@ -417,30 +428,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         except Exception:
             logger.exception("Failed to get workflow run by ID from LogStore: run_id=%s", run_id)
-            # Try PostgreSQL fallback on any error (only if dual-read is enabled)
+            # Fall back to the scoped SQL row read above on any error (only if dual-read is enabled).
             if self._enable_dual_read:
-                try:
-                    return self._fallback_get_workflow_run_by_id_with_tenant(run_id, tenant_id, app_id)
-                except Exception:
-                    logger.exception(
-                        "PostgreSQL fallback also failed: run_id=%s, tenant_id=%s, app_id=%s", run_id, tenant_id, app_id
-                    )
+                return control
             raise
-
-    def _fallback_get_workflow_run_by_id_with_tenant(
-        self, run_id: str, tenant_id: str, app_id: str
-    ) -> WorkflowRun | None:
-        """Fallback to PostgreSQL query for records not in LogStore (with tenant isolation)."""
-        from sqlalchemy import select
-        from sqlalchemy.orm import sessionmaker
-
-        from extensions.ext_database import db
-
-        with sessionmaker(db.engine).begin() as session:
-            stmt = select(WorkflowRun).where(
-                WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id
-            )
-            return session.scalar(stmt)
 
     @override
     def get_workflow_run_by_id_without_tenant(
@@ -449,8 +440,17 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID without tenant/app context.
-        Uses query syntax to get raw logs and selects the one with max log_version.
-        Falls back to PostgreSQL if not found in LogStore (controlled by LOGSTORE_DUAL_READ_ENABLED).
+
+        Precedence matches ``get_workflow_run_by_id``: the SQL row of a task-bound run, then the
+        newest LogStore record, then, with dual-read (``LOGSTORE_DUAL_READ_ENABLED``), the SQL row
+        read first. That row is read without a commit and keeps its loaded attributes. Nothing is
+        written.
+
+        Returns:
+            The run, or ``None`` when no source that applies has it.
+
+        Raises:
+            Exception: the LogStore query error, when dual-read is disabled.
         """
         logger.debug("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
 
@@ -498,7 +498,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 # Fallback to PostgreSQL for records created before LogStore migration
                 if self._enable_dual_read:
                     logger.debug("WorkflowRun not found in LogStore, falling back to PostgreSQL: run_id=%s", run_id)
-                    return self._fallback_get_workflow_run_by_id(run_id)
+                    return control
                 return None
 
             # For PG mode, results are already deduplicated by the SQL query
@@ -511,24 +511,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         except Exception:
             logger.exception("Failed to get workflow run without tenant: run_id=%s", run_id)
-            # Try PostgreSQL fallback on any error (only if dual-read is enabled)
+            # Fall back to the SQL row read above on any error (only if dual-read is enabled).
             if self._enable_dual_read:
-                try:
-                    return self._fallback_get_workflow_run_by_id(run_id)
-                except Exception:
-                    logger.exception("PostgreSQL fallback also failed: run_id=%s", run_id)
+                return control
             raise
-
-    def _fallback_get_workflow_run_by_id(self, run_id: str) -> WorkflowRun | None:
-        """Fallback to PostgreSQL query for records not in LogStore."""
-        from sqlalchemy import select
-        from sqlalchemy.orm import sessionmaker
-
-        from extensions.ext_database import db
-
-        with sessionmaker(db.engine).begin() as session:
-            stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
-            return session.scalar(stmt)
 
     @override
     def get_workflow_runs_count(
