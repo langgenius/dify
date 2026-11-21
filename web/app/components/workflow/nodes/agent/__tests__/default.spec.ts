@@ -68,3 +68,49 @@ it('rejects an absent required input with a nullable default', () => {
     }).isValid,
   ).toBe(false)
 })
+
+it.each([
+  { type: 'string', value: undefined, isValid: false },
+  { type: 'string', value: '', isValid: false },
+  { type: 'string', value: null, isValid: false },
+  { type: 'array[tools]', value: [], isValid: false },
+  { type: 'string', value: 'Summarize the results', isValid: true },
+  { type: 'number', value: 0, isValid: true },
+  { type: 'boolean', value: false, isValid: true },
+] satisfies { type: AgentStrategyParameter['type']; value: unknown; isValid: boolean }[])(
+  'validates required $type input $value after a configured tool list',
+  ({ type, value, isValid }) => {
+    const payload: AgentNodeType = {
+      title: 'Agent',
+      desc: '',
+      type: BlockEnum.Agent,
+      output_schema: null,
+      agent_parameters: {
+        tools: {
+          type: VarKindType.constant,
+          value: [{ enabled: true, schemas: [], settings: {}, parameters: {} }],
+        },
+        input: { type: VarKindType.constant, value },
+      },
+    }
+    const result = nodeDefault.checkValid(payload, t, {
+      strategy: createStrategy({
+        parameters: [
+          {
+            name: 'tools',
+            type: 'array[tools]',
+            label: { en_US: 'Tools' },
+            required: true,
+          },
+          { name: 'input', type, label: { en_US: 'Input' }, required: true },
+        ],
+      }),
+      language: 'en_US',
+      isReadyForCheckValid: true,
+    })
+    expect(result).toEqual({
+      isValid,
+      errorMessage: isValid ? '' : 'errorMsg.fieldRequired',
+    })
+  },
+)
