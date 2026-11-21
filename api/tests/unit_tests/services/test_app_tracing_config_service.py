@@ -17,6 +17,7 @@ from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigConflictError,
     AppTracingConfigNotFoundError,
+    AppTracingConfigProviderUnavailableError,
     AppTracingConfigRecord,
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
@@ -91,6 +92,16 @@ class TestAppTracingAtomicOperationsCases:
         record = case.config()
         assert record is not None
         assert record.tracing_config == {"secret": "updated"}
+
+    @staticmethod
+    def test_list_returns_saved_configs_ordered_by_provider(case: Case) -> None:
+        case.service.create(CONTEXT, "app", "langsmith", {"secret": "langsmith"})
+        case.service.create(CONTEXT, "app", "langfuse", {"secret": "langfuse"})
+
+        records = case.service.list(CONTEXT, "app", include_config=False)
+
+        assert [record.tracing_provider for record in records] == ["langfuse", "langsmith"]
+        assert [record.app_id for record in records] == ["app", "app"]
 
     @staticmethod
     def test_save_activation_uses_capture_policy_changed_during_vendor_validation(
@@ -307,6 +318,54 @@ class TestAppTracingConfigServiceCases:
         assert service.get(_context(), "app-1", "arize") is None
 
         assert events == ["provider.validate", "store.get"]
+
+    @staticmethod
+    def test_list_returns_stored_records_without_contacting_providers() -> None:
+        stored = (
+            replace(_record(tracing_config={"api_key": "encrypted"}), tracing_provider="arize"),
+            replace(_record(tracing_config={"token": "encrypted"}), tracing_provider="langfuse"),
+        )
+        configs = MagicMock()
+        configs.list_for_app.return_value = stored
+        provider = MagicMock()
+        service = AppTracingConfigService(configs=configs, provider=provider)
+
+        result = service.list(_context(), "app-1", include_config=False)
+
+        assert result == stored
+        configs.list_for_app.assert_called_once_with(workspace_id="workspace-1", app_id="app-1")
+        provider.validate_provider.assert_not_called()
+        provider.present_config.assert_not_called()
+
+    @staticmethod
+    def test_list_presents_supported_providers_and_omits_unavailable_ones() -> None:
+        langfuse = replace(_record(tracing_config={"api_key": "encrypted-langfuse"}), tracing_provider="langfuse")
+        retired = replace(_record(tracing_config={"api_key": "encrypted-retired"}), tracing_provider="retired")
+        configs = MagicMock()
+        configs.list_for_app.return_value = (langfuse, retired)
+        provider = MagicMock()
+
+        def validate(provider_name: str) -> None:
+            if provider_name == "retired":
+                raise AppTracingConfigProviderUnavailableError()
+
+        provider.validate_provider.side_effect = validate
+        provider.present_config.return_value = PresentedTracingConfig(
+            values={"project_url": "https://example.com"}, configured_secrets=("api_key",)
+        )
+        service = AppTracingConfigService(configs=configs, provider=provider)
+
+        result = service.list(_context(), "app-1", include_config=True)
+
+        assert len(result) == 1
+        assert result[0].tracing_provider == "langfuse"
+        assert result[0].tracing_config == {"project_url": "https://example.com"}
+        assert result[0].configured_secrets == ("api_key",)
+        provider.present_config.assert_called_once_with(
+            workspace_id="workspace-1",
+            tracing_provider="langfuse",
+            tracing_config={"api_key": "encrypted-langfuse"},
+        )
 
     @staticmethod
     def test_create_calls_provider_between_separate_store_operations() -> None:
