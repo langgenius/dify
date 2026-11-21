@@ -501,6 +501,59 @@ class TestMessageCycleManagerOptimization:
         assert message_cycle_manager._task_state.metadata.retriever_resources[0].position == 1
         assert message_cycle_manager._task_state.metadata.retriever_resources[1].position == 2
 
+    def test_handle_retriever_resources_deduplicates_same_document_within_event(self, message_cycle_manager):
+        """Keep one source per document when segments of it arrive in one event.
+
+        Args: message_cycle_manager with show_retrieve_source enabled and empty metadata.
+        Returns: None.
+        Side effects: Updates metadata.retriever_resources with one entry per document.
+        """
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithFeatures(
+            additional_features=AppAdditionalFeatures(show_retrieve_source=True)
+        )
+        message_cycle_manager._task_state = WorkflowTaskState(metadata=TaskStateMetadata(retriever_resources=[]))
+
+        first_segment = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1", segment_id="seg1")
+        second_segment = RetrievalSourceMetadata(dataset_id="d1", document_id="doc1", segment_id="seg2")
+        other_document = RetrievalSourceMetadata(dataset_id="d2", document_id="doc2", segment_id="seg3")
+
+        event = QueueRetrieverResourcesEvent(retriever_resources=[first_segment, second_segment, other_document])
+        message_cycle_manager.handle_retriever_resources(event)
+
+        assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 2
+        assert [r.segment_id for r in message_cycle_manager._task_state.metadata.retriever_resources] == [
+            "seg1",
+            "seg3",
+        ]
+        assert [r.position for r in message_cycle_manager._task_state.metadata.retriever_resources] == [1, 2]
+
+    def test_handle_retriever_resources_keeps_sources_missing_dataset_or_document_id(self, message_cycle_manager):
+        """Keep sources with an incomplete dataset/document pair instead of deduplicating them.
+
+        Args: message_cycle_manager with show_retrieve_source enabled and empty metadata.
+        Returns: None.
+        Side effects: Updates metadata.retriever_resources with one entry per source.
+        """
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithFeatures(
+            additional_features=AppAdditionalFeatures(show_retrieve_source=True)
+        )
+        message_cycle_manager._task_state = WorkflowTaskState(metadata=TaskStateMetadata(retriever_resources=[]))
+
+        missing_document = RetrievalSourceMetadata(dataset_id="d1", document_id=None, segment_id="seg1")
+        missing_dataset = RetrievalSourceMetadata(dataset_id=None, document_id="doc2", segment_id="seg2")
+        complete = RetrievalSourceMetadata(dataset_id="d2", document_id="doc2", segment_id="seg3")
+
+        event = QueueRetrieverResourcesEvent(retriever_resources=[missing_document, missing_dataset, complete])
+        message_cycle_manager.handle_retriever_resources(event)
+
+        assert len(message_cycle_manager._task_state.metadata.retriever_resources) == 3
+        assert [r.segment_id for r in message_cycle_manager._task_state.metadata.retriever_resources] == [
+            "seg1",
+            "seg2",
+            "seg3",
+        ]
+        assert [r.position for r in message_cycle_manager._task_state.metadata.retriever_resources] == [1, 2, 3]
+
     def test_message_file_to_stream_response_builds_signed_url(self, message_cycle_manager, cycle_db: Session):
         """Build a stream response with a signed tool file URL.
 
