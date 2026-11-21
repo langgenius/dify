@@ -227,7 +227,8 @@ export class ChatClient extends DifyClient {
     })
   }
 
-  deleteConversation(conversationId: string, user: string): Promise<DifyResponse<SuccessResponse>> {
+  /** Delete a conversation. Dify returns HTTP 204 with no response body. */
+  deleteConversation(conversationId: string, user: string): Promise<DifyResponse<null>> {
     ensureNonEmptyString(conversationId, 'conversationId')
     ensureNonEmptyString(user, 'user')
     return this.http.request({
