@@ -1,9 +1,13 @@
 """Agent API access uses real admission, persistence and committed update events."""
 
 from collections.abc import Iterator
+from csv import DictReader
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -46,11 +50,15 @@ from models import Account, DifySetup, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole
 from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentScope, AgentSource
 from models.engine import db
-from models.enums import ApiTokenType
+from models.enums import ApiTokenType, ConversationFromSource
 from models.model import ApiToken, App, AppMode
 from services.entities.app_entities import AppEvent
+from services.retention import log_export_adapters
 from services.retention.agent.log_export_service import AgentLogExportTask
+from services.retention.log_export_task import LogExportStatus
+from tasks.log_export_tasks import prepare_log_export_task
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_conversation, make_end_user, make_message
 
 
 @dataclass(frozen=True)
@@ -318,7 +326,7 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
     assert create.json["code"] == "forbidden"
 
 
-def test_create_agent_log_export_persists_pending_task_and_utc_filters(
+def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     harness: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     saved: dict[str, tuple[int, str]] = {}
@@ -327,14 +335,58 @@ def test_create_agent_log_export_persists_pending_task_and_utc_filters(
         saved[key] = (expires_in, value)
         return True
 
+    def transition(*, keys: list[str], args: list[str]) -> int:
+        (key,) = keys
+        ttl, raw = saved[key]
+        if AgentLogExportTask.model_validate_json(raw).status != args[0]:
+            return 0
+        saved[key] = (ttl, args[1])
+        return 1
+
     monkeypatch.setattr(RedisClientWrapper, "setex", setex)
+    monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: saved[key][1] if key in saved else None)
+    monkeypatch.setattr(RedisClientWrapper, "register_script", lambda _redis, _script: transition)
+    publish = Mock()
+    monkeypatch.setattr(prepare_log_export_task, "apply_async", publish)
+    uploaded: dict[str, list[dict[str, str]]] = {}
+
+    def upload(key: str, path: Path) -> None:
+        with path.open(encoding="utf-8-sig", newline="") as csv_file:
+            uploaded[key] = list(DictReader(csv_file))
+
+    save_file = Mock(side_effect=upload)
+    monkeypatch.setattr(log_export_adapters, "storage", SimpleNamespace(save_file=save_file))
     agent_id, app_id = harness.create_agent()
     foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
-    end_user_id = str(uuid4())
+    end_user_id, conversation_id, message_id = (str(uuid4()) for _ in range(3))
     with harness.sessions.begin() as session:
         account = session.get(Account, harness.account_id)
         assert account is not None
         account.timezone = "Asia/Shanghai"
+        session.add_all(
+            [
+                make_end_user(end_user_id=end_user_id, tenant_id=harness.tenant_id, session_id="customer-001"),
+                make_conversation(
+                    conversation_id=conversation_id,
+                    app_id=app_id,
+                    mode=AppMode.AGENT,
+                    from_source=ConversationFromSource.API,
+                    from_end_user_id=end_user_id,
+                ),
+                make_message(
+                    message_id=message_id,
+                    app_id=app_id,
+                    conversation_id=conversation_id,
+                    query="What are the next steps?",
+                    answer="Review the report.",
+                    message={},
+                    from_source=ConversationFromSource.API,
+                    from_end_user_id=end_user_id,
+                    invoke_from="web-app",
+                    created_at=datetime(2026, 7, 23, 7, 30, tzinfo=UTC),
+                ),
+            ]
+        )
 
     base = f"/console/api/agent/{agent_id}/log-exports"
     response = harness.client.post(
@@ -350,7 +402,8 @@ def test_create_agent_log_export_persists_pending_task_and_utc_filters(
     assert response.status_code == HTTPStatus.ACCEPTED
     task_id = response.json["task_id"]
     assert response.json == {"task_id": task_id, "status": "pending"}
-    task_ttl, task_json = saved[f"agent_log_export:{harness.tenant_id}:{agent_id}:{task_id}"]
+    task_key = f"agent_log_export:{harness.tenant_id}:{agent_id}:{task_id}"
+    task_ttl, task_json = saved[task_key]
     task = AgentLogExportTask.model_validate_json(task_json)
     assert task.app_id == agent_id
     assert task.tenant_id == harness.tenant_id
@@ -361,6 +414,8 @@ def test_create_agent_log_export_persists_pending_task_and_utc_filters(
     assert task.filters.end == datetime(2026, 7, 23, 8, tzinfo=UTC)
     assert task.expires_at - task.created_at == timedelta(days=1)
     assert saved[f"agent_log_export_latest:{harness.tenant_id}:{agent_id}:{harness.account_id}"] == (task_ttl, task_id)
+    arguments = {"tenant_id": harness.tenant_id, "app_id": agent_id, "task_id": task_id, "export_kind": "agent"}
+    publish.assert_called_once_with(kwargs=arguments, task_id=task_id, expires=task.expires_at)
 
     for body in ({"sources": ["unknown-source"]}, {"start": "2026-07-23 16:00", "end": "2026-07-23 15:00"}):
         response = harness.client.post(base, headers=harness.headers, json=body)
@@ -368,6 +423,22 @@ def test_create_agent_log_export_persists_pending_task_and_utc_filters(
     response = harness.client.post(f"/console/api/agent/{foreign_id}/log-exports", headers=harness.headers, json={})
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert len(saved) == 2
+
+    with harness.client.application.app_context():
+        prepare_log_export_task.run(**arguments)
+        prepare_log_export_task.run(**arguments)
+
+    ready = AgentLogExportTask.model_validate_json(saved[task_key][1])
+    assert ready.status is LogExportStatus.READY
+    assert ready.storage_key == f"agent-log-exports/{harness.tenant_id}/{agent_id}/{task_id}.csv"
+    (row,) = uploaded[ready.storage_key]
+    assert (row["agent_id"], row["message_id"], row["end_user_id"], row["app_response"]) == (
+        agent_id,
+        message_id,
+        "customer-001",
+        "Review the report.",
+    )
+    save_file.assert_called_once()
 
 
 def test_unpublished_stored_enabled_state_is_hidden_and_can_be_disabled(harness: Harness) -> None:

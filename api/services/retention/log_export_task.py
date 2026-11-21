@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
 type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 type OpenLogExportFile = Callable[[str, int, str], LogExportDownload]
-type LogExportKind = Literal["conversation", "workflow"]
+type LogExportKind = Literal["conversation", "workflow", "agent"]
 
 
 class LogExportStatus(StrEnum):

@@ -220,6 +220,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from services.retention.agent.log_export_service import AgentLogExportService, AgentLogExportTask
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
@@ -721,9 +722,10 @@ def build_application_services(
         agent_observability=agent_observability,
         agent_log_exports=AgentLogExportService(
             logs=agent_observability,
-            save_task=RedisLogExportTasks(
-                redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"
-            ).save,
+            tasks=RedisLogExportTasks(redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"),
+            dispatch=partial(dispatch_log_export, export_kind="agent"),
+            store_csv=store_log_export_csv,
+            write_csv=AgentLogCsvWriter(logs=agent_observability).write_csv,
         ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,

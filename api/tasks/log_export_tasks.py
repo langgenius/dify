@@ -22,6 +22,8 @@ def prepare_log_export_task(
             exports = services.conversation_log_exports
         case "workflow":
             exports = services.workflow_log_exports
+        case "agent":
+            exports = services.agent_log_exports
         case _:
             raise ValueError(f"Unsupported log export kind: {export_kind}")
 
