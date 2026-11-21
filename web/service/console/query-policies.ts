@@ -1272,9 +1272,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                           }) > 1
                         )
                           return
-                        return context.client.invalidateQueries({
-                          queryKey: comments.key({ input: { params: { app_id: params.app_id } } }),
-                        })
+                        const input = { params: { app_id: params.app_id } }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: comments.get.key({ input }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey: comments.byCommentId.get.key({ input }),
+                          }),
+                        ])
                       },
                     },
                   },

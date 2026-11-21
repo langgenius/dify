@@ -43,13 +43,22 @@ const commentsApi = consoleQuery.apps.byAppId.workflow.comments
 const replySendKey = commentsApi.byCommentId.replies.post.mutationKey()
 const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
+// The app's comment list and details; mentionable users do not change with comments.
+const refetchComments = (client: QueryClient, appId: string) =>
+  Promise.all([
+    client.invalidateQueries({
+      queryKey: commentsApi.get.key({ input: { params: { app_id: appId } } }),
+    }),
+    client.invalidateQueries({
+      queryKey: commentsApi.byCommentId.get.key({ input: { params: { app_id: appId } } }),
+    }),
+  ])
+
 // Reconcile the app's comments once the last comment write settles: a refetch while another
 // write is still running could undo that write's optimistic state.
 const reconcileComments = (client: QueryClient, appId: string) => {
   if (client.isMutating({ mutationKey: commentsApi.key({ type: 'mutation' }) }) > 1) return
-  return client.invalidateQueries({
-    queryKey: commentsApi.key({ input: { params: { app_id: appId } } }),
-  })
+  return refetchComments(client, appId)
 }
 
 /**
@@ -86,9 +95,7 @@ export function WorkflowCommentLayer() {
     if (!appId || !isCollaborationEnabled) return
     return collaborationManager.onCommentsUpdate(() => {
       if (queryClient.isMutating({ mutationKey: commentsApi.key({ type: 'mutation' }) }) > 0) return
-      void queryClient.invalidateQueries({
-        queryKey: commentsApi.key({ input: { params: { app_id: appId } } }),
-      })
+      void refetchComments(queryClient, appId)
     })
   }, [appId, isCollaborationEnabled, queryClient])
 
@@ -343,15 +350,32 @@ function ShownThread({
         for (const mutation of cache.findAll({ mutationKey: replySendKey, status: 'success' }))
           cache.remove(mutation)
       },
+      // The saved reply takes the send row's place at once, under the same key.
       onSuccess: (reply, variables) => {
         const send = queryClient.getMutationCache().find({
           mutationKey: replySendKey,
           predicate: (mutation) => mutation.state.variables === variables,
         })
         if (send) setSentKeys((keys) => new Map(keys).set(reply.id, sendKeyOf(send)))
+        updateDetail((detail) =>
+          detail.replies.some((item) => item.id === reply.id)
+            ? detail
+            : {
+                ...detail,
+                replies: [
+                  ...detail.replies,
+                  {
+                    id: reply.id,
+                    content: variables.body.content,
+                    created_at: reply.created_at ?? Math.floor(Date.now() / 1000),
+                    created_by: author.id,
+                    created_by_account: author,
+                  },
+                ],
+              },
+        )
         emit()
       },
-      // Settling after the refetch keeps the send's row until the saved reply replaces it.
       onSettled: reconcile,
     }),
   )
