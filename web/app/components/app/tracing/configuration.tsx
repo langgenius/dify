@@ -23,6 +23,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
+import providerIcons from './provider-icons.module.css'
 import { configurableProviders, tracingProviders } from './providers'
 import { tracingQueryParamName, tracingQueryParser } from './query-params'
 import { usesAgentTracePipeline } from './resource'
@@ -120,7 +121,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     else await updateAppTrace.mutateAsync({ params: { app_id: resource.appId }, body })
   }
   const inUseProviderIconClassName = inUseTracingProvider
-    ? tracingProviders[inUseTracingProvider].icon
+    ? cn(providerIcons[inUseTracingProvider], tracingProviders[inUseTracingProvider].iconWidth)
     : undefined
 
   const hasConfiguredTracing =
