@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ThreadReply } from '../comment/pending-reply'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -56,6 +57,7 @@ export const useWorkflowComment = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const reactflow = useReactFlow()
   const flowStore = useStoreApi()
+  const direction = useDirection()
   const workflowStore = useWorkflowStore()
   const controlMode = useStore((s) => s.controlMode)
   const pendingComment = useStore((s) => s.pendingComment)
@@ -335,20 +337,26 @@ export const useWorkflowComment = () => {
     (comment: WorkflowCommentBasic) => {
       const { width, height } = flowStore.getState()
       if (!width || !height) return
-      const visibleWidth = width - (workflowStore.getState().rightPanelWidth ?? 0)
+      // The side panels sit at the inline end: on the right, or on the left in RTL.
+      const panelWidth = workflowStore.getState().rightPanelWidth ?? 0
+      const visibleStart = direction === 'rtl' ? panelWidth : 0
+      const visibleEnd = direction === 'rtl' ? width : width - panelWidth
       const { x, y, zoom } = reactflow.getViewport()
       const markerX = comment.position_x * zoom + x
       const markerY = comment.position_y * zoom + y
       const inView =
-        markerX >= 40 && markerX <= visibleWidth - 40 && markerY >= 40 && markerY <= height - 40
+        markerX >= visibleStart + 40 &&
+        markerX <= visibleEnd - 40 &&
+        markerY >= 40 &&
+        markerY <= height - 40
       if (inView) return
       reactflow.setViewport({
-        x: visibleWidth / 2 - comment.position_x * zoom,
+        x: (visibleStart + visibleEnd) / 2 - comment.position_x * zoom,
         y: height / 2 - comment.position_y * zoom,
         zoom,
       })
     },
-    [flowStore, reactflow, workflowStore],
+    [direction, flowStore, reactflow, workflowStore],
   )
 
   const handleCommentIconClick = useCallback(

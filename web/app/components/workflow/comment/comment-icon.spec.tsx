@@ -128,6 +128,8 @@ describe('CommentIcon', () => {
     await user.keyboard('{Escape}')
     expect(preview).not.toHaveAttribute('data-open')
 
+    // A pointer reaching the marker crosses the canvas first.
+    await user.hover(document.body)
     await user.hover(
       within(screen.getByRole('button', { name: /workflow.keyboard.openComment/ })).getByRole(
         'img',
@@ -146,6 +148,25 @@ describe('CommentIcon', () => {
     fireEvent.mouseEnter(avatar)
     expect(screen.queryByText('Hello')?.closest('[data-open]') ?? null).toBeNull()
     await user.unhover(avatar)
+    await user.hover(avatar)
+    expect(screen.getByText('Hello').closest('[data-role="comment-preview"]')).toHaveAttribute(
+      'data-open',
+    )
+  })
+
+  it('lets a preview dismissed from its card reopen once the pointer moves off the marker', async () => {
+    const user = userEvent.setup()
+    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
+    const avatar = within(
+      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
+    ).getByRole('img', { name: 'Alice' })
+
+    await user.hover(avatar)
+    // Escape from the part of the card beyond the marker; closing leaves the pointer on the canvas.
+    await user.hover(screen.getByText('Hello'))
+    await user.keyboard('{Escape}')
+    await user.hover(document.body)
+
     await user.hover(avatar)
     expect(screen.getByText('Hello').closest('[data-role="comment-preview"]')).toHaveAttribute(
       'data-open',

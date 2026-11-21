@@ -333,13 +333,15 @@ function CommentThreadSession({
 
   const replies = comment.replies || []
 
-  // Scroll to the newest message when the session opens and when a reply arrives.
   useEffect(() => {
     const container = messageListRef.current
     if (!container) return
 
+    // Opening lands on the newest message at once; a reply arriving scrolls into view.
     const previousReplyCount = previousReplyCountRef.current
-    if (previousReplyCount === undefined || replies.length > previousReplyCount)
+    if (previousReplyCount === undefined)
+      container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
+    else if (replies.length > previousReplyCount)
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
 
     previousReplyCountRef.current = replies.length

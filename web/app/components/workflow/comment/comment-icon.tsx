@@ -237,34 +237,44 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       [finishDrag],
     )
 
-    // A preview dismissed with Escape while the pointer is on it stays closed until the
-    // pointer leaves the marker; otherwise the marker under the pointer would reopen it.
-    const pointerOverRef = useRef(false)
+    // A preview dismissed with Escape stays closed until the pointer moves anywhere outside
+    // the marker; otherwise the marker revealed under the pointer would reopen it.
     const dismissedRef = useRef(false)
+    const stopDismissalRef = useRef<() => void>(undefined)
+    const dismissPreview = useCallback(() => {
+      dismissedRef.current = true
+      setShowPreview(false)
+      stopDismissalRef.current?.()
+      const handlePointerMove = (event: PointerEvent) => {
+        const marker = document.getElementById(markerId)
+        if (event.target instanceof Node && marker?.contains(event.target)) return
+        stopDismissalRef.current?.()
+      }
+      document.addEventListener('pointermove', handlePointerMove)
+      stopDismissalRef.current = () => {
+        dismissedRef.current = false
+        document.removeEventListener('pointermove', handlePointerMove)
+        stopDismissalRef.current = undefined
+      }
+    }, [markerId])
+    useEffect(() => () => stopDismissalRef.current?.(), [])
     const openPreview = useCallback(() => {
       if (isActive || isDragging || dismissedRef.current) return
       setShowPreview(true)
     }, [isActive, isDragging])
-    const handleMouseEnter = useCallback(() => {
-      pointerOverRef.current = true
-      openPreview()
-    }, [openPreview])
+    const handleMouseEnter = openPreview
 
     // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
     useEffect(() => {
       if (!previewOpen) return
       const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key !== 'Escape') return
-        dismissedRef.current = pointerOverRef.current
-        setShowPreview(false)
+        if (event.key === 'Escape') dismissPreview()
       }
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [previewOpen])
+    }, [dismissPreview, previewOpen])
 
     const handleMouseLeave = useCallback(() => {
-      pointerOverRef.current = false
-      dismissedRef.current = false
       setShowPreview(false)
     }, [])
 
@@ -325,7 +335,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
           onBlur={() => {
             finishKeyboardMove()
-            dismissedRef.current = false
+            stopDismissalRef.current?.()
             setShowPreview(false)
           }}
           onKeyUp={(event) => {
@@ -367,15 +377,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}
-            onMouseEnter={() => {
-              pointerOverRef.current = true
-              setShowPreview(true)
-            }}
-            onMouseLeave={() => {
-              // Leaving the preview may land back on the marker, so the dismissal holds.
-              pointerOverRef.current = false
-              setShowPreview(false)
-            }}
+            onMouseEnter={() => setShowPreview(true)}
+            onMouseLeave={handleMouseLeave}
           >
             <CommentPreview
               comment={comment}

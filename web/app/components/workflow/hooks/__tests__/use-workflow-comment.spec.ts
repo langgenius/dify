@@ -31,6 +31,12 @@ const commentsUpdateState = vi.hoisted(() => ({
 const globalFeatureState = vi.hoisted(() => ({
   enableCollaboration: true,
 }))
+const mockDirection = vi.hoisted(() => ({ value: 'ltr' as 'ltr' | 'rtl' }))
+vi.mock('@langgenius/dify-ui/direction-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@langgenius/dify-ui/direction-provider')>()),
+  useDirection: () => mockDirection.value,
+}))
+
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
@@ -137,6 +143,7 @@ const renderWorkflowHook: typeof renderWorkflowFlowHook = (hook, options) =>
 
 describe('useWorkflowComment', () => {
   beforeEach(() => {
+    mockDirection.value = 'ltr'
     vi.clearAllMocks()
     commentsUpdateState.handler = undefined
     globalFeatureState.enableCollaboration = true
@@ -925,6 +932,31 @@ describe('useWorkflowComment', () => {
     })
     expect(result.current.activeComment?.content).toBe('second detail')
     expect(result.current.activeCommentLoading).toBe(false)
+  })
+
+  it('treats the panels as covering the left of the canvas in RTL', async () => {
+    mockDirection.value = 'rtl'
+    // At x 50 the marker is visible in LTR but under the panels in RTL.
+    const comment: WorkflowCommentBasic = { ...baseComment(), position_x: 50 }
+    mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
+    const { result } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: { comments: [comment], rightPanelWidth: 200 },
+    })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => result.current.flowStore.setState({ width: 1000, height: 800 }))
+    const { zoom } = result.current.flow.getViewport()
+
+    act(() => {
+      void result.current.handleCommentReveal(comment)
+    })
+    await waitFor(() =>
+      expect(result.current.flow.getViewport()).toEqual({
+        x: 600 - 50 * zoom,
+        y: 400 - 20 * zoom,
+        zoom,
+      }),
+    )
   })
 
   it('moves the canvas at once and only to reveal a comment out of view', async () => {
