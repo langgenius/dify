@@ -90,7 +90,9 @@ it('keeps an authored comment focusable and draggable after adding keyboard move
   })
   expect(marker.element().getBoundingClientRect().x).toBeGreaterThan(initial.x + 5)
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
-  // Hover reveals the clickable preview over the marker, so open that visible surface.
+  // Hover reveals the clickable preview over the marker, so open that visible surface. The
+  // drag ends with the pointer on the marker, so leave it first to hover it afresh.
+  await screen.getByRole('button', { name: 'Before canvas' }).hover()
   await marker.hover()
   await expect.element(preview).toBeVisible()
   await preview.click()
