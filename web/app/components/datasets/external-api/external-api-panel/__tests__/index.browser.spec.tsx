@@ -1,5 +1,4 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { onlineManager } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -10,34 +9,13 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import ExternalAPIPanel from '../index'
-
-const api = vi.hoisted(() => ({
-  get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
-  list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
-  create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.externalKnowledgeApi.get': api.list,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'datasets.externalKnowledgeApi.post': api.create,
-      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get': api.get,
-    }),
-  }
-})
 
 const response: ExternalKnowledgeApiListResponse = {
   data: [
     {
-      id: 'api-1',
+      id: '3b8f2c1d-7e4a-4f5b-9c6d-1e2f3a4b5c6d',
       tenant_id: 'tenant-1',
       name: 'Product knowledge',
       description: '',
@@ -53,12 +31,17 @@ const response: ExternalKnowledgeApiListResponse = {
   total: 1,
 }
 
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  api.get.mockReset().mockResolvedValue(response.data[0]!)
-  api.list.mockReset().mockResolvedValue(response)
-  api.create.mockReset().mockResolvedValue(response.data[0]!)
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: async () => response,
+        post: async () => response.data[0]!,
+        byExternalKnowledgeApiId: { get: async () => response.data[0]! },
+      },
+    },
+  },
+}))
 
 async function setup(canManage = true) {
   const { wrapper: Providers } = createConsoleQueryWrapper({ features: {} })
@@ -90,7 +73,7 @@ async function setup(canManage = true) {
 
 it('replaces loading with API cards and removes the panel when closed', async () => {
   const pending = createDeferred<ExternalKnowledgeApiListResponse>()
-  api.list.mockReturnValue(pending.promise)
+  fake.console.datasets.externalKnowledgeApi.get.mockReturnValue(pending.promise)
   const screen = await setup()
   await expect.element(screen.getByLabelText('common.loading')).toBeVisible()
   pending.resolve(response)
@@ -119,12 +102,20 @@ it('shows read-only API cards without management controls', async () => {
 it('opens a blank creation form and refreshes the list from the saved API', async () => {
   const refresh = createDeferred<ExternalKnowledgeApiListResponse>()
   let saved: ExternalKnowledgeApiListResponse['data'] = []
-  api.list.mockImplementation(async () => ({ ...response, data: saved, total: saved.length }))
-  api.create.mockImplementation(async ({ body }) => {
-    const created = { ...response.data[0]!, ...body }
-    saved = [created]
-    api.list.mockReturnValue(refresh.promise)
-    return created
+  fake.use({
+    console: {
+      datasets: {
+        externalKnowledgeApi: {
+          get: async () => ({ ...response, data: saved, total: saved.length }),
+          post: async ({ body }) => {
+            const created = { ...response.data[0]!, ...body }
+            saved = [created]
+            fake.console.datasets.externalKnowledgeApi.get.mockReturnValue(refresh.promise)
+            return created
+          },
+        },
+      },
+    },
   })
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
@@ -143,15 +134,12 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   refresh.resolve({ ...response, data: saved, total: saved.length })
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: {
-        name: 'Product knowledge',
-        settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
-      },
+  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'Product knowledge',
+      settings: { endpoint: 'https://knowledge.example.com', api_key: 'secret-key' },
     },
-    { context: { silent: true } },
-  )
+  })
   await expect
     .element(screen.getByRole('button', { name: /common.operation.edit Product knowledge/ }))
     .toBeVisible()
@@ -172,7 +160,7 @@ it('opens the card editor as the only top-level dialog', async () => {
 })
 
 it('retains the external API draft and allows cancel after an offline save fails', async () => {
-  api.create.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  fake.console.datasets.externalKnowledgeApi.post.mockRejectedValueOnce(networkError())
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
   const dialog = screen.getByRole('dialog', { name: /dataset\./ })
@@ -183,21 +171,28 @@ it('retains the external API draft and allows cancel after an offline save fails
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
-  await expect.poll(() => api.create.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.datasets.externalKnowledgeApi.post.mock.calls.length).toBe(1)
   await expect.element(name).toHaveValue('Draft')
   await dialog.getByRole('button', { name: /cancel/i }).click()
   await expect.element(dialog).not.toBeInTheDocument()
 })
 
 it('attempts an offline edit immediately without opening an editor on reconnect', async () => {
-  api.get.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  fake.console.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get.mockRejectedValueOnce(
+    networkError(),
+  )
   const screen = await setup()
   const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
   await expect.element(edit).toBeVisible()
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await edit.click()
-  await expect.poll(() => api.get.mock.calls.length).toBe(1)
+  await expect
+    .poll(
+      () =>
+        fake.console.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get.mock.calls.length,
+    )
+    .toBe(1)
   await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
   onlineManager.setOnline(true)
   await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).not.toBeInTheDocument()

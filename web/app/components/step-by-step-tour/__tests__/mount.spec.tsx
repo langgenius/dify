@@ -9,6 +9,7 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { createRef } from 'react'
 import { consoleQuery } from '@/service/console'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createDeferred } from '@/test/deferred'
@@ -295,7 +296,7 @@ const renderStepByStepTourMount = (searchParams = '', container?: HTMLElement) =
   const recoveryAnchorRef = createRef<HTMLButtonElement>()
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: {
-      id: 'workspace-1',
+      id: TEST_WORKSPACE_ID,
       name: 'Solar Studio',
       role: mockCurrentWorkspaceRole.value,
     },
@@ -490,7 +491,7 @@ describe('StepByStepTourMount', () => {
 
   it('shows a dismissible completion prompt at the bottom of the checklist after all tasks are complete', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
@@ -529,7 +530,7 @@ describe('StepByStepTourMount', () => {
   it('uses a three-step checklist when Learn Dify is disabled', async () => {
     mockEnableLearnApp.value = false
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -553,7 +554,7 @@ describe('StepByStepTourMount', () => {
   it('treats the three-step tour as complete when Learn Dify is disabled', async () => {
     mockEnableLearnApp.value = false
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['studio', 'knowledge', 'integration'],
@@ -572,7 +573,7 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the checklist minimized for the session only', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -600,7 +601,7 @@ describe('StepByStepTourMount', () => {
 
   it('exposes dialog semantics and returns focus after minimizing with the keyboard', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -630,7 +631,7 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the expanded checklist open after an outside pointer interaction', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -647,7 +648,7 @@ describe('StepByStepTourMount', () => {
 
   it('shows the completion prompt expanded even when the checklist is minimized', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
@@ -670,7 +671,7 @@ describe('StepByStepTourMount', () => {
     'defers completion from a background refetch until the active dialog closes (minimized=%s)',
     async (minimized) => {
       setStepByStepTourTestState({
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
+        manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
         minimized,
         completedTaskIds: ['home', 'studio', 'knowledge'],
       })
@@ -709,7 +710,7 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the checklist open when Escape is pressed elsewhere on the page', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -736,7 +737,7 @@ describe('StepByStepTourMount', () => {
 
   it('minimizes the checklist when Tab moves past it', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -763,7 +764,7 @@ describe('StepByStepTourMount', () => {
 
   it('minimizes the checklist with Escape and returns focus to its trigger', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -785,7 +786,7 @@ describe('StepByStepTourMount', () => {
     'hides the expanded checklist while a dialog is open (completed=%s)',
     async (completed) => {
       setStepByStepTourTestState({
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
+        manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
         manuallyDisabledWorkspaceIds: [],
         minimized: false,
         completedTaskIds: completed ? ['home', 'studio', 'knowledge', 'integration'] : [],
@@ -815,7 +816,7 @@ describe('StepByStepTourMount', () => {
 
   it('waits for an already open dialog before showing a late-mounted checklist', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -840,7 +841,7 @@ describe('StepByStepTourMount', () => {
 
   it('hides expanded tour overlays while settings is open', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -857,7 +858,7 @@ describe('StepByStepTourMount', () => {
 
   it('hides expanded tour overlays while pricing is open', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -874,7 +875,7 @@ describe('StepByStepTourMount', () => {
 
   it('hides expanded tour overlays while the Education expiration notice is open', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -894,7 +895,7 @@ describe('StepByStepTourMount', () => {
     setPathname('/datasets')
     mockEducationExpireNotice.value = true
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -908,7 +909,7 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the minimized tour entry available while a blocking modal is open', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: [],
@@ -936,7 +937,7 @@ describe('StepByStepTourMount', () => {
 
   it('starts the integration guide instead of immediately completing the task', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -961,7 +962,7 @@ describe('StepByStepTourMount', () => {
       (key) => key !== 'plugin.plugin_preferences',
     )
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -995,7 +996,7 @@ describe('StepByStepTourMount', () => {
       'app_library.access',
     ]
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1041,7 +1042,7 @@ describe('StepByStepTourMount', () => {
   it('focuses Dismiss after completing Knowledge as the final task without permission', async () => {
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'integration'],
@@ -1078,7 +1079,7 @@ describe('StepByStepTourMount', () => {
 
   it('starts the home guide against the Learn Dify target', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -1112,7 +1113,7 @@ describe('StepByStepTourMount', () => {
 
   it('opens the coachmark once its target scrolls into view and then follows it', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -1159,7 +1160,7 @@ describe('StepByStepTourMount', () => {
   it('uses no-create Learn Dify copy when the workspace cannot create apps', async () => {
     mockWorkspacePermissionKeys.value = []
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -1202,7 +1203,7 @@ describe('StepByStepTourMount', () => {
 
   it('only allows users to uncomplete tasks from the checklist status control', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home'],
@@ -1238,7 +1239,7 @@ describe('StepByStepTourMount', () => {
 
   it('does not allow manually completing externally completed tasks from the checklist', async () => {
     setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
@@ -1262,7 +1263,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1348,7 +1349,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1408,7 +1409,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1462,7 +1463,7 @@ describe('StepByStepTourMount', () => {
       activeTaskId: 'studio',
       activeGuideIndex: 2,
       activeGuideGroup: 'studioEmpty',
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home'],
@@ -1495,7 +1496,7 @@ describe('StepByStepTourMount', () => {
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home'],
@@ -1531,7 +1532,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1576,7 +1577,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1614,7 +1615,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'home',
       activeGuideIndex: 0,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: [],
@@ -1657,7 +1658,7 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
@@ -1705,7 +1706,7 @@ describe('StepByStepTourMount', () => {
     setPathname('/app/test-app/overview')
     setStepByStepTourTestState({
       activeTaskId: 'integration',
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyEnabledWorkspaceIds: [TEST_WORKSPACE_ID],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
