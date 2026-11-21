@@ -517,6 +517,8 @@ function ShownThread({
   )
   const editReply = useMutation(
     commentsApi.byCommentId.replies.byReplyId.put.mutationOptions({
+      onMutate: ({ params: { reply_id: _replyId, ...target } }) =>
+        cancelCommentFetches(queryClient, target),
       onSuccess: (_data, { params: { reply_id, ...target }, body }) =>
         updateDetail(queryClient, target, (current) => ({
           ...current,
@@ -528,6 +530,8 @@ function ShownThread({
   )
   const deleteReply = useMutation(
     commentsApi.byCommentId.replies.byReplyId.delete.mutationOptions({
+      onMutate: ({ params: { reply_id: _replyId, ...target } }) =>
+        cancelCommentFetches(queryClient, target),
       onSuccess: (_data, { params: { reply_id, ...target } }) => {
         updateDetail(queryClient, target, (current) => ({
           ...current,

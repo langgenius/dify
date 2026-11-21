@@ -322,6 +322,17 @@ describe('thread actions', () => {
     expect(markers(screen).elements()).toHaveLength(1)
   })
 
+  it('shows what collaborators changed while the editor was closed when it opens again', async () => {
+    const first = await renderLayer()
+    await expect.poll(() => markers(first).elements().length).toBe(2)
+    first.unmount()
+
+    server.current.list = server.current.list.slice(1)
+    const again = await renderLayer({ queryClient: first.queryClient })
+
+    await expect.poll(() => markers(again).elements().length).toBe(1)
+  })
+
   it('keeps showing the comment when the thread’s first load fails', async () => {
     api.detailFails = true
     const screen = await renderLayer()

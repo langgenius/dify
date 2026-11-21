@@ -9,13 +9,15 @@ import 'reactflow/dist/style.css'
 
 // The real comment layer on a real canvas, and what a person finds on it.
 
-export async function renderLayer({ hideResolved = false } = {}) {
-  await page.viewport(1200, 800)
-  const { queryClient } = createConsoleQueryWrapper({
+export async function renderLayer({
+  hideResolved = false,
+  queryClient = createConsoleQueryWrapper({
     accountProfile: { id: author.id, name: author.name, avatar_url: null },
-  })
+  }).queryClient,
+} = {}) {
+  await page.viewport(1200, 800)
   seedMentionableUsers(queryClient, [])
-  return render(
+  const screen = await render(
     <div
       id="workflow-container"
       className="isolate"
@@ -30,6 +32,7 @@ export async function renderLayer({ hideResolved = false } = {}) {
       initialStoreState: { showUserComments: true, showResolvedComments: !hideResolved },
     },
   )
+  return { ...screen, queryClient }
 }
 type Screen = Awaited<ReturnType<typeof renderLayer>>
 

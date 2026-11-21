@@ -1207,7 +1207,11 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         byAppId: {
           workflow: {
             comments: {
+              // Collaborators change comments while the editor is closed, and their live
+              // updates reach only an open editor, so every mount reads comments again.
+              get: { queryOptions: { staleTime: 0 } },
               byCommentId: {
+                get: { queryOptions: { staleTime: 0 } },
                 resolve: {
                   post: {
                     // Resolving shows on the comment at once and is put back if it fails. The
