@@ -7,7 +7,6 @@ from typing import Any, Literal, Protocol
 
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from models.enums import DocumentCreatedFrom
 from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
@@ -88,7 +87,7 @@ class DocumentOperations(Protocol):
         ref: DatasetRef,
         settings: Mapping[str, Any],
         *,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: str = "web",
     ) -> dict[str, Any]: ...
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]: ...
     def delete_document(self, ref: DocumentRef) -> None: ...
@@ -193,7 +192,7 @@ class DatasetDocumentApplicationService:
         *,
         dataset_id: str,
         settings: Mapping[str, Any],
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: str = "web",
     ) -> dict[str, Any]:
         return self._operations.create_documents(
             context, self._dataset(context, dataset_id), settings, created_from=created_from

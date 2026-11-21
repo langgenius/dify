@@ -309,8 +309,14 @@ def test_created_dataset_initializes_rbac_access(
     apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
 
     def save_documents(
-        created_dataset: Dataset, _config: KnowledgeConfig, _account: Account, *, session: Session
+        created_dataset: Dataset,
+        _config: KnowledgeConfig,
+        _account: Account,
+        *,
+        created_from: str,
+        session: Session,
     ) -> tuple[list[Document], str, DocumentIndexingJobs]:
+        del created_from
         row = document(id="created-document", dataset_id=created_dataset.id, data_source_type="upload_file")
         session.add(row)
         session.flush()
