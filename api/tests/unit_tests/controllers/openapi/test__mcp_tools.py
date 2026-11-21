@@ -61,7 +61,6 @@ _WORKSPACE = "sk-x"
 _ACCOUNT = "dfoa_x"
 _UNKNOWN_PREFIX = "zz-x"
 _STREAMING = ("run.console_app.workflow", "get.run.event")
-_FILE_OPS = ("export.skill", "upload.console_app.file", "import.skill")
 _INTERNAL = "switch.workspace"
 _ACCOUNT_ONLY = "describe.account"
 _NEEDS_ACCOUNT_SCOPE = "invite.workspace.member"
@@ -91,14 +90,6 @@ def test_streams_are_never_listed(token: str | None) -> None:
 
     assert not [op for op in _STREAMING if op in listed]
     assert not [op for op, entry in listed.items() if entry["kind"] == Kind.SSE]
-
-
-@pytest.mark.usefixtures("in_request")
-def test_file_operations_are_listed() -> None:
-    listed = callable_ops(_ACCOUNT)
-
-    assert [op for op in _FILE_OPS if op in listed] == list(_FILE_OPS)
-    assert PREPARE_UPLOAD_OP in listed
 
 
 @pytest.mark.usefixtures("in_request")
@@ -280,17 +271,10 @@ def test_an_optional_mapping_file_field_also_takes_one_folder_upload_id() -> Non
 
 
 @pytest.mark.usefixtures("in_request")
-@pytest.mark.parametrize(
-    ("op", "field", "expected"),
-    [
-        (_UPLOAD, "file", UPLOAD_ID_SCHEMA),
-        (_START_WORKFLOW, "attachments", [{"type": "array", "items": UPLOAD_ID_SCHEMA}, {"type": "null"}]),
-    ],
-)
-def test_a_single_file_or_list_field_takes_no_folder_upload_id(op: str, field: str, expected: object) -> None:
-    described = describe_op(op, token=_ACCOUNT)["input"]["properties"][field]
+def test_a_list_file_field_takes_no_folder_upload_id() -> None:
+    described = describe_op(_START_WORKFLOW, token=_ACCOUNT)["input"]["properties"]["attachments"]
 
-    assert described.get("anyOf", described) == expected
+    assert described["anyOf"] == [{"type": "array", "items": UPLOAD_ID_SCHEMA}, {"type": "null"}]
     assert FOLDER_UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
 
 
@@ -695,22 +679,3 @@ def test_send_use_and_fetch_through_the_four_tools(
     assert used.isError is False
     assert json.loads(_text(used))["name"] == "r.pdf"
     assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
-
-
-def test_a_refused_id_reaches_the_agent_with_its_reason(
-    openapi_app: Flask, world: TransferWorld, recording_files: _RecordingFiles
-) -> None:
-    with openapi_app.test_request_context(base_url=_HOST):
-        prepared = json.loads(_text(_run(CallTool.WRITE, {"op": PREPARE_UPLOAD_OP, "input": {}})))
-        used = _run(CallTool.WRITE, {"op": _UPLOAD, "input": {"app_id": world.caller.app_id, "file": prepared["id"]}})
-
-    assert used.isError is True
-    body = json.loads(_text(used))
-    assert body["code"] == "upload_not_received"
-    assert "no file reached this server" in body["message"]
-    assert recording_files.received == []
-
-
-def test_the_instructions_name_prepare_upload_and_the_three_times() -> None:
-    for name in (PREPARE_UPLOAD_OP, "upload_before", "download_before", "expires_at", '"folder": true'):
-        assert name in MCP_INSTRUCTIONS

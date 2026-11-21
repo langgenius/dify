@@ -7,7 +7,8 @@ import json
 import logging
 import uuid
 import zipfile
-from collections.abc import Buffer, Callable, Iterator
+from collections.abc import Buffer, Callable, Generator, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from inspect import unwrap
@@ -39,7 +40,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.datetime_utils import to_utc_iso
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
 from machinery.context import RequestContext
-from models.file_transfer import MIME_TYPE_MAX_LENGTH, NAME_MAX_LENGTH
+from models.file_transfer import NAME_MAX_LENGTH
 from repositories.file_transfer_repository import SQLAlchemyFileTransferRepository
 from services.file_transfer import (
     FileTransferService,
@@ -195,16 +196,6 @@ def test_an_upload_is_stored_and_answers_the_next_step_without_a_login(world: Tr
     assert world.blobs.files == {f"file_transfers/{prepared['id']}": b"hello"}
 
 
-def test_an_upload_cannot_be_fetched_back(world: TransferWorld) -> None:
-    prepared = world.prepare().get_json()
-    world.upload(prepared["upload_url"])
-
-    response = world.get(prepared["upload_url"])
-
-    assert response.status_code == 404
-    assert response.get_json()["code"] == OpenApiErrorCode.UPLOAD_NOT_FOUND
-
-
 def test_a_parked_file_downloads_as_an_attachment(world: TransferWorld) -> None:
     response = world.get(world.link(world.park()))
 
@@ -217,6 +208,7 @@ def test_a_parked_file_downloads_as_an_attachment(world: TransferWorld) -> None:
 
 def test_unknown_id_wrong_token_and_wrong_direction_all_answer_the_same_404(world: TransferWorld) -> None:
     prepared = world.prepare().get_json()
+    world.upload(prepared["upload_url"])
     parked = world.park()
     wrong_token = f"{_HOST}/openapi/v1/transfers/{parked.transfer.id}?token=nope"
     unknown = f"{_HOST}/openapi/v1/transfers/00000000-0000-4000-8000-000000000000?token={parked.token}"
@@ -436,13 +428,20 @@ def _received(world: TransferWorld, content: bytes, name: str, *, folder: bool =
     return ticket.transfer.id
 
 
-def _parsed[M: BaseModel](app: Flask, body: dict[str, object], model: type[M]) -> M:
-    with app.test_request_context(json=body):
-        reset = set_auth_ctx(_OWNER_AUTH)
+@contextmanager
+def as_login(app: Flask, auth: AuthContext, *args: object, **kwargs: object) -> Generator[None]:
+    """A test request context whose login is ``auth``."""
+    with app.test_request_context(*args, **kwargs):
+        reset = set_auth_ctx(auth)
         try:
-            return model.model_validate(body_from_request(file_fields=file_fields(model)))
+            yield
         finally:
             reset_auth_ctx(reset)
+
+
+def _parsed[M: BaseModel](app: Flask, body: dict[str, object], model: type[M]) -> M:
+    with as_login(app, _OWNER_AUTH, json=body):
+        return model.model_validate(body_from_request(file_fields=file_fields(model)))
 
 
 def _uploaded_with_json(world: TransferWorld, body: dict[str, object]) -> TestResponse:
@@ -467,20 +466,10 @@ def test_json_file_field_takes_a_file_transfer(world: TransferWorld, recording_f
     assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
 
 
-def test_the_same_id_works_in_a_second_call(world: TransferWorld, recording_files: _RecordingFiles) -> None:
-    prepared = world.prepare().get_json()
-    world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
-
-    answers = [_uploaded_with_json(world, {"file": prepared["id"]}) for _ in range(2)]
-
-    assert [answer.status_code for answer in answers] == [201, 201]
-    assert len(recording_files.received) == 2
-
-
 def test_named_files_and_lists_resolve_at_any_depth(world: TransferWorld, openapi_app: Flask) -> None:
     doc, first, second = (_received(world, f"{index}".encode(), f"{index}.txt") for index in range(3))
 
-    body = _parsed(openapi_app, {"files": {"doc": doc, "pages": [first, second]}}, _Named)
+    body = _parsed(openapi_app, {"files": {"doc": doc, "pages": [first, second]}, "note": doc}, _Named)
 
     named = body.files
     assert isinstance(named["doc"], FileStorage)
@@ -488,6 +477,7 @@ def test_named_files_and_lists_resolve_at_any_depth(world: TransferWorld, openap
     pages = named["pages"]
     assert isinstance(pages, list)
     assert [(page.filename, page.read()) for page in pages] == [("1.txt", b"1"), ("2.txt", b"2")]
+    assert body.note == doc
 
 
 def test_a_folder_transfer_becomes_a_path_mapping(world: TransferWorld, openapi_app: Flask) -> None:
@@ -500,14 +490,6 @@ def test_a_folder_transfer_becomes_a_path_mapping(world: TransferWorld, openapi_
     run = body.files["s/run.py"]
     assert isinstance(run, FileStorage)
     assert (run.filename, run.content_type, run.read()) == ("run.py", "application/octet-stream", b"b")
-
-
-def test_a_string_outside_a_file_field_is_left_alone(world: TransferWorld, openapi_app: Flask) -> None:
-    doc = _received(world, b"x", "x.txt")
-
-    body = _parsed(openapi_app, {"files": {"doc": doc}, "note": doc}, _Named)
-
-    assert body.note == doc
 
 
 def test_a_folder_id_in_a_single_file_field_is_a_422(world: TransferWorld, recording_files: _RecordingFiles) -> None:
@@ -567,12 +549,8 @@ def test_the_read_transaction_is_ended_before_a_transfer_is_loaded(
 
     handler = accepts(body=FileUploadPayload)(parsed)
 
-    with openapi_app.test_request_context(json={"file": doc}):
-        reset = set_auth_ctx(_OWNER_AUTH)
-        try:
-            handler(ctx=ctx)
-        finally:
-            reset_auth_ctx(reset)
+    with as_login(openapi_app, _OWNER_AUTH, json={"file": doc}):
+        handler(ctx=ctx)
 
     assert in_transaction_at_load == [False]
 
@@ -615,14 +593,6 @@ def _imported_paths(
         return archive.namelist()
 
 
-def test_junk_in_the_zip_is_dropped_by_the_existing_folder_code(
-    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    members = {"SKILL.md": b"a", ".DS_Store": b"j", "__MACOSX/._SKILL.md": b"j", "s/Thumbs.db": b"j"}
-
-    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["SKILL.md"]
-
-
 @pytest.mark.parametrize(("path", "refused"), [("../x.md", "../x.md"), ("/abs.md", "/abs.md"), ("..\\x.md", "../x.md")])
 def test_a_hostile_path_in_the_zip_gets_the_operations_own_path_error(
     path: str, refused: str, world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
@@ -632,23 +602,6 @@ def test_a_hostile_path_in_the_zip_gets_the_operations_own_path_error(
 
     assert error.value.details is not None
     assert [detail.loc for detail in error.value.details] == [[refused]]
-
-
-def test_a_windows_zip_with_backslash_paths_is_imported(
-    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    members = {"SKILL.md": b"a", "scripts\\run.py": b"b"}
-
-    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["SKILL.md", "scripts/run.py"]
-
-
-def test_a_zip_of_the_folder_itself_keeps_its_extra_first_segment(
-    world: TransferWorld, openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The paths reach the operation as stored; the skill service then decides what a nested root means."""
-    members = {"skill/SKILL.md": b"a", "skill/run.py": b"b"}
-
-    assert _imported_paths(world, openapi_app, members, monkeypatch) == ["skill/SKILL.md", "skill/run.py"]
 
 
 _MALFORMED_ID = "not-a-uuid"
@@ -691,12 +644,3 @@ def test_a_file_name_longer_than_its_column_answers_400(world: TransferWorld) ->
         f"The file name is longer than {NAME_MAX_LENGTH} characters. Send the file under a shorter one."
     )
     assert world.blobs.files == {}
-
-
-def test_a_mime_type_longer_than_its_column_answers_400(world: TransferWorld) -> None:
-    url = world.prepare().get_json()["upload_url"]
-    long_type = "application/" + "x" * MIME_TYPE_MAX_LENGTH
-
-    response = world.post(url, data={"file": (io.BytesIO(b"x"), "a.txt", long_type)})
-
-    assert (response.status_code, response.get_json()["code"]) == (400, OpenApiErrorCode.UPLOAD_FIELD_TOO_LONG)

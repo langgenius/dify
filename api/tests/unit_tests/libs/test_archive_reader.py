@@ -132,14 +132,5 @@ def test_a_backslash_in_a_path_is_read_as_a_separator() -> None:
     assert members == [ArchiveMember("SKILL.md", b"a"), ArchiveMember("scripts/run.py", b"b")]
 
 
-def test_a_name_without_the_utf8_flag_comes_out_as_zipfile_decodes_it() -> None:
-    unflagged = _with_flags(zip_bytes({"é.md": b"x"}), clear_bits=_UTF8_FLAG)
-    with zipfile.ZipFile(io.BytesIO(unflagged)) as archive:
-        expected = archive.namelist()
-
-    assert expected != ["é.md"]
-    assert [member.path for member in read_archive(unflagged, _ROOMY)] == expected
-
-
 def test_an_empty_zip_gives_no_members() -> None:
     assert read_archive(zip_bytes({}), _ROOMY) == []

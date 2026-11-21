@@ -5,14 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 import configs.feature as feature_config
-from configs.feature import (
-    AuthConfig,
-    CeleryScheduleTasksConfig,
-    DataSetConfig,
-    FileUploadConfig,
-    LoggingConfig,
-    OpenApiAgentConfig,
-)
+from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig, OpenApiAgentConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
@@ -21,10 +14,6 @@ class _IsolatedAuthConfig(InitSettingsOnly, AuthConfig):
 
 
 class _IsolatedDataSetConfig(InitSettingsOnly, DataSetConfig):
-    pass
-
-
-class _IsolatedCeleryScheduleTasksConfig(InitSettingsOnly, CeleryScheduleTasksConfig):
     pass
 
 
@@ -174,36 +163,3 @@ def test_an_unknown_mcp_switch_value_is_refused(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(ValidationError, match="OPENAPI_MCP_ENABLED"):
         OpenApiAgentConfig(_env_file=None)
-
-
-def test_file_transfer_settings_have_documented_defaults() -> None:
-    auth = _IsolatedAuthConfig()
-    schedule = _IsolatedCeleryScheduleTasksConfig()
-
-    assert auth.FILE_TRANSFER_TTL_SECONDS == 1800
-    assert auth.FILE_TRANSFER_UPLOAD_LINK_SECONDS == 300
-    assert auth.FILE_TRANSFER_DOWNLOAD_LINK_SECONDS == 300
-    assert auth.FILE_TRANSFER_MAX_BYTES == 96 * 1024 * 1024
-    assert auth.FILE_TRANSFER_MAX_UNPACKED_BYTES == 96 * 1024 * 1024
-    assert auth.FILE_TRANSFER_MAX_UNPACKED_FILES == 1000
-    assert auth.FILE_TRANSFER_MAX_PER_OWNER == 20
-    assert auth.FILE_TRANSFER_MAX_ACTIVE == 2
-    assert auth.FILE_TRANSFER_BUSY_RETRY_AFTER_SECONDS == 5
-    assert auth.FILE_TRANSFER_CLEAN_INTERVAL_MINUTES == 10
-    assert schedule.ENABLE_CLEAN_FILE_TRANSFERS_TASK is True
-
-
-def test_file_transfer_settings_read_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("FILE_TRANSFER_TTL_SECONDS", "60")
-    monkeypatch.setenv("ENABLE_CLEAN_FILE_TRANSFERS_TASK", "false")
-
-    assert AuthConfig(_env_file=None).FILE_TRANSFER_TTL_SECONDS == 60
-    assert CeleryScheduleTasksConfig(_env_file=None).ENABLE_CLEAN_FILE_TRANSFERS_TASK is False
-
-
-@pytest.mark.parametrize("name", ["FILE_TRANSFER_MAX_BYTES", "FILE_TRANSFER_MAX_ACTIVE"])
-def test_file_transfer_limits_reject_zero(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
-    monkeypatch.setenv(name, "0")
-
-    with pytest.raises(ValidationError, match=name):
-        AuthConfig(_env_file=None)

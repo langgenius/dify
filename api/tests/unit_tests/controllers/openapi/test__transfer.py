@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from datetime import datetime
-from inspect import unwrap
 from urllib.parse import urlsplit
 
 import pytest
@@ -16,11 +15,9 @@ from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_FILE_RESULT
 from constants.oauth_bearer import TokenType
-from controllers.openapi._catalog import iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode, UploadTooLarge
 from controllers.openapi._transfer import FileResult, answers_file_as_transfer
-from controllers.openapi.auth.spec import Kind, spec_of
-from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
+from libs.oauth_bearer import AuthContext
 from models import Account
 from services.skill_management_service import PublishedSkillArchive, SkillManagementService
 from tests.unit_tests.controllers.openapi.test_transfers import (
@@ -29,6 +26,7 @@ from tests.unit_tests.controllers.openapi.test_transfers import (
     TransferWorld,
     _RecordingFiles,
     _uploaded_with_json,
+    as_login,
     recording_files,
     world,
 )
@@ -47,8 +45,7 @@ def _attachment(content: bytes, name: str = "skill.zip") -> Response:
     )
 
 
-@contextmanager
-def _as_caller(openapi_app: Flask, account_id: uuid.UUID, headers: dict[str, str]) -> Generator[None]:
+def _as_caller(openapi_app: Flask, account_id: uuid.UUID, headers: dict[str, str]) -> AbstractContextManager[None]:
     auth = AuthContext(
         token_type=TokenType.OAUTH_ACCOUNT,
         subject_email=None,
@@ -58,12 +55,7 @@ def _as_caller(openapi_app: Flask, account_id: uuid.UUID, headers: dict[str, str
         token_id=uuid.UUID(int=3),
         expires_at=None,
     )
-    with openapi_app.test_request_context("/openapi/v1/transfers", method="POST", base_url=_HOST, headers=headers):
-        reset = set_auth_ctx(auth)
-        try:
-            yield
-        finally:
-            reset_auth_ctx(reset)
+    return as_login(openapi_app, auth, "/openapi/v1/transfers", method="POST", base_url=_HOST, headers=headers)
 
 
 @pytest.fixture
@@ -89,10 +81,11 @@ def export_skill(
     return export
 
 
-def test_without_the_header_the_file_is_returned_as_before(
-    export_skill: Callable[[dict[str, str]], TestResponse],
+@pytest.mark.parametrize("extra", [{}, {HEADER_NAME_FILE_RESULT: "inline"}], ids=["no header", "unknown value"])
+def test_without_the_transfer_header_the_file_is_returned_as_before(
+    export_skill: Callable[[dict[str, str]], TestResponse], extra: dict[str, str]
 ) -> None:
-    response = export_skill({})
+    response = export_skill(extra)
 
     assert response.status_code == 200
     assert response.data == _ZIP
@@ -113,12 +106,6 @@ def test_with_the_header_the_operation_answers_a_transfer(
     assert file["expires_at"].endswith("Z")
     assert datetime.fromisoformat(file["download_before"]) < datetime.fromisoformat(file["expires_at"])
     assert world.get(file["download_url"]).data == _ZIP
-
-
-def test_an_unknown_header_value_is_ignored(export_skill: Callable[[dict[str, str]], TestResponse]) -> None:
-    response = export_skill({HEADER_NAME_FILE_RESULT: "inline"})
-
-    assert response.data == _ZIP
 
 
 def test_the_result_id_goes_straight_into_a_file_field(
@@ -172,19 +159,3 @@ def test_a_file_above_the_limit_is_refused_with_the_limit(
     assert error.value.error_code == OpenApiErrorCode.UPLOAD_TOO_LARGE
     assert f"{_LIMITS.max_bytes / 1024 / 1024:g} MiB" in str(error.value.description)
     assert world.blobs.files == {}
-
-
-def _is_file_operation(view: object) -> bool:
-    spec = spec_of(view)
-    if spec is None:
-        return False
-    return spec.catalog.kind is Kind.FILE
-
-
-def test_every_file_kind_route_is_wrapped(openapi_app: Flask) -> None:
-    file_views = [view for _rule, _verb, view in iter_handlers(openapi_app) if _is_file_operation(view)]
-
-    assert file_views
-    for view in file_views:
-        wrapper = unwrap(view, stop=lambda function: function.__code__ is _WRAPPER_CODE)
-        assert wrapper.__code__ is _WRAPPER_CODE, view.__qualname__

@@ -138,6 +138,7 @@ def test_the_inner_request_carries_the_callers_authorization_and_the_catalog_fin
     assert headers[CATALOG_HEADER] == catalog_for(openapi_app)[1]
     assert headers["X-Trace-Id"] == _TRACE_ID
     assert headers["Accept"] == "application/json"
+    assert headers[HEADER_NAME_FILE_RESULT] == FileResult.TRANSFER
 
 
 def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
@@ -244,14 +245,6 @@ def test_a_file_bound_key_goes_into_the_json_body(
 
     assert inner_requests[0].body == {"file": _UNKNOWN_UPLOAD}
     assert (result.status, result.body["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_the_inner_request_asks_for_a_transfer(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
-    with openapi_app.test_request_context():
-        _call("get.workspace", {})
-
-    assert inner_requests[0].headers[HEADER_NAME_FILE_RESULT] == FileResult.TRANSFER
 
 
 @pytest.mark.usefixtures("admitted_bearer")

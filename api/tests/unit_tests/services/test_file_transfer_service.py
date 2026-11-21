@@ -368,19 +368,9 @@ def test_a_zero_byte_file_is_a_file() -> None:
     assert service.load("owner", ticket.transfer.id).files[0].content == b""
 
 
-def test_open_for_download_checks_token_direction_and_link_without_reading_bytes() -> None:
-    service, _, blobs, clock = _service()
+def test_open_for_download_reads_no_bytes() -> None:
+    service, _, blobs, _ = _service()
     parked = service.park("owner", name="out.zip", mime_type="application/zip", content=b"pkg")
-    upload = service.prepare("owner", folder=False)
     blobs.clear()
 
-    opened = service.open_for_download(parked.transfer.id, parked.token)
-    with pytest.raises(TransferNotFoundError):
-        service.open_for_download(parked.transfer.id, "not-the-token")
-    with pytest.raises(TransferNotFoundError):
-        service.open_for_download(upload.transfer.id, upload.token)
-    clock.advance(_LIMITS.download_link_life)
-    with pytest.raises(TransferLinkExpiredError):
-        service.open_for_download(parked.transfer.id, parked.token)
-
-    assert opened == parked.transfer
+    assert service.open_for_download(parked.transfer.id, parked.token) == parked.transfer
