@@ -1261,7 +1261,7 @@ class MailConfig(BaseSettings):
     )
 
     MAIL_TYPE: str | None = Field(
-        description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
+        description="Email service provider type ('smtp', 'resend', 'sendgrid' or 'rasket'), default to None.",
         default=None,
     )
 
@@ -1323,6 +1323,11 @@ class MailConfig(BaseSettings):
 
     SENDGRID_API_KEY: str | None = Field(
         description="API key for SendGrid service",
+        default=None,
+    )
+
+    RASKET_API_KEY: str | None = Field(
+        description="API key for Rasket email service",
         default=None,
     )
 
