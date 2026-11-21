@@ -1,10 +1,10 @@
 import inspect
 import json
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from copy import deepcopy
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import Literal, NotRequired
+from typing import Literal, NotRequired, overload, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +13,7 @@ from typing_extensions import TypedDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import (
+    ModelParameters,
     ResponseFormat,
     _handle_native_json_schema,
     _handle_prompt_based_schema,
@@ -20,9 +21,11 @@ from core.llm_generator.output_parser.structured_output import (
     _prepare_schema_for_model,
     _set_response_format,
     invoke_llm_with_structured_output,
+    parse_model_parameters,
     remove_additional_properties,
 )
 from core.model_manager import ModelInstance
+from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -34,6 +37,8 @@ from graphon.model_runtime.entities.llm_entities import (
 )
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -63,16 +68,75 @@ class _ModelInstance(ModelInstance):
 
     def __init__(self, response: LLMResult | Iterator[LLMResultChunk | SimpleNamespace]) -> None:
         self.response = response
-        self.invocations: list[dict[str, object]] = []
+        self.invoked_model_parameters: list[ModelParameters] = []
+        self.invoked_prompt_messages: list[Sequence[PromptMessage]] = []
 
-    def invoke_llm(self, **kwargs: object):
-        inspect.signature(ModelInstance.invoke_llm).bind(self, **kwargs)
-        self.invocations.append(kwargs)
-        return self.response
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, object] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: Literal[True] = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Generator[LLMResultChunk | SimpleNamespace]: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, object] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: Literal[False] = False,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, object] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: bool = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> LLMResult | Generator[LLMResultChunk | SimpleNamespace]: ...
+
+    @override
+    def invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, object] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: bool = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> LLMResult | Generator[LLMResultChunk | SimpleNamespace]:
+        inspect.signature(ModelInstance.invoke_llm).bind(
+            self,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            callbacks=callbacks,
+            request_metadata=request_metadata,
+        )
+        self.invoked_prompt_messages.append(prompt_messages)
+        self.invoked_model_parameters.append(parse_model_parameters(model_parameters))
+        if isinstance(self.response, LLMResult):
+            return self.response
+        return (chunk for chunk in self.response)
 
 
 class TestStructuredOutput:
-    def test_remove_additional_properties(self):
+    def test_remove_additional_properties(self) -> None:
         schema = {
             "type": "object",
             "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
@@ -176,10 +240,8 @@ class TestStructuredOutput:
         assert output["is_active"] is False
         Draft7Validator(schema).validate(output)
         assert schema == original_schema
-        assert len(model_instance.invocations) == 1
-        invocation = model_instance.invocations[0]
-        parameters = invocation["model_parameters"]
-        assert isinstance(parameters, dict)
+        assert len(model_instance.invoked_model_parameters) == 1
+        parameters = model_instance.invoked_model_parameters[0]
         if native:
             prepared = json.loads(parameters["json_schema"])
             expected_schema = deepcopy(schema)
@@ -195,8 +257,7 @@ class TestStructuredOutput:
         else:
             assert "json_schema" not in parameters
             assert parameters["response_format"] == ResponseFormat.JSON_OBJECT
-            prompts = invocation["prompt_messages"]
-            assert isinstance(prompts, list)
+            prompts = model_instance.invoked_prompt_messages[0]
             assert isinstance(prompts[0], SystemPromptMessage)
             assert isinstance(prompts[0].content, str)
             assert json.dumps(schema) in prompts[0].content
@@ -209,18 +270,18 @@ class TestStructuredOutput:
         assert result["value"] == value
         assert type(result["value"]) is type(value)
 
-    def test_parse_structured_output_valid(self):
+    def test_parse_structured_output_valid(self) -> None:
         text = '{"key": "value"}'
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_non_dict_valid_json(self):
+    def test_parse_structured_output_non_dict_valid_json(self) -> None:
         # Even if it's valid JSON, if it's not a dict, it should try repair or fail
         text = '["a", "b"]'
         with patch("json_repair.loads") as mock_repair:
             mock_repair.return_value = {"key": "value"}
             assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_not_dict_fail_via_validate(self):
+    def test_parse_structured_output_not_dict_fail_via_validate(self) -> None:
         # Force TypeAdapter to return a non-dict to trigger line 292
         with patch("pydantic.TypeAdapter.validate_json") as mock_validate:
             mock_validate.return_value = ["a list"]
@@ -228,91 +289,91 @@ class TestStructuredOutput:
                 _parse_structured_output('["a list"]')
             assert "Failed to parse structured output" in str(excinfo.value)
 
-    def test_parse_structured_output_repair_success(self):
+    def test_parse_structured_output_repair_success(self) -> None:
         text = "{'key': 'value'}"  # Invalid JSON (single quotes)
         # json_repair should handle this
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_repair_list(self):
+    def test_parse_structured_output_repair_list(self) -> None:
         # Deepseek-r1 case: result is a list containing a dict
         text = '[{"key": "value"}]'
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_repair_list_no_dict(self):
+    def test_parse_structured_output_repair_list_no_dict(self) -> None:
         # Deepseek-r1 case: result is a list with NO dict
         text = "[1, 2, 3]"
         assert _parse_structured_output(text) == {}
 
-    def test_parse_structured_output_repair_fail(self):
+    def test_parse_structured_output_repair_fail(self) -> None:
         text = "not a json at all"
         with patch("json_repair.loads") as mock_repair:
             mock_repair.return_value = "still not a dict or list"
             with pytest.raises(OutputParserError):
                 _parse_structured_output(text)
 
-    def test_parse_structured_output_ignores_json_in_reasoning_block(self):
+    def test_parse_structured_output_ignores_json_in_reasoning_block(self) -> None:
         # Providers concatenate the reasoning block ahead of the answer, so a JSON object inside
         # <think> must not be taken as the structured output.
         text = '<think>\nthinking out loud\n{"think": "start"}\n</think>\n{"type": "user_input", "content": "hi"}'
         assert _parse_structured_output(text) == {"type": "user_input", "content": "hi"}
 
-    def test_parse_structured_output_prefers_answer_over_reasoning_of_same_shape(self):
+    def test_parse_structured_output_prefers_answer_over_reasoning_of_same_shape(self) -> None:
         text = '<think>{"type": "draft", "content": "guess"}</think>{"type": "user_input", "content": "final"}'
         assert _parse_structured_output(text) == {"type": "user_input", "content": "final"}
 
-    def test_parse_structured_output_ignores_reasoning_block_with_attributes(self):
+    def test_parse_structured_output_ignores_reasoning_block_with_attributes(self) -> None:
         text = '<Think duration="2s">{"think": "start"}</think>{"type": "user_input"}'
         assert _parse_structured_output(text) == {"type": "user_input"}
 
-    def test_parse_structured_output_keeps_literal_think_tags_inside_answer(self):
+    def test_parse_structured_output_keeps_literal_think_tags_inside_answer(self) -> None:
         text = '{"content": "<think>quoted, not reasoning</think>"}'
         assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
 
-    def test_parse_structured_output_keeps_literal_think_tags_in_fenced_answer(self):
+    def test_parse_structured_output_keeps_literal_think_tags_in_fenced_answer(self) -> None:
         # Not strictly valid JSON, so it goes through the repair path, and the tags are still part
         # of the answer rather than reasoning.
         text = '```json\n{"content": "<think>quoted, not reasoning</think>"}\n```'
         assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
 
-    def test_parse_structured_output_keeps_literal_think_tags_in_repaired_list(self):
+    def test_parse_structured_output_keeps_literal_think_tags_in_repaired_list(self) -> None:
         # Repairs into several candidates, and the first one is already the answer: a response that
         # does not open with a reasoning block keeps its literal tags.
         text = '{"content": "<think>quoted, not reasoning</think>"}\n{"extra": 1}'
         assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
 
-    def test_parse_structured_output_keeps_literal_think_tags_after_reasoning_block(self):
+    def test_parse_structured_output_keeps_literal_think_tags_after_reasoning_block(self) -> None:
         text = '<think>reasoning without json</think>{"content": "<think>x</think>"}\n{"extra": 1}'
         assert _parse_structured_output(text) == {"content": "<think>x</think>"}
 
-    def test_parse_structured_output_keeps_literal_think_tags_after_empty_reasoning_block(self):
+    def test_parse_structured_output_keeps_literal_think_tags_after_empty_reasoning_block(self) -> None:
         # The deepseek-r1 '<think>\n\n</think>\n' prefix the repair fallback already knew about.
         text = '<think>\n\n</think>\n{"content": "<think>x</think>"}\n{"extra": 1}'
         assert _parse_structured_output(text) == {"content": "<think>x</think>"}
 
     @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
-    def test_parse_structured_output_unclosed_reasoning_block(self, reasoning: str):
+    def test_parse_structured_output_unclosed_reasoning_block(self, reasoning: str) -> None:
         # A truncated answer keeps whatever the repair fallback made of it before.
         text = f"<think>{reasoning}"
         assert _parse_structured_output(text) == {"key": "value"}
 
     @pytest.mark.parametrize("reasoning", ['{"key": "value"}', '{"key": "value"}\n{"other": 1}'])
-    def test_parse_structured_output_reasoning_only_output(self, reasoning: str):
+    def test_parse_structured_output_reasoning_only_output(self, reasoning: str) -> None:
         # Nothing but reasoning: there is no answer to prefer, so the old result stands.
         text = f"<think>{reasoning}</think>"
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_keeps_candidates_when_answer_cannot_be_repaired(self):
+    def test_parse_structured_output_keeps_candidates_when_answer_cannot_be_repaired(self) -> None:
         # Repairing the answer produces a scalar, so retain the original object candidates.
         text = '<think>{"key": "value"}\n{"other": 1}</think>not json'
         assert _parse_structured_output(text) == {"key": "value"}
 
-    def test_parse_structured_output_skips_consecutive_reasoning_blocks(self):
+    def test_parse_structured_output_skips_consecutive_reasoning_blocks(self) -> None:
         text = ' \n<Think>{"draft": 1}</THINK>\n<think>{"draft": 2}</think>\n{"answer": "final"}'
         assert _parse_structured_output(text) == {"answer": "final"}
 
-    def test_set_response_format(self):
+    def test_set_response_format(self) -> None:
         # Test JSON
-        params = {}
+        params: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -326,7 +387,7 @@ class TestStructuredOutput:
         assert params["response_format"] == ResponseFormat.JSON
 
         # Test JSON_OBJECT
-        params = {}
+        params: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -339,11 +400,11 @@ class TestStructuredOutput:
         _set_response_format(params, rules)
         assert params["response_format"] == ResponseFormat.JSON_OBJECT
 
-    def test_handle_native_json_schema(self):
+    def test_handle_native_json_schema(self) -> None:
         provider = "openai"
         model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
-        model_parameters = {}
+        model_parameters: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -362,11 +423,11 @@ class TestStructuredOutput:
         assert json.loads(updated_params["json_schema"]) == {"schema": {"type": "object"}, "name": "llm_response"}
         assert updated_params["response_format"] == ResponseFormat.JSON_SCHEMA
 
-    def test_handle_native_json_schema_no_format_rule(self):
+    def test_handle_native_json_schema_no_format_rule(self) -> None:
         provider = "openai"
         model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
-        model_parameters = {}
+        model_parameters: ModelParameters = {}
         rules = []
 
         updated_params = _handle_native_json_schema(
@@ -376,7 +437,7 @@ class TestStructuredOutput:
         assert "json_schema" in updated_params
         assert "response_format" not in updated_params
 
-    def test_handle_prompt_based_schema_with_system_prompt(self):
+    def test_handle_prompt_based_schema_with_system_prompt(self) -> None:
         prompt_messages = [
             SystemPromptMessage(content="Existing system prompt"),
             UserPromptMessage(content="User question"),
@@ -387,11 +448,12 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        assert isinstance(result[0].content, str)
         assert "Existing system prompt" in result[0].content
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
 
-    def test_handle_prompt_based_schema_without_system_prompt(self):
+    def test_handle_prompt_based_schema_without_system_prompt(self) -> None:
         prompt_messages = [UserPromptMessage(content="User question")]
         schema = {"type": "object"}
 
@@ -399,31 +461,32 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        assert isinstance(result[0].content, str)
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
 
-    def test_prepare_schema_for_model_gemini(self):
+    def test_prepare_schema_for_model_gemini(self) -> None:
         model_schema = make_model_schema("gemini-1.5-pro")
         schema = {"type": "object", "additionalProperties": False}
 
         result = _prepare_schema_for_model("google", model_schema, schema)
         assert "additionalProperties" not in result
 
-    def test_prepare_schema_for_model_ollama(self):
+    def test_prepare_schema_for_model_ollama(self) -> None:
         model_schema = make_model_schema("llama3")
         schema = {"type": "object"}
 
         result = _prepare_schema_for_model("ollama", model_schema, schema)
         assert result == schema
 
-    def test_prepare_schema_for_model_default(self):
+    def test_prepare_schema_for_model_default(self) -> None:
         model_schema = make_model_schema("gpt-4")
         schema = {"type": "object"}
 
         result = _prepare_schema_for_model("openai", model_schema, schema)
         assert result == {"schema": schema, "name": "llm_response"}
 
-    def test_invoke_llm_with_structured_output_no_stream_native(self):
+    def test_invoke_llm_with_structured_output_no_stream_native(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = [ModelFeature.STRUCTURED_OUTPUT]
         model_schema.parameter_rules = [
@@ -460,7 +523,7 @@ class TestStructuredOutput:
         assert result.structured_output == {"result": "success"}
         assert result.system_fingerprint == "fp_native"
 
-    def test_invoke_llm_with_structured_output_no_stream_prompt_based(self):
+    def test_invoke_llm_with_structured_output_no_stream_prompt_based(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = [
@@ -497,7 +560,7 @@ class TestStructuredOutput:
         assert result.structured_output == {"result": "success"}
         assert result.system_fingerprint == "fp_prompt"
 
-    def test_invoke_llm_with_structured_output_no_string_error(self):
+    def test_invoke_llm_with_structured_output_no_string_error(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = []
@@ -521,7 +584,7 @@ class TestStructuredOutput:
             )
         assert "Failed to parse structured output, LLM result is not a string" in str(excinfo.value)
 
-    def test_invoke_llm_with_structured_output_stream(self):
+    def test_invoke_llm_with_structured_output_stream(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = []
@@ -573,7 +636,7 @@ class TestStructuredOutput:
         assert chunks[-1].system_fingerprint == "fp1"
         assert chunks[-1].prompt_messages == [UserPromptMessage(content="hi")]
 
-    def test_invoke_llm_with_structured_output_stream_reasoning_block(self):
+    def test_invoke_llm_with_structured_output_stream_reasoning_block(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = []
@@ -605,7 +668,7 @@ class TestStructuredOutput:
         # The streamed text itself is untouched, so the reasoning still reaches the UI.
         assert "".join(str(chunk.delta.message.content) for chunk in chunks[:-1]) == "".join(deltas)
 
-    def test_invoke_llm_with_structured_output_stream_no_id_events(self):
+    def test_invoke_llm_with_structured_output_stream_no_id_events(self) -> None:
         model_schema = make_model_schema("gpt-4")
         model_schema.features = []
         model_schema.parameter_rules = []
@@ -625,7 +688,7 @@ class TestStructuredOutput:
         with pytest.raises(OutputParserError):
             list(generator)
 
-    def test_parse_structured_output_empty_string(self):
+    def test_parse_structured_output_empty_string(self) -> None:
         with pytest.raises(OutputParserError):
             _parse_structured_output("")
 
