@@ -170,12 +170,7 @@ class _FakeRedis:
 
 
 class _OneRowSession:
-    """Enough `Session` for `_TokenTypeResolver` to read one row and expire it.
-
-    SQLite hands `expires_at` back naive while the resolver compares it against
-    an aware `now`, so the expiry branch cannot be driven through the real
-    sqlite fixture — same reason `test_auth_matrix._MemoryResolver` exists.
-    """
+    """Enough `Session` for `_TokenTypeResolver` to read one row and expire it."""
 
     def __init__(self, row: OAuthAccessToken) -> None:
         self._row = row
@@ -272,6 +267,37 @@ def test_every_way_authenticate_rejects_a_bearer_answers_the_same_401(
 
     assert (refusal.code, refusal.description) == (401, INVALID_BEARER)
     assert len(updates) == rows_expired
+
+
+def _sqlite_resolver(sqlite_session_factory: sessionmaker[Session]) -> Resolver:
+    """SQLite, like MySQL, stores `expires_at` without its zone and reads it back naive."""
+    return OAuthAccessTokenResolver(sqlite_session_factory, _FakeRedis()).for_token_type(TokenType.OAUTH_ACCOUNT)
+
+
+def test_a_live_token_read_back_naive_resolves_with_an_aware_expiry(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    row = _expired_row()
+    row.expires_at = datetime.now(UTC) + timedelta(hours=1)
+    persist(sqlite_session, row)
+
+    resolved = _sqlite_resolver(sqlite_session_factory).resolve("deadbeef")
+
+    assert resolved is not None
+    assert resolved.expires_at == row.expires_at
+
+
+def test_an_expired_token_read_back_naive_is_hard_expired(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    persist(sqlite_session, _expired_row())
+
+    assert _sqlite_resolver(sqlite_session_factory).resolve("deadbeef") is None
+
+    with sqlite_session_factory() as verify:
+        expired = verify.get(OAuthAccessToken, TOKEN_ID)
+        assert expired is not None
+        assert expired.revoked_at is not None
 
 
 def test_an_unresolvable_external_bearer_on_community_is_refused_as_a_bearer_not_an_edition(
