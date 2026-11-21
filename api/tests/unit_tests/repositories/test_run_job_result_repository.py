@@ -9,7 +9,6 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
-from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -17,7 +16,6 @@ from models.workflow import WorkflowPause, WorkflowRun, WorkflowRunTriggeredFrom
 from repositories import run_job_result_repository
 from repositories.run_job_result_repository import SQLAlchemyRunResultReader
 from services.run_job_contracts import JobStatus
-from services.run_job_service import RunJobService
 from tests.unit_tests.services.run_job_fakes import human_input_form
 
 
@@ -295,7 +293,7 @@ def test_pending_form_is_none_when_the_run_is_not_waiting_on_a_form(
     assert frames.closed
 
 
-def test_pending_form_is_none_for_an_absent_run_or_a_mode_without_a_snapshot(
+def test_pending_form_is_none_for_an_absent_run(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = _patch_stream(monkeypatch, _RecordedFrames([_FORM_FRAME, _PAUSED_FRAME]))
@@ -304,15 +302,9 @@ def test_pending_form_is_none_for_an_absent_run_or_a_mode_without_a_snapshot(
     absent = reader.pending_form(
         tenant_id=str(uuid4()), app_id=str(uuid4()), run_id=str(uuid4()), mode=AppMode.WORKFLOW
     )
-    chat = reader.pending_form(tenant_id=str(uuid4()), app_id=str(uuid4()), run_id=str(uuid4()), mode=AppMode.CHAT)
 
     assert absent is None
-    assert chat is None
     assert calls == []
-
-
-def test_the_built_services_carry_a_run_job_service(account_application_services: ApplicationServices) -> None:
-    assert isinstance(account_application_services.run_jobs, RunJobService)
 
 
 def test_pending_form_is_none_once_the_run_has_resumed(

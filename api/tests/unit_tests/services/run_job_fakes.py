@@ -1,15 +1,17 @@
 """In-memory fakes shared by the run job tests."""
 
-from collections.abc import Mapping
+import time
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from core.app.entities.task_entities import HumanInputRequiredResponse
+from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowFinishStreamResponse
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.app_task_service import WorkflowStopOutcome
-from services.run_job_contracts import JobRecord
-from services.run_job_service import RunResult
+from services.run_job_contracts import JobRecord, RunJobStore
+from services.run_job_service import RunJobService, RunResult, RunResultReader, RunTaskControl
 
 # Core's default WORKFLOW_MAX_EXECUTION_TIME.
 RUN_TIME_LIMIT = timedelta(hours=1)
@@ -23,17 +25,11 @@ class InMemoryRedis:
     hashes: dict[str, dict[str, str]] = field(default_factory=dict)
     ttls: dict[str, int] = field(default_factory=dict)
 
-    def set(self, name: str, value: str, ex: int | None = None, nx: bool = False) -> bool | None:
-        if nx and name in self.values:
-            return None
+    def set(self, name: str, value: str, ex: int | None = None) -> bool:
         self.values[name] = value
         if ex is not None:
             self.ttls[name] = ex
         return True
-
-    def get(self, name: str) -> bytes | None:
-        value = self.values.get(name)
-        return None if value is None else value.encode()
 
     def hset(self, name: str, *, mapping: Mapping[str, str]) -> int:
         self.hashes.setdefault(name, {}).update(mapping)
@@ -73,7 +69,7 @@ class InMemoryRedis:
 class RecordingJobStopper:
     stopped: list[JobRecord] = field(default_factory=list)
 
-    def stop(self, record: JobRecord) -> None:
+    def __call__(self, record: JobRecord) -> None:
         self.stopped.append(record)
 
 
@@ -140,3 +136,49 @@ class RecordingTaskControl:
     def stop_message_task(self, *, task_id: str, caller_role: CreatorUserRole, caller_id: str) -> bool:
         self.message_stops.append(MessageStop(task_id, caller_role, caller_id))
         return True
+
+
+class ClosableFrames:
+    def __init__(self, frames: Iterable[str] = ()) -> None:
+        self._frames = list(frames)
+        self.closed = False
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._frames)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def workflow_finished(status: WorkflowExecutionStatus, error: str | None = None) -> WorkflowFinishStreamResponse:
+    """Core's workflow_finished response for run-1 of task-1."""
+    return WorkflowFinishStreamResponse(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        data=WorkflowFinishStreamResponse.Data(
+            id="run-1",
+            workflow_id="wf-1",
+            status=status,
+            error=error,
+            elapsed_time=0.1,
+            total_tokens=0,
+            total_steps=1,
+            created_at=1,
+            finished_at=2,
+        ),
+    )
+
+
+def polling_service(
+    *, store: RunJobStore, results: RunResultReader, tasks: RunTaskControl, max_background_runs: int = 10
+) -> RunJobService:
+    """A service over the given fakes that polls every 10 ms on the real clock."""
+    return RunJobService(
+        store=store,
+        results=results,
+        tasks=tasks,
+        max_background_runs=max_background_runs,
+        max_waiters=4,
+        run_time_limit=RUN_TIME_LIMIT,
+        sleep=lambda _seconds: time.sleep(0.01),
+    )

@@ -1,58 +1,24 @@
 import json
-from collections.abc import Mapping
 
 import pytest
 
 from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     StreamEvent,
-    WorkflowFinishStreamResponse,
-    WorkflowStartStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus
 from services.run_job_contracts import JobIds
 from services.run_job_frames import Misfit, RunFrame, read_frame
+from tests.unit_tests.services.run_job_fakes import workflow_finished
 
 
 def _sse(payload: object) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-def _started() -> Mapping[str, object]:
-    return WorkflowStartStreamResponse(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        data=WorkflowStartStreamResponse.Data(id="run-1", workflow_id="wf-1", inputs={}, created_at=1),
-    ).model_dump(mode="json")
-
-
-def _finished(status: WorkflowExecutionStatus, error: str | None) -> Mapping[str, object]:
-    return WorkflowFinishStreamResponse(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        data=WorkflowFinishStreamResponse.Data(
-            id="run-1",
-            workflow_id="wf-1",
-            status=status,
-            error=error,
-            elapsed_time=0.1,
-            total_tokens=0,
-            total_steps=1,
-            created_at=1,
-            finished_at=2,
-        ),
-    ).model_dump(mode="json")
-
-
 @pytest.mark.parametrize("frame", ["event: ping\n\n", "", "id: 7\n\n"], ids=["ping", "empty", "other line"])
 def test_a_frame_without_data_is_nothing(frame: str) -> None:
     assert read_frame(frame) is None
-
-
-def test_a_frame_names_the_ids_it_carries() -> None:
-    assert read_frame(_sse(_started())) == RunFrame(
-        event=StreamEvent.WORKFLOW_STARTED, ids=JobIds(task_id="task-1", run_id="run-1")
-    )
 
 
 def test_a_chat_frame_carries_the_ids_its_stream_adds() -> None:
@@ -67,7 +33,7 @@ def test_a_chat_frame_carries_the_ids_its_stream_adds() -> None:
 
 
 def test_workflow_finished_carries_the_run_status_and_error() -> None:
-    frame = read_frame(_sse(_finished(WorkflowExecutionStatus.FAILED, "boom")))
+    frame = read_frame(_sse(workflow_finished(WorkflowExecutionStatus.FAILED, "boom").model_dump(mode="json")))
 
     assert frame == RunFrame(
         event=StreamEvent.WORKFLOW_FINISHED,

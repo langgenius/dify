@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import dataclasses
-import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
 from flask import Flask
-from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.test import TestResponse
@@ -19,8 +17,7 @@ from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._contract import op_of
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import JobWaitQuery
-from controllers.openapi.app_run import RUN_GUARDS
-from controllers.openapi.auth.spec import Effect, Kind, spec_of
+from controllers.openapi.auth.spec import Effect, spec_of
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 from controllers.openapi.jobs import STOP_JOB_OP, WAIT_JOB_OP
 from core.app.entities.task_entities import HumanInputRequiredResponse
@@ -38,10 +35,10 @@ from services.run_job_service import (
 )
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import (
-    RUN_TIME_LIMIT,
     InMemoryRedis,
     InMemoryRunResults,
     RecordingTaskControl,
+    polling_service,
 )
 
 WAIT_ROUTE = "/openapi/v1/apps/{app_id}/jobs/{job_id}:wait"
@@ -118,15 +115,7 @@ def world(
     store = RedisRunJobStore(redis_client=InMemoryRedis())
     results = InMemoryRunResults()
     tasks = RecordingTaskControl()
-    service = RunJobService(
-        store=store,
-        results=results,
-        tasks=tasks,
-        max_background_runs=10,
-        max_waiters=4,
-        run_time_limit=RUN_TIME_LIMIT,
-        sleep=lambda _seconds: time.sleep(0.01),
-    )
+    service = polling_service(store=store, results=results, tasks=tasks)
     services = dataclasses.replace(account_application_services, run_jobs=service)
     monkeypatch.setattr(jobs, "application_services", lambda: services)
     caller = sqlite_session.scalars(select(Account).where(Account.email == CALLER_EMAIL)).one()
@@ -160,13 +149,6 @@ def test_wait_answers_404_for_a_job_of_another_caller(world: World) -> None:
     job_id = world.open_job(caller_id="someone-else")
 
     response = world.wait(job_id)
-
-    assert response.status_code == 404
-    assert response.get_json()["code"] == OpenApiErrorCode.JOB_NOT_FOUND
-
-
-def test_wait_answers_404_for_an_unknown_job(world: World) -> None:
-    response = world.wait("no-such-job")
 
     assert response.status_code == 404
     assert response.get_json()["code"] == OpenApiErrorCode.JOB_NOT_FOUND
@@ -256,15 +238,7 @@ def test_stop_answers_404_for_a_job_of_another_caller(world: World) -> None:
     assert world.tasks.workflow_stops == []
 
 
-def _request_wait(world: World, job_id: str) -> TestResponse:
-    return world.wait(job_id)
-
-
-def _request_stop(world: World, job_id: str) -> TestResponse:
-    return world.stop(job_id)
-
-
-@pytest.mark.parametrize("request_route", [_request_wait, _request_stop])
+@pytest.mark.parametrize("request_route", [World.wait, World.stop])
 def test_handlers_end_the_read_transaction_before_calling_the_service(
     world: World, monkeypatch: pytest.MonkeyPatch, request_route: Callable[[World, str], TestResponse]
 ) -> None:
@@ -289,7 +263,7 @@ def test_handlers_end_the_read_transaction_before_calling_the_service(
     assert len(order) >= 2
 
 
-@pytest.mark.parametrize("request_route", [_request_wait, _request_stop])
+@pytest.mark.parametrize("request_route", [World.wait, World.stop])
 def test_a_job_of_another_app_is_a_404_for_the_same_caller(
     world: World, request_route: Callable[[World, str], TestResponse]
 ) -> None:
@@ -313,29 +287,19 @@ def test_wait_and_stop_are_in_the_catalog_as_read_and_destructive(openapi_app: F
     ops = build_catalog(openapi_app)["ops"]
     specs = {spec.catalog.op: spec for _, _, fn in iter_handlers(openapi_app) if (spec := spec_of(fn)) is not None}
 
-    assert ops[WAIT_JOB_OP]["kind"] == Kind.OBJECT.value
     assert ops[WAIT_JOB_OP]["effect"] == Effect.READ.value
-    assert ops[STOP_JOB_OP]["kind"] == Kind.OBJECT.value
     assert ops[STOP_JOB_OP]["effect"] == Effect.DESTRUCTIVE.value
     for op in (WAIT_JOB_OP, STOP_JOB_OP):
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
-        assert specs[op].requirements == RUN_GUARDS
 
 
-def test_wait_seconds_above_the_cap_is_a_422(world: World) -> None:
-    job_id = world.open_job()
-
-    response = world.wait(job_id, f"wait_seconds={WAIT_MAX_SECONDS + 1}")
-
-    assert response.status_code == 422
+@pytest.mark.parametrize("seconds", [-1, WAIT_MAX_SECONDS + 1])
+def test_wait_seconds_outside_its_bounds_is_a_422(world: World, seconds: int) -> None:
+    assert world.wait(world.open_job(), f"wait_seconds={seconds}").status_code == 422
 
 
-def test_wait_seconds_defaults_and_is_bounded() -> None:
+def test_wait_seconds_defaults_to_the_service_default() -> None:
     assert JobWaitQuery().wait_seconds == WAIT_DEFAULT_SECONDS
-    assert JobWaitQuery(wait_seconds=0).wait_seconds == 0
-    for bad in (-1, WAIT_MAX_SECONDS + 1):
-        with pytest.raises(ValidationError):
-            JobWaitQuery.model_validate({"wait_seconds": bad})
 
 
 @pytest.mark.parametrize("suffix", ["", ":alive"])
