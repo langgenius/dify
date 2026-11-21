@@ -49,6 +49,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         human_input_form,
         message,
         site,
+        statistic,
         workflow,
         workflow_events,
     )
@@ -87,6 +88,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         end_user,
         knowledge_fs_resources,
         models,
+        statistic,
     )
 
 
@@ -113,6 +115,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     end_user,
     knowledge_fs_resources,
     models,
+    statistic,
 ) = _register_controllers()
 
 __all__ = [
@@ -136,6 +139,7 @@ __all__ = [
     "rag_pipeline_workflow",
     "segment",
     "site",
+    "statistic",
     "workflow",
     "workflow_events",
 ]
