@@ -2,7 +2,9 @@ import enum
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from dataclasses import dataclass
+from types import ModuleType, SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,27 +16,27 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_pyobvector_module():
+def _build_fake_pyobvector_module() -> FakeModule:
     pyobvector = FakeModule("pyobvector")
 
+    @dataclass
     class VECTOR:
-        def __init__(self, dim):
-            self.dim = dim
+        dim: int
 
     class VecIndexType(enum.IntEnum):
         HNSW = 0
 
-    def l2_distance(*_args, **_kwargs):
+    def l2_distance(*_args, **_kwargs) -> str:
         return "l2"
 
-    def cosine_distance(*_args, **_kwargs):
+    def cosine_distance(*_args, **_kwargs) -> str:
         return "cosine"
 
-    def inner_product(*_args, **_kwargs):
+    def inner_product(*_args, **_kwargs) -> str:
         return "inner_product"
 
     class ObVecClient:
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs) -> None:
             self.metadata_obj = SimpleNamespace(tables={})
             self.engine = MagicMock()
             self.check_table_exists = MagicMock(return_value=False)
@@ -60,7 +62,7 @@ def _build_fake_pyobvector_module():
 
 
 @pytest.fixture
-def oceanbase_module(monkeypatch: pytest.MonkeyPatch):
+def oceanbase_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.setitem(sys.modules, "pyobvector", _build_fake_pyobvector_module())
 
     import dify_vdb_oceanbase.oceanbase_vector as module
@@ -68,7 +70,7 @@ def oceanbase_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module):
+def _config(module: ModuleType) -> Any:
     return module.OceanBaseVectorConfig(
         host="127.0.0.1",
         port=2881,
@@ -89,7 +91,7 @@ def _config(module):
         ("database", "", "config OCEANBASE_VECTOR_DATABASE is required"),
     ],
 )
-def test_oceanbase_config_validation(oceanbase_module, field, value, message):
+def test_oceanbase_config_validation(oceanbase_module: ModuleType, field: str, value: str | int, message: str) -> None:
     values = _config(oceanbase_module).model_dump()
     values[field] = value
 
@@ -97,12 +99,12 @@ def test_oceanbase_config_validation(oceanbase_module, field, value, message):
         oceanbase_module.OceanBaseVectorConfig.model_validate(values)
 
 
-def test_init_rejects_invalid_collection_name(oceanbase_module):
+def test_init_rejects_invalid_collection_name(oceanbase_module: ModuleType) -> None:
     with pytest.raises(ValueError, match="Invalid collection name"):
         oceanbase_module.OceanBaseVector("invalid-name", _config(oceanbase_module))
 
 
-def test_distance_to_score_for_supported_metrics(oceanbase_module):
+def test_distance_to_score_for_supported_metrics(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._config = SimpleNamespace(metric_type="l2")
     assert vector._distance_to_score(3.0) == pytest.approx(0.25)
@@ -114,7 +116,7 @@ def test_distance_to_score_for_supported_metrics(oceanbase_module):
     assert vector._distance_to_score(-0.2) == pytest.approx(0.2)
 
 
-def test_get_distance_func_raises_for_unknown_metric(oceanbase_module):
+def test_get_distance_func_raises_for_unknown_metric(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._config = SimpleNamespace(metric_type="manhattan")
 
@@ -122,7 +124,7 @@ def test_get_distance_func_raises_for_unknown_metric(oceanbase_module):
         vector._get_distance_func()
 
 
-def test_process_search_results_handles_json_and_score_threshold(oceanbase_module):
+def test_process_search_results_handles_json_and_score_threshold(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     rows = [
         ("doc-1", '{"doc_id":"1"}', 0.9),
@@ -138,7 +140,7 @@ def test_process_search_results_handles_json_and_score_threshold(oceanbase_modul
     assert docs[1].metadata["rank"] == 0.8
 
 
-def test_search_by_vector_validates_document_id_format(oceanbase_module):
+def test_search_by_vector_validates_document_id_format(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._hnsw_ef_search = -1
@@ -149,7 +151,7 @@ def test_search_by_vector_validates_document_id_format(oceanbase_module):
         vector.search_by_vector([0.1, 0.2], document_ids_filter=["bad id"])
 
 
-def test_search_by_full_text_returns_empty_when_disabled(oceanbase_module):
+def test_search_by_full_text_returns_empty_when_disabled(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._hybrid_search_enabled = False
     vector._collection_name = "collection_1"
@@ -157,7 +159,7 @@ def test_search_by_full_text_returns_empty_when_disabled(oceanbase_module):
     assert vector.search_by_full_text("query") == []
 
 
-def test_check_hybrid_search_support_uses_version_comment(oceanbase_module):
+def test_check_hybrid_search_support_uses_version_comment(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._config = SimpleNamespace(enable_hybrid_search=True)
     vector._client = MagicMock()
@@ -174,7 +176,7 @@ def test_check_hybrid_search_support_uses_version_comment(oceanbase_module):
     assert vector._check_hybrid_search_support() is False
 
 
-def test_init_get_type_and_field_loading(oceanbase_module):
+def test_init_get_type_and_field_loading(oceanbase_module: ModuleType) -> None:
     config = _config(oceanbase_module)
     config.enable_hybrid_search = False
 
@@ -190,12 +192,12 @@ def test_init_get_type_and_field_loading(oceanbase_module):
     assert vector.field_exists("text") is True
 
 
-def test_load_collection_fields_handles_missing_table_and_exception(oceanbase_module):
+def test_load_collection_fields_handles_missing_table_and_exception(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
-    vector._fields = []
+    vector._fields = list[object]()
     vector._client = MagicMock()
-    vector._client.metadata_obj.tables = {}
+    vector._client.metadata_obj.tables = dict[str, object]()
 
     vector._load_collection_fields()
     assert vector._fields == []
@@ -205,7 +207,7 @@ def test_load_collection_fields_handles_missing_table_and_exception(oceanbase_mo
     assert vector._fields == []
 
 
-def test_create_delegates_to_collection_and_insert(oceanbase_module):
+def test_create_delegates_to_collection_and_insert(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._create_collection = MagicMock()
     vector.add_texts = MagicMock()
@@ -218,7 +220,9 @@ def test_create_delegates_to_collection_and_insert(oceanbase_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_cache_and_existing_table_short_circuits(
+    oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -244,7 +248,9 @@ def test_create_collection_cache_and_existing_table_short_circuits(oceanbase_mod
     vector.delete.assert_not_called()
 
 
-def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_happy_path_with_hybrid_and_index(
+    oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -284,7 +290,7 @@ def test_create_collection_happy_path_with_hybrid_and_index(oceanbase_module, mo
 class _ParamRow:
     """Row-like object mimicking SQLAlchemy's Row, which exposes columns via ``_mapping``."""
 
-    def __init__(self, **columns):
+    def __init__(self, **columns: object) -> None:
         self._mapping = columns
 
 
@@ -293,7 +299,9 @@ def _seekdb_param_row(value: str) -> _ParamRow:
     return _ParamRow(name="ob_vector_memory_limit_percentage", data_type="INT", value=value)
 
 
-def test_create_collection_resolves_parameter_value_by_column_name(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_resolves_parameter_value_by_column_name(
+    oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -303,7 +311,7 @@ def test_create_collection_resolves_parameter_value_by_column_name(oceanbase_mod
     monkeypatch.setattr(oceanbase_module, "Column", lambda *args, **kwargs: SimpleNamespace(args=args, kwargs=kwargs))
     monkeypatch.setattr(oceanbase_module, "VECTOR", lambda dim: SimpleNamespace(dim=dim))
 
-    def _build(rows):
+    def _build(rows: list[list[_ParamRow] | None]) -> Any:
         vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
         vector._collection_name = "collection_1"
         vector._vec_dim = 2
@@ -329,7 +337,7 @@ def test_create_collection_resolves_parameter_value_by_column_name(oceanbase_mod
     )
 
 
-def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_error_paths(oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -349,7 +357,7 @@ def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.Mon
     vector.delete = MagicMock()
     vector._load_collection_fields = MagicMock()
 
-    vector._client.perform_raw_text_sql.return_value = []
+    vector._client.perform_raw_text_sql.return_value = list[object]()
     with pytest.raises(ValueError, match="ob_vector_memory_limit_percentage not found"):
         vector._create_collection()
 
@@ -366,7 +374,9 @@ def test_create_collection_error_paths(oceanbase_module, monkeypatch: pytest.Mon
         vector._create_collection()
 
 
-def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_fulltext_and_metadata_index_exceptions(
+    oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -404,7 +414,7 @@ def test_create_collection_fulltext_and_metadata_index_exceptions(oceanbase_modu
     vector._client.refresh_metadata.assert_called_once_with(["collection_1"])
 
 
-def test_check_hybrid_search_support_false_and_exception(oceanbase_module):
+def test_check_hybrid_search_support_false_and_exception(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._config = SimpleNamespace(enable_hybrid_search=False)
     vector._client = MagicMock()
@@ -415,7 +425,7 @@ def test_check_hybrid_search_support_false_and_exception(oceanbase_module):
     assert vector._check_hybrid_search_support() is False
 
 
-def test_add_texts_batches_refresh_and_exceptions(oceanbase_module):
+def test_add_texts_batches_refresh_and_exceptions(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._config = SimpleNamespace(batch_size=2, hnsw_refresh_threshold=2)
@@ -445,7 +455,7 @@ def test_add_texts_batches_refresh_and_exceptions(oceanbase_module):
     vector.add_texts([docs[0]], [[0.1]])
 
 
-def test_text_exists_and_delete_by_ids(oceanbase_module):
+def test_text_exists_and_delete_by_ids(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._client = MagicMock()
@@ -468,7 +478,7 @@ def test_text_exists_and_delete_by_ids(oceanbase_module):
         vector.delete_by_ids(["id-1"])
 
 
-def test_get_ids_and_delete_by_metadata_field(oceanbase_module):
+def test_get_ids_and_delete_by_metadata_field(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._client = MagicMock()
@@ -497,7 +507,7 @@ def test_get_ids_and_delete_by_metadata_field(oceanbase_module):
     vector.delete_by_ids.assert_not_called()
 
 
-def test_search_by_full_text_paths(oceanbase_module):
+def test_search_by_full_text_paths(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._hybrid_search_enabled = True
@@ -525,7 +535,7 @@ def test_search_by_full_text_paths(oceanbase_module):
         vector.search_by_full_text("query", top_k=0)
 
 
-def test_search_by_vector_paths(oceanbase_module):
+def test_search_by_vector_paths(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._hnsw_ef_search = -1
@@ -552,7 +562,7 @@ def test_search_by_vector_paths(oceanbase_module):
         vector.search_by_vector([0.1], score_threshold=0.1)
 
 
-def test_get_distance_func_and_distance_to_score_errors(oceanbase_module):
+def test_get_distance_func_and_distance_to_score_errors(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._config = SimpleNamespace(metric_type="cosine")
     assert vector._get_distance_func() is oceanbase_module.cosine_distance
@@ -562,7 +572,7 @@ def test_get_distance_func_and_distance_to_score_errors(oceanbase_module):
         vector._distance_to_score(0.1)
 
 
-def test_delete_success_and_exception(oceanbase_module):
+def test_delete_success_and_exception(oceanbase_module: ModuleType) -> None:
     vector = oceanbase_module.OceanBaseVector.__new__(oceanbase_module.OceanBaseVector)
     vector._collection_name = "collection_1"
     vector._client = MagicMock()
@@ -575,7 +585,9 @@ def test_delete_success_and_exception(oceanbase_module):
         vector.delete()
 
 
-def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_oceanbase_factory_uses_existing_or_generated_collection(
+    oceanbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = oceanbase_module.OceanBaseVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
@@ -617,7 +629,9 @@ def test_oceanbase_factory_uses_existing_or_generated_collection(oceanbase_modul
         "doc-123\r\n",  # trailing CRLF
     ],
 )
-def test_search_by_vector_rejects_document_id_with_trailing_newline(oceanbase_module, bad_doc_id):
+def test_search_by_vector_rejects_document_id_with_trailing_newline(
+    oceanbase_module: ModuleType, bad_doc_id: str
+) -> None:
     """Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
 
     The old `re.match(r"^[a-zA-Z0-9_-]+$", doc_id)` accepted a doc_id ending in
@@ -644,7 +658,9 @@ def test_search_by_vector_rejects_document_id_with_trailing_newline(oceanbase_mo
         "user_id\r\n",  # trailing CRLF
     ],
 )
-def test_get_ids_by_metadata_field_rejects_key_with_trailing_newline(oceanbase_module, bad_key):
+def test_get_ids_by_metadata_field_rejects_key_with_trailing_newline(
+    oceanbase_module: ModuleType, bad_key: str
+) -> None:
     """Regression for #39884 (sibling of #39234 / #39548 / #39666 / #39730 / #39880).
 
     The old `re.match(r"^[a-zA-Z0-9_.]+$", key)` accepted a key ending in `\n`.

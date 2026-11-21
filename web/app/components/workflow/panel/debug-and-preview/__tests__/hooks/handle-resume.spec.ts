@@ -1,28 +1,57 @@
-// oxlint-disable-next-line no-restricted-imports -- The SSE boundary fixture uses the transport callback contract; it does not issue HTTP requests.
-import type { IOtherOptions } from '@/service/base'
-import { act } from '@testing-library/react'
+import type { useWorkflowRun } from '../../../../hooks/use-workflow-run'
+import type { Shape as WorkflowStoreShape } from '@/app/components/workflow/store/workflow'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
+import { useLayoutEffect } from 'react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
   baseRunningData,
   renderWorkflowFlowHook as renderHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useSetWorkflowVarsWithValue as useFetchWorkflowInspectVars } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+  VarType,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { useChat } from '../../hooks'
 
-const mockHandleRun = vi.fn()
+type HandleRun = ReturnType<typeof useWorkflowRun>['handleRun']
+type RunCallbacks = NonNullable<Parameters<HandleRun>[1]>
+type ResumeCallbacks = Parameters<ReturnType<typeof useChat>['handleResume']>[2]
+
+const { fetchAllInspectVars, fetchLastRun, mockSubmitHumanInputForm } = vi.hoisted(() => ({
+  fetchAllInspectVars: vi.fn(),
+  fetchLastRun: vi.fn(),
+  mockSubmitHumanInputForm: vi.fn(),
+}))
+const mockHandleRun = vi.fn<HandleRun>()
 const mockNotify = vi.fn()
-const mockFetchInspectVars = vi.fn()
-const mockInvalidAllLastRun = vi.fn()
-const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 vi.mock('@/service/base', () => ({
   sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': (...args: unknown[]) =>
+        fetchLastRun(...args),
+    }),
+  }
+})
 
-vi.mock('@/service/workflow', () => ({
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  fetchAllInspectVars: (...args: unknown[]) => fetchAllInspectVars(...args),
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
@@ -35,43 +64,138 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
-
 // Protocol fixtures supply the fields relevant to each stream transition.
 type EventFixture<T> = T extends object ? { [K in keyof T]?: EventFixture<T[K]> } : T
 type SSECallbacks = {
-  [K in keyof IOtherOptions]-?: NonNullable<IOtherOptions[K]> extends (...args: infer A) => infer R
+  [K in keyof RunCallbacks]-?: NonNullable<RunCallbacks[K]> extends (...args: infer A) => infer R
     ? (...args: { [I in keyof A]: EventFixture<A[I]> }) => R
     : never
+}
+
+const inspectNode = createNode({
+  id: 'node-1',
+  data: {
+    type: BlockEnum.Code,
+    title: 'Code',
+    outputs: { answer: { type: VarType.string } },
+    _runningStatus: NodeRunningStatus.Succeeded,
+  },
+})
+
+const inspectVar: VarInInspect = {
+  id: 'var-1',
+  type: 'node',
+  name: 'answer',
+  description: 'Answer',
+  selector: ['node-1', 'answer'],
+  value_type: VarType.string,
+  value: 'after-resume',
+  edited: false,
+  visible: true,
+  is_truncated: false,
+  full_content: null,
+}
+
+const previousInspectVar: VarInInspect = { ...inspectVar, value: 'before-resume' }
+const previousInspectorState: NodeWithVar[] = [
+  {
+    nodeId: 'node-1',
+    nodePayload: inspectNode.data,
+    nodeType: inspectNode.data.type,
+    title: inspectNode.data.title,
+    vars: [previousInspectVar],
+    isSingRunRunning: false,
+    isValueFetched: true,
+  },
+]
+
+type FetchInspectVars = ReturnType<typeof useFetchWorkflowInspectVars>['fetchInspectVars']
+
+function useChatWithRealInspector(
+  config: Parameters<typeof useChat>[0],
+  registerFetchInspectVars: (fetchInspectVars: FetchInspectVars) => void,
+) {
+  const { fetchInspectVars } = useFetchWorkflowInspectVars()
+  useQuery({
+    ...consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+      input: { params: { app_id: 'app-1', node_id: 'node-1' } },
+    }),
+    staleTime: Infinity,
+  })
+  useLayoutEffect(() => {
+    registerFetchInspectVars(fetchInspectVars)
+  }, [fetchInspectVars, registerFetchInspectVars])
+  return useChat(config)
 }
 
 describe('useChat – handleResume', () => {
   let capturedResumeOptions: SSECallbacks
 
   beforeEach(() => {
-    vi.clearAllMocks()
     mockHandleRun.mockReset()
     mockSseGet.mockReset()
+    mockNotify.mockReset()
+    mockSubmitHumanInputForm.mockReset()
+    fetchAllInspectVars
+      .mockReset()
+      .mockResolvedValueOnce([previousInspectVar])
+      .mockResolvedValue([inspectVar])
+    fetchLastRun
+      .mockReset()
+      .mockResolvedValueOnce({ id: 'last-run-before', status: 'succeeded' })
+      .mockResolvedValue({ id: 'last-run-after', status: 'succeeded' })
   })
 
-  async function setupResumeWithTree() {
+  function renderChat(
+    config: Parameters<typeof useChat>[0] = {},
+    initialStoreState: Partial<WorkflowStoreShape> = {},
+  ) {
+    let realFetchInspectVars: FetchInspectVars = async () => undefined
+    const fetchInspectVars: FetchInspectVars = (params) => realFetchInspectVars(params)
+    const registerFetchInspectVars = (nextFetchInspectVars: FetchInspectVars) => {
+      realFetchInspectVars = nextFetchInspectVars
+    }
+    const { queryClient } = createConsoleQueryWrapper()
+    seedToolProviders(queryClient, {
+      builtInTools: [],
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
+    })
+    queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+    const lastRunKey =
+      consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryKey({
+        input: { params: { app_id: 'app-1', node_id: 'node-1' } },
+      })
+    queryClient.setQueryData(lastRunKey, { id: 'last-run-initial', status: 'succeeded' })
+
+    return {
+      ...renderHook(() => useChatWithRealInspector(config, registerFetchInspectVars), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        nodes: [inspectNode],
+        queryClient,
+        initialStoreState: { nodesWithInspectVars: previousInspectorState, ...initialStoreState },
+        hooksStoreProps: { handleRun: mockHandleRun, fetchInspectVars },
+      }),
+      lastRunKey,
+      queryClient,
+    }
+  }
+
+  async function setupResumeWithTree(
+    config: Parameters<typeof useChat>[0] = {},
+    initialStoreState: Partial<WorkflowStoreShape> = {},
+    resumeCallbacks: ResumeCallbacks = {},
+  ) {
     let sendCallbacks: SSECallbacks
     mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
       sendCallbacks = callbacks as SSECallbacks
     })
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
       capturedResumeOptions = options as SSECallbacks
     })
 
-    const hook = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const hook = renderChat(config, initialStoreState)
 
     act(() => {
       hook.result.current.handleSend({ query: 'test' }, {})
@@ -90,17 +214,25 @@ describe('useChat – handleResume', () => {
       await sendCallbacks.onCompleted(false)
     })
 
+    if (initialStoreState.workflowRunningData?.result.status !== WorkflowRunningStatus.Paused) {
+      await waitFor(() => expect(fetchAllInspectVars).toHaveBeenCalledTimes(1))
+      await waitFor(() =>
+        expect(hook.queryClient.getQueryData(hook.lastRunKey)).toEqual({
+          id: 'last-run-before',
+          status: 'succeeded',
+        }),
+      )
+    }
+
     act(() => {
-      hook.result.current.handleResume('msg-resume', 'wfr-1', {})
+      hook.result.current.handleResume('msg-resume', 'wfr-1', resumeCallbacks)
     })
 
     return hook
   }
 
   it('should call sseGet with the correct URL', () => {
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
@@ -115,19 +247,17 @@ describe('useChat – handleResume', () => {
 
   it('should abort previous SSE connection when handleResume is called again', () => {
     const mockAbortCtrl = new AbortController()
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
       options.getAbortController!(mockAbortCtrl)
     })
 
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
     })
 
-    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
+    mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
       options.getAbortController!(new AbortController())
     })
 
@@ -145,9 +275,7 @@ describe('useChat – handleResume', () => {
       sendCallbacks = callbacks as SSECallbacks
     })
 
-    const { result } = renderHook(() => useChat({}), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-    })
+    const { result } = renderChat()
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -172,13 +300,11 @@ describe('useChat – handleResume', () => {
       mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
         sendCallbacks = callbacks as SSECallbacks
       })
-      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
+      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: RunCallbacks) => {
         capturedResumeOptions = options as SSECallbacks
       })
 
-      const hook = renderHook(() => useChat({}), {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-      })
+      const hook = renderChat()
 
       act(() => {
         hook.result.current.handleSend({ query: 'test' }, {})
@@ -331,77 +457,78 @@ describe('useChat – handleResume', () => {
   })
 
   describe('onCompleted', () => {
-    it('should set isResponding to false', async () => {
-      const { result } = await setupResumeWithTree()
+    it('refreshes inspector and last-run data after a successful resumed workflow', async () => {
+      const { lastRunKey, queryClient, result, store } = await setupResumeWithTree()
       act(() =>
         capturedResumeOptions.onWorkflowStarted({ workflow_run_id: 'wfr-1', task_id: 'task-1' }),
       )
       expect(result.current.isResponding).toBe(true)
-      mockFetchInspectVars.mockClear()
-      mockInvalidAllLastRun.mockClear()
+      expect(store.getState().nodesWithInspectVars[0]?.vars[0]?.value).toBe('before-resume')
+      expect(queryClient.getQueryData(lastRunKey)).toEqual({
+        id: 'last-run-before',
+        status: 'succeeded',
+      })
+
       await act(async () => {
         await capturedResumeOptions.onCompleted(false)
       })
+
       expect(result.current.isResponding).toBe(false)
-      expect(mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
-      expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
+      await waitFor(() =>
+        expect(store.getState().nodesWithInspectVars[0]?.vars[0]?.value).toBe('after-resume'),
+      )
+      await waitFor(() =>
+        expect(queryClient.getQueryData(lastRunKey)).toEqual({
+          id: 'last-run-after',
+          status: 'succeeded',
+        }),
+      )
     })
 
-    it('should not call fetchInspectVars when paused', async () => {
-      const { store } = await setupResumeWithTree()
-      store.setState({
-        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Paused } }),
-      })
-      mockFetchInspectVars.mockClear()
-      await act(async () => {
-        await capturedResumeOptions.onCompleted(false)
-      })
-      expect(mockFetchInspectVars).not.toHaveBeenCalled()
-    })
-
-    it('should still call fetchInspectVars on error but skip suggested questions', async () => {
-      const mockGetSuggested = vi.fn().mockResolvedValue({ data: ['s1'] })
-      let sendCallbacks: SSECallbacks
-      mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
-        sendCallbacks = callbacks as SSECallbacks
-      })
-      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
-        capturedResumeOptions = options as SSECallbacks
-      })
-
-      const hook = renderHook(
-        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    it('preserves inspector and last-run data when the workflow remains paused', async () => {
+      const { lastRunKey, queryClient, store } = await setupResumeWithTree(
+        {},
+        {
+          workflowRunningData: baseRunningData({
+            result: { status: WorkflowRunningStatus.Paused },
+          }),
+        },
       )
 
-      act(() => {
-        hook.result.current.handleSend({ query: 'test' }, {})
-      })
-      act(() => {
-        sendCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: undefined,
-          message_id: 'msg-resume',
-        })
-      })
       await act(async () => {
-        await sendCallbacks.onCompleted(false)
+        await capturedResumeOptions.onCompleted(false)
       })
-      mockFetchInspectVars.mockClear()
-      mockInvalidAllLastRun.mockClear()
 
-      act(() => {
-        hook.result.current.handleResume('msg-resume', 'wfr-1', {
-          onGetSuggestedQuestions: mockGetSuggested,
-        })
+      expect(store.getState().nodesWithInspectVars).toEqual(previousInspectorState)
+      expect(queryClient.getQueryData(lastRunKey)).toEqual({
+        id: 'last-run-initial',
+        status: 'succeeded',
       })
+      expect(fetchAllInspectVars).not.toHaveBeenCalled()
+      expect(fetchLastRun).not.toHaveBeenCalled()
+    })
+
+    it('refreshes inspector and last-run data on error but skips suggested questions', async () => {
+      const mockGetSuggested = vi.fn().mockResolvedValue({ data: ['s1'] })
+      const { lastRunKey, queryClient, store } = await setupResumeWithTree(
+        { suggested_questions_after_answer: { enabled: true } },
+        {},
+        { onGetSuggestedQuestions: mockGetSuggested },
+      )
+
       await act(async () => {
         await capturedResumeOptions.onCompleted(true)
       })
 
-      expect(mockFetchInspectVars).toHaveBeenCalledWith({})
-      expect(mockInvalidAllLastRun).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(store.getState().nodesWithInspectVars[0]?.vars[0]?.value).toBe('after-resume'),
+      )
+      await waitFor(() =>
+        expect(queryClient.getQueryData(lastRunKey)).toEqual({
+          id: 'last-run-after',
+          status: 'succeeded',
+        }),
+      )
       expect(mockGetSuggested).not.toHaveBeenCalled()
     })
 
@@ -412,41 +539,11 @@ describe('useChat – handleResume', () => {
           onCancel(vi.fn())
           return Promise.resolve({ data: ['s1'] })
         })
-      let sendCallbacks: SSECallbacks
-      mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
-        sendCallbacks = callbacks as SSECallbacks
-      })
-      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
-        capturedResumeOptions = options as SSECallbacks
-      })
-
-      const hook = renderHook(
-        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      const hook = await setupResumeWithTree(
+        { suggested_questions_after_answer: { enabled: true } },
+        {},
+        { onGetSuggestedQuestions: mockGetSuggested },
       )
-
-      act(() => {
-        hook.result.current.handleSend({ query: 'test' }, {})
-      })
-
-      act(() => {
-        sendCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: undefined,
-          message_id: 'msg-resume',
-        })
-      })
-
-      await act(async () => {
-        await sendCallbacks.onCompleted(false)
-      })
-
-      act(() => {
-        hook.result.current.handleResume('msg-resume', 'wfr-1', {
-          onGetSuggestedQuestions: mockGetSuggested,
-        })
-      })
 
       await act(async () => {
         await capturedResumeOptions.onCompleted(false)
@@ -458,41 +555,11 @@ describe('useChat – handleResume', () => {
 
     it('should set suggestedQuestions to empty on fetch error', async () => {
       const mockGetSuggested = vi.fn().mockRejectedValue(new Error('fail'))
-      let sendCallbacks: SSECallbacks
-      mockHandleRun.mockImplementation((_params: unknown, callbacks: unknown) => {
-        sendCallbacks = callbacks as SSECallbacks
-      })
-      mockSseGet.mockImplementation((_url: unknown, _opts: unknown, options: IOtherOptions) => {
-        capturedResumeOptions = options as SSECallbacks
-      })
-
-      const hook = renderHook(
-        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
-        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+      const hook = await setupResumeWithTree(
+        { suggested_questions_after_answer: { enabled: true } },
+        {},
+        { onGetSuggestedQuestions: mockGetSuggested },
       )
-
-      act(() => {
-        hook.result.current.handleSend({ query: 'test' }, {})
-      })
-
-      act(() => {
-        sendCallbacks.onWorkflowStarted({
-          workflow_run_id: 'wfr-1',
-          task_id: 'task-1',
-          conversation_id: undefined,
-          message_id: 'msg-resume',
-        })
-      })
-
-      await act(async () => {
-        await sendCallbacks.onCompleted(false)
-      })
-
-      act(() => {
-        hook.result.current.handleResume('msg-resume', 'wfr-1', {
-          onGetSuggestedQuestions: mockGetSuggested,
-        })
-      })
 
       await act(async () => {
         await capturedResumeOptions.onCompleted(false)

@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import EndpointModal from './endpoint-modal'
 
 type Props = Readonly<{
@@ -42,28 +43,34 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
   ] = useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toast.error(
+      getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({
+      context: { silent: true },
       onError: showSaveError,
     }),
   )
   const { mutate: disableEndpoint, isPending: isDisabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.disable.post.mutationOptions({
+      context: { silent: true },
       onSuccess: hideDisableConfirm,
       onError: showSaveError,
     }),
   )
   const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
+      context: { silent: true },
       onSuccess: () => deleteActionsRef.current?.close(),
       onError: showSaveError,
     }),
   )
   const { mutate: updateEndpoint, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.patch.mutationOptions({
+      context: { silent: true },
       onSuccess: hideEndpointModalConfirm,
       onError: showSaveError,
     }),
@@ -94,7 +101,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
 
   return (
     <div className="rounded-xl bg-background-section-burn p-0.5">
-      <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 pl-3">
+      <div className="group rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-2.5 ps-3">
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 system-md-semibold text-text-secondary">
             <span aria-hidden className="i-ri-login-circle-line size-4" />
@@ -159,7 +166,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                     render={
                       <IconButton
                         aria-label={`${copyLabel} ${data.url}${endpoint.path}`}
-                        className="ml-2 shrink-0 opacity-0 group-focus-within/item:opacity-100 group-hover/item:opacity-100"
+                        className="ms-2 shrink-0 opacity-0 group-focus-within/item:opacity-100 group-hover/item:opacity-100"
                         onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
                       >
                         {isCopied ? (
@@ -182,7 +189,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             </div>
           ))}
       </div>
-      <div className="flex items-center justify-between p-2 pl-3">
+      <div className="flex items-center justify-between p-2 ps-3">
         {data.enabled && (
           <div className="flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600">
             <StatusDot status="success" />
@@ -197,7 +204,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
         )}
         <Switch
           aria-labelledby={endpointNameId}
-          className="ml-3"
+          className="ms-3"
           checked={data.enabled}
           onCheckedChange={handleSwitch}
           disabled={isEnabling || isDisabling}

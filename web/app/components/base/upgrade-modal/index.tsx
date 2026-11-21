@@ -1,5 +1,6 @@
 'use client'
 
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -17,7 +18,8 @@ type UpgradeModalClassNames = {
 }
 
 type UpgradeModalProps = {
-  open: boolean
+  open?: boolean
+  dialogHandle?: DialogHandle
   onOpenChange?: (open: boolean) => void
   iconClassName?: string
   title: ReactNode
@@ -29,6 +31,7 @@ type UpgradeModalProps = {
 
 export function UpgradeModal({
   open,
+  dialogHandle,
   onOpenChange,
   iconClassName,
   title,
@@ -38,10 +41,8 @@ export function UpgradeModal({
   classNames,
 }: UpgradeModalProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(styles.surface, 'w-145 max-w-120 overflow-hidden', classNames?.content)}
-      >
+    <Dialog handle={dialogHandle} open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={cn(styles.surface, 'w-120 overflow-hidden', classNames?.content)}>
         <div className="relative">
           <div
             aria-hidden

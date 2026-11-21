@@ -23,8 +23,13 @@
 }
 
 .navigation {
+  --pagination-direction: 1;
   top: 208px;
   width: 100%;
+}
+
+.navigation:dir(rtl) {
+  --pagination-direction: -1;
 }
 
 .contentTrack {

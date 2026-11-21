@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ToastType } from '.'
+import type { ButtonProps } from '../button'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import { createToast, createToastManager, Toaster } from '.'
@@ -189,7 +190,7 @@ export const VaryingHeights: Story = {
   },
 }
 
-function ActionExample() {
+function ActionExample({ variant }: Pick<ButtonProps, 'variant'>) {
   const [manager] = React.useState(createToastManager)
   const toast = createToast(manager)
 
@@ -198,6 +199,7 @@ function ActionExample() {
       description: 'You can restore the project with Undo.',
       actionProps: {
         children: 'Undo',
+        variant,
         onClick: () => {
           toast.dismiss(id)
           toast.success('Project restored')
@@ -214,22 +216,34 @@ function ActionExample() {
   )
 }
 
-export const WithAction: Story = {
+export const WithAction: StoryObj<typeof ActionExample> = {
+  args: { variant: 'primary' },
+  argTypes: {
+    variant: {
+      control: 'select',
+      options: ['primary', 'secondary', 'secondary-accent', 'tertiary', 'ghost', 'ghost-accent'],
+    },
+  },
   parameters: {
-    controls: { disable: true },
+    controls: { include: ['variant'] },
     docs: {
       description: {
         story:
-          'Use `actionProps` for a notification action. The caller closes the original notification when Undo completes.',
+          'Use `actionProps` for a notification action and choose a Button `variant`. Omitting the variant uses Button’s secondary default. Toast owns the spacing; Button owns the appearance. The caller closes the original notification when Undo completes.',
       },
     },
   },
-  render: () => <ActionExample />,
+  render: (args) => <ActionExample {...args} />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Archive project' }))
     const archived = await body.findByRole('dialog', { name: 'Project archived' })
-    await userEvent.click(within(archived).getByRole('button', { name: 'Undo' }))
+    await userEvent.keyboard('{F6}')
+    await userEvent.tab()
+    await expect(archived).toHaveFocus()
+    await userEvent.tab()
+    await expect(within(archived).getByRole('button', { name: 'Undo' })).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
     const restored = await body.findByRole('dialog', { name: 'Project restored' })
     await waitFor(() => expect(restored).toBeVisible())
     await waitFor(() => expect(archived).not.toBeInTheDocument())

@@ -451,6 +451,7 @@ describe('useConfigureButton', () => {
 
       expect(mockCreateWorkflowToolProvider).toHaveBeenCalledWith(
         createMockRequest({ workflow_app_id: 'app-123' }),
+        { silent: true },
       )
       expect(isInvalidated(workflowToolsKey)).toBe(true)
       expect(onRefreshData).toHaveBeenCalled()
@@ -505,6 +506,7 @@ describe('useConfigureButton', () => {
       expect(handlePublish).toHaveBeenCalled()
       expect(mockSaveWorkflowToolProvider).toHaveBeenCalledWith(
         createMockRequest({ workflow_tool_id: 'tool-456' }),
+        { silent: true },
       )
       expect(onRefreshData).toHaveBeenCalled()
       expect(isInvalidated(workflowToolsKey)).toBe(true)

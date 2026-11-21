@@ -6,6 +6,7 @@ from core.app.entities.task_entities import (
     AppStreamResponse,
     ErrorStreamResponse,
     NodeFinishStreamResponse,
+    NodeRetryStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
@@ -82,6 +83,11 @@ class WorkflowAppGenerateResponseConverter(
     ) -> Generator[dict[str, Any] | str]:
         """
         Convert stream simple response.
+
+        Preconditions: the caller selected the public response for this task stream.
+        Postconditions: node start, finish, and retry details are redacted without
+        mutating their source events; event order and upstream errors are preserved.
+
         :param stream_response: stream response
         :return:
         """
@@ -100,7 +106,7 @@ class WorkflowAppGenerateResponseConverter(
                     }
                     data = cls._error_to_stream_response(sub_stream_response.err)
                     response_chunk.update(data)
-                case NodeStartStreamResponse() | NodeFinishStreamResponse():
+                case NodeStartStreamResponse() | NodeFinishStreamResponse() | NodeRetryStreamResponse():
                     response_chunk = {
                         "event": sub_stream_response.event.value,
                         "workflow_run_id": chunk.workflow_run_id,

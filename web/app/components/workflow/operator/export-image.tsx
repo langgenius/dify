@@ -1,13 +1,13 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { useAtomValue } from 'jotai'
@@ -154,10 +154,10 @@ const ExportImage = memo(() => {
 
   return (
     <>
-      <DropdownMenu disabled={isReadOnly}>
+      <Menu disabled={isReadOnly}>
         <TipPopup title={t(($) => $['common.exportImage'], { ns: 'workflow' })}>
           {/* Tooltip also sets data-popup-open; Menu alone sets data-pressed for its open state. */}
-          <DropdownMenuTrigger
+          <MenuTrigger
             render={
               <IconButton
                 size="lg"
@@ -170,57 +170,37 @@ const ExportImage = memo(() => {
             }
           />
         </TipPopup>
-        <DropdownMenuContent side="right" className="min-w-45">
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel>
-              {t(($) => $['common.currentView'], { ns: 'workflow' })}
-            </DropdownMenuGroupLabel>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('png')}
-            >
+        <MenuContent side="right" className="min-w-45">
+          <MenuGroup>
+            <MenuGroupLabel>{t(($) => $['common.currentView'], { ns: 'workflow' })}</MenuGroupLabel>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('png')}>
               {t(($) => $['common.exportPNG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('jpeg')}
-            >
+            </MenuItem>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg')}>
               {t(($) => $['common.exportJPEG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('svg')}
-            >
+            </MenuItem>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('svg')}>
               {t(($) => $['common.exportSVG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator className="mx-2" />
+            </MenuItem>
+          </MenuGroup>
+          <MenuSeparator className="mx-2" />
 
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel>
+          <MenuGroup>
+            <MenuGroupLabel>
               {t(($) => $['common.currentWorkflow'], { ns: 'workflow' })}
-            </DropdownMenuGroupLabel>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('png', true)}
-            >
+            </MenuGroupLabel>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('png', true)}>
               {t(($) => $['common.exportPNG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('jpeg', true)}
-            >
+            </MenuItem>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg', true)}>
               {t(($) => $['common.exportJPEG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="system-md-regular"
-              onClick={() => handleExportImage('svg', true)}
-            >
+            </MenuItem>
+            <MenuItem className="system-md-regular" onClick={() => handleExportImage('svg', true)}>
               {t(($) => $['common.exportSVG'], { ns: 'workflow' })}
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            </MenuItem>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
 
       {previewUrl && (
         <ImagePreview url={previewUrl} title={previewTitle} onCancel={() => setPreviewUrl('')} />

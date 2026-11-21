@@ -22,6 +22,7 @@ from services.data_source.website_service import (
     WebsiteCrawlStatusApiRequest,
     WebsiteService,
 )
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 
 @dataclass(frozen=True)
@@ -112,11 +113,7 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_firecrawl(monkeypa
     service_instance.get_datasource_credentials.return_value = {"firecrawl_api_key": "k", "base_url": "b"}
     monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
 
-    api_key, config = WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        )
-    )._get_credentials_and_config("tenant-1", "firecrawl")
+    api_key, config = WebsiteService(providers=service_instance)._get_credentials_and_config("tenant-1", "firecrawl")
     assert api_key == "k"
     assert config["base_url"] == "b"
 
@@ -141,11 +138,7 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_api_key(
     service_instance.get_datasource_credentials.return_value = {"api_key": "enc-key", "base_url": "b"}
     monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
 
-    api_key, config = WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        )
-    )._get_credentials_and_config("tenant-1", provider)
+    api_key, config = WebsiteService(providers=service_instance)._get_credentials_and_config("tenant-1", provider)
     assert api_key == "enc-key"
     assert config["base_url"] == "b"
 
@@ -159,7 +152,7 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_api_key(
 def test_get_credentials_and_config_rejects_invalid_provider() -> None:
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         )._get_credentials_and_config("tenant-1", "unknown")
@@ -187,11 +180,7 @@ def test_get_credentials_and_config_hits_unreachable_guard_branch(monkeypatch: p
     monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
 
     with pytest.raises(ValueError, match="Invalid provider"):
-        WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            )
-        )._get_credentials_and_config("tenant-1", FlakyProvider())  # type: ignore[arg-type]
+        WebsiteService(providers=service_instance)._get_credentials_and_config("tenant-1", FlakyProvider())  # type: ignore[arg-type]
 
 
 def test_get_decrypted_api_key_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -222,7 +211,7 @@ def test_crawl_url_dispatches_by_provider(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(WebsiteService, "_crawl_with_firecrawl", firecrawl_mock)
 
     result = WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).crawl_url(api_request)
@@ -247,7 +236,7 @@ def test_crawl_url_dispatches_other_providers(monkeypatch: pytest.MonkeyPatch, p
     monkeypatch.setattr(WebsiteService, method_name, impl_mock)
 
     assert WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).crawl_url(api_request) == {"status": "active"}
@@ -260,7 +249,7 @@ def test_crawl_url_rejects_invalid_provider(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).crawl_url(api_request)
@@ -436,7 +425,7 @@ def test_get_crawl_status_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(WebsiteService, "_get_firecrawl_status", firecrawl_status)
 
     result = WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_crawl_status("job-1", "firecrawl")
@@ -446,7 +435,7 @@ def test_get_crawl_status_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
     watercrawl_status = MagicMock(return_value={"status": "active", "job_id": "w"})
     monkeypatch.setattr(WebsiteService, "_get_watercrawl_status", watercrawl_status)
     assert WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_crawl_status("job-2", "watercrawl") == {"status": "active", "job_id": "w"}
@@ -455,7 +444,7 @@ def test_get_crawl_status_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
     jinareader_status = MagicMock(return_value={"status": "active", "job_id": "j"})
     monkeypatch.setattr(WebsiteService, "_get_jinareader_status", jinareader_status)
     assert WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_crawl_status("job-3", "jinareader") == {"status": "active", "job_id": "j"}
@@ -466,7 +455,7 @@ def test_get_crawl_status_typed_rejects_invalid_provider(monkeypatch: pytest.Mon
     monkeypatch.setattr(WebsiteService, "_get_credentials_and_config", MagicMock(return_value=("k", {})))
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).get_crawl_status_typed(WebsiteCrawlStatusApiRequest(provider="bad", job_id="j"))
@@ -474,7 +463,12 @@ def test_get_crawl_status_typed_rejects_invalid_provider(monkeypatch: pytest.Mon
 
 def test_get_firecrawl_status_adds_time_consuming_when_completed_and_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     firecrawl_instance = MagicMock()
-    firecrawl_instance.check_crawl_status.return_value = {"status": "completed", "total": 2, "current": 2, "data": []}
+    firecrawl_instance.check_crawl_status.return_value = {
+        "status": "completed",
+        "total": 2,
+        "current": 2,
+        "data": list[dict[str, Any]](),
+    }
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
 
     redis_mock = MagicMock()
@@ -492,7 +486,12 @@ def test_get_firecrawl_status_adds_time_consuming_when_completed_and_cached(monk
 
 def test_get_firecrawl_status_completed_without_cache_does_not_add_time(monkeypatch: pytest.MonkeyPatch) -> None:
     firecrawl_instance = MagicMock()
-    firecrawl_instance.check_crawl_status.return_value = {"status": "completed", "total": 1, "current": 1, "data": []}
+    firecrawl_instance.check_crawl_status.return_value = {
+        "status": "completed",
+        "total": 1,
+        "current": 1,
+        "data": list[dict[str, Any]](),
+    }
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
 
     redis_mock = MagicMock()
@@ -547,8 +546,8 @@ def test_get_jinareader_status_completed_formats_processed_items(monkeypatch: py
         "data": {
             "status": "completed",
             "urls": ["u1"],
-            "processed": {"u1": {}},
-            "failed": {},
+            "processed": {"u1": dict[str, Any]()},
+            "failed": dict[str, Any](),
             "duration": 1000,
         }
     }
@@ -578,7 +577,7 @@ def test_get_jinareader_status_completed_formats_processed_items(monkeypatch: py
 def test_get_crawl_url_data_dispatches_invalid_provider() -> None:
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).get_crawl_url_data("job-1", "bad", "https://example.com", "tenant-1")
@@ -590,7 +589,7 @@ def test_get_crawl_url_data_hits_invalid_provider_branch_when_credentials_stubbe
     monkeypatch.setattr(WebsiteService, "_get_credentials_and_config", MagicMock(return_value=("k", {})))
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).get_crawl_url_data("job-1", object(), "u", "tenant-1")  # type: ignore[arg-type]
@@ -610,7 +609,7 @@ def test_get_crawl_url_data_dispatches(monkeypatch: pytest.MonkeyPatch, provider
     monkeypatch.setattr(WebsiteService, method_name, impl_mock)
 
     result = WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_crawl_url_data("job-1", provider, "u", "tenant-1")
@@ -698,7 +697,7 @@ def test_get_jinareader_url_data_without_job_id_failure(monkeypatch: pytest.Monk
 
 
 def test_get_jinareader_url_data_with_job_id_completed_returns_matching_item(monkeypatch: pytest.MonkeyPatch) -> None:
-    status_payload = {"data": {"status": "completed", "processed": {"u1": {}}}}
+    status_payload = {"data": {"status": "completed", "processed": {"u1": dict[str, Any]()}}}
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "u", "title": "t"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
@@ -719,7 +718,7 @@ def test_get_jinareader_url_data_with_job_id_not_completed_raises(monkeypatch: p
 def test_get_jinareader_url_data_with_job_id_completed_but_not_found_returns_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    status_payload = {"data": {"status": "completed", "processed": {"u1": {}}}}
+    status_payload = {"data": {"status": "completed", "processed": {"u1": dict[str, Any]()}}}
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "other"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
@@ -734,7 +733,7 @@ def test_get_scrape_url_data_dispatches_and_rejects_invalid_provider(monkeypatch
     scrape_mock = MagicMock(return_value={"data": "x"})
     monkeypatch.setattr(WebsiteService, "_scrape_with_firecrawl", scrape_mock)
     assert WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_scrape_url_data("firecrawl", "u", "tenant-1", True) == {"data": "x"}
@@ -743,7 +742,7 @@ def test_get_scrape_url_data_dispatches_and_rejects_invalid_provider(monkeypatch
     watercrawl_mock = MagicMock(return_value={"data": "y"})
     monkeypatch.setattr(WebsiteService, "_scrape_with_watercrawl", watercrawl_mock)
     assert WebsiteService(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).get_scrape_url_data("watercrawl", "u", "tenant-1", False) == {"data": "y"}
@@ -751,7 +750,7 @@ def test_get_scrape_url_data_dispatches_and_rejects_invalid_provider(monkeypatch
 
     with pytest.raises(ValueError, match="Invalid provider"):
         WebsiteService(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).get_scrape_url_data("jinareader", "u", "tenant-1", True)

@@ -4,14 +4,7 @@ import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { ToolsContentInset } from '@/app/components/tools/content-inset'
 import type { Collection } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
@@ -36,7 +29,7 @@ import {
   selectToolCollections,
   selectToolsWithProvider,
 } from '@/app/components/tools/utils/query-select'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
@@ -59,10 +52,7 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const { canDeletePlugin, canSetPluginPreferences, canUpdatePlugin } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
   const canManageMCP = useCanManageMCP()
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
@@ -201,68 +191,62 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const body = (
     <>
       <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-components-panel-bg">
-        <ScrollArea className="min-h-0 grow overflow-hidden bg-components-panel-bg">
-          <ScrollAreaViewport
-            ref={containerRef}
-            aria-label={t(($) => $['menus.tools'], { ns: 'navigation' })}
-            className="overscroll-contain"
-            role="region"
-          >
-            <ScrollAreaContent className="flex min-h-full flex-col">
-              {activeTab !== 'mcp' && (
-                <ToolProviderGrid
-                  activeTab={activeTab}
-                  collections={filteredCollectionList}
-                  currentProviderId={currentProviderId}
-                  frameClassName={toolListFrameClassName}
-                  getTagLabel={getTagLabel}
-                  hasCategoryCollections={activeTabCollectionList.length > 0}
-                  isLoading={isCollectionListLoading}
-                  useIntegrationsCard={contentInset === 'compact'}
-                  isSearchResultEmpty={isCollectionSearchEmpty}
-                  showCreateCard={shouldShowCustomToolCreateCard}
-                  onRefreshData={refetch}
-                  onSelectProvider={setCurrentProviderId}
-                />
-              )}
-              {!isCollectionListLoading &&
-                !activeTabCollectionList.length &&
-                activeTab === 'builtin' && (
-                  <Empty
-                    lightCard
-                    text={t(($) => $.noTools, { ns: 'tools' })}
-                    className={cn('h-56 shrink-0', toolListFrameClassName)}
-                  />
-                )}
-              {isCollectionSearchEmpty && activeTab === 'builtin' && (
-                <div className={cn('h-56 shrink-0', toolListFrameClassName)} />
-              )}
-              {enable_marketplace && activeTab === 'builtin' && (
-                <BuiltinMarketplacePanel
-                  containerRef={containerRef}
-                  contentInset={contentInset}
-                  keywords={keywords}
-                  tagFilterValue={tagFilterValue}
-                />
-              )}
-              {activeTab === 'mcp' && (
-                <MCPList
-                  providers={activeTabCollectionList}
-                  isLoading={allToolProvidersQuery.isLoading}
-                  searchText={keywords}
-                  contentInset={contentInset}
-                  createdProviderId={createdMCPProviderId}
-                  showCreateCard={shouldShowMCPCreateCard}
-                  onRefresh={refreshMcpTools}
-                  onCreatedProviderHandled={handleCreatedMCPProviderHandled}
-                />
-              )}
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollArea>
+        <div
+          ref={containerRef}
+          aria-label={t(($) => $['menus.tools'], { ns: 'navigation' })}
+          className="flex min-h-0 grow flex-col overflow-y-auto overscroll-contain bg-components-panel-bg"
+          role="region"
+        >
+          {activeTab !== 'mcp' && (
+            <ToolProviderGrid
+              activeTab={activeTab}
+              collections={filteredCollectionList}
+              currentProviderId={currentProviderId}
+              frameClassName={toolListFrameClassName}
+              getTagLabel={getTagLabel}
+              hasCategoryCollections={activeTabCollectionList.length > 0}
+              isLoading={isCollectionListLoading}
+              useIntegrationsCard={contentInset === 'compact'}
+              isSearchResultEmpty={isCollectionSearchEmpty}
+              showCreateCard={shouldShowCustomToolCreateCard}
+              onRefreshData={refetch}
+              onSelectProvider={setCurrentProviderId}
+            />
+          )}
+          {!isCollectionListLoading &&
+            !activeTabCollectionList.length &&
+            activeTab === 'builtin' && (
+              <Empty
+                lightCard
+                text={t(($) => $.noTools, { ns: 'tools' })}
+                className={cn('h-56 shrink-0', toolListFrameClassName)}
+              />
+            )}
+          {isCollectionSearchEmpty && activeTab === 'builtin' && (
+            <div className={cn('h-56 shrink-0', toolListFrameClassName)} />
+          )}
+          {marketplace && activeTab === 'builtin' && (
+            <BuiltinMarketplacePanel
+              marketplace={marketplace}
+              containerRef={containerRef}
+              contentInset={contentInset}
+              keywords={keywords}
+              tagFilterValue={tagFilterValue}
+            />
+          )}
+          {activeTab === 'mcp' && (
+            <MCPList
+              providers={activeTabCollectionList}
+              isLoading={allToolProvidersQuery.isLoading}
+              searchText={keywords}
+              contentInset={contentInset}
+              createdProviderId={createdMCPProviderId}
+              showCreateCard={shouldShowMCPCreateCard}
+              onRefresh={refreshMcpTools}
+              onCreatedProviderHandled={handleCreatedMCPProviderHandled}
+            />
+          )}
+        </div>
       </div>
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail

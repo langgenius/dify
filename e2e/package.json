@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:scenarios": "cucumber-js --config cucumber.config.ts --dry-run --tags \"not @skip\" --format summary",
     "e2e": "node ./scripts/run-cucumber.ts",
     "e2e:accessibility": "pnpm run e2e:accessibility:aa",
     "e2e:accessibility:a": "node ./scripts/run-cucumber.ts --full -- --tags \"@axe and @wcag-a\"",
@@ -39,7 +40,6 @@
     "@playwright/test": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "eventsource-parser": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:",

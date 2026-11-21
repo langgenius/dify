@@ -10,7 +10,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.knowledge.dataset_service import DocumentService
 
 
-def _create_dataset(db_session_with_containers) -> Dataset:
+def _create_dataset(db_session_with_containers: Session) -> Dataset:
     dataset = Dataset(
         tenant_id=str(uuid4()),
         name=f"dataset-{uuid4()}",
@@ -24,11 +24,11 @@ def _create_dataset(db_session_with_containers) -> Dataset:
 
 
 def _create_document(
-    db_session_with_containers,
+    db_session_with_containers: Session,
     *,
     dataset_id: str,
     tenant_id: str,
-    indexing_status: str,
+    indexing_status: IndexingStatus,
     enabled: bool = True,
     archived: bool = False,
     is_paused: bool = False,
@@ -59,7 +59,7 @@ def _create_document(
     return document
 
 
-def test_build_display_status_filters_available(db_session_with_containers: Session):
+def test_build_display_status_filters_available(db_session_with_containers: Session) -> None:
     dataset = _create_dataset(db_session_with_containers)
     available_doc = _create_document(
         db_session_with_containers,
@@ -98,7 +98,7 @@ def test_build_display_status_filters_available(db_session_with_containers: Sess
     assert [row.id for row in rows] == [available_doc.id]
 
 
-def test_apply_display_status_filter_applies_when_status_present(db_session_with_containers: Session):
+def test_apply_display_status_filter_applies_when_status_present(db_session_with_containers: Session) -> None:
     dataset = _create_dataset(db_session_with_containers)
     waiting_doc = _create_document(
         db_session_with_containers,
@@ -122,7 +122,7 @@ def test_apply_display_status_filter_applies_when_status_present(db_session_with
     assert [row.id for row in rows] == [waiting_doc.id]
 
 
-def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_containers: Session):
+def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_containers: Session) -> None:
     dataset = _create_dataset(db_session_with_containers)
     doc1 = _create_document(
         db_session_with_containers,
@@ -146,7 +146,7 @@ def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_c
     assert {row.id for row in rows} == {doc1.id, doc2.id}
 
 
-def test_normalize_display_status_alias_mapping():
+def test_normalize_display_status_alias_mapping() -> None:
     """Test that normalize_display_status maps aliases correctly."""
     assert DocumentService.normalize_display_status("ACTIVE") == "available"
     assert DocumentService.normalize_display_status("enabled") == "available"

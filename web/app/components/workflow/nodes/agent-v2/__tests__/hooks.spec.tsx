@@ -1,8 +1,10 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { useWorkflowInlineAgentConfigureSync } from '@/features/agent-v2/agent-editor/workflow-sync'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
 import { createDefaultModelFixture } from '@/test/console/model-provider'
@@ -10,7 +12,6 @@ import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-da
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
-import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from '../hooks'
 
 const mockDefaultModel = vi.hoisted(() => ({
@@ -476,6 +477,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -498,6 +500,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       result.current.setDraft({
         ...defaultAgentSoulConfigFormState,
         prompt: 'Workflow inline prompt',
+        files: [{ id: 'stale.md', name: 'stale.md', icon: 'markdown', fileId: 'stale-upload' }],
       })
     })
 
@@ -532,6 +535,30 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       }),
     )
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
+  })
+
+  it('preserves explicit file replacement when applying a complete Agent configuration', async () => {
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
+          nodeId: 'node-1',
+          enabled: true,
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    )
+
+    await act(async () => {
+      await result.current.saveAgentSoulConfig({ schema_version: 1, config_files: [] })
+    })
+
+    expect(mockComposerMutationFn.mock.calls[0]?.[0]).toHaveProperty(
+      'body.agent_soul.config_files',
+      [],
+    )
   })
 
   it('saves inline agent composer changes through the snippet composer API', async () => {
@@ -539,6 +566,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -594,6 +622,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     const { result } = renderWorkflowHook(
       () => ({
         ...useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -643,6 +672,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,
@@ -668,6 +698,7 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     const { result } = renderWorkflowHook(
       () =>
         useWorkflowInlineAgentConfigureSync({
+          resource: useAtomValue(editorResourceAtom),
           nodeId: 'node-1',
           baseConfig: {
             schema_version: 1,

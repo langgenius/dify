@@ -43,8 +43,8 @@ vi.mock('@/service/use-triggers', async () =>
 )
 
 let mockTheme = 'light'
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: mockTheme }),
+vi.mock('@/features/theme/hooks', () => ({
+  useResolvedTheme: () => mockTheme,
 }))
 
 vi.mock('@/utils/var', async (importOriginal) => ({

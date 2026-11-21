@@ -203,10 +203,34 @@ def test_search_by_vector_validates_top_k(invalid_top_k):
         vector.search_by_vector([0.1, 0.2], top_k=invalid_top_k)
 
 
-def test_search_by_vector_returns_documents_above_threshold():
-    vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
-    vector.table_name = "dify.collection"
-    cursor = MagicMock()
+@pytest.mark.parametrize(
+    ("document_ids_filter", "expected_where_clause"),
+    [
+        pytest.param(None, "WHERE 1=1", id="no-filter"),
+        pytest.param([], "WHERE 1=1", id="empty-filter"),
+        pytest.param(
+            ["doc-1"],
+            "WHERE 1=1 AND metadata_->>'document_id' IN ('doc-1')",
+            id="single-document-id",
+        ),
+        pytest.param(
+            ["doc-1", "doc-2"],
+            "WHERE 1=1 AND metadata_->>'document_id' IN ('doc-1', 'doc-2')",
+            id="multiple-document-ids",
+        ),
+    ],
+)
+def test_search_by_vector_returns_documents_above_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+    document_ids_filter: list[str] | None,
+    expected_where_clause: str,
+) -> None:
+    """Given an optional ID filter, emit valid SQL and return only documents above the score threshold."""
+    pool = MagicMock()
+    cursor = pool.getconn.return_value.cursor.return_value
+    monkeypatch.setattr(AnalyticdbVectorBySql, "_initialize", lambda self: None)
+    monkeypatch.setattr(AnalyticdbVectorBySql, "_create_connection_pool", lambda self: pool)
+    vector = AnalyticdbVectorBySql("collection", AnalyticdbVectorBySqlConfig(**_config_values()))
     cursor.__iter__.return_value = iter(
         [
             ("id1", [1.0], 0.8, "content 1", {"doc_id": "id1", "document_id": "doc-1"}),
@@ -214,17 +238,17 @@ def test_search_by_vector_returns_documents_above_threshold():
         ]
     )
 
-    @contextmanager
-    def _cursor_context():
-        yield cursor
-
-    vector._get_cursor = _cursor_context
-
-    docs = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.5, document_ids_filter=["doc-1"])
+    docs = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.5, document_ids_filter=document_ids_filter)
 
     assert len(docs) == 1
     assert docs[0].page_content == "content 1"
     assert docs[0].metadata["score"] == 0.8
+
+    executed_sql = cursor.execute.call_args.args[0]
+    normalized_sql = " ".join(executed_sql.split())
+    assert f"FROM dify.collection {expected_where_clause} ORDER BY score" in normalized_sql
+    assert "1=1AND" not in executed_sql
+    assert ")ORDER BY" not in executed_sql
 
 
 @pytest.mark.parametrize("invalid_top_k", [0, "x", -1])

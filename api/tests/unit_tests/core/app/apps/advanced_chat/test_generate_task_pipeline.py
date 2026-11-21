@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
 from pytest_mock import MockerFixture
+from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -55,8 +59,12 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamEvent,
+    WorkflowFinishStreamResponse,
+    WorkflowTaskState,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.moderation.base import ModerationAction, ModerationOutputsResult
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -69,8 +77,32 @@ from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFro
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message, MessageFile
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _TraceRecorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="session-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None,
+            session_id="trace-session-1",
+            parent_workflow_run_id=None,
+            parent_node_execution_id=None,
+        ),
+    )
 
 
 def _build_generate_entity() -> AdvancedChatAppGenerateEntity:
@@ -89,6 +121,32 @@ def _build_generate_entity() -> AdvancedChatAppGenerateEntity:
     )
 
 
+def _build_message_pipeline(
+    application_generate_entity: AdvancedChatAppGenerateEntity, message_status: MessageStatus, answer: str
+) -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
+    """Build the pipeline for message persistence, as the generator does."""
+    user = EndUser()
+    user.id = "user-1"
+    user.session_id = "session-1"
+    return pipeline_module.AdvancedChatAppGenerateTaskPipeline(
+        application_generate_entity=application_generate_entity,
+        workflow=pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={}),
+        queue_manager=SimpleNamespace(graph_runtime_state=None),
+        conversation=pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT),
+        message=pipeline_module.MessageSnapshot(
+            id="message-1",
+            created_at=datetime(2024, 1, 1),
+            query="hello",
+            answer=answer,
+            status=message_status,
+        ),
+        user=user,
+        stream=True,
+        dialogue_count=1,
+        draft_var_saver_factory=lambda **kwargs: None,
+    )
+
+
 def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
     pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline.__new__(
         pipeline_module.AdvancedChatAppGenerateTaskPipeline
@@ -102,7 +160,7 @@ def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
 def test_process_passes_message_id_to_conversation_name_generation() -> None:
     pipeline = _build_pipeline()
     pipeline._conversation_id = "conversation-1"
-    pipeline._application_generate_entity = SimpleNamespace(query="hello", trace_manager=None)
+    pipeline._application_generate_entity = _build_generate_entity()
     pipeline._message_cycle_manager = mock.Mock()
     pipeline._base_task_pipeline = SimpleNamespace(stream=True)
     pipeline._wrapper_process_stream_response = mock.Mock(return_value=iter(()))
@@ -163,7 +221,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
         app_id="app-1",
         workflow_id="workflow-1",
         task_id="task-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType(WorkflowType.CHAT),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,
@@ -182,12 +240,14 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
             node_run_steps=0,
         ),
     )
-    pipeline._save_message = mock.Mock()
+    pipeline._save_message = lambda **kwargs: None
     message = _message(status=MessageStatus.NORMAL)
     pipeline._get_message = mock.Mock(return_value=message)
     persist_content = mocker.patch.object(pipeline, "_persist_human_input_extra_content")
     pipeline._base_task_pipeline = mock.Mock()
+    pipeline._base_task_pipeline.handle_output_moderation_when_task_finished.return_value = None
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
+    pipeline._task_state = WorkflowTaskState()
     pipeline._message_saved_on_pause = False
 
     reason = HumanInputRequired(
@@ -213,43 +273,7 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
 
 
 def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> None:
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=None,
-        extras={},
-    )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
-    conversation = pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT)
-    message = pipeline_module.MessageSnapshot(
-        id="message-1",
-        created_at=datetime(2024, 1, 1),
-        query="hello",
-        answer="before",
-        status=MessageStatus.PAUSED,
-    )
-    user = EndUser()
-    user.id = "user-1"
-    user.session_id = "session-1"
-    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
-
-    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
-        application_generate_entity=application_generate_entity,
-        workflow=workflow,
-        queue_manager=queue_manager,
-        conversation=conversation,
-        message=message,
-        user=user,
-        stream=True,
-        dialogue_count=1,
-        draft_var_saver_factory=SimpleNamespace(),
-    )
+    pipeline = _build_message_pipeline(_build_generate_entity(), message_status=MessageStatus.PAUSED, answer="before")
 
     stored_message = _message(status=MessageStatus.PAUSED, answer="before")
     pipeline._get_message = mock.Mock(return_value=stored_message)
@@ -262,217 +286,48 @@ def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> Non
     assert stored_message.status == MessageStatus.NORMAL
 
 
-def test_emit_message_trace_enqueues_message_trace() -> None:
-    """When trace_manager is provided, _emit_message_trace must enqueue a MESSAGE_TRACE task."""
-    from core.ops.entities.trace_entity import TraceTaskName
-
-    mock_trace_manager = mock.MagicMock()
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=mock_trace_manager,
-        extras={"trace_session_id": "session-trace-1"},
-    )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
-    conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
-    message = pipeline_module.MessageSnapshot(
-        id="msg-1",
-        created_at=datetime(2024, 1, 1),
-        query="hello",
+def test_emit_message_trace_reports_the_completed_message() -> None:
+    recorder = _TraceRecorder()
+    pipeline = _build_message_pipeline(
+        _build_generate_entity().model_copy(update={"trace_scope": _trace_scope(recorder)}),
+        message_status=MessageStatus.NORMAL,
         answer="",
-        status=MessageStatus.NORMAL,
     )
-    user = EndUser()
-    user.id = "user-1"
-    user.session_id = "session-1"
-    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
-
-    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
-        application_generate_entity=application_generate_entity,
-        workflow=workflow,
-        queue_manager=queue_manager,
-        conversation=conversation,
-        message=message,
-        user=user,
-        stream=True,
-        dialogue_count=1,
-        draft_var_saver_factory=SimpleNamespace(),
-    )
-
-    stored_message = SimpleNamespace(
-        id="msg-1",
-        answer="",
-        status=MessageStatus.NORMAL,
-        updated_at=None,
-        provider_response_latency=0,
-        message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
-        answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
-        total_price=0,
-        currency="USD",
-        message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
-        from_account_id=None,
-        from_end_user_id="user-1",
-    )
-    pipeline._get_message = mock.Mock(return_value=stored_message)
-    pipeline._recorded_files = []
 
     pipeline._emit_message_trace()
 
-    mock_trace_manager.add_trace_task.assert_called_once()
-    trace_task = mock_trace_manager.add_trace_task.call_args[0][0]
-    assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
-    assert trace_task.conversation_id == "conv-1"
-    assert trace_task.message_id == "msg-1"
-    assert trace_task.kwargs.get("trace_session_id") == "session-trace-1"
+    assert len(recorder.events) == 1
+    event = recorder.events[0]
+    assert event.payload == MessageCompleted(message_id="message-1", conversation_id="conversation-1")
+    assert event.correlation.session_id == "trace-session-1"
+    assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-1", "app-1", "session-1")
 
 
-def test_save_message_does_not_emit_trace() -> None:
-    """_save_message must not enqueue a trace; emitting is the terminal caller's responsibility.
+def test_save_message_does_not_emit_trace(unbound_session: Session) -> None:
+    """_save_message must not emit a trace; emitting is the terminal caller's responsibility.
 
     This keeps intermediate saves (e.g. on pause) from duplicating message, token, and TTFT metrics
     when the message is later resumed.
     """
-    mock_trace_manager = mock.MagicMock()
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=mock_trace_manager,
-        extras={"trace_session_id": "session-trace-1"},
-    )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
-    conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
-    message = pipeline_module.MessageSnapshot(
-        id="msg-1",
-        created_at=datetime(2024, 1, 1),
-        query="hello",
+    recorder = _TraceRecorder()
+    pipeline = _build_message_pipeline(
+        _build_generate_entity().model_copy(update={"trace_scope": _trace_scope(recorder)}),
+        message_status=MessageStatus.NORMAL,
         answer="",
-        status=MessageStatus.NORMAL,
     )
-    user = EndUser()
-    user.id = "user-1"
-    user.session_id = "session-1"
-    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
-
-    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
-        application_generate_entity=application_generate_entity,
-        workflow=workflow,
-        queue_manager=queue_manager,
-        conversation=conversation,
-        message=message,
-        user=user,
-        stream=True,
-        dialogue_count=1,
-        draft_var_saver_factory=SimpleNamespace(),
-    )
-
-    stored_message = SimpleNamespace(
-        id="msg-1",
-        answer="",
-        status=MessageStatus.NORMAL,
-        updated_at=None,
-        provider_response_latency=0,
-        message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
-        answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
-        total_price=0,
-        currency="USD",
-        message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
-        from_account_id=None,
-        from_end_user_id="user-1",
-    )
+    stored_message = _message(status=MessageStatus.NORMAL)
     pipeline._get_message = mock.Mock(return_value=stored_message)
     pipeline._recorded_files = []
 
-    pipeline._save_message(session=mock.Mock())
+    pipeline._save_message(session=unbound_session)
 
-    mock_trace_manager.add_trace_task.assert_not_called()
+    assert stored_message.status == MessageStatus.NORMAL
+    assert recorder.events == []
 
 
-def test_emit_message_trace_skips_when_no_trace_manager() -> None:
-    """When trace_manager is None, _emit_message_trace and _save_message must not fail."""
-    app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
-    application_generate_entity = SimpleNamespace(
-        app_config=app_config,
-        files=[],
-        workflow_run_id="run-1",
-        query="hello",
-        invoke_from=InvokeFrom.WEB_APP,
-        inputs={},
-        task_id="task-1",
-        trace_manager=None,
-        extras={},
-    )
-    queue_manager = SimpleNamespace(graph_runtime_state=None)
-    conversation = pipeline_module.ConversationSnapshot(id="conv-1", mode=AppMode.ADVANCED_CHAT)
-    message = pipeline_module.MessageSnapshot(
-        id="msg-1",
-        created_at=datetime(2024, 1, 1),
-        query="hello",
-        answer="",
-        status=MessageStatus.NORMAL,
-    )
-    user = EndUser()
-    user.id = "user-1"
-    user.session_id = "session-1"
-    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
+def test_emit_message_trace_skips_without_trace_scope() -> None:
+    pipeline = _build_message_pipeline(_build_generate_entity(), message_status=MessageStatus.NORMAL, answer="")
 
-    pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
-        application_generate_entity=application_generate_entity,
-        workflow=workflow,
-        queue_manager=queue_manager,
-        conversation=conversation,
-        message=message,
-        user=user,
-        stream=True,
-        dialogue_count=1,
-        draft_var_saver_factory=SimpleNamespace(),
-    )
-
-    stored_message = SimpleNamespace(
-        id="msg-1",
-        answer="",
-        status=MessageStatus.NORMAL,
-        updated_at=None,
-        provider_response_latency=0,
-        message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
-        answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
-        total_price=0,
-        currency="USD",
-        message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
-        from_account_id=None,
-        from_end_user_id="user-1",
-    )
-    pipeline._get_message = mock.Mock(return_value=stored_message)
-    pipeline._recorded_files = []
-
-    # Should not raise
-    pipeline._save_message(session=mock.Mock())
     pipeline._emit_message_trace()
 
 
@@ -541,7 +396,9 @@ def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event, trace_manager=None)
+    pipeline._handle_workflow_succeeded_event.assert_called_once_with(
+        succeeded_event, tts_publisher=None, queue_message=queue_messages[0]
+    )
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
@@ -566,11 +423,50 @@ def test_process_stream_response_breaks_after_workflow_partial_success() -> None
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event, trace_manager=None)
+    pipeline._handle_workflow_partial_success_event.assert_called_once_with(
+        partial_event, tts_publisher=None, queue_message=queue_messages[0]
+    )
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
-def _make_pipeline():
+class _TimelineTraceRecorder:
+    """Record trace events on a timeline shared with the commits they must follow."""
+
+    def __init__(self, timeline: list[str]) -> None:
+        self._timeline = timeline
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+        self._timeline.append("trace")
+
+
+def _timeline_trace_scope(recorder: _TimelineTraceRecorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="session",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+@contextmanager
+def _recording_commits(timeline: list[str]) -> Generator[None]:
+    def record_commit(_session: Session) -> None:
+        timeline.append("commit")
+
+    sqlalchemy_event.listen(Session, "after_commit", record_commit)
+    try:
+        yield
+    finally:
+        sqlalchemy_event.remove(Session, "after_commit", record_commit)
+
+
+def _make_pipeline(message: MessageSnapshot | None = None) -> AdvancedChatAppGenerateTaskPipeline:
+    """Build a real pipeline for a fresh message or a persisted pause snapshot."""
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant",
         app_id="app",
@@ -589,17 +485,18 @@ def _make_pipeline():
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
-        trace_manager=None,
+        trace_scope=None,
         workflow_run_id="run-id",
     )
 
-    message = MessageSnapshot(
-        id="message-id",
-        query="hello",
-        created_at=naive_utc_now(),
-        status=MessageStatus.NORMAL,
-        answer="",
-    )
+    if message is None:
+        message = MessageSnapshot(
+            id="message-id",
+            query="hello",
+            created_at=naive_utc_now(),
+            status=MessageStatus.NORMAL,
+            answer="",
+        )
     conversation = ConversationSnapshot(id="conv-id", mode=AppMode.ADVANCED_CHAT)
     workflow = WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={})
     user = EndUser(tenant_id="tenant", type="session", name="tester", session_id="session")
@@ -651,6 +548,103 @@ def _persist_message(session: Session, *, message_id: str = "message-id") -> Mes
     session.add(message)
     session.commit()
     return message
+
+
+@pytest.mark.parametrize(
+    ("prefix", "tail", "action", "expected", "delivery_event"),
+    [
+        pytest.param("", "hello", ModerationAction.DIRECT_OUTPUT, "hello", StreamEvent.MESSAGE, id="short-answer"),
+        pytest.param(
+            "safe " * 60,
+            "hello",
+            ModerationAction.DIRECT_OUTPUT,
+            "safe " * 60 + "hello",
+            StreamEvent.MESSAGE,
+            id="approved-tail",
+        ),
+        pytest.param(
+            "safe " * 60,
+            "blocked",
+            ModerationAction.DIRECT_OUTPUT,
+            "Refused",
+            StreamEvent.MESSAGE_REPLACE,
+            id="rejected-tail",
+        ),
+        pytest.param(
+            "safe " * 60,
+            "blocked",
+            ModerationAction.OVERRIDDEN,
+            "safe " * 60 + "masked",
+            StreamEvent.MESSAGE,
+            id="overridden-tail",
+        ),
+    ],
+)
+def test_pause_flushes_moderation_tail_before_delivery_and_restores_the_saved_answer(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    prefix: str,
+    tail: str,
+    action: ModerationAction,
+    expected: str,
+    delivery_event: StreamEvent,
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=300)
+    message = _persist_message(sqlite_session)
+    message.status = MessageStatus.NORMAL
+    sqlite_session.add(
+        WorkflowRun(
+            id="run-id",
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow-id",
+            task_id="task",
+            type=ModelWorkflowType.CHAT,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="1",
+            status=WorkflowExecutionStatus.PAUSED,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="user",
+        )
+    )
+    sqlite_session.commit()
+    pipeline = _make_pipeline()
+    pipeline._workflow_run_id = "run-id"
+    pipeline._graph_runtime_state = RuntimeState(
+        workflow_id="workflow-id",
+        variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+        start_at=0.0,
+    )
+    pipeline._workflow_response_converter.workflow_start_to_stream_response(
+        task_id="task", workflow_run_id="run-id", workflow_id="workflow-id", reason=QueueWorkflowStartedEvent().reason
+    )
+    checked: list[str] = []
+
+    def evaluate(text: str) -> ModerationOutputsResult:
+        checked.append(text)
+        return ModerationOutputsResult(
+            flagged="blocked" in text, action=action, preset_response="Refused", text=text.replace("blocked", "masked")
+        )
+
+    pipeline._base_task_pipeline.output_moderation_handler = OutputModeration(
+        tenant_id="tenant", app_id="app", rule=ModerationRule(type="api", config={}), output_evaluator=evaluate
+    )
+    monkeypatch.setattr(pipeline._base_task_pipeline.queue_manager, "publish", lambda *_args: None, raising=False)
+    if prefix:
+        list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=prefix)))
+    assert list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=tail))) == []
+    responses = list(pipeline._handle_workflow_paused_event(QueueWorkflowPausedEvent(reasons=[], outputs={})))
+    assert [response.event for response in responses] == [delivery_event, StreamEvent.WORKFLOW_PAUSED]
+    assert pipeline._base_task_pipeline.output_moderation_handler is None
+    assert checked == ([prefix] if prefix else []) + [tail]
+    sqlite_session.expire_all()
+    saved = sqlite_session.get(Message, "message-id")
+    assert saved is not None
+    assert saved.status == MessageStatus.PAUSED
+    assert saved.answer == expected
+    resumed = _make_pipeline(message=MessageSnapshot.from_message(saved))
+    assert resumed._task_state.answer == expected
 
 
 class TestAdvancedChatGenerateTaskPipeline:
@@ -713,6 +707,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.reasons == [
             {
                 "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED,
+                "form_version": "1",
                 "form_id": "form-1",
                 "node_id": "node-1",
                 "node_title": "Approval",
@@ -839,24 +834,18 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline = _make_pipeline()
         events: list[object] = []
 
-        class _Moderation:
-            def should_direct_output(self):
-                return True
-
-            def get_final_output(self):
-                return "final"
-
-        pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
+        pipeline._base_task_pipeline.output_moderation_handler = OutputModeration(
+            tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={}), final_output="final"
+        )
+        pipeline._task_state.answer = "final"
         pipeline._base_task_pipeline.queue_manager = SimpleNamespace(
             publish=lambda event, pub_from: events.append(event)
         )
 
-        result = pipeline._handle_output_moderation_chunk("ignored")
-
-        assert result is True
+        result = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="ignored")))
+        assert result == []
         assert pipeline._task_state.answer == "final"
-        assert any(isinstance(event, QueueTextChunkEvent) for event in events)
-        assert any(isinstance(event, QueueStopEvent) for event in events)
+        assert events == []
 
     def test_handle_node_succeeded_event_records_files(self):
         pipeline = _make_pipeline()
@@ -1072,23 +1061,15 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.answer == "hi"
         assert published == [queue_message]
 
-    def test_handle_output_moderation_chunk_appends_token(self):
+    def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
         pipeline = _make_pipeline()
-        seen: list[str] = []
-
-        class _Moderation:
-            def should_direct_output(self):
-                return False
-
-            def append_new_token(self, text):
-                seen.append(text)
-
-        pipeline._base_task_pipeline.output_moderation_handler = _Moderation()
-
-        result = pipeline._handle_output_moderation_chunk("token")
-
-        assert result is False
-        assert seen == ["token"]
+        handler = OutputModeration(
+            tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+        )
+        pipeline._base_task_pipeline.output_moderation_handler = handler
+        result = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="token")))
+        assert result == []
+        assert handler.buffer == "token"
 
     def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         pipeline = _make_pipeline()
@@ -1200,8 +1181,35 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["end"]
         assert saved == ["saved"]
 
+    def test_output_moderation_finishes_the_reply_before_the_workflow(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        pipeline = _make_pipeline()
+        pipeline._workflow_run_id = "run-id"
+        pipeline._workflow_response_converter.workflow_start_to_stream_response(
+            task_id="task",
+            workflow_run_id="run-id",
+            workflow_id="workflow-id",
+            reason=QueueWorkflowStartedEvent().reason,
+        )
+        pipeline._task_state.answer = "Refused"
+        state = RuntimeState(
+            workflow_id="workflow-id",
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+        )
+        monkeypatch.setattr(pipeline, "_save_message", lambda **_kwargs: None)
+        responses = list(
+            pipeline._handle_stop_event(
+                QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), graph_runtime_state=state
+            )
+        )
+        assert [response.event for response in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
+        finished = responses[-1]
+        assert isinstance(finished, WorkflowFinishStreamResponse)
+        assert finished.data.status == WorkflowExecutionStatus.STOPPED
+
     def test_handle_message_end_event_applies_output_moderation(self):
         pipeline = _make_pipeline()
+        pipeline._task_state.answer = "unsafe"
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(
@@ -1224,6 +1232,60 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["replace", "end"]
         assert saved == ["saved"]
+
+    @pytest.mark.parametrize(
+        ("saved_on_pause", "expected_timeline", "expected_payloads"),
+        [
+            (
+                False,
+                ["save", "commit", "trace"],
+                [MessageCompleted(message_id="message-id", conversation_id="conv-id")],
+            ),
+            # The resumed run saves and reports the message instead.
+            (True, [], []),
+        ],
+    )
+    def test_handle_message_end_event_reports_message_after_commit(
+        self, saved_on_pause: bool, expected_timeline: list[str], expected_payloads: list[MessageCompleted]
+    ) -> None:
+        timeline: list[str] = []
+        recorder = _TimelineTraceRecorder(timeline)
+        pipeline = _make_pipeline()
+        pipeline._application_generate_entity.trace_scope = _timeline_trace_scope(recorder)
+        pipeline._message_saved_on_pause = saved_on_pause
+        pipeline._graph_runtime_state = RuntimeState(
+            workflow_id="test-workflow",
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
+            start_at=0.0,
+        )
+        pipeline._save_message = lambda **kwargs: timeline.append("save")
+
+        with _recording_commits(timeline):
+            responses = list(pipeline._handle_advanced_chat_message_end_event(QueueAdvancedChatMessageEndEvent()))
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == expected_timeline
+        assert [event.payload for event in recorder.events] == expected_payloads
+
+    def test_handle_stop_event_reports_moderated_message_after_commit(self) -> None:
+        timeline: list[str] = []
+        recorder = _TimelineTraceRecorder(timeline)
+        pipeline = _make_pipeline()
+        pipeline._application_generate_entity.trace_scope = _timeline_trace_scope(recorder)
+        pipeline._save_message = lambda **kwargs: timeline.append("save")
+
+        with _recording_commits(timeline):
+            responses = list(
+                pipeline._handle_stop_event(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION))
+            )
+
+        assert [type(response) for response in responses] == [MessageEndStreamResponse]
+        assert timeline == ["save", "commit", "trace"]
+        assert [event.payload for event in recorder.events] == [
+            MessageCompleted(message_id="message-id", conversation_id="conv-id")
+        ]
 
     def test_dispatch_event_handles_node_exception(self):
         pipeline = _make_pipeline()

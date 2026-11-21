@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.knowledge_fs import (
@@ -25,15 +26,8 @@ from services.knowledge_fs_capability import (
 )
 
 
-def test_auditor_commits_sanitized_event_before_returning() -> None:
-    engine = create_engine("sqlite:///:memory:")
-    KnowledgeFSControlSpace.metadata.create_all(
-        engine,
-        tables=[
-            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
-            KnowledgeFSCapabilityIssuanceAudit.metadata.tables[KnowledgeFSCapabilityIssuanceAudit.__tablename__],
-        ],
-    )
+def test_auditor_commits_sanitized_event_before_returning(sqlite_engine: Engine) -> None:
+    engine = sqlite_engine
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with session_maker.begin() as session:
         control_space = KnowledgeFSControlSpace(
@@ -105,15 +99,8 @@ def test_auditor_commits_sanitized_event_before_returning() -> None:
     assert "raw-jti" not in str(audit.claims_summary)
 
 
-def test_auditor_persists_namespace_issuance_without_a_control_space_foreign_key() -> None:
-    engine = create_engine("sqlite:///:memory:")
-    KnowledgeFSControlSpace.metadata.create_all(
-        engine,
-        tables=[
-            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
-            KnowledgeFSCapabilityIssuanceAudit.metadata.tables[KnowledgeFSCapabilityIssuanceAudit.__tablename__],
-        ],
-    )
+def test_auditor_persists_namespace_issuance_without_a_control_space_foreign_key(sqlite_engine: Engine) -> None:
+    engine = sqlite_engine
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     auditor = SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor(session_maker)
     issued_at = datetime(2026, 9, 4, tzinfo=UTC)
@@ -153,17 +140,8 @@ def test_auditor_persists_namespace_issuance_without_a_control_space_foreign_key
     assert audit.claims_summary["control_space_id"] == "namespace:11111111-1111-4111-8111-111111111111"
 
 
-def test_terminal_reservation_cleanup_never_removes_an_active_fence() -> None:
-    engine = create_engine("sqlite:///:memory:")
-    KnowledgeFSControlSpace.metadata.create_all(
-        engine,
-        tables=[
-            KnowledgeFSControlSpace.metadata.tables[KnowledgeFSControlSpace.__tablename__],
-            KnowledgeFSCapabilityIssuanceReservation.metadata.tables[
-                KnowledgeFSCapabilityIssuanceReservation.__tablename__
-            ],
-        ],
-    )
+def test_terminal_reservation_cleanup_never_removes_an_active_fence(sqlite_engine: Engine) -> None:
+    engine = sqlite_engine
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     with session_maker.begin() as session:
         control_space = KnowledgeFSControlSpace(

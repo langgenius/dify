@@ -1,7 +1,9 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from collections.abc import Callable
+from types import ModuleType, SimpleNamespace
+from typing import Any, Self
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -14,12 +16,12 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_pgvecto_modules():
+def _build_fake_pgvecto_modules() -> dict[str, FakeModule]:
     pgvecto_rs = FakeModule("pgvecto_rs")
     pgvecto_rs_sqlalchemy = FakeModule("pgvecto_rs.sqlalchemy")
 
     class VECTOR(UserDefinedType):
-        def __init__(self, dim):
+        def __init__(self, dim: int) -> None:
             self.dim = dim
 
     pgvecto_rs_sqlalchemy.VECTOR = VECTOR
@@ -30,59 +32,70 @@ def _build_fake_pgvecto_modules():
 
 
 class _FakeSessionContext:
-    def __init__(self, calls, execute_results=None):
+    def __init__(
+        self, calls: list[tuple[tuple[Any, ...], dict[str, Any]]], execute_results: list[object] | None = None
+    ) -> None:
         self.calls = calls
         self.execute_results = execute_results or []
         self.execute = MagicMock(side_effect=self._execute_side_effect)
         self.commit = MagicMock()
 
-    def _execute_side_effect(self, *args, **kwargs):
+    def _execute_side_effect(self, *args: object, **kwargs: object) -> object:
         self.calls.append((args, kwargs))
         if self.execute_results:
             return self.execute_results.pop(0)
         return MagicMock()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         return None
 
 
-def _session_factory(calls, execute_results=None):
-    def _session(_client):
+def _session_factory(
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]], execute_results: list[object] | None = None
+) -> Callable[[object], _FakeSessionContext]:
+    def _session(_client) -> _FakeSessionContext:
         return _FakeSessionContext(calls=calls, execute_results=execute_results)
 
     return _session
 
 
 class _FakeBeginContext:
-    def __init__(self, session):
+    def __init__(self, session: _FakeSessionContext) -> None:
         self._session = session
 
-    def __enter__(self):
+    def __enter__(self) -> _FakeSessionContext:
         return self._session
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         return None
 
 
-def _sessionmaker_factory(calls, execute_results=None):
-    def _sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
+def _sessionmaker_factory(
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]], execute_results: list[object] | None = None
+) -> Callable[..., MagicMock]:
+    def _sessionmaker[**P](*args: P.args, **kwargs: P.kwargs) -> MagicMock:
         session = _FakeSessionContext(calls=calls, execute_results=execute_results)
         return MagicMock(begin=MagicMock(return_value=_FakeBeginContext(session)))
 
     return _sessionmaker
 
 
-def _patch_both(monkeypatch, module, calls, execute_results=None):
+def _patch_both(
+    monkeypatch: pytest.MonkeyPatch,
+    module: ModuleType,
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]],
+    execute_results: list[object] | None = None,
+) -> None:
     """Patch both Session and sessionmaker on the module with the same call tracker."""
     monkeypatch.setattr(module, "Session", _session_factory(calls, execute_results))
     monkeypatch.setattr(module, "sessionmaker", _sessionmaker_factory(calls, execute_results))
 
 
 @pytest.fixture
-def pgvecto_module(monkeypatch: pytest.MonkeyPatch):
+def pgvecto_module(monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, ModuleType]:
     for name, module in _build_fake_pgvecto_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -92,8 +105,8 @@ def pgvecto_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module), importlib.reload(collection_module)
 
 
-def _config(module, **overrides):
-    values = {
+def _config(module: ModuleType, **overrides: object) -> Any:
+    values: dict[str, object] = {
         "host": "localhost",
         "port": 5432,
         "user": "postgres",
@@ -114,7 +127,7 @@ def _config(module, **overrides):
         ("database", "", "config PGVECTO_RS_DATABASE is required"),
     ],
 )
-def test_pgvecto_config_validation(pgvecto_module, field, value, message):
+def test_pgvecto_config_validation(pgvecto_module: ModuleType, field: str, value: str | int, message: str) -> None:
     module, _ = pgvecto_module
     values = _config(module).model_dump()
     values[field] = value
@@ -123,13 +136,13 @@ def test_pgvecto_config_validation(pgvecto_module, field, value, message):
         module.PgvectoRSConfig.model_validate(values)
 
 
-def test_collection_base_has_expected_annotations(pgvecto_module):
+def test_collection_base_has_expected_annotations(pgvecto_module: ModuleType) -> None:
     _, collection_module = pgvecto_module
     annotations = collection_module.CollectionORM.__annotations__
     assert {"id", "text", "meta", "vector"} <= set(annotations)
 
 
-def test_init_get_type_and_create_delegate(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
+def test_init_get_type_and_create_delegate(pgvecto_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     module, _ = pgvecto_module
     session_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -148,7 +161,7 @@ def test_init_get_type_and_create_delegate(pgvecto_module, monkeypatch: pytest.M
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_collection_cache_and_sql_execution(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_cache_and_sql_execution(pgvecto_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     module, _ = pgvecto_module
     session_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -172,7 +185,7 @@ def test_create_collection_cache_and_sql_execution(pgvecto_module, monkeypatch: 
     module.redis_client.set.assert_called()
 
 
-def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
+def test_add_texts_get_ids_and_delete_methods(pgvecto_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     module, _ = pgvecto_module
     init_calls = []
     runtime_calls = []
@@ -185,10 +198,10 @@ def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytes
     _patch_both(monkeypatch, module, runtime_calls, execute_results=list(execute_results))
 
     class _InsertBuilder:
-        def __init__(self, table):
+        def __init__(self, table: object) -> None:
             self.table = table
 
-        def values(self, **kwargs):
+        def values(self, **kwargs: object) -> tuple[str, dict[str, object]]:
             return ("insert", kwargs)
 
     monkeypatch.setattr(module, "insert", lambda table: _InsertBuilder(table))
@@ -245,7 +258,7 @@ def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytes
     assert any("DROP TABLE IF EXISTS collection_1" in str(args[0]) for args, _ in runtime_calls)
 
 
-def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
+def test_text_exists_search_and_full_text(pgvecto_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     module, _ = pgvecto_module
     init_calls = []
     monkeypatch.setattr(module, "create_engine", MagicMock(return_value="engine"))
@@ -268,35 +281,35 @@ def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch: pytest.Mo
     assert vector.text_exists("doc-1") is False
 
     class _DistanceExpr:
-        def label(self, _name):
+        def label(self, _name) -> Self:
             return self
 
     class _VectorColumn:
-        def op(self, _operator, return_type=None):
-            def _call(_query_vector):
+        def op(self, _operator, return_type: object = None) -> Callable[[object], _DistanceExpr]:
+            def _call(_query_vector) -> _DistanceExpr:
                 return _DistanceExpr()
 
             return _call
 
     class _MetaFilter:
-        def in_(self, values):
+        def in_(self, values: object) -> tuple[str, object]:
             return ("in", values)
 
     class _MetaColumn:
-        def __getitem__(self, _item):
+        def __getitem__(self, _item) -> _MetaFilter:
             return _MetaFilter()
 
     class _Stmt:
-        def __init__(self):
+        def __init__(self) -> None:
             self.where_called = False
 
-        def limit(self, _value):
+        def limit(self, _value) -> Self:
             return self
 
-        def order_by(self, _value):
+        def order_by(self, _value) -> Self:
             return self
 
-        def where(self, _value):
+        def where(self, _value) -> Self:
             self.where_called = True
             return self
 
@@ -317,7 +330,9 @@ def test_text_exists_search_and_full_text(pgvecto_module, monkeypatch: pytest.Mo
     assert vector.search_by_full_text("hello") == []
 
 
-def test_factory_uses_existing_or_generated_collection(pgvecto_module, monkeypatch: pytest.MonkeyPatch):
+def test_factory_uses_existing_or_generated_collection(
+    pgvecto_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     module, _ = pgvecto_module
     factory = module.PGVectoRSFactory()
     dataset_with_index = Dataset(

@@ -21,7 +21,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/app/get-query-client', () => ({ getQueryClient: () => mocks.queryClient }))
 vi.mock('@/next/headers', () => ({ headers: () => mocks.headers() }))
 vi.mock('@/next/navigation', () => ({ redirect: (url: string) => mocks.redirect(url) }))
-vi.mock('@/features/account-profile/server', () => ({
+vi.mock('@/features/account-profile/server', async (importOriginal) => ({
+  redirectForBootstrapError: (
+    await importOriginal<typeof import('@/features/account-profile/server')>()
+  ).redirectForBootstrapError,
   serverUserProfileQueryOptions: () => ({
     queryKey: consoleQueryKey('account.profile.get'),
     queryFn: mocks.profile,

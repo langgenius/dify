@@ -3,6 +3,7 @@ import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/wor
 import type { FC } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -130,7 +131,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 {t(($) => $['stepTwo.qualified'], { ns: 'datasetCreation' })}
                 <Badge
                   className={cn(
-                    'ml-1 h-4.5',
+                    'ms-1 h-4.5',
                     !hasSetIndexType && indexType === IndexingType.QUALIFIED
                       ? 'border-text-accent-secondary text-text-accent-secondary'
                       : '',
@@ -139,7 +140,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
                 >
                   {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
                 </Badge>
-                <span className="ml-auto">
+                <span className="ms-auto">
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>
               </div>
@@ -171,15 +172,11 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-        <div className="mt-2 flex min-h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-          <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
-          <div className="p-1">
-            <span className="size-4 text-text-warning-secondary" />
-          </div>
-          <span className="system-xs-medium text-text-primary">
+        <Alert type="warning" className="mt-2">
+          <AlertTitle>
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}
-          </span>
-        </div>
+          </AlertTitle>
+        </Alert>
       )}
 
       {/* Economical index setting tip */}

@@ -1,8 +1,8 @@
 import type { RefObject } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { getHotkeyManager } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { basePath } from '@/utils/var'
@@ -25,40 +25,49 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
     setScale((prevScale) => Math.max(prevScale / 1.2, 0.5))
   }
 
-  useHotkey(
-    'ArrowUp',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      zoomIn()
-    },
-    {
-      target: popupRef,
-      enabled: true,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
-  useHotkey(
-    'ArrowDown',
-    (event) => {
-      if (event.defaultPrevented || event.isComposing) return
-      event.preventDefault()
-      event.stopPropagation()
-      zoomOut()
-    },
-    {
-      target: popupRef,
-      enabled: true,
-      ignoreInputs: true,
-      requireReset: false,
-      preventDefault: false,
-      stopPropagation: false,
-    },
-  )
+  const handleZoomIn = useEffectEvent(zoomIn)
+  const handleZoomOut = useEffectEvent(zoomOut)
+
+  useEffect(() => {
+    const target = popupRef.current
+    if (!target) return
+    // React hotkeys run at document, beyond DialogPopup's arrow propagation boundary.
+    const manager = getHotkeyManager()
+    const zoomInHotkey = manager.register(
+      'ArrowUp',
+      (event) => {
+        if (event.defaultPrevented || event.isComposing) return
+        event.preventDefault()
+        event.stopPropagation()
+        handleZoomIn()
+      },
+      {
+        target,
+        ignoreInputs: true,
+        preventDefault: false,
+        stopPropagation: false,
+      },
+    )
+    const zoomOutHotkey = manager.register(
+      'ArrowDown',
+      (event) => {
+        if (event.defaultPrevented || event.isComposing) return
+        event.preventDefault()
+        event.stopPropagation()
+        handleZoomOut()
+      },
+      {
+        target,
+        ignoreInputs: true,
+        preventDefault: false,
+        stopPropagation: false,
+      },
+    )
+    return () => {
+      zoomInHotkey.unregister()
+      zoomOutHotkey.unregister()
+    }
+  }, [popupRef])
 
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
   const zoomInLabel = t(($) => $['operation.zoomIn'], { ns: 'common' })
@@ -103,7 +112,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
             <button
               type="button"
               aria-label={zoomOutLabel}
-              className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute inset-e-24 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={zoomOut}
             >
               <span aria-hidden className="i-ri-zoom-out-line size-4 text-gray-500" />
@@ -118,7 +127,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
             <button
               type="button"
               aria-label={zoomInLabel}
-              className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute inset-e-16 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={zoomIn}
             >
               <span aria-hidden className="i-ri-zoom-in-line size-4 text-gray-500" />

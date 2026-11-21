@@ -26,7 +26,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
-import MobileOperationDropdown from './header/mobile-operation-dropdown'
+import MobileOperationMenu from './header/mobile-operation-menu'
 import Operation from './header/operation'
 import Sidebar from './sidebar'
 
@@ -103,7 +103,7 @@ const HeaderInMobile = () => {
           <div className="flex grow items-center justify-center">
             {!currentConversationId && (
               <>
-                <AppIcon className="mr-2" size="tiny" icon={appData?.site} />
+                <AppIcon className="me-2" size="tiny" icon={appData?.site} />
                 <div className="truncate system-md-semibold text-text-secondary">
                   {appData?.site.title}
                 </div>
@@ -121,7 +121,7 @@ const HeaderInMobile = () => {
               />
             )}
           </div>
-          <MobileOperationDropdown
+          <MobileOperationMenu
             handleResetChat={handleNewConversation}
             handleViewChatSettings={() => setShowChatSettings(true)}
             hideViewChatSettings={inputsForms.length < 1}
@@ -187,7 +187,7 @@ const HeaderInMobile = () => {
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
+              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

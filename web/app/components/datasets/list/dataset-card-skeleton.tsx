@@ -9,7 +9,7 @@ const DatasetCardSkeleton = ({ count = 6 }: DatasetCardSkeletonProps) => (
     {Array.from({ length: count }, (_, index) => (
       <li
         key={index}
-        className="h-47.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs shadow-shadow-shadow-3"
+        className="h-41.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs shadow-shadow-shadow-3"
       >
         <SkeletonContainer className="h-full">
           <SkeletonRow>

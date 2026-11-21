@@ -5,12 +5,7 @@ import type { RetrievalEvidence } from './model'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
 import { createContext, use, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +15,8 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
 
@@ -41,7 +37,7 @@ function ScorePill({ score }: { score: number }) {
     <span className="relative inline-flex h-5 min-w-5 shrink-0 items-center justify-center gap-0.75 overflow-hidden rounded-md border border-components-progress-bar-border bg-util-colors-blue-brand-blue-brand-50 px-1.25 text-util-colors-blue-brand-blue-brand-700">
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 border-r-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
+        className="absolute inset-y-0 inset-s-0 border-e-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
         style={{ width: `${normalized * 100}%` }}
       />
       <span className="relative system-2xs-medium">
@@ -97,8 +93,11 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
           revision: citation.revision,
         }),
       )
-    } catch {
-      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+      )
     } finally {
       setIsResolving(false)
     }
@@ -195,7 +194,7 @@ export function EvidenceCard({
         )}
       </div>
       {!unavailable && (
-        <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
+        <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 ps-3 pe-2">
           <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
             <DocumentFileIcon name={evidence.documentName ?? evidence.title} size="sm" />
           </span>
@@ -500,22 +499,22 @@ export function QualityActions({
   return (
     <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-regular pt-4 pb-1">
       {badCaseAvailable && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={<Button loading={pending} variant={noResults ? 'secondary' : 'ghost'} />}
           >
             <span aria-hidden className="i-ri-thumb-down-line size-4" />
             {t(($) => $['retrievalTest.makeBadCase'], { ns: 'knowledgeRetrieval' })}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" className="w-44">
-            <DropdownMenuItem onClick={() => void onBadCase('low-score')}>
+          </MenuTrigger>
+          <MenuContent side="top" className="w-44">
+            <MenuItem onClick={() => void onBadCase('low-score')}>
               {t(($) => $['qualityPage.reasonValues.lowScore'], { ns: 'knowledgeSpace' })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void onBadCase('retrieval-miss')}>
+            </MenuItem>
+            <MenuItem onClick={() => void onBadCase('retrieval-miss')}>
               {t(($) => $['qualityPage.reasonValues.retrievalMiss'], { ns: 'knowledgeSpace' })}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       )}
       {!noResults && (
         <Button loading={pending} variant="secondary" onClick={() => void onGolden()}>

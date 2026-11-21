@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import { createInstance } from 'i18next'
 import { StrictMode } from 'react'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
+import { I18nClientProvider } from '@/app/components/provider/i18n'
 import enCommon from '@/i18n/locales/en-US/common.json'
 import enShare from '@/i18n/locales/en-US/share.json'
 import AppAccessBoundary from '../boundary'
@@ -15,6 +16,7 @@ vi.mock('@/i18n/load-resource', () => ({
   }),
 }))
 vi.mock('@/next/navigation', () => ({
+  useServerInsertedHTML: () => {},
   usePathname: () => window.location.pathname,
   useSearchParams: () => new URLSearchParams(window.location.search),
 }))
@@ -42,6 +44,7 @@ describe('IP denial page boundary', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it.each([
@@ -128,14 +131,18 @@ describe('IP denial page boundary', () => {
   })
 
   it('starts a new visit after leaving for a console page with no public requests', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['ar-TN'])
     window.history.replaceState({}, '', '/chat/app')
     const previousScope = captureAppAccessScope()
     const application = (
-      <I18nextProvider i18n={i18n}>
+      <I18nClientProvider
+        locale="en-US"
+        resource={{ 'en-US': { share: enShare, common: enCommon } }}
+      >
         <AppAccessBoundary>
           <p>Current application</p>
         </AppAccessBoundary>
-      </I18nextProvider>
+      </I18nClientProvider>
     )
     const { rerender } = render(application)
     act(() => {
@@ -144,16 +151,26 @@ describe('IP denial page boundary', () => {
     expect(
       await screen.findByRole('heading', { name: enShare['appNotAccessible.title'] }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: enShare['appNotAccessible.title'] }).closest('[dir]'),
+    ).toHaveAttribute('dir', 'rtl')
+    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.dir).toBe('ltr')
 
     window.history.replaceState({}, '', '/apps')
     rerender(
-      <I18nextProvider i18n={i18n}>
+      <I18nClientProvider
+        locale="en-US"
+        resource={{ 'en-US': { share: enShare, common: enCommon } }}
+      >
         <AppAccessBoundary>
           <p>Console</p>
         </AppAccessBoundary>
-      </I18nextProvider>,
+      </I18nClientProvider>,
     )
     expect(screen.getByText('Console')).toBeInTheDocument()
+    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.dir).toBe('ltr')
 
     window.history.replaceState({}, '', '/chat/app')
     rerender(application)

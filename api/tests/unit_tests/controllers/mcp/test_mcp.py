@@ -610,6 +610,45 @@ class TestMcpCases:
         assert len(snapshots) == 2
 
     @staticmethod
+    def test_execution_session_survives_a_commit_inside_message_processing(
+        app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # AdvancedChatAppGenerator commits the caller's session on a first conversation and
+        # keeps using it; a sessions.begin() context manager turns that into InvalidRequestError.
+        app_model = _app(module.AppMode.ADVANCED_CHAT, workflow_variables=[])
+        server = _server(module.AppMCPServerStatus.ACTIVE)
+        db.session.add_all([app_model, server])
+        db.session.commit()
+        api = module.MCPAppApi()
+
+        def process(
+            _mcp_request: module.mcp_types.ClientRequest | module.mcp_types.ClientNotification,
+            _request_id: int | str | None,
+            fresh_app: module.App,
+            _server: module.AppMCPServer,
+            _form: list[module.VariableEntity],
+            session: Session,
+            _protocol: str,
+        ) -> Response:
+            fresh_app.description = "committed by generation"
+            session.commit()
+            session.refresh(fresh_app)
+            fresh_app.name = "changed after the inner commit"
+            return Response("ok")
+
+        monkeypatch.setattr(api, "_process_mcp_message", process)
+        fake_payload({"jsonrpc": "2.0", "method": "ping", "id": 1})
+        with app.test_request_context("/"):
+            response = api.post("server-1")
+
+        assert response.status_code == 200
+        with sessionmaker(db.engine)() as session:
+            persisted = session.get(App, app_model.id)
+            assert persisted is not None
+            assert persisted.description == "committed by generation"
+            assert persisted.name == "changed after the inner commit"
+
+    @staticmethod
     @pytest.mark.usefixtures("app")
     def test_identity_query_does_not_accept_a_server_bound_to_another_tenants_app() -> None:
         app_model = _app(module.AppMode.CHAT)

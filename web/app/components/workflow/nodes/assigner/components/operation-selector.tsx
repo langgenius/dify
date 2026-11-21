@@ -3,16 +3,16 @@ import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import { getOperationItems, isOperationItem } from '../utils'
 
@@ -52,8 +52,8 @@ function OperationSelector({
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         disabled={disabled}
         className={cn(
           'group flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 data-popup-open:bg-state-base-hover-alt',
@@ -79,14 +79,14 @@ function OperationSelector({
             disabled && 'text-components-input-text-placeholder',
           )}
         />
-      </DropdownMenuTrigger>
+      </MenuTrigger>
 
-      <DropdownMenuContent align="start" className={cn('w-35', popupClassName)}>
-        <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>
+      <MenuContent align="start" className={cn('w-35', popupClassName)}>
+        <MenuGroup>
+          <MenuGroupLabel>
             {t(($) => $['nodes.assigner.operations.title'], { ns: 'workflowLogic' })}
-          </DropdownMenuGroupLabel>
-          <DropdownMenuRadioGroup
+          </MenuGroupLabel>
+          <MenuRadioGroup
             value={value}
             onValueChange={(nextValue) => {
               const item = items.find((item) => isOperationItem(item) && item.value === nextValue)
@@ -95,14 +95,9 @@ function OperationSelector({
           >
             {items.map((item) =>
               !isOperationItem(item) ? (
-                <DropdownMenuSeparator key="divider" />
+                <MenuSeparator key="divider" />
               ) : (
-                <DropdownMenuRadioItem
-                  key={item.value}
-                  className="py-1"
-                  value={item.value}
-                  closeOnClick
-                >
+                <MenuRadioItem key={item.value} className="py-1" value={item.value} closeOnClick>
                   <div className="flex min-h-5 grow items-center gap-1 px-1">
                     <span className="flex grow system-sm-medium text-text-secondary">
                       {t(($) => $[`nodes.assigner.operations.${item.name}`], {
@@ -110,14 +105,14 @@ function OperationSelector({
                       })}
                     </span>
                   </div>
-                  <DropdownMenuRadioItemIndicator />
-                </DropdownMenuRadioItem>
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
               ),
             )}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </MenuRadioGroup>
+        </MenuGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

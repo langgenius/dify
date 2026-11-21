@@ -119,7 +119,7 @@ export default function ResourceSelector({
     return (
       <div
         key={key}
-        className={`relative mx-2 my-0.5 flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-state-base-hover ${index < candidates.length - 1 ? 'after:pointer-events-none after:absolute after:inset-x-2 after:-bottom-px after:border-b after:border-divider-subtle' : ''}`}
+        className={`relative mx-2 my-0.5 flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-start hover:bg-state-base-hover ${index < candidates.length - 1 ? 'after:pointer-events-none after:absolute after:inset-x-2 after:-bottom-px after:border-b after:border-divider-subtle' : ''}`}
       >
         <span
           aria-hidden
@@ -206,7 +206,7 @@ export default function ResourceSelector({
                 value="all"
                 className="rounded-lg border-b-0 px-3 py-1.5 system-sm-medium data-active:bg-state-base-active"
               >
-                {t(($) => $['resourceAccessToken.tabAll'], { ns: 'accountSettings' })}
+                {t(($) => $['resourceAccessToken.tabAllTypes'], { ns: 'accountSettings' })}
               </TabsTab>
               <TabsTab
                 value="app"

@@ -1,0 +1,514 @@
+import type * as React from 'react'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import {
+  Menu,
+  MenuClear,
+  MenuContent,
+  MenuEmpty,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuItem,
+  MenuLinkItem,
+  MenuList,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuSubmenu,
+  MenuSubmenuTrigger,
+  MenuTrigger,
+} from '../index'
+
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
+
+function FilterableMenu({ items = ['Rename workspace', 'Manage billing'] }: { items?: string[] }) {
+  return (
+    <MenuFilterProvider>
+      <Menu open>
+        <MenuTrigger>Workspace actions</MenuTrigger>
+        <MenuContent>
+          <MenuInputGroup>
+            <span aria-hidden="true" data-testid="search-icon">
+              🔍
+            </span>
+            <MenuInput aria-label="Filter actions" />
+            <MenuClear data-testid="clear" />
+          </MenuInputGroup>
+          <MenuEmpty>No actions match</MenuEmpty>
+          <MenuList>
+            {items.map((item) => (
+              <MenuItem key={item}>{item}</MenuItem>
+            ))}
+          </MenuList>
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
+  )
+}
+
+describe('menu wrapper', () => {
+  describe('filtering', () => {
+    it('should focus the filter input when the input group surface is pressed', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await expect.element(input).toHaveFocus()
+      ;(input.element() as HTMLInputElement).blur()
+      await expect.element(input).not.toHaveFocus()
+
+      await userEvent.click(screen.getByTestId('search-icon'))
+
+      await expect.element(input).toHaveFocus()
+    })
+
+    it('should draw the input ring from the highlighted state instead of focus', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+      // A ring is a box shadow with a spread; the group's shadow stays spread-free while unringed.
+      const ringSpread = () =>
+        /0px 0px 0px 2px/.test(getComputedStyle(input.element().parentElement!).boxShadow)
+
+      await expect.element(input).toHaveFocus()
+      // Base UI owns when the input is highlighted; this checks what the group draws for each state.
+      input.element().removeAttribute('data-highlighted')
+      await expect.poll(ringSpread).toBe(false)
+
+      input.element().setAttribute('data-highlighted', '')
+      await expect.poll(ringSpread).toBe(true)
+    })
+
+    it('should keep the input in view when the available height is smaller than the list', async () => {
+      const originalViewport = { height: window.innerHeight, width: window.innerWidth }
+      await page.viewport(800, 260)
+
+      try {
+        const screen = await render(
+          <FilterableMenu
+            items={Array.from({ length: 30 }, (_, index) => `Action ${index + 1}`)}
+          />,
+        )
+        const popup = screen.getByRole('dialog')
+        const list = screen.getByRole('menu')
+        const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+        await expect.element(input).toHaveFocus()
+        await userEvent.keyboard('{ArrowDown}'.repeat(30))
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'Action 30' }))
+          .toHaveAttribute('data-highlighted')
+
+        await expect
+          .poll(() => popup.element().scrollHeight <= popup.element().clientHeight)
+          .toBe(true)
+        await expect
+          .poll(() => list.element().scrollHeight > list.element().clientHeight)
+          .toBe(true)
+        await expect
+          .poll(() => {
+            const popupRect = popup.element().getBoundingClientRect()
+            const inputRect = input.element().getBoundingClientRect()
+            return inputRect.top >= popupRect.top && inputRect.bottom <= popupRect.bottom
+          })
+          .toBe(true)
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
+    it('should reset the query from the clear control and keep focus in the input', async () => {
+      const screen = await renderWithSafeViewport(<FilterableMenu />)
+      const input = screen.getByRole('searchbox', { name: 'Filter actions' })
+
+      await userEvent.fill(input, 'bill')
+      await expect.element(screen.getByRole('menuitem', { name: 'Manage billing' })).toBeVisible()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByTestId('clear'))
+
+      await expect.element(input).toHaveValue('')
+      await expect.element(input).toHaveFocus()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Rename workspace' }))
+        .toBeInTheDocument()
+    })
+  })
+
+  describe('MenuContent', () => {
+    it('should inherit bottom-center positioning when props are omitted', async () => {
+      const screen = await renderWithSafeViewport(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuItem>Content action</MenuItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'center')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Content action' }))
+        .toBeInTheDocument()
+    })
+
+    it('should apply custom placement when custom positioning props are provided', async () => {
+      const screen = await renderWithSafeViewport(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent side="top" align="start" sideOffset={12} alignOffset={-3}>
+            <MenuItem>Custom content</MenuItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'top')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Custom content' }))
+        .toBeInTheDocument()
+    })
+
+    it('should forward popup attributes and handlers directly', async () => {
+      const handlePopupClick = vi.fn()
+
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent id="dropdown-content-popup" onClick={handlePopupClick}>
+            <MenuItem>Passthrough content</MenuItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await screen.getByRole('menu').click()
+
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'dropdown-content-popup')
+      expect(handlePopupClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should support explicit anatomy when the positioner needs custom props', async () => {
+      const screen = await renderWithSafeViewport(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner data-testid="custom-positioner" side="top" align="start">
+              <MenuPopup>
+                <MenuItem>Anatomy action</MenuItem>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>,
+      )
+
+      await expect
+        .element(screen.getByTestId('custom-positioner'))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Anatomy action' }))
+        .toBeInTheDocument()
+    })
+  })
+
+  describe('MenuContent inside a submenu', () => {
+    it('should place sub-content inline-end-start when side and align are omitted', async () => {
+      await page.viewport(1024, 768)
+      const screen = await renderWithSafeViewport(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
+              <MenuContent>
+                <MenuItem>Sub action</MenuItem>
+              </MenuContent>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
+      )
+
+      const submenu = screen.getByRole('menu', { name: 'More actions' })
+      const submenuTrigger = screen.getByRole('menuitem', { name: 'More actions' })
+
+      await expect.element(submenu).toHaveAttribute('data-side', 'inline-end')
+      await expect.element(submenu).toHaveAttribute('data-align', 'start')
+      // Left-to-right, so the submenu sits to the right of its trigger.
+      await expect
+        .poll(
+          () =>
+            submenu.element().getBoundingClientRect().left >=
+            submenuTrigger.element().getBoundingClientRect().right - 1,
+        )
+        .toBe(true)
+      await expect.element(screen.getByRole('menuitem', { name: 'Sub action' })).toBeInTheDocument()
+    })
+
+    it('should apply custom placement and forward popup props for sub-content', async () => {
+      const handlePopupClick = vi.fn()
+
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
+              <MenuContent
+                side="right"
+                align="end"
+                sideOffset={6}
+                alignOffset={2}
+                id="dropdown-sub-popup"
+                onClick={handlePopupClick}
+              >
+                <MenuItem>Custom sub action</MenuItem>
+              </MenuContent>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await screen.getByRole('menu', { name: 'More actions' }).click()
+
+      await expect
+        .element(screen.getByRole('menu', { name: 'More actions' }))
+        .toHaveAttribute('data-side', 'right')
+      await expect
+        .element(screen.getByRole('menu', { name: 'More actions' }))
+        .toHaveAttribute('data-align', 'end')
+      await expect
+        .element(screen.getByRole('menu', { name: 'More actions' }))
+        .toHaveAttribute('id', 'dropdown-sub-popup')
+      expect(handlePopupClick).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('MenuSubmenuTrigger', () => {
+    it('should render submenu trigger content when trigger children are provided', async () => {
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuSubmenu open>
+              <MenuSubmenuTrigger>Trigger item</MenuSubmenuTrigger>
+            </MenuSubmenu>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Trigger item' }))
+        .toBeInTheDocument()
+    })
+
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant on submenu trigger when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
+
+        const screen = await render(
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuSubmenu open>
+                <MenuSubmenuTrigger
+                  variant={variant}
+                  aria-label="submenu action"
+                  id={`submenu-trigger-${variant}`}
+                  onClick={handleClick}
+                >
+                  Trigger item
+                </MenuSubmenuTrigger>
+              </MenuSubmenu>
+            </MenuContent>
+          </Menu>,
+        )
+
+        await screen.getByRole('menuitem', { name: 'submenu action' }).click()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'submenu action' }))
+          .toHaveAttribute('id', `submenu-trigger-${variant}`)
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'submenu action' }))
+          .toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
+  })
+
+  describe('MenuItem', () => {
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
+
+        const screen = await render(
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuItem
+                variant={variant}
+                aria-label="menu action"
+                id={`menu-item-${variant}`}
+                onClick={handleClick}
+              >
+                Item label
+              </MenuItem>
+            </MenuContent>
+          </Menu>,
+        )
+
+        await screen.getByRole('menuitem', { name: 'menu action' }).click()
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'menu action' }))
+          .toHaveAttribute('id', `menu-item-${variant}`)
+        await expect
+          .element(screen.getByRole('menuitem', { name: 'menu action' }))
+          .toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
+  })
+
+  describe('MenuLinkItem', () => {
+    it('should render as anchor and keep href/target attributes when link props are provided', async () => {
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem href="https://example.com/docs" target="_blank" rel="noopener noreferrer">
+              Docs
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'Docs' }).element()
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+
+    it('should keep link semantics and not leak closeOnClick prop when closeOnClick is false', async () => {
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem
+              href="https://example.com/docs"
+              closeOnClick={false}
+              aria-label="docs link"
+            >
+              Docs
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
+      expect(link).not.toHaveAttribute('closeOnClick')
+    })
+
+    it('should preserve link semantics when render prop uses a custom anchor element', async () => {
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuLinkItem render={<a href="/account" />} aria-label="account link">
+              Account settings
+            </MenuLinkItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      const link = screen.getByRole('menuitem', { name: 'account link' }).element()
+      expect(link.tagName.toLowerCase()).toBe('a')
+      expect(link).toHaveAttribute('href', '/account')
+      expect(link).toHaveTextContent('Account settings')
+    })
+
+    it.each(['default', 'destructive'] as const)(
+      'should remain interactive and set data-variant when variant is %s',
+      async (variant) => {
+        const handleClick = vi.fn()
+
+        const screen = await render(
+          <Menu open>
+            <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+            <MenuContent>
+              <MenuLinkItem
+                variant={variant}
+                href="https://example.com/docs"
+                aria-label="docs link"
+                id={`menu-link-${variant}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  handleClick(event)
+                }}
+              >
+                Docs
+              </MenuLinkItem>
+            </MenuContent>
+          </Menu>,
+        )
+
+        await screen.getByRole('menuitem', { name: 'docs link' }).click()
+
+        const link = screen.getByRole('menuitem', { name: 'docs link' }).element()
+        expect(link.tagName.toLowerCase()).toBe('a')
+        expect(link).toHaveAttribute('id', `menu-link-${variant}`)
+        expect(link).toHaveAttribute('data-variant', variant)
+        expect(handleClick).toHaveBeenCalledTimes(1)
+      },
+    )
+  })
+
+  describe('MenuSeparator', () => {
+    it('should keep surrounding menu rows rendered when separator is placed between items', async () => {
+      const screen = await render(
+        <Menu open>
+          <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
+          <MenuContent>
+            <MenuItem>First action</MenuItem>
+            <MenuSeparator />
+            <MenuItem>Second action</MenuItem>
+          </MenuContent>
+        </Menu>,
+      )
+
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'First action' }))
+        .toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('menuitem', { name: 'Second action' }))
+        .toBeInTheDocument()
+      expect(screen.getByRole('separator').elements()).toHaveLength(1)
+    })
+  })
+})
+
+it('resolves submenu popup classes with the popup state', async () => {
+  const screen = await render(
+    <Menu open>
+      <MenuTrigger>Open audit menu</MenuTrigger>
+      <MenuContent>
+        <MenuSubmenu open>
+          <MenuSubmenuTrigger>More audit actions</MenuSubmenuTrigger>
+          <MenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+            <MenuItem>Audit action</MenuItem>
+          </MenuContent>
+        </MenuSubmenu>
+      </MenuContent>
+    </Menu>,
+  )
+
+  await expect
+    .element(screen.getByRole('menu', { name: 'More audit actions' }))
+    .toHaveStyle({ opacity: '0.5' })
+})

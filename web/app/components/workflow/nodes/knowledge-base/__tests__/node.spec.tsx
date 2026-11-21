@@ -1,47 +1,19 @@
 import type { KnowledgeBaseNodeType } from '../types'
-import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { zModelWithProviderEntityResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { screen } from '@testing-library/react'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import Node from '../node'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
-
-const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
-      >()
-    return {
-      ...actual,
-      useLanguage: () => 'en_US',
-    }
-  },
-)
-
-vi.mock('../hooks/use-embedding-model-status', () => ({
-  useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
-}))
-
-const createModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
-  model: 'text-embedding-3-large',
-  label: { en_US: 'Text Embedding 3 Large', zh_Hans: 'Text Embedding 3 Large' },
-  model_type: ModelTypeEnum.textEmbedding,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: {},
-  load_balancing_enabled: false,
-  ...overrides,
-})
 
 const createNodeData = (
   overrides: Partial<CommonNodeType<KnowledgeBaseNodeType>> = {},
@@ -64,63 +36,64 @@ const createNodeData = (
   ...overrides,
 })
 
+function renderNode(
+  data = createNodeData(),
+  model = createCatalogModelFixture({
+    model: 'text-embedding-3-large',
+    label: { en_US: 'Text Embedding 3 Large' },
+    model_type: 'text-embedding',
+  }),
+) {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient, [createModelCatalogFixture({ models: [model] })])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+      input: { params: { provider: 'openai' } },
+    }),
+    {
+      data: [
+        zModelWithProviderEntityResponse.parse({
+          ...model,
+          provider: createDefaultModelFixture({ model_type: 'text-embedding' }).provider,
+        }),
+      ],
+    },
+  )
+  return renderWithConsoleQuery(<Node id="knowledge-base-1" data={data} />, { queryClient })
+}
+
 describe('KnowledgeBaseNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-
-    mockUseEmbeddingModelStatus.mockReturnValue({
-      providerMeta: undefined,
-      modelProvider: undefined,
-      currentModel: createModelItem(),
-      status: 'active',
-    })
-  })
-
   // Embedding model row should mirror the selector status labels.
   describe('Embedding Model Status', () => {
-    it('should render active embedding model label when the model is available', () => {
-      render(<Node id="knowledge-base-1" data={createNodeData()} />)
+    it.each([
+      { status: ModelStatusEnum.active, label: 'Text Embedding 3 Large' },
+      {
+        status: ModelStatusEnum.noConfigure,
+        label: 'modelProvider.modelProvider.selector.configureRequired',
+      },
+      { status: ModelStatusEnum.disabled, label: 'modelProvider.modelProvider.selector.disabled' },
+    ])('renders $status from the selected model in the provider catalog', ({ status, label }) => {
+      renderNode(
+        createNodeData(),
+        createCatalogModelFixture({
+          model: 'text-embedding-3-large',
+          model_type: 'text-embedding',
+          label: { en_US: 'Text Embedding 3 Large' },
+          status,
+        }),
+      )
 
-      expect(screen.getByText('Text Embedding 3 Large')).toBeInTheDocument()
-    })
-
-    it('should render configure required when embedding model status requires configuration', () => {
-      mockUseEmbeddingModelStatus.mockReturnValue({
-        providerMeta: undefined,
-        modelProvider: undefined,
-        currentModel: createModelItem({ status: ModelStatusEnum.noConfigure }),
-        status: 'configure-required',
-      })
-
-      render(<Node id="knowledge-base-1" data={createNodeData()} />)
-
-      expect(
-        screen.getByText('modelProvider.modelProvider.selector.configureRequired'),
-      ).toBeInTheDocument()
-    })
-
-    it('should render disabled when embedding model status is disabled', () => {
-      mockUseEmbeddingModelStatus.mockReturnValue({
-        providerMeta: undefined,
-        modelProvider: undefined,
-        currentModel: createModelItem({ status: ModelStatusEnum.disabled }),
-        status: 'disabled',
-      })
-
-      render(<Node id="knowledge-base-1" data={createNodeData()} />)
-
-      expect(screen.getByText('modelProvider.modelProvider.selector.disabled')).toBeInTheDocument()
+      expect(screen.getByText(label)).toBeInTheDocument()
     })
 
     it('should render incompatible when embedding model status is incompatible', () => {
-      mockUseEmbeddingModelStatus.mockReturnValue({
-        providerMeta: undefined,
-        modelProvider: undefined,
-        currentModel: undefined,
-        status: 'incompatible',
-      })
-
-      render(<Node id="knowledge-base-1" data={createNodeData()} />)
+      renderNode(
+        createNodeData(),
+        createCatalogModelFixture({
+          model: 'another-model',
+          model_type: 'text-embedding',
+        }),
+      )
 
       expect(
         screen.getByText('modelProvider.modelProvider.selector.incompatible'),
@@ -128,21 +101,11 @@ describe('KnowledgeBaseNode', () => {
     })
 
     it('should render configure model prompt when no embedding model is selected', () => {
-      mockUseEmbeddingModelStatus.mockReturnValue({
-        providerMeta: undefined,
-        modelProvider: undefined,
-        currentModel: undefined,
-        status: 'empty',
-      })
-
-      render(
-        <Node
-          id="knowledge-base-1"
-          data={createNodeData({
-            embedding_model: undefined,
-            embedding_model_provider: undefined,
-          })}
-        />,
+      renderNode(
+        createNodeData({
+          embedding_model: undefined,
+          embedding_model_provider: undefined,
+        }),
       )
 
       expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
@@ -151,84 +114,49 @@ describe('KnowledgeBaseNode', () => {
 
   describe('Validation warnings', () => {
     it('should render a warning banner when chunk structure is missing', () => {
-      render(
-        <Node
-          id="knowledge-base-1"
-          data={createNodeData({
-            chunk_structure: undefined,
-          })}
-        />,
+      renderNode(
+        createNodeData({
+          chunk_structure: undefined,
+        }),
       )
 
       expect(screen.getByText(/chunkIsRequired/i)).toBeInTheDocument()
     })
 
     it('should render a warning value for the chunks input row when no chunk variable is selected', () => {
-      render(
-        <Node
-          id="knowledge-base-1"
-          data={createNodeData({
-            index_chunk_variable_selector: [],
-          })}
-        />,
+      renderNode(
+        createNodeData({
+          index_chunk_variable_selector: [],
+        }),
       )
 
       expect(screen.getByText(/chunksVariableIsRequired/i)).toBeInTheDocument()
     })
 
     it('should render a warning value for retrieval settings when reranking is incomplete', async () => {
-      render(
-        <Node
-          id="knowledge-base-1"
-          data={createNodeData({
-            retrieval_model: {
-              top_k: 3,
-              score_threshold_enabled: false,
-              score_threshold: 0.5,
-              search_method: RetrievalSearchMethodEnum.semantic,
-              reranking_enable: true,
-            },
-          })}
-        />,
+      renderNode(
+        createNodeData({
+          retrieval_model: {
+            top_k: 3,
+            score_threshold_enabled: false,
+            score_threshold: 0.5,
+            search_method: RetrievalSearchMethodEnum.semantic,
+            reranking_enable: true,
+          },
+        }),
       )
 
       expect(await screen.findByText(/rerankingModelIsRequired/i)).toBeInTheDocument()
     })
 
     it('should hide the embedding model row when the index method is not qualified', () => {
-      render(
-        <Node
-          id="knowledge-base-1"
-          data={createNodeData({
-            indexing_technique: IndexMethodEnum.ECONOMICAL,
-          })}
-        />,
+      renderNode(
+        createNodeData({
+          indexing_technique: IndexMethodEnum.ECONOMICAL,
+        }),
       )
 
       expect(screen.queryByText('Text Embedding 3 Large')).not.toBeInTheDocument()
     })
   })
-})
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.models.modelTypes.byModelType.get': async ({
-        params,
-      }: {
-        params: { model_type: string }
-      }) => ({
-        data:
-          params.model_type === ModelTypeEnum.textEmbedding
-            ? [{ provider: 'openai', models: [createModelItem()] }]
-            : [],
-      }),
-      'workspaces.current.modelProviders.byProvider.models.get': async () => ({
-        data: [createModelItem()],
-      }),
-    }),
-  }
 })

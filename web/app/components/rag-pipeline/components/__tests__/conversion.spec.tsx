@@ -168,9 +168,7 @@ describe('Conversion', () => {
     await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.convert' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    await waitFor(() =>
-      expect(mockToast.error).toHaveBeenCalledWith('datasetPipeline.conversion.errorMessage'),
-    )
+    await waitFor(() => expect(mockToast.error).toHaveBeenCalledWith('Request failed'))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     expect(QueryClient.prototype.invalidateQueries).not.toHaveBeenCalled()
   })

@@ -30,7 +30,7 @@ import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
     case FormTypeEnum.secretInput:
-      return { type: 'password', autoComplete: 'new-password' }
+      return { type: 'password', autoComplete: 'off' }
     default:
       return { type: 'text' }
   }
@@ -314,13 +314,13 @@ const BaseField = ({
             </span>
           )}
           {required && !hasCustomLabel && (
-            <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
+            <span aria-hidden="true" className="ms-1 text-text-destructive-secondary">
               *
             </span>
           )}
           {translatedTooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipTrigger aria-labelledby={labelId} className="ms-0.5" />
               <InfotipContent aria-labelledby={labelId} className="w-50">
                 {translatedTooltip}
               </InfotipContent>
@@ -480,7 +480,7 @@ const BaseField = ({
                       )}
                     >
                       {formSchema.showRadioUI && (
-                        <Radio className="mr-2" value={option.value} disabled={disabled} />
+                        <Radio className="me-2" value={option.value} disabled={disabled} />
                       )}
                       {!formSchema.showRadioUI && (
                         <Radio className="sr-only" value={option.value} disabled={disabled} />
@@ -548,7 +548,7 @@ const BaseField = ({
           target="_blank"
         >
           <span className="break-all">{translatedHelp}</span>
-          <div className="ml-1 i-ri-external-link-line size-3 shrink-0" />
+          <div className="ms-1 i-ri-external-link-line size-3 shrink-0" />
         </a>
       )}
     </>

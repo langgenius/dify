@@ -62,12 +62,15 @@ describe('useExportSnippetMutation', () => {
       expect(exported).toBe('kind: snippet')
     })
 
-    expect(mockExportSnippet).toHaveBeenCalledWith({
-      params: { snippet_id: 'snippet-1' },
-      query: {
-        include_secret: 'false',
-        workflow_id: 'workflow-1',
+    expect(mockExportSnippet).toHaveBeenCalledWith(
+      {
+        params: { snippet_id: 'snippet-1' },
+        query: {
+          include_secret: 'false',
+          workflow_id: 'workflow-1',
+        },
       },
-    })
+      { context: undefined },
+    )
   })
 })

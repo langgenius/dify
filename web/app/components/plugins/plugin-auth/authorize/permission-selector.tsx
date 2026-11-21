@@ -2,13 +2,13 @@ import type { CredentialPermission } from '@/models/permission'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -37,12 +37,12 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
   const selectedPermissionLabel = isOnlyMe ? onlyMeLabel : allTeamMembersLabel
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         aria-label={`${permissionLabel}: ${selectedPermissionLabel}`}
         disabled={disabled}
         className={cn(
-          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
         )}
       >
@@ -73,14 +73,14 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
           aria-hidden="true"
           className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-data-disabled/permission-trigger:text-components-input-text-placeholder! group-data-popup-open/permission-trigger:text-text-secondary"
         />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-(--anchor-width) max-w-(--available-width)">
-        <DropdownMenuRadioGroup<CredentialPermission>
+      </MenuTrigger>
+      <MenuContent align="start" className="w-(--anchor-width) max-w-(--available-width)">
+        <MenuRadioGroup<CredentialPermission>
           value={permission}
           onValueChange={onChange}
           aria-label={permissionLabel}
         >
-          <DropdownMenuRadioItem<CredentialPermission>
+          <MenuRadioItem<CredentialPermission>
             aria-label={onlyMeLabel}
             value={PermissionLevel.onlyMe}
             closeOnClick
@@ -93,9 +93,9 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {onlyMeLabel}
             </div>
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<CredentialPermission>
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+          <MenuRadioItem<CredentialPermission>
             value={PermissionLevel.allTeamMembers}
             closeOnClick
             className="touch-manipulation"
@@ -106,11 +106,11 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {allTeamMembersLabel}
             </div>
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

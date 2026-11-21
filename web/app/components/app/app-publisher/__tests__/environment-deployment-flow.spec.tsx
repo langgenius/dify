@@ -172,6 +172,7 @@ function createDeployment({
       enable_api: true,
       enable_site: true,
     },
+    deployment_id: 'deployment-staging',
     deployment: {
       current_version: deployed ? currentVersion : undefined,
       deployed_at: Math.floor(Date.now() / 1000),
@@ -610,6 +611,8 @@ describe('PublisherEnvironmentFlow', () => {
         'href',
         '/app/app-1/deploy?environment=staging',
       )
+      expect(screen.getByRole('link', { name: 'Access Point' })).toHaveAttribute('target', '_blank')
+      expect(screen.getByRole('link', { name: 'Deploy' })).toHaveAttribute('target', '_blank')
     },
   )
 

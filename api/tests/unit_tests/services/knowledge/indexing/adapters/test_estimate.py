@@ -1,11 +1,13 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.entities.knowledge_entities import PreviewDetail
+from core.app.apps.exc import ModerationInvocationError
+from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
@@ -14,18 +16,23 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from models.dataset import Dataset, DatasetProcessRule
 from models.enums import CreatorUserRole, ProcessRuleMode
 from models.model import UploadFile
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.knowledge.indexing.adapters.estimate import (
     IndexingEstimateAdapter,
     SQLAlchemyProcessRuleReader,
 )
 from services.knowledge.indexing.estimate import (
+    IndexingEstimateApplicationService,
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
 from services.knowledge.resource_scope import DatasetRef
+from services.moderation_service import ModerationPhase
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -198,6 +205,7 @@ def test_estimate_selects_dataset_embedding_and_rejects_foreign_tenant(
 @pytest.mark.parametrize(
     ("processor_error", "expected_error"),
     [
+        (CredentialRefreshUnavailableError(), CredentialRefreshUnavailableError),
         (LLMBadRequestError("provider unavailable"), IndexingEstimateProviderUnavailableError),
         (ProviderTokenNotInitError("provider unavailable"), IndexingEstimateProviderUnavailableError),
         (PluginDaemonClientSideError("provider unavailable"), IndexingEstimateProviderUnavailableError),
@@ -212,10 +220,41 @@ def test_estimate_translates_infrastructure_errors(
     adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory)
     with (
         patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory", side_effect=processor_error),
-        pytest.raises(expected_error, match="provider unavailable|processor failed"),
+        pytest.raises(expected_error, match="provider unavailable|processor failed|temporarily unavailable"),
     ):
         adapter.run(
             "workspace-1",
             [ExtractSetting(datasource_type=DatasourceType.WEBSITE)],
             {"mode": "automatic", "rules": {}},
         )
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_estimate_adapter_and_application_preserve_moderation_errors(
+    sqlite_session_factory: sessionmaker[Session], phase: ModerationPhase, unavailable: bool
+) -> None:
+    model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+
+    class BoundEstimateAdapter(IndexingEstimateAdapter):
+        @override
+        def _estimate(
+            self,
+            tenant_id: str,
+            extract_settings: list[ExtractSetting],
+            processing_rule: Mapping[str, object],
+            doc_form: str | None,
+            doc_language: str,
+            dataset_id: str | None,
+            indexing_technique: str,
+        ) -> IndexingEstimate:
+            model.invoke_llm([UserPromptMessage(content="content")], stream=False)
+            raise AssertionError("Moderation must stop this estimate")
+
+    with pytest.raises(ModerationInvocationError) as rejected:
+        BoundEstimateAdapter(session_factory=sqlite_session_factory).run("test-tenant-id", [], {"mode": "automatic"})
+    assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+    with pytest.raises(ModerationInvocationError) as translated:
+        IndexingEstimateApplicationService._translate_error(rejected.value)
+    assert translated.value is rejected.value
+    assert provider.invocations == (0 if phase == "input" else 1)

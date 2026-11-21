@@ -93,6 +93,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
     completedUploadCount,
     discardAllStagedFiles,
     discardStagedFile,
+    failures: stagedUploadFailures,
     progress: stagedUploadProgress,
     resetProgress,
     stageFiles,
@@ -186,14 +187,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
 
   const checkUploadQuota = useCallback(
     async (isActive?: () => boolean) => {
-      if (deploymentEdition !== 'CLOUD') return true
       const failureKey = await getKnowledgeFsUploadQuotaFailure(queryClient)
       if (isActive && !isActive()) return false
       if (!failureKey) return true
       toast.error(tError(($) => $[failureKey]))
       return false
     },
-    [deploymentEdition, queryClient, tError],
+    [queryClient, tError],
   )
 
   const uploadFiles = useCallback(
@@ -225,7 +225,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         return false
       }
       try {
-        const uploaded = await uploadStagedFiles(uploadableFiles, async () => {
+        const outcome = await uploadStagedFiles(uploadableFiles, async () => {
           if (!(await checkUploadQuota())) return false
           if (
             (await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready'
@@ -234,7 +234,12 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           await stageFiles(uploadableFiles)
           return true
         })
-        if (!uploaded) return false
+        if (outcome === 'canceled') return false
+        if (outcome === 'partial') {
+          // The form stays open and explains each rejected file where it is listed.
+          if (completedUploadCount(uploadableFiles)) refreshDocuments()
+          return false
+        }
         const exclusionDetails = formatExclusionDetails(localExclusions)
         if (localExclusions.length)
           toast.warning(
@@ -294,7 +299,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const onFilesAdded = useCallback(
     async (files: File[]) => {
       try {
-        await stageFiles(files, deploymentEdition === 'CLOUD' ? checkUploadQuota : undefined)
+        await stageFiles(files, checkUploadQuota)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
         const failureKey = await knowledgeFsRequestFailureMessageKey(error)
@@ -302,7 +307,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
         throw error
       }
     },
-    [checkUploadQuota, deploymentEdition, stageFiles, t, tError],
+    [checkUploadQuota, stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(
@@ -317,7 +322,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   return (
     <section
       className={cn(
-        'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
+        'relative flex min-h-full w-full shrink-0 flex-col gap-4 px-6 pt-3',
         bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
       )}
       onDragEnter={(event) => {
@@ -367,6 +372,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           fileSizeLimitMb={fileSizeLimitMb}
           supportBatchUpload={supportBatchUpload}
           initialFiles={formInitialFiles}
+          uploadFailures={stagedUploadFailures}
           uploadProgress={stagedUploadProgress}
           uploading={uploading}
           onCancel={cancel}

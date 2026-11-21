@@ -52,20 +52,12 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsrs": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
-  },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "24.22.1",
-      "onFail": "download"
-    }
   },
   "engines": {
     "node": ">=18.0.0"

@@ -17,9 +17,10 @@ from controllers.web.error import (
     WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from enums import WebAppAccessMode
 from extensions.ext_application_services import ApplicationServices
+from libs.exception import BaseHTTPException
 from libs.passport import PassportService
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
@@ -79,7 +80,7 @@ class TestAppParameterApi:
     ) -> None:
         calls: list[str] = []
 
-        def get_public_parameters(app_id: str):
+        def get_public_parameters(app_id: str) -> AppParametersDict:
             calls.append(app_id)
             return get_parameters_from_feature_dict(
                 features_dict={"opening_statement": "Hello"},
@@ -233,7 +234,7 @@ class TestAppAccessMode:
         real_application_services: ApplicationServices,
         monkeypatch: pytest.MonkeyPatch,
         service_error: Exception,
-        http_error: type[Exception],
+        http_error: type[BaseHTTPException],
         expected_data: dict[str, object],
         app: Flask,
     ) -> None:

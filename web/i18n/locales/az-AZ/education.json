@@ -1,13 +1,14 @@
 {
+  "activateFailed": "Təhsil endirimini aktivləşdirə bilmədik. Cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər və ya bu e-poçt artıq uyğun deyil.",
   "applied.activeSubscription.description": "Aktiv abunəliyiniz var. Abunəliyinizin vaxtı bitdikdən sonra təhsil endirimindən istifadə edə bilərsiniz. Abunəliyinizi <stripeLink>Stripe</stripeLink> üzərindən təsdiqləyin.",
   "applied.noPaymentPermission.description": "Bu iş sahəsində ödəniş icazəniz yoxdur. Təhsil endirimindən istifadə etmək üçün ödənişləri idarə edə bildiyiniz iş sahəsinə keçin.",
   "applied.noPaymentPermission.returnHome": "Dify-a qayıt",
   "applied.step1.description": "Təhsil endirimi üçün uğurla müraciət etdiniz.",
   "applied.step2.description": "Təhsil endirimindən istifadə etmək istədiyiniz iş sahəsini seçin.",
   "currentSigned": "Hazırda daxil olduğunuz hesab:",
-  "educationPricingConfirm.cancel": "Cari planı saxla",
+  "educationPricingConfirm.cancel": "Endirimsiz davam et",
   "educationPricingConfirm.continue": "İllik peşəkar plana keç",
-  "educationPricingConfirm.description": "Təhsil endirimi yalnız illik peşəkar plana aiddir. Cari planınızı saxlasanız, endirim tətbiq edilməyəcək.",
+  "educationPricingConfirm.description": "{{selected_plan_name}} ({{selected_billing_cycle}}) seçmisiniz. Təhsil endirimindən istifadə etmək üçün illik Professional planını seçin və ya seçdiyiniz planla endirimsiz davam edin.",
   "educationPricingConfirm.title": "Seçdiyiniz plan təhsil endirimini dəstəkləmir",
   "emailLabel": "Cari e-poçt ünvanınız",
   "form.schoolName.noResults": "Uyğun təhsil müəssisəsi tapılmadı. Yenə də təhsil müəssisəsinin rəsmi adını daxil edə bilərsiniz.",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "Qarşıdakı tədris ili üçün yeni kupon əldə etmək məqsədilə təhsil statusunuzu indi yenidən təsdiqləyin. Kuponu hesabınıza əlavə edəcəyik və planınızı növbəti dəfə yüksəldərkən ondan istifadə edə biləcəksiniz.",
   "notice.stillInEducation.isAboutToExpire": "Qarşıdakı tədris ili üçün yeni kupon əldə etmək məqsədilə təhsil statusunuzu indi yenidən təsdiqləyin. Kupon hesabınızda saxlanılacaq və abunəliyiniz növbəti dəfə yenilənəndə istifadəyə hazır olacaq.",
   "notice.stillInEducation.title": "Hələ də təhsil alır və ya təhsil müəssisəsində işləyirsiniz?",
-  "planNotSupportEducationDiscount": "Təhsil endirimi üçün uyğun deyil",
+  "planNotSupportEducationDiscount": "Bu planda təhsil endirimi yoxdur",
   "rejectContent": "Təəssüf ki, bu e-poçt ünvanı ilə təsdiqlənmiş təhsil statusu almaq hüququnuz yoxdur və buna görə Dify peşəkar planı üçün xüsusi 100% endirim kuponunu əldə edə bilməzsiniz.",
   "rejectTitle": "Dify-da təhsil statusunuzun təsdiqi rədd edilib",
   "submit": "Göndər",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "xüsusi 100% endirim kuponu",
   "toVerifiedTip.end": "(Dify peşəkar planı üçün).",
   "toVerifiedTip.front": "Artıq təsdiqlənmiş təhsil statusu almaq hüququnuz var. Prosesi tamamlamaq üçün təhsil məlumatlarınızı aşağıya daxil edin. Əldə edəcəyiniz üstünlük:",
-  "useEducationDiscount": "Təhsil endirimindən istifadə et"
+  "tooManyAttempts": "Həddindən çox cəhd. Zəhmət olmasa, sonra yenidən cəhd edin.",
+  "useEducationDiscount": "Təhsil endirimindən istifadə et",
+  "verifyFailed": "Təhsil statusunuzu təsdiqləyə bilmədik. Bu yaxınlarda təsdiqləmisinizsə, cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər. Əks halda, zəhmət olmasa, sonra yenidən cəhd edin."
 }

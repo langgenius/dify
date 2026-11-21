@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy.orm import Session
 
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from libs.helper import to_timestamp
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository

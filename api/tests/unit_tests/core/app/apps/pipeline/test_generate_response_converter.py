@@ -13,7 +13,7 @@ from core.app.entities.task_entities import (
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
-def test_convert_blocking_full_and_simple_response():
+def test_convert_blocking_full_and_simple_response() -> None:
     blocking = WorkflowAppBlockingResponse(
         task_id="task",
         workflow_run_id="run",
@@ -35,11 +35,14 @@ def test_convert_blocking_full_and_simple_response():
     simple = WorkflowAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
 
     assert full == simple
+    assert isinstance(full, dict)
     assert full["workflow_run_id"] == "run"
-    assert full["data"]["status"] == WorkflowExecutionStatus.SUCCEEDED
+    full_data = full["data"]
+    assert isinstance(full_data, dict)
+    assert full_data["status"] == WorkflowExecutionStatus.SUCCEEDED
 
 
-def test_convert_stream_full_response():
+def test_convert_stream_full_response() -> None:
     def stream() -> Generator[AppStreamResponse]:
         yield WorkflowAppStreamResponse(
             stream_response=PingStreamResponse(task_id="t"),
@@ -53,11 +56,12 @@ def test_convert_stream_full_response():
     result = list(WorkflowAppGenerateResponseConverter.convert_stream_full_response(stream()))
 
     assert result[0] == "ping"
+    assert isinstance(result[1], dict)
     assert result[1]["event"] == "error"
     assert result[1]["code"] == "invalid_param"
 
 
-def test_convert_stream_simple_response_node_ignore_details():
+def test_convert_stream_simple_response_node_ignore_details() -> None:
     node_start = NodeStartStreamResponse(
         task_id="t",
         workflow_run_id="run",
@@ -105,7 +109,13 @@ def test_convert_stream_simple_response_node_ignore_details():
 
     result = list(WorkflowAppGenerateResponseConverter.convert_stream_simple_response(stream()))
 
+    assert isinstance(result[0], dict)
     assert result[0]["event"] == "node_started"
-    assert result[0]["data"]["inputs"] is None
+    start_data = result[0]["data"]
+    assert isinstance(start_data, dict)
+    assert start_data["inputs"] is None
+    assert isinstance(result[1], dict)
     assert result[1]["event"] == "node_finished"
-    assert result[1]["data"]["inputs"] is None
+    finish_data = result[1]["data"]
+    assert isinstance(finish_data, dict)
+    assert finish_data["inputs"] is None

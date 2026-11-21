@@ -1,5 +1,8 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import type { DocumentToRename } from '../../rename-document-form'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -33,9 +36,8 @@ type DocumentTableRowProps = {
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
-  selectedIds: string[]
-  onSelectedIdChange: (ids: string[]) => void
-  onShowRenameModal: (doc: LocalDoc) => void
+  renameDialog: DialogHandle<DocumentToRename>
+  onDelete: (row: HTMLTableRowElement | null) => void
   onUpdate: () => void
 }
 
@@ -55,15 +57,15 @@ const DocumentTableRow = React.memo(
     isGeneralMode,
     isQAMode,
     embeddingAvailable,
-    selectedIds,
-    onSelectedIdChange,
-    onShowRenameModal,
+    renameDialog,
     onUpdate,
+    onDelete,
   }: DocumentTableRowProps) => {
     const { t } = useTranslation(['datasetDocuments', 'datasetHitTesting'])
     const { formatTime } = useTimestamp()
     const router = useRouter()
     const searchParams = useSearchParams()
+    const rowRef = React.useRef<HTMLTableRowElement>(null)
     const documentNameId = React.useId()
     const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
     const { data: currentUserId } = useSuspenseQuery({
@@ -98,28 +100,25 @@ const DocumentTableRow = React.memo(
       e.stopPropagation()
     }, [])
 
-    const handleRenameClick = useCallback(
-      (e: React.MouseEvent) => {
-        e.stopPropagation()
-        onShowRenameModal(doc)
-      },
-      [doc, onShowRenameModal],
-    )
-
     return (
       <tr
+        ref={rowRef}
         className="h-8 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
         onClick={handleRowClick}
       >
-        <td className="text-left align-middle text-xs text-text-tertiary">
+        <td className="text-start align-middle text-xs text-text-tertiary">
           {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Only stops child control events from reaching row navigation. */}
-          <div className="flex items-center" onClick={stopPropagation} onKeyDown={stopPropagation}>
-            <Checkbox className="mr-2 shrink-0" value={doc.id} aria-labelledby={documentNameId} />
+          <div
+            className="flex items-center gap-2"
+            onClick={stopPropagation}
+            onKeyDown={stopPropagation}
+          >
+            <Checkbox className="shrink-0" value={doc.id} aria-labelledby={documentNameId} />
             {index + 1}
           </div>
         </td>
         <td>
-          <div className="group mr-6 flex max-w-115 items-center focus-within:mr-0 hover:mr-0">
+          <div className="group me-6 flex max-w-115 items-center focus-within:me-0 hover:me-0">
             <div className="flex shrink-0 items-center">
               <DocumentSourceIcon doc={doc} fileType={fileType} />
             </div>
@@ -138,21 +137,29 @@ const DocumentTableRow = React.memo(
               <TooltipContent>{doc.name}</TooltipContent>
             </Tooltip>
             {doc.summary_index_status && (
-              <div className="ml-1 hidden shrink-0 group-hover:flex">
+              <div className="ms-1 hidden shrink-0 group-hover:flex">
                 <SummaryStatus status={doc.summary_index_status} />
               </div>
             )}
             {datasetACLCapabilities.canEdit && (
-              <div className="w-0 shrink-0 overflow-hidden opacity-0 group-focus-within:ml-auto group-focus-within:w-6 group-focus-within:overflow-visible group-focus-within:opacity-100 group-hover:ml-auto group-hover:w-6 group-hover:overflow-visible group-hover:opacity-100">
+              <div className="w-0 shrink-0 overflow-hidden opacity-0 group-focus-within:ms-auto group-focus-within:w-6 group-focus-within:overflow-visible group-focus-within:opacity-100 group-hover:ms-auto group-hover:w-6 group-hover:overflow-visible group-hover:opacity-100">
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <IconButton
-                        aria-label={t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
-                        onClick={handleRenameClick}
-                      >
-                        <span aria-hidden="true" className="i-ri-edit-line size-4" />
-                      </IconButton>
+                      <DialogTrigger
+                        handle={renameDialog}
+                        payload={{ id: doc.id, name: doc.name }}
+                        onClick={stopPropagation}
+                        render={
+                          <IconButton
+                            aria-label={t(($) => $['list.table.rename'], {
+                              ns: 'datasetDocuments',
+                            })}
+                          >
+                            <span aria-hidden="true" className="i-ri-edit-line size-4" />
+                          </IconButton>
+                        }
+                      />
                     }
                   />
                   <TooltipContent>
@@ -178,13 +185,12 @@ const DocumentTableRow = React.memo(
         </td>
         <td>
           {isDocumentDisplayStatus(doc.display_status) && (
-            <StatusItem status={doc.display_status} />
+            <StatusItem status={doc.display_status} errorMessage={doc.error ?? undefined} />
           )}
         </td>
         <td>
           <Operations
-            selectedIds={selectedIds}
-            onSelectedIdChange={onSelectedIdChange}
+            onRename={() => renameDialog.openWithPayload({ id: doc.id, name: doc.name })}
             embeddingAvailable={embeddingAvailable}
             datasetId={datasetId}
             detail={pick(doc, [
@@ -193,10 +199,12 @@ const DocumentTableRow = React.memo(
               'archived',
               'id',
               'data_source_type',
+              'data_source_info',
               'doc_form',
               'display_status',
             ])}
             onUpdate={onUpdate}
+            onDelete={() => onDelete(rowRef.current)}
             canEdit={datasetACLCapabilities.canEdit}
             canDownload={datasetACLCapabilities.canDocumentDownload}
             canDelete={datasetACLCapabilities.canDeleteFile}

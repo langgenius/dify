@@ -3,15 +3,25 @@
 import type { DatasetListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useEffect, useRef } from 'react'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useMutation } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { DeleteDatasetConfirmation } from '../delete-dataset-confirmation'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 import { useInvalidDatasetList } from './use-dataset-list'
 
-const DATASET_GRID_CLASS_NAME =
-  'grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3'
+const DATASET_GRID_CLASS_NAME = cn('content-start gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)
 
 type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DatasetListResponse, number>>
 
@@ -45,6 +55,17 @@ const Datasets = ({
   stepByStepTourCardTarget,
 }: Props) => {
   const { t } = useTranslation(['common', 'dataset'])
+  const listRef = useRef<HTMLDivElement>(null)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<{
+      id: string
+      adjacentFocusTargets: HTMLElement[]
+      fallbackFocus: { current: HTMLElement | null }
+    }>(),
+  )
+  const deletion = useMutation(
+    consoleQuery.datasets.byDatasetId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
@@ -74,7 +95,14 @@ const Datasets = ({
     !!datasetList?.pages.some(({ data }) => data.length > 0)
 
   return (
-    <div aria-busy={isFetching} className="relative grow px-8 pt-2">
+    <div
+      ref={listRef}
+      tabIndex={-1}
+      role="region"
+      aria-label={t(($) => $.knowledge, { ns: 'dataset' })}
+      aria-busy={isFetching}
+      className="relative grow px-8 pt-2 focus-visible:outline-2 focus-visible:outline-state-accent-solid"
+    >
       {showDatasetSkeleton ? (
         <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
           <ul aria-hidden className={DATASET_GRID_CLASS_NAME}>
@@ -94,6 +122,15 @@ const Datasets = ({
               <DatasetCard
                 key={dataset.id}
                 dataset={dataset}
+                onDelete={(item) =>
+                  deleteDialog.openWithPayload({
+                    id: dataset.id,
+                    adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                      sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                    ),
+                    fallbackFocus: { current: null },
+                  })
+                }
                 onSuccess={invalidDatasetList}
                 onOpenTagManagement={onOpenTagManagement}
                 stepByStepTourActionMenuHighlightPart={
@@ -112,6 +149,51 @@ const Datasets = ({
       )}
       {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
       {isFetchingNextPage && <LoadingPlaceholder />}
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
+            {payload && (
+              <DeleteDatasetConfirmation
+                datasetId={payload.id}
+                isPending={deletion.isPending}
+                error={
+                  deletion.isError ? t(($) => $['api.actionFailed'], { ns: 'common' }) : undefined
+                }
+                onConfirm={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { dataset_id: payload.id } },
+                    {
+                      onSuccess: () => {
+                        payload.fallbackFocus.current = listRef.current
+                        deleteDialog.close()
+                      },
+                    },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
       <div ref={anchorRef} className="h-0" />
     </div>
   )

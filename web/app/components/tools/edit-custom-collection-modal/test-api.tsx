@@ -1,4 +1,5 @@
 'use client'
+import type { ApiProviderSchemaType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type {
   Credential,
@@ -20,13 +21,14 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiSettings2Line } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { AuthType } from '@/app/components/tools/types'
 import { getPluginLanguage } from '@/i18n/metadata'
-import { testAPIAvailable } from '@/service/tools'
+import { consoleQuery } from '@/service/console'
 import ConfigCredentials from './config-credentials'
 
 type Props = Readonly<{
@@ -45,13 +47,16 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
   const [tempCredential, setTempCredential] = React.useState<Credential>(
     customCollection.credentials,
   )
-  const [testing, setTesting] = useState(false)
   const [result, setResult] = useState<string>('')
   const { operation_id: toolName, parameters } = tool
   const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
-  const handleTest = async () => {
+  const { mutate: testApi, isPending: testing } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.api.test.pre.post.mutationOptions({
+      onSuccess: (response) => setResult(response.error || response.result || ''),
+    }),
+  )
+  const handleTest = () => {
     if (testing) return
-    setTesting(true)
     // clone test schema
     const credentials = JSON.parse(JSON.stringify(tempCredential)) as Credential
     if (credentials.auth_type === AuthType.none) {
@@ -63,13 +68,11 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
       provider_name: customCollection.provider,
       tool_name: toolName,
       credentials,
-      schema_type: customCollection.schema_type,
+      schema_type: customCollection.schema_type as ApiProviderSchemaType,
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = (await testAPIAvailable(data)) as any
-    setResult(res.error || res.result)
-    setTesting(false)
+    testApi({ body: data })
   }
 
   return (
@@ -88,15 +91,15 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
           <DrawerViewport>
             <DrawerPopup
               className={cn(
-                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-150 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+                'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-150 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-divider-subtle',
                 positionCenter
                   ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%-300px))]'
                   : 'data-[swipe-direction=right]:right-2',
               )}
             >
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <DrawerContent>
                 <div className="shrink-0 border-b border-divider-regular py-4">
-                  <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                  <div className="flex h-6 items-center justify-between ps-6 pe-5">
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {`${t(($) => $['test.title'], { ns: 'tools' })}  ${toolName}`}
                     </DrawerTitle>
@@ -116,7 +119,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                   className="min-h-0 flex-1 overflow-y-auto px-6 pt-2"
                   onSubmit={(event) => {
                     event.preventDefault()
-                    void handleTest()
+                    handleTest()
                   }}
                 >
                   <div className="space-y-4">
@@ -146,10 +149,10 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                         <table className="w-full body-xs-regular text-text-secondary">
                           <thead className="text-text-tertiary uppercase">
                             <tr className="border-b border-divider-regular">
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.parameters'], { ns: 'tools' })}
                               </th>
-                              <th className="p-2 pl-3 font-medium">
+                              <th className="p-2 ps-3 font-medium">
                                 {t(($) => $['test.value'], { ns: 'tools' })}
                               </th>
                             </tr>
@@ -160,7 +163,7 @@ const TestApi: FC<Props> = ({ positionCenter, customCollection, tool, onHide }) 
                                 key={index}
                                 className="border-b border-divider-regular last:border-0"
                               >
-                                <td className="py-2 pr-2.5 pl-3">
+                                <td className="py-2 ps-3 pe-2.5">
                                   <label htmlFor={`${parameterId}-${item.name}`}>
                                     {item.label[language]}
                                   </label>

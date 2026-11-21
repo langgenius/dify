@@ -1,20 +1,24 @@
-from unittest.mock import ANY, MagicMock, Mock, patch
+import json
+from collections.abc import Callable
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.mcp.types import Tool as MCPTool
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
+    ApiProviderSchemaType,
     ToolParameter,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
 )
 from models.account import Account
-from models.tools import MCPToolProvider
+from models.tools import ApiToolProvider, MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
@@ -24,13 +28,13 @@ from tests.tool_fixtures import make_runtime_tool
 class TestMcpToolsTransformCases:
     @staticmethod
     @pytest.fixture
-    def mock_user():
+    def mock_user() -> Account:
         """Provides a real mapped account returned by the provider lookup."""
         return Account(name="Test User", email="user@example.com")
 
     @staticmethod
     @pytest.fixture
-    def mock_provider(mock_user, mocker: MockerFixture):
+    def mock_provider(mock_user: Account, mocker: MockerFixture) -> MCPToolProvider:
         """Provides a mock MCPToolProvider with a loaded user."""
         provider = MCPToolProvider(
             name="Test Provider",
@@ -46,7 +50,7 @@ class TestMcpToolsTransformCases:
 
     @staticmethod
     @pytest.fixture
-    def mock_provider_no_user(mocker: MockerFixture):
+    def mock_provider_no_user(mocker: MockerFixture) -> MCPToolProvider:
         """Provides a mock MCPToolProvider with no user."""
         provider = MCPToolProvider(
             name="Test Provider",
@@ -62,7 +66,7 @@ class TestMcpToolsTransformCases:
 
     @staticmethod
     @pytest.fixture
-    def mock_provider_full(mock_user, mocker: MockerFixture):
+    def mock_provider_full(mock_user: Account, mocker: MockerFixture) -> MCPToolProvider:
         """Provides a fully configured mock MCPToolProvider for detailed tests."""
         provider = MCPToolProvider(
             name="Test MCP Provider",
@@ -77,22 +81,14 @@ class TestMcpToolsTransformCases:
             sse_read_timeout=300,
         )
         provider.id = "provider-id-123"
-        provider.provider_icon = "icon.png"
-        provider.masked_server_url = "https://*****.com/mcp"
-        provider.masked_headers = {"Authorization": "Bearer *****"}
-        provider.decrypted_headers = {"Authorization": "Bearer secret-token"}
-
-        # Mock timestamp
-        mock_updated_at = Mock()
-        mock_updated_at.timestamp.return_value = 1234567890
-        provider.updated_at = mock_updated_at
+        provider.updated_at = datetime.fromtimestamp(1234567890, UTC)
 
         mocker.patch.object(provider, "load_user", return_value=mock_user)
         return provider
 
     @staticmethod
     @pytest.fixture
-    def sample_mcp_tools():
+    def sample_mcp_tools() -> dict[str, MCPTool]:
         """Provides sample MCP tools for testing."""
         return {
             "simple": MCPTool(
@@ -119,7 +115,7 @@ class TestMcpToolsTransformCases:
     class TestMCPToolTransform:
         """Test cases for MCP tool transformation methods."""
 
-        def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider):
+        def test_mcp_tool_to_user_tool_with_none_description(self, mock_provider: MCPToolProvider) -> None:
             """Test that mcp_tool_to_user_tool handles None description correctly."""
             # Create MCP tools with None description
             tools = [
@@ -159,7 +155,7 @@ class TestMcpToolsTransformCases:
             assert result[1].description.en_US == ""
             assert result[1].description.zh_Hans == ""
 
-        def test_mcp_tool_to_user_tool_with_description(self, mock_provider):
+        def test_mcp_tool_to_user_tool_with_description(self, mock_provider: MCPToolProvider) -> None:
             """Test that mcp_tool_to_user_tool handles normal description correctly."""
             # Create MCP tools with description
             tools = [
@@ -180,7 +176,7 @@ class TestMcpToolsTransformCases:
             assert result[0].description.en_US == "This is a test tool that does something useful"
             assert result[0].description.zh_Hans == "This is a test tool that does something useful"
 
-        def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user):
+        def test_mcp_tool_to_user_tool_with_no_user(self, mock_provider_no_user: MCPToolProvider) -> None:
             """Test that mcp_tool_to_user_tool handles None user correctly."""
             # Create MCP tool
             tools = [MCPTool(name="tool1", description="Test tool", inputSchema={"type": "object", "properties": {}})]
@@ -192,7 +188,9 @@ class TestMcpToolsTransformCases:
             assert len(result) == 1
             assert result[0].author == "Anonymous"
 
-        def test_mcp_tool_to_user_tool_with_complex_schema(self, mock_provider, sample_mcp_tools):
+        def test_mcp_tool_to_user_tool_with_complex_schema(
+            self, mock_provider: MCPToolProvider, sample_mcp_tools: dict[str, MCPTool]
+        ) -> None:
             """Test that mcp_tool_to_user_tool correctly converts complex input schemas."""
             # Use complex tool from fixtures
             tools = [sample_mcp_tools["complex"]]
@@ -207,7 +205,7 @@ class TestMcpToolsTransformCases:
             # The actual parameter conversion is handled by convert_mcp_schema_to_parameter
             # which should be tested separately
 
-        def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self):
+        def test_convert_mcp_schema_to_parameter_preserves_anyof_object_type(self) -> None:
             """Nullable object schemas should keep the object parameter type."""
             schema = {
                 "type": "object",
@@ -226,7 +224,7 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.OBJECT
             assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-        def test_convert_mcp_schema_to_parameter_preserves_oneof_object_type(self):
+        def test_convert_mcp_schema_to_parameter_preserves_oneof_object_type(self) -> None:
             """Nullable oneOf object schemas should keep the object parameter type."""
             schema = {
                 "type": "object",
@@ -245,7 +243,7 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.OBJECT
             assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-        def test_convert_mcp_schema_to_parameter_handles_null_type(self):
+        def test_convert_mcp_schema_to_parameter_handles_null_type(self) -> None:
             """Schemas with only a null type should fall back to string."""
             schema = {
                 "type": "object",
@@ -264,7 +262,7 @@ class TestMcpToolsTransformCases:
             assert "null_prop_list" in param_map
             assert param_map["null_prop_list"].type == ToolParameter.ToolParameterType.STRING
 
-        def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self):
+        def test_convert_mcp_schema_to_parameter_preserves_allof_object_type_with_multiple_object_items(self) -> None:
             """Property-level allOf with multiple object items should still resolve to object."""
             schema = {
                 "type": "object",
@@ -298,7 +296,7 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.OBJECT
             assert result[0].input_schema == schema["properties"]["config"]
 
-        def test_convert_mcp_schema_to_parameter_preserves_allof_object_type(self):
+        def test_convert_mcp_schema_to_parameter_preserves_allof_object_type(self) -> None:
             """Composed property schemas should keep the object parameter type."""
             schema = {
                 "type": "object",
@@ -320,7 +318,7 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.OBJECT
             assert result[0].input_schema == schema["properties"]["retrieval_model"]
 
-        def test_convert_mcp_schema_to_parameter_limits_recursive_schema_depth(self):
+        def test_convert_mcp_schema_to_parameter_limits_recursive_schema_depth(self) -> None:
             """Self-referential composed schemas should stop resolving after the configured max depth."""
             recursive_property: dict[str, object] = {"description": "Recursive schema"}
             recursive_property["anyOf"] = [recursive_property]
@@ -338,7 +336,9 @@ class TestMcpToolsTransformCases:
             assert result[0].type == ToolParameter.ToolParameterType.STRING
             assert result[0].input_schema is None
 
-        def test_mcp_provider_to_user_provider_minimal_response(self, mock_provider_full, mocker: MockerFixture):
+        def test_mcp_provider_to_user_provider_minimal_response(
+            self, mock_provider_full: MCPToolProvider, mocker: MockerFixture
+        ) -> None:
             """Test mcp_provider_to_user_provider with a response that omits optional fields."""
             # Set tools data with null description
             mock_provider_full.tools = '[{"name": "tool1", "description": null, "inputSchema": {}}]'
@@ -353,14 +353,14 @@ class TestMcpToolsTransformCases:
                 "provider_icon": "icon.png",
                 "masked_headers": {"Authorization": "Bearer *****"},
                 "updated_at": 1234567890,
-                "labels": [],
+                "labels": list[str](),
                 "author": "Test User",
                 "description": I18nObject(
                     en_US="Test MCP Provider Description", zh_Hans="Test MCP Provider Description"
                 ),
                 "icon": "icon.png",
                 "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-                "masked_credentials": {},
+                "masked_credentials": dict[str, str](),
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
@@ -376,7 +376,9 @@ class TestMcpToolsTransformCases:
             assert len(result.tools) == 1
             assert result.tools[0].description.en_US == ""  # Should handle None description
 
-        def test_mcp_provider_to_user_provider_full_response(self, mock_provider_full, mocker: MockerFixture):
+        def test_mcp_provider_to_user_provider_full_response(
+            self, mock_provider_full: MCPToolProvider, mocker: MockerFixture
+        ) -> None:
             """Test mcp_provider_to_user_provider with configuration and sensitive fields."""
             # Set tools data with description
             mock_provider_full.tools = '[{"name": "tool1", "description": "Tool description", "inputSchema": {}}]'
@@ -391,7 +393,7 @@ class TestMcpToolsTransformCases:
                 "provider_icon": "icon.png",
                 "masked_headers": {"Authorization": "Bearer *****"},
                 "updated_at": 1234567890,
-                "labels": [],
+                "labels": list[str](),
                 "configuration": {"timeout": "30", "sse_read_timeout": "300"},
                 "original_headers": {"Authorization": "Bearer secret-token"},
                 "author": "Test User",
@@ -400,7 +402,7 @@ class TestMcpToolsTransformCases:
                 ),
                 "icon": "icon.png",
                 "label": I18nObject(en_US="Test MCP Provider", zh_Hans="Test MCP Provider"),
-                "masked_credentials": {},
+                "masked_credentials": dict[str, str](),
             }
             mocker.patch.object(mock_provider_full, "to_entity", return_value=mock_entity)
 
@@ -417,7 +419,9 @@ class TestMcpToolsTransformCases:
             assert len(result.tools) == 1
             assert result.tools[0].description.en_US == "Tool description"
 
-        def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(self, mock_provider):
+        def test_mcp_tool_to_user_tool_falls_back_to_name_when_title_is_null(
+            self, mock_provider: MCPToolProvider
+        ) -> None:
             """Tools where the server returned ``title: null`` should fall back to the tool name.
 
             Regression test for langgenius/dify#42453: Exa's MCP server returns
@@ -450,7 +454,7 @@ class TestMcpToolsTransformCases:
             assert result[1].label.en_US == "get_content"
             assert result[1].label.zh_Hans == "get_content"
 
-        def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider):
+        def test_mcp_tool_to_user_tool_uses_title_when_provided(self, mock_provider: MCPToolProvider) -> None:
             """When the server provides a non-null title, it should be used for the label."""
             tools = [
                 MCPTool(
@@ -486,11 +490,31 @@ def _parameter(
     )
 
 
+def _api_provider(session: Session, auth_type: str) -> ApiToolProvider:
+    user = Account(name="Test User", email="user@example.com")
+    session.add(user)
+    session.flush()
+    provider = ApiToolProvider(
+        name="Test API Provider",
+        icon='{"background": "#000", "content": "A"}',
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id=user.id,
+        tenant_id="00000000-0000-0000-0000-000000000002",
+        description="Test API tool provider",
+        tools_str="[]",
+        credentials_str=json.dumps({"auth_type": auth_type}),
+    )
+    session.add(provider)
+    session.commit()
+    return provider
+
+
 class TestToolsTransformServiceCases:
     class TestToolTransformService:
         """Test cases for ToolTransformService.convert_tool_entity_to_api_entity method"""
 
-        def test_convert_tool_with_parameter_override(self):
+        def test_convert_tool_with_parameter_override(self) -> None:
             """Test that runtime parameters correctly override base parameters"""
             base_param1 = _parameter("param1", "Base Param 1")
             base_param2 = _parameter("param2", "Base Param 2")
@@ -519,7 +543,7 @@ class TestToolsTransformServiceCases:
             assert original_param is not None
             assert original_param.label.en_US == "Base Param 2"  # Should be base version
 
-        def test_convert_tool_with_additional_runtime_parameters(self):
+        def test_convert_tool_with_additional_runtime_parameters(self) -> None:
             """Test that additional runtime parameters are added to the final list"""
             base_param1 = _parameter("param1", "Base Param 1")
 
@@ -551,7 +575,7 @@ class TestToolsTransformServiceCases:
             assert new_param is not None
             assert new_param.label.en_US == "Runtime Only Param"
 
-        def test_convert_tool_with_non_form_runtime_parameters(self):
+        def test_convert_tool_with_non_form_runtime_parameters(self) -> None:
             """Test that non-FORM runtime parameters are not added as new parameters"""
             base_param1 = _parameter("param1", "Base Param 1")
 
@@ -573,7 +597,7 @@ class TestToolsTransformServiceCases:
             assert "param1" in param_names
             assert "llm_param" not in param_names
 
-        def test_convert_tool_with_empty_parameters(self):
+        def test_convert_tool_with_empty_parameters(self) -> None:
             """Test conversion with empty base and runtime parameters"""
             tool = make_runtime_tool(base_params=[], runtime_params=[])
 
@@ -585,7 +609,7 @@ class TestToolsTransformServiceCases:
             assert result.parameters is not None
             assert len(result.parameters) == 0
 
-        def test_convert_tool_with_none_parameters(self):
+        def test_convert_tool_with_none_parameters(self) -> None:
             """Test conversion when base parameters is None"""
             tool = make_runtime_tool(base_params=None, runtime_params=[])
 
@@ -597,7 +621,7 @@ class TestToolsTransformServiceCases:
             assert result.parameters is not None
             assert len(result.parameters) == 0
 
-        def test_convert_tool_parameter_order_preserved(self):
+        def test_convert_tool_parameter_order_preserved(self) -> None:
             """Test that parameter order is preserved correctly"""
             base_param1 = _parameter("param1", "Base Param 1")
             base_param2 = _parameter("param2", "Base Param 2")
@@ -633,7 +657,7 @@ class TestToolsTransformServiceCases:
     class TestWorkflowProviderToUserProvider:
         """Test cases for ToolTransformService.workflow_provider_to_user_provider method"""
 
-        def test_workflow_provider_to_user_provider_with_workflow_app_id(self):
+        def test_workflow_provider_to_user_provider_with_workflow_app_id(self) -> None:
             """Test that workflow_provider_to_user_provider correctly sets workflow_app_id."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -647,7 +671,7 @@ class TestToolsTransformServiceCases:
                         author="test_author",
                         name="test_workflow_tool",
                         description=I18nObject(en_US="Test description"),
-                        icon={"type": "emoji", "content": "🔧"},
+                        icon={"type": "emoji", "content": "🔧"},  # pyrefly: ignore[bad-argument-type]
                         icon_dark=None,
                         label=I18nObject(en_US="Test Workflow Tool"),
                     ),
@@ -674,7 +698,7 @@ class TestToolsTransformServiceCases:
             assert result.plugin_unique_identifier is None
             assert result.tools == []
 
-        def test_workflow_provider_to_user_provider_without_workflow_app_id(self):
+        def test_workflow_provider_to_user_provider_without_workflow_app_id(self) -> None:
             """Test that workflow_provider_to_user_provider works when workflow_app_id is not provided."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -687,7 +711,7 @@ class TestToolsTransformServiceCases:
                         author="test_author",
                         name="test_workflow_tool",
                         description=I18nObject(en_US="Test description"),
-                        icon={"type": "emoji", "content": "🔧"},
+                        icon={"type": "emoji", "content": "🔧"},  # pyrefly: ignore[bad-argument-type]
                         icon_dark=None,
                         label=I18nObject(en_US="Test Workflow Tool"),
                     ),
@@ -706,7 +730,7 @@ class TestToolsTransformServiceCases:
             assert result.workflow_app_id is None
             assert result.labels == ["label1"]
 
-        def test_workflow_provider_to_user_provider_workflow_app_id_none(self):
+        def test_workflow_provider_to_user_provider_workflow_app_id_none(self) -> None:
             """Test that workflow_provider_to_user_provider handles None workflow_app_id explicitly."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -719,7 +743,7 @@ class TestToolsTransformServiceCases:
                         author="test_author",
                         name="test_workflow_tool",
                         description=I18nObject(en_US="Test description"),
-                        icon={"type": "emoji", "content": "🔧"},
+                        icon={"type": "emoji", "content": "🔧"},  # pyrefly: ignore[bad-argument-type]
                         icon_dark=None,
                         label=I18nObject(en_US="Test Workflow Tool"),
                     ),
@@ -739,7 +763,7 @@ class TestToolsTransformServiceCases:
             assert result.workflow_app_id is None
             assert result.labels == []
 
-        def test_workflow_provider_to_user_provider_preserves_other_fields(self):
+        def test_workflow_provider_to_user_provider_preserves_other_fields(self) -> None:
             """Test that workflow_provider_to_user_provider preserves all other entity fields."""
             from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
@@ -753,8 +777,8 @@ class TestToolsTransformServiceCases:
                         author="another_author",
                         name="another_workflow_tool",
                         description=I18nObject(en_US="Another description", zh_Hans="Another description"),
-                        icon={"type": "emoji", "content": "⚙️"},
-                        icon_dark={"type": "emoji", "content": "🔧"},
+                        icon={"type": "emoji", "content": "⚙️"},  # pyrefly: ignore[bad-argument-type]
+                        icon_dark={"type": "emoji", "content": "🔧"},  # pyrefly: ignore[bad-argument-type]
                         label=I18nObject(en_US="Another Workflow Tool", zh_Hans="Another Workflow Tool"),
                     ),
                 ),
@@ -789,45 +813,46 @@ class TestToolsTransformServiceCases:
             assert result.tools == []
 
     class TestGetToolProviderIconUrl:
-        def test_builtin_provider_returns_console_url(self, config_overrides):
+        def test_builtin_provider_returns_console_url(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(CONSOLE_API_URL="https://app.dify.ai")
             url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
 
             assert "/builtin/google/icon" in url
+            assert isinstance(url, str)
             assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
 
-        def test_builtin_provider_with_no_console_url(self, config_overrides):
+        def test_builtin_provider_with_no_console_url(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(CONSOLE_API_URL=None)
             url = ToolTransformService.get_tool_provider_icon_url("builtin", "slack", "icon.png")
 
             assert "/builtin/slack/icon" in url
 
-        def test_api_provider_parses_json_icon(self):
+        def test_api_provider_parses_json_icon(self) -> None:
             icon_json = '{"background": "#fff", "content": "A"}'
             result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon_json)
             assert result == {"background": "#fff", "content": "A"}
 
-        def test_api_provider_returns_dict_icon_directly(self):
+        def test_api_provider_returns_dict_icon_directly(self) -> None:
             icon = {"background": "#000", "content": "B"}
             result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon)
             assert result == icon
 
-        def test_api_provider_returns_fallback_on_invalid_json(self):
+        def test_api_provider_returns_fallback_on_invalid_json(self) -> None:
             result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", "not-json")
             assert result == {"background": "#252525", "content": "\ud83d\ude01"}
 
-        def test_workflow_provider_behaves_like_api(self):
+        def test_workflow_provider_behaves_like_api(self) -> None:
             icon = {"background": "#123", "content": "W"}
             assert ToolTransformService.get_tool_provider_icon_url("workflow", "wf", icon) == icon
 
-        def test_mcp_returns_icon_as_is(self):
+        def test_mcp_returns_icon_as_is(self) -> None:
             assert ToolTransformService.get_tool_provider_icon_url("mcp", "srv", "icon-value") == "icon-value"
 
-        def test_unknown_type_returns_empty(self):
+        def test_unknown_type_returns_empty(self) -> None:
             assert ToolTransformService.get_tool_provider_icon_url("unknown", "x", "i") == ""
 
     class TestRepackProvider:
-        def test_repacks_dict_provider_icon(self):
+        def test_repacks_dict_provider_icon(self) -> None:
             provider = {"type": "builtin", "name": "google", "icon": "old"}
             with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/new-url") as mock_fn:
                 ToolTransformService.repack_provider("t1", provider)
@@ -835,7 +860,7 @@ class TestToolsTransformServiceCases:
             assert provider["icon"] == "/new-url"
             mock_fn.assert_called_once_with(provider_type="builtin", provider_name="google", icon="old")
 
-        def test_repacks_tool_provider_api_entity_without_plugin(self):
+        def test_repacks_tool_provider_api_entity_without_plugin(self) -> None:
             entity = ToolProviderApiEntity(
                 id="slack",
                 author="test_author",
@@ -855,7 +880,7 @@ class TestToolsTransformServiceCases:
             assert entity.icon_dark == "/url"
 
     class TestConvertMcpSchemaToParameter:
-        def test_simple_object_schema(self):
+        def test_simple_object_schema(self) -> None:
             schema = {
                 "type": "object",
                 "properties": {
@@ -874,24 +899,28 @@ class TestToolsTransformServiceCases:
             assert count_param.required is False
             assert count_param.type.value == "number"
 
-        def test_float_maps_to_number(self):
-            schema = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": []}
+        def test_float_maps_to_number(self) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "number"
 
-        def test_array_type_attaches_input_schema(self):
+        def test_array_type_attaches_input_schema(self) -> None:
             prop = {"type": "array", "description": "Items", "items": {"type": "string"}}
-            schema = {"type": "object", "properties": {"items": prop}, "required": []}
+            schema: dict[str, object] = {"type": "object", "properties": {"items": prop}, "required": []}
             param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
             assert param.input_schema is not None
 
-        def test_non_object_schema_returns_empty(self):
+        def test_non_object_schema_returns_empty(self) -> None:
             assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "string"}) == []
 
-        def test_missing_properties_returns_empty(self):
+        def test_missing_properties_returns_empty(self) -> None:
             assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "object"}) == []
 
-        def test_list_type_uses_first_element(self):
-            schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": []}
+        def test_list_type_uses_first_element(self) -> None:
+            schema: dict[str, object] = {
+                "type": "object",
+                "properties": {"f": {"type": ["string", "null"]}},
+                "required": [],
+            }
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
 
         @pytest.mark.parametrize(
@@ -906,8 +935,8 @@ class TestToolsTransformServiceCases:
                 ({"type": ["string", "array", "null"]}, "string"),
             ],
         )
-        def test_mixed_type_union_attaches_input_schema(self, prop, expected_type):
-            schema = {"type": "object", "properties": {"domain": prop}, "required": []}
+        def test_mixed_type_union_attaches_input_schema(self, prop: dict[str, object], expected_type: str) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"domain": prop}, "required": []}
             param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
             assert param.type.value == expected_type
             assert param.input_schema == prop
@@ -921,51 +950,53 @@ class TestToolsTransformServiceCases:
                 {"oneOf": [{"type": "integer"}, {"type": "number"}]},
             ],
         )
-        def test_single_type_union_has_no_input_schema(self, prop):
-            schema = {"type": "object", "properties": {"f": prop}, "required": []}
+        def test_single_type_union_has_no_input_schema(self, prop: dict[str, object]) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"f": prop}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema is None
 
-        def test_missing_description_defaults_empty(self):
-            schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
+        def test_missing_description_defaults_empty(self) -> None:
+            schema: dict[str, object] = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
 
     class TestApiProviderToController:
-        def test_api_key_header_auth(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key_header"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-            )
+        def test_api_key_header_auth(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key_header")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_header",
+                "api_key_value",
+                "api_key_header_prefix",
+            ]
 
-        def test_api_key_query_auth(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key_query"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY, session=ANY
-            )
+        def test_api_key_query_auth(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key_query")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_query_param",
+                "api_key_value",
+            ]
 
-        def test_legacy_api_key_maps_to_header(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "api_key"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER, session=ANY
-            )
+        def test_legacy_api_key_maps_to_header(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "api_key")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == [
+                "auth_type",
+                "api_key_header",
+                "api_key_value",
+                "api_key_header_prefix",
+            ]
 
-        def test_unknown_auth_defaults_to_none(self):
-            db_provider = MagicMock()
-            db_provider.credentials = {"auth_type": "something_else"}
-            with patch(f"{MODULE}.db.session"), patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
-                ctrl_cls.from_db.return_value = MagicMock()
-                ToolTransformService.api_provider_to_controller(db_provider)
-            ctrl_cls.from_db.assert_called_once_with(
-                db_provider=db_provider, auth_type=ApiProviderAuthType.NONE, session=ANY
-            )
+        def test_unknown_auth_defaults_to_none(self, sqlite_session: Session) -> None:
+            db_provider = _api_provider(sqlite_session, "something_else")
+            with patch(f"{MODULE}.db.session", return_value=sqlite_session):
+                controller = ToolTransformService.api_provider_to_controller(db_provider)
+            assert controller.entity.identity.author == "Test User"
+            assert [c.name for c in controller.entity.credentials_schema] == ["auth_type"]

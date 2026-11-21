@@ -49,18 +49,21 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.api.delete.post': api.customRemove,
+      'workspaces.current.toolProvider.workflow.delete.post': api.workflowRemove,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
       'workspaces.current.toolProvider.api.tools.get': api.customTools,
       'workspaces.current.toolProvider.api.get.get': api.customDetail,
       'workspaces.current.toolProvider.api.update.post': api.customUpdate,
-      'workspaces.current.toolProvider.api.delete.post': api.customRemove,
       'workspaces.current.toolProvider.workflow.get.get': api.workflowDetail,
       'workspaces.current.toolProvider.workflow.update.post': api.workflowUpdate,
-      'workspaces.current.toolProvider.workflow.delete.post': api.workflowRemove,
     }),
   }
 })
@@ -277,14 +280,17 @@ it('updates a workflow tool only after confirmation and reloads the saved config
   api.workflowDetail.mockResolvedValue({ ...workflowDetail, label: 'Renamed Workflow' })
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() =>
-    expect(api.workflowUpdate).toHaveBeenCalledWith({
-      body: expect.objectContaining({
-        workflow_tool_id: 'workflow-id',
-        name: 'search_workflow',
-        label: 'Renamed Workflow',
-        parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
-      }),
-    }),
+    expect(api.workflowUpdate).toHaveBeenCalledWith(
+      {
+        body: expect.objectContaining({
+          workflow_tool_id: 'workflow-id',
+          name: 'search_workflow',
+          label: 'Renamed Workflow',
+          parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
+        }),
+      },
+      { context: undefined },
+    ),
   )
   await waitFor(() =>
     expect(

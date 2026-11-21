@@ -36,7 +36,7 @@ describe('LinkedAppsPanel Component', () => {
   ]
 
   it('links each related application to its overview with its name and mode', () => {
-    render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={false} />)
+    render(<LinkedAppsPanel relatedApps={mockRelatedApps} compact={false} />)
     for (const [name, mode, id] of [
       ['Chatbot App', 'Chatbot', 'app-1'],
       ['Workflow App', 'Workflow', 'app-2'],

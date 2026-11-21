@@ -1,6 +1,6 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId } from 'react'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -16,15 +16,18 @@ function getBuiltinIconName(iconRef: string | undefined) {
 
 export function KnowledgeSpaceCard({
   knowledgeSpace,
+  onDelete,
   onOpenTagManagement,
   highlighted = false,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
+  onDelete: (item: HTMLLIElement | null) => void
   onOpenTagManagement: () => void
   highlighted?: boolean
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeOverview'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const itemRef = useRef<HTMLLIElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const linkedAppsDescriptionId = useId()
@@ -39,8 +42,9 @@ export function KnowledgeSpaceCard({
 
   return (
     <li
+      ref={itemRef}
       className={cn(
-        "group relative isolate h-41.5 overflow-hidden rounded-xl bg-components-card-bg text-left transition-[background-color,box-shadow] after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]",
+        "group relative isolate h-41.5 overflow-hidden rounded-xl bg-components-card-bg text-start transition-[background-color,box-shadow] after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] hover:bg-components-card-bg-alt hover:shadow-md hover:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none [@media(hover:none)]:bg-components-card-bg-alt [@media(hover:none)]:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)]",
         highlighted
           ? 'border-2 border-state-accent-solid shadow-[0_0_12px_4px_rgba(21,94,239,0.18)]'
           : 'border-[0.5px] border-components-card-border shadow-xs',
@@ -84,20 +88,23 @@ export function KnowledgeSpaceCard({
               {t(($) => $['overview.linkedApps'], { ns: 'knowledgeOverview' })}: {linkedApps}
             </span>
           </span>
-          <span className="ml-auto min-w-0 truncate text-right">
+          <span className="ms-auto min-w-0 truncate text-end">
             {t(($) => $.updated, {
               date: formattedUpdatedAt,
             })}
           </span>
         </div>
       </Link>
-      <div className="absolute top-25 right-3 left-3 flex h-6.5 min-w-0 items-start">
+      <div className="absolute inset-s-3 inset-e-3 top-25 flex h-6.5 min-w-0 items-start">
         <KnowledgeSpaceCardTags
           knowledgeSpace={knowledgeSpace}
           onOpenTagManagement={onOpenTagManagement}
         />
       </div>
-      <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} />
+      <KnowledgeSpaceActions
+        knowledgeSpace={knowledgeSpace}
+        onDelete={() => onDelete(itemRef.current)}
+      />
     </li>
   )
 }

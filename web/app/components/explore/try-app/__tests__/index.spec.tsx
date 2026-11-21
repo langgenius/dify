@@ -76,7 +76,7 @@ async function setup(props: Partial<Props> = {}) {
           {...props}
         />
       </NuqsTestingAdapter>,
-      { queryClient, features: {}, systemFeatures: { enable_collaboration_mode: false } },
+      { queryClient, features: {} },
     ),
   )
   return { user: userEvent.setup(), onCreate }

@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Fragment, memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
@@ -107,20 +107,20 @@ const ZoomInOut: FC = () => {
             />
           </button>
         </TipPopup>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
+        <Menu>
+          <MenuTrigger className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary">
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner side="top" align="start" alignOffset={-2}>
-              <DropdownMenuPopup>
+          </MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
+              <MenuPopup>
                 <div className="w-36.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (
                     <Fragment key={options[0]!.key}>
-                      {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
+                      {groupIndex !== 0 && <MenuSeparator className="my-0" />}
                       <div className="p-1">
                         {options.map((option) => (
-                          <DropdownMenuItem
+                          <MenuItem
                             key={option.key}
                             className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
                             onClick={() => handleZoom(option.key)}
@@ -137,16 +137,16 @@ const ZoomInOut: FC = () => {
                                 <ShortcutKbd shortcut="workflow.zoom-to-100" />
                               )}
                             </div>
-                          </DropdownMenuItem>
+                          </MenuItem>
                         ))}
                       </div>
                     </Fragment>
                   ))}
                 </div>
-              </DropdownMenuPopup>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
-        </DropdownMenu>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>
         <TipPopup
           title={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"

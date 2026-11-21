@@ -102,7 +102,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
           >
             <RiLayoutRight2Line aria-hidden="true" className="h-4.5 w-4.5" />
           </IconButton>
-          <div className="mr-1 shrink-0">
+          <div className="me-1 shrink-0">
             <AppIcon size="large" icon={appData?.site} />
           </div>
           {!currentConversationId && (
@@ -175,7 +175,7 @@ const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> 
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
+              {t(($) => $['chat.deleteConversation.content'], { ns: 'share' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -70,6 +70,10 @@ const webRestrictedImports = [
         importNames: ['useLocalStorageState'],
         message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
       },
+      {
+        name: 'next-themes',
+        message: 'Use the @/features/theme module instead of next-themes.',
+      },
     ],
     patterns: [
       {
@@ -115,6 +119,16 @@ const webRestrictedImports = [
     ],
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
+
+const marketplaceBoundaryFiles = [
+  'web/env.ts',
+  'web/proxy.ts',
+  'web/service/**',
+  'web/features/marketplace/**',
+  'web/app/components/plugins/marketplace/**',
+  'web/app/components/plugins/plugin-page/nav-operations.tsx',
+  'web/app/components/workflow/block-selector/marketplace-plugin/**',
+]
 
 const serviceRestrictedImports = [
   'error',
@@ -230,6 +244,17 @@ const defaultRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// `crypto.randomUUID` exists only in secure contexts, so it is undefined on
+// self-hosted consoles opened over plain HTTP. Matching the property alone also
+// catches `globalThis.crypto.randomUUID` and optional-call forms.
+const insecureContextRestrictedProperties = [
+  {
+    property: 'randomUUID',
+    message:
+      'crypto.randomUUID is unavailable over plain HTTP (non-secure contexts). Use `v4` from `uuid` instead.',
+  },
+]
+
 const storageRestrictedProperties = [
   'error',
   {
@@ -269,6 +294,49 @@ export const stylingContractRules = {
       allow: ['*'],
       contracts: [
         {
+          pattern: '^SegmentedControl$',
+          allow: [
+            'layout',
+            'spacing',
+            'rounded',
+            'border-w',
+            'border-divider-subtle',
+            'bg-background-section-burn',
+          ],
+          message:
+            '"{{className}}" changes the shared segmented control. Adjust its placement or width here. Use RadioGroup with RadioItem for a custom single-choice surface.',
+        },
+        {
+          pattern: '^SegmentedControlDivider$',
+          allow: [],
+          message:
+            '"{{className}}" changes the segmented divider. Use Separator for a divider outside the control.',
+        },
+        {
+          pattern: '^SegmentedControlItem$',
+          allow: [
+            'layout',
+            'spacing',
+            'typography',
+            'system-*',
+            'text-color',
+            'rounded',
+            'border-0',
+            'bg-components-segmented-control-item-active-*',
+            'border-components-segmented-control-item-active-*',
+            'data-checked:bg-components-panel-bg',
+            'not-data-checked:hover:bg-transparent',
+            'focus-visible:ring-inset',
+            'shadow-xs',
+            'shadow-sm',
+            'shadow-black/5',
+            'shadow-black/10',
+          ],
+          deny: focusIndicatorOverrides,
+          message:
+            '"{{className}}" changes the segmented item appearance. The primitive owns its surface, focus and selection motion. Use RadioItem for a custom single-choice design.',
+        },
+        {
           pattern: '^(ScrollArea|ScrollAreaViewport)$',
           allow: ['*'],
           deny: [...focusIndicatorOverrides, 'ring-*', 'inset-ring-*'],
@@ -284,7 +352,7 @@ export const stylingContractRules = {
         },
         {
           pattern:
-            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|DropdownMenuInputGroup|DropdownMenuInput)$',
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|MenuInputGroup|MenuInput)$',
           allow: ['*'],
           deny: focusIndicatorOverrides,
           message:
@@ -305,20 +373,83 @@ export const stylingContractRules = {
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
         },
         {
+          pattern: '^InfotipTrigger$',
+          allow: ['layout', 'text-color', 'opacity'],
+          deny: [
+            'size',
+            'w',
+            'h',
+            'min-w',
+            'max-w',
+            'min-h',
+            'max-h',
+            'inline-size',
+            'min-inline-size',
+            'max-inline-size',
+            'block-size',
+            'min-block-size',
+            'max-block-size',
+            'basis',
+            'flex',
+            'grow',
+            'shrink',
+            'aspect',
+            'scale',
+            'overflow',
+            'static',
+            '*-stretch',
+            'before:*',
+            '[width:*]',
+            '[height:*]',
+            '[inline-size:*]',
+            '[block-size:*]',
+          ],
+          message:
+            '"{{className}}" is outside the InfotipTrigger styling contract. Use its size prop for the icon and box; callers may place it, colour the icon, or fade it in.',
+        },
+        {
+          pattern: '^Alert$',
+          allow: ['layout'],
+          message:
+            '"{{className}}" is outside the Alert styling contract. The alert owns its surface, spacing, icon and typography; callers may only place and size it.',
+        },
+        {
+          pattern: '^(AlertTitle|AlertDescription)$',
+          allow: ['whitespace-pre-line'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may keep line breaks in the message.',
+        },
+        {
+          pattern: '^(AlertActions|AlertClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
+        },
+        {
           pattern: '^(Dialog|AlertDialog)Content$',
           allow: [
             'w-*',
-            'min-w-*',
-            'max-w-*',
             'h-*',
-            'min-h-*',
-            'max-h-*',
+            'max-w-[calc(100vw-*rem)]',
+            'max-h-[calc(100dvh-*rem)]',
+            'max-h-[*dvh]',
+            'max-h-[min(*,calc(100dvh-*rem))]',
+            'min-h-[min(*,calc(100dvh-*rem))]',
             'overflow-hidden',
             'transition-none',
           ],
-          deny: ['max-w-none', 'max-h-none', 'w-screen', 'h-screen'],
+          deny: [
+            'w-[*]',
+            'h-[min(*)]',
+            'h-[calc(*)]',
+            'h-[*%]',
+            'h-[*px]',
+            'h-[*rem]',
+            'w-screen',
+            'h-screen',
+          ],
           message:
-            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may size it within the viewport or disable transitions. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
+            '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and keeps itself within the viewport. Size it with w-* and h-* (h-dvh fills the viewport). Change the viewport margin with max-w-[calc(100vw-Nrem)] or max-h-[calc(100dvh-Nrem)], and bound a height cap or floor by the viewport, e.g. max-h-[80dvh] or min-h-[min(20rem,calc(100dvh-2rem))]. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
           pattern: '^DialogPopup$',
@@ -551,6 +682,8 @@ export const lintConfig = {
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
     'packages/contracts/**',
+    // Its content mapper composes the console OpenAPI from the Python API; `type-check:contracts` covers it.
+    'packages/openapi-content-mapper/examples/repository/**',
     'web/next/**',
     'web/next-env.d.ts',
     'web/public/**',
@@ -593,7 +726,7 @@ export const lintConfig = {
     reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
-    typeCheck: false,
+    typeCheck: true,
   },
   settings: {
     'better-tailwindcss': {
@@ -1734,7 +1867,11 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...defaultRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
         'no-restricted-imports': [
           'error',
           {
@@ -1755,7 +1892,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
       },
     },
     {
@@ -1769,6 +1910,32 @@ export const lintConfig = {
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
+      },
+    },
+    {
+      files: ['web/features/theme/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            paths: webRestrictedImports[1].paths.filter((path) => path.name !== 'next-themes'),
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
+      rules: {
+        'dify/marketplace-boundary': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'dify/no-module-scope-clock': 'error',
       },
     },
   ],

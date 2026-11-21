@@ -34,6 +34,7 @@ from models import Account, Tenant
 from models.model import App, EndUser
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
@@ -129,6 +130,7 @@ class WorkflowTool(Tool):
             app_model=app,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=generator_args,
             invoke_from=self.runtime.invoke_from,
             streaming=False,

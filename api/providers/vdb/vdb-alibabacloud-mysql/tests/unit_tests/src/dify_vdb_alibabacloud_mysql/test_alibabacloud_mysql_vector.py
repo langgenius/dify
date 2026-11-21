@@ -15,21 +15,21 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def test_validate_distance_function_accepts_supported_values():
+def test_validate_distance_function_accepts_supported_values() -> None:
     factory = AlibabaCloudMySQLVectorFactory()
 
     assert factory._validate_distance_function("cosine") == "cosine"
     assert factory._validate_distance_function("euclidean") == "euclidean"
 
 
-def test_validate_distance_function_rejects_unsupported_values():
+def test_validate_distance_function_rejects_unsupported_values() -> None:
     factory = AlibabaCloudMySQLVectorFactory()
 
     with pytest.raises(ValueError, match="Invalid distance function"):
         factory._validate_distance_function("dot_product")
 
 
-def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch: pytest.MonkeyPatch):
+def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     factory = AlibabaCloudMySQLVectorFactory()
     dataset = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "existing_collection"}})
@@ -52,7 +52,9 @@ def test_factory_init_vector_uses_existing_index_struct_class_prefix(monkeypatch
     assert vector_cls.call_args.kwargs["collection_name"] == "existing_collection"
 
 
-def test_factory_init_vector_generates_collection_name_when_index_struct_is_missing(monkeypatch: pytest.MonkeyPatch):
+def test_factory_init_vector_generates_collection_name_when_index_struct_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     factory = AlibabaCloudMySQLVectorFactory()
     dataset = Dataset(id="dataset-2")
 
@@ -81,7 +83,7 @@ try:
 except ImportError:
     # Fallback for testing environments where mysql-connector-python might not be installed
     class MySQLError(Exception):
-        def __init__(self, errno, msg):
+        def __init__(self, errno: int, msg: str) -> None:
             self.errno = errno
             self.msg = msg
             super().__init__(msg)
@@ -89,7 +91,7 @@ except ImportError:
 
 class TestAlibabaCloudMySQLVector(unittest.TestCase):
     @override
-    def setUp(self):
+    def setUp(self) -> None:
         self.config = AlibabaCloudMySQLVectorConfig(
             host="localhost",
             port=3306,
@@ -117,7 +119,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         self.sample_embeddings = [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_init(self, mock_pool_class):
+    def test_init(self, mock_pool_class: MagicMock) -> None:
         """Test AlibabaCloudMySQLVector initialization."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -143,7 +145,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.redis_client")
-    def test_create_collection(self, mock_redis, mock_pool_class):
+    def test_create_collection(self, mock_redis: MagicMock, mock_pool_class: MagicMock) -> None:
         """Test collection creation."""
         # Mock Redis operations
         mock_redis.lock.return_value.__enter__ = MagicMock()
@@ -174,7 +176,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_redis.set.assert_called_once()
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_vector_support_check_success(self, mock_pool_class):
+    def test_vector_support_check_success(self, mock_pool_class: MagicMock) -> None:
         """Test successful vector support check."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -191,7 +193,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert vector_store is not None
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_vector_support_check_failure(self, mock_pool_class):
+    def test_vector_support_check_failure(self, mock_pool_class: MagicMock) -> None:
         """Test vector support check failure."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -215,7 +217,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert "RDS MySQL Vector functions are not available" in str(context.value)
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_vector_support_check_function_error(self, mock_pool_class):
+    def test_vector_support_check_function_error(self, mock_pool_class: MagicMock) -> None:
         """Test vector support check with function not found error."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -241,7 +243,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.redis_client")
-    def test_create_documents(self, mock_redis, mock_pool_class):
+    def test_create_documents(self, mock_redis: MagicMock, mock_pool_class: MagicMock) -> None:
         """Test creating documents with embeddings."""
         # Setup mocks
         self._setup_mocks(mock_redis, mock_pool_class)
@@ -254,7 +256,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert "doc2" in result
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_add_texts(self, mock_pool_class):
+    def test_add_texts(self, mock_pool_class: MagicMock) -> None:
         """Test adding texts to the vector store."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -273,7 +275,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_cursor.executemany.assert_called_once()
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_text_exists(self, mock_pool_class):
+    def test_text_exists(self, mock_pool_class: MagicMock) -> None:
         """Test checking if text exists."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -300,7 +302,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert last_call[0][1] == ("doc1",)
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_text_not_exists(self, mock_pool_class):
+    def test_text_not_exists(self, mock_pool_class: MagicMock) -> None:
         """Test checking if text does not exist."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -322,7 +324,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert not exists
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_get_by_ids(self, mock_pool_class):
+    def test_get_by_ids(self, mock_pool_class: MagicMock) -> None:
         """Test getting documents by IDs."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -348,7 +350,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert docs[1].page_content == "Test document 2"
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_get_by_ids_empty_list(self, mock_pool_class):
+    def test_get_by_ids_empty_list(self, mock_pool_class: MagicMock) -> None:
         """Test getting documents with empty ID list."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -366,7 +368,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert len(docs) == 0
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_delete_by_ids(self, mock_pool_class):
+    def test_delete_by_ids(self, mock_pool_class: MagicMock) -> None:
         """Test deleting documents by IDs."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -390,7 +392,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert delete_call[0][1] == ["doc1", "doc2"]
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_delete_by_ids_empty_list(self, mock_pool_class):
+    def test_delete_by_ids_empty_list(self, mock_pool_class: MagicMock) -> None:
         """Test deleting with empty ID list."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -411,7 +413,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert len(delete_calls) == 0
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_delete_by_ids_table_not_exists(self, mock_pool_class):
+    def test_delete_by_ids_table_not_exists(self, mock_pool_class: MagicMock) -> None:
         """Test deleting when table doesn't exist."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -436,7 +438,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         vector_store.delete_by_ids(["doc1"])
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_delete_by_metadata_field(self, mock_pool_class):
+    def test_delete_by_metadata_field(self, mock_pool_class: MagicMock) -> None:
         """Test deleting documents by metadata field."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -460,7 +462,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert delete_call[0][1] == ("$.document_id", "dataset1")
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_vector_cosine(self, mock_pool_class):
+    def test_search_by_vector_cosine(self, mock_pool_class: MagicMock) -> None:
         """Test vector search with cosine distance."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -485,7 +487,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert docs[0].metadata["distance"] == 0.1
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_vector_euclidean(self, mock_pool_class):
+    def test_search_by_vector_euclidean(self, mock_pool_class: MagicMock) -> None:
         """Test vector search with euclidean distance."""
         config = AlibabaCloudMySQLVectorConfig(
             host="localhost",
@@ -518,7 +520,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert abs(docs[0].metadata["score"] - 1.0 / 3.0) < 0.01  # 1/(1+2) = 1/3
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_vector_with_filter(self, mock_pool_class):
+    def test_search_by_vector_with_filter(self, mock_pool_class: MagicMock) -> None:
         """Test vector search with document ID filter."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -543,7 +545,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert "WHERE JSON_UNQUOTE" in search_call[0][0]
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_vector_with_score_threshold(self, mock_pool_class):
+    def test_search_by_vector_with_score_threshold(self, mock_pool_class: MagicMock) -> None:
         """Test vector search with score threshold."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -578,7 +580,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert docs[0].page_content == "High similarity document"
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_vector_invalid_top_k(self, mock_pool_class):
+    def test_search_by_vector_invalid_top_k(self, mock_pool_class: MagicMock) -> None:
         """Test vector search with invalid top_k."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -600,7 +602,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
             vector_store.search_by_vector(query_vector, top_k="invalid")
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_full_text(self, mock_pool_class):
+    def test_search_by_full_text(self, mock_pool_class: MagicMock) -> None:
         """Test full-text search."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -629,7 +631,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert docs[0].metadata["score"] == 1.5
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_full_text_with_filter(self, mock_pool_class):
+    def test_search_by_full_text_with_filter(self, mock_pool_class: MagicMock) -> None:
         """Test full-text search with document ID filter."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -653,7 +655,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert "AND JSON_UNQUOTE" in search_call[0][0]
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_search_by_full_text_invalid_top_k(self, mock_pool_class):
+    def test_search_by_full_text_invalid_top_k(self, mock_pool_class: MagicMock) -> None:
         """Test full-text search with invalid top_k."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -674,7 +676,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
             vector_store.search_by_full_text("test", top_k="invalid")
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_delete_collection(self, mock_pool_class):
+    def test_delete_collection(self, mock_pool_class: MagicMock) -> None:
         """Test deleting the entire collection."""
         # Mock the connection pool
         mock_pool = MagicMock()
@@ -697,7 +699,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert f"DROP TABLE IF EXISTS {self.collection_name.lower()}" in drop_call[0][0]
 
     @patch("dify_vdb_alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool")
-    def test_unsupported_distance_function(self, mock_pool_class):
+    def test_unsupported_distance_function(self, mock_pool_class: MagicMock) -> None:
         """Test that Pydantic validation rejects unsupported distance functions."""
         # Test that creating config with unsupported distance function raises ValidationError
         with pytest.raises(
@@ -716,7 +718,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         # The error should be related to validation
         assert "Input should be 'cosine' or 'euclidean'" in str(context.value) or "manhattan" in str(context.value)
 
-    def _setup_mocks(self, mock_redis, mock_pool_class):
+    def _setup_mocks(self, mock_redis: MagicMock, mock_pool_class: MagicMock) -> None:
         """Helper method to setup common mocks."""
         # Mock Redis operations
         mock_redis.lock.return_value.__enter__ = MagicMock()
@@ -744,7 +746,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         {"max_connection": 0},  # Test invalid max_connection
     ],
 )
-def test_config_validation_parametrized(invalid_config_override):
+def test_config_validation_parametrized(invalid_config_override: dict[str, str | int]) -> None:
     """Test configuration validation for various invalid inputs using parametrize."""
     config = {
         "host": "localhost",

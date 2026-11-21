@@ -1,13 +1,12 @@
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import Response
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import (
@@ -18,9 +17,20 @@ from core.app.file_access import (
 )
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
+from factories.file_factory.builders import FileMappingInput, _resolve_file_type
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
+from graphon.file.file_manager import to_prompt_message_content
+from graphon.model_runtime.entities import (
+    DocumentPromptMessageContent,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
+from graphon.nodes.llm import llm_utils
+from graphon.nodes.llm.entities import LLMNodeChatModelMessage
+from graphon.runtime import VariablePool
 from models import CreatorUserRole, ToolFile, UploadFile
 
 # Test Data
@@ -40,7 +50,13 @@ TEST_CONFIG = FileUploadConfig(
 )
 
 
-def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validation=False):
+def build_from_mapping(
+    *,
+    mapping: FileMappingInput,
+    tenant_id: str,
+    config: FileUploadConfig | None = None,
+    strict_type_validation: bool = False,
+) -> File:
     return _build_from_mapping(
         mapping=mapping,
         tenant_id=tenant_id,
@@ -50,7 +66,13 @@ def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validatio
     )
 
 
-def build_from_mappings(*, mappings, tenant_id, config=None, strict_type_validation=False):
+def build_from_mappings(
+    *,
+    mappings: Sequence[FileMappingInput],
+    tenant_id: str,
+    config: FileUploadConfig | None = None,
+    strict_type_validation: bool = False,
+) -> Sequence[File]:
     return _build_from_mappings(
         mappings=mappings,
         tenant_id=tenant_id,
@@ -69,12 +91,8 @@ class FileRecords:
 
 # Fixtures
 @pytest.fixture(autouse=True)
-def file_records(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[FileRecords]:
-    """Persist authorized file rows and bind builder-owned sessions to SQLite."""
-    UploadFile.metadata.create_all(sqlite_engine, tables=[UploadFile.__table__, ToolFile.__table__])
-    sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
-
+def file_records(sqlite_session: Session) -> FileRecords:
+    """Persist authorized file rows through the shared SQLite session."""
     upload_file = UploadFile(
         tenant_id=TEST_TENANT_ID,
         storage_type=StorageType.LOCAL,
@@ -102,15 +120,14 @@ def file_records(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iter
     )
     tool_file.id = TEST_TOOL_FILE_ID
 
-    with sqlite_session_maker() as session:
-        session.add_all([upload_file, tool_file])
-        session.commit()
-        yield FileRecords(session=session, upload_file=upload_file, tool_file=tool_file)
+    sqlite_session.add_all([upload_file, tool_file])
+    sqlite_session.commit()
+    return FileRecords(session=sqlite_session, upload_file=upload_file, tool_file=tool_file)
 
 
 @pytest.fixture
-def mock_http_head():
-    def _mock_response(filename, size, content_type):
+def mock_http_head() -> Iterator[MagicMock]:
+    def _mock_response(filename: str, size: int, content_type: str) -> Response:
         return Response(
             status_code=200,
             headers={
@@ -126,7 +143,7 @@ def mock_http_head():
 
 
 # Helper functions
-def local_file_mapping(file_type="image"):
+def local_file_mapping(file_type: str = "image") -> dict[str, str]:
     return {
         "transfer_method": "local_file",
         "upload_file_id": TEST_UPLOAD_FILE_ID,
@@ -134,7 +151,7 @@ def local_file_mapping(file_type="image"):
     }
 
 
-def tool_file_mapping(file_type="document"):
+def tool_file_mapping(file_type: str = "document") -> dict[str, str]:
     return {
         "transfer_method": "tool_file",
         "tool_file_id": TEST_TOOL_FILE_ID,
@@ -143,18 +160,20 @@ def tool_file_mapping(file_type="document"):
 
 
 # Tests
-def test_build_from_mapping_backward_compatibility():
+def test_build_from_mapping_backward_compatibility() -> None:
     mapping = local_file_mapping(file_type="image")
     file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
     assert isinstance(file, File)
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
     assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
-    assert parse_file_reference(file.reference).storage_key is None
+    reference = parse_file_reference(file.reference)
+    assert reference is not None
+    assert reference.storage_key is None
     assert file.storage_key == "test_key"
 
 
-def test_build_from_mapping_accepts_opaque_reference_for_local_file():
+def test_build_from_mapping_accepts_opaque_reference_for_local_file() -> None:
     mapping = {
         "transfer_method": "local_file",
         "reference": build_file_reference(record_id=TEST_UPLOAD_FILE_ID, storage_key="test_key"),
@@ -169,7 +188,7 @@ def test_build_from_mapping_accepts_opaque_reference_for_local_file():
     assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
 
 
-def test_build_from_mapping_accepts_opaque_related_id_for_tool_file():
+def test_build_from_mapping_accepts_opaque_related_id_for_tool_file() -> None:
     mapping = {
         "transfer_method": "tool_file",
         "related_id": build_file_reference(record_id=TEST_TOOL_FILE_ID, storage_key="tool_file.pdf"),
@@ -182,11 +201,13 @@ def test_build_from_mapping_accepts_opaque_related_id_for_tool_file():
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.type == FileType.DOCUMENT
     assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
-    assert parse_file_reference(file.reference).storage_key is None
+    tool_reference = parse_file_reference(file.reference)
+    assert tool_reference is not None
+    assert tool_reference.storage_key is None
     assert file.storage_key == "tool_file.pdf"
 
 
-def test_build_from_mapping_prefers_tool_filename_extension_over_mimetype(file_records: FileRecords):
+def test_build_from_mapping_prefers_tool_filename_extension_over_mimetype(file_records: FileRecords) -> None:
     file_records.tool_file.name = "report.docx"
     file_records.tool_file.file_key = "tools/test_tenant_id/file.bin"
     file_records.tool_file.mimetype = "application/octet-stream"
@@ -208,7 +229,7 @@ def test_build_from_mapping_prefers_tool_filename_extension_over_mimetype(file_r
         ("document", False, "Detected file type does not match"),
     ],
 )
-def test_build_from_local_file_strict_validation(file_type, should_pass, expected_error):
+def test_build_from_local_file_strict_validation(file_type: str, should_pass: bool, expected_error: str) -> None:
     mapping = local_file_mapping(file_type=file_type)
     if should_pass:
         file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=True)
@@ -225,7 +246,7 @@ def test_build_from_local_file_strict_validation(file_type, should_pass, expecte
         ("image", False, "Detected file type does not match"),
     ],
 )
-def test_build_from_tool_file_strict_validation(file_type, should_pass, expected_error):
+def test_build_from_tool_file_strict_validation(file_type: str, should_pass: bool, expected_error: str) -> None:
     """Strict type validation for tool_file."""
     mapping = tool_file_mapping(file_type=file_type)
     if should_pass:
@@ -236,7 +257,7 @@ def test_build_from_tool_file_strict_validation(file_type, should_pass, expected
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=True)
 
 
-def test_build_from_remote_url(mock_http_head):
+def test_build_from_remote_url(mock_http_head: MagicMock) -> None:
     mapping = {
         "transfer_method": "remote_url",
         "url": TEST_REMOTE_URL,
@@ -249,7 +270,7 @@ def test_build_from_remote_url(mock_http_head):
     assert file.size == 2048
 
 
-def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch: pytest.MonkeyPatch):
+def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "factories.file_factory.builders.helpers.get_signed_file_url",
         lambda **_kwargs: "https://example.com/signed-upload-file",
@@ -268,7 +289,7 @@ def test_build_from_mappings_accepts_remote_url_with_upload_file_id(monkeypatch:
     assert files[0].storage_key == "test_key"
 
 
-def test_build_from_remote_url_prefers_filename_extension_over_mimetype():
+def test_build_from_remote_url_prefers_filename_extension_over_mimetype() -> None:
     mapping = {
         "transfer_method": "remote_url",
         "url": TEST_REMOTE_URL,
@@ -295,7 +316,9 @@ def test_build_from_remote_url_prefers_filename_extension_over_mimetype():
         ("video", False, "Detected file type does not match the specified type"),
     ],
 )
-def test_build_from_remote_url_strict_validation(mock_http_head, file_type, should_pass, expected_error):
+def test_build_from_remote_url_strict_validation(
+    mock_http_head: MagicMock, file_type: str, should_pass: bool, expected_error: str
+) -> None:
     """Test strict type validation for remote_url."""
     mapping = {
         "transfer_method": "remote_url",
@@ -310,7 +333,7 @@ def test_build_from_remote_url_strict_validation(mock_http_head, file_type, shou
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=True)
 
 
-def test_build_from_remote_url_without_strict_validation(mock_http_head):
+def test_build_from_remote_url_without_strict_validation(mock_http_head: MagicMock) -> None:
     """Test that remote_url allows type mismatch when strict_type_validation is False."""
     mapping = {
         "transfer_method": "remote_url",
@@ -323,7 +346,7 @@ def test_build_from_remote_url_without_strict_validation(mock_http_head):
     assert file.filename == "remote_test.jpg"
 
 
-def test_tool_file_not_found(file_records: FileRecords):
+def test_tool_file_not_found(file_records: FileRecords) -> None:
     """Test ToolFile not found in database."""
     file_records.session.delete(file_records.tool_file)
     file_records.session.commit()
@@ -333,7 +356,7 @@ def test_tool_file_not_found(file_records: FileRecords):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
-def test_local_file_not_found(file_records: FileRecords):
+def test_local_file_not_found(file_records: FileRecords) -> None:
     """Test UploadFile not found in database."""
     file_records.session.delete(file_records.upload_file)
     file_records.session.commit()
@@ -343,7 +366,7 @@ def test_local_file_not_found(file_records: FileRecords):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
-def test_build_without_type_specification():
+def test_build_without_type_specification() -> None:
     """Test the situation where no file type is specified"""
     mapping = {
         "transfer_method": "local_file",
@@ -362,7 +385,7 @@ def test_build_without_type_specification():
         ("video", False, "File validation failed"),
     ],
 )
-def test_file_validation_with_config(file_type, should_pass, expected_error):
+def test_file_validation_with_config(file_type: str, should_pass: bool, expected_error: str) -> None:
     """Test the validation of files and configurations"""
     mapping = local_file_mapping(file_type=file_type)
     if should_pass:
@@ -373,7 +396,7 @@ def test_file_validation_with_config(file_type, should_pass, expected_error):
             build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=TEST_CONFIG)
 
 
-def test_invalid_transfer_method():
+def test_invalid_transfer_method() -> None:
     """Test that invalid transfer method raises ValueError."""
     mapping = {
         "transfer_method": "invalid_method",
@@ -384,7 +407,7 @@ def test_invalid_transfer_method():
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
-def test_invalid_uuid_format():
+def test_invalid_uuid_format() -> None:
     """Test that invalid UUID format raises ValueError."""
     mapping = {
         "transfer_method": "local_file",
@@ -395,7 +418,7 @@ def test_invalid_uuid_format():
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
-def test_tenant_mismatch(file_records: FileRecords):
+def test_tenant_mismatch(file_records: FileRecords) -> None:
     """Test that tenant mismatch raises security error."""
     file_records.upload_file.tenant_id = "different_tenant_id"
     file_records.session.commit()
@@ -405,7 +428,7 @@ def test_tenant_mismatch(file_records: FileRecords):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 
-def test_build_from_mapping_scopes_upload_file_to_end_user():
+def test_build_from_mapping_scopes_upload_file_to_end_user() -> None:
     scope = FileAccessScope(
         tenant_id=TEST_TENANT_ID,
         user_id=TEST_END_USER_ID,
@@ -429,7 +452,7 @@ def test_build_from_mapping_scopes_upload_file_to_end_user():
             build_from_mapping(mapping=local_file_mapping(), tenant_id=TEST_TENANT_ID)
 
 
-def test_build_from_mapping_scopes_tool_file_to_end_user():
+def test_build_from_mapping_scopes_tool_file_to_end_user() -> None:
     scope = FileAccessScope(
         tenant_id=TEST_TENANT_ID,
         user_id=TEST_END_USER_ID,
@@ -453,7 +476,7 @@ def test_build_from_mapping_scopes_tool_file_to_end_user():
             build_from_mapping(mapping=tool_file_mapping(), tenant_id=TEST_TENANT_ID)
 
 
-def test_build_from_mapping_allows_granted_tool_file_for_other_end_user():
+def test_build_from_mapping_allows_granted_tool_file_for_other_end_user() -> None:
     """Tool files produced in this run must remain readable by later nodes (#41169).
 
     Workflow-as-tool from an agent binds an EndUser scope. Plugin downloads often
@@ -473,7 +496,7 @@ def test_build_from_mapping_allows_granted_tool_file_for_other_end_user():
     assert file.type == FileType.DOCUMENT
 
 
-def test_disallowed_file_types():
+def test_disallowed_file_types() -> None:
     """Test that disallowed file types are rejected."""
     # Config that only allows image and document types
     restricted_config = FileUploadConfig(
@@ -486,7 +509,7 @@ def test_disallowed_file_types():
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
 
 
-def test_disallowed_extensions(file_records: FileRecords):
+def test_disallowed_extensions(file_records: FileRecords) -> None:
     """Test that disallowed file extensions are rejected for custom type."""
     file_records.upload_file.extension = "exe"
     file_records.upload_file.name = "malicious.exe"
@@ -509,8 +532,12 @@ def test_disallowed_extensions(file_records: FileRecords):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
 
 
-def test_custom_file_type_uses_extension_validation_under_strict_mode(file_records: FileRecords):
-    """Custom form uploads are classified by the configured extension list."""
+def test_custom_file_type_uses_extension_validation_under_strict_mode(file_records: FileRecords) -> None:
+    """Custom form uploads are classified by the configured extension list.
+
+    Strict MIME matching is skipped for the custom bucket, but the File still
+    carries the detected type so LLM nodes can read known formats (#41236).
+    """
     file_records.upload_file.extension = "txt"
     file_records.upload_file.name = "notes.txt"
     file_records.upload_file.mime_type = "text/plain"
@@ -533,4 +560,198 @@ def test_custom_file_type_uses_extension_validation_under_strict_mode(file_recor
         strict_type_validation=True,
     )
 
-    assert file.type == FileType.CUSTOM
+    assert file.type == FileType.DOCUMENT
+
+
+@pytest.mark.parametrize("strict_type_validation", [False, True])
+@pytest.mark.parametrize(
+    ("extension", "name", "mime_type", "expected_type"),
+    [
+        ("jpg", "photo.jpg", "image/jpeg", FileType.IMAGE),
+        ("pdf", "report.pdf", "application/pdf", FileType.DOCUMENT),
+        ("m4a", "notes.m4a", "audio/mp4", FileType.AUDIO),
+        ("mp4", "clip.mp4", "video/mp4", FileType.VIDEO),
+        ("wma", "meeting.wma", "audio/x-ms-wma", FileType.AUDIO),
+        ("xyz", "blob.xyz", "application/octet-stream", FileType.CUSTOM),
+    ],
+)
+def test_custom_bucket_preserves_detected_type_for_llm(
+    file_records: FileRecords,
+    extension: str,
+    name: str,
+    mime_type: str,
+    expected_type: FileType,
+    strict_type_validation: bool,
+) -> None:
+    """Other File Types is an upload bucket, not a prompt-content type.
+
+    Graphon LLM nodes skip ``FileType.CUSTOM``, so known files accepted through
+    that bucket must keep their detected image/document/audio/video type.
+    """
+    file_records.upload_file.extension = extension
+    file_records.upload_file.name = name
+    file_records.upload_file.mime_type = mime_type
+    file_records.session.commit()
+
+    custom_config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[f".{extension}"],
+    )
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "custom",
+    }
+
+    file = build_from_mapping(
+        mapping=mapping,
+        tenant_id=TEST_TENANT_ID,
+        config=custom_config,
+        strict_type_validation=strict_type_validation,
+    )
+
+    assert file.type == expected_type
+    assert file.filename == name
+
+
+@pytest.mark.parametrize("strict_type_validation", [False, True])
+@pytest.mark.parametrize("allow_documents", [False, True])
+def test_custom_bucket_rejects_disallowed_extension_for_detected_document(
+    file_records: FileRecords,
+    strict_type_validation: bool,
+    allow_documents: bool,
+) -> None:
+    """Detecting a document must not bypass the submitted custom bucket's allowlist."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    allowed_types = [FileType.CUSTOM]
+    if allow_documents:
+        allowed_types.append(FileType.DOCUMENT)
+
+    with pytest.raises(ValueError, match="File validation failed"):
+        build_from_mapping(
+            mapping=local_file_mapping(file_type="custom"),
+            tenant_id=TEST_TENANT_ID,
+            config=FileUploadConfig(
+                allowed_file_types=allowed_types,
+                allowed_file_extensions=[".txt"],
+            ),
+            strict_type_validation=strict_type_validation,
+        )
+
+
+@pytest.mark.parametrize(
+    ("detected", "specified", "strict", "expected"),
+    [
+        (FileType.IMAGE, "custom", True, FileType.IMAGE),
+        (FileType.DOCUMENT, "custom", False, FileType.DOCUMENT),
+        (FileType.CUSTOM, "custom", True, FileType.CUSTOM),
+        (FileType.IMAGE, None, True, FileType.IMAGE),
+        (FileType.AUDIO, "audio", True, FileType.AUDIO),
+    ],
+)
+def test_resolve_file_type_custom_bucket_keeps_detected_type(
+    detected: FileType,
+    specified: str | None,
+    strict: bool,
+    expected: FileType,
+) -> None:
+    assert (
+        _resolve_file_type(
+            detected_file_type=detected,
+            specified_type=specified,
+            strict_type_validation=strict,
+        )
+        == expected
+    )
+
+
+def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileRecords) -> None:
+    """A Start-node Other File Types PDF must reach LLM prompt conversion (#41236)."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    variable_pool = VariablePool.empty()
+    variable_pool.add(["start", "file"], file)
+    prompt_content = DocumentPromptMessageContent(
+        format="pdf",
+        url="https://example.com/report.pdf",
+        mime_type="application/pdf",
+        filename="report.pdf",
+    )
+
+    with patch(
+        "graphon.nodes.llm.llm_utils.file_manager.to_prompt_message_content",
+        return_value=prompt_content,
+    ) as mock_to_prompt:
+        prompt_messages = llm_utils.handle_list_messages(
+            messages=[
+                LLMNodeChatModelMessage(
+                    text="Read {{#start.file#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                )
+            ],
+            context="",
+            jinja2_variables=[],
+            variable_pool=variable_pool,
+            vision_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+        )
+
+    mock_to_prompt.assert_called_once()
+    assert mock_to_prompt.call_args.args[0] is file
+    last_content = prompt_messages[-1].content
+    assert isinstance(last_content, list)
+    assert any(part is prompt_content for part in last_content)
+
+
+def test_custom_bucket_pdf_converts_to_document_prompt_content(
+    file_records: FileRecords, config_overrides: Callable[..., None]
+) -> None:
+    """Detected type must produce document prompt content, not an unsupported placeholder."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    file = build_from_mapping(
+        mapping={
+            "transfer_method": "local_file",
+            "upload_file_id": TEST_UPLOAD_FILE_ID,
+            "type": "custom",
+        },
+        tenant_id=TEST_TENANT_ID,
+        config=FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[".pdf"],
+        ),
+    )
+    assert file.type == FileType.DOCUMENT
+
+    config_overrides(MULTIMODAL_SEND_FORMAT="url")
+    with patch("graphon.file.helpers.resolve_file_url", return_value="https://files.example/report.pdf"):
+        content = to_prompt_message_content(file)
+
+    assert isinstance(content, DocumentPromptMessageContent)
+    assert content.mime_type == "application/pdf"
+    assert content.filename == "report.pdf"
+    assert not isinstance(content, TextPromptMessageContent)

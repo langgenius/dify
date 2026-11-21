@@ -27,11 +27,12 @@ from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPer
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._contract import op_of
+from controllers.openapi._contract import CapRequestBody, op_of
 from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
     ServiceApiDisabled,
+    SkillsDisabled,
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import ServiceApiPatch
@@ -46,6 +47,7 @@ from controllers.openapi.auth.requirements import (
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
+    CheckSkillEnabled,
     CheckSubject,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceInvitationQuota,
@@ -179,6 +181,19 @@ class TestRequirementsCases:
         subject = account_subject()
 
         CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
+
+    @staticmethod
+    def test_check_skill_enabled_follows_the_server_flag(
+        sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject)
+
+        config_overrides(ENABLE_SKILL=True)
+        CheckSkillEnabled().run(subject, ctx, sqlite_session)
+        config_overrides(ENABLE_SKILL=False)
+        with pytest.raises(SkillsDisabled):
+            CheckSkillEnabled().run(subject, ctx, sqlite_session)
 
     class TestCheckRBACPermission:
         @staticmethod
@@ -563,9 +578,34 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
+    Route(
+        "apps.delete",
+        "DELETE",
+        "/apps/{app_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.list",
+        "GET",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.create",
+        "POST",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.delete",
+        "DELETE",
+        "/apps/{app_id}/api-keys/{api_key_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("workspaces.switch", "POST", "/workspaces/{workspace_id}:switch", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.members.list", "GET", "/workspaces/{workspace_id}/members", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "workspaces.members.invite",
@@ -623,6 +663,12 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route(
+        "model_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
     Route("tools.list", "GET", "/workspaces/{workspace_id}/tools", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "tool_providers.describe",
@@ -640,6 +686,32 @@ ROUTES: tuple[Route, ...] = (
         "tool_providers.credential.set",
         "PATCH",
         "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route("skills.list", "GET", "/workspaces/{workspace_id}/skills", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("skills.describe", "GET", "/workspaces/{workspace_id}/skills/{skill_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "skills.versions",
+        "GET",
+        "/workspaces/{workspace_id}/skills/{skill_id}/versions",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "skills.export",
+        "GET",
+        "/workspaces/{workspace_id}/skills/{skill_id}/archive",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "skills.publish",
+        "POST",
+        "/workspaces/{workspace_id}/skills/{skill_id}:publish",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -666,6 +738,139 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route(
+        "models.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.credential.activate",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "model_providers.credential.activate",
+        "POST",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.settings.describe",
+        "GET",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/settings",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "models.settings.set",
+        "PUT",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/settings",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.describe",
+        "GET",
+        "/workspaces/{workspace_id}/default-models/{model_type}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "default_models.set",
+        "PUT",
+        "/workspaces/{workspace_id}/default-models/{model_type}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.get",
+        "GET",
+        "/workspaces/{workspace_id}/api-tool-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.create",
+        "POST",
+        "/workspaces/{workspace_id}/api-tool-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.set",
+        "PUT",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "api_tool_providers.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/api-tool-providers/{provider_name}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.create",
+        "POST",
+        "/workspaces/{workspace_id}/mcp-providers",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.describe",
+        "GET",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.set",
+        "PUT",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "mcp_providers.refresh",
+        "POST",
+        "/workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.create",
+        "POST",
+        "/workspaces/{workspace_id}/workflow-tools",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.describe",
+        "GET",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.set",
+        "PUT",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "workflow_tools.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "app_dsl.import",
         "POST",
@@ -994,6 +1199,12 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "app_run.stop",
         "POST",
+        "/apps/{app_id}/runs/{run_id}:stop",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
+    ),
+    Route(
+        "app_run.stop.task",
+        "POST",
         "/apps/{app_id}/tasks/{task_id}:stop",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
@@ -1018,7 +1229,7 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "workflow_events.stream",
         "GET",
-        "/apps/{app_id}/tasks/{task_id}/events",
+        "/apps/{app_id}/runs/{run_id}/events",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.EXTERNAL_REACHABLE}),
     ),
     Route(
@@ -1304,7 +1515,34 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.invite": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.credential.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.credential.activate": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "model_providers.credential.activate": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.settings.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "models.settings.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "default_models.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "default_models.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.get": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "api_tool_providers.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "api_tool_providers.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "api_tool_providers.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "mcp_providers.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    # MCP writes carry an RBAC check but no workspace-role gate, matching the
+    # console surface — a NORMAL member with the permission is admitted.
+    "mcp_providers.create": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.set": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.delete": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "mcp_providers.refresh": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "workflow_tools.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "workflow_tools.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "workflow_tools.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "workflow_tools.delete": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_dsl.check": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "app_create.workflow": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1319,6 +1557,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "webapp.reset": dict(_ACCOUNT_EDITOR_SETTINGS),
     "webapp_access.describe": dict(_WEBAPP_ACCESS_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
+    "apps.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.list": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.create": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
@@ -1331,11 +1573,13 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_workflow.env.list": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.set": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.env.delete": dict(_ACCOUNT_EDITOR_APP),
-    "app_run.workflow": dict(_DUAL_SUBJECT_RUN),
-    "app_run.chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.advanced_chat": dict(_DUAL_SUBJECT_RUN),
-    "app_run.completion": dict(_DUAL_SUBJECT_RUN),
-    "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
+    "app_run.workflow": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.advanced_chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.completion": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "app_run.stop.task": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "human_input_form.get": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
@@ -1389,6 +1633,11 @@ _REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
     CheckScope(Scope.WORKSPACE_READ),
     CheckWorkspaceMember(),
 )
+_REQ_SKILL_READ = (
+    CheckSkillEnabled(),
+    *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    CheckRBACPermission(RBACCheck(RBACPermission.SKILL_VIEW, Workspace())),
+)
 _REQ_MEMBER_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
@@ -1430,7 +1679,6 @@ _REQ_RUN = (
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
 _REQ_RUN_FORM = (*_REQ_RUN, CheckFormSurface())
@@ -1531,6 +1779,27 @@ def _req_admin_write(permission: RBACPermission) -> tuple[Requirement, ...]:
     )
 
 
+def _req_member_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    """A workspace write with an RBAC check but no workspace-role gate."""
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+    )
+
+
+def _req_skill_write(permission: RBACPermission) -> tuple[Requirement, ...]:
+    return (
+        CheckSkillEnabled(),
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, Workspace())),
+        CheckWorkspaceRole(_EDITOR_UP),
+    )
+
+
 _REQ_PLUGIN_TASK = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_READ),
@@ -1556,7 +1825,13 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
-_RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
+_RESOURCE_RUN = (
+    CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckAppAccess(),
+)
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -1571,6 +1846,46 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
+    "apps.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_DELETE, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.list": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.APPS_READ),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.create": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_OWNER_ADMIN),
+    ),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
@@ -1590,14 +1905,47 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "model_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "tools.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tool_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "skills.list": _REQ_SKILL_READ,
+    "skills.describe": _REQ_SKILL_READ,
+    "skills.versions": _REQ_SKILL_READ,
+    "skills.export": _REQ_SKILL_READ,
+    "skills.publish": _req_skill_write(RBACPermission.SKILL_PUBLISH),
+    "skills.import": (
+        *_req_skill_write(RBACPermission.SKILL_EDIT),
+        CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
+    ),
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "models.credential.activate": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "model_providers.credential.activate": _req_admin_write(RBACPermission.CREDENTIAL_USE),
+    "models.delete": _req_admin_write(RBACPermission.PLUGIN_PREFERENCES),
+    "models.settings.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "models.settings.set": _req_admin_write(RBACPermission.PLUGIN_PREFERENCES),
+    "default_models.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "default_models.set": _req_admin_write(RBACPermission.PLUGIN_PREFERENCES),
+    "api_tool_providers.get": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "api_tool_providers.create": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "api_tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "api_tool_providers.set": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "api_tool_providers.delete": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "mcp_providers.create": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "mcp_providers.set": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.delete": _req_member_write(RBACPermission.MCP_MANAGE),
+    "mcp_providers.refresh": _req_member_write(RBACPermission.MCP_MANAGE),
+    "workflow_tools.create": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "workflow_tools.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "workflow_tools.set": _req_admin_write(RBACPermission.TOOL_MANAGE),
+    "workflow_tools.delete": _req_admin_write(RBACPermission.TOOL_MANAGE),
     "app_dsl.import": _REQ_DSL_WORKSPACE,
     "app_dsl.check": _REQ_DSL_WORKSPACE,
     "app_dsl.import_confirm": _REQ_DSL_WORKSPACE,
@@ -1780,6 +2128,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         CheckWebAppAuthEnterprise(),
     ),
     "app_run.stop": _RESOURCE_RUN,
+    "app_run.stop.task": _RESOURCE_RUN,
     "files.upload": _REQ_FILES,
     "human_input_form.get": _REQ_RUN_FORM,
     "human_input_form.submit": _REQ_RUN_FORM,
@@ -1923,13 +2272,18 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "form_token": uuid.uuid4().hex,
         "run_id": str(uuid.uuid4()),
         "version_id": str(uuid.uuid4()),
+        "skill_id": str(uuid.uuid4()),
         "env_id": str(uuid.uuid4()),
         "node_type": "llm",
         "node_id": "node-1",
         "plugin_id": "langgenius/openai",
         "provider": "langgenius/openai/openai",
         "credential_id": str(uuid.uuid4()),
+        "api_key_id": str(uuid.uuid4()),
         "model_type": "llm",
+        "provider_id": str(uuid.uuid4()),
+        "provider_name": "weather",
+        "workflow_tool_id": str(uuid.uuid4()),
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -2124,12 +2478,24 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
     ("get", "/workspaces/{workspace_id}/model-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/skills/{skill_id}:publish"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/skills/imports"): frozenset({"200", "201", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/models"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials"): frozenset(
         {"201", "422", "default"}
@@ -2137,6 +2503,39 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}"): frozenset(
+        {"200", "422", "default"}
+    ),
+    (
+        "post",
+        "/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}:activate",
+    ): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}:activate"): frozenset(
+        {"200", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/models"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/model-providers/{provider}/models/settings"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("put", "/workspaces/{workspace_id}/model-providers/{provider}/models/settings"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/default-models/{model_type}"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/api-tool-providers"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/api-tool-providers"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/api-tool-providers/{provider_name}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/mcp-providers"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/mcp-providers/{provider_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/mcp-providers/{provider_id}:refresh"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/workflow-tools"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
+    ("put", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/workflow-tools/{workflow_tool_id}"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -2145,6 +2544,10 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/account/sessions/{session_id}"): frozenset({"200", "default"}),
     ("get", "/apps"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/apps/{app_id}"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/api-keys"): frozenset({"200", "default"}),
+    ("post", "/apps/{app_id}/api-keys"): frozenset({"201", "default"}),
+    ("delete", "/apps/{app_id}/api-keys/{api_key_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "default"}),
     ("patch", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/service-api"): frozenset({"200", "default"}),
@@ -2164,9 +2567,12 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/dependencies:check"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/dsl"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/files"): frozenset({"201", "400", "401", "413", "415", "422", "default"}),
-    ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset({"200", "422", "default"}),
-    ("get", "/apps/{app_id}/tasks/{task_id}/events"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/human-input-forms/{form_token}"): frozenset({"200", "409", "410", "default"}),
+    ("post", "/apps/{app_id}/human-input-forms/{form_token}:submit"): frozenset(
+        {"200", "400", "409", "410", "422", "default"}
+    ),
+    ("get", "/apps/{app_id}/runs/{run_id}/events"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/runs/{run_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
@@ -2177,7 +2583,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/runs"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}/nodes"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}:publish"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}:publish"): frozenset({"200", "403", "422", "default"}),
     ("get", "/apps/{app_id}/versions"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/versions/{version_id}:restore"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/release:check"): frozenset({"200", "default"}),
@@ -2207,6 +2613,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}:switch"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports"): frozenset({"200", "202", "400", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports:check"): frozenset({"200", "422", "default"}),
     ("post", "/workspaces/{workspace_id}/apps/imports/{import_id}:confirm"): frozenset({"200", "400", "default"}),
@@ -2425,6 +2832,110 @@ class TestAuthMatrixCases:
         assert response.status_code == expected.status, f"{route.id}/{case.value}: body={body}"
         if expected.message is not None:
             assert body.get("message") == expected.message
+
+    @staticmethod
+    def test_pat_workspace_management_is_limited_to_phase_one_routes(matrix_app: Flask) -> None:
+        from constants.personal_access_token import PersonalAccessTokenPolicy
+
+        supported = {
+            route.id
+            for route in ROUTES
+            if (spec := _spec_for(matrix_app, route)) is not None
+            and spec.pat_policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS
+        }
+        assert supported == {
+            "plugins.marketplace",
+            "plugins.list",
+            "plugins.install",
+            "plugins.task",
+            "plugins.delete",
+            "model_providers.describe",
+            "model_providers.credential.create",
+            "model_providers.credential.set",
+            "model_providers.credential.delete",
+            "model_providers.credential.activate",
+            "models.list",
+            "models.credential.create",
+            "models.credential.set",
+            "models.credential.delete",
+            "models.credential.activate",
+            "models.delete",
+            "models.settings.describe",
+            "models.settings.set",
+            "default_models.describe",
+            "default_models.set",
+            "tools.list",
+            "tool_providers.describe",
+            "tool_providers.credential.create",
+            "tool_providers.credential.set",
+            "tool_providers.credential.delete",
+            "api_tool_providers.get",
+            "api_tool_providers.create",
+            "api_tool_providers.describe",
+            "api_tool_providers.set",
+            "api_tool_providers.delete",
+            "mcp_providers.create",
+            "mcp_providers.describe",
+            "mcp_providers.set",
+            "mcp_providers.delete",
+            "mcp_providers.refresh",
+            "workflow_tools.create",
+            "workflow_tools.describe",
+            "workflow_tools.set",
+            "workflow_tools.delete",
+            "app_dsl.import",
+            "app_dsl.import_confirm",
+            "app_dsl.export",
+            "app_dsl.check",
+            "app_dsl.check_dependencies",
+            "app_create.workflow",
+            "app_create.advanced_chat",
+            "apps.delete",
+            "app_api_keys.list",
+            "app_api_keys.create",
+            "app_api_keys.delete",
+            "app_workflow.publish",
+            "app_workflow.version.list",
+            "app_workflow.version.restore",
+            "app_workflow.release_check",
+            "app_workflow.env.list",
+            "app_workflow.env.set",
+            "app_workflow.env.delete",
+            "app_info.describe.workflow",
+            "app_info.set.workflow",
+            "app_info.describe.advanced_chat",
+            "app_info.set.advanced_chat",
+            "app_info.describe.chat",
+            "app_info.set.chat",
+            "app_info.describe.agent_chat",
+            "app_info.set.agent_chat",
+            "app_info.describe.completion",
+            "app_info.set.completion",
+            "app_info.describe.agent",
+            "app_info.set.agent",
+            "service_api.describe",
+            "service_api.set",
+            "service_api.describe.agent",
+            "service_api.set.agent",
+            "webapp.describe.workflow",
+            "webapp.set.workflow",
+            "webapp.describe.advanced_chat",
+            "webapp.set.advanced_chat",
+            "webapp.describe.chat",
+            "webapp.set.chat",
+            "webapp.describe.agent_chat",
+            "webapp.set.agent_chat",
+            "webapp.describe.completion",
+            "webapp.set.completion",
+            "webapp.describe.agent",
+            "webapp.set.agent",
+            "webapp.reset",
+            "webapp.reset.agent",
+            "webapp_access.describe",
+            "webapp_access.set",
+            "webapp_access.describe.agent",
+            "webapp_access.set.agent",
+        }
 
     @staticmethod
     def test_registered_openapi_routes_match_the_matrix(matrix_app: Flask) -> None:

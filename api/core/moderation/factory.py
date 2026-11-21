@@ -1,8 +1,25 @@
 from typing import Any
 
+from flask import current_app, has_app_context
+
 from core.extension.extensible import ExtensionModule
-from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import (
+    AppModeration,
+    Moderation,
+    ModerationInputsResult,
+    ModerationOutputsResult,
+)
 from extensions.ext_code_based_extension import code_based_extension
+
+
+def get_app_moderation() -> AppModeration | None:
+    """Return the injected policy or None for standalone kernel execution; malformed registrations fail closed."""
+    if not has_app_context():
+        return None
+    moderation = current_app.extensions.get("app_moderation")
+    if moderation is not None and not isinstance(moderation, AppModeration):
+        raise TypeError("Invalid app moderation policy registration.")
+    return moderation
 
 
 class ModerationFactory:

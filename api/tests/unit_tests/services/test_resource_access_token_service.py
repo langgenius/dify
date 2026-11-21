@@ -166,5 +166,59 @@ def test_dataset_scope_never_uses_an_app_binding(
         "token", "workspace", True, (BoundResource(ResourceType.APP, "dataset", True, True),)
     )
     with pytest.raises(ResourceAccessTokenForbiddenError):
-        service.resolve_tenant_for_dataset_service_api(token="secret", dataset_id="dataset")
+        service.resolve_datasets_for_service_api(token="secret", dataset_id="dataset")
+    assert store.usage_calls == []
+
+
+def test_dataset_collection_scope_returns_only_live_enabled_knowledge_bindings(
+    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore
+) -> None:
+    store.access = ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        True,
+        (
+            BoundResource(ResourceType.KNOWLEDGE, "allowed", True, True),
+            BoundResource(ResourceType.KNOWLEDGE, "disabled", True, False),
+            BoundResource(ResourceType.KNOWLEDGE, "deleted", False, True),
+            BoundResource(ResourceType.APP, "app", True, True),
+        ),
+    )
+
+    grant = service.resolve_datasets_for_service_api(token="secret", dataset_id=None)
+
+    assert grant.tenant_id == "workspace"
+    assert grant.dataset_ids == frozenset({"allowed"})
+    assert store.usage_calls == [("workspace", "token")]
+
+
+def test_dataset_scope_requires_the_requested_knowledge_binding(
+    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore
+) -> None:
+    store.access = ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        True,
+        (BoundResource(ResourceType.KNOWLEDGE, "allowed", True, True),),
+    )
+
+    with pytest.raises(ResourceAccessTokenForbiddenError):
+        service.resolve_datasets_for_service_api(token="secret", dataset_id="other")
+
+    assert store.usage_calls == []
+
+
+def test_dataset_scope_rejects_inactive_workspace_without_recording_usage(
+    service: ResourceAccessTokenService, store: FakeResourceAccessTokenStore
+) -> None:
+    store.access = ResourceAccessTokenAccess(
+        "token",
+        "workspace",
+        False,
+        (BoundResource(ResourceType.KNOWLEDGE, "dataset", True, True),),
+    )
+
+    with pytest.raises(ResourceAccessTokenForbiddenError, match="workspace unavailable"):
+        service.resolve_datasets_for_service_api(token="secret", dataset_id=None)
+
     assert store.usage_calls == []

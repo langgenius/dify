@@ -83,6 +83,7 @@ async function renderDialog(
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['dataset.api_key.manage'],
     currentWorkspace: { id: 'workspace-1', name: 'Test Workspace' },
+    features: {},
   })
   const user = userEvent.setup()
   render(

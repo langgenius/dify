@@ -59,6 +59,15 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.
 
+## Opening overlays
+
+Use a Trigger under its Root for a dedicated opener. Child components and portals preserve that
+React relationship. When a Trigger must live outside the Root, connect it with the Root’s shared
+handle. A [menu command] opens a sibling dialog from its action. Use local controlled `open`
+when the Root already knows the target, or `openWithPayload` when the action supplies the target
+to a shared dialog. For an anchored overlay such as a [`Popover`], an imperative `open(triggerId)`
+identifies its registered Trigger.
+
 ## Primitive semantics
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
@@ -71,14 +80,23 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
   reserves inline-end space when it contains the button. Without it, the header keeps its normal
   gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
+  A dialog that submits a form cancels user-initiated closes while the submission is pending and
+  closes itself when it succeeds; a failure keeps the dialog open with the draft intact.
+  Outside-press dismissal is the default and follows what an accidental close would cost. The Root
+  sets `disablePointerDismissal` only when that close throws away work the user would have to
+  redo, not merely because the content contains a field; a quick choice or a short value typed
+  again in seconds keeps the default. Escape and a visible cancel or close action stay available,
+  and a draft that is costly to re-enter can confirm discarding on every close path.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
   description; anything the user fills in or reviews before answering goes in `AlertDialogBody`.
 - Use `Drawer` for side-panel interactions that follow the drawer model.
-- Use `DropdownMenu` for button-triggered action lists and `ContextMenu` for context actions.
-  A long action list filters with `DropdownMenuFilterProvider`; choosing a value is
+- Use `Menu` for button-triggered action lists and `ContextMenu` for context actions.
+  A long action list filters with `MenuFilterProvider`; choosing a value is
   [`Combobox`] in [Selection].
+  Use `ContextMenuPortal`, `ContextMenuPositioner`, and `ContextMenuPopup` for custom portal
+  containers or positioning beyond `ContextMenuContent`'s common options.
 - Use [`Tooltip`] for a supplementary visual label on a control that already has a primary
   action and an accessible name. Use `Infotip` when the information icon's action is to open
   the explanation. Text length alone does not determine the component. Follow the
@@ -100,3 +118,4 @@ renders a non-button element, set `nativeButton={false}`.
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card
 [`Tooltip`]: https://base-ui.com/react/components/tooltip
+[menu command]: https://base-ui.com/react/components/dialog#open-from-a-menu

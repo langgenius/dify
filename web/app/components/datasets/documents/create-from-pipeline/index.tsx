@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { selectPublishedPipelineNodes } from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
@@ -125,11 +126,10 @@ const CreateFormPipeline = () => {
 
   // Computed values
   const shouldCheckVectorSpace =
-    deploymentEdition === 'CLOUD' &&
-    (allFileLoaded ||
-      onlineDocuments.length > 0 ||
-      websitePages.length > 0 ||
-      selectedFileIds.length > 0)
+    allFileLoaded ||
+    onlineDocuments.length > 0 ||
+    websitePages.length > 0 ||
+    selectedFileIds.length > 0
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -141,11 +141,7 @@ const CreateFormPipeline = () => {
   const isVectorSpaceUnavailable =
     shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    deploymentEdition === 'CLOUD' &&
-    !!vectorSpace &&
-    !vectorSpace.usage_unknown &&
-    vectorSpace.limit > 0 &&
-    vectorSpace.size >= vectorSpace.limit
+    !!vectorSpace && !vectorSpace.usage_unknown && isQuotaReached(getVectorSpaceQuota(vectorSpace))
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const supportBatchUpload =
     deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'

@@ -4,7 +4,12 @@ from flask import Blueprint
 from flask_restx import Namespace
 
 from controllers.common.app_access_error import register_app_access_error_metadata
-from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
+from controllers.common.errors import (
+    InternalServerError,
+    NotFoundError,
+    UnauthorizedError,
+    register_moderation_error_handlers,
+)
 from controllers.console.error import NotInitValidateError, NotSetupError
 from controllers.web.error import (
     WebAppAccessServiceUnavailableError,
@@ -23,6 +28,7 @@ api = ExternalApi(
     title="Web API",
     description="Public APIs for web applications including file uploads, chat interactions, and app management",
 )
+register_moderation_error_handlers(api)
 # The passport guard on every Web API resource raises these; the web client answers them
 # centrally (sign-in redirect, access-denied and not-found pages), so no operation lists them.
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own
@@ -56,6 +62,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         forgot_password,
         human_input_file_upload,
         human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
         login,
         message,
         passport,
@@ -76,6 +85,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         forgot_password,
         human_input_file_upload,
         human_input_form,
+        human_input_form_access_request,
+        human_input_v2,
+        human_input_v2_file_upload,
         login,
         message,
         passport,
@@ -97,6 +109,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     forgot_password,
     human_input_file_upload,
     human_input_form,
+    human_input_form_access_request,
+    human_input_v2,
+    human_input_v2_file_upload,
     login,
     message,
     passport,
@@ -121,6 +136,9 @@ __all__ = [
     "forgot_password",
     "human_input_file_upload",
     "human_input_form",
+    "human_input_form_access_request",
+    "human_input_v2",
+    "human_input_v2_file_upload",
     "login",
     "message",
     "passport",

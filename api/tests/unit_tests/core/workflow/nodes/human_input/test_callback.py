@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from datetime import timedelta
 
 import pytest
@@ -24,22 +23,26 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.session_binding import SessionBinding
+from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, PauseRequested
 from graphon.runtime import VariablePool
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputForm
 
 
-@dataclass(frozen=True, slots=True)
-class _Context:
-    workflow_execution_id: str
-    node_id: str
-    node_title: str = "Human Input"
-    variable_pool: VariablePool = field(default_factory=VariablePool)
-
-
-def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Input") -> _Context:
-    return _Context(workflow_execution_id=workflow_execution_id, node_id=node_id, node_title=node_title)
+def _ctx(
+    workflow_execution_id: str,
+    node_id: str,
+    node_title: str = "Human Input",
+    variable_pool: ReadOnlyVariablePool | None = None,
+) -> HITLContext:
+    return HITLContext(
+        workflow_execution_id=workflow_execution_id,
+        node_id=node_id,
+        node_title=node_title,
+        variable_pool=variable_pool if variable_pool is not None else VariablePool(),
+    )
 
 
 @pytest.fixture
@@ -53,11 +56,30 @@ def repository(
     return HumanInputFormRepositoryImpl(tenant_id="tenant-1", app_id="app-1", workflow_execution_id="run-1")
 
 
-def test_session_binding_identity_mapping() -> None:
+@pytest.mark.parametrize(
+    ("node_version", "form_id", "session_id"),
+    [
+        ("1", "form-1", "form-1"),
+        ("2", "form-2", "hitlv2:form-2"),
+    ],
+)
+def test_session_binding_preserves_form_version(node_version: str, form_id: str, session_id: str) -> None:
     binding = SessionBinding()
 
-    assert binding.issue_session_id_for_form(form_id="form-1") == "form-1"
-    assert binding.resolve_form_id_from_session_id(session_id="form-1") == "form-1"
+    assert binding.issue_session_id_for_form(node_version, form_id) == session_id
+    assert binding.resolve_form_id_from_session_id(session_id) == (node_version, form_id)
+
+
+def test_session_binding_reads_existing_v1_identifiers() -> None:
+    assert SessionBinding().resolve_form_id_from_session_id("00000000-0000-0000-0000-000000000001") == (
+        "1",
+        "00000000-0000-0000-0000-000000000001",
+    )
+
+
+def test_session_binding_rejects_unsupported_node_versions() -> None:
+    with pytest.raises(ValueError, match="Unsupported Human Input node version"):
+        SessionBinding().issue_session_id_for_form("3", "form-3")
 
 
 def test_dify_hitl_callback_creates_pause_requested_for_new_form(
@@ -77,6 +99,7 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, PauseRequested)
     assert decision == callback.pause_requested_type(session_id=create.spy_return.id)
     form = repository.get_form("node-1")
     assert form is not None
@@ -108,7 +131,7 @@ def test_dify_hitl_callback_persists_variable_select_options(
         ),
     )
 
-    callback(_Context(workflow_execution_id="run-1", node_id="node-1", variable_pool=variable_pool))
+    callback(_ctx("run-1", "node-1", variable_pool=variable_pool))
 
     params: FormCreateParams = create.call_args.args[0]
     select_input = params.form_config.inputs[0]
@@ -175,6 +198,7 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, Completed)
     assert decision.selected_handle == "approve"
     assert decision.inputs == {"answer": build_segment("yes")}
     assert decision.outputs == {
@@ -212,6 +236,7 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form(
 
     decision = callback(_ctx("run-1", "node-1"))
 
+    assert isinstance(decision, Expired)
     assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
@@ -251,6 +276,7 @@ def test_dify_hitl_callback_persists_timeout_for_waiting_form_past_node_deadline
     form = sqlite_session.get(HumanInputForm, "form-1")
     assert form is not None
     assert form.status == HumanInputFormStatus.TIMEOUT
+    assert isinstance(decision, Expired)
     assert decision.selected_handle == "__timeout"
     assert decision.outputs == {
         "__action_id": build_segment(""),
@@ -288,6 +314,7 @@ def test_dify_hitl_callback_timeout_uses_concurrent_terminal_state(
     monkeypatch.setattr(repository, "get_form", finish_after_read)
     if terminal_status == HumanInputFormStatus.SUBMITTED:
         decision = callback(_ctx("run-1", "node-1"))
+        assert isinstance(decision, Completed)
         assert decision.selected_handle == "approve"
         assert decision.inputs == {"answer": build_segment("accepted before timeout")}
     else:

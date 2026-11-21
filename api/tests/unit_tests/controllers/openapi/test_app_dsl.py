@@ -162,7 +162,7 @@ def test_export_reads_draft_hash_before_building_dsl(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph='{"nodes": [], "edges": []}',
-        features="{}",
+        _features="{}",
         created_by="account-1",
     )
     sqlite_session.add(draft)
@@ -532,7 +532,7 @@ def test_export_errors_have_canonical_http_responses(
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT,
                 graph='{"nodes": [], "edges": []}',
-                features="{}",
+                _features="{}",
                 created_by="account-id",
             )
         )

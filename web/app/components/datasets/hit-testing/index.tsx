@@ -21,11 +21,12 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { keepPreviousData, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -35,7 +36,6 @@ import docStyle from '@/app/components/datasets/documents/detail/completed/style
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
@@ -55,8 +55,7 @@ type Props = Readonly<{
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<
@@ -98,10 +97,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     () => currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
-  const [
-    isShowRightPanel,
-    { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel },
-  ] = useBoolean(!isMobile)
+  const [isResultDrawerOpen, { setTrue: openResultDrawer, setFalse: closeResultDrawer }] =
+    useBoolean(false)
 
   const {
     mutate: hitTestingMutation,
@@ -149,8 +146,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         : ''
 
   const renderHitResults = (results: HitTestingRecord[] | ExternalHitTestingRecordResponse[]) => (
-    <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-      <h2 className="mb-2 shrink-0 pl-2 leading-6 font-semibold text-text-primary">
+    <div className="flex h-full flex-col rounded-ss-2xl bg-background-body px-4 py-3">
+      <h2 className="mb-2 shrink-0 ps-2 leading-6 font-semibold text-text-primary">
         {t(($) => $['hit.title'], { ns: 'datasetHitTesting', num: results.length })}
       </h2>
       <div className="grow space-y-2 overflow-y-auto">
@@ -170,7 +167,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
+    <div className="flex h-full flex-col items-center justify-center rounded-ss-2xl bg-background-body px-4 py-3">
       <div
         className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')}
       />
@@ -185,14 +182,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     setQueryInputKey(Date.now())
   }, [])
 
-  useEffect(() => {
-    setShowRightPanel(!isMobile)
-  }, [isMobile, setShowRightPanel])
-
   if (!canRunRetrievalRecall) return <LoadingPlaceholder className="h-full" />
 
   return (
-    <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
+    <div className="relative flex size-full gap-x-6 overflow-y-auto ps-6">
       <div role="status" aria-atomic="true" className="sr-only">
         {retrievalStatus}
       </div>
@@ -210,7 +203,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             key={queryInputKey}
             setHitResult={setHitResult}
             setExternalHitResult={setExternalHitResult}
-            onSubmit={showRightPanel}
+            onSubmit={() => {
+              if (isBelowSm) openResultDrawer()
+            }}
             onUpdateList={recordsRefetch}
             loading={isRetrievalLoading}
             queries={queries}
@@ -256,18 +251,18 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
       <FloatRightContainer
         panelClassName="justify-start! overflow-y-auto!"
         showClose
-        isMobile={isMobile}
-        isOpen={isShowRightPanel}
-        onClose={hideRightPanel}
+        presentation={isBelowSm ? 'drawer' : 'inline'}
+        isOpen={!isBelowSm || isResultDrawerOpen}
+        onClose={closeResultDrawer}
         title={panelTitle}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading ? (
-            <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+            <div className="flex h-full flex-col rounded-ss-2xl bg-background-body px-4 py-3">
               <CardSkelton />
             </div>
           ) : isRetrievalError ? (
-            <div className="flex h-full items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
+            <div className="flex h-full items-center justify-center rounded-ss-2xl bg-background-body px-4 py-3 text-sm text-text-secondary">
               {retrievalErrorMessage}
             </div>
           ) : (
@@ -291,10 +286,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         }}
       >
         <DrawerPortal>
-          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerBackdrop className="sm:bg-transparent" />
           <DrawerViewport>
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
-              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <DrawerContent>
                 {retrievalConfig && (
                   <ModifyRetrievalModal
                     indexMethod={currentDataset?.indexing_technique || ''}

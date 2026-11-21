@@ -1,7 +1,6 @@
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { VarInInspect } from '@/types/workflow'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -34,28 +33,29 @@ export const TextEditorSection = ({
   const { t } = useTranslation(['workflow'])
 
   return (
-    <>
-      {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
-      {currentVar.value_type === 'string' ? (
-        <DisplayContent
-          previewType={PreviewType.Markdown}
-          varType={currentVar.value_type}
-          mdString={typeof value === 'string' ? value : String(value ?? '')}
-          readonly={textEditorDisabled || isTruncated}
-          handleTextChange={onTextChange}
-          className={cn(isTruncated && 'pt-9')}
-        />
-      ) : (
-        <Textarea
-          aria-label={t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
-          readOnly={textEditorDisabled}
-          disabled={textEditorDisabled || isTruncated}
-          className={cn('h-full', isTruncated && 'pt-12')}
-          value={typeof value === 'number' ? value : String(value ?? '')}
-          onValueChange={(value) => onTextChange(value)}
-        />
-      )}
-    </>
+    <div className="flex h-full flex-col">
+      {isTruncated && <LargeDataAlert className="mx-3 mt-1 mb-1 shrink-0" />}
+      <div className="min-h-0 grow">
+        {currentVar.value_type === 'string' ? (
+          <DisplayContent
+            previewType={PreviewType.Markdown}
+            varType={currentVar.value_type}
+            mdString={typeof value === 'string' ? value : String(value ?? '')}
+            readonly={textEditorDisabled || isTruncated}
+            handleTextChange={onTextChange}
+          />
+        ) : (
+          <Textarea
+            aria-label={t(($) => $['errorMsg.fields.variableValue'], { ns: 'workflow' })}
+            readOnly={textEditorDisabled}
+            disabled={textEditorDisabled || isTruncated}
+            className="h-full"
+            value={typeof value === 'number' ? value : String(value ?? '')}
+            onValueChange={(value) => onTextChange(value)}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 

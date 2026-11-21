@@ -18,17 +18,15 @@ export function WorkspaceMenuItemContent({
     <>
       <span
         aria-hidden
-        className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary"
+        className="flex size-4 shrink-0 items-center justify-center text-text-tertiary"
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1 truncate text-left system-md-regular text-text-secondary">
+      <span className="min-w-0 flex-1 truncate text-start system-md-regular text-text-secondary">
         {label}
       </span>
       {showTrailing && (
-        <span
-          className={cn('flex h-4 w-4 shrink-0 items-center justify-center', trailingClassName)}
-        >
+        <span className={cn('flex size-4 shrink-0 items-center justify-center', trailingClassName)}>
           {trailing}
         </span>
       )}

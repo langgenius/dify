@@ -92,6 +92,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 const template = createPipelineTemplate()
+const detailIcon = { ...template.icon, icon: '📈' }
 const datasetListKey = consoleQuery.datasets.get.queryKey({ input: { query: { page: 1 } } })
 const templateListKey = consoleQuery.rag.pipeline.templates.get.queryKey({
   input: { query: { type: 'customized' } },
@@ -125,7 +126,7 @@ beforeEach(() => {
     name: 'Test Pipeline',
     description: 'Description',
     export_data: 'yaml_template',
-    icon_info: {},
+    icon_info: detailIcon,
     chunk_structure: 'text_model',
     graph: { nodes: [], edges: [] },
   })
@@ -153,7 +154,7 @@ it.each(['card', 'details'])(
       query: { type: 'customized' },
     })
     expect(mockCreateDataset).toHaveBeenCalledExactlyOnceWith({
-      body: { yaml_content: 'yaml_template' },
+      body: { yaml_content: 'yaml_template', icon_info: detailIcon },
     })
     expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
     expect(mockPush).not.toHaveBeenCalled()
@@ -177,9 +178,7 @@ it.each(['fetch', 'create'])('keeps the template available after a %s failure', 
   else mockCreateDataset.mockRejectedValueOnce(new Error('offline'))
   const queryClient = setup()
   await user.click(screen.getByRole('button', { name: 'datasetPipeline.operations.choose' }))
-  await waitFor(() =>
-    expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.creation.errorTip'),
-  )
+  await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('offline'))
   expect(mockPush).not.toHaveBeenCalled()
   expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(false)
   if (stage === 'fetch') expect(mockCreateDataset).not.toHaveBeenCalled()
@@ -212,9 +211,7 @@ it('reports an export failure without downloading a file', async () => {
   mockExportPipelineDSL.mockRejectedValueOnce(new Error('offline'))
   setup()
   await action(user, 'datasetPipeline.operations.exportPipeline')
-  await waitFor(() =>
-    expect(mockToastError).toHaveBeenCalledWith('datasetPipeline.exportDSL.errorTip'),
-  )
+  await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('offline'))
   expect(downloadBlob).not.toHaveBeenCalled()
 })
 

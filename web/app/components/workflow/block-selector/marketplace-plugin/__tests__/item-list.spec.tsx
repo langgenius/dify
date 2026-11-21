@@ -2,6 +2,7 @@ import { renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createPlugin } from '../../__tests__/factories'
 import useStickyScroll, { ScrollPosition } from '../../use-sticky-scroll'
@@ -72,6 +73,7 @@ describe('Marketplace plugin selector components', () => {
 
     render(
       <Item
+        marketplace={marketplaceLinks}
         payload={createPlugin({
           label: { en_US: 'Search Plugin', zh_Hans: '搜索插件', [language]: label },
           brief: { en_US: 'Searches documents', zh_Hans: '搜索文档', [language]: brief },
@@ -90,6 +92,7 @@ describe('Marketplace plugin selector components', () => {
 
     render(
       <Item
+        marketplace={marketplaceLinks}
         payload={createPlugin({
           label: { en_US: 'Search Plugin', zh_Hans: '搜索插件' },
           brief: { en_US: 'Searches documents', zh_Hans: '搜索文档' },
@@ -106,6 +109,7 @@ describe('Marketplace plugin selector components', () => {
 
     render(
       <Item
+        marketplace={marketplaceLinks}
         payload={createPlugin({
           org: 'LangGenius',
           latest_package_identifier: 'plugin-1@2.0.0',
@@ -147,6 +151,7 @@ describe('Marketplace plugin selector components', () => {
     try {
       render(
         <List
+          marketplace={marketplaceLinks}
           wrapElemRef={{ current: document.createElement('div') }}
           list={[createPlugin()]}
           searchText="filtered"
@@ -176,6 +181,7 @@ describe('Marketplace plugin selector components', () => {
 
     render(
       <List
+        marketplace={marketplaceLinks}
         wrapElemRef={{ current: document.createElement('div') }}
         list={[createPlugin()]}
         searchText="filtered"
@@ -198,6 +204,7 @@ describe('Marketplace plugin selector components', () => {
 
     const { rerender } = render(
       <List
+        marketplace={marketplaceLinks}
         wrapElemRef={wrapElemRef}
         list={[]}
         searchText=""
@@ -213,6 +220,7 @@ describe('Marketplace plugin selector components', () => {
 
     rerender(
       <List
+        marketplace={marketplaceLinks}
         wrapElemRef={wrapElemRef}
         list={[plugin]}
         searchText="filtered"
@@ -237,6 +245,7 @@ describe('Marketplace plugin selector components', () => {
   it('should hide the marketplace footer when requested and no filters are active', () => {
     const { container } = render(
       <List
+        marketplace={marketplaceLinks}
         wrapElemRef={{ current: document.createElement('div') }}
         list={[]}
         searchText=""

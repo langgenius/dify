@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { PopoverActions } from '@langgenius/dify-ui/popover'
 import type { DocumentMetadataField, DocumentMetadataType } from './editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,7 +15,7 @@ import {
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentMetadataCreateForm } from './create-form'
 
@@ -24,6 +24,19 @@ const metadataTypeIcon = {
   string: 'i-ri-text-snippet',
   time: 'i-ri-time-line',
 } satisfies Record<DocumentMetadataType, string>
+
+type DocumentMetadataPickerProps = {
+  allowedExistingName?: string
+  creating: boolean
+  disabled?: boolean
+  error: boolean
+  fields: DocumentMetadataField[]
+  loading: boolean
+  onCreate: (name: string, type: DocumentMetadataType) => Promise<void>
+  onManage: () => void
+  onRetry: () => void
+  onSelect: (field: DocumentMetadataField) => void
+}
 
 export function DocumentMetadataPicker({
   allowedExistingName,
@@ -36,36 +49,19 @@ export function DocumentMetadataPicker({
   onManage,
   onRetry,
   onSelect,
-}: {
-  allowedExistingName?: string
-  creating: boolean
-  disabled?: boolean
-  error: boolean
-  fields: DocumentMetadataField[]
-  loading: boolean
-  onCreate: (name: string, type: DocumentMetadataType) => Promise<void>
-  onManage: () => void
-  onRetry: () => void
-  onSelect: (field: DocumentMetadataField) => void
-}) {
+}: DocumentMetadataPickerProps) {
   const { t } = useTranslation(['knowledgeCitation', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
-  const [open, setOpen] = useState(false)
+  const popoverActionsRef = useRef<PopoverActions>(null)
   const [view, setView] = useState<'create' | 'select'>('select')
-  const [query, setQuery] = useState('')
-
-  const reset = () => {
-    setView('select')
-    setQuery('')
-  }
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen) reset()
-  }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover
+      actionsRef={popoverActionsRef}
+      onOpenChangeComplete={(open) => {
+        if (!open) setView('select')
+      }}
+    >
       <PopoverTrigger
         render={
           <Button variant="tertiary" size="small" className="w-full" disabled={disabled}>
@@ -80,7 +76,7 @@ export function DocumentMetadataPicker({
         alignOffset={4}
         side="left"
         align="start"
-        className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
+        className="w-80 max-w-(--available-width) bg-components-panel-bg-blur backdrop-blur-[5px]"
         sideOffset={-38}
       >
         <PopoverTitle className="sr-only">
@@ -90,31 +86,24 @@ export function DocumentMetadataPicker({
         </PopoverTitle>
         {view === 'select' ? (
           <Combobox<DocumentMetadataField>
-            filter={(field, input) => field.name.toLowerCase().includes(input.toLowerCase())}
-            inputValue={query}
-            isItemEqualToValue={(field, value) => field.name === value.name}
+            inline
+            open
             items={fields}
             itemToStringLabel={(field) => field.name}
-            itemToStringValue={(field) => field.name}
-            onInputValueChange={(value, details: ComboboxChangeEventDetails) => {
-              if (details.reason !== 'item-press') setQuery(value)
-            }}
             onValueChange={(field) => {
               if (!field) return
               onSelect(field)
-              setOpen(false)
-              reset()
+              popoverActionsRef.current?.close()
             }}
             value={null}
           >
             <div className="p-2 pb-1">
               <ComboboxInputGroup>
-                <span aria-hidden className="ml-2 i-ri-search-line size-4 text-text-tertiary" />
+                <span aria-hidden className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
                 <ComboboxInput
                   // oxlint-disable-next-line jsx-a11y/no-autofocus -- Returning from the create view replaces the focused control in an open popover.
                   autoFocus
                   aria-label={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
-                  className="pl-2"
                   placeholder={t(($) => $['metadata.selectMetadata.search'], { ns: 'dataset' })}
                 />
               </ComboboxInputGroup>
@@ -138,14 +127,17 @@ export function DocumentMetadataPicker({
               </ComboboxList>
             )}
             {loading && (
-              <div className="flex h-20 items-center justify-center gap-2 system-xs-regular text-text-tertiary">
+              <div
+                role="status"
+                className="flex h-20 items-center justify-center gap-2 system-xs-regular text-text-tertiary"
+              >
                 <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
                 {tCommon(($) => $.loading)}
               </div>
             )}
             {error && !loading && (
               <div className="flex h-20 flex-col items-center justify-center gap-1 px-3 text-center">
-                <span className="system-xs-regular text-text-tertiary">
+                <span role="status" className="system-xs-regular text-text-tertiary">
                   {t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
                 </span>
                 <Button onClick={onRetry} size="small" variant="ghost">
@@ -162,7 +154,6 @@ export function DocumentMetadataPicker({
                 disabled={loading || error}
                 onClick={() => {
                   setView('create')
-                  setQuery('')
                 }}
               >
                 <span aria-hidden className="i-ri-add-line size-4 text-text-tertiary" />
@@ -176,8 +167,7 @@ export function DocumentMetadataPicker({
                   variant="ghost"
                   className="px-2"
                   onClick={() => {
-                    setOpen(false)
-                    reset()
+                    popoverActionsRef.current?.close()
                     onManage()
                   }}
                 >
@@ -195,7 +185,7 @@ export function DocumentMetadataPicker({
             allowedExistingName={allowedExistingName}
             fields={fields}
             pending={creating}
-            onClose={reset}
+            onClose={() => setView('select')}
             onCreate={async (name, type) => {
               await onCreate(name, type)
               return true

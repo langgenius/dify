@@ -75,6 +75,27 @@ export const zBillingSubscriptionResponse = z.object({
 })
 
 /**
+ * AnnualDiscountActiveErrorResponse
+ */
+export const zAnnualDiscountActiveErrorResponse = z.object({
+  code: z.literal('annual_discount_active'),
+  message: z.string(),
+  status: z.literal(409),
+})
+
+/**
+ * AnnualDiscountActiveError
+ *
+ * You can switch to annual billing after your current discount ends.
+ */
+export const zAnnualDiscountActiveError = zErrorResponse.and(
+  z.object({
+    code: z.literal('annual_discount_active'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * BillingUnprocessableEntityErrorResponse
  */
 export const zBillingUnprocessableEntityErrorResponse = z.object({

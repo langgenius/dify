@@ -105,7 +105,7 @@ const createHistoryContextValue = (
   handleFeedback: vi.fn().mockResolvedValue(undefined),
   pinnedConversationList: [],
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,
@@ -345,6 +345,13 @@ it.each([
     value: uploadedFile('1', 'uploaded-1'),
     required: true,
     disabled: false,
+  },
+  {
+    name: 'empty required file list',
+    type: InputVarType.multiFiles,
+    value: [],
+    required: true,
+    disabled: true,
   },
   {
     name: 'mixed uploads',
@@ -664,10 +671,14 @@ it.each([false, true])(
     const submit = isInstalledApp ? submitInstalledForm : submitHumanInputForm
     const otherSubmit = isInstalledApp ? submitHumanInputForm : submitInstalledForm
     await waitFor(() =>
-      expect(submit).toHaveBeenCalledExactlyOnceWith('token-1', {
-        inputs: { review: 'Approved' },
-        action: 'approve',
-      }),
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        {
+          inputs: { review: 'Approved' },
+          action: 'approve',
+        },
+        undefined,
+      ),
     )
     expect(otherSubmit).not.toHaveBeenCalled()
   },
@@ -690,11 +701,11 @@ it('does not submit human input when the workflow event connection fails before 
 
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',
-  async (isMobile) => {
+  async (isBelowSm) => {
     const user = userEvent.setup()
     renderChat({
       currentConversationId: '',
-      isMobile,
+      isBelowSm,
       appParams: createChatConfigFixture({ opening_statement: 'Welcome' }),
       inputsForms: [
         { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
@@ -710,7 +721,7 @@ it.each([false, true])(
 it('hides the mobile variable form after entering an existing conversation', () => {
   const { updateContext } = renderChat({
     currentConversationId: '',
-    isMobile: true,
+    isBelowSm: true,
     inputsForms: [
       { variable: 'test', label: 'Test', type: InputVarType.textInput, required: false },
     ],

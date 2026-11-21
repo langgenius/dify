@@ -197,7 +197,7 @@ const WaterCrawl: FC<Props> = ({
         </OptionsWrap>
 
         {!isInit && (
-          <div className="relative -left-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
+          <div className="relative -inset-s-4 mt-3 w-[calc(100%+32px)] rounded-b-xl">
             {isRunning && (
               <Crawling
                 className="mt-2"
@@ -209,7 +209,7 @@ const WaterCrawl: FC<Props> = ({
             )}
             {showError && (
               <ErrorMessage
-                className="rounded-b-xl"
+                className="mx-4 mt-2 mb-4"
                 title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
                 errorMsg={crawlErrorMessage}
               />

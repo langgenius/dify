@@ -1,9 +1,10 @@
+import type { HotkeyRegistrationHandle } from '@tanstack/react-hotkeys'
 import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { getHotkeyManager } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { downloadBlob } from '@/utils/download'
@@ -190,18 +191,46 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
     }
   }, [handleMouseUp])
 
-  useHotkey('ArrowUp', zoomIn, { target: previewRef })
-  useHotkey('ArrowDown', zoomOut, { target: previewRef })
-  useHotkey('ArrowLeft', () => onPrev?.(), {
-    target: previewRef,
-    enabled: !!onPrev,
-    requireReset: true,
-  })
-  useHotkey('ArrowRight', () => onNext?.(), {
-    target: previewRef,
-    enabled: !!onNext,
-    requireReset: true,
-  })
+  const previousHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const nextHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const handleZoomIn = useEffectEvent(zoomIn)
+  const handleZoomOut = useEffectEvent(zoomOut)
+  const handlePrevious = useEffectEvent(() => onPrev?.())
+  const handleNext = useEffectEvent(() => onNext?.())
+
+  useEffect(() => {
+    const target = previewRef.current
+    if (!target) return
+    // React hotkeys run at document, beyond DialogPopup's arrow propagation boundary.
+    const manager = getHotkeyManager()
+    const zoomInHotkey = manager.register('ArrowUp', () => handleZoomIn(), { target })
+    const zoomOutHotkey = manager.register('ArrowDown', () => handleZoomOut(), { target })
+    const previousHotkey = manager.register('ArrowLeft', () => handlePrevious(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    const nextHotkey = manager.register('ArrowRight', () => handleNext(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    previousHotkeyRef.current = previousHotkey
+    nextHotkeyRef.current = nextHotkey
+    return () => {
+      zoomInHotkey.unregister()
+      zoomOutHotkey.unregister()
+      previousHotkey.unregister()
+      nextHotkey.unregister()
+      previousHotkeyRef.current = null
+      nextHotkeyRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    previousHotkeyRef.current?.setOptions({ enabled: !!onPrev })
+    nextHotkeyRef.current?.setOptions({ enabled: !!onNext })
+  }, [onPrev, onNext])
 
   const copyImageLabel = t(($) => $['operation.copyImage'], { ns: 'common' })
   const zoomOutLabel = t(($) => $['operation.zoomOut'], { ns: 'common' })
@@ -247,7 +276,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={copyImageLabel}
-                className="absolute top-6 right-48 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-48 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={imageCopy}
               >
                 {isCopied ? (
@@ -266,7 +295,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={zoomOutLabel}
-                className="absolute top-6 right-40 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-40 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
                 <span className="i-ri-zoom-out-line size-4 text-gray-500" aria-hidden="true" />
@@ -281,7 +310,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={zoomInLabel}
-                className="absolute top-6 right-32 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-32 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
                 <span className="i-ri-zoom-in-line size-4 text-gray-500" aria-hidden="true" />
@@ -296,7 +325,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={downloadLabel}
-                className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-24 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
                 <span
@@ -314,7 +343,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={openInNewTabLabel}
-                className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute inset-e-16 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={openInNewTab}
               >
                 <span className="i-ri-add-box-line size-4 text-gray-500" aria-hidden="true" />
@@ -329,7 +358,7 @@ function ImagePreviewContent({ url, title, onCancel, onPrev, onNext }: ImagePrev
               <button
                 type="button"
                 aria-label={cancelLabel}
-                className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+                className="absolute inset-e-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
                 <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />

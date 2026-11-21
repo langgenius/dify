@@ -1,7 +1,10 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from collections.abc import Iterator
+from dataclasses import dataclass
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -11,8 +14,11 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_couchbase.couchbase_vector import CouchbaseConfig
 
-def _build_fake_couchbase_modules():
+
+def _build_fake_couchbase_modules() -> dict[str, FakeModule]:
     couchbase = FakeModule("couchbase")
     couchbase_auth = FakeModule("couchbase.auth")
     couchbase_cluster = FakeModule("couchbase.cluster")
@@ -22,108 +28,108 @@ def _build_fake_couchbase_modules():
     couchbase_vector = FakeModule("couchbase.vector_search")
     couchbase_search = FakeModule("couchbase.search")
 
+    @dataclass(eq=False, repr=False)
     class PasswordAuthenticator:
-        def __init__(self, user, password):
-            self.user = user
-            self.password = password
+        user: str
+        password: str
 
+    @dataclass(eq=False, repr=False)
     class ClusterOptions:
-        def __init__(self, auth):
-            self.auth = auth
+        auth: PasswordAuthenticator
 
     class SearchOptions:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
+    @dataclass(eq=False, repr=False)
     class VectorQuery:
-        def __init__(self, field, vector, top_k):
-            self.field = field
-            self.vector = vector
-            self.top_k = top_k
+        field: str
+        vector: list[float]
+        top_k: int
 
     class VectorSearch:
         @staticmethod
-        def from_vector_query(vector_query):
+        def from_vector_query(vector_query: VectorQuery) -> dict[str, VectorQuery]:
             return {"vector_query": vector_query}
 
+    @dataclass(eq=False, repr=False)
     class QueryStringQuery:
-        def __init__(self, query):
-            self.query = query
+        query: str
 
     class SearchRequest:
         @staticmethod
-        def create(payload):
+        def create(payload: dict[str, VectorQuery] | QueryStringQuery) -> dict[str, object]:
             return {"payload": payload}
 
+    @dataclass(eq=False, repr=False)
     class SearchIndex:
-        def __init__(self, name, params, source_name):
-            self.name = name
-            self.params = params
-            self.source_name = source_name
+        name: str
+        params: dict[str, Any]
+        source_name: str
 
     class _QueryResult:
-        def __init__(self, rows=None):
+        def __init__(self, rows: list[dict[str, object]] | None = None) -> None:
             self._rows = rows or []
 
-        def execute(self):
+        def execute(self) -> Self:
             return self
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[dict[str, object]]:
             return iter(self._rows)
 
     class _SearchIter:
-        def __init__(self, rows=None):
+        def __init__(self, rows: list[SimpleNamespace] | None = None) -> None:
             self._rows = rows or []
 
-        def rows(self):
+        def rows(self) -> list[SimpleNamespace]:
             return self._rows
 
     class _Collection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.upsert = MagicMock(return_value=True)
 
     class _SearchIndexManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.upsert_index = MagicMock()
 
     class _Scope:
-        def __init__(self):
+        def __init__(self) -> None:
             self._collection = _Collection()
             self._search_index_manager = _SearchIndexManager()
             self.search = MagicMock(return_value=_SearchIter())
 
-        def collection(self, _name):
+        def collection(self, _name: str) -> _Collection:
             return self._collection
 
-        def search_indexes(self):
+        def search_indexes(self) -> _SearchIndexManager:
             return self._search_index_manager
 
     class _CollectionManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.create_collection = MagicMock()
             self.drop_collection = MagicMock()
             self.get_all_scopes = MagicMock(return_value=[])
 
     class _Bucket:
-        def __init__(self):
+        def __init__(self) -> None:
             self._scope = _Scope()
             self._collections = _CollectionManager()
 
-        def scope(self, _scope_name):
+        def scope(self, _scope_name: str) -> _Scope:
             return self._scope
 
-        def collections(self):
+        def collections(self) -> _CollectionManager:
             return self._collections
 
     class Cluster:
-        def __init__(self, connection_string, options):
+        def __init__(self, connection_string: str, options: ClusterOptions) -> None:
             self.connection_string = connection_string
             self.options = options
             self._bucket = _Bucket()
             self.wait_until_ready = MagicMock()
             self.query = MagicMock(return_value=_QueryResult())
 
-        def bucket(self, _name):
+        def bucket(self, _name: str) -> _Bucket:
             return self._bucket
 
     couchbase_auth.PasswordAuthenticator = PasswordAuthenticator
@@ -152,7 +158,7 @@ def _build_fake_couchbase_modules():
 
 
 @pytest.fixture
-def couchbase_module(monkeypatch: pytest.MonkeyPatch):
+def couchbase_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_couchbase_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -161,7 +167,7 @@ def couchbase_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module):
+def _config(module: ModuleType) -> "CouchbaseConfig":
     return module.CouchbaseConfig(
         connection_string="couchbase://localhost",
         user="user",
@@ -181,14 +187,14 @@ def _config(module):
         ("scope_name", "", "COUCHBASE_SCOPE_NAME is required"),
     ],
 )
-def test_couchbase_config_validation(couchbase_module, field, value, message):
+def test_couchbase_config_validation(couchbase_module: ModuleType, field: str, value: str, message: str) -> None:
     values = _config(couchbase_module).model_dump()
     values[field] = value
     with pytest.raises(ValidationError, match=message):
         couchbase_module.CouchbaseConfig.model_validate(values)
 
 
-def test_init_sets_cluster_handles(couchbase_module):
+def test_init_sets_cluster_handles(couchbase_module: ModuleType) -> None:
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
 
     assert vector._bucket_name == "bucket"
@@ -196,7 +202,7 @@ def test_init_sets_cluster_handles(couchbase_module):
     vector._cluster.wait_until_ready.assert_called_once()
 
 
-def test_create_and_create_collection_branches(couchbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_and_create_collection_branches(couchbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     sleep = MagicMock()
     monkeypatch.setattr(couchbase_module, "time", SimpleNamespace(sleep=sleep))
     vector = couchbase_module.CouchbaseVector.__new__(couchbase_module.CouchbaseVector)
@@ -248,7 +254,7 @@ def test_create_and_create_collection_branches(couchbase_module, monkeypatch: py
     assert sleep.call_args_list == [call(2), call(1)]
 
 
-def test_collection_exists_get_type_and_add_texts(couchbase_module):
+def test_collection_exists_get_type_and_add_texts(couchbase_module: ModuleType) -> None:
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
 
     scope_obj = SimpleNamespace(name="scope", collections=[SimpleNamespace(name="collection_1")])
@@ -271,7 +277,7 @@ def test_collection_exists_get_type_and_add_texts(couchbase_module):
     assert vector.get_type() == couchbase_module.VectorType.COUCHBASE
 
 
-def test_query_delete_helpers(couchbase_module):
+def test_query_delete_helpers(couchbase_module: ModuleType) -> None:
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
 
     vector._cluster.query.return_value = SimpleNamespace(execute=lambda: iter([{"count": 2}]))
@@ -293,7 +299,7 @@ def test_query_delete_helpers(couchbase_module):
     vector.delete_by_ids(["id-3"])
 
 
-def test_search_methods_and_format_metadata(couchbase_module):
+def test_search_methods_and_format_metadata(couchbase_module: ModuleType) -> None:
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
 
     row_1 = SimpleNamespace(fields={"text": "doc-a", "metadata.document_id": "d-1"}, score=0.9)
@@ -324,7 +330,7 @@ def test_search_methods_and_format_metadata(couchbase_module):
     assert vector._format_metadata({"metadata.a": 1, "plain": 2}) == {"a": 1, "plain": 2}
 
 
-def test_delete_collection_and_factory(couchbase_module, monkeypatch: pytest.MonkeyPatch):
+def test_delete_collection_and_factory(couchbase_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     vector = couchbase_module.CouchbaseVector("collection_1", _config(couchbase_module))
     scopes = [
         SimpleNamespace(collections=[SimpleNamespace(name="other")]),

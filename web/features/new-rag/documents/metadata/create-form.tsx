@@ -72,7 +72,7 @@ export function DocumentMetadataCreateForm({
         void create()
       }}
     >
-      <Button variant="ghost-accent" size="small" className="mb-1 -ml-2" onClick={close}>
+      <Button variant="ghost-accent" size="small" className="-ms-2 mb-1" onClick={close}>
         <span aria-hidden className="i-ri-arrow-left-line size-4" />
         <span className="system-xs-semibold-uppercase">
           {t(($) => $['metadata.createMetadata.back'], { ns: 'dataset' })}
@@ -86,24 +86,26 @@ export function DocumentMetadataCreateForm({
           <Fieldset
             render={
               <RadioGroup<DocumentMetadataType>
-                className="mt-1 grid grid-cols-3 gap-2"
+                className="block"
                 value={type}
                 onValueChange={setType}
               />
             }
           >
-            <FieldsetLegend className="py-1 system-sm-semibold text-text-secondary">
+            <FieldsetLegend className="system-sm-semibold">
               {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
             </FieldsetLegend>
-            {metadataTypes.map((candidate) => (
-              <RadioItem<DocumentMetadataType>
-                key={candidate}
-                value={candidate}
-                className="flex h-8 cursor-pointer items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary outline-hidden hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs data-disabled:cursor-not-allowed"
-              >
-                {t(($) => $[`metadata.type.${candidate}`], { ns: 'dataset' })}
-              </RadioItem>
-            ))}
+            <div className="grid grid-cols-3 gap-2">
+              {metadataTypes.map((candidate) => (
+                <RadioItem<DocumentMetadataType>
+                  key={candidate}
+                  value={candidate}
+                  className="flex h-8 cursor-pointer items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary outline-hidden hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:system-sm-medium data-checked:shadow-xs data-disabled:cursor-not-allowed"
+                >
+                  {t(($) => $[`metadata.type.${candidate}`], { ns: 'dataset' })}
+                </RadioItem>
+              ))}
+            </div>
           </Fieldset>
         </Field>
         <Field name="name" disabled={pending} invalid={nameTouched && Boolean(nameError)}>
@@ -125,11 +127,13 @@ export function DocumentMetadataCreateForm({
             })}
             value={name}
           />
-          {nameTouched && nameError && <FieldError match>{nameError}</FieldError>}
+          <div className="min-h-5">
+            {nameTouched && nameError && <FieldError match>{nameError}</FieldError>}
+          </div>
         </Field>
       </div>
       <div className="mt-4 flex justify-end">
-        <Button className="mr-2" disabled={pending} onClick={close}>
+        <Button className="me-2" disabled={pending} onClick={close}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button loading={pending} type="submit" variant="primary">

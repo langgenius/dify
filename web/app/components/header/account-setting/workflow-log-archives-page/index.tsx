@@ -35,6 +35,7 @@ import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 const numberFormatter = new Intl.NumberFormat()
 const byteFormatter = new Intl.NumberFormat(undefined, {
@@ -313,7 +314,7 @@ function ArchivedLogsUpgradeBanner() {
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 ps-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
       <div className="space-y-1 text-text-primary-on-surface">
         <h4 className="title-xl-semi-bold">
           {t(($) => $['archives.upgradeTip.title'], { ns: 'appLog' })}
@@ -378,7 +379,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
   )
   const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)
@@ -441,8 +442,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
               : t(($) => $['archives.action.prepareStarted'], { ns: 'appLog' }),
           )
         },
-        onError: () => {
-          toast.error(t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['archives.action.prepareFailed'], { ns: 'appLog' }),
+          )
         },
       },
     )
@@ -523,10 +527,15 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             {isCurrentWorkspaceOwner && (
               <AlertDialog
                 open={deleteDialogOpen}
-                onOpenChange={(open) => {
-                  if (deleteArchiveMutation.isPending) return
-                  if (open) deleteArchiveMutation.reset()
+                onOpenChange={(open, details) => {
+                  if (deleteArchiveMutation.isPending) {
+                    details.cancel()
+                    return
+                  }
                   setDeleteDialogOpen(open)
+                }}
+                onOpenChangeComplete={(open) => {
+                  if (!open) deleteArchiveMutation.reset()
                 }}
               >
                 <AlertDialogTrigger

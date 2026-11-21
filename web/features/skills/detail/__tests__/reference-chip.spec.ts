@@ -1,6 +1,9 @@
 import { within } from '@testing-library/react'
 import { describe, expect, it } from 'vite-plus/test'
-import { renderMarkdownLiveEditorContent, serializeMarkdownLiveEditorNode } from '../shared'
+import {
+  renderMarkdownLiveEditorContent,
+  serializeMarkdownLiveEditorNode,
+} from '../markdown/live-editor'
 
 describe('markdown reference chip', () => {
   it('renders a nested file reference as one chip while preserving its full path', () => {

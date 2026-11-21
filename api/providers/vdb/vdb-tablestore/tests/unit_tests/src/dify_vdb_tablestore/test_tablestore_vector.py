@@ -1,7 +1,9 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from dataclasses import InitVar, dataclass
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,30 +13,37 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_tablestore.tablestore_vector import TableStoreConfig
 
-def _build_fake_tablestore_module():
+
+def _build_fake_tablestore_module() -> FakeModule:
     tablestore = FakeModule("tablestore")
 
     class _BatchGetRowRequest:
-        def __init__(self):
-            self.items = []
+        def __init__(self) -> None:
+            self.items: list[_TableInBatchGetRowItem] = []
 
-        def add(self, item):
+        def add(self, item: "_TableInBatchGetRowItem") -> None:
             self.items.append(item)
 
+    @dataclass(eq=False, repr=False)
     class _TableInBatchGetRowItem:
-        def __init__(self, table_name, rows_to_get, columns_to_get, _unused, _ver):
-            self.table_name = table_name
-            self.rows_to_get = rows_to_get
-            self.columns_to_get = columns_to_get
+        table_name: str
+        rows_to_get: list[list[tuple[str, str]]]
+        columns_to_get: list[str]
+        _unused: InitVar[None]
+        _ver: InitVar[int]
 
     class _Row:
-        def __init__(self, primary_key, attribute_columns=None):
+        def __init__(
+            self, primary_key: list[tuple[str, str]], attribute_columns: list[tuple[str, object]] | None = None
+        ) -> None:
             self.primary_key = primary_key
             self.attribute_columns = attribute_columns or []
 
     class _Client:
-        def __init__(self, *_args):
+        def __init__(self, *_args: object) -> None:
             self.list_table = MagicMock(return_value=[])
             self.create_table = MagicMock()
             self.list_search_index = MagicMock(return_value=[])
@@ -78,7 +87,7 @@ def _build_fake_tablestore_module():
 
 
 @pytest.fixture
-def tablestore_module(monkeypatch: pytest.MonkeyPatch):
+def tablestore_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     fake_module = _build_fake_tablestore_module()
     monkeypatch.setitem(sys.modules, "tablestore", fake_module)
 
@@ -87,7 +96,7 @@ def tablestore_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module, **overrides):
+def _config(module: ModuleType, **overrides: Any) -> "TableStoreConfig":
     values = {
         "access_key_id": "ak",
         "access_key_secret": "sk",
@@ -108,14 +117,14 @@ def _config(module, **overrides):
         ("endpoint", "", "config ENDPOINT is required"),
     ],
 )
-def test_tablestore_config_validation(tablestore_module, field, value, message):
+def test_tablestore_config_validation(tablestore_module: ModuleType, field: str, value: str, message: str) -> None:
     values = _config(tablestore_module).model_dump()
     values[field] = value
     with pytest.raises(ValidationError, match=message):
         tablestore_module.TableStoreConfig.model_validate(values)
 
 
-def test_init_and_basic_delegation(tablestore_module):
+def test_init_and_basic_delegation(tablestore_module: ModuleType) -> None:
     vector = tablestore_module.TableStoreVector("collection_1", _config(tablestore_module))
     assert vector.get_type() == tablestore_module.VectorType.TABLESTORE
     assert vector._table_name == "collection_1"
@@ -132,7 +141,7 @@ def test_init_and_basic_delegation(tablestore_module):
     assert vector._create_collection.call_count == 2
 
 
-def test_get_by_ids_text_exists_delete_and_wrappers(tablestore_module):
+def test_get_by_ids_text_exists_delete_and_wrappers(tablestore_module: ModuleType) -> None:
     vector = tablestore_module.TableStoreVector("collection_1", _config(tablestore_module))
 
     # get_by_ids
@@ -178,7 +187,9 @@ def test_get_by_ids_text_exists_delete_and_wrappers(tablestore_module):
     vector._delete_table_if_exist.assert_called_once()
 
 
-def test_create_collection_and_table_index_lifecycle(tablestore_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_and_table_index_lifecycle(
+    tablestore_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vector = tablestore_module.TableStoreVector("collection_1", _config(tablestore_module))
     lock = MagicMock()
     lock.__enter__.return_value = None
@@ -201,13 +212,13 @@ def test_create_collection_and_table_index_lifecycle(tablestore_module, monkeypa
     vector = tablestore_module.TableStoreVector("collection_2", _config(tablestore_module))
     vector._tablestore_client.list_table.return_value = ["collection_2"]
     assert vector._create_table_if_not_exist() is None
-    vector._tablestore_client.list_table.return_value = []
+    vector._tablestore_client.list_table.return_value = list[str]()
     vector._create_table_if_not_exist()
     vector._tablestore_client.create_table.assert_called_once()
 
     vector._tablestore_client.list_search_index.return_value = [("collection_2", "collection_2_idx")]
     assert vector._create_search_index_if_not_exist(3) is None
-    vector._tablestore_client.list_search_index.return_value = []
+    vector._tablestore_client.list_search_index.return_value = list[tuple[str, str]]()
     vector._create_search_index_if_not_exist(3)
     vector._tablestore_client.create_search_index.assert_called_once()
 
@@ -220,7 +231,7 @@ def test_create_collection_and_table_index_lifecycle(tablestore_module, monkeypa
     vector._tablestore_client.delete_search_index.assert_called_with("collection_2", "collection_2_idx")
 
 
-def test_write_row_and_search_helpers(tablestore_module):
+def test_write_row_and_search_helpers(tablestore_module: ModuleType) -> None:
     vector = tablestore_module.TableStoreVector("collection_1", _config(tablestore_module))
 
     vector._write_row(
@@ -290,7 +301,9 @@ def test_write_row_and_search_helpers(tablestore_module):
     assert "score" not in docs[0].metadata
 
 
-def test_tablestore_factory_uses_existing_or_generated_collection(tablestore_module, monkeypatch: pytest.MonkeyPatch):
+def test_tablestore_factory_uses_existing_or_generated_collection(
+    tablestore_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = tablestore_module.TableStoreVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})

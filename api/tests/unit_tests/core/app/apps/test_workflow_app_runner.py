@@ -51,8 +51,8 @@ from core.db.session_factory import session_factory
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl, HumanInputFormSubmissionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.node_runtime import DifyFileReferenceFactory
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import (
@@ -107,6 +107,7 @@ from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.model_factories import make_workflow
@@ -664,7 +665,7 @@ class TestWorkflowAppRunnerCoreCases:
                     emails.append({"kwargs": kwargs, "queue": queue})
 
             monkeypatch.setattr(
-                "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
+                "core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task",
                 _Dispatch(),
             )
             enriched_reason = HumanInputRequired(
@@ -1067,7 +1068,7 @@ class TestWorkflowAppRunnerNotificationsCases:
             node_id="node-1",
             node_title="Review",
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", email_task)
 
         runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 
@@ -1115,6 +1116,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
         queue_manager: WorkflowAppQueueManager,
     ) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1134,7 +1136,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
             tenant_id="tenant",
             app_id="app",
             id="workflow",
-            type="workflow",
+            type=ModelWorkflowType.WORKFLOW,
             version="v1",
             graph=json.dumps({"nodes": [], "edges": []}),
         )
@@ -1267,6 +1269,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
     @staticmethod
     def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: WorkflowAppQueueManager) -> None:
         app_generate_entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.END_USER,
             app_config=WorkflowUIBasedAppConfig(
                 app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
             ),
@@ -1278,13 +1281,14 @@ class TestWorkflowAppRunnerSingleNodeCases:
             task_id="task-id",
             stream=True,
             call_depth=4,
+            extras={"capture_agent_evaluation_trace": True},
         )
 
         workflow = Workflow(
             tenant_id="tenant",
             app_id="app",
             id="workflow",
-            type="workflow",
+            type=ModelWorkflowType.WORKFLOW,
             version="v1",
             graph=json.dumps({"nodes": [], "edges": []}),
             kind=WorkflowKind.SNIPPET,
@@ -1326,6 +1330,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
         assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
         assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
         assert init_graph.call_args.kwargs["call_depth"] == 4
+        assert init_graph.call_args.kwargs["capture_agent_evaluation_trace"] is True
 
 
 def _save_form(session: Session, *, status: HumanInputFormStatus) -> HumanInputForm:
@@ -1425,6 +1430,7 @@ def _make_paused_workflow(
 def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Generator[EngineEvent]:
     """Resume through orchestration with actual repositories and the real Engine."""
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task",
         app_config=WorkflowUIBasedAppConfig(
             tenant_id="tenant",

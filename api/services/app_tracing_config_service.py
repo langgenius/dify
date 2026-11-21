@@ -24,6 +24,14 @@ class AppTracingConfigRecord:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    configured_secrets: tuple[str, ...] = ()
+    """Secret fields that hold a value. Secrets themselves are never presented."""
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedTracingConfig:
+    values: dict[str, Any]
+    configured_secrets: tuple[str, ...]
 
 
 class AppTracingConfigStore(Protocol):
@@ -99,7 +107,7 @@ class TracingConfigProviderGateway(Protocol):
         workspace_id: str,
         tracing_provider: str,
         tracing_config: dict[str, Any] | None,
-    ) -> dict[str, Any]: ...
+    ) -> PresentedTracingConfig: ...
 
 
 class AppTracingConfigError(Exception):
@@ -178,12 +186,12 @@ class AppTracingConfigService:
         if record is None:
             return None
 
-        tracing_config = self._provider.present_config(
+        presented = self._provider.present_config(
             workspace_id=workspace_id,
             tracing_provider=tracing_provider,
             tracing_config=record.tracing_config,
         )
-        return replace(record, tracing_config=tracing_config)
+        return replace(record, tracing_config=presented.values, configured_secrets=presented.configured_secrets)
 
     def create(
         self,

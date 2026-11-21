@@ -132,7 +132,7 @@ describe('document task runtime state', () => {
     expect(inactive.overrides['task-1']).toBeUndefined()
   })
 
-  it('retains only runtime entries present in the next list snapshot', () => {
+  it('retains active tasks missing from a partial list snapshot and releases confirmed terminal tasks', () => {
     const listed = transitionTaskRuntimeState(createTaskRuntimeState(), {
       tasks: [task(), task({ documentId: 'document-2', id: 'task-2' })],
       type: 'list-snapshot',
@@ -143,11 +143,25 @@ describe('document task runtime state', () => {
       type: 'event-cursor',
     }).state
 
-    const pruned = transitionTaskRuntimeState(withCursor, {
+    const filtered = transitionTaskRuntimeState(withCursor, {
       tasks: [task({ documentId: 'document-2', id: 'task-2' })],
       type: 'list-snapshot',
     }).state
 
+    expect(filtered.observedTasks.get('task-1')).toEqual(task())
+    expect(filtered.currentVersions.has('task-1')).toBe(true)
+    expect(filtered.eventCursors.get('task-1')).toBe('event-1')
+
+    const completed = task({ state: 'succeeded', updatedAt: '2026-07-20T10:02:00Z' })
+    const confirmed = transitionTaskRuntimeState(filtered, {
+      task: completed,
+      type: 'terminal-confirmed',
+    }).state
+    const pruned = transitionTaskRuntimeState(confirmed, {
+      tasks: [task({ documentId: 'document-2', id: 'task-2' })],
+      type: 'list-snapshot',
+    }).state
+    expect(pruned.observedTasks.has('task-1')).toBe(false)
     expect(pruned.currentVersions.has('task-1')).toBe(false)
     expect(pruned.eventCursors.has('task-1')).toBe(false)
   })

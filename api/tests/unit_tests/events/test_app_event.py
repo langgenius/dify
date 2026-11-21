@@ -5,11 +5,12 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from events.event_handlers.create_installed_app_when_app_created import handle as create_installed_app
 from events.event_handlers.create_site_record_when_app_created import handle as create_site
+from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import Agent, AgentWorkspace
@@ -67,7 +68,7 @@ def _make_collector[T](target: list[T]) -> Callable[..., None]:
 @pytest.mark.parametrize("sqlite_session", [(App, Account, Agent, AgentWorkspace)], indirect=True)
 @pytest.mark.usefixtures("_mock_deps")
 class TestAppWasDeletedSignal:
-    def test_sends_signal(self, app_services, app_model: App, sqlite_session: Session) -> None:
+    def test_sends_signal(self, app_services: AppServices, app_model: App, sqlite_session: Session) -> None:
         received: list[AppEvent] = []
         handler = _make_collector(received)
         app_was_deleted.connect(handler)
@@ -82,7 +83,11 @@ class TestAppWasDeletedSignal:
         assert sqlite_session.get(App, app_id) is None
 
     def test_signal_fires_after_db_commit(
-        self, sqlite_session_factory, app_services, app_model: App, sqlite_session: Session
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        app_services: AppServices,
+        app_model: App,
+        sqlite_session: Session,
     ) -> None:
         call_order: list[str] = []
 
@@ -115,7 +120,9 @@ class TestAppWasDeletedSignal:
 
 @pytest.mark.parametrize("sqlite_session", [(App, Account)], indirect=True)
 class TestAppWasUpdatedSignal:
-    def test_update_app(self, app_services, app_model: App, account: Account, sqlite_session: Session) -> None:
+    def test_update_app(
+        self, app_services: AppServices, app_model: App, account: Account, sqlite_session: Session
+    ) -> None:
         received: list[App] = []
         handler = _make_collector(received)
         app_was_updated.connect(handler)
@@ -149,7 +156,7 @@ class TestAppWasUpdatedSignal:
         assert persisted.updated_by == account.id
 
     def test_update_app_api_status_sends_when_changed(
-        self, app_services, app_model: App, account: Account, sqlite_session: Session
+        self, app_services: AppServices, app_model: App, account: Account, sqlite_session: Session
     ) -> None:
         received: list[App] = []
         handler = _make_collector(received)
@@ -167,7 +174,7 @@ class TestAppWasUpdatedSignal:
         assert sqlite_session.get(App, app_model.id).enable_api is True  # type: ignore[union-attr]
 
     def test_update_app_api_status_skips_when_unchanged(
-        self, app_services, app_model: App, sqlite_session: Session
+        self, app_services: AppServices, app_model: App, sqlite_session: Session
     ) -> None:
         app_model.enable_api = True
         sqlite_session.commit()
@@ -190,11 +197,11 @@ class TestAppModelConfigWasUpdatedSignal:
         from events.event_handlers.update_app_dataset_join_when_app_model_config_updated import handle
 
         with pytest.raises(TypeError, match="session"):
-            handle(app_model, app_model_config=None)
+            handle(app_model, app_model_config=None)  # pyrefly: ignore[missing-argument]
 
     @pytest.mark.parametrize("sqlite_session", [(App, Account, AppModelConfig, AppDatasetJoin)], indirect=True)
     def test_reuses_provided_session_without_committing(
-        self, sqlite_session_factory, app_model: App, sqlite_session: Session
+        self, sqlite_session_factory: sessionmaker[Session], app_model: App, sqlite_session: Session
     ) -> None:
         from events.event_handlers.update_app_dataset_join_when_app_model_config_updated import handle
 
@@ -280,7 +287,7 @@ class TestCreateInstalledAppWhenAppCreated:
         assert installations == [existing]
 
     def test_adds_missing_installation_without_committing(
-        self, sqlite_session_factory, app_model: App, sqlite_session: Session
+        self, sqlite_session_factory: sessionmaker[Session], app_model: App, sqlite_session: Session
     ) -> None:
         from events.event_handlers.create_installed_app_when_app_created import handle
 

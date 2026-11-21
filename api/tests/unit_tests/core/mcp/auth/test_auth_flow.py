@@ -1,5 +1,6 @@
 """Unit tests for MCP OAuth authentication flow."""
 
+import json
 from unittest.mock import patch
 
 import httpx
@@ -466,20 +467,32 @@ class TestAuthorizationFlow:
             },
         )
 
-    @patch("core.helper.ssrf_proxy.post")
-    def test_register_client_success(self, mock_post):
-        """Test successful client registration."""
-        mock_response = httpx.Response(
-            200,
-            json={
-                "client_id": "new-client-id",
-                "client_secret": "new-client-secret",
-                "client_name": "Dify",
-                "redirect_uris": ["https://redirect.example.com"],
-            },
-        )
-        mock_post.return_value = mock_response
-
+    @pytest.mark.parametrize(
+        ("scope", "client_uri", "token_endpoint_auth_method", "expected_optional_fields"),
+        [
+            pytest.param(None, None, None, {}, id="omit-none-metadata"),
+            pytest.param(
+                "read write",
+                "https://client.example.com",
+                "none",
+                {
+                    "scope": "read write",
+                    "client_uri": "https://client.example.com",
+                    "token_endpoint_auth_method": "none",
+                },
+                id="preserve-configured-metadata",
+            ),
+        ],
+    )
+    def test_register_client_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        scope: str | None,
+        client_uri: str | None,
+        token_endpoint_auth_method: str | None,
+        expected_optional_fields: dict[str, str],
+    ) -> None:
+        """Registration omits None metadata and preserves configured values in the HTTP JSON body."""
         metadata = OAuthMetadata(
             authorization_endpoint="https://auth.example.com/authorize",
             token_endpoint="https://auth.example.com/token",
@@ -491,20 +504,44 @@ class TestAuthorizationFlow:
             redirect_uris=["https://redirect.example.com"],
             grant_types=["authorization_code"],
             response_types=["code"],
+            scope=scope,
+            client_uri=client_uri,
+            token_endpoint_auth_method=token_endpoint_auth_method,
         )
+        requests: list[httpx.Request] = []
 
-        client_info = register_client("https://api.example.com", metadata, client_metadata)
+        def handle_registration(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                201,
+                json={
+                    "client_id": "new-client-id",
+                    "client_secret": "new-client-secret",
+                    "client_name": "Dify",
+                    "redirect_uris": ["https://redirect.example.com"],
+                },
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(handle_registration)) as client:
+            monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", lambda _verify: client)
+            client_info = register_client("https://api.example.com", metadata, client_metadata)
 
         assert isinstance(client_info, OAuthClientInformationFull)
         assert client_info.client_id == "new-client-id"
         assert client_info.client_secret == "new-client-secret"
 
-        # Verify request
-        mock_post.assert_called_once_with(
-            "https://auth.example.com/register",
-            json=client_metadata.model_dump(),
-            headers={"Content-Type": "application/json"},
-        )
+        assert len(requests) == 1
+        request = requests[0]
+        assert request.method == "POST"
+        assert str(request.url) == "https://auth.example.com/register"
+        assert request.headers["Content-Type"] == "application/json"
+        assert json.loads(request.content) == {
+            "client_name": "Dify",
+            "redirect_uris": ["https://redirect.example.com"],
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            **expected_optional_fields,
+        }
 
     @patch("core.helper.ssrf_proxy.post")
     def test_register_client_rejected_by_server(self, mock_post):

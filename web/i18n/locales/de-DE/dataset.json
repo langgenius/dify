@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Erstellen einer neuen API für externes Wissen",
   "creatorFilter.creators": "Ersteller",
   "creatorFilter.maxCreators": "Maximale Anzahl an Erstellern",
-  "datasetDeleted": "Wissen gelöscht",
   "datasetUsedByApp": "Das Wissen wird von einigen Apps verwendet. Apps werden dieses Wissen nicht mehr nutzen können, und alle Prompt-Konfigurationen und Protokolle werden dauerhaft gelöscht.",
   "defaultRetrievalTip": "Standardmäßig wird der Multi-Path-Abruf verwendet. Das Wissen wird aus mehreren Wissensdatenbanken abgerufen und dann neu eingestuft.",
   "deleteDatasetConfirmContent": "Das Löschen des Wissens ist unwiderruflich. Benutzer werden nicht mehr auf Ihr Wissen zugreifen können und alle Eingabeaufforderungen, Konfigurationen und Protokolle werden dauerhaft gelöscht.",

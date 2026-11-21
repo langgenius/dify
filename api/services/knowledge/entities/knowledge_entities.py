@@ -3,7 +3,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, Field, WithJsonSchema, field_validator
 
 from core.rag.entities import MetadataFilteringCondition, Rule
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from libs.helper import UUIDStr
 from models.enums import ProcessRuleMode
@@ -183,9 +183,15 @@ class MetaDataConfig(BaseModel):
 
 
 class KnowledgeConfig(BaseModel):
+    """Document ingestion configuration with a validated indexing technique.
+
+    The indexing technique remains an IndexTechniqueType enum after validation.
+    JSON serialization preserves its public economy or high_quality value.
+    """
+
     original_document_id: str | None = Field(default=None, description="Original document ID for replacement updates.")
     duplicate: bool = Field(default=True, description="Whether duplicate document content is allowed.")
-    indexing_technique: Literal["high_quality", "economy"] = Field(
+    indexing_technique: IndexTechniqueType = Field(
         description=(
             "`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. "
             "Required when adding the first document to a knowledge base; subsequent documents inherit the "

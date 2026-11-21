@@ -5,6 +5,7 @@ status persistence, indexing, and summary dispatch. These tests persist real
 ORM rows so each phase observes only committed database state.
 """
 
+import logging
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -44,10 +45,16 @@ from tests.helpers.unit.config_override import apply_config_overrides, config_ov
     ],
 )
 def test_recovery_dispatches_detached_owner_reference(
-    sqlite_session, tenant_id, dataset_id, document_ids, status, entry
-):
+    sqlite_session: Session,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+    status: IndexingStatus,
+    entry: str | None,
+) -> None:
     _persist_indexing_rows(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids[:1])
     row = sqlite_session.get(Document, document_ids[0])
+    assert row is not None
     row.indexing_status = status
     sqlite_session.commit()
     with patch("tasks.recover_document_indexing_task.build_document_indexing_service") as factory:
@@ -90,6 +97,7 @@ def document_ids() -> list[str]:
 @pytest.fixture
 def mock_redis() -> MagicMock:
     """Reset the external Redis boundary used by tenant-isolated queues."""
+    assert isinstance(redis_client, MagicMock)
     redis_client.reset_mock()
     redis_client.get.return_value = None
     redis_client.setex.return_value = True
@@ -183,7 +191,7 @@ class TestTaskEnqueuing:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features"),
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=None),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
@@ -212,10 +220,9 @@ class TestTaskEnqueuing:
         task_attribute: str,
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=plan),
             patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
         ):
-            features.billing.subscription.plan = plan
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.setex.assert_called()
@@ -227,10 +234,12 @@ class TestTaskEnqueuing:
     ) -> None:
         mock_redis.get.return_value = b"1"
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch(
+                "services.document_indexing_proxy.base.FeatureService.get_workspace_plan",
+                return_value=CloudPlan.PROFESSIONAL,
+            ),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.lpush.assert_called_once()
@@ -257,7 +266,8 @@ class TestDocumentIndexing:
 
         def assert_committed_parsing(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as observer:
-                documents = [observer.get(Document, ref.document_id) for ref in refs]
+                fetched = [observer.get(Document, ref.document_id) for ref in refs]
+                documents = [document for document in fetched if document is not None]
                 assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
                 assert all(document.processing_started_at is not None for document in documents)
 
@@ -437,7 +447,9 @@ class TestSummaryDispatch:
                 for ref, status in zip(
                     refs, [IndexingStatus.COMPLETED, IndexingStatus.COMPLETED, IndexingStatus.INDEXING], strict=True
                 ):
-                    writer.get(Document, ref.document_id).indexing_status = status
+                    document = writer.get(Document, ref.document_id)
+                    assert document is not None
+                    document.indexing_status = status
 
         indexing_runner.run.side_effect = finish_documents
         summary_delay = MagicMock()
@@ -468,7 +480,9 @@ class TestSummaryDispatch:
 
         def complete_documents(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+                document = writer.get(Document, refs[0].document_id)
+                assert document is not None
+                document.indexing_status = IndexingStatus.COMPLETED
 
         indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock(side_effect=RuntimeError("queue unavailable"))
@@ -502,7 +516,9 @@ class TestSummaryDispatch:
 
         def complete_documents(refs: list[DocumentRef]) -> None:
             with Session(sqlite_session.get_bind()) as writer, writer.begin():
-                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+                document = writer.get(Document, refs[0].document_id)
+                assert document is not None
+                document.indexing_status = IndexingStatus.COMPLETED
 
         indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock()
@@ -547,6 +563,52 @@ class TestSummaryDispatch:
         assert sqlite_session.get(Dataset, dataset_id) is None
         summary_delay.assert_not_called()
 
+    def test_document_removed_during_indexing_is_logged_in_summary_phase(
+        self,
+        sqlite_session: Session,
+        tenant_id: str,
+        dataset_id: str,
+        document_ids: list[str],
+        indexing_runner: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        _persist_indexing_rows(
+            sqlite_session,
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            document_ids=document_ids,
+            summary_index_setting={"enable": True},
+            need_summary=[True, True, True],
+        )
+        _patch_features(monkeypatch, _features())
+        removed_id = document_ids[1]
+
+        def finish_and_remove_one(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                for ref in refs:
+                    document = writer.get(Document, ref.document_id)
+                    assert document is not None
+                    if document.id == removed_id:
+                        writer.delete(document)
+                    else:
+                        document.indexing_status = IndexingStatus.COMPLETED
+
+        indexing_runner.run.side_effect = finish_and_remove_one
+        queued_ids: list[str] = []
+
+        def record_summary(_dataset_id: str, document_id: str, _options: None) -> None:
+            queued_ids.append(document_id)
+
+        monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", record_summary)
+
+        with caplog.at_level(logging.WARNING, logger="tasks.document_indexing_task"):
+            _document_indexing(dataset_id, document_ids)
+
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert warnings == [f"Document {removed_id} not found after indexing"]
+        assert sorted(queued_ids) == sorted([document_ids[0], document_ids[2]])
+
 
 class TestTenantQueue:
     def test_followup_tasks_are_dispatched_with_one_shared_producer(
@@ -579,7 +641,7 @@ class TestTenantQueue:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         queue = MagicMock()
-        queue.pull_tasks.return_value = []
+        queue.pull_tasks.return_value = list[str]()
         monkeypatch.setattr("tasks.document_indexing_task.TenantIsolatedTaskQueue", MagicMock(return_value=queue))
         indexing = MagicMock(side_effect=RuntimeError("indexing failed"))
         monkeypatch.setattr("tasks.document_indexing_task._document_indexing", indexing)

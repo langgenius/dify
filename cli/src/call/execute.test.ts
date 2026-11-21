@@ -165,7 +165,7 @@ it('a form submit prints the hint to follow the run', async () => {
   expect(JSON.parse(w.io.outBuf()).hints).toEqual([
     expect.objectContaining({
       op: 'get.run.event',
-      input: { app_id: 'app-2', task_id: 'wf-run-hitl-1', continue_on_pause: false },
+      input: { app_id: 'app-2', run_id: 'wf-run-hitl-1', continue_on_pause: false },
     }),
   ])
 })

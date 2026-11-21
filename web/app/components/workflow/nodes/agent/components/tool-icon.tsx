@@ -7,8 +7,8 @@ import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { consoleQuery } from '@/service/console'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { matchesProviderReference } from '@/utils/provider-reference'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
@@ -58,7 +58,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const icon = useMemo(() => {
     if (!isDataReady) return ''
     if (currentProvider) return currentProvider.icon
-    const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
+    const iconFromMarketPlace = getMarketplacePluginIconUrl(`${author}/${name}`)
     return iconFromMarketPlace
   }, [author, currentProvider, name, isDataReady])
   const status: Status = useMemo(() => {
@@ -116,7 +116,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       <div className="flex size-5 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge">
         {iconContent}
       </div>
-      {indicator && <StatusDot status={indicator} className="absolute -top-px -right-px" />}
+      {indicator && <StatusDot status={indicator} className="absolute -inset-e-px -top-px" />}
       {tooltip && <span className="sr-only">{tooltip}</span>}
     </div>
   )

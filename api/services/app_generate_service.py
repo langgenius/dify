@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -18,7 +18,6 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
@@ -33,6 +32,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
@@ -50,6 +50,27 @@ _MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
+
+
+def _release_session_connection(session: Session) -> None:
+    """Return the caller session's pooled connection while keeping its loaded rows usable.
+
+    Invariant: the caller's session must not hold a pooled connection while a blocking run
+    executes. The run lasts as long as the workflow and opens its own sessions, so a held
+    connection is pinned for the whole run and each in-flight request needs a second one.
+    Once in-flight requests reach the pool capacity none of them can proceed.
+
+    Precondition: ``session`` holds only the reads done to resolve the workflow.
+    Postcondition: ``session`` is outside a transaction and its connection is back in the
+    pool; rows it loaded stay attached and unexpired; its ``expire_on_commit`` setting is
+    restored on success and on failure.
+    """
+    expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        session.commit()
+    finally:
+        session.expire_on_commit = expire_on_commit
 
 
 class AppGenerateService:
@@ -250,18 +271,17 @@ class AppGenerateService:
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
@@ -306,19 +326,18 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        root_node_id=root_node_id,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
@@ -339,12 +358,15 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
+                # A blocking run executes inside this call and opens its own sessions.
+                _release_session_connection(session)
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
                         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
+                            execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
@@ -419,6 +441,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -464,6 +487,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -473,35 +497,6 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-
-    @classmethod
-    def generate_more_like_this(
-        cls,
-        app_model: App,
-        user: Account | EndUser,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-        streaming: bool = True,
-    ) -> Mapping | Generator:
-        """
-        Generate more like this
-        :param app_model: app model
-        :param user: user
-        :param message_id: message id
-        :param invoke_from: invoke from
-        :param streaming: streaming
-        :return:
-        """
-        return CompletionAppGenerator().generate_more_like_this(
-            session=session,
-            app_model=app_model,
-            message_id=message_id,
-            user=user,
-            invoke_from=invoke_from,
-            stream=streaming,
-        )
 
     @classmethod
     def _get_workflow(

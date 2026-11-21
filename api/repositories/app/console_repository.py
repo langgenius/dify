@@ -11,16 +11,16 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, Protocol, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
 from machinery.context import AppRequestContext, RequestContext
@@ -36,9 +36,11 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.enums import AppStatus
+from models.evaluation import EvaluationTargetType
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -52,6 +54,8 @@ from services.app_creation_records import create_installed_app_record, create_si
 from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
+    SUPPORTED_APP_TYPES,
+    AgentAppPublicationCounts,
     AppAgentBinding,
     AppChange,
     AppCreationSettings,
@@ -79,6 +83,14 @@ from services.openapi.visibility import apply_openapi_gate
 logger = logging.getLogger(__name__)
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
+
+
+class StageTargetEvaluationCleanup(Protocol):
+    """Stage target evaluation cleanup in an existing transaction, deferring external effects until commit."""
+
+    def __call__(self, *, session: Session, tenant_id: str, target_type: str, target_id: str) -> None:
+        """Delete evaluation records in the caller's session without committing it."""
+        ...
 
 
 def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
@@ -128,6 +140,16 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 return None
             binding = app.agent_app_binding_with_session(session=session, include_archived=True)
             return AppAgentBinding(binding.id, binding.scope == AgentScope.WORKFLOW_ONLY) if binding else None
+
+    def get_agent_creator_id(self, workspace_id: str, agent_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Agent.created_by).where(
+                    Agent.id == agent_id,
+                    Agent.tenant_id == workspace_id,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            )
 
     def get_maintainer_id(self, workspace_id: str, resource_id: str, *, normal_only: bool = False) -> str | None:
         statement = select(App.maintainer).where(App.id == resource_id, App.tenant_id == workspace_id)
@@ -202,6 +224,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 )
             if page is None:
                 return AppPage(page=params.page, limit=params.limit, total=0, has_more=False, data=[])
+            if isinstance(params, AppListParams) and params.for_selection:
+                return AppPage(
+                    page=page.page,
+                    limit=page.per_page,
+                    total=page.total,
+                    has_more=page.has_next,
+                    data=[
+                        AppRecord(
+                            id=app.id,
+                            name=app.name,
+                            mode_compatible_with_agent=app.mode,
+                            maintainer=app.maintainer,
+                            enable_api=app.enable_api,
+                        )
+                        for app in page.items
+                    ],
+                )
             trigger_app_ids = self._draft_trigger_app_ids(session, context.active_workspace_id, page.items)
             return AppPage(
                 page=page.page,
@@ -391,6 +430,10 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             filters.append(App.mode != AppMode.AGENT)
 
         if isinstance(params, AppListParams):
+            if params.resource_ids is not None:
+                filters.append(App.id.in_(params.resource_ids))
+            if params.for_selection:
+                filters.append(App.mode.in_(SUPPORTED_APP_TYPES))
             if params.status:
                 filters.append(App.status == params.status)
             # OpenAPI surface visibility gate. Pushed into the query so
@@ -403,18 +446,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
             from libs.helper import escape_like_pattern
 
-            name = params.name[:30]
+            selection = isinstance(params, AppListParams) and params.for_selection
+            name = params.name if selection else params.name[:30]
             escaped_name = escape_like_pattern(name)
-            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
+            name_filter = App.name.ilike(f"%{escaped_name}%", escape="\\")
+            filters.append(
+                sa.or_(name_filter, sa.cast(App.id, sa.String).ilike(f"%{escaped_name}%", escape="\\"))
+                if selection
+                else name_filter
+            )
         if params.tag_ids and len(params.tag_ids) > 0:
             target_ids = TagRepository.get_target_ids_by_tag_ids(
                 "app", tenant_id, params.tag_ids, session, match_all=True
@@ -500,14 +548,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         if not filters:
             return None
 
-        order_by = cls._build_app_list_order_by(params.sort_by)
+        order_by = (
+            App.name.collate(
+                {"sqlite": "BINARY", "postgresql": "C", "mysql": "utf8mb4_bin"}[session.get_bind().dialect.name]
+            )
+            if params.for_selection
+            else cls._build_app_list_order_by(params.sort_by)
+        )
 
         app_models = paginate_query(
-            sa.select(App).where(*filters).order_by(order_by),
+            sa.select(App).where(*filters).order_by(order_by, App.id),
             page=params.page,
             per_page=params.limit,
             session=session,
         )
+
+        if params.for_selection:
+            return app_models
 
         app_ids = [str(app.id) for app in app_models.items]
         starred_app_ids = cls.get_starred_app_ids(
@@ -520,6 +577,33 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
+
+    @classmethod
+    def get_agent_publication_counts(
+        cls,
+        user_id: str,
+        tenant_id: str,
+        params: AppListParams,
+        session: Session,
+    ) -> AgentAppPublicationCounts:
+        """Count visible Agent Apps by publication state before the publication filter."""
+        unfiltered_params = params.model_copy(update={"agent_is_published": None})
+        filters = cls._build_app_list_filters(user_id, tenant_id, unfiltered_params, session)
+        if not filters:
+            return AgentAppPublicationCounts(published=0, drafts=0)
+
+        published_filter = cls._agent_app_exists_filter(tenant_id, is_published=True)
+        draft_filter = cls._agent_app_exists_filter(tenant_id, is_published=False)
+        published_count, draft_count = session.execute(
+            sa.select(
+                sa.func.coalesce(sa.func.sum(sa.case((published_filter, 1), else_=0)), 0),
+                sa.func.coalesce(sa.func.sum(sa.case((draft_filter, 1), else_=0)), 0),
+            )
+            .select_from(App)
+            .where(*filters)
+        ).one()
+
+        return AgentAppPublicationCounts(published=int(published_count), drafts=int(draft_count))
 
     @classmethod
     def get_recent_apps(
@@ -965,10 +1049,24 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         return app
 
     @classmethod
-    def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage App deletion; the lifecycle adapter retires Agent resources in the same transaction."""
+    def delete_app_record(
+        cls,
+        app: App,
+        *,
+        account_id: str | None,
+        session: Session,
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+    ) -> AppDeletion:
+        """Stage App deletion, evaluation cleanup and resource retirement in the caller's transaction."""
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            stage_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(
@@ -1017,7 +1115,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             backing_agent.updated_at = now
 
         retired_binding_ids: list[str] = []
-        retired_snapshot_ids: list[str] = []
         if backing_agent is not None:
             bindings = session.scalars(
                 select(AgentWorkspaceBinding).where(
@@ -1028,12 +1125,20 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             retired_binding_ids = [binding.id for binding in bindings]
 
         session.delete(app)
-        result = AppDeletion(
-            app_event,
-            workflow_agent_ids,
-            [],
-            retired_binding_ids,
-            retired_snapshot_ids,
-            backing_agent.id if backing_agent else None,
+        resources = AgentWorkspaceRepository(session=session)
+        for binding_id in retired_binding_ids:
+            resources.retire_binding(tenant_id=app.tenant_id, binding_id=binding_id)
+        retired_snapshot_ids = (
+            resources.retire_home_snapshots_for_agent(tenant_id=app.tenant_id, agent_id=backing_agent.id)
+            if backing_agent is not None
+            else []
         )
-        return result
+        retired_workspace_ids = resources.retire_all_for_app(tenant_id=app.tenant_id, app_id=app.id)
+        return AppDeletion(
+            app=app_event,
+            workflow_agent_ids=workflow_agent_ids,
+            workspace_ids=retired_workspace_ids,
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+            backing_agent_id=backing_agent.id if backing_agent else None,
+        )

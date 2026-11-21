@@ -1,19 +1,9 @@
-import type { ReactNode } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createNodeTracing } from '../../../__tests__/fixtures'
 import LoopResultPanel from '../loop-result-panel'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: ReactNode; value: unknown }) => (
-    <section>
-      {title}
-      <output aria-label="Loop variables">{JSON.stringify(value)}</output>
-    </section>
-  ),
-}))
 
 it('expands and collapses loop details with the keyboard and returns to the summary', async () => {
   const user = userEvent.setup()
@@ -37,17 +27,18 @@ it('expands and collapses loop details with the keyboard and returns to the summ
   const header = screen.getByRole('button', { name: /workflow.singleRun.loop 1/ })
   expect(header).toHaveTextContent('1.20s')
   expect(header).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByRole('status', { name: 'Loop variables' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   header.focus()
   await user.keyboard('{Enter}')
   expect(header).toHaveAttribute('aria-expanded', 'true')
-  expect(screen.getByRole('status', { name: 'Loop variables' })).toHaveTextContent(
-    '{"item":"alpha"}',
-  )
+  expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+  expect(JSON.parse((screen.getByRole('textbox') as HTMLTextAreaElement).value)).toEqual({
+    item: 'alpha',
+  })
   expect(screen.getByText('Summarize item')).toBeInTheDocument()
   await user.keyboard(' ')
   expect(header).toHaveAttribute('aria-expanded', 'false')
-  expect(screen.queryByRole('status', { name: 'Loop variables' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'workflow.singleRun.back' }))
   expect(onBack).toHaveBeenCalledOnce()
 })
@@ -77,8 +68,9 @@ it.each([
       />,
     )
     await user.click(screen.getByRole('button', { name: /workflow.singleRun.loop 1/ }))
-    expect(screen.getByRole('status', { name: 'Loop variables' })).toHaveTextContent(
-      JSON.stringify({ item: expected }),
-    )
+    expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+    expect(JSON.parse((screen.getByRole('textbox') as HTMLTextAreaElement).value)).toEqual({
+      item: expected,
+    })
   },
 )

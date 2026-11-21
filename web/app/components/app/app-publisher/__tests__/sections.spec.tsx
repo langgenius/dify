@@ -554,6 +554,9 @@ describe('app-publisher sections', () => {
       'href',
       '/app/workflow-app/deploy',
     )
+    for (const name of [/common\.openWebApp\b/, /appMenus\.accessPoint\b/, /appMenus\.deploy\b/]) {
+      expect(screen.getByRole('link', { name })).toHaveAttribute('target', '_blank')
+    }
 
     const marketplaceAction = screen.getByRole('button', {
       name: /common\.publishToMarketplace\b/,
@@ -569,6 +572,69 @@ describe('app-publisher sections', () => {
     await user.click(workflowToolAction)
     expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    {
+      expectedLabel: /^workflow\.common\.publishAsEvaluationWorkflow$/,
+      publishedAt: undefined,
+      workflowKind: 'standard' as const,
+      expectedTarget: undefined,
+    },
+    {
+      expectedLabel: /^workflow\.common\.switchToEvaluationWorkflow$/,
+      publishedAt: Date.now(),
+      workflowKind: 'standard' as const,
+      expectedTarget: 'evaluation' as const,
+    },
+    {
+      expectedLabel: /^workflow\.common\.switchToStandardWorkflow$/,
+      publishedAt: Date.now(),
+      workflowKind: 'evaluation' as const,
+      expectedTarget: 'standard' as const,
+    },
+  ])(
+    'should expose $expectedLabel for a $workflowKind workflow',
+    async ({ expectedLabel, expectedTarget, publishedAt, workflowKind }) => {
+      const user = userEvent.setup()
+      const onRequestKindChange = vi.fn()
+      const onPublishEvaluation = vi.fn()
+
+      render(
+        <PublisherActionsSection
+          appDetail={{
+            mode: 'workflow',
+            workflow_kind: workflowKind,
+          }}
+          appId="workflow-app"
+          appURL="https://example.com/app"
+          canViewAccessPoint={false}
+          disabledFunctionButton={false}
+          publishedAt={publishedAt}
+          workflowToolIsLoading={false}
+          showWorkflowTool={false}
+          onConfigureWorkflowTool={vi.fn()}
+          onRequestKindChange={onRequestKindChange}
+          onPublishEvaluation={onPublishEvaluation}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /^common\.operation\.viewDetails:/ }))
+      expect(await screen.findByText(/common\.evaluationWorkflowDescription/)).toBeInTheDocument()
+      expect(onRequestKindChange).not.toHaveBeenCalled()
+      expect(onPublishEvaluation).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: expectedLabel }))
+
+      if (expectedTarget) {
+        // Switching a published workflow is confirmed by the caller, outside the popover.
+        expect(onRequestKindChange).toHaveBeenCalledWith(expectedTarget)
+        expect(onPublishEvaluation).not.toHaveBeenCalled()
+      } else {
+        expect(onPublishEvaluation).toHaveBeenCalledTimes(1)
+        expect(onRequestKindChange).not.toHaveBeenCalled()
+      }
+    },
+  )
 
   it('should expose Configure and Manage in Tools actions for a ready workflow tool', async () => {
     const user = userEvent.setup()

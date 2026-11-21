@@ -1,21 +1,18 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRagPipelineSliceSlice } from '@/app/components/rag-pipeline/store'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import GlobalVariableButton from '../global-variable-button'
-
-const mockCloseAllInputFieldPanels = vi.fn()
-
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
-  useInputFieldPanel: () => ({
-    closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
-  }),
-}))
 
 describe('GlobalVariableButton', () => {
   it('should open the global variable panel and close the other panels when clicked', async () => {
     const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
       initialStoreState: {
+        showInputFieldPanel: true,
+        showInputFieldPreviewPanel: true,
+        inputFieldEditPanelProps: { onSubmit: () => {}, onClose: () => {} },
         showEnvPanel: true,
         showChatVariablePanel: true,
         showDebugAndPreviewPanel: true,
@@ -28,13 +25,21 @@ describe('GlobalVariableButton', () => {
     expect(store.getState().showEnvPanel).toBe(false)
     expect(store.getState().showChatVariablePanel).toBe(false)
     expect(store.getState().showDebugAndPreviewPanel).toBe(false)
-    expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
+    expect(store.getState()).toMatchObject({
+      showInputFieldPanel: false,
+      showInputFieldPreviewPanel: false,
+      inputFieldEditPanelProps: null,
+    })
   })
 
   it('should keep the button disabled when the disabled prop is true', async () => {
     const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled />, {
+      injectWorkflowStoreSliceFn: createRagPipelineSliceSlice,
       initialStoreState: {
+        showInputFieldPanel: true,
+        showInputFieldPreviewPanel: true,
+        inputFieldEditPanelProps: { onSubmit: () => {}, onClose: () => {} },
         showGlobalVariablePanel: false,
       },
     })
@@ -43,6 +48,10 @@ describe('GlobalVariableButton', () => {
 
     expect(screen.getByRole('button', { name: 'workflow.globalVar.title' })).toBeDisabled()
     expect(store.getState().showGlobalVariablePanel).toBe(false)
-    expect(mockCloseAllInputFieldPanels).not.toHaveBeenCalled()
+    expect(store.getState()).toMatchObject({
+      showInputFieldPanel: true,
+      showInputFieldPreviewPanel: true,
+      inputFieldEditPanelProps: expect.objectContaining({ onSubmit: expect.any(Function) }),
+    })
   })
 })
