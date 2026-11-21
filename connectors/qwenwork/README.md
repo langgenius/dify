@@ -28,7 +28,7 @@ If your organisation turns off "允许自行添加连接器", members cannot do 
 
 ## What a personal token can do
 
-- Find and run apps within the workspaces and apps chosen for the token, and answer human-input forms.
+- Find and run the apps chosen for the token, and answer human-input forms.
 - Manage plugins, model providers and tool credentials.
 
 A workspace token can list and run apps. It cannot answer a human-input pause, and it cannot reach plugins, model providers or tool credentials.
