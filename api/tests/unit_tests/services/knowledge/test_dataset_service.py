@@ -1671,21 +1671,16 @@ class TestDatasetServiceDatasetCases:
 
             # Omitted fields mean "unchanged", matching the update adapter.
             DatasetPermissionService.check_permission(operator, dataset, None, None, session=sqlite_session)
-            DatasetPermissionService.check_permission(
-                operator,
-                dataset,
-                DatasetPermissionEnum.PARTIAL_TEAM,
-                None,
-                session=sqlite_session,
-            )
-            with pytest.raises(ValueError, match="cannot change"):
-                DatasetPermissionService.check_permission(
-                    operator,
-                    dataset,
-                    DatasetPermissionEnum.PARTIAL_TEAM,
-                    [],
-                    session=sqlite_session,
-                )
+            # Asserting partial_members requires a non-empty member list.
+            for member_list in (None, []):
+                with pytest.raises(ValueError, match="Partial member list is required"):
+                    DatasetPermissionService.check_permission(
+                        operator,
+                        dataset,
+                        DatasetPermissionEnum.PARTIAL_TEAM,
+                        member_list,
+                        session=sqlite_session,
+                    )
 
         def test_update_partial_member_list_flush_failure_does_not_rollback_caller_session(
             self, sqlite_session: Session

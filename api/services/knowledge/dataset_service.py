@@ -3983,9 +3983,9 @@ class DatasetPermissionService:
 
         Dataset operators may only re-assert the dataset's current permission:
         a `requested_permission` of `None` means "leave unchanged" — the update
-        adapter omits unset fields — and under `partial_members` an omitted
-        member list also means no change. Any divergence, including an explicit
-        empty member list on a non-empty one, is denied.
+        adapter omits unset fields. Asserting `partial_members` requires a
+        non-empty member list identical to the stored selection; any other
+        divergence is denied.
         """
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
@@ -3993,7 +3993,9 @@ class DatasetPermissionService:
         if user.is_dataset_operator:
             if requested_permission is not None and dataset.permission != requested_permission:
                 raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
-            if requested_permission == DatasetPermissionEnum.PARTIAL_TEAM and requested_partial_member_list is not None:
+            if requested_permission == DatasetPermissionEnum.PARTIAL_TEAM:
+                if not requested_partial_member_list:
+                    raise ValueError("Partial member list is required when setting to partial members.")
                 local_member_list = cls.get_dataset_partial_member_list(dataset.id, session)
                 request_member_list = [user["user_id"] for user in requested_partial_member_list]
                 if set(local_member_list) != set(request_member_list):

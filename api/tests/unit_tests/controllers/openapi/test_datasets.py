@@ -3,7 +3,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from http import HTTPStatus
 from types import SimpleNamespace
-from typing import Protocol, cast
 from unittest.mock import Mock
 
 import pytest
@@ -19,13 +18,16 @@ from controllers.openapi._models import (
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
-from controllers.openapi.datasets import _dataset_row, _display_status, _document_row
+from controllers.openapi.datasets import DatasetsApi, _dataset_row, _display_status, _document_row
 from libs.oauth_bearer import AuthContext
 from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
-class _EndpointView(Protocol):
-    __handler__: Callable[..., tuple[DatasetResponse, HTTPStatus]]
+def _endpoint_handler(view: object) -> Callable[..., tuple[DatasetResponse, HTTPStatus]]:
+    """Return the request handler the `@endpoint` decorator attaches to a view."""
+    handler = getattr(view, "__handler__", None)
+    assert callable(handler)
+    return handler
 
 
 def _ctx() -> Context:
@@ -158,8 +160,8 @@ def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(datasets_module, "application_services", lambda: _services(create_dataset=create_dataset))
 
-    api = datasets_module.DatasetsApi()
-    response, status = cast(_EndpointView, api.post).__handler__(
+    api = DatasetsApi()
+    response, status = _endpoint_handler(api.post)(
         api, _ctx(), workspace_id="ws-1", body=DatasetCreatePayload(name="Docs")
     )
 
