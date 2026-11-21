@@ -151,6 +151,8 @@ async function renderOverview({
 const overviewKeys = {
   attention: () => consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.attention.get.key(),
   stats: () => consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.key(),
+  outcomes: () => consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.key(),
+  inventory: () => consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.key(),
   tasks: () => consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
 }
 const emptyKnowledgeBase = () => {
@@ -171,8 +173,7 @@ describe('KnowledgeOverviewPage indexing', () => {
     vi.restoreAllMocks()
   })
 
-  // TODO(https://github.com/langgenius/dify/issues/46699): stats keep polling after tasks finish.
-  it.fails('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
+  it('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.tasks[0]!.state = 'running'
     queryData.tasks[0]!.updated_at = '2026-07-29T10:00:00Z'
@@ -181,23 +182,47 @@ describe('KnowledgeOverviewPage indexing', () => {
     queryData.stats.queries.value = 11
     await vi.advanceTimersByTimeAsync(2000)
     await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
     queryData.tasks[0]!.state = 'completed'
     queryData.stats.queries.value = 12
     await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
     await vi.advanceTimersByTimeAsync(2000)
     await expect.element(page.getByText('12', { exact: true })).toBeVisible()
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
     queryData.stats.generated_at = '2026-07-29T10:01:00Z'
     queryData.stats.queries.value = 13
-    await vi.advanceTimersByTimeAsync(2000)
-    await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+    queryData.outcomes.generated_at = '2026-07-29T10:01:00Z'
+    queryData.inventory.generated_at = '2026-07-29T10:01:00Z'
+    await Promise.all(
+      [overviewKeys.stats(), overviewKeys.outcomes(), overviewKeys.inventory()].map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+    )
     await expect.poll(() => queryClient.isFetching()).toBe(0)
-    const caughtUp =
-      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.mock.calls.length
-    await vi.advanceTimersByTimeAsync(6000)
-    expect(
-      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get,
-    ).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+    const overview = fake.console.knowledgeFs.spaces.byControlSpaceId.overview
+    const requests = [
+      overview.stats.get,
+      overview.queryOutcomes.get,
+      overview.inventory.get,
+      overview.attention.get,
+      overview.activity.get,
+    ]
+    const callCounts = () => requests.map((request) => request.mock.calls.length)
+    const caughtUp = callCounts()
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(callCounts()).toEqual(caughtUp)
+    await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+
+    queryData.tasks[0]!.state = 'running'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
+    const beforeRestart = callCounts()
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
+    expect(callCounts().every((count, index) => count > beforeRestart[index]!)).toBe(true)
   })
 
   it('keeps failed first-source tasks in Needs attention without a duplicate banner', async () => {
