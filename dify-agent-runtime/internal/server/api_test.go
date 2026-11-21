@@ -172,6 +172,108 @@ func TestRunJobRejectsInvalidModeBeforeCallingService(t *testing.T) {
 	}
 }
 
+// readTrackingReader detects body consumption even when decoding errors are ignored.
+type readTrackingReader struct {
+	io.Reader
+	reads int
+}
+
+func (r *readTrackingReader) Read(p []byte) (int, error) {
+	r.reads++
+	return r.Reader.Read(p)
+}
+
+func TestJobRoutesRejectMalformedIDsBeforeCallingService(t *testing.T) {
+	config := mustDefaultConfig(t)
+	config.AuthToken = "secret"
+	handler := Handler(nil, config)
+	routes := []struct {
+		method string
+		suffix string
+	}{
+		{http.MethodPost, "/wait"},
+		{http.MethodGet, "/log/tail"},
+		{http.MethodGet, ""},
+		{http.MethodPost, "/input"},
+		{http.MethodPost, "/terminate"},
+		{http.MethodDelete, ""},
+	}
+	ids := []string{
+		"not-a-job-id", "0123456789abcde", "0123456789abcdef0", "ABCDEF0123456789",
+		"0123456789abcdeg", "0123456789abcde%2F", "0123456789abcde%5C",
+		"%2e%2e", "%2e%2e%2F%2e%2e%2Fetc%2Fpasswd", "%2Ftmp%2Fshellctl-job",
+		"-123456789abcdef", "0123456789abcde%20", "0123456789abcde%00",
+		"0123456789abcde%3B", "0123456789abcde%3A", "0123456789abcde.",
+		"0123456789abcde%24", "0123456789abcde%27", "0123456789abcde%22",
+	}
+	for _, route := range routes {
+		for _, id := range ids {
+			t.Run(route.method+"/"+id+route.suffix, func(t *testing.T) {
+				body := ""
+				if route.method == http.MethodPost {
+					// Path validation must precede JSON decoding and any service call.
+					body = "invalid JSON"
+				}
+				bodyReader := &readTrackingReader{Reader: strings.NewReader(body)}
+				req := httptest.NewRequest(route.method, "/v1/jobs/"+id+route.suffix, bodyReader)
+				req.Header.Set("Authorization", "Bearer secret")
+				w := httptest.NewRecorder()
+				handler.ServeHTTP(w, req)
+				if bodyReader.reads != 0 {
+					t.Errorf("expected no request body reads for malformed job ID, got %d", bodyReader.reads)
+				}
+				if w.Code != http.StatusBadRequest {
+					t.Fatalf("expected 400, got %d: %s", w.Code, w.Body)
+				}
+				var result ErrorResponse
+				if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Error.Code != "invalid_job_id" || result.Error.Message != "job id must be 16 lowercase hexadecimal characters" {
+					t.Errorf("unexpected error: %+v", result.Error)
+				}
+			})
+		}
+	}
+}
+
+func TestJobRoutesReturnNotFoundForValidUnknownIDs(t *testing.T) {
+	config := mustDefaultConfig(t)
+	config.AuthToken = "secret"
+	svc := NewService(config)
+	svc.db = setupTestDB(t, t.TempDir())
+	t.Cleanup(func() { _ = svc.db.Close() })
+	handler := Handler(svc, config)
+	for _, route := range []struct {
+		method string
+		suffix string
+	}{
+		{http.MethodPost, "/wait"},
+		{http.MethodGet, "/log/tail"},
+		{http.MethodGet, ""},
+		{http.MethodPost, "/input"},
+		{http.MethodPost, "/terminate"},
+		{http.MethodDelete, ""},
+	} {
+		t.Run(route.method+route.suffix, func(t *testing.T) {
+			req := httptest.NewRequest(route.method, "/v1/jobs/0000000000000000"+route.suffix, strings.NewReader(`{}`))
+			req.Header.Set("Authorization", "Bearer secret")
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			if w.Code != http.StatusNotFound {
+				t.Fatalf("expected 404, got %d: %s", w.Code, w.Body)
+			}
+			var result ErrorResponse
+			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Error.Code != "job_not_found" {
+				t.Errorf("expected job_not_found, got %q", result.Error.Code)
+			}
+		})
+	}
+}
+
 func TestServerErrorFormat(t *testing.T) {
 	err := NewServerError(422, "validation_error", "bad input")
 	expected := "[422] validation_error: bad input"

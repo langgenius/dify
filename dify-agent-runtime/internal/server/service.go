@@ -16,11 +16,12 @@ import (
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
+// Job-targeted methods require a parsed or generated JobID.
 type Service struct {
 	config       *Config
 	db           *DB
 	tmux         *TmuxController
-	startingJobs map[string]bool
+	startingJobs map[JobID]bool
 	mu           sync.Mutex
 	cancelGC     context.CancelFunc
 	cancelMon    context.CancelFunc
@@ -31,7 +32,7 @@ func NewService(config *Config) *Service {
 	return &Service{
 		config:       config,
 		tmux:         NewTmuxController(config),
-		startingJobs: make(map[string]bool),
+		startingJobs: make(map[JobID]bool),
 	}
 }
 
@@ -257,7 +258,7 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 	})
 }
 
-func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int, mode jobmode.Mode) error {
+func (s *Service) startJob(jobID JobID, jobDir, cwd string, cols, rows int, mode jobmode.Mode) error {
 	log.Printf("startJob [%s]: creating tmux session", jobID)
 	if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows, mode); err != nil {
 		log.Printf("startJob [%s]: tmux session failed: %v", jobID, err)
@@ -299,7 +300,7 @@ func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int, mode jobmo
 	return nil
 }
 
-func (s *Service) waitForPipeReady(jobID, readyFile string) error {
+func (s *Service) waitForPipeReady(jobID JobID, readyFile string) error {
 	deadline := time.Now().Add(s.config.PipeReadyTimeout)
 	for {
 		if _, err := os.Stat(readyFile); err == nil {
@@ -326,7 +327,7 @@ func (s *Service) waitForPipeReady(jobID, readyFile string) error {
 }
 
 // WaitJob blocks until output, completion, truncation, or timeout.
-func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error) {
+func (s *Service) WaitJob(jobID JobID, req *WaitJobRequest) (*JobResult, error) {
 	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
@@ -422,7 +423,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 }
 
 // TailJob returns the tail of a job's output.
-func (s *Service) TailJob(jobID string, outputLimit int) (*JobResult, error) {
+func (s *Service) TailJob(jobID JobID, outputLimit int) (*JobResult, error) {
 	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
@@ -439,7 +440,7 @@ func (s *Service) TailJob(jobID string, outputLimit int) (*JobResult, error) {
 }
 
 // GetJobStatus materializes the current status from SQLite + live tmux state.
-func (s *Service) GetJobStatus(jobID string) (*JobStatusView, error) {
+func (s *Service) GetJobStatus(jobID JobID) (*JobStatusView, error) {
 	row, err := s.db.GetJob(jobID)
 	if err != nil {
 		return nil, err
@@ -485,7 +486,7 @@ func (s *Service) ListJobs(status *JobStatusName, limit int) (*ListJobsResponse,
 }
 
 // SendInput sends input to a running job and waits.
-func (s *Service) SendInput(jobID string, req *InputJobRequest) (*JobResult, error) {
+func (s *Service) SendInput(jobID JobID, req *InputJobRequest) (*JobResult, error) {
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
@@ -521,7 +522,7 @@ func (s *Service) SendInput(jobID string, req *InputJobRequest) (*JobResult, err
 }
 
 // TerminateJob terminates a running job.
-func (s *Service) TerminateJob(jobID string, graceSeconds float64) (*JobStatusView, error) {
+func (s *Service) TerminateJob(jobID JobID, graceSeconds float64) (*JobStatusView, error) {
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
@@ -547,7 +548,7 @@ func (s *Service) TerminateJob(jobID string, graceSeconds float64) (*JobStatusVi
 }
 
 // DeleteJob deletes a job and its artifacts.
-func (s *Service) DeleteJob(jobID string, force bool, graceSeconds float64) (*DeleteJobResponse, error) {
+func (s *Service) DeleteJob(jobID JobID, force bool, graceSeconds float64) (*DeleteJobResponse, error) {
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
@@ -563,8 +564,8 @@ func (s *Service) DeleteJob(jobID string, force bool, graceSeconds float64) (*De
 	if err := s.db.DeleteJob(jobID); err != nil {
 		return nil, err
 	}
-	_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), jobID))
-	return &DeleteJobResponse{JobID: jobID, Deleted: true}, nil
+	_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), string(jobID)))
+	return &DeleteJobResponse{JobID: string(jobID), Deleted: true}, nil
 }
 
 // Reconcile synchronizes SQLite rows with live tmux state.
@@ -615,7 +616,7 @@ func (s *Service) GCOnce() error {
 		}
 		s.tmux.CleanupSession(row.JobID)
 		_ = s.db.DeleteJob(row.JobID)
-		_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), row.JobID))
+		_ = os.RemoveAll(filepath.Join(s.config.JobsDir(), string(row.JobID)))
 	}
 	return nil
 }
@@ -744,7 +745,7 @@ type exitMetadata struct {
 }
 
 func (s *Service) completedExitMetadata(row *JobRow) *exitMetadata {
-	jobDir := filepath.Join(s.config.JobsDir(), row.JobID)
+	jobDir := filepath.Join(s.config.JobsDir(), string(row.JobID))
 	drainedPath := filepath.Join(jobDir, ".pipe-drained")
 	exitCodePath := filepath.Join(jobDir, "runner-exit-code")
 	endedAtPath := filepath.Join(jobDir, "runner-ended-at")
@@ -783,7 +784,7 @@ func (s *Service) normalExitCommitPending(row *JobRow) bool {
 	if row.Mode != jobmode.PTY {
 		return false
 	}
-	jobDir := filepath.Join(s.config.JobsDir(), row.JobID)
+	jobDir := filepath.Join(s.config.JobsDir(), string(row.JobID))
 	return fileExists(filepath.Join(jobDir, "runner-exit-code")) &&
 		fileExists(filepath.Join(jobDir, "runner-ended-at")) &&
 		!fileExists(filepath.Join(jobDir, ".pipe-drained")) &&
@@ -798,7 +799,7 @@ func (s *Service) statusViewFromRow(row *JobRow) *JobStatusView {
 	outputPath := s.outputLogPath(row)
 	offset := int(fileSize(outputPath))
 	return &JobStatusView{
-		JobID:     row.JobID,
+		JobID:     string(row.JobID),
 		Status:    row.Status,
 		Done:      row.Status.IsTerminal(),
 		ExitCode:  row.ExitCode,
@@ -840,10 +841,10 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 	return abs, nil
 }
 
-func (s *Service) allocateJobDir() (string, string, error) {
+func (s *Service) allocateJobDir() (JobID, string, error) {
 	for i := 0; i < 20; i++ {
 		jobID := GenerateJobID()
-		jobDir := filepath.Join(s.config.JobsDir(), jobID)
+		jobDir := filepath.Join(s.config.JobsDir(), string(jobID))
 		if err := os.Mkdir(jobDir, 0700); err == nil {
 			return jobID, jobDir, nil
 		}
@@ -851,7 +852,7 @@ func (s *Service) allocateJobDir() (string, string, error) {
 	return "", "", NewServerError(500, "job_id_collision", "Failed to allocate a unique job id")
 }
 
-func (s *Service) cleanupStarting(jobID, jobDir string) {
+func (s *Service) cleanupStarting(jobID JobID, jobDir string) {
 	s.mu.Lock()
 	delete(s.startingJobs, jobID)
 	s.mu.Unlock()

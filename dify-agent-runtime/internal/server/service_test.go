@@ -23,7 +23,7 @@ func TestMaterializeStdioStatusDoesNotRequirePanePipe(t *testing.T) {
 
 func TestMaterializeStdioStatusUsesExitArtifactsWithoutPipeDrainMarker(t *testing.T) {
 	service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
-	jobDir := filepath.Join(service.config.JobsDir(), row.JobID)
+	jobDir := filepath.Join(service.config.JobsDir(), string(row.JobID))
 	if err := os.WriteFile(filepath.Join(jobDir, "runner-exit-code"), []byte("7\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestMaterializeStdioStatusUsesExitArtifactsWithoutPipeDrainMarker(t *testin
 
 func TestMaterializeStdioStatusMarksMissingSessionWithIncompleteArtifactsLost(t *testing.T) {
 	service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
-	jobDir := filepath.Join(service.config.JobsDir(), row.JobID)
+	jobDir := filepath.Join(service.config.JobsDir(), string(row.JobID))
 	if err := os.WriteFile(filepath.Join(jobDir, "runner-exit-code"), []byte("0\n"), 0600); err != nil {
 		t.Fatal(err)
 	}

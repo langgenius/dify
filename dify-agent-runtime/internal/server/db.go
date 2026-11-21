@@ -42,7 +42,7 @@ func (s JobStatusName) IsTerminal() bool {
 
 // JobRow represents a row in the jobs SQLite table.
 type JobRow struct {
-	JobID        string
+	JobID        JobID
 	ScriptPath   string
 	OutputPath   string
 	Mode         jobmode.Mode
@@ -62,6 +62,7 @@ type JobRow struct {
 }
 
 // DB wraps the SQLite database for shellctl job persistence.
+// Stored job IDs originate from the service and are restored without revalidation.
 type DB struct {
 	db *sql.DB
 }
@@ -187,7 +188,7 @@ func (d *DB) InsertJob(row *JobRow) (bool, error) {
 			status, session_name, pane_target, exit_code, reason, message,
 			created_at, started_at, ended_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		row.JobID, row.ScriptPath, row.OutputPath, string(row.Mode), row.Cwd,
+		string(row.JobID), row.ScriptPath, row.OutputPath, string(row.Mode), row.Cwd,
 		row.TerminalCols, row.TerminalRows,
 		string(row.Status), row.SessionName, row.PaneTarget,
 		row.ExitCode, row.Reason, row.Message,
@@ -204,12 +205,12 @@ func (d *DB) InsertJob(row *JobRow) (bool, error) {
 }
 
 // GetJob retrieves a single job row by ID.
-func (d *DB) GetJob(jobID string) (*JobRow, error) {
+func (d *DB) GetJob(jobID JobID) (*JobRow, error) {
 	row := d.db.QueryRow(`
 		SELECT job_id, script_path, output_path, mode, cwd, terminal_cols, terminal_rows,
 			status, session_name, pane_target, exit_code, reason, message,
 			created_at, started_at, ended_at, updated_at
-		FROM jobs WHERE job_id = ?`, jobID)
+		FROM jobs WHERE job_id = ?`, string(jobID))
 	return scanJobRow(row)
 }
 
@@ -256,8 +257,8 @@ func (d *DB) ListJobs(statuses []JobStatusName) ([]*JobRow, error) {
 }
 
 // DeleteJob removes a job row by ID. Returns error if not found.
-func (d *DB) DeleteJob(jobID string) error {
-	result, err := d.db.Exec("DELETE FROM jobs WHERE job_id = ?", jobID)
+func (d *DB) DeleteJob(jobID JobID) error {
+	result, err := d.db.Exec("DELETE FROM jobs WHERE job_id = ?", string(jobID))
 	if err != nil {
 		return err
 	}
@@ -269,7 +270,7 @@ func (d *DB) DeleteJob(jobID string) error {
 }
 
 // TransitionStatus performs a conditional CAS update on a job row.
-func (d *DB) TransitionStatus(jobID string, opts TransitionOpts) (*JobRow, error) {
+func (d *DB) TransitionStatus(jobID JobID, opts TransitionOpts) (*JobRow, error) {
 	now := FormatTimestamp(time.Now())
 
 	// Build WHERE clause
@@ -311,7 +312,7 @@ func (d *DB) TransitionStatus(jobID string, opts TransitionOpts) (*JobRow, error
 	}
 
 	whereClause := fmt.Sprintf("job_id = ? AND status IN (%s)", placeholders)
-	args = append(args, jobID)
+	args = append(args, string(jobID))
 	args = append(args, allowedList...)
 
 	if opts.RequireExitCodeNull {
@@ -333,10 +334,10 @@ func (d *DB) TransitionStatus(jobID string, opts TransitionOpts) (*JobRow, error
 // RecordRunnerExit persists exit_code and ended_at for a drained job.
 // The update is idempotent for terminal rows: once a job reaches a terminal
 // state, this method returns nil without rewriting the row.
-func (d *DB) RecordRunnerExit(jobID string, exitCode int, endedAt string) error {
+func (d *DB) RecordRunnerExit(jobID JobID, exitCode int, endedAt string) error {
 	// Check if job exists and is already terminal
 	var status string
-	err := d.db.QueryRow("SELECT status FROM jobs WHERE job_id = ?", jobID).Scan(&status)
+	err := d.db.QueryRow("SELECT status FROM jobs WHERE job_id = ?", string(jobID)).Scan(&status)
 	if err == sql.ErrNoRows {
 		return ErrJobNotFound
 	}
@@ -370,7 +371,7 @@ func (d *DB) RecordRunnerExit(jobID string, exitCode int, endedAt string) error 
 		// message
 		nonterminal[0], nonterminal[1], nonterminal[2],
 		// WHERE
-		jobID,
+		string(jobID),
 		nonterminal[0], nonterminal[1], nonterminal[2],
 	)
 	if err != nil {
@@ -396,9 +397,9 @@ type TransitionOpts struct {
 
 func scanJobRow(row *sql.Row) (*JobRow, error) {
 	var jr JobRow
-	var mode, status string
+	var jobID, mode, status string
 	err := row.Scan(
-		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
+		&jobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
 		&jr.TerminalCols, &jr.TerminalRows,
 		&status, &jr.SessionName, &jr.PaneTarget,
 		&jr.ExitCode, &jr.Reason, &jr.Message,
@@ -410,6 +411,7 @@ func scanJobRow(row *sql.Row) (*JobRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	jr.JobID = JobID(jobID)
 	jr.Mode = jobmode.Mode(mode)
 	jr.Status = JobStatusName(status)
 	return &jr, nil
@@ -417,9 +419,9 @@ func scanJobRow(row *sql.Row) (*JobRow, error) {
 
 func scanJobRows(rows *sql.Rows) (*JobRow, error) {
 	var jr JobRow
-	var mode, status string
+	var jobID, mode, status string
 	err := rows.Scan(
-		&jr.JobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
+		&jobID, &jr.ScriptPath, &jr.OutputPath, &mode, &jr.Cwd,
 		&jr.TerminalCols, &jr.TerminalRows,
 		&status, &jr.SessionName, &jr.PaneTarget,
 		&jr.ExitCode, &jr.Reason, &jr.Message,
@@ -428,6 +430,7 @@ func scanJobRows(rows *sql.Rows) (*JobRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	jr.JobID = JobID(jobID)
 	jr.Mode = jobmode.Mode(mode)
 	jr.Status = JobStatusName(status)
 	return &jr, nil
