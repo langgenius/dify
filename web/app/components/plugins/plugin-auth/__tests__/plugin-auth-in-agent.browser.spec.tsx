@@ -79,7 +79,7 @@ it('selects the workspace default instead of a named credential', async () => {
 })
 
 // https://github.com/langgenius/dify/issues/46384 — credential-info refetch unmounts the trigger.
-it.fails('keeps focus on the agent credential trigger after selecting a named key', async () => {
+it('keeps focus on the agent credential trigger after selecting a named key', async () => {
   await setup()
   const trigger = page.getByRole('button', { name: 'plugin.auth.workspaceDefault', exact: true })
   await expect.element(trigger).toBeVisible()
