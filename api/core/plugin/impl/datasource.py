@@ -26,12 +26,7 @@ from services.tools.tools_transform_service import ToolTransformService
 
 
 class PluginDatasourcePayloadModel(BaseModel):
-    """Base for the daemon datasource payloads.
-
-    Declared fields are validated at the boundary; undeclared keys are carried
-    through untouched so the downstream entity models can parse the rest of the
-    daemon response they still own.
-    """
+    """Validate declared fields and preserve daemon-owned extras for downstream parsing."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -82,15 +77,22 @@ class DatasourceProviderListRequester(Protocol):
         tenant_id: str,
         transformer: Callable[[dict[str, Any]], PluginDatasourceListPayload],
     ) -> list[PluginDatasourceProviderEntity]:
-        """Return provider entities after applying the supplied boundary transformer.
+        """Request and transform one tenant's provider list. Inputs: Tenant ID and the daemon-response transformer.
+        Preconditions: Tenant ID is non-empty; transformer accepts daemon JSON.
+        Result/effects: Returns provider entities; requester applies transformer to raw JSON.
+        Failure: Request and transformation exceptions propagate.
+        """
+        ...
 
-        Inputs: ``tenant_id`` identifies the requesting tenant; ``transformer``
-        validates and normalizes a raw JSON response from the daemon.
-        Preconditions: The tenant ID is non-empty and the transformer accepts a
-        daemon JSON object.
-        Result and side effects: Returns the validated provider entities; implementations
-        may perform the external request and must apply the transformer to its raw JSON.
-        Failure behavior: Request and transformer errors propagate to the caller.
+
+class DatasourceSchemaRefResolver(Protocol):
+    """Resolve schema references found in datasource provider payloads."""
+
+    def __call__(self, schema: SchemaType) -> SchemaType:
+        """Resolve Dify schema references. Inputs: A schema value accepted by the Dify resolver.
+        Preconditions: The value satisfies ``SchemaType``.
+        Result/effects: Returns expanded schema; a registry may be consulted.
+        Failure: Schema-resolution errors propagate.
         """
         ...
 
@@ -108,42 +110,38 @@ class PluginDatasourceManager(BasePluginClient):
         plugin_unique_identifier: str | None = None,
         get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
         datasource_provider_list_requester: DatasourceProviderListRequester | None = None,
+        schema_ref_resolver: DatasourceSchemaRefResolver | None = None,
     ) -> None:
-        """Configure callbacks and the optional datasource-list request port.
-
-        Inputs: ``plugin_unique_identifier`` is ``None`` or a non-empty identifier;
-        ``get_plugin_icon_url`` accepts a tenant ID and icon filename;
-        ``datasource_provider_list_requester`` implements the provider-list request
-        boundary, or ``None`` selects the plugin daemon HTTP request.
-        Preconditions: The URL callback accepts two string arguments; an injected
-        requester implements ``request`` and applies the supplied transformer to
-        the daemon JSON response.
-        Result and side effects: Stores the callbacks without invoking them; base
-        identifier validation remains in effect.
-        Failure behavior: An empty ``plugin_unique_identifier`` raises the same
-        ``ValueError`` as ``BasePluginClient`` and no instance is returned. Callback,
-        request, and transformer errors propagate when provider fetching invokes them.
+        """Inputs: Identifier is ``None`` or non-empty; callbacks implement their typed protocols;
+        absent optional callbacks select production defaults.
+        Preconditions: An injected requester applies the transformer to daemon JSON.
+        Result/effects: Initializes the base client and stores callbacks without invoking them.
+        Failure: Empty ID preserves ``BasePluginClient`` validation; used callback errors propagate.
         """
         super().__init__(plugin_unique_identifier=plugin_unique_identifier)
         self._get_plugin_icon_url = get_plugin_icon_url
         self._datasource_provider_list_requester = datasource_provider_list_requester
+        self._schema_ref_resolver = schema_ref_resolver
+
+    def _resolve_schema_refs(self, schema: SchemaType) -> SchemaType:
+        """Resolve one datasource output schema. Inputs: A schema value accepted by the Dify resolver.
+        Preconditions: The value satisfies ``SchemaType``.
+        Result/effects: Uses the injected resolver or production resolver at call time.
+        Failure: Selected resolver errors propagate unchanged.
+        """
+        if self._schema_ref_resolver is not None:
+            return self._schema_ref_resolver(schema)
+        return resolve_dify_schema_refs(schema)
 
     def _request_datasource_provider_list(
         self,
         tenant_id: str,
         transformer: Callable[[dict[str, Any]], PluginDatasourceListPayload],
     ) -> list[PluginDatasourceProviderEntity]:
-        """Request and transform datasource providers for one tenant.
-
-        Inputs: ``tenant_id`` scopes the request; ``transformer`` validates and
-        normalizes the daemon response object.
-        Preconditions: ``tenant_id`` is non-empty and the transformer accepts the
-        daemon's JSON object shape.
-        Result and side effects: Uses the injected requester when configured, or
-        otherwise sends the existing GET request to the plugin daemon with the
-        established path, response type, and pagination parameters.
-        Failure behavior: Request, parsing, and transformer errors propagate from
-        the selected request boundary.
+        """Inputs: Non-empty tenant ID and a typed daemon-response transformer.
+        Preconditions: Transformer accepts the daemon JSON object.
+        Result/effects: Uses the injected requester or existing GET path, entity type, and pagination.
+        Failure: Request, parsing, and transformation errors propagate.
         """
         if self._datasource_provider_list_requester is not None:
             return self._datasource_provider_list_requester.request(tenant_id=tenant_id, transformer=transformer)
@@ -156,35 +154,36 @@ class PluginDatasourceManager(BasePluginClient):
             transformer=transformer,
         )
 
-    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
-        """Fetch, repack, and normalize all datasource providers for a tenant.
+    def _transform_datasource_provider_list_response(
+        self, json_response: dict[str, Any]
+    ) -> PluginDatasourceListPayload:
+        """Inputs: A daemon JSON object accepted by ``PluginDatasourceListPayload``.
+        Preconditions: Declared payload fields satisfy the Pydantic model.
+        Result/effects: Normalizes provider names and resolves truthy output schemas.
+        Failure: Validation and schema-resolver errors propagate unchanged.
+        """
+        payload = PluginDatasourceListPayload.model_validate(json_response)
+        for provider in payload.data or []:
+            declaration = provider.declaration
+            if declaration is not None:
+                identity = declaration.identity
+                provider_name = identity.name if identity is not None else None
+                for datasource in declaration.datasources or []:
+                    datasource.identity.provider = provider_name
+                    if output_schema := datasource.output_schema:
+                        datasource.output_schema = self._resolve_schema_refs(output_schema)
+        return payload
 
-        Inputs: ``tenant_id`` scopes the plugin-daemon list request and icon
-        resolution.
-        Preconditions: The tenant ID is non-empty; any injected requester applies
-        the manager's transformer to the daemon response.
-        Result and side effects: Returns the local-file provider followed by the
-        daemon providers after schema resolution, icon repacking, and provider-name
-        normalization.
-        Failure behavior: Request, validation, schema-resolution, and repacking
-        errors propagate; malformed response data is rejected by Pydantic.
+    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
+        """Inputs: Tenant ID scopes the list request and icon resolution.
+        Preconditions: ``tenant_id`` is non-empty; an injected requester applies the transformer.
+        Result/effects: Returns the local-file provider plus resolved, repacked entities. Provider
+        identity names normalize to ``plugin_id/provider_name``; each datasource identity's
+        ``provider`` value matches that normalized provider name.
+        Failure: Request, validation, schema-resolution, and repacking errors propagate.
         """
 
-        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
-            payload = PluginDatasourceListPayload.model_validate(json_response)
-            for provider in payload.data or []:
-                declaration = provider.declaration
-                if declaration is not None:
-                    identity = declaration.identity
-                    provider_name = identity.name if identity is not None else None
-                    for datasource in declaration.datasources or []:
-                        datasource.identity.provider = provider_name
-                        # resolve refs
-                        if output_schema := datasource.output_schema:
-                            datasource.output_schema = resolve_dify_schema_refs(output_schema)
-            return payload
-
-        response = self._request_datasource_provider_list(tenant_id, transformer)
+        response = self._request_datasource_provider_list(tenant_id, self._transform_datasource_provider_list_response)
         local_file_datasource_provider = PluginDatasourceProviderEntity.model_validate(
             self._get_local_file_datasource_provider()
         )
@@ -205,33 +204,15 @@ class PluginDatasourceManager(BasePluginClient):
         return all_response
 
     def fetch_installed_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
-        """Fetch, repack, and normalize daemon-installed providers for a tenant.
-
-        Inputs: ``tenant_id`` scopes the plugin-daemon list request and icon
-        resolution.
-        Preconditions: The tenant ID is non-empty; any injected requester applies
-        the manager's transformer to the daemon response.
-        Result and side effects: Returns only daemon providers after schema
-        resolution, icon repacking, and provider-name normalization.
-        Failure behavior: Request, validation, schema-resolution, and repacking
-        errors propagate; malformed response data is rejected by Pydantic.
+        """Inputs: Tenant ID scopes the list request and icon resolution.
+        Preconditions: ``tenant_id`` is non-empty; an injected requester applies the transformer.
+        Result/effects: Returns resolved, repacked daemon entities. Provider identity names
+        normalize to ``plugin_id/provider_name``; each datasource identity's ``provider``
+        value matches that normalized provider name.
+        Failure: Request, validation, schema-resolution, and repacking errors propagate.
         """
 
-        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
-            payload = PluginDatasourceListPayload.model_validate(json_response)
-            for provider in payload.data or []:
-                declaration = provider.declaration
-                if declaration is not None:
-                    identity = declaration.identity
-                    provider_name = identity.name if identity is not None else None
-                    for datasource in declaration.datasources or []:
-                        datasource.identity.provider = provider_name
-                        # resolve refs
-                        if output_schema := datasource.output_schema:
-                            datasource.output_schema = resolve_dify_schema_refs(output_schema)
-            return payload
-
-        response = self._request_datasource_provider_list(tenant_id, transformer)
+        response = self._request_datasource_provider_list(tenant_id, self._transform_datasource_provider_list_response)
 
         for provider in response:
             ToolTransformService.repack_provider(
@@ -265,7 +246,7 @@ class PluginDatasourceManager(BasePluginClient):
                     datasource.identity.provider = tool_provider_id.provider_name
                     # resolve refs
                     if output_schema := datasource.output_schema:
-                        datasource.output_schema = resolve_dify_schema_refs(output_schema)
+                        datasource.output_schema = self._resolve_schema_refs(output_schema)
             return payload
 
         response = self._request_with_plugin_daemon_response(

@@ -20,6 +20,7 @@ from core.plugin.impl.datasource import (
     PluginDatasourceSinglePayload,
 )
 from core.plugin.plugin_service import PluginService
+from core.schemas.resolver import SchemaType
 from tests.helpers.unit.core.datasource.factories import (
     datasource_entity,
 )
@@ -43,19 +44,13 @@ class PluginDatasourceSingleRequestKwargs(TypedDict):
 class _DatasourceProviderListRequesterFake:
     """Apply the production response transformer to a canned daemon payload."""
 
-    def __init__(self, response: dict[str, object], providers: list[PluginDatasourceProviderEntity]) -> None:
-        """Store the raw response and entity result used by each fake request.
-
-        Inputs: ``response`` is a daemon-shaped JSON object and ``providers`` is
-        the complete entity list returned after transformation.
-        Preconditions: The response is accepted by the manager's transformer.
-        Result and side effects: Stores the supplied values and initializes empty
-        request and transformed-response records.
-        Failure behavior: No runtime validation occurs at construction; the
-        transformer may reject the response when ``request`` is called.
+    def __init__(self, response: dict[str, object]) -> None:
+        """Inputs: ``response`` is daemon JSON accepted by the list transformer.
+        Preconditions: The test supplies a supported payload shape.
+        Result/effects: Stores the response and empty call records; no entities are fabricated.
+        Failure: Transformer/Pydantic errors propagate when the fake is called.
         """
         self.response = response
-        self.providers = providers
         self.tenant_ids: list[str] = []
         self.transformed_payloads: list[PluginDatasourceListPayload] = []
 
@@ -65,31 +60,25 @@ class _DatasourceProviderListRequesterFake:
         tenant_id: str,
         transformer: Callable[[dict[str, object]], PluginDatasourceListPayload],
     ) -> list[PluginDatasourceProviderEntity]:
-        """Record a tenant request, run the production transformer, and return entities.
-
-        Inputs: ``tenant_id`` is the request scope; ``transformer`` validates and
-        normalizes a raw daemon JSON object.
-        Preconditions: The transformer accepts ``self.response``.
-        Result and side effects: Records the tenant and transformed payload, then
-        returns deep copies of the complete provider entities supplied at construction
-        so manager mutations do not leak between requests.
-        Failure behavior: Transformer errors propagate and no provider list is returned.
+        """Inputs: Tenant scope and the raw-response transformer.
+        Preconditions: Transformer accepts the stored JSON and yields complete records.
+        Result/effects: Records calls/payloads; sparse records are never fabricated as entities.
+        Failure: Transformer and entity-validation errors propagate.
         """
         self.tenant_ids.append(tenant_id)
         transformed = transformer(self.response)
         self.transformed_payloads.append(transformed)
-        return [provider.model_copy(deep=True) for provider in self.providers]
+        return [
+            PluginDatasourceProviderEntity.model_validate(provider.model_dump(mode="json"))
+            for provider in transformed.data or []
+        ]
 
 
 def _plugin_datasource_provider(name: str = "provider") -> PluginDatasourceProviderEntity:
-    """Build a complete plugin datasource provider entity for manager tests.
-
-    Inputs: ``name`` is the daemon-declared provider name.
-    Preconditions: ``name`` is non-empty.
-    Result and side effects: Returns a validated provider entity with one datasource;
-    no external requests or shared state are modified.
-    Failure behavior: Pydantic validation errors propagate if the constructed entity
-    violates its model contract.
+    """Build one validated provider entity with a datasource. Inputs: ``name`` is the non-empty daemon provider name.
+    Preconditions: Factory values satisfy the entity model.
+    Result/effects: Returns a complete entity without external or shared-state effects.
+    Failure: Pydantic validation errors propagate.
     """
     declaration = datasource_provider_entity(DatasourceProviderType.ONLINE_DOCUMENT)
     declaration.identity.name = name
@@ -193,17 +182,23 @@ class TestPluginDatasourceManager:
         )
 
     def test_fetch_datasource_provider_local_and_remote(self, mocker: MockerFixture) -> None:
-        """Exercise local and remote provider reads through the HTTP transport.
-
-        Inputs: The local-file provider ID bypasses transport; the remote provider ID
-        receives a valid plugin-daemon response with an output-schema reference.
-        Preconditions: The test HTTPX client is configured with an in-memory transport.
-        Result and side effects: Returns normalized provider entities and records one
-        GET request to the existing single-provider endpoint.
-        Failure behavior: HTTP, payload validation, and schema-transform errors fail
-        the test through the existing manager boundary.
+        """Inputs: Local provider ID and remote daemon payload with one schema reference.
+        Preconditions: MockTransport and injected resolver accept the request and schema.
+        Result/effects: Returns a normalized entity and records one GET and resolver input.
+        Failure: Request, validation, and resolver errors fail the test.
         """
-        manager = PluginDatasourceManager()
+        resolved_schemas: list[SchemaType] = []
+
+        def fake_schema_ref_resolver(schema: SchemaType) -> SchemaType:
+            """Record and resolve one schema value. Inputs: A ``SchemaType`` passed by the manager.
+            Preconditions: The value is representable by the schema type.
+            Result/effects: Records the input and returns a deterministic schema.
+            Failure: This fake does not raise for supported values.
+            """
+            resolved_schemas.append(schema)
+            return {"resolved": True}
+
+        manager = PluginDatasourceManager(schema_ref_resolver=fake_schema_ref_resolver)
         requests: list[httpx.Request] = []
 
         local = manager.fetch_datasource_provider("tenant-1", "langgenius/file/file")
@@ -212,7 +207,6 @@ class TestPluginDatasourceManager:
         remote = _plugin_datasource_provider("provider")
         remote.declaration.datasources[0].output_schema = {"$ref": "#/x"}
         daemon_response = {"code": 0, "message": "", "data": remote.model_dump(mode="json")}
-        resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
         def handle(request: httpx.Request) -> httpx.Response:
             requests.append(request)
@@ -229,26 +223,55 @@ class TestPluginDatasourceManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
         assert result.declaration.datasources[0].output_schema == {"resolved": True}
-        resolver.assert_called_once_with({"$ref": "#/x"})
+        assert resolved_schemas == [{"$ref": "#/x"}]
 
-    def test_list_transformers_keep_providers_without_declaration_or_identity(self) -> None:
-        """Verify the injected requester applies sparse daemon payload normalization.
-
-        Inputs: The fake requester receives raw JSON containing absent declarations,
-        absent identities, and providers with or without names.
-        Preconditions: The manager's list transformer accepts these sparse shapes.
-        Result and side effects: Both list paths return the complete provider entity
-        while retaining the existing sparse-field and provider-name assertions; no
-        network or global request patch is used.
-        Failure behavior: Any transformer or provider-model validation failure fails
-        the test directly.
+    def test_list_paths_use_injected_schema_ref_resolver(self) -> None:
+        """Inputs: Complete daemon provider with a truthy output-schema reference.
+        Preconditions: Fake requester applies the transformer; resolver accepts the schema.
+        Result/effects: Both routes return resolved entities and record resolver calls.
+        Failure: Request, transformation, validation, and resolver errors fail assertions.
         """
+        resolved_schemas: list[SchemaType] = []
+
+        def fake_schema_ref_resolver(schema: SchemaType) -> SchemaType:
+            resolved_schemas.append(schema)
+            return {"resolved": True}
 
         def get_plugin_icon_url(tenant_id: str, filename: str) -> str:
-            """Return a deterministic icon URL for this provider-list test."""
             return f"https://custom-icon-resolver.example/{tenant_id}/{filename}"
 
-        response = {
+        provider = _plugin_datasource_provider("remote")
+        provider.declaration.datasources[0].output_schema = {"$ref": "#/x"}
+        response: dict[str, object] = {"data": [provider.model_dump(mode="json")]}
+        requester = _DatasourceProviderListRequesterFake(response)
+        manager = PluginDatasourceManager(
+            get_plugin_icon_url=get_plugin_icon_url,
+            datasource_provider_list_requester=requester,
+            schema_ref_resolver=fake_schema_ref_resolver,
+        )
+
+        listed_providers = manager.fetch_datasource_providers("tenant-1")
+        installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
+
+        assert requester.tenant_ids == ["tenant-1", "tenant-1"]
+        assert len(requester.transformed_payloads) == 2
+        assert resolved_schemas == [{"$ref": "#/x"}, {"$ref": "#/x"}]
+        assert len(listed_providers) == 2
+        listed_remote = listed_providers[1]
+        assert listed_remote.declaration.identity.name == "org/plugin/remote"
+        assert listed_remote.declaration.datasources[0].output_schema == {"resolved": True}
+        assert len(installed_providers) == 1
+        installed_remote = installed_providers[0]
+        assert installed_remote.declaration.identity.name == "org/plugin/remote"
+        assert installed_remote.declaration.datasources[0].output_schema == {"resolved": True}
+
+    def test_list_payload_transformer_normalizes_sparse_optional_fields(self) -> None:
+        """Inputs: Daemon list entries omit declarations, identities, and output schemas.
+        Preconditions: The response matches the permissive payload model.
+        Result/effects: Asserts normalized ``.data`` directly; no entity or network call occurs.
+        Failure: Pydantic validation and schema-resolution errors fail the test.
+        """
+        response: dict[str, object] = {
             "data": [
                 {},
                 {"declaration": {}},
@@ -261,40 +284,66 @@ class TestPluginDatasourceManager:
                 },
             ]
         }
-        requester = _DatasourceProviderListRequesterFake(response, [_plugin_datasource_provider("remote")])
-        manager = PluginDatasourceManager(
-            get_plugin_icon_url=get_plugin_icon_url,
-            datasource_provider_list_requester=requester,
-        )
+        manager = PluginDatasourceManager()
 
-        listed_providers = manager.fetch_datasource_providers("tenant-1")
-        installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
+        normalized = manager._transform_datasource_provider_list_response(response)
 
-        assert requester.tenant_ids == ["tenant-1", "tenant-1"]
-        assert len(requester.transformed_payloads) == 2
-        for transformed in requester.transformed_payloads:
-            providers = transformed.data
-            assert providers is not None
-            assert providers[0].declaration is None
-            missing_identity = providers[1].declaration
-            assert missing_identity is not None
-            assert missing_identity.identity is None
-            assert missing_identity.datasources is None
-            unnamed = providers[2].declaration
-            assert unnamed is not None
-            assert unnamed.datasources is not None
-            assert unnamed.datasources[0].identity.provider is None
-            assert "output_schema" not in unnamed.datasources[0].model_dump(exclude_unset=True)
-            named = providers[3].declaration
-            assert named is not None
-            assert named.datasources is not None
-            assert named.datasources[0].identity.provider == "remote"
-            assert "output_schema" not in named.datasources[0].model_dump(exclude_unset=True)
+        providers = normalized.data
+        assert providers is not None
+        assert providers[0].declaration is None
+        missing_identity = providers[1].declaration
+        assert missing_identity is not None
+        assert missing_identity.identity is None
+        assert missing_identity.datasources is None
+        unnamed = providers[2].declaration
+        assert unnamed is not None
+        assert unnamed.datasources is not None
+        assert unnamed.datasources[0].identity.provider is None
+        assert "output_schema" not in unnamed.datasources[0].model_fields_set
+        named = providers[3].declaration
+        assert named is not None
+        assert named.datasources is not None
+        assert named.datasources[0].identity.provider == "remote"
+        assert "output_schema" not in named.datasources[0].model_fields_set
 
-        assert len(listed_providers) == 2
-        assert listed_providers[1].declaration.identity.name == "org/plugin/remote"
-        assert len(installed_providers) == 1
-        assert installed_providers[0].declaration.identity.name == "org/plugin/remote"
+    def test_default_schema_ref_resolver_resolves_builtin_schema(self) -> None:
+        """Inputs: Daemon payload with a truthy Q&A ``$ref``.
+        Preconditions: The default registry contains the Q&A schema.
+        Result/effects: Production transformer returns expanded schema without root ref.
+        Failure: Validation and resolver errors fail the test.
+        """
+        manager = PluginDatasourceManager()
+        response: dict[str, object] = {
+            "data": [
+                {
+                    "declaration": {
+                        "identity": {"name": "remote"},
+                        "datasources": [
+                            {
+                                "identity": {"provider": "remote"},
+                                "output_schema": {"$ref": "https://dify.ai/schemas/v1/qa_structure.json"},
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
+
+        normalized = manager._transform_datasource_provider_list_response(response)
+
+        providers = normalized.data
+        assert providers is not None
+        declaration = providers[0].declaration
+        assert declaration is not None
+        assert declaration.datasources is not None
+        output_schema = declaration.datasources[0].output_schema
+        assert isinstance(output_schema, dict)
+        assert "$ref" not in output_schema
+        assert output_schema["type"] == "object"
+        assert output_schema["title"] == "Q&A Structure"
+        properties = output_schema["properties"]
+        assert isinstance(properties, dict)
+        assert "qa_chunks" in properties
 
     def test_list_and_installed_provider_paths_use_custom_icon_resolver(self, mocker: MockerFixture) -> None:
         icon_url_calls: list[tuple[str, str]] = []

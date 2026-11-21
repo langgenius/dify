@@ -59,7 +59,7 @@ const AppliedEducationContent = ({
             </div>
           </div>
         </div>
-        <div className="ml-7">
+        <div className="ms-7">
           <Select
             value={workspaceId ?? ''}
             onValueChange={(value) => {
@@ -84,7 +84,7 @@ const AppliedEducationContent = ({
             </SelectTrigger>
             <WorkplaceSelectorContent workspaces={workspaces} />
           </Select>
-          <div className="mt-3 pr-5">{action}</div>
+          <div className="mt-3 pe-5">{action}</div>
         </div>
       </div>
     </div>

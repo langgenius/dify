@@ -373,7 +373,7 @@ const ChatInputArea = ({
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
       </div>
       {shouldShowFooterNotice && (
-        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
             <div
               id={footerNoticeLabelId}
@@ -385,7 +385,8 @@ const ChatInputArea = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={footerNoticeLabelId}
-                  className="ml-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
+                  // oxlint-disable-next-line shadcn/no-restyle -- The footer notice keeps its 20px hover surface on the accent banner.
+                  className="ms-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                   iconVariant="information"
                 />
                 <InfotipContent aria-labelledby={footerNoticeLabelId} className="max-w-80">

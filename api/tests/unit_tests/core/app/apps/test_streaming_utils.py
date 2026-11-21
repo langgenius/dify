@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import queue
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from sqlalchemy.orm import Session
@@ -38,6 +38,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from core.workflow.system_variables import build_system_variables
+from enums import DeploymentEdition
 from extensions.application_services.app_moderation import AppModeration
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.entities import WorkflowStartReason
@@ -492,6 +493,7 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
 def test_chatflow_model_failures_do_not_override_graphon_results(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
+    config_overrides: Callable[..., None],
     phase: ModerationPhase,
     previous_answer: str,
     configured: bool,
@@ -500,6 +502,7 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
     stream: bool,
     terminal_status: str,
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=True)
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
     app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
     workflow = make_workflow(

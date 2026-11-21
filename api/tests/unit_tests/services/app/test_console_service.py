@@ -86,6 +86,7 @@ from services.entities.dsl_entities import (
 )
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.errors.base import NoPermissionError
+from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
 from services.model_provider.service import ModelProviderService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -598,7 +599,9 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
         )
 
     context = RequestContext("request", None, account.id, tenant.id)
-    app = AppLifecycleGateway(session_factory=factory).create(
+    app = AppLifecycleGateway(
+        session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    ).create(
         context,
         CreateAppParams(name="Agent", mode=AppMode.AGENT.value),
         AppCreationSettings({"enable_site": False, "enable_api": False}, None),
@@ -710,7 +713,9 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleProbe(session_factory=factory),
+        lifecycle=LifecycleProbe(
+            session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ),
     )
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
@@ -758,7 +763,9 @@ def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: En
             ]
         )
     context = RequestContext("request", None, account.id, tenant.id)
-    gateway = AppLifecycleGateway(session_factory=factory)
+    gateway = AppLifecycleGateway(
+        session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     app = gateway.create(
         context,
         CreateAppParams(name="Agent", mode="agent"),
@@ -894,7 +901,9 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
         transfers=CopyTransfer(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleGateway(session_factory=factory),
+        lifecycle=LifecycleGateway(
+            session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ),
     )
     monkeypatch.setattr(ToolManager, "get_hardcoded_provider", hardcoded)
     monkeypatch.setattr(PluginInstaller, "check_tools_existence", check_plugins)
@@ -962,7 +971,9 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ),
     )
     signals: list[str] = []
     checked_out: set[object] = set()
@@ -1053,7 +1064,9 @@ def test_unpublished_agent_cannot_enable_access_through_console_service(sqlite_e
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ),
     )
     signals: list[object] = []
 

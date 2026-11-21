@@ -18,7 +18,7 @@ export function EnvironmentTabsMeasurementProbe({
     <div
       ref={measurementRef}
       aria-hidden
-      className="pointer-events-none invisible absolute top-0 left-0 flex items-center gap-1 whitespace-nowrap"
+      className="pointer-events-none invisible absolute inset-s-0 top-0 flex items-center gap-1 whitespace-nowrap"
     >
       <span data-built-in-measure className="inline-flex px-2 py-1.5 system-sm-medium">
         {builtInLabel}

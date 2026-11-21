@@ -20,7 +20,7 @@ const AddField = () => {
   }, [setIsAddingNewField, emit])
 
   return (
-    <div className="py-2 pl-5">
+    <div className="py-2 ps-5">
       <Button
         size="small"
         variant="secondary-accent"

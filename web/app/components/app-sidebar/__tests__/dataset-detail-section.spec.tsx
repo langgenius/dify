@@ -2,7 +2,6 @@ import type {
   DatasetDetailWithPartialMembersResponse,
   RelatedAppListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -13,7 +12,7 @@ let mockPathname = '/datasets/dataset-1/documents'
 let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
 let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
-let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
+let mockEvaluationEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -32,9 +31,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   return renderWithConsoleQuery(ui, {
     queryClient,
     systemFeatures: {
-      deployment_edition: mockDeploymentEdition,
       rbac_enabled: mockIsRbacEnabled,
     },
+    features: { evaluation_enabled: mockEvaluationEnabled },
   })
 }
 
@@ -95,7 +94,7 @@ describe('DatasetDetailSection', () => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
     mockIsRbacEnabled = true
-    mockDeploymentEdition = 'ENTERPRISE'
+    mockEvaluationEnabled = true
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -210,8 +209,8 @@ describe('DatasetDetailSection', () => {
     expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
   })
 
-  it('should hide evaluation in the community edition', () => {
-    mockDeploymentEdition = 'COMMUNITY'
+  it('should hide evaluation when the workspace cannot use or upgrade into it', () => {
+    mockEvaluationEnabled = false
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.PipelineTest],
     })

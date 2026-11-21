@@ -50,7 +50,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                 'data-popup-open:bg-components-button-secondary-bg-hover',
               )}
             >
-              <span className="mr-1 i-custom-vender-line-time-clock-play size-4" />
+              <span className="me-1 i-custom-vender-line-time-clock-play size-4" />
               {t(($) => $['common.showRunHistory'], { ns: 'workflow' })}
             </button>
           }
@@ -85,7 +85,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
         className="border-none bg-transparent shadow-none"
       >
         <div
-          className="ml-2 flex w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+          className="ms-2 flex w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
           style={{
             maxHeight: 'calc(2 / 3 * 100vh)',
           }}
@@ -147,13 +147,13 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                     }}
                   >
                     {!isChatflow && interruptedStatuses.includes(item.status) && (
-                      <span className="mt-0.5 mr-1.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
+                      <span className="me-1.5 mt-0.5 i-custom-vender-line-alertsAndFeedback-alert-triangle h-3.5 w-3.5 text-[#F79009]" />
                     )}
                     {!isChatflow && item.status === WorkflowRunningStatus.Failed && (
-                      <span className="mt-0.5 mr-1.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
+                      <span className="me-1.5 mt-0.5 i-ri-error-warning-line h-3.5 w-3.5 text-[#F04438]" />
                     )}
                     {!isChatflow && item.status === WorkflowRunningStatus.Succeeded && (
-                      <span className="mt-0.5 mr-1.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
+                      <span className="me-1.5 mt-0.5 i-ri-checkbox-circle-line h-3.5 w-3.5 text-[#12B76A]" />
                     )}
                     <div>
                       <div

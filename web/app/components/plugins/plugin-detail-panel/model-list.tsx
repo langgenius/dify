@@ -29,7 +29,7 @@ const ModelList = ({ detail }: Props) => {
         {res.data.map((model) => (
           <div key={model.model} className="flex h-6 items-center py-1">
             <ModelIcon
-              className="mr-2 shrink-0"
+              className="me-2 shrink-0"
               provider={(model as any).provider}
               modelName={model.model}
             />
