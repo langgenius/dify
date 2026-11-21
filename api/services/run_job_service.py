@@ -87,7 +87,7 @@ class RunResultReader(Protocol):
         """Precondition: the run is paused. Postcondition: its pending human input form, or None."""
 
     def message(self, *, app_id: str, message_id: str) -> MessageResult | None:
-        """Precondition: none. Postcondition: the saved answer and error of the message, or None when not stored."""
+        """Postcondition: the saved answer and error of the message, or None when not stored."""
 
 
 class RunTaskControl(Protocol):
@@ -280,7 +280,7 @@ MESSAGE_JOBS: Final = MessageJobs()
 
 
 def family_of(mode: AppMode) -> GraphJobs | MessageJobs:
-    """Precondition: none. Postcondition: the family whose modes hold mode; raises ValueError for any other mode."""
+    """Postcondition: the family whose modes hold mode; raises ValueError for any other mode."""
     if mode in GRAPH_JOBS.modes:
         return GRAPH_JOBS
     if mode in MESSAGE_JOBS.modes:
@@ -306,7 +306,6 @@ def _stalled(run: RunResult, stalled_before: datetime) -> bool:
 def _record_view(record: JobRecord) -> JobView:
     """Build a view from the record's own fields.
 
-    Precondition: none.
     Postcondition: status and error are the record's; answer, outputs and form are None.
     """
     return JobView(record=record, status=record.status, error=record.error)
@@ -419,27 +418,20 @@ class RunJobService:
         flask_app = app_ctx.app
 
         def read_in_app_context() -> None:
-            """Read the stream under an app context of its own.
+            """Read the stream under the copied contexts and an app context of its own, then free the slot.
 
-            Precondition: runs inside the copied contextvars, which hold the request's app context.
-            Postcondition: the stream was read to its end; its session and g belong to this context, not the request's.
-            """
-            with flask_app.app_context():
-                read_to_end(job_id=job_id, frames=frames, store=self._store, stopper=self._stop, endings=endings)
-
-        def reader_with_context() -> None:
-            """Read the stream under the copied contexts.
-
-            Precondition: runs on the reader thread.
-            Postcondition: the stream was read to its end and the slot is released.
+            Precondition: runs on the reader thread, inside the copied contextvars that hold the request's app context.
+            Postcondition: the stream was read to its end; its session and g belong to this app context, not the
+            request's; the slot is released.
             """
             try:
-                context.run(read_in_app_context)
+                with flask_app.app_context():
+                    read_to_end(job_id=job_id, frames=frames, store=self._store, stopper=self._stop, endings=endings)
             finally:
                 self._slots.release()
 
         thread = threading.Thread(
-            target=copy_current_request_context(reader_with_context),
+            target=copy_current_request_context(lambda: context.run(read_in_app_context)),
             name=READER_THREAD_NAME,
             daemon=True,
         )
