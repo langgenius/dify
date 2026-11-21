@@ -14,11 +14,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_CSRF_TOKEN
+from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
 from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
+    AgentLogExportPreviewApi,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
@@ -141,6 +143,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentAppListApi, "/agent")
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
+        api.add_resource(AgentLogExportPreviewApi, "/agent/<uuid:agent_id>/log-exports/preview")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
@@ -255,6 +258,35 @@ def test_unpublished_cannot_enable_and_foreign_agents_are_not_found(harness: Har
     foreign_id, _ = harness.create_agent(published=True, tenant_id=str(uuid4()))
     assert harness.get(foreign_id).status_code == HTTPStatus.NOT_FOUND
     assert harness.set(foreign_id, True).status_code == HTTPStatus.NOT_FOUND
+
+
+def test_log_export_preview_is_scoped_and_requires_export_entitlement(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent_id, _ = harness.create_agent()
+    foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
+    path = f"/console/api/agent/{agent_id}/log-exports/preview"
+    response = harness.client.get(path, headers=harness.headers, query_string={"end_user_ids[0]": str(uuid4())})
+    assert response.status_code == HTTPStatus.OK
+    assert response.json == {"counts": {"log_count": 0, "row_count": 0}}
+    response = harness.client.get(path, headers=harness.headers, query_string={"sources": "workflow:invalid"})
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    response = harness.client.get(f"/console/api/agent/{foreign_id}/log-exports/preview", headers=harness.headers)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+    monkeypatch.setattr(roster_controller, "is_cloud_edition_billing_paid_plan", lambda _tenant_id: False)
+    with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+        response = harness.client.get(path, headers=harness.headers)
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json["code"] == "paid_plan_required"
+
+    with harness.sessions.begin() as session:
+        membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == harness.account_id))
+        assert membership is not None
+        membership.role = TenantAccountRole.EDITOR
+    response = harness.client.get(path, headers=harness.headers)
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json["code"] == "forbidden"
 
 
 def test_unpublished_stored_enabled_state_is_hidden_and_can_be_disabled(harness: Harness) -> None:

@@ -450,6 +450,20 @@ export type MessageFeedbackRatingRequiredError = ErrorResponse & {
   status: 400
 }
 
+export type AgentLogExportPreviewResponse = {
+  counts: AgentLogExportCountsResponse | null
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type AgentLogSourceListResponse = {
   data: Array<AgentLogSourceResponse>
   groups: Array<AgentLogSourceGroupResponse>
@@ -1157,6 +1171,11 @@ export type AgentTextToSpeechFeatureConfig = {
   language?: string | null
   voice?: string | null
   [key: string]: unknown
+}
+
+export type AgentLogExportCountsResponse = {
+  log_count: number
+  row_count: number
 }
 
 export type AgentLogSourceResponse = {
@@ -3862,6 +3881,37 @@ export type PostAgentByAgentIdFeedbacksResponses = {
 
 export type PostAgentByAgentIdFeedbacksResponse =
   PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
+
+export type GetAgentByAgentIdLogExportsPreviewData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    end?: string
+    end_user_ids?: Array<string>
+    sources?: Array<string>
+    start?: string
+  }
+  url: '/agent/{agent_id}/log-exports/preview'
+}
+
+export type GetAgentByAgentIdLogExportsPreviewErrors = {
+  400: ErrorResponse
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogExportsPreviewError =
+  GetAgentByAgentIdLogExportsPreviewErrors[keyof GetAgentByAgentIdLogExportsPreviewErrors]
+
+export type GetAgentByAgentIdLogExportsPreviewResponses = {
+  200: AgentLogExportPreviewResponse
+}
+
+export type GetAgentByAgentIdLogExportsPreviewResponse =
+  GetAgentByAgentIdLogExportsPreviewResponses[keyof GetAgentByAgentIdLogExportsPreviewResponses]
 
 export type GetAgentByAgentIdLogSourcesData = {
   body?: never

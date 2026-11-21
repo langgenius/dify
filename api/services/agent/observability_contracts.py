@@ -24,6 +24,22 @@ class AgentLogQuery:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class AgentLogExportQuery:
+    """Filter export rows by source, end user, and optional account-local time bounds."""
+
+    sources: tuple[str, ...]
+    end_user_ids: tuple[str, ...]
+    start: str | None
+    end: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AgentLogExportCounts:
+    log_count: int
+    row_count: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class AgentStatisticsQuery:
     source: str | None
     start: str | None
@@ -45,6 +61,16 @@ class AgentObservability(Protocol):
 
     def list_log_sources(self, context: RequestContext, agent_id: str) -> dict[str, object]:
         """Return the Agent's available runtime sources."""
+        ...
+
+    def count_export_logs(
+        self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
+    ) -> AgentLogExportCounts | None:
+        """Count the admitted Agent's filtered logs and export rows, or return None on timeout.
+
+        Raise AgentObservabilityNotFoundError for an unavailable Agent and ValueError
+        for invalid sources or time bounds. No log contents leave the read session.
+        """
         ...
 
     def statistics(self, context: RequestContext, agent_id: str, query: AgentStatisticsQuery) -> dict[str, object]:

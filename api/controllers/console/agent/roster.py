@@ -8,6 +8,8 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
+from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -46,6 +48,7 @@ from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
+    is_cloud_edition_billing_paid_plan,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -53,6 +56,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
@@ -72,7 +76,7 @@ from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from models import Account
 from models.account import TenantAccountRole
@@ -93,7 +97,7 @@ from services.agent.errors import (
     InvalidComposerConfigError,
     PlaintextSecretNotAllowedError,
 )
-from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError
+from services.agent.observability_contracts import AgentLogExportQuery, AgentLogQuery, AgentObservabilityNotFoundError
 from services.agent.observability_contracts import AgentStatisticsQuery as AgentObservabilityStatisticsQuery
 from services.agent.roster_service import AgentRosterService
 from services.agent.version_store import (
@@ -259,6 +263,35 @@ class AgentStatisticsQuery(BaseModel):
         return value
 
 
+class AgentLogExportPreviewQuery(BaseModel):
+    sources: list[str] = Field(default_factory=list, description="Source IDs from the Agent Logs filters")
+    end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
+    start: str | None = Field(
+        default=None, description="Inclusive start time in the account timezone (YYYY-MM-DD HH:MM)"
+    )
+    end: str | None = Field(default=None, description="Exclusive end time in the account timezone (YYYY-MM-DD HH:MM)")
+
+    @field_validator("sources")
+    @classmethod
+    def validate_source_ids(cls, sources: list[str]) -> list[str]:
+        """Reject malformed structured source identifiers before querying UUID columns."""
+        for source in sources:
+            kind, *parts = source.split(":", 3)
+            if kind.lower() == "workflow":
+                for identifier in parts[:2]:
+                    UUID(identifier)
+        return sources
+
+
+class AgentLogExportCountsResponse(ResponseModel):
+    log_count: int
+    row_count: int
+
+
+class AgentLogExportPreviewResponse(ResponseModel):
+    counts: AgentLogExportCountsResponse | None = Field(description="Matching log and CSV row counts, null on timeout")
+
+
 class AgentAppPartial(GenericAppPartial):
     permission_keys: list[str]
     app_id: str | None = None
@@ -379,6 +412,7 @@ register_response_schema_models(
     AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
+    AgentLogExportPreviewResponse,
     AgentLogMessageListResponse,
     AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
@@ -996,6 +1030,48 @@ class AgentLogsApi(Resource):
         except ValueError as exc:
             abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogListResponse, payload)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports/preview")
+class AgentLogExportPreviewApi(Resource):
+    @error_responses(AgentNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError)
+    @console_ns.doc("preview_agent_log_export", params=query_params_from_model(AgentLogExportPreviewQuery))
+    @console_ns.response(HTTPStatus.OK, "Export preview", console_ns.models[AgentLogExportPreviewResponse.__name__])
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid log filters")
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return filtered export counts for the admitted Agent, workspace role, and plan."""
+        if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
+            raise ForbiddenError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
+            context.active_workspace_id
+        ):
+            raise PaidPlanRequiredError()
+
+        query = AgentLogExportPreviewQuery.model_validate(
+            {
+                "sources": _query_values("sources"),
+                "end_user_ids": _query_values("end_user_ids"),
+                "start": request.args.get("start"),
+                "end": request.args.get("end"),
+            }
+        )
+        try:
+            counts = application_services().agent_observability.count_export_logs(
+                context,
+                str(agent_id),
+                AgentLogExportQuery(
+                    sources=tuple(query.sources),
+                    end_user_ids=tuple(str(user_id) for user_id in query.end_user_ids),
+                    start=query.start,
+                    end=query.end,
+                ),
+            )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
+        return dump_response(AgentLogExportPreviewResponse, {"counts": counts})
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")

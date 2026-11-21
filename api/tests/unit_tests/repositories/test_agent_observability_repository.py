@@ -39,6 +39,7 @@ from repositories.agent_observability_repository import (
     AgentObservabilityQueries,
     AgentStatisticsQueryParams,
 )
+from services.agent.observability_contracts import AgentLogExportCounts
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
 
@@ -462,6 +463,55 @@ class TestAgentObservabilityQueriesCases:
             "total": 2,
             "has_more": False,
         }
+
+    @staticmethod
+    def test_count_export_logs_matches_both_sources_and_deduplicates_overlapping_filters(
+        sqlite_session: Session,
+    ) -> None:
+        app = _agent_observability_service_app()
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        timestamp = datetime(2026, 7, 23, 7, 0, 19)
+        account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
+        account_execution.created_by_role = CreatorUserRole.ACCOUNT
+        debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
+        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+        sqlite_session.add_all(
+            [
+                app,
+                workflow_app,
+                _agent_observability_service_conversation(),
+                _agent_observability_service_message(created_at=timestamp),
+                _agent_observability_service_message(message_id="second-message", created_at=timestamp),
+                debug_message,
+                _agent_observability_service_workflow_run(),
+                _agent_observability_service_node_execution(),
+                account_execution,
+                _agent_observability_service_workflow_binding(),
+            ]
+        )
+        sqlite_session.flush()
+        queries = AgentObservabilityQueries(sqlite_session)
+
+        assert queries.count_export_logs(
+            app=app, agent_id="agent-1", params=AgentLogQueryParams()
+        ) == AgentLogExportCounts(log_count=3, row_count=4)
+        assert queries.count_export_logs(
+            app=app,
+            agent_id="agent-1",
+            params=AgentLogQueryParams(
+                sources=(
+                    "webapp:app-1",
+                    "console",
+                    "workflow:workflow-app-1",
+                    "workflow:workflow-app-1:workflow-1:v1:node-1",
+                ),
+                end_user_ids=("end-user-1",),
+                start=timestamp,
+            ),
+        ) == AgentLogExportCounts(log_count=2, row_count=3)
+        assert queries.count_export_logs(
+            app=app, agent_id="agent-1", params=AgentLogQueryParams(end=timestamp)
+        ) == AgentLogExportCounts(log_count=0, row_count=0)
 
     @staticmethod
     def test_list_webapp_conversation_logs_includes_feedback_rates(sqlite_session: Session) -> None:

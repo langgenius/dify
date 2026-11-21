@@ -467,6 +467,30 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -1212,6 +1236,21 @@ export const zAgentTextToSpeechFeatureConfig = z.object({
   enabled: z.boolean().optional().default(false),
   language: z.string().nullish(),
   voice: z.string().nullish(),
+})
+
+/**
+ * AgentLogExportCountsResponse
+ */
+export const zAgentLogExportCountsResponse = z.object({
+  log_count: z.int(),
+  row_count: z.int(),
+})
+
+/**
+ * AgentLogExportPreviewResponse
+ */
+export const zAgentLogExportPreviewResponse = z.object({
+  counts: zAgentLogExportCountsResponse.nullable(),
 })
 
 /**
@@ -4459,6 +4498,22 @@ export const zPostAgentByAgentIdFeedbacksPath = z.object({
  * Feedback updated successfully
  */
 export const zPostAgentByAgentIdFeedbacksResponse = zSimpleResultResponse
+
+export const zGetAgentByAgentIdLogExportsPreviewPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdLogExportsPreviewQuery = z.object({
+  end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  sources: z.array(z.string()).optional(),
+  start: z.string().optional(),
+})
+
+/**
+ * Export preview
+ */
+export const zGetAgentByAgentIdLogExportsPreviewResponse = zAgentLogExportPreviewResponse
 
 export const zGetAgentByAgentIdLogSourcesPath = z.object({
   agent_id: z.uuid(),
