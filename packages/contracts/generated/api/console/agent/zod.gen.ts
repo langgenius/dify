@@ -1366,6 +1366,7 @@ export const zAgentLogSourceListResponse = z.object({
  * AgentLogConversationItemResponse
  */
 export const zAgentLogConversationItemResponse = z.object({
+  account_id: z.string().nullish(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   end_user_id: z.string().nullish(),

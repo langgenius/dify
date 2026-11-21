@@ -678,6 +678,8 @@ class TestAgentObservabilityQueriesCases:
         app = _agent_observability_service_app(name="Agent WebApp")
         conversation = _agent_observability_service_conversation()
         conversation.name = "Feedback conversation"
+        conversation.from_end_user_id = None
+        conversation.from_account_id = "account-1"
         first_message = _agent_observability_service_message(created_at=timestamp)
         second_message = _agent_observability_service_message(message_id="message-2", created_at=timestamp)
         sqlite_session.add_all(
@@ -702,6 +704,7 @@ class TestAgentObservabilityQueriesCases:
 
         assert rows[0]["user_rate"] == 0.5
         assert rows[0]["operation_rate"] == 1.0
+        assert rows[0]["account_id"] == "account-1"
 
     @staticmethod
     def test_list_workflow_logs_uses_node_executions_without_messages(sqlite_session: Session) -> None:
@@ -728,6 +731,7 @@ class TestAgentObservabilityQueriesCases:
 
         assert rows[0]["id"] == "node-execution-1"
         assert rows[0]["source"]["app_name"] == "Marketing Department"
+        assert rows[0]["account_id"] is None
 
     @staticmethod
     @pytest.mark.parametrize("source_identity", ["persisted-binding", "source-version", "unique-legacy-binding"])
@@ -1254,6 +1258,7 @@ class TestAgentObservabilityQueriesCases:
         assert payload["conversation_id"] == "node-execution-1"
         assert payload["message_count"] == 1
         assert payload["end_user_id"] is None
+        assert payload["account_id"] == "account-1"
         assert payload["status"] == "failed"
         assert payload["unread"] is False
 

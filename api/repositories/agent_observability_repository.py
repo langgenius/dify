@@ -949,11 +949,13 @@ class AgentObservabilityQueries:
         user_rate: float | None,
         operation_rate: float | None,
     ) -> dict[str, Any]:
+        """Project an owned conversation with its stored initiator IDs for the log list."""
         return {
             "id": conversation.id,
             "conversation_id": conversation.id,
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
+            "account_id": conversation.from_account_id,
             "message_count": int(message_count or 0),
             "user_rate": user_rate,
             "operation_rate": operation_rate,
@@ -977,12 +979,14 @@ class AgentObservabilityQueries:
         finished_at: datetime | None,
         source: dict[str, Any],
     ) -> dict[str, Any]:
+        """Project an owned node execution with its creator ID in the matching identity field."""
         created_by_role_value = cls._enum_value(created_by_role)
         return {
             "id": node_execution_id,
             "conversation_id": node_execution_id,
             "title": title,
             "end_user_id": created_by if created_by_role_value == CreatorUserRole.END_USER.value else None,
+            "account_id": created_by if created_by_role_value == CreatorUserRole.ACCOUNT.value else None,
             "message_count": 1,
             "user_rate": None,
             "operation_rate": None,

@@ -1248,6 +1248,7 @@ export type AgentLogSourceGroupResponse = {
 }
 
 export type AgentLogConversationItemResponse = {
+  account_id?: string | null
   conversation_id: string
   created_at?: number | null
   end_user_id?: string | null
