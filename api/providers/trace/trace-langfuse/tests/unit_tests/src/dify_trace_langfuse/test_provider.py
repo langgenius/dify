@@ -220,6 +220,18 @@ def test_absent_values_are_omitted() -> None:
         assert key not in generation
 
 
+def test_generation_without_cost_leaves_cost_inference_to_langfuse() -> None:
+    provider, egress = _provider(ACK)
+    trace = message_trace()
+    llm = trace.spans[1].model_copy(update={"cost": None})
+
+    provider.send(CONFIG, trace.model_copy(update={"spans": (trace.root, llm)}))
+
+    _, generation = _sent_attributes(egress)
+    assert "langfuse.observation.cost_details" not in generation
+    assert "langfuse.observation.usage_details" in generation
+
+
 def test_cost_in_another_currency_is_left_to_langfuse_pricing() -> None:
     provider, egress = _provider(ACK)
     trace = message_trace()

@@ -84,7 +84,9 @@ def _node(execution_id: str, node_type: str, *, index: int, offset: int, **field
     )
 
 
-def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> WorkflowTraceInfo:
+def _workflow_record(
+    *, message_id: str | None, metadata: dict[str, object], total_price: float = 0.01
+) -> WorkflowTraceInfo:
     llm = _node(
         "exec-llm",
         BuiltinNodeTypes.LLM,
@@ -97,7 +99,10 @@ def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> 
             "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12, "time_to_first_token": -1},
         },
         outputs={"text": "hello"},
-        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 0.01, WorkflowNodeExecutionMetadataKey.CURRENCY: "USD"},
+        metadata={
+            WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: total_price,
+            WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
+        },
     )
     start = _node("exec-start", BuiltinNodeTypes.START, index=1, offset=0, inputs={"query": "hi"})
     return WorkflowTraceInfo(
@@ -165,6 +170,19 @@ def test_message_record_becomes_a_root_span_with_one_llm_child() -> None:
     assert root.start_time.tzinfo is UTC
 
 
+def test_message_llm_with_zero_price_keeps_explicit_cost() -> None:
+    record = _message_record()
+    message = record.message_data.model_copy(update={"total_price": Decimal(0)})
+    record = record.model_copy(update={"message_data": message})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    llm = next(span for span in trace.spans if span.kind is SpanKind.LLM)
+    assert llm.cost is not None
+    assert (llm.cost.amount, llm.cost.currency) == (0.0, "USD")
+
+
 def test_caller_trace_id_names_the_trace_and_is_kept_verbatim() -> None:
     record = _message_record().model_copy(update={"trace_id": "caller-trace"})
 
@@ -193,6 +211,16 @@ def test_chatflow_run_hangs_under_its_message_and_orders_nodes_parent_first() ->
     assert llm.cost is not None
     assert llm.cost.amount == 0.01
     assert llm.time_to_first_token is None
+
+
+def test_workflow_llm_with_zero_price_has_no_cost() -> None:
+    record = _workflow_record(message_id=None, metadata={}, total_price=0.0)
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    llm = next(span for span in trace.spans if span.kind is SpanKind.LLM)
+    assert llm.cost is None
 
 
 def test_nested_workflow_is_its_own_trace_linked_by_attributes() -> None:
