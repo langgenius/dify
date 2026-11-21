@@ -6,13 +6,15 @@ import types
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import TypedDict
+from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
@@ -44,11 +46,6 @@ def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: 
     setattr(fake_module, class_name, fake_cls)
     monkeypatch.setitem(sys.modules, module_path, fake_module)
     return fake_cls
-
-
-class _InitVectorCalls(TypedDict):
-    vector_type: str | None
-    init_args: tuple[Dataset, list[str], str, Session] | None
 
 
 @pytest.fixture
@@ -162,6 +159,90 @@ def test_get_vector_factory_unsupported(vector_factory_module: types.ModuleType)
 
 class _PluginChromaFactory:
     """Stub used only for entry-point override test."""
+
+
+class _ProgressEmbeddings(Embeddings):
+    """Provide deterministic vectors without loading a model or making network calls."""
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        """Return one stable vector for each input text."""
+        return [[0.1] for _ in texts]
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
+        """Return one stable vector for each multimodal input."""
+        return [[0.1] for _ in multimodel_documents]
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        """Return the stable vector used for a query."""
+        return [0.1]
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
+        """Return the stable vector used for a multimodal query."""
+        return [0.1]
+
+
+class _ProgressVector(BaseVector):
+    """Concrete in-memory vector backend for exercising Vector.create batch logging."""
+
+    def __init__(
+        self,
+        dataset: Dataset,
+        attributes: list[str],
+        embeddings: Embeddings,
+        session: Session | None,
+    ) -> None:
+        """Retain the production factory inputs without opening external resources."""
+        super().__init__(dataset.id)
+        self._attributes = attributes
+        self._embeddings = embeddings
+        self._session = session
+        self.batch_sizes: list[tuple[int, int]] = []
+
+    @override
+    def get_type(self) -> str:
+        """Return this test backend's stable identifier."""
+        return "progress"
+
+    @override
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> None:
+        """Record batch sizes without persisting documents."""
+        self.batch_sizes.append((len(texts), len(embeddings)))
+
+    @override
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str]:
+        """Return no IDs because this backend does not persist documents."""
+        return []
+
+    @override
+    def text_exists(self, id: str) -> bool:
+        """Report no existing IDs in the empty in-memory backend."""
+        return False
+
+    @override
+    def delete_by_ids(self, ids: list[str]) -> None:
+        """Leave the empty in-memory backend unchanged."""
+
+    @override
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
+        """Leave the empty in-memory backend unchanged."""
+
+    @override
+    def search_by_vector(self, query_vector: list[float], **kwargs: object) -> list[Document]:
+        """Return no results because the backend stores no documents."""
+        return []
+
+    @override
+    def search_by_full_text(self, query: str, **kwargs: object) -> list[Document]:
+        """Return no results because the backend stores no documents."""
+        return []
+
+    @override
+    def delete(self) -> None:
+        """Leave the empty in-memory backend unchanged."""
 
 
 def test_get_vector_factory_entry_point_overrides_builtin(
@@ -304,38 +385,14 @@ def test_lazy_embeddings_query_cache_hit_skips_model_resolution(
 
 
 def test_init_vector_prefers_dataset_index_struct(
-    vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    vector_factory_module: types.ModuleType, unbound_session: Session
 ) -> None:
-    calls: _InitVectorCalls = {"vector_type": None, "init_args": None}
+    """Resolve the vector type from persisted dataset metadata using a real session."""
+    dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
 
-    class _Factory:
-        def init_vector(
-            self,
-            dataset: Dataset,
-            attributes: list[str],
-            embeddings: str,
-            *,
-            session: Session,
-        ) -> str:
-            calls["init_args"] = (dataset, attributes, embeddings, session)
-            return "vector-processor"
+    result = vector_factory_module.Vector.resolve_vector_type(dataset, session=unbound_session)
 
-    def _get_factory(vector_type: str) -> type[_Factory]:
-        calls["vector_type"] = vector_type
-        return _Factory
-
-    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_get_factory))
-
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
-    vector._attributes = ["doc_id"]
-    vector._embeddings = "embeddings"
-
-    result = vector._init_vector(session=unbound_session)
-
-    assert result == "vector-processor"
-    assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
+    assert result == vector_factory_module.VectorType.UPSTASH
 
 
 def test_init_vector_uses_whitelist_override(
@@ -419,20 +476,51 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module: types
 
 
 def test_create_logs_batch_count_as_progress_denominator(
-    vector_factory_module: types.ModuleType, caplog: pytest.LogCaptureFixture
+    vector_factory_module: types.ModuleType,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
 ) -> None:
-    """Progress logs must report the batch count, not a text count with the raw remainder."""
-    factory = MagicMock()
-    factory.return_value.init_vector.return_value = MagicMock()
-    with patch.object(vector_factory_module.Vector, "get_vector_factory", return_value=factory):
-        vector = vector_factory_module.Vector(_dataset(), session=None, vector_type="test")
-    vector._embeddings = MagicMock()
-    vector._embeddings.embed_documents.side_effect = [
-        [[0.1] for _ in range(1000)],
-        [[0.2] for _ in range(500)],
-    ]
-    vector._vector_processor = MagicMock()
+    """Use the real factory path and deterministic dependencies to verify batch progress logs."""
+    from importlib.metadata import EntryPoint
 
+    from core.rag.datasource.vdb import vector_backend_registry as reg
+
+    vector_type = vector_factory_module.VectorType.CHROMA.value
+    processors: list[_ProgressVector] = []
+
+    class _ProgressFactory(vector_factory_module.AbstractVectorFactory):
+        def init_vector(
+            self,
+            dataset: Dataset,
+            attributes: list[str],
+            embeddings: Embeddings,
+            *,
+            session: Session | None,
+        ) -> BaseVector:
+            """Build the concrete in-memory backend from the actual factory inputs."""
+            processor = _ProgressVector(dataset, attributes, embeddings, session)
+            processors.append(processor)
+            return processor
+
+    monkeypatch.setattr(sys.modules[__name__], "_ProgressFactory", _ProgressFactory, raising=False)
+    entry_point = EntryPoint(
+        name=vector_type,
+        value=f"{__name__}:_ProgressFactory",
+        group="dify.vector_backends",
+    )
+
+    class _FakeGroups:
+        def select(self, *, group: str) -> tuple[EntryPoint, ...]:
+            """Expose the test factory through the same entry-point group as production plugins."""
+            return (entry_point,) if group == "dify.vector_backends" else ()
+
+    monkeypatch.setattr(reg, "entry_points", lambda: _FakeGroups())
+    vector = vector_factory_module.Vector(
+        _dataset(index_struct_dict={"type": vector_type}),
+        session=unbound_session,
+        embeddings=_ProgressEmbeddings(),
+    )
     docs = [Document(page_content=f"doc-{i}", metadata={"doc_id": f"id-{i}"}) for i in range(1500)]
 
     with caplog.at_level(logging.INFO):
@@ -443,6 +531,7 @@ def test_create_logs_batch_count_as_progress_denominator(
         "Processing batch 1/2 (1000 texts)",
         "Processing batch 2/2 (500 texts)",
     ]
+    assert [processor.batch_sizes for processor in processors] == [[(1000, 1000), (500, 500)]]
 
 
 def test_create_skips_empty_text_documents_before_embedding(vector_factory_module: types.ModuleType) -> None:
