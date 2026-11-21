@@ -30,7 +30,7 @@ from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
-from core.rag.models.document import Document
+from core.rag.models.document import SCORE_FROM_FULL_TEXT_METADATA_KEY, Document
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
@@ -693,6 +693,59 @@ class TestRetrievalServiceInternals:
         assert len(all_documents) == 1
         assert exceptions == []
         vector_instance.search_by_full_text.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("retrieval_method", "flagged"),
+        [(RetrievalMethod.HYBRID_SEARCH, True), (RetrievalMethod.FULL_TEXT_SEARCH, False)],
+    )
+    @patch("core.rag.datasource.retrieval_service.Vector")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_full_text_index_search_flags_full_text_scores_in_hybrid_search(
+        self,
+        mock_get_dataset: MagicMock,
+        mock_vector_class: MagicMock,
+        retrieval_method: RetrievalMethod,
+        flagged: bool,
+        internal_dataset: Dataset,
+        internal_flask_app: MagicMock,
+        vector_engine: Engine,
+    ) -> None:
+        mock_get_dataset.return_value = internal_dataset
+        mock_vector_class.return_value.search_by_full_text.return_value = [
+            create_mock_document("fulltext", "ft-1", 7.4)
+        ]
+        all_documents: list[Document] = []
+        exceptions: list[str] = []
+
+        RetrievalService.full_text_index_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=4,
+            score_threshold=0.4,
+            reranking_model=None,
+            all_documents=all_documents,
+            retrieval_method=retrieval_method,
+            exceptions=exceptions,
+        )
+
+        assert exceptions == []
+        assert all_documents[0].metadata["score"] == 7.4
+        assert bool(all_documents[0].metadata.get(SCORE_FROM_FULL_TEXT_METADATA_KEY)) is flagged
+
+    @pytest.mark.parametrize("vector_hit_first", [True, False])
+    def test_deduplicate_documents_keeps_vector_hit_over_higher_full_text_score(self, vector_hit_first: bool) -> None:
+        """A BM25 score of 7.4 is not "higher" than a cosine similarity of 0.82; they are on different scales."""
+        vector_hit = create_mock_document("chunk", "doc-1", 0.82)
+        full_text_hit = create_mock_document(
+            "chunk", "doc-1", 7.4, additional_metadata={SCORE_FROM_FULL_TEXT_METADATA_KEY: True}
+        )
+        documents = [vector_hit, full_text_hit] if vector_hit_first else [full_text_hit, vector_hit]
+
+        result = RetrievalService._deduplicate_documents(documents)
+
+        assert len(result) == 1
+        assert result[0] is vector_hit
 
     @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
     @patch("core.rag.datasource.retrieval_service.Vector")

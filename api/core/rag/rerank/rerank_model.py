@@ -8,7 +8,7 @@ from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
-from core.rag.models.document import Document
+from core.rag.models.document import SCORE_FROM_FULL_TEXT_METADATA_KEY, Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_storage import storage
 from extensions.otel import trace_span
@@ -65,6 +65,7 @@ class RerankModelRunner(BaseRerankRunner):
                 )
                 if rerank_document.metadata is not None:
                     rerank_document.metadata["score"] = result.score
+                    rerank_document.metadata.pop(SCORE_FROM_FULL_TEXT_METADATA_KEY, None)
                     rerank_documents.append(rerank_document)
 
         rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
