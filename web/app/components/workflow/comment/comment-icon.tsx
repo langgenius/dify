@@ -246,8 +246,13 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       setShowPreview(false)
       stopDismissalRef.current?.()
       const handlePointerMove = (event: PointerEvent) => {
+        // The closing preview still covers the marker while it animates out.
         const marker = document.getElementById(markerId)
-        if (event.target instanceof Node && marker?.contains(event.target)) return
+        if (
+          event.target instanceof Node &&
+          (marker?.contains(event.target) || previewRef.current?.contains(event.target))
+        )
+          return
         stopDismissalRef.current?.()
       }
       document.addEventListener('pointermove', handlePointerMove)

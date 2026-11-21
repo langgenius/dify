@@ -335,9 +335,10 @@ function CommentThreadSession({
 
   useEffect(() => {
     const container = messageListRef.current
-    if (!container) return
+    // Opening, including a first load of the thread, lands on the newest message at once;
+    // a reply arriving later scrolls into view.
+    if (!container || loading) return
 
-    // Opening lands on the newest message at once; a reply arriving scrolls into view.
     const previousReplyCount = previousReplyCountRef.current
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
@@ -345,7 +346,7 @@ function CommentThreadSession({
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
 
     previousReplyCountRef.current = replies.length
-  }, [replies.length])
+  }, [loading, replies.length])
 
   // The reply shows in the thread at once, so the box clears for the next one. A reply
   // that fails to send stays in the thread with its own retry.

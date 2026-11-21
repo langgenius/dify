@@ -700,11 +700,23 @@ export const Workflow: FC<WorkflowProps> = memo(
           handle={commentThreadHandle}
           open={isCommentThreadOpen}
           triggerId={activeCommentId ? getCommentMarkerId(activeCommentId) : null}
-          onOpenChange={(open, { trigger }) => {
+          onOpenChange={(open, eventDetails) => {
             if (!open) {
+              // A comment's hover preview stands in for its marker: pressing it switches the
+              // thread to that marker instead of closing this one first.
+              const target = eventDetails.event.target
+              if (
+                eventDetails.reason === 'outside-press' &&
+                target instanceof Element &&
+                target.closest('[data-role="comment-preview"]')
+              ) {
+                eventDetails.cancel()
+                return
+              }
               handleActiveCommentClose()
               return
             }
+            const { trigger } = eventDetails
             const comment = visibleComments.find(
               (candidate) => getCommentMarkerId(candidate.id) === trigger?.id,
             )

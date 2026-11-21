@@ -434,6 +434,42 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
   )
 })
 
+it('switches the open thread when another comment is opened from its hover preview', async () => {
+  const user = userEvent.setup()
+  const first = comment('user-1', 'Alice')
+  const second = { ...comment('second', 'Bob'), position_x: 300 }
+  const comments = [first, second]
+  api.comments.mockImplementation(async () => ({
+    data: comments.map((item) => ({ ...item, mention_count: 0, reply_count: 0, participants: [] })),
+  }))
+  api.comment.mockImplementation(async ({ params }) =>
+    comments.find((item) => item.id === params.comment_id)!,
+  )
+  renderSubject({ collaborationEnabled: true, initialStoreState: { showUserComments: true } })
+  await user.click(
+    await screen.findByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Alice"}' }),
+  )
+  expect(await screen.findByRole('dialog')).toHaveTextContent('Review by Alice')
+
+  // The hover preview covers the marker, so a click lands on the preview, outside the thread.
+  await user.hover(
+    within(
+      screen.getByRole('button', { name: 'workflow.keyboard.openComment:{"name":"Bob"}' }),
+    ).getByRole('img', { name: 'Bob' }),
+  )
+  const preview = await waitFor(() => {
+    const element = document.querySelector('[data-role="comment-preview"][data-open]')
+    expect(element).not.toBeNull()
+    return element as HTMLElement
+  })
+  await user.click(within(preview).getByText('Review by Bob'))
+
+  await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('Review by Bob'))
+  // It stays open rather than closing as the previous thread finishes closing.
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  expect(screen.getByRole('dialog')).toHaveTextContent('Review by Bob')
+})
+
 it('closes the thread through its popover when the last comment is deleted', async () => {
   const user = userEvent.setup()
   let comments = [comment('user-1', 'Alice')]

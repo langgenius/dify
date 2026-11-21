@@ -154,6 +154,22 @@ describe('CommentIcon', () => {
     )
   })
 
+  it('keeps a dismissed preview closed while the pointer moves over it as it animates out', async () => {
+    const user = userEvent.setup()
+    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
+    const avatar = within(
+      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
+    ).getByRole('img', { name: 'Alice' })
+
+    await user.hover(avatar)
+    const card = screen.getByText('Hello')
+    await user.keyboard('{Escape}')
+    // The closing card still covers the marker; moving over it is not leaving the marker.
+    fireEvent.pointerMove(card)
+    fireEvent.mouseEnter(avatar)
+    expect(screen.queryByText('Hello')?.closest('[data-open]') ?? null).toBeNull()
+  })
+
   it('lets a preview dismissed from its card reopen once the pointer moves off the marker', async () => {
     const user = userEvent.setup()
     render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)

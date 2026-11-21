@@ -162,6 +162,29 @@ describe('CommentThread', () => {
     }
   })
 
+  it('lands on the newest message at once when a thread finishes its first load', async () => {
+    const scrollTo = vi.fn()
+    const original = HTMLElement.prototype.scrollTo
+    HTMLElement.prototype.scrollTo = scrollTo
+    try {
+      const comment = createComment()
+      const { rerender } = render(
+        <CommentThreadFixture comment={{ ...comment, replies: [] }} loading onReply={() => {}} />,
+      )
+      await screen.findByText(/original comment/)
+      rerender(
+        <div id="workflow-container">
+          <CommentThreadFixture comment={comment} onReply={() => {}} />
+        </div>,
+      )
+      await screen.findByText('first reply')
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'instant' }))
+      expect(scrollTo).not.toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    } finally {
+      HTMLElement.prototype.scrollTo = original
+    }
+  })
+
   it('triggers header actions and closes on Escape', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()

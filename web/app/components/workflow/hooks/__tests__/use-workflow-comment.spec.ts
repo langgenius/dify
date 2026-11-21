@@ -560,6 +560,30 @@ describe('useWorkflowComment', () => {
     expect(mockEmitCommentsUpdate).toHaveBeenCalled()
   })
 
+  it('keeps a thread opened while the previous one was still closing', async () => {
+    const commentA = baseComment()
+    const commentB: WorkflowCommentBasic = { ...baseComment(), id: 'comment-2' }
+    mockFetchWorkflowComments.mockResolvedValue({ data: [commentA, commentB] })
+    mockFetchWorkflowComment.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: { comments: [commentA, commentB] },
+    })
+
+    await act(async () => {
+      void result.current.handleCommentIconClick(commentA)
+    })
+    act(() => result.current.handleActiveCommentClose())
+    await act(async () => {
+      void result.current.handleCommentIconClick(commentB)
+    })
+    // The first thread finishes closing after the second one opened.
+    act(() => result.current.handleActiveCommentClosed())
+
+    expect(store.getState().activeCommentId).toBe(commentB.id)
+    expect(store.getState().activeCommentDetail?.id).toBe(commentB.id)
+  })
+
   it('deselects a deleted comment and leaves its detail for the closing thread', async () => {
     const commentA = baseComment()
     mockFetchWorkflowComments.mockResolvedValue({ data: [] })
