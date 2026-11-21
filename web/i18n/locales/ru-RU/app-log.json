@@ -72,6 +72,7 @@
   "export.previewRows": "Строки CSV {{rows}}.",
   "export.previewSize": "Диалоги {{conversations}} · Строки CSV {{rows}}.",
   "export.previewUnavailable": "Количество недоступно. Экспорт всё равно возможен.",
+  "export.previewWorkflowDescription": "Каждая строка содержит один запуск рабочего процесса, включая входные и выходные данные, сведения о пользователе или аккаунте, ID запуска, время начала, статус и источник запуска.",
   "export.scope": "Область экспорта",
   "export.statusFailed": "Не удалось проверить статус экспорта. Попробуйте снова.",
   "export.submit": "Экспортировать CSV",

@@ -72,6 +72,7 @@
   "export.previewRows": "Righe CSV {{rows}}.",
   "export.previewSize": "Conversazioni {{conversations}} · Righe CSV {{rows}}.",
   "export.previewUnavailable": "Il conteggio non è disponibile. Puoi comunque esportare.",
+  "export.previewWorkflowDescription": "Ogni riga contiene un’esecuzione del workflow, con input, output, identità, ID di esecuzione, ora di avvio, stato e origine dell’attivazione.",
   "export.scope": "Ambito di esportazione",
   "export.statusFailed": "Impossibile verificare lo stato dell’esportazione. Riprova.",
   "export.submit": "Esporta CSV",

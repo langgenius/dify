@@ -1,8 +1,13 @@
 import type {
   AppDetailWithSite,
+  ConversationLogExportLatestResponse,
   ConversationLogExportLatestTaskResponse,
   GetAppsByAppIdConversationLogExportsPreviewData,
+  WorkflowLogExportLatestResponse,
+  WorkflowLogExportLatestTaskResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { QueryState } from '@tanstack/react-query'
+import type { WorkflowLogFilterOptions, WorkflowLogQuery } from '../workflow-log/log-filters'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
 import type { LogFilterOptions, LogIdentity, QueryParam } from './log-filters'
 import { Button } from '@langgenius/dify-ui/button'
@@ -43,6 +48,7 @@ import { API_PREFIX } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
+import { toWorkflowLogFilters } from '../workflow-log/log-filters'
 import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING, toLogFilters } from './log-filters'
 import { LogIdentityField, LogIdentityPicker } from './log-identity-picker'
 
@@ -67,6 +73,7 @@ const defaultSelection: LogExportSelection = {
 }
 
 const exportsApi = consoleQuery.apps.byAppId.conversationLogExports
+const workflowExportsApi = consoleQuery.apps.byAppId.workflowLogExports
 
 function ExportSelect<T extends string>({
   label,
@@ -120,7 +127,7 @@ function LastLogExport({
   identityOptions,
 }: {
   appId: string
-  task: ConversationLogExportLatestTaskResponse
+  task: ConversationLogExportLatestTaskResponse | WorkflowLogExportLatestTaskResponse
   identityOptions: LogIdentity[]
 }) {
   const { t } = useTranslation(['appLog', 'common', 'time'])
@@ -135,19 +142,29 @@ function LastLogExport({
     ...filters.account_ids.map((id) => identityLabel(id, 'account')),
   ]
 
-  const start = filters.start && formatDate(filters.start, 'YYYY-MM-DD HH:mm')
-  const end = filters.end && formatDate(filters.end, 'YYYY-MM-DD HH:mm')
+  const workflow = 'created_at__after' in filters
+  const startBound = workflow ? filters.created_at__after : filters.start
+  const endBound = workflow ? filters.created_at__before : filters.end
+  const start = startBound && formatDate(startBound, 'YYYY-MM-DD HH:mm')
+  const end = endBound && formatDate(endBound, 'YYYY-MM-DD HH:mm')
   let range: string | undefined
   if (start && end) range = `${start} – ${end}`
   else if (start) range = `${t(($) => $['picker.startDate'], { ns: 'time' })} ${start}`
   else if (end) range = `${t(($) => $['picker.endDate'], { ns: 'time' })} ${end}`
 
+  let statusLabel
+  if (workflow) {
+    const status = filters.status
+    if (status) statusLabel = t(($) => $[`status.${status}`], { ns: 'appLog' })
+  } else if (filters.annotation_status === 'annotated')
+    statusLabel = t(($) => $['export.annotated'], { ns: 'appLog' })
+  else if (filters.annotation_status === 'not_annotated')
+    statusLabel = t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' })
+
   const summary = [
     range,
     filters.keyword && `${t(($) => $['operation.search'], { ns: 'common' })} “${filters.keyword}”`,
-    filters.annotation_status === 'annotated' && t(($) => $['export.annotated'], { ns: 'appLog' }),
-    filters.annotation_status === 'not_annotated' &&
-      t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
+    statusLabel,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -187,7 +204,7 @@ function LastLogExport({
           className="shrink-0"
           onClick={() =>
             downloadUrl({
-              url: `${API_PREFIX}/apps/${appId}/conversation-log-exports/${taskId}/file`,
+              url: `${API_PREFIX}/apps/${appId}/${workflow ? 'workflow' : 'conversation'}-log-exports/${taskId}/file`,
             })
           }
         >
@@ -198,31 +215,41 @@ function LastLogExport({
   )
 }
 
-export function LogExportDialog({
-  appId,
-  appName,
-  appMode,
-  currentQueryParams,
-  shareFilters,
-  filterOptions,
-  identityOptions,
-  planState,
-}: {
+type LogExportDialogProps = {
   appId: string
   appName: string
-  appMode: AppDetailWithSite['mode']
-  currentQueryParams: QueryParam
-  shareFilters: boolean
-  filterOptions: LogFilterOptions
   identityOptions: LogIdentity[]
   planState: CloudSandboxPlanState
-}) {
+} & (
+  | {
+      workflow?: undefined
+      appMode: AppDetailWithSite['mode']
+      currentQueryParams: QueryParam
+      shareFilters: boolean
+      filterOptions: LogFilterOptions
+    }
+  | {
+      workflow: {
+        currentQueryParams: WorkflowLogQuery
+        filterOptions: WorkflowLogFilterOptions
+        timezone?: string
+      }
+    }
+)
+
+export function LogExportDialog(props: LogExportDialogProps) {
+  const { appId, appName, identityOptions, planState, workflow } = props
+  const conversation = props.workflow ? null : props
+  const appMode = conversation?.appMode
+  const shareFilters = !!workflow || !!conversation?.shareFilters
+  const filterOptions = props.workflow ? props.workflow.filterOptions : props.filterOptions
   const { t } = useTranslation(['appLog', 'common', 'time', 'appAnnotation'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(defaultSelection)
   const [sharedSelection, setSharedSelection] = useState<
-    Pick<QueryParam, 'period' | 'annotation_status' | 'identities' | 'sort_by'>
+    Pick<QueryParam, 'period' | 'annotation_status' | 'identities' | 'sort_by'> &
+      Pick<WorkflowLogQuery, 'status'>
   >({ period: '2' })
   const { scope, period, startDate, endDate, identityMode, identities } = selection
   const isCompletion = appMode === 'completion'
@@ -236,21 +263,31 @@ export function LogExportDialog({
   if (customDates) dates = { start: `${startDate} 00:00`, end: `${endDate} 23:59` }
   else if (scope === 'all' && period !== '9' && period !== 'custom')
     dates = logDateRange(TIME_PERIOD_MAPPING[period]!.value)
-  const filters: LogExportFilters = shareFilters
+  const filters: LogExportFilters = conversation?.shareFilters
     ? toLogFilters(sharedSelection, planState)
-    : scope === 'current'
-      ? toLogFilters(currentQueryParams, planState)
+    : scope === 'current' && conversation
+      ? toLogFilters(conversation.currentQueryParams, planState)
       : {
           sort_by: '-created_at',
           ...dates,
           ...(filterIdentities ? logIdentityFilters(identities) : {}),
         }
+  const workflowFilters = workflow
+    ? toWorkflowLogFilters(sharedSelection, planState, workflow.timezone)
+    : {}
 
-  const latestOptions = exportsApi.latest.get.queryOptions({
-    input: { params: { app_id: appId } },
-    enabled: open && planState === 'unrestricted',
+  const canQuery = open && planState === 'unrestricted'
+  const appParams = { params: { app_id: appId } }
+  const latestSettings = {
     staleTime: 0,
-    refetchInterval: ({ state }) => {
+    refetchInterval: ({
+      state,
+    }: {
+      state: Pick<
+        QueryState<ConversationLogExportLatestResponse | WorkflowLogExportLatestResponse>,
+        'data' | 'status'
+      >
+    }) => {
       const phase = state.data?.task?.status
       return state.status !== 'error' && (phase === 'pending' || phase === 'processing')
         ? 1500
@@ -258,14 +295,33 @@ export function LogExportDialog({
     },
     context: { silent: true },
     retry: 1,
+  } as const
+  const latestOptions = exportsApi.latest.get.queryOptions({
+    ...latestSettings,
+    input: workflow ? skipToken : appParams,
+    enabled: canQuery && !workflow,
   })
-  const latest = useQuery(latestOptions)
-  const create = useMutation(
+  const workflowLatestOptions = workflowExportsApi.latest.get.queryOptions({
+    ...latestSettings,
+    input: workflow ? appParams : skipToken,
+    enabled: canQuery && !!workflow,
+  })
+  const conversationLatest = useQuery(latestOptions)
+  const workflowLatest = useQuery(workflowLatestOptions)
+  const latest = workflow ? workflowLatest : conversationLatest
+  const conversationCreate = useMutation(
     exportsApi.post.mutationOptions({
       context: { silent: true },
       onSuccess: () => queryClient.invalidateQueries({ queryKey: latestOptions.queryKey }),
     }),
   )
+  const workflowCreate = useMutation(
+    workflowExportsApi.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: workflowLatestOptions.queryKey }),
+    }),
+  )
+  const create = workflow ? workflowCreate : conversationCreate
 
   const retryStatus = latest.isError
   const task = retryStatus ? null : latest.data?.task
@@ -274,21 +330,31 @@ export function LogExportDialog({
   const busy = exporting || latest.isPending || (retryStatus && latest.isFetching)
   const filtersLocked = busy || retryStatus
 
-  const preview = useQuery({
+  const canPreview = canQuery && validFilters && !filtersLocked
+  const previewSettings = {
+    context: { silent: true },
+    retry: false,
+    refetchOnWindowFocus: false,
+  } as const
+  const conversationPreview = useQuery({
     ...exportsApi.preview.get.queryOptions({
-      input:
-        open && planState === 'unrestricted' && validFilters && !filtersLocked
-          ? { params: { app_id: appId }, query: filters }
-          : skipToken,
-      context: { silent: true },
-      retry: false,
-      refetchOnWindowFocus: false,
+      ...previewSettings,
+      input: canPreview && !workflow ? { ...appParams, query: filters } : skipToken,
     }),
     placeholderData: keepPreviousData,
   })
-  const counts = preview.data?.counts
+  const workflowPreview = useQuery({
+    ...workflowExportsApi.preview.get.queryOptions({
+      ...previewSettings,
+      input: canPreview && workflow ? { ...appParams, query: workflowFilters } : skipToken,
+    }),
+    placeholderData: keepPreviousData,
+  })
+  const preview = workflow ? workflowPreview : conversationPreview
+  const counts = conversationPreview.data?.counts
+  const rowCount = workflow ? workflowPreview.data?.row_count : counts?.message_count
   const previewPending = preview.isPending || preview.isPlaceholderData
-  const noMatches = !previewPending && counts?.message_count === 0
+  const noMatches = !previewPending && rowCount === 0
   const canExport = validFilters && !previewPending && !noMatches
   const title = t(($) => $['export.title'], { ns: 'appLog' })
   const exportingLabel = t(($) => $['operation.exporting'], { ns: 'common' })
@@ -299,24 +365,28 @@ export function LogExportDialog({
   if (exporting) actionLabel = exportingLabel
   else if (retryStatus) actionLabel = t(($) => $['operation.retry'], { ns: 'common' })
 
-  const descriptionKey = isCompletion
-    ? 'export.previewCompletionDescription'
-    : appMode === 'advanced-chat'
-      ? 'export.previewChatflowDescription'
-      : 'export.previewConversationDescription'
+  const descriptionKey = workflow
+    ? 'export.previewWorkflowDescription'
+    : isCompletion
+      ? 'export.previewCompletionDescription'
+      : appMode === 'advanced-chat'
+        ? 'export.previewChatflowDescription'
+        : 'export.previewConversationDescription'
   const previewDescription =
-    !filtersLocked && !noMatches && (previewPending || !!counts)
+    !filtersLocked && !noMatches && (previewPending || rowCount != null)
       ? t(($) => $[descriptionKey], { ns: 'appLog' })
       : null
-  const countSummary = counts
-    ? isCompletion
-      ? t(($) => $['export.previewRows'], { ns: 'appLog', rows: counts.message_count })
-      : t(($) => $['export.previewSize'], {
-          ns: 'appLog',
-          conversations: counts.conversation_count,
-          rows: counts.message_count,
-        })
-    : null
+  const countSummary =
+    rowCount == null
+      ? null
+      : workflow || isCompletion
+        ? t(($) => $['export.previewRows'], { ns: 'appLog', rows: rowCount })
+        : counts &&
+          t(($) => $['export.previewSize'], {
+            ns: 'appLog',
+            conversations: counts.conversation_count,
+            rows: rowCount,
+          })
 
   let summary
   if (exporting) summary = actionLabel
@@ -338,8 +408,12 @@ export function LogExportDialog({
       onOpenChange={(next) => {
         if (!next && create.isPending) return
         if (next) {
-          if (shareFilters) {
-            const { period, annotation_status, identities, sort_by } = currentQueryParams
+          if (workflow) {
+            const { period, status, identities } = workflow.currentQueryParams
+            setSharedSelection({ period, status, identities })
+          } else if (conversation?.shareFilters) {
+            const { period, annotation_status, identities, sort_by } =
+              conversation.currentQueryParams
             setSharedSelection({ period, annotation_status, identities, sort_by })
           } else setSelection(defaultSelection)
           create.reset()
@@ -379,7 +453,8 @@ export function LogExportDialog({
               if (retryStatus) {
                 void latest.refetch()
               } else if (canExport) {
-                create.mutate({ params: { app_id: appId }, body: filters })
+                if (workflow) workflowCreate.mutate({ ...appParams, body: workflowFilters })
+                else conversationCreate.mutate({ ...appParams, body: filters })
               }
             }}
           >
@@ -396,15 +471,29 @@ export function LogExportDialog({
                       }
                       disabled={filtersLocked}
                     />
-                    <ExportSelect
-                      label={t(($) => $.title, { ns: 'appAnnotation' })}
-                      value={sharedSelection.annotation_status ?? 'all'}
-                      options={filterOptions.annotations}
-                      onChange={(annotation_status) =>
-                        setSharedSelection((previous) => ({ ...previous, annotation_status }))
-                      }
-                      disabled={filtersLocked || !filterOptions.hasAnnotationCount}
-                    />
+                    {workflow ? (
+                      <ExportSelect
+                        label={t(($) => $['table.header.status'], { ns: 'appLog' })}
+                        value={sharedSelection.status ?? 'all'}
+                        options={workflow.filterOptions.statuses}
+                        onChange={(status) =>
+                          setSharedSelection((previous) => ({ ...previous, status }))
+                        }
+                        disabled={filtersLocked}
+                      />
+                    ) : (
+                      conversation && (
+                        <ExportSelect
+                          label={t(($) => $.title, { ns: 'appAnnotation' })}
+                          value={sharedSelection.annotation_status ?? 'all'}
+                          options={conversation.filterOptions.annotations}
+                          onChange={(annotation_status) =>
+                            setSharedSelection((previous) => ({ ...previous, annotation_status }))
+                          }
+                          disabled={filtersLocked || !conversation.filterOptions.hasAnnotationCount}
+                        />
+                      )
+                    )}
                     <LogIdentityField
                       appId={appId}
                       options={identityOptions}
@@ -413,6 +502,7 @@ export function LogExportDialog({
                         setSharedSelection((previous) => ({ ...previous, identities }))
                       }
                       disabled={filtersLocked}
+                      workflow={!!workflow}
                       showLabel
                     />
                   </>

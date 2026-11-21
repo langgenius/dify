@@ -1,24 +1,40 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import type { QueryParam } from '../index'
+import type { WorkflowLogQuery } from '../log-filters'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { useCloudSandboxPlanStatus } from '../../log/cloud-sandbox-retention'
 import Filter from '../filter'
+import { useWorkflowLogFilterOptions } from '../log-filters'
 
 async function setup({
   edition = 'CLOUD',
   plan = 'professional',
   initial = {},
-}: { edition?: DeploymentEdition; plan?: CloudPlan; initial?: Partial<QueryParam> } = {}) {
+}: { edition?: DeploymentEdition; plan?: CloudPlan; initial?: Partial<WorkflowLogQuery> } = {}) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
     features: { billing: { subscription: { plan } } },
   })
   function Filters() {
-    const [params, setParams] = useState<QueryParam>({ status: 'all', period: '2', ...initial })
-    return <Filter queryParams={params} setQueryParams={setParams} />
+    const [params, setParams] = useState<WorkflowLogQuery>({
+      status: 'all',
+      period: '2',
+      ...initial,
+    })
+    const planState = useCloudSandboxPlanStatus()
+    const filterOptions = useWorkflowLogFilterOptions(planState)
+    return (
+      <Filter
+        appId="workflow-app"
+        queryParams={params}
+        setQueryParams={setParams}
+        filterOptions={filterOptions}
+        identityOptions={[]}
+      />
+    )
   }
   return render(
     <Providers>

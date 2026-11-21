@@ -72,6 +72,7 @@
   "export.previewRows": "صفوف CSV ‏{{rows}}.",
   "export.previewSize": "المحادثات {{conversations}} · صفوف CSV ‏{{rows}}.",
   "export.previewUnavailable": "لا يتوفر العدد الآن. لا يزال بإمكانك التصدير.",
+  "export.previewWorkflowDescription": "يحتوي كل صف على تشغيل واحد لسير العمل، مع المدخلات والمخرجات والهوية ومعرّف التشغيل ووقت البدء والحالة ومصدر التشغيل.",
   "export.scope": "نطاق التصدير",
   "export.statusFailed": "تعذر التحقق من حالة التصدير. حاول مجددًا.",
   "export.submit": "تصدير CSV",

@@ -72,6 +72,7 @@
   "export.previewRows": "Rânduri CSV {{rows}}.",
   "export.previewSize": "Conversații {{conversations}} · Rânduri CSV {{rows}}.",
   "export.previewUnavailable": "Numărul nu este disponibil. Poți totuși exporta.",
+  "export.previewWorkflowDescription": "Fiecare rând conține o rulare a fluxului de lucru, cu datele de intrare și de ieșire, identitatea, ID-ul rulării, ora de începere, starea și sursa declanșării.",
   "export.scope": "Domeniul exportului",
   "export.statusFailed": "Starea exportului nu a putut fi verificată. Încearcă din nou.",
   "export.submit": "Exportă CSV",

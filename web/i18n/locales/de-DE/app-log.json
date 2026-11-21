@@ -72,6 +72,7 @@
   "export.previewRows": "CSV-Zeilen {{rows}}.",
   "export.previewSize": "Unterhaltungen {{conversations}} · CSV-Zeilen {{rows}}.",
   "export.previewUnavailable": "Die Anzahl ist nicht verfügbar. Der Export ist trotzdem möglich.",
+  "export.previewWorkflowDescription": "Jede Zeile enthält einen Workflow-Lauf mit Eingaben, Ausgaben, Identität, Lauf-ID, Startzeit, Status und Auslöserquelle.",
   "export.scope": "Exportbereich",
   "export.statusFailed": "Der Exportstatus konnte nicht geprüft werden. Bitte erneut versuchen.",
   "export.submit": "CSV exportieren",

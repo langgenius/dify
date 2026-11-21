@@ -72,6 +72,7 @@
   "export.previewRows": "CSV {{rows}}행.",
   "export.previewSize": "대화 {{conversations}}개 · CSV {{rows}}행.",
   "export.previewUnavailable": "개수를 확인할 수 없습니다. 내보내기는 가능합니다.",
+  "export.previewWorkflowDescription": "각 행에는 워크플로 실행 하나의 입력, 출력, 사용자 또는 계정 정보, 실행 ID, 시작 시간, 상태, 트리거 소스가 포함됩니다.",
   "export.scope": "내보내기 범위",
   "export.statusFailed": "내보내기 상태를 확인할 수 없습니다. 다시 시도해 주세요.",
   "export.submit": "CSV 내보내기",

@@ -72,6 +72,7 @@
   "export.previewRows": "CSV {{rows}} แถว",
   "export.previewSize": "บทสนทนา {{conversations}} รายการ · CSV {{rows}} แถว",
   "export.previewUnavailable": "ไม่สามารถแสดงจำนวนได้ แต่ยังส่งออกได้",
+  "export.previewWorkflowDescription": "แต่ละแถวมีการรันเวิร์กโฟลว์หนึ่งครั้ง พร้อมอินพุต เอาต์พุต ข้อมูลผู้ใช้ รหัสการรัน เวลาเริ่มต้น สถานะ และแหล่งที่มาของทริกเกอร์",
   "export.scope": "ขอบเขตการส่งออก",
   "export.statusFailed": "ตรวจสอบสถานะการส่งออกไม่ได้ โปรดลองอีกครั้ง",
   "export.submit": "ส่งออก CSV",

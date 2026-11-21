@@ -87,13 +87,8 @@ export type QueryParam = {
   identities?: LogIdentity[]
 }
 
-export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanState) {
+export function useLogTimeFilterOptions(planState: CloudSandboxPlanState) {
   const { t } = useTranslation(['appLog'])
-  const { data } = useQuery(
-    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
-    }),
-  )
   const restricted = isLogTimePeriodRestricted(planState)
   const periods = Object.entries(TIME_PERIOD_MAPPING)
     .filter(([value]) => !restricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(value))
@@ -101,6 +96,17 @@ export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanSt
       const { name } = resolveLogTimePeriodOption(value, option, planState)
       return { value, label: t(($) => $[`filter.period.${name}`], { ns: 'appLog' }) }
     })
+  return { periods, clearedPeriod: restricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9' }
+}
+
+export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanState) {
+  const { t } = useTranslation(['appLog'])
+  const time = useLogTimeFilterOptions(planState)
+  const { data } = useQuery(
+    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
   const annotations = [
     { value: 'all', label: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
     {
@@ -114,10 +120,9 @@ export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanSt
   ] satisfies { value: NonNullable<QueryParam['annotation_status']>; label: string }[]
 
   return {
-    periods,
+    ...time,
     annotations,
     hasAnnotationCount: Boolean(data),
-    clearedPeriod: restricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
   }
 }
 

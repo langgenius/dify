@@ -72,6 +72,7 @@
   "export.previewRows": "CSV-rijen {{rows}}.",
   "export.previewSize": "Gesprekken {{conversations}} · CSV-rijen {{rows}}.",
   "export.previewUnavailable": "Het aantal is niet beschikbaar. Je kunt wel exporteren.",
+  "export.previewWorkflowDescription": "Elke rij bevat één workflowuitvoering, met invoer, uitvoer, identiteit, uitvoerings-ID, starttijd, status en triggerbron.",
   "export.scope": "Exportbereik",
   "export.statusFailed": "De exportstatus kon niet worden gecontroleerd. Probeer het opnieuw.",
   "export.submit": "CSV exporteren",

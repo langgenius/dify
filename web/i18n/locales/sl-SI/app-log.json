@@ -72,6 +72,7 @@
   "export.previewRows": "Vrstice CSV {{rows}}.",
   "export.previewSize": "Pogovori {{conversations}} · Vrstice CSV {{rows}}.",
   "export.previewUnavailable": "Število ni na voljo. Izvoz je še vedno mogoč.",
+  "export.previewWorkflowDescription": "Vsaka vrstica vsebuje eno izvedbo delovnega toka z vhodi, izhodi, identiteto, ID-jem izvedbe, časom začetka, stanjem in virom sprožitve.",
   "export.scope": "Obseg izvoza",
   "export.statusFailed": "Stanja izvoza ni bilo mogoče preveriti. Poskusite znova.",
   "export.submit": "Izvozi CSV",

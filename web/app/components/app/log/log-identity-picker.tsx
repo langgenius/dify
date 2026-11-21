@@ -39,11 +39,15 @@ function useLogIdentityMatches(
   options: LogIdentity[],
   value: LogIdentity[],
   search: string,
+  workflow = false,
 ) {
   const searchTerm = search.trim()
   const keyword = useDebounce(searchTerm, { wait: 300 })
+  const identityOptions = workflow
+    ? consoleQuery.apps.byAppId.workflowAppLogs.identityOptions
+    : consoleQuery.apps.byAppId.chatConversations.identityOptions
   const searchOptions = useQuery(
-    consoleQuery.apps.byAppId.chatConversations.identityOptions.get.queryOptions({
+    identityOptions.get.queryOptions({
       input:
         searchTerm && searchTerm === keyword
           ? { params: { app_id: appId }, query: { keyword } }
@@ -153,13 +157,20 @@ export function LogIdentityField({
   disabled,
   showLabel = false,
   applyOnClose = false,
-}: LogIdentityPickerProps & { showLabel?: boolean; applyOnClose?: boolean }) {
+  workflow = false,
+}: LogIdentityPickerProps & { showLabel?: boolean; applyOnClose?: boolean; workflow?: boolean }) {
   const { t } = useTranslation(['appLog', 'common'])
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<LogIdentity[] | null>(null)
   const selected = draft ?? value
   const firstSelected = selected[0]
-  const { matches, searching, failed } = useLogIdentityMatches(appId, options, selected, search)
+  const { matches, searching, failed } = useLogIdentityMatches(
+    appId,
+    options,
+    selected,
+    search,
+    workflow,
+  )
   const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
   const placeholder = showLabel ? t(($) => $['export.identitiesAll'], { ns: 'appLog' }) : label
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })

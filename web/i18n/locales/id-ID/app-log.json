@@ -72,6 +72,7 @@
   "export.previewRows": "Baris CSV {{rows}}.",
   "export.previewSize": "Percakapan {{conversations}} · Baris CSV {{rows}}.",
   "export.previewUnavailable": "Jumlah tidak tersedia. Anda tetap dapat mengekspor.",
+  "export.previewWorkflowDescription": "Setiap baris berisi satu eksekusi alur kerja, termasuk input, output, identitas, ID eksekusi, waktu mulai, status, dan sumber pemicu.",
   "export.scope": "Cakupan ekspor",
   "export.statusFailed": "Status ekspor tidak dapat diperiksa. Coba lagi.",
   "export.submit": "Ekspor CSV",

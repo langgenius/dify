@@ -72,6 +72,7 @@
   "export.previewRows": "{{rows}} 行 CSV。",
   "export.previewSize": "{{conversations}} 個對話 · {{rows}} 行 CSV。",
   "export.previewUnavailable": "暫時無法統計數量，仍可匯出。",
+  "export.previewWorkflowDescription": "每次工作流程執行占一列，包含輸入、輸出、身分、執行 ID、開始時間、狀態和觸發來源。",
   "export.scope": "匯出範圍",
   "export.statusFailed": "無法查詢匯出狀態，請再試一次。",
   "export.submit": "匯出 CSV",

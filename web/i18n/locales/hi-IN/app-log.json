@@ -72,6 +72,7 @@
   "export.previewRows": "CSV पंक्तियाँ {{rows}}।",
   "export.previewSize": "बातचीत {{conversations}} · CSV पंक्तियाँ {{rows}}।",
   "export.previewUnavailable": "संख्या उपलब्ध नहीं है। आप फिर भी निर्यात कर सकते हैं।",
+  "export.previewWorkflowDescription": "हर पंक्ति में एक वर्कफ़्लो रन के इनपुट, आउटपुट, पहचान, रन आईडी, शुरू होने का समय, स्थिति और ट्रिगर का स्रोत शामिल हैं।",
   "export.scope": "निर्यात का दायरा",
   "export.statusFailed": "निर्यात की स्थिति जाँची नहीं जा सकी। फिर से कोशिश करें।",
   "export.submit": "CSV निर्यात करें",

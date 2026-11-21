@@ -72,6 +72,7 @@
   "export.previewRows": "{{rows}} 行 CSV。",
   "export.previewSize": "{{conversations}} 个会话 · {{rows}} 行 CSV。",
   "export.previewUnavailable": "暂时无法统计数量，仍可导出。",
+  "export.previewWorkflowDescription": "每次工作流运行占一行，包含输入、输出、身份、运行 ID、开始时间、状态和触发来源。",
   "export.scope": "导出范围",
   "export.statusFailed": "无法查询导出状态，请重试。",
   "export.submit": "导出 CSV",

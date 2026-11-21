@@ -72,6 +72,7 @@
   "export.previewRows": "Рядки CSV {{rows}}.",
   "export.previewSize": "Бесіди {{conversations}} · Рядки CSV {{rows}}.",
   "export.previewUnavailable": "Кількість недоступна. Ви все одно можете експортувати.",
+  "export.previewWorkflowDescription": "Кожен рядок містить один запуск робочого процесу, вхідні й вихідні дані, ідентифікаційні дані, ID запуску, час початку, стан і джерело запуску.",
   "export.scope": "Обсяг експорту",
   "export.statusFailed": "Не вдалося перевірити стан експорту. Спробуйте ще раз.",
   "export.submit": "Експортувати CSV",

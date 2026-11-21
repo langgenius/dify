@@ -72,6 +72,7 @@
   "export.previewRows": "CSV rows {{rows}}.",
   "export.previewSize": "Conversations {{conversations}} · CSV rows {{rows}}.",
   "export.previewUnavailable": "The count is unavailable. You can still export.",
+  "export.previewWorkflowDescription": "Each row contains one workflow run, with inputs, outputs, identity, run ID, start time, status, and trigger source.",
   "export.scope": "Export scope",
   "export.statusFailed": "Could not check the export status. Try again.",
   "export.submit": "Export as CSV",

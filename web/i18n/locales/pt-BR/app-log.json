@@ -72,6 +72,7 @@
   "export.previewRows": "Linhas CSV {{rows}}.",
   "export.previewSize": "Conversas {{conversations}} · Linhas CSV {{rows}}.",
   "export.previewUnavailable": "A contagem está indisponível. Você ainda pode exportar.",
+  "export.previewWorkflowDescription": "Cada linha contém uma execução do fluxo de trabalho, com entradas, saídas, identidade, ID da execução, hora de início, status e origem do acionamento.",
   "export.scope": "Escopo da exportação",
   "export.statusFailed": "Não foi possível verificar o status da exportação. Tente novamente.",
   "export.submit": "Exportar CSV",

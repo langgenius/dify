@@ -72,6 +72,7 @@
   "export.previewRows": "Filas CSV {{rows}}.",
   "export.previewSize": "Conversaciones {{conversations}} · Filas CSV {{rows}}.",
   "export.previewUnavailable": "No se pudo obtener el recuento. Puedes exportar de todos modos.",
+  "export.previewWorkflowDescription": "Cada fila incluye una ejecución del flujo de trabajo, con las entradas, las salidas, la identidad, el ID de ejecución, la hora de inicio, el estado y el origen del desencadenador.",
   "export.scope": "Alcance de la exportación",
   "export.statusFailed": "No se pudo comprobar el estado de la exportación. Inténtalo de nuevo.",
   "export.submit": "Exportar CSV",

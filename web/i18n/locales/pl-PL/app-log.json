@@ -72,6 +72,7 @@
   "export.previewRows": "Wiersze CSV {{rows}}.",
   "export.previewSize": "Rozmowy {{conversations}} · Wiersze CSV {{rows}}.",
   "export.previewUnavailable": "Liczba wyników jest niedostępna. Eksport jest nadal możliwy.",
+  "export.previewWorkflowDescription": "Każdy wiersz zawiera jedno uruchomienie przepływu pracy, dane wejściowe i wyjściowe, tożsamość, identyfikator uruchomienia, czas rozpoczęcia, stan i źródło wyzwolenia.",
   "export.scope": "Zakres eksportu",
   "export.statusFailed": "Nie udało się sprawdzić stanu eksportu. Spróbuj ponownie.",
   "export.submit": "Eksportuj CSV",

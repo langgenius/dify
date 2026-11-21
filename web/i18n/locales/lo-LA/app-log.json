@@ -72,6 +72,7 @@
   "export.previewRows": "ແຖວ CSV {{rows}}.",
   "export.previewSize": "ການສົນທະນາ {{conversations}} · ແຖວ CSV {{rows}}.",
   "export.previewUnavailable": "ບໍ່ມີຈໍານວນໃຫ້ສະແດງ. ທ່ານຍັງສົ່ງອອກໄດ້.",
+  "export.previewWorkflowDescription": "ແຕ່ລະແຖວມີການເຮັດວຽກຂອງ workflow ໜຶ່ງຄັ້ງ ພ້ອມຂໍ້ມູນເຂົ້າ, ຂໍ້ມູນອອກ, ຕົວຕົນ, ID ການເຮັດວຽກ, ເວລາເລີ່ມ, ສະຖານະ ແລະ ແຫຼ່ງການກະຕຸ້ນ.",
   "export.scope": "ຂອບເຂດການສົ່ງອອກ",
   "export.statusFailed": "ກວດສະຖານະການສົ່ງອອກບໍ່ໄດ້. ກະລຸນາລອງອີກຄັ້ງ.",
   "export.submit": "ສົ່ງອອກ CSV",
