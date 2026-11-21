@@ -68,6 +68,10 @@ class QueueLLMChunkEvent(AppQueueEvent):
     """
     QueueLLMChunkEvent entity
     Only for basic mode apps
+
+    ``chunk.prompt_messages`` is only guaranteed on the first chunk published for a stream; the app
+    runner leaves it empty on the following ones. The prompt is per-call data: a consumer that needs
+    it takes it from the chunk that has it, or from the terminal ``QueueMessageEndEvent``.
     """
 
     event: QueueEvent = QueueEvent.LLM_CHUNK
@@ -216,6 +220,9 @@ class QueueReasoningChunkEvent(AppQueueEvent):
 class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
+
+    ``chunk.prompt_messages`` follows the same rule as in ``QueueLLMChunkEvent``: only guaranteed on
+    the first chunk published for a stream.
     """
 
     event: QueueEvent = QueueEvent.AGENT_MESSAGE
