@@ -20,7 +20,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
@@ -34,7 +34,6 @@ import { ControlMode } from '../types'
 import { CommentIcon } from './comment-icon'
 import { CommentInput } from './comment-input'
 import { getCommentMarkerId } from './marker-id'
-import { isSavedAs } from './pending-reply'
 import { CommentPlacementPreview } from './placement-preview'
 import { CommentThread } from './thread'
 import { commentThreadPlacement } from './thread-placement'
@@ -90,7 +89,6 @@ type ReplySendVariables = {
   params: CommentParams
   body: { content: string; mentioned_user_ids?: string[] }
 }
-type ReplySendContext = { knownReplyIds: string[] }
 const sendKeyOf = (mutation: Pick<Mutation, 'mutationId'>) => `local-${mutation.mutationId}`
 
 /**
@@ -135,6 +133,7 @@ export function WorkflowCommentLayer() {
   // write is still running, so a refetch never lands on another write's optimistic state.
   useEffect(() => {
     const mutationCache = queryClient.getMutationCache()
+    const unreconciled = new Set<string>()
     return mutationCache.subscribe((event) => {
       if (
         event.type !== 'updated' ||
@@ -147,9 +146,11 @@ export function WorkflowCommentLayer() {
         ?.params?.app_id
       if (!appIdOfWrite) return
       if (type === 'success') collaborationManager.emitCommentsUpdate(appIdOfWrite)
+      unreconciled.add(appIdOfWrite)
       queueMicrotask(() => {
-        if (queryClient.isMutating({ mutationKey: commentWriteKey }) === 0)
-          void refetchComments(queryClient, appIdOfWrite)
+        if (queryClient.isMutating({ mutationKey: commentWriteKey }) > 0) return
+        for (const id of unreconciled) void refetchComments(queryClient, id)
+        unreconciled.clear()
       })
     })
   }, [queryClient])
@@ -401,16 +402,11 @@ function ShownThread({
     commentsApi.byCommentId.replies.post.mutationOptions({
       // A failed send stays until it is sent again or dropped.
       gcTime: Infinity,
-      onMutate: async ({ params: target }): Promise<ReplySendContext> => {
+      onMutate: async ({ params: target }) => {
         const cache = queryClient.getMutationCache()
         for (const mutation of cache.findAll({ mutationKey: replySendKey, status: 'success' }))
           cache.remove(mutation)
         await queryClient.cancelQueries({ queryKey: detailKeyOf(target) })
-        // The replies already there cannot be this send's reply saved after all.
-        return {
-          knownReplyIds:
-            queryClient.getQueryData(detailKeyOf(target))?.replies.map((reply) => reply.id) ?? [],
-        }
       },
       // The saved reply takes the send row's place at once, under the same key.
       onSuccess: (reply, variables) => {
@@ -446,9 +442,9 @@ function ShownThread({
         (mutation.state.variables as ReplySendVariables | undefined)?.params.comment_id ===
           listItem.id && mutation.state.status !== 'success',
     },
-    select: (mutation) => {
+    select: (mutation): ThreadReply => {
       const variables = mutation.state.variables as ReplySendVariables
-      const reply: ThreadReply = {
+      return {
         id: sendKeyOf(mutation),
         client_key: sendKeyOf(mutation),
         content: variables.body.content,
@@ -457,98 +453,50 @@ function ShownThread({
         created_by_account: author,
         send_state: mutation.state.status === 'error' ? 'failed' : 'pending',
       }
-      return {
-        reply,
-        failed: mutation.state.status === 'error',
-        knownReplyIds: (mutation.state.context as ReplySendContext | undefined)?.knownReplyIds,
-      }
     },
   })
 
+  // A send shows until its saved reply takes its row, under the same key.
   const fetchedDetail = detailQuery.data
-  // Each send is matched to at most one saved reply that was not there when it was sent:
-  // its own, once saved, or the one a lost response saved after all.
-  const { comment, savedFailedKeys } = useMemo(() => {
+  const comment = useMemo(() => {
     const detail = fetchedDetail ?? { ...listItem, replies: [], mentions: [] }
     const saved = detail.replies.map((reply): ThreadReply => {
       const clientKey = sentKeys.get(reply.id)
       return clientKey ? { ...reply, client_key: clientKey } : reply
     })
-    const claimed = new Set<string>()
-    const unsent: ThreadReply[] = []
-    const savedFailed: string[] = []
-    for (const send of sends) {
-      const match = saved.find(
-        (item) =>
-          !claimed.has(item.id) &&
-          (item.client_key === send.reply.id ||
-            (!!send.knownReplyIds &&
-              !send.knownReplyIds.includes(item.id) &&
-              isSavedAs(send.reply, item))),
-      )
-      if (match) {
-        claimed.add(match.id)
-        if (send.failed) savedFailed.push(send.reply.id)
-      } else {
-        unsent.push(send.reply)
-      }
+    const savedKeys = new Set(sentKeys.values())
+    return {
+      ...detail,
+      replies: [...saved, ...sends.filter((send) => !savedKeys.has(send.id))],
     }
-    return { comment: { ...detail, replies: [...saved, ...unsent] }, savedFailedKeys: savedFailed }
   }, [fetchedDetail, listItem, sends, sentKeys])
 
-  const findSend = useCallback(
-    (key: string) =>
-      queryClient.getMutationCache().find<unknown, unknown, ReplySendVariables, ReplySendContext>({
-        mutationKey: replySendKey,
-        predicate: (mutation) => sendKeyOf(mutation) === key,
-      }),
-    [queryClient],
-  )
-  // A failed send the server turned out to have saved is done with.
-  useEffect(() => {
-    for (const key of savedFailedKeys) {
-      const send = findSend(key)
-      if (send) queryClient.getMutationCache().remove(send)
-    }
-  }, [findSend, queryClient, savedFailedKeys])
-
-  // A send whose response was lost may be saved already: look first, and only send again a
-  // reply the server does not have. One retry runs at a time per reply.
-  const retryingRef = useRef(new Set<string>())
-  const retryReply = async (key: string) => {
+  const findSend = (key: string) =>
+    queryClient.getMutationCache().find<unknown, unknown, ReplySendVariables>({
+      mutationKey: replySendKey,
+      predicate: (mutation) => sendKeyOf(mutation) === key,
+    })
+  // Sending again replaces the failed send at once, so a second press finds nothing to retry.
+  // The backend has no idempotency key: a send whose response was lost but which was saved
+  // shows as saved after the comments reconcile, beside its failed row, which can be dropped.
+  const retryReply = (key: string) => {
     const failed = findSend(key)
     const variables = failed?.state.variables
-    if (!failed || !variables || failed.state.status !== 'error' || retryingRef.current.has(key))
-      return
-    retryingRef.current.add(key)
-    try {
-      const known = failed.state.context?.knownReplyIds
-      const sent = sends.find((send) => send.reply.id === key)?.reply
-      const fresh = await queryClient
-        .query({
-          ...commentsApi.byCommentId.get.queryOptions({ input: { params: variables.params } }),
-          staleTime: 0,
-        })
-        .catch((error: unknown) => {
-          console.error('Failed to refresh the thread before retrying a reply:', error)
-          return undefined
-        })
-      queryClient.getMutationCache().remove(failed)
-      const savedAfterAll =
-        !!fresh &&
-        !!known &&
-        !!sent &&
-        fresh.replies.some((reply) => !known.includes(reply.id) && isSavedAs(sent, reply))
-      if (!savedAfterAll) sendReply.mutate(variables)
-    } finally {
-      retryingRef.current.delete(key)
-    }
+    if (!failed || !variables || failed.state.status !== 'error') return
+    queryClient.getMutationCache().remove(failed)
+    sendReply.mutate(variables)
   }
 
   const editComment = useMutation(
     commentsApi.byCommentId.put.mutationOptions({
-      onSuccess: (_data, { params: target, body }) =>
-        updateDetail(queryClient, target, (current) => ({ ...current, content: body.content })),
+      onSuccess: (_data, { params: target, body }) => {
+        updateDetail(queryClient, target, (current) => ({ ...current, content: body.content }))
+        updateList(queryClient, target.app_id, (list) =>
+          list.map((item) =>
+            item.id === target.comment_id ? { ...item, content: body.content } : item,
+          ),
+        )
+      },
     }),
   )
   const editReply = useMutation(

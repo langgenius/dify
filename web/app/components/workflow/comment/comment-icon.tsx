@@ -382,7 +382,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}
-            onMouseEnter={() => setShowPreview(true)}
+            onMouseEnter={openPreview}
             onMouseLeave={handleMouseLeave}
           >
             <CommentPreview

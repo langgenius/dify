@@ -71,7 +71,7 @@ type CommentThreadProps = {
   ) => Promise<void> | void
   onReplyDelete?: (replyId: string) => Promise<void> | void
   /** Sends a reply that failed to send again. */
-  onReplyRetry?: (replyId: string) => Promise<void> | void
+  onReplyRetry?: (replyId: string) => void
   /** Drops a reply that failed to send. */
   onReplyDiscard?: (replyId: string) => void
 }
@@ -176,6 +176,7 @@ export function CommentThread({
                   <IconButton
                     size="lg"
                     aria-label={resolveLabel}
+                    focusableWhenDisabled
                     disabled={comment.resolved}
                     onClick={onResolve}
                   >
@@ -198,6 +199,7 @@ export function CommentThread({
                   <IconButton
                     size="lg"
                     aria-label={previousLabel}
+                    focusableWhenDisabled
                     disabled={!canGoPrev}
                     onClick={onPrev}
                   >
@@ -211,6 +213,7 @@ export function CommentThread({
                   <IconButton
                     size="lg"
                     aria-label={nextLabel}
+                    focusableWhenDisabled
                     disabled={!canGoNext}
                     onClick={onNext}
                   >
@@ -653,7 +656,7 @@ function CommentThreadEntry({
 type UnsentReplyEntryProps = {
   reply: ThreadReply
   mentionNames: string[]
-  onRetry?: () => Promise<void> | void
+  onRetry?: () => void
   onDiscard?: () => void
 }
 
@@ -663,9 +666,7 @@ type UnsentReplyEntryProps = {
  */
 function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentReplyEntryProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
-  // While a retry checks the server and sends again, the reply shows as sending.
-  const [retrying, setRetrying] = useState(false)
-  const failed = reply.send_state === 'failed' && !retrying
+  const failed = reply.send_state === 'failed'
   return (
     <CommentThreadItem aria-busy={!failed || undefined}>
       <div className={cn(!failed && 'opacity-60')}>
@@ -685,14 +686,7 @@ function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentRep
             <button
               type="button"
               className="system-xs-medium text-text-accent hover:underline"
-              onClick={async () => {
-                setRetrying(true)
-                try {
-                  await onRetry()
-                } finally {
-                  setRetrying(false)
-                }
-              }}
+              onClick={onRetry}
             >
               {t(($) => $['operation.retry'], { ns: 'common' })}
             </button>

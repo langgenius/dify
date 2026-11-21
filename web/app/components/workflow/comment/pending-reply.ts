@@ -11,13 +11,3 @@ export type ThreadReply = WorkflowCommentReply & {
 }
 
 export const getReplyKey = (reply: ThreadReply) => reply.client_key ?? reply.id
-
-/**
- * Whether a saved reply is the one this thread sent. The backend has no idempotency key for
- * replies, so it is matched by author and text, saved no earlier than a minute before it was
- * sent; a send whose response was lost is recognized this way.
- */
-export const isSavedAs = (sent: ThreadReply, saved: WorkflowCommentReply) =>
-  saved.created_by === sent.created_by &&
-  saved.content === sent.content &&
-  (saved.created_at ?? 0) >= (sent.created_at ?? 0) - 60
