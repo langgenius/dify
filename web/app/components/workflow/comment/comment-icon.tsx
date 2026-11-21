@@ -39,10 +39,35 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const isAuthor = comment.created_by_account?.id === currentUserId
     const [showPreview, setShowPreview] = useState(false)
     const previewOpen = showPreview && !isActive
-    // The preview mounts when it opens and unmounts once its close transition ends, so it
+    // The preview mounts when it opens and unmounts once its close animation finishes, so it
     // can animate both ways without every hovered marker keeping a hidden preview.
     const [previewMounted, setPreviewMounted] = useState(false)
     if (previewOpen && !previewMounted) setPreviewMounted(true)
+    const previewRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+      if (previewOpen || !previewMounted) return
+      const element = previewRef.current
+      let aborted = false
+      const unmount = () => {
+        if (!aborted) setPreviewMounted(false)
+      }
+      // As Base UI does: give the close transition a frame to register, wait for every
+      // animation on the preview, and look again if one is replaced; reopening aborts.
+      const waitForAnimations = () => {
+        if (!element || typeof element.getAnimations !== 'function') return unmount()
+        Promise.all(element.getAnimations().map((animation) => animation.finished)).then(
+          unmount,
+          () => {
+            if (!aborted) waitForAnimations()
+          },
+        )
+      }
+      const frame = requestAnimationFrame(waitForAnimations)
+      return () => {
+        aborted = true
+        cancelAnimationFrame(frame)
+      }
+    }, [previewOpen, previewMounted])
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
@@ -321,15 +346,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         {previewMounted && (
           <div
             data-open={previewOpen || undefined}
-            onTransitionEnd={(event) => {
-              // Opening transitions visibility too; only a finished close unmounts.
-              if (
-                !previewOpen &&
-                event.target === event.currentTarget &&
-                event.propertyName === 'visibility'
-              )
-                setPreviewMounted(false)
-            }}
+            ref={previewRef}
             className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:opacity-0 not-data-open:duration-100 motion-safe:not-data-open:scale-95 starting:opacity-0 motion-safe:starting:scale-95"
             style={{
               left: canvasPosition.x,

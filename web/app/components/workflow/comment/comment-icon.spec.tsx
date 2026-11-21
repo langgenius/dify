@@ -1,6 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -111,9 +111,10 @@ describe('CommentIcon', () => {
     const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')
     expect(preview).toHaveAttribute('data-open')
 
-    // The preview stays mounted once shown so it can animate closed.
+    // The preview stays mounted while it animates closed, then unmounts.
     await user.unhover(within(marker).getByRole('img', { name: 'Alice' }))
     expect(preview).not.toHaveAttribute('data-open')
+    await waitFor(() => expect(screen.queryByText('Hello')).not.toBeInTheDocument())
   })
 
   it('previews on keyboard focus too, and closes the preview with Escape', async () => {
@@ -133,9 +134,10 @@ describe('CommentIcon', () => {
         { name: 'Alice' },
       ),
     )
-    expect(preview).toHaveAttribute('data-open')
+    const hovered = screen.getByText('Hello').closest('[data-role="comment-preview"]')
+    expect(hovered).toHaveAttribute('data-open')
     await user.keyboard('{Escape}')
-    expect(preview).not.toHaveAttribute('data-open')
+    expect(hovered).not.toHaveAttribute('data-open')
   })
 
   it('converts pointer movement through the zoomed canvas before saving the authored position', () => {
