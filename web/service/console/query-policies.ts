@@ -1208,10 +1208,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           workflow: {
             comments: {
               // Collaborators change comments while the editor is closed, and their live
-              // updates reach only an open editor, so every mount reads comments again.
-              get: { queryOptions: { staleTime: 0 } },
+              // updates reach only an open editor, so every mount reads comments again. While
+              // open, live updates keep them current; a read on window focus could land on an
+              // optimistic write.
+              get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
               byCommentId: {
-                get: { queryOptions: { staleTime: 0 } },
+                get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
                 resolve: {
                   post: {
                     // Resolving shows on the comment at once and is put back if it fails. The
