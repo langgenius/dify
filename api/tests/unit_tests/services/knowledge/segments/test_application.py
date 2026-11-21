@@ -1,6 +1,9 @@
-from dataclasses import dataclass
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from threading import Lock
+from typing import Literal, cast
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -15,7 +18,7 @@ from services.knowledge.dataset_access import (
     DatasetAccessSnapshot,
 )
 from services.knowledge.entities.segments import SegmentRecord, SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.resource_scope import DatasetRef, SegmentRef
 from services.knowledge.segments.application import (
     ChildChunkNotFoundError,
     DatasetSegmentApplicationService,
@@ -37,6 +40,7 @@ from services.knowledge.segments.application import (
     SegmentModelGuard,
     SegmentModelProviderError,
     SegmentMutationScope,
+    SegmentMutationService,
     SegmentNotFoundError,
     SegmentPage,
     SegmentPermissionDeniedError,
@@ -504,3 +508,119 @@ def test_shared_writes_do_not_build_segment_detail() -> None:
     assert store.save_segment.call_count == 2
     assert store.save_segment.call_args.args[1]["content"] == "updated"
     store.get_segment.assert_not_called()
+
+
+class DocumentBusyError(Exception):
+    """A concurrent writer already owns this document's creation lease."""
+
+
+@dataclass
+class NamedLocks:
+    """Bounded, real mutual exclusion for application-level port tests."""
+
+    locks: dict[str, Lock] = field(default_factory=dict)
+
+    @contextmanager
+    def lock(self, name: str, *, timeout: int) -> Generator[None]:
+        """Fail immediately on contention instead of waiting for a Redis timeout."""
+        assert timeout > 0
+        lock = self.locks.setdefault(name, Lock())
+        if not lock.acquire(blocking=False):
+            raise DocumentBusyError(name)
+        try:
+            yield
+        finally:
+            lock.release()
+
+
+@dataclass
+class CreationStore:
+    """In-memory implementation of the creation path's persistence capability."""
+
+    rows: dict[SegmentRef, Mapping[str, object]] = field(default_factory=dict)
+    fail_next_write: bool = False
+
+    def save_segment(self, ref: SegmentRef, values: Mapping[str, object], *, create: bool = False) -> None:
+        """Persist a new row, with an optional failure before its commit."""
+        assert create
+        if self.fail_next_write:
+            self.fail_next_write = False
+            raise ValueError("write failed")
+        self.rows[ref] = dict(values)
+
+
+@dataclass
+class CreationIndex:
+    """Keep indexing local; lock coordination is the behavior under test."""
+
+    indexed: set[SegmentRef] = field(default_factory=set)
+
+    def count_tokens(self, dataset: SegmentDatasetRecord, text: str) -> int:
+        """Estimate tokens locally without external model I/O."""
+        assert dataset.indexing_technique == "economy"
+        return len(text.split())
+
+    def create(self, ref: SegmentRef, *, keywords: Sequence[str] | None, attachment_ids: Sequence[str]) -> None:
+        """Index the newly committed segment in memory."""
+        assert not keywords
+        assert not attachment_ids
+        self.indexed.add(ref)
+
+
+def _creation_scope(document_id: str = "document-1") -> SegmentMutationScope:
+    """Return an authorized owner chain without transport or database fixtures."""
+    return SegmentMutationScope(
+        dataset=SegmentDatasetRecord("dataset-1", "workspace-1", "economy", None, None),
+        document=SegmentDocumentRecord(document_id, "dataset-1", "workspace-1", "text_model"),
+    )
+
+
+def _creation_service(store: CreationStore, locks: NamedLocks) -> SegmentMutationService:
+    """Supply the real creation method with local implementations of its ports."""
+    return SegmentMutationService(
+        store=cast(SegmentStore, store),
+        index=cast(SegmentIndex, CreationIndex()),
+        indexing_state=cast(SegmentIndexingState, locks),
+        text_hash=lambda text: text,
+    )
+
+
+def test_single_creation_respects_existing_service_api_batch_lock() -> None:
+    """A batch owner prevents a single request from committing to the same document."""
+    store = CreationStore()
+    locks = NamedLocks()
+    mutations = _creation_service(store, locks)
+    # This key is already used by SegmentService.multi_create_segment.
+    with locks.lock("multi_add_segment_lock_document_id_document-1", timeout=600):
+        with pytest.raises(DocumentBusyError):
+            mutations.create_segment(_creation_scope(), actor_id="account-1", args=SegmentUpdateArgs(content="single"))
+        assert not store.rows
+
+    created = mutations.create_segment(
+        _creation_scope(), actor_id="account-1", args=SegmentUpdateArgs(content="single")
+    )
+    assert store.rows[created]["content"] == "single"
+
+
+def test_batch_lock_does_not_block_another_document() -> None:
+    """Per-document exclusion leaves independent document creation available."""
+    store = CreationStore()
+    locks = NamedLocks()
+    with locks.lock("multi_add_segment_lock_document_id_document-1", timeout=600):
+        created = _creation_service(store, locks).create_segment(
+            _creation_scope("document-2"), actor_id="account-1", args=SegmentUpdateArgs(content="independent")
+        )
+    assert created.document.document_id == "document-2"
+    assert store.rows[created]["content"] == "independent"
+
+
+def test_failed_write_releases_creation_lock() -> None:
+    """A failed commit must not leave the next writer fenced out."""
+    store = CreationStore(fail_next_write=True)
+    locks = NamedLocks()
+    mutations = _creation_service(store, locks)
+    with pytest.raises(ValueError, match="write failed"):
+        mutations.create_segment(_creation_scope(), actor_id="account-1", args=SegmentUpdateArgs(content="first"))
+    assert not store.rows
+    created = mutations.create_segment(_creation_scope(), actor_id="account-1", args=SegmentUpdateArgs(content="retry"))
+    assert store.rows[created]["content"] == "retry"
