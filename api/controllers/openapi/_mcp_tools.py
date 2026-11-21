@@ -17,7 +17,7 @@ from http import HTTPStatus
 from typing import Any, Final
 
 from constants.oauth_bearer import TokenType
-from controllers.openapi._catalog import Bind, CatalogOp, op_registry
+from controllers.openapi._catalog import Bind, CatalogOp, RegisteredOp, op_registry
 from controllers.openapi._mcp_call import (
     FileInputUnsupported,
     OpCall,
@@ -28,7 +28,7 @@ from controllers.openapi._mcp_call import (
     call_op,
 )
 from controllers.openapi.app_start import START_MODES
-from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind
+from controllers.openapi.auth.spec import Effect, Kind
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import STRUCTURED_OUTPUT_MIN_VERSION
 
@@ -97,57 +97,41 @@ class McpCaller:
     protocol_version: str  # the negotiated MCP version, which decides whether results carry structuredContent
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class FoundOps:
-    """The result of ``find_ops``: ``total`` matches before the cut, and the listed ``ops`` after it."""
-
-    total: int
-    ops: list[dict[str, Any]]  # each: {"op", "summary", "effect", "tool"}; "tool" is the call tool for that effect
+# Each rule sees one registered op and the caller's token kind (None if unknown).
+type _HiddenWhen = Callable[[RegisteredOp, TokenType | None], bool]
 
 
-@dataclass(frozen=True, slots=True)
-class _Candidate:
-    """One catalog entry, its handler spec and the caller's token kind (None if unknown)."""
-
-    entry: CatalogOp
-    spec: EndpointSpec
-    token_type: TokenType | None
-
-
-type _HiddenWhen = Callable[[_Candidate], bool]
-
-
-def _hides_streams_and_files(candidate: _Candidate) -> bool:
+def _hides_streams_and_files(registered: RegisteredOp, token_type: TokenType | None) -> bool:
     """Hides ops whose response is a stream or a file: a tool call returns one JSON-text result."""
-    return candidate.entry["kind"] in _HIDDEN_KINDS
+    return registered.entry["kind"] in _HIDDEN_KINDS
 
 
-def _hides_flagged_ops(candidate: _Candidate) -> bool:
+def _hides_flagged_ops(registered: RegisteredOp, token_type: TokenType | None) -> bool:
     """Hides internal and deprecated ops: they are not part of the surface agents should use."""
-    if candidate.entry["internal"]:
+    if registered.entry["internal"]:
         return True
-    return candidate.entry["deprecated"]
+    return registered.entry["deprecated"]
 
 
-def _hides_required_file_input(candidate: _Candidate) -> bool:
+def _hides_required_file_input(registered: RegisteredOp, token_type: TokenType | None) -> bool:
     """Hides ops that cannot run without a file upload: a tool call carries JSON only."""
-    required = set(candidate.entry["input"]["required"])
-    return bool(required & _file_names(candidate.entry))
+    required = set(registered.entry["input"]["required"])
+    return bool(required & _file_names(registered.entry))
 
 
-def _hides_refused_kinds(candidate: _Candidate) -> bool:
+def _hides_refused_kinds(registered: RegisteredOp, token_type: TokenType | None) -> bool:
     """Hides ops the route would refuse for the token kind: its subject, scope or PAT policy answers 403."""
-    if candidate.token_type is None:
+    if token_type is None:
         return False
-    return not candidate.spec.admits(candidate.token_type)
+    return not registered.spec.admits(token_type)
 
 
-_ENTRY_RULES: Final[tuple[_HiddenWhen, ...]] = (
+_RULES: Final[tuple[_HiddenWhen, ...]] = (
     _hides_streams_and_files,
     _hides_flagged_ops,
     _hides_required_file_input,
+    _hides_refused_kinds,
 )
-_RULES: Final[tuple[_HiddenWhen, ...]] = (*_ENTRY_RULES, _hides_refused_kinds)
 
 
 def _file_names(entry: CatalogOp) -> set[str]:
@@ -155,24 +139,17 @@ def _file_names(entry: CatalogOp) -> set[str]:
     return {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
 
 
-def _token_type(token: str | None) -> TokenType | None:
-    """Postcondition: the token kind for the token's prefix; None when there is no token or the prefix is unknown."""
-    if token is None:
-        return None
-    return TokenType.for_token(token)
-
-
 def callable_ops(token: str | None) -> dict[str, CatalogOp]:
     """The catalog entries the bearer's token kind can call.
 
     Precondition: inside a Flask request. Postcondition: the shared entries of the op registry, which the caller
-    must not change. A token with an unknown prefix, or no token, gets every entry that passes the entry rules.
+    must not change. A token with an unknown prefix, or no token, gets every entry that passes the other rules.
     """
-    token_type = _token_type(token)
+    token_type = None if token is None else TokenType.for_token(token)
     return {
         op: registered.entry
         for op, registered in op_registry().items()
-        if not any(rule(_Candidate(registered.entry, registered.spec, token_type)) for rule in _RULES)
+        if not any(rule(registered, token_type) for rule in _RULES)
     }
 
 
@@ -187,12 +164,13 @@ def _matches(words: list[str], op: str, entry: CatalogOp) -> bool:
     return all(word in haystack for word in words)
 
 
-def find_ops(query: str, *, token: str | None) -> FoundOps:
+def find_ops(query: str, *, token: str | None) -> dict[str, Any]:
     """The ops the token can call whose id or summary holds every word of ``query``.
 
-    Precondition: inside a Flask request. Postcondition: matching is case-insensitive
-    and an empty query matches all; results are sorted by op id and cut to
-    ``FIND_LIMIT``; ``total`` counts the matches before the cut.
+    Precondition: inside a Flask request. Postcondition: ``{"total", "ops"}``, each op ``{"op", "summary",
+    "effect", "tool"}`` where "tool" is the call tool for that effect; matching is case-insensitive and an empty
+    query matches all; ops are sorted by op id and cut to ``FIND_LIMIT``; ``total`` counts the matches before
+    the cut.
     """
     words = query.lower().split()
     entries = callable_ops(token)
@@ -206,7 +184,7 @@ def find_ops(query: str, *, token: str | None) -> FoundOps:
         }
         for op in matched[:FIND_LIMIT]
     ]
-    return FoundOps(total=len(matched), ops=ops)
+    return {_TOTAL_KEY: len(matched), _OPS_KEY: ops}
 
 
 def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
@@ -312,20 +290,15 @@ def _error(message: str) -> mcp_types.CallToolResult:
     return mcp_types.CallToolResult(isError=True, content=[mcp_types.TextContent(type=_TEXT_TYPE, text=message)])
 
 
-def _compact(body: Any) -> str:
-    """Postcondition: ``body`` as compact JSON text with non-ASCII characters kept."""
-    return json.dumps(body, separators=(",", ":"), ensure_ascii=False)
-
-
 def _supports_structured_output(protocol_version: str) -> bool:
     """MCP versions are YYYY-MM-DD strings, so lexical order is chronological (as in the app-level server)."""
     return protocol_version >= STRUCTURED_OUTPUT_MIN_VERSION
 
 
 def _json_result(body: Any, *, protocol_version: str, is_error: bool = False) -> mcp_types.CallToolResult:
-    """Postcondition: the body as compact JSON text, or a tool error when the text is above
+    """Postcondition: the body as compact JSON text with non-ASCII kept, or a tool error when the text is above
     ``TOOL_RESULT_MAX_CHARS``; ``structuredContent`` only for a non-error object body on a protocol that has it."""
-    text = _compact(body)
+    text = json.dumps(body, separators=(",", ":"), ensure_ascii=False)
     if len(text) > TOOL_RESULT_MAX_CHARS:
         return _error(
             f"The result is {len(text)} characters, above the {TOOL_RESULT_MAX_CHARS} limit. "
@@ -374,8 +347,7 @@ def _run_find(arguments: Mapping[str, Any], caller: McpCaller) -> mcp_types.Call
     query = arguments.get(_QUERY_KEY, "")
     if not isinstance(query, str):
         return _error("`query` must be a string.")
-    found = find_ops(query, token=caller.token)
-    return _json_result({_TOTAL_KEY: found.total, _OPS_KEY: found.ops}, protocol_version=caller.protocol_version)
+    return _json_result(find_ops(query, token=caller.token), protocol_version=caller.protocol_version)
 
 
 _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] = {

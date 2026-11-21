@@ -21,7 +21,7 @@ from werkzeug.exceptions import RequestEntityTooLarge, Unauthorized
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
-from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER
+from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, JSON_CONTENT_TYPE, TRACE_ID_HEADER
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, McpCaller, Unauthenticated, run_tool, tool_list
 from controllers.openapi.auth.router import admit_bearer
@@ -33,7 +33,6 @@ from services.dsl_content import DSL_MAX_SIZE
 PROTOCOL_VERSION_HEADER: Final = "MCP-Protocol-Version"
 ORIGIN_HEADER: Final = "Origin"
 _ORIGIN_NOT_ALLOWED_MESSAGE: Final = "Origin not allowed"
-JSON_MIMETYPE: Final = "application/json"
 _BODY_ENVELOPE_BYTES: Final = 1024 * 1024
 # The largest JSON op input is a DSL import (DSL_MAX_SIZE) wrapped in a tool call.
 MCP_MAX_BODY_BYTES: Final = DSL_MAX_SIZE + _BODY_ENVELOPE_BYTES
@@ -57,7 +56,7 @@ def _json_response(
     body: Mapping[str, Any], status: int = HTTPStatus.OK, headers: Mapping[str, str] | None = None
 ) -> Response:
     """Postcondition: a JSON response with ``body``, the given status and extra ``headers``."""
-    return Response(json.dumps(body), status=status, mimetype=JSON_MIMETYPE, headers=dict(headers or {}))
+    return Response(json.dumps(body), status=status, mimetype=JSON_CONTENT_TYPE, headers=dict(headers or {}))
 
 
 def _origin_allowed(origin: str) -> bool:
@@ -138,11 +137,6 @@ _HANDLERS: Final[Mapping[type, _Handler]] = {
 }
 
 
-def _unauthorized(error: Unauthenticated) -> Response:
-    """Postcondition: the 401 response with the fixed body and the challenge headers ``error`` carries."""
-    return _json_response(UNAUTHORIZED_BODY, HTTPStatus.UNAUTHORIZED, error.headers)
-
-
 @openapi_ns.route("/mcp")
 class OpenApiMcpApi(Resource):
     """The MCP endpoint: one JSON-RPC message per POST; it is not an operation and is not in the catalog."""
@@ -207,4 +201,4 @@ class OpenApiMcpApi(Resource):
         try:
             return _json_response(handler(call))
         except Unauthenticated as error:
-            return _unauthorized(error)
+            return _json_response(UNAUTHORIZED_BODY, HTTPStatus.UNAUTHORIZED, error.headers)

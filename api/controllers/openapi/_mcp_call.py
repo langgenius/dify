@@ -100,18 +100,6 @@ class _Request:
     body: dict[str, Any] | None
 
 
-def registered_op(op: str) -> RegisteredOp:
-    """The registered op ``op``.
-
-    Precondition: an app context is pushed. Postcondition: the shared entry, spec and rule; raises ``UnknownOp``
-    when the catalog has no such op.
-    """
-    registered = op_registry().get(op)
-    if registered is None:
-        raise UnknownOp(op)
-    return registered
-
-
 def call_op(call: OpCall) -> OpResult:
     """Run ``call.op`` through the app's WSGI stack.
 
@@ -121,7 +109,9 @@ def call_op(call: OpCall) -> OpResult:
     and nothing ran. The outer request's context variables and ``flask.g`` are
     untouched either way.
     """
-    registered = registered_op(call.op)
+    registered = op_registry().get(call.op)
+    if registered is None:
+        raise UnknownOp(call.op)
     method = HTTPMethod(registered.entry["method"])
     built = _split_input(registered.entry, method, call.input)
     _prove_route(registered, method, built.path)

@@ -6,6 +6,7 @@ does not import: a request is tried first, then a notification.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Final, get_args
 
 from pydantic import ValidationError
@@ -55,10 +56,8 @@ def request_id_of(body: Any) -> int | str | None:
     return value
 
 
-def has_id(body: Any) -> bool:
-    """Postcondition: True when ``body`` is an object that carries an ``id`` key."""
-    if not isinstance(body, dict):
-        return False
+def has_id(body: Mapping[str, Any]) -> bool:
+    """Precondition: ``body`` is a JSON object. Postcondition: True when it carries an ``id`` key."""
     return _ID_KEY in body
 
 
@@ -81,16 +80,11 @@ def parse_message(body: Any) -> mcp_types.ClientRequest | mcp_types.ClientNotifi
     if not isinstance(method, str):
         raise McpRequestError(mcp_types.INVALID_REQUEST, "method must be a string")
     if has_id(body):
-        _require_request_id(body[_ID_KEY])
+        if not _is_request_id(body[_ID_KEY]):
+            raise McpRequestError(mcp_types.INVALID_REQUEST, "id must be an integer or a string")
     if method not in _MCP_METHODS:
         raise McpRequestError(mcp_types.METHOD_NOT_FOUND, "Method not found")
     return _read_message(body)
-
-
-def _require_request_id(value: Any) -> None:
-    """Postcondition: returns for a valid request id; raises ``McpRequestError`` with INVALID_REQUEST otherwise."""
-    if not _is_request_id(value):
-        raise McpRequestError(mcp_types.INVALID_REQUEST, "id must be an integer or a string")
 
 
 def _read_message(body: dict[str, Any]) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
@@ -126,6 +120,3 @@ def failure(request_id: int | str | None, code: int, message: str) -> dict[str, 
         _ID_KEY: request_id,
         _ERROR_KEY: error.model_dump(**_DUMP_OPTIONS),
     }
-
-
-__all__ = ["McpRequestError", "failure", "has_id", "parse_message", "request_id_of", "success"]
