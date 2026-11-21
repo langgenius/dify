@@ -158,9 +158,7 @@ function LastLogExport({
     id
   const identities = [
     ...filters.end_user_ids.map((id) => identityLabel(id, 'end-user')),
-    ...('account_ids' in filters
-      ? filters.account_ids.map((id) => identityLabel(id, 'account'))
-      : []),
+    ...(filters.account_ids ?? []).map((id) => identityLabel(id, 'account')),
   ]
 
   const workflow = 'created_at__after' in filters

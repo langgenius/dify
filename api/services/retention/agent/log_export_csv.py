@@ -33,6 +33,7 @@ class AgentLogCsvWriter:
                         "app_type": "New Agent",
                         "agent_id": agent_id,
                         "end_user_id": row.end_user_id,
+                        "account_id": row.account_id,
                         "conversation_id": row.conversation_id,
                         "message_id": row.message_id,
                         "created_at": ensure_naive_utc(row.created_at).replace(tzinfo=UTC).isoformat(),

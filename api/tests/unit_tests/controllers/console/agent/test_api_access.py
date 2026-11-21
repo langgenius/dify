@@ -25,12 +25,12 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
-    AgentLogEndUserOptionsApi,
     AgentLogExportApi,
     AgentLogExportFileApi,
     AgentLogExportLatestApi,
     AgentLogExportPreviewApi,
     AgentLogExportTaskApi,
+    AgentLogIdentityOptionsApi,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
@@ -162,7 +162,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentAppListApi, "/agent")
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
-        api.add_resource(AgentLogEndUserOptionsApi, "/agent/<uuid:agent_id>/logs/identity-options")
+        api.add_resource(AgentLogIdentityOptionsApi, "/agent/<uuid:agent_id>/logs/identity-options")
         api.add_resource(AgentLogExportPreviewApi, "/agent/<uuid:agent_id>/log-exports/preview")
         api.add_resource(AgentLogExportApi, "/agent/<uuid:agent_id>/log-exports")
         api.add_resource(AgentLogExportLatestApi, "/agent/<uuid:agent_id>/log-exports/latest")
@@ -284,7 +284,7 @@ def test_unpublished_cannot_enable_and_foreign_agents_are_not_found(harness: Har
     assert harness.set(foreign_id, True).status_code == HTTPStatus.NOT_FOUND
 
 
-def test_log_end_user_search_requires_a_keyword_and_an_owned_agent(harness: Harness) -> None:
+def test_log_identity_search_requires_a_keyword_and_an_owned_agent(harness: Harness) -> None:
     agent_id, _ = harness.create_agent()
     foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
     path = f"/console/api/agent/{agent_id}/logs/identity-options"
@@ -369,6 +369,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     agent_id, app_id = harness.create_agent()
     foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
     end_user_id, conversation_id, message_id = (str(uuid4()) for _ in range(3))
+    account_conversation_id, account_message_id = (str(uuid4()) for _ in range(2))
     with harness.sessions.begin() as session:
         account = session.get(Account, harness.account_id)
         assert account is not None
@@ -395,16 +396,48 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
                     invoke_from="web-app",
                     created_at=datetime(2026, 7, 23, 7, 30, tzinfo=UTC),
                 ),
+                make_conversation(
+                    conversation_id=account_conversation_id,
+                    app_id=app_id,
+                    mode=AppMode.AGENT,
+                    from_source=ConversationFromSource.CONSOLE,
+                    from_account_id=harness.account_id,
+                ),
+                make_message(
+                    message_id=account_message_id,
+                    app_id=app_id,
+                    conversation_id=account_conversation_id,
+                    query="Check status",
+                    answer="Ready",
+                    message={},
+                    from_source=ConversationFromSource.CONSOLE,
+                    from_account_id=harness.account_id,
+                    invoke_from="explore",
+                    created_at=datetime(2026, 7, 23, 7, 40, tzinfo=UTC),
+                ),
             ]
         )
 
-    base = f"/console/api/agent/{agent_id}/log-exports"
+    agent_url = f"/console/api/agent/{agent_id}"
+    base = f"{agent_url}/log-exports"
+    account_logs = harness.client.get(
+        f"{agent_url}/logs", headers=harness.headers, query_string={"account_ids[0]": harness.account_id}
+    )
+    assert account_logs.status_code == HTTPStatus.OK
+    assert [row["account_id"] for row in account_logs.json["data"]] == [harness.account_id]
+    preview = harness.client.get(
+        f"{base}/preview",
+        headers=harness.headers,
+        query_string={"end_user_ids": end_user_id, "account_ids[0]": harness.account_id},
+    )
+    assert (preview.status_code, preview.json) == (HTTPStatus.OK, {"counts": {"log_count": 2, "row_count": 2}})
     response = harness.client.post(
         base,
         headers=harness.headers,
         json={
             "sources": [f"webapp:{app_id}"],
             "end_user_ids": [end_user_id],
+            "account_ids": [harness.account_id],
             "start": "2026-07-23 15:00",
             "end": "2026-07-23 16:00",
         },
@@ -420,6 +453,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert task.requested_by == harness.account_id
     assert task.filters.sources == (f"webapp:{app_id}",)
     assert task.filters.end_user_ids == (end_user_id,)
+    assert task.filters.account_ids == (harness.account_id,)
     assert task.filters.start == datetime(2026, 7, 23, 7, tzinfo=UTC)
     assert task.filters.end == datetime(2026, 7, 23, 8, tzinfo=UTC)
     assert task.expires_at - task.created_at == timedelta(days=1)
@@ -443,13 +477,18 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     ready = AgentLogExportTask.model_validate_json(saved[task_key][1])
     assert ready.status is LogExportStatus.READY
     assert ready.storage_key == f"agent-log-exports/{harness.tenant_id}/{agent_id}/{task_id}.csv"
-    (row,) = uploaded[ready.storage_key]
+    rows = {row["message_id"]: row for row in uploaded[ready.storage_key]}
+    assert rows.keys() == {message_id, account_message_id}
+    row = rows[message_id]
     assert (row["agent_id"], row["message_id"], row["end_user_id"], row["app_response"]) == (
         agent_id,
         message_id,
         "customer-001",
         "Review the report.",
     )
+    assert row["account_id"] == ""
+    assert rows[account_message_id]["account_id"] == harness.account_id
+    assert rows[account_message_id]["end_user_id"] == ""
     save_file.assert_called_once()
     status = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
     assert (status.status_code, status.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "ready"})
@@ -484,7 +523,7 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
 
     latest = harness.client.get(f"{path}/latest", headers=harness.headers)
     assert (latest.status_code, latest.json) == (HTTPStatus.OK, {"task": None})
-    cache[task_prefix + task.task_id] = task.model_dump_json()
+    cache[task_prefix + task.task_id] = task.model_dump_json(exclude={"filters": {"account_ids"}})
     cache[latest_prefix + harness.account_id] = task.task_id
     latest = harness.client.get(f"{path}/latest", headers=harness.headers)
     assert latest.status_code == HTTPStatus.OK
@@ -496,6 +535,7 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
             "filters": {
                 "sources": ["webapp"],
                 "end_user_ids": [end_user_id],
+                "account_ids": [],
                 "start": "2026-07-23T07:00:00Z",
                 "end": None,
             },

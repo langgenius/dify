@@ -472,6 +472,7 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
  * Submit the same unpaginated filters used by the export preview.
  */
 export const zAgentLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   end: z.string().nullish(),
   end_user_ids: z.array(z.uuid()).optional(),
   sources: z.array(z.string()).optional(),
@@ -1393,19 +1394,19 @@ export const zAgentLogListResponse = z.object({
 })
 
 /**
- * AgentLogEndUserOptionResponse
+ * AgentLogIdentityOptionResponse
  */
-export const zAgentLogEndUserOptionResponse = z.object({
+export const zAgentLogIdentityOptionResponse = z.object({
   id: z.string(),
   label: z.string(),
-  source: z.literal('end-user'),
+  source: z.enum(['account', 'end-user']),
 })
 
 /**
- * AgentLogEndUserSearchResponse
+ * AgentLogIdentitySearchResponse
  */
-export const zAgentLogEndUserSearchResponse = z.object({
-  data: z.array(zAgentLogEndUserOptionResponse),
+export const zAgentLogIdentitySearchResponse = z.object({
+  data: z.array(zAgentLogIdentityOptionResponse),
 })
 
 export const zAnyJsonValue = z.unknown()
@@ -1941,6 +1942,7 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
  * AgentLogExportFilters
  */
 export const zAgentLogExportFilters = z.object({
+  account_ids: z.array(z.string()).optional().default([]),
   end: z.iso.datetime().nullable(),
   end_user_ids: z.array(z.string()),
   sources: z.array(z.string()),
@@ -4643,6 +4645,7 @@ export const zGetAgentByAgentIdLogExportsPreviewPath = z.object({
 })
 
 export const zGetAgentByAgentIdLogExportsPreviewQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   end: z.string().optional(),
   end_user_ids: z.array(z.uuid()).optional(),
   sources: z.array(z.string()).optional(),
@@ -4688,6 +4691,7 @@ export const zGetAgentByAgentIdLogsPath = z.object({
 })
 
 export const zGetAgentByAgentIdLogsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   end: z.string().optional(),
   end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
@@ -4716,9 +4720,9 @@ export const zGetAgentByAgentIdLogsIdentityOptionsQuery = z.object({
 })
 
 /**
- * Matching end users
+ * Matching identities
  */
-export const zGetAgentByAgentIdLogsIdentityOptionsResponse = zAgentLogEndUserSearchResponse
+export const zGetAgentByAgentIdLogsIdentityOptionsResponse = zAgentLogIdentitySearchResponse
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
   agent_id: z.uuid(),
@@ -4726,6 +4730,7 @@ export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
 })
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   end: z.string().optional(),
   end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),

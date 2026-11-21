@@ -36,7 +36,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.logSources.get': mocks.sources,
       'agent.byAgentId.logs.get': mocks.logs,
       'agent.byAgentId.logs.identityOptions.get': async () => ({
-        data: [{ id: 'end-user-1', label: 'customer-001', source: 'end-user' }],
+        data: [
+          { id: 'end-user-1', label: 'customer-001', source: 'end-user' },
+          { id: 'account-1', label: 'operator-001', source: 'account' },
+        ],
       }),
       'agent.byAgentId.logExports.latest.get': mocks.latest,
       'agent.byAgentId.logExports.preview.get': mocks.preview,
@@ -94,7 +97,7 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
     const controls = [
       screen.getByRole('combobox', { name: 'Last 7 days' }),
       screen.getByRole('combobox', { name: 'Log source' }),
-      screen.getByRole('combobox', { name: 'End-user' }),
+      screen.getByRole('combobox', { name: 'End User or Account' }),
       screen.getByRole('searchbox', { name: 'Search logs' }),
       screen.getByRole('button', { name: /Sort by:/ }),
     ]
@@ -128,8 +131,21 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
   }
 })
 
-it('uses the selected End User for the list, CSV preview, and export task', async () => {
-  mocks.logs.mockResolvedValue(emptyLogs)
+it('uses both selected identity types for the list, CSV preview, and export task', async () => {
+  mocks.logs.mockResolvedValue({
+    ...emptyLogs,
+    data: [
+      {
+        id: 'account-log',
+        conversation_id: 'account-log',
+        account_id: 'account-1',
+        message_count: 1,
+        unread: false,
+        status: 'success',
+      },
+    ],
+    total: 1,
+  } satisfies AgentLogListResponse)
   mocks.sources.mockResolvedValue(emptySources)
   mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 2 } })
   mocks.create.mockResolvedValue({ task_id: 'test-export', status: 'pending' })
@@ -152,23 +168,22 @@ it('uses the selected End User for the list, CSV preview, and export task', asyn
     )
     const exportButton = screen.getByRole('button', { name: 'Export logs' })
     await expect.element(exportButton).toBeVisible()
-    await screen.getByRole('combobox', { name: 'End-user' }).click()
+    await expect.element(screen.getByRole('cell', { name: 'account-1' })).toBeVisible()
+    await screen.getByRole('combobox', { name: 'End User or Account' }).click()
     const search = screen.getByRole('combobox', { name: 'Search', exact: true })
     await search.fill('001')
     await screen.getByRole('option', { name: 'customer-001' }).click()
     await expect.element(search).toBeVisible()
+    await screen.getByRole('option', { name: 'operator-001' }).click()
+    const identities = { end_user_ids: ['end-user-1'], account_ids: ['account-1'] }
     await exportButton.click()
-    await expect
-      .poll(() => mocks.logs.mock.lastCall?.[0].query.end_user_ids)
-      .toEqual(['end-user-1'])
+    await expect.poll(() => mocks.logs.mock.lastCall?.[0].query).toMatchObject(identities)
 
     const dialog = screen.getByRole('dialog', { name: 'Export logs' })
     await expect.element(dialog.getByText('Logs 1 · CSV rows 2.')).toBeVisible()
-    expect(mocks.preview.mock.lastCall?.[0].query.end_user_ids).toEqual(['end-user-1'])
+    expect(mocks.preview.mock.lastCall?.[0].query).toMatchObject(identities)
     await dialog.getByRole('button', { name: 'Export as CSV' }).click()
-    await expect
-      .poll(() => mocks.create.mock.lastCall?.[0].body.end_user_ids)
-      .toEqual(['end-user-1'])
+    await expect.poll(() => mocks.create.mock.lastCall?.[0].body).toMatchObject(identities)
   } finally {
     queryClient.clear()
   }

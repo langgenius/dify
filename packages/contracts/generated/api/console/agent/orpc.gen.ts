@@ -1317,7 +1317,7 @@ export const logSources = {
 }
 
 /**
- * Return matching end users with visible logs in the admitted Agent's WebApp or Workflow sources
+ * Return matching identities with visible logs in the admitted Agent's WebApp or Workflow sources
  */
 export const get24 = oc
   .route({
@@ -1326,7 +1326,7 @@ export const get24 = oc
     operationId: 'getAgentByAgentIdLogsIdentityOptions',
     path: '/agent/{agent_id}/logs/identity-options',
     summary:
-      "Return matching end users with visible logs in the admitted Agent's WebApp or Workflow sources",
+      "Return matching identities with visible logs in the admitted Agent's WebApp or Workflow sources",
     tags: ['console'],
   })
   .input(

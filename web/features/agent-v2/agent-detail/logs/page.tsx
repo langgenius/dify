@@ -115,12 +115,12 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
     placeholderData: keepPreviousData,
   })
   const logs = logsQuery.data?.data ?? []
-  const endUserIds = new Set(logs.flatMap(({ end_user_id }) => (end_user_id ? [end_user_id] : [])))
-  const identityOptions: LogIdentity[] = [...endUserIds].map((id) => ({
-    id,
-    label: id,
-    source: 'end-user',
-  }))
+  const identityOptions = logs.flatMap(({ end_user_id, account_id }): LogIdentity[] => {
+    const identities: LogIdentity[] = []
+    if (end_user_id) identities.push({ id: end_user_id, label: end_user_id, source: 'end-user' })
+    if (account_id) identities.push({ id: account_id, label: account_id, source: 'account' })
+    return identities
+  })
   const sourcePicker = {
     groups: logSourcesQuery.data?.groups ?? [],
     isLoading: logSourcesQuery.isPending,

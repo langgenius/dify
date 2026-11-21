@@ -25,16 +25,18 @@ class AgentLogQuery:
     start: str | None
     end: str | None
     end_user_ids: tuple[str, ...] = ()
+    account_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AgentLogExportQuery:
-    """Filter export rows by source, end user, and optional account-local time bounds."""
+    """Filter export rows by source, identity, and optional account-local time bounds."""
 
     sources: tuple[str, ...]
     end_user_ids: tuple[str, ...]
     start: str | None
     end: str | None
+    account_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -45,6 +47,7 @@ class AgentLogExportFilters:
     end_user_ids: tuple[str, ...]
     start: datetime | None
     end: datetime | None
+    account_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +70,7 @@ class AgentLogExportRow:
     status: str
     feedback_rating: str | None
     feedback_content: str | None
+    account_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -93,10 +97,10 @@ class AgentObservability(Protocol):
         """Return the Agent's available runtime sources."""
         ...
 
-    def search_log_end_users(
+    def search_log_identities(
         self, context: RequestContext, agent_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Return up to 20 end users with logs for the admitted Agent.
+        """Return up to 20 identities of each type with logs for the admitted Agent.
 
         Require a nonblank keyword. Match the visible label by substring or the
         full internal ID. Raise AgentObservabilityNotFoundError for an unavailable Agent.

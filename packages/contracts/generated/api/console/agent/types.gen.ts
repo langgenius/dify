@@ -451,6 +451,7 @@ export type MessageFeedbackRatingRequiredError = ErrorResponse & {
 }
 
 export type AgentLogExportCreatePayload = {
+  account_ids?: Array<string>
   end?: string | null
   end_user_ids?: Array<string>
   sources?: Array<string>
@@ -515,8 +516,8 @@ export type AgentLogListResponse = {
   total: number
 }
 
-export type AgentLogEndUserSearchResponse = {
-  data: Array<AgentLogEndUserOptionResponse>
+export type AgentLogIdentitySearchResponse = {
+  data: Array<AgentLogIdentityOptionResponse>
 }
 
 export type AgentLogMessageListResponse = {
@@ -1263,10 +1264,10 @@ export type AgentLogConversationItemResponse = {
   user_rate?: number | null
 }
 
-export type AgentLogEndUserOptionResponse = {
+export type AgentLogIdentityOptionResponse = {
   id: string
   label: string
-  source: 'end-user'
+  source: 'account' | 'end-user'
 }
 
 export type AgentLogMessageItemResponse = {
@@ -1888,6 +1889,7 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
 }
 
 export type AgentLogExportFilters = {
+  account_ids?: Array<string>
   end: string | null
   end_user_ids: Array<string>
   sources: Array<string>
@@ -4003,6 +4005,7 @@ export type GetAgentByAgentIdLogExportsPreviewData = {
     agent_id: string
   }
   query?: {
+    account_ids?: Array<string>
     end?: string
     end_user_ids?: Array<string>
     sources?: Array<string>
@@ -4115,6 +4118,7 @@ export type GetAgentByAgentIdLogsData = {
     agent_id: string
   }
   query?: {
+    account_ids?: Array<string>
     end?: string
     end_user_ids?: Array<string>
     keyword?: string
@@ -4167,7 +4171,7 @@ export type GetAgentByAgentIdLogsIdentityOptionsError =
   GetAgentByAgentIdLogsIdentityOptionsErrors[keyof GetAgentByAgentIdLogsIdentityOptionsErrors]
 
 export type GetAgentByAgentIdLogsIdentityOptionsResponses = {
-  200: AgentLogEndUserSearchResponse
+  200: AgentLogIdentitySearchResponse
 }
 
 export type GetAgentByAgentIdLogsIdentityOptionsResponse =
@@ -4180,6 +4184,7 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
     conversation_id: string
   }
   query?: {
+    account_ids?: Array<string>
     end?: string
     end_user_ids?: Array<string>
     keyword?: string

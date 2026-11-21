@@ -160,19 +160,15 @@ export function LogIdentityField(
   props: LogIdentityPickerProps &
     LogIdentitySearchTarget & { showLabel?: boolean; applyOnClose?: boolean },
 ) {
-  const { agentId, options, value, onChange, disabled, showLabel, applyOnClose } = props
-  const { t } = useTranslation(['appLog', 'common', 'agentV2'])
+  const { options, value, onChange, disabled, showLabel, applyOnClose } = props
+  const { t } = useTranslation(['appLog', 'common'])
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<LogIdentity[] | null>(null)
   const selected = draft ?? value
   const firstSelected = selected[0]
   const { matches, searching, failed } = useLogIdentityMatches(props, options, selected, search)
-  const label = agentId
-    ? t(($) => $['agentDetail.logs.table.endUser'], { ns: 'agentV2' })
-    : t(($) => $['table.header.endUser'], { ns: 'appLog' })
-  const placeholder = showLabel
-    ? t(($) => $[agentId ? 'export.agentIdentitiesAll' : 'export.identitiesAll'], { ns: 'appLog' })
-    : label
+  const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
+  const placeholder = showLabel ? t(($) => $['export.identitiesAll'], { ns: 'appLog' }) : label
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
   const selectionDescription =
     selected.length > 1

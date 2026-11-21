@@ -222,6 +222,7 @@ class AgentLogsQuery(BaseModel):
         ),
     )
     end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
+    account_ids: list[UUID] = Field(default_factory=list, description="Include logs from these workspace accounts")
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
     sort_order: str = Field(default="desc", description="Sort order: asc or desc")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
@@ -282,6 +283,7 @@ class AgentStatisticsQuery(BaseModel):
 class AgentLogExportPreviewQuery(BaseModel):
     sources: list[str] = Field(default_factory=list, description="Source IDs from the Agent Logs filters")
     end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
+    account_ids: list[UUID] = Field(default_factory=list, description="Include logs from these workspace accounts")
     start: str | None = Field(
         default=None, description="Inclusive start time in the account timezone (YYYY-MM-DD HH:MM)"
     )
@@ -304,6 +306,7 @@ class AgentLogExportPreviewQuery(BaseModel):
         return AgentLogExportQuery(
             sources=tuple(self.sources),
             end_user_ids=tuple(str(user_id) for user_id in self.end_user_ids),
+            account_ids=tuple(str(account_id) for account_id in self.account_ids),
             start=self.start,
             end=self.end,
         )
@@ -315,20 +318,20 @@ class AgentLogExportCreatePayload(AgentLogExportPreviewQuery):
     model_config = ConfigDict(extra="forbid")
 
 
-class AgentLogEndUserSearchQuery(BaseModel):
+class AgentLogIdentitySearchQuery(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    keyword: str = Field(min_length=1, max_length=255, description="Part of the end-user label or a full internal ID")
+    keyword: str = Field(min_length=1, max_length=255, description="Part of an identity label or a full internal ID")
 
 
-class AgentLogEndUserOptionResponse(ResponseModel):
+class AgentLogIdentityOptionResponse(ResponseModel):
     id: str
     label: str
-    source: Literal["end-user"]
+    source: Literal["end-user", "account"]
 
 
-class AgentLogEndUserSearchResponse(ResponseModel):
-    data: list[AgentLogEndUserOptionResponse]
+class AgentLogIdentitySearchResponse(ResponseModel):
+    data: list[AgentLogIdentityOptionResponse]
 
 
 class AgentLogExportCountsResponse(ResponseModel):
@@ -498,7 +501,7 @@ register_response_schema_models(
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
-    AgentLogEndUserSearchResponse,
+    AgentLogIdentitySearchResponse,
     AgentLogListResponse,
     AgentLogExportPreviewResponse,
     AgentLogExportTaskResponse,
@@ -1093,6 +1096,7 @@ def _agent_log_query() -> AgentLogQuery:
     query_data["sources"] = _query_values("sources", "source")
     query_data["statuses"] = _query_values("statuses", "status")
     query_data["end_user_ids"] = _query_values("end_user_ids")
+    query_data["account_ids"] = _query_values("account_ids")
     query = AgentLogsQuery.model_validate(query_data)
     return AgentLogQuery(
         page=query.page,
@@ -1101,6 +1105,7 @@ def _agent_log_query() -> AgentLogQuery:
         statuses=tuple(query.statuses),
         sources=tuple(query.sources),
         end_user_ids=tuple(str(end_user_id) for end_user_id in query.end_user_ids),
+        account_ids=tuple(str(account_id) for account_id in query.account_ids),
         sort_by=query.sort_by,
         sort_order=query.sort_order,
         start=query.start,
@@ -1127,22 +1132,24 @@ class AgentLogsApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/identity-options")
-class AgentLogEndUserOptionsApi(Resource):
+class AgentLogIdentityOptionsApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.doc("search_agent_log_end_users", params=query_params_from_model(AgentLogEndUserSearchQuery))
-    @console_ns.response(HTTPStatus.OK, "Matching end users", console_ns.models[AgentLogEndUserSearchResponse.__name__])
+    @console_ns.doc("search_agent_log_identities", params=query_params_from_model(AgentLogIdentitySearchQuery))
+    @console_ns.response(
+        HTTPStatus.OK, "Matching identities", console_ns.models[AgentLogIdentitySearchResponse.__name__]
+    )
     @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid keyword")
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
     def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
-        """Return matching end users with visible logs in the admitted Agent's WebApp or Workflow sources."""
-        query = validate_request(AgentLogEndUserSearchQuery)
+        """Return matching identities with visible logs in the admitted Agent's WebApp or Workflow sources."""
+        query = validate_request(AgentLogIdentitySearchQuery)
         try:
-            matches = application_services().agent_observability.search_log_end_users(
+            matches = application_services().agent_observability.search_log_identities(
                 context, str(agent_id), keyword=query.keyword
             )
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
-        return dump_response(AgentLogEndUserSearchResponse, {"data": matches})
+        return dump_response(AgentLogIdentitySearchResponse, {"data": matches})
 
 
 def _require_agent_log_export_access(context: RequestContext) -> None:
@@ -1169,6 +1176,7 @@ class AgentLogExportPreviewApi(Resource):
             {
                 "sources": _query_values("sources"),
                 "end_user_ids": _query_values("end_user_ids"),
+                "account_ids": _query_values("account_ids"),
                 "start": request.args.get("start"),
                 "end": request.args.get("end"),
             }

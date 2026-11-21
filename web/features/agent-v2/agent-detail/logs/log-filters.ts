@@ -2,6 +2,7 @@ import type { GetAgentByAgentIdLogExportsPreviewData } from '@dify/contracts/api
 import type { SourceFilterValue } from './components/source-picker'
 import type { LogIdentity } from '@/app/components/app/log/log-filters'
 import dayjs from 'dayjs'
+import { logIdentityFilters } from '@/app/components/app/log/log-filters'
 
 export const agentLogPeriods = ['last7days', 'last30days', 'allTime'] as const
 
@@ -30,6 +31,6 @@ export function toAgentLogQuery({
       end: now.add(1, 'minute').format(format),
     }),
     ...(sources.length > 0 && { sources }),
-    ...(identities.length > 0 && { end_user_ids: identities.map(({ id }) => id) }),
+    ...logIdentityFilters(identities),
   }
 }

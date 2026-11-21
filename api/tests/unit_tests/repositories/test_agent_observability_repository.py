@@ -16,6 +16,7 @@ from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
+from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentScope, AgentSource, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
@@ -47,7 +48,7 @@ from services.agent.observability_contracts import AgentLogExportCounts, AgentLo
 from services.entities.conversation_entities import ConsoleLogIdentity
 from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 
 def _agent_observability_service_app(
@@ -549,6 +550,9 @@ class TestAgentObservabilityQueriesCases:
             }
         )
         execution.outputs = '{"output":"Workflow answer"}'
+        account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
+        account_execution.created_by_role = CreatorUserRole.ACCOUNT
+        account_execution.created_by = "account-1"
         old_feedback = _feedback(rating=FeedbackRating.DISLIKE)
         old_feedback.updated_at = timestamp
         latest_feedback = _feedback(content="Useful, thanks!\nI have a follow-up.")
@@ -570,6 +574,7 @@ class TestAgentObservabilityQueriesCases:
                     _agent_observability_service_workflow_run(),
                     _agent_observability_service_workflow_binding(),
                     execution,
+                    account_execution,
                 ]
             )
         logs = SQLAlchemyAgentObservabilityRepository(session_factory=sqlite_session_factory)
@@ -584,22 +589,25 @@ class TestAgentObservabilityQueriesCases:
                 "workflow:workflow-app-1:workflow-1:v1:node-1",
             ),
             end_user_ids=("end-user-1",),
+            account_ids=("account-1",),
             start="2026-07-23 07:00",
             end="2026-07-23 07:01",
         )
-        assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=2, row_count=2)
+        assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=3, row_count=3)
         resolved_filters = logs.resolve_log_export_filters(context, agent.id, filters)
         output = StringIO(newline="")
-        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 2
+        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 3
         assert output.getvalue().startswith("\ufeff")
-        rows = {row["source"]: row for row in csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))}
+        rows = {row["message_id"]: row for row in csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))}
 
-        assert rows.keys() == {"WebApp", "Workflow"}
+        assert rows.keys() == {message.id, execution.id, account_execution.id}
+        assert rows[message.id]["source"] == "WebApp"
+        assert rows[execution.id]["source"] == rows[account_execution.id]["source"] == "Workflow"
         assert all(
             row["agent_id"] == agent.id and row["app_id"] == "" and row["app_type"] == "New Agent"
             for row in rows.values()
         )
-        webapp = rows["WebApp"]
+        webapp = rows[message.id]
         assert webapp["end_user_id"] == "customer-001"
         assert webapp["message_id"] == message.id
         assert webapp["conversation_id"] == message.conversation_id
@@ -608,15 +616,17 @@ class TestAgentObservabilityQueriesCases:
         assert webapp["app_response"] == "hi"
         assert webapp["feedback_rating"] == "like"
         assert webapp["feedback_content"] == "Useful, thanks!\nI have a follow-up."
-        workflow = rows["Workflow"]
+        workflow = rows[execution.id]
         assert workflow["end_user_id"] == "customer-001"
         assert workflow["conversation_id"] == workflow["message_id"] == execution.id
         assert workflow["user_input"] == "Workflow question"
         assert workflow["app_response"] == "Workflow answer"
         assert workflow["feedback_rating"] == workflow["feedback_content"] == ""
+        assert rows[account_execution.id]["account_id"] == "account-1"
+        assert rows[account_execution.id]["end_user_id"] == ""
 
     @staticmethod
-    def test_search_log_end_users_matches_both_sources_and_excludes_unrelated_identities(
+    def test_search_log_identities_matches_both_sources_and_excludes_unrelated_identities(
         sqlite_session: Session,
     ) -> None:
         app = _agent_observability_service_app()
@@ -624,7 +634,9 @@ class TestAgentObservabilityQueriesCases:
         web_user = make_end_user(end_user_id="d653b0af-e245-4d40-9dcc-5581459c0d5d", session_id="customer-001")
         workflow_user = make_end_user(end_user_id="workflow-user", session_id="workflow-001")
         debug_user = make_end_user(end_user_id="debug-user", session_id="debug-001")
-        account_user = make_end_user(end_user_id="account-user", session_id="account-001")
+        account = make_account(account_id="fb08850e-415d-4dd0-9daf-47ef2d146791", name="Operator-001")
+        account_user = make_end_user(end_user_id=account.id, session_id="account-001")
+        foreign_account = make_account(account_id="foreign-account", name="Foreign-001", email="foreign@example.com")
         foreign_user = make_end_user(end_user_id="foreign-user", tenant_id="other-tenant", session_id="foreign-001")
         unrelated_user = make_end_user(end_user_id="unrelated-user", session_id="unrelated-001")
 
@@ -638,10 +650,12 @@ class TestAgentObservabilityQueriesCases:
         debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
 
         executions = []
-        for user in (web_user, workflow_user, account_user, foreign_user):
+        for user in (web_user, workflow_user, account_user, foreign_user, foreign_account):
             execution = _agent_observability_service_node_execution(execution_id=f"execution-{user.id}")
             execution.created_by = user.id
-            execution.created_by_role = CreatorUserRole.ACCOUNT if user is account_user else CreatorUserRole.END_USER
+            execution.created_by_role = (
+                CreatorUserRole.ACCOUNT if user is account_user or user is foreign_account else CreatorUserRole.END_USER
+            )
             executions.append(execution)
         sqlite_session.add_all(
             [
@@ -650,7 +664,10 @@ class TestAgentObservabilityQueriesCases:
                 web_user,
                 workflow_user,
                 debug_user,
+                account,
+                TenantAccountJoin(tenant_id=app.tenant_id, account_id=account.id, role=TenantAccountRole.NORMAL),
                 account_user,
+                foreign_account,
                 foreign_user,
                 unrelated_user,
                 web_conversation,
@@ -666,11 +683,17 @@ class TestAgentObservabilityQueriesCases:
         queries = AgentObservabilityQueries(sqlite_session)
         web_option = ConsoleLogIdentity(web_user.id, "customer-001", "end-user")
         workflow_option = ConsoleLogIdentity(workflow_user.id, "workflow-001", "end-user")
+        account_option = ConsoleLogIdentity(account.id, account.name, "account")
 
-        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="001") == (web_option, workflow_option)
-        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="CUSTOMER") == (web_option,)
-        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword=web_user.id) == (web_option,)
-        assert queries.search_log_end_users(app=app, agent_id="agent-1", keyword="%") == ()
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="001") == (
+            web_option,
+            workflow_option,
+            account_option,
+        )
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="CUSTOMER") == (web_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword=web_user.id) == (web_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword=account.id) == (account_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="%") == ()
 
     @staticmethod
     def test_list_webapp_conversation_logs_includes_feedback_rates(sqlite_session: Session) -> None:
