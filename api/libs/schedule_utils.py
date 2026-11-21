@@ -49,9 +49,31 @@ def calculate_next_run_at(
     base_time_tz = base_time.astimezone(tz)
     cron = croniter(cron_expression, base_time_tz)
     next_run_tz = cron.get_next(datetime)
+    # When clocks fall back, a fixed-time job would match the repeated hour a
+    # second time. Like cron, run it only on the first pass.
+    if _runs_at_fixed_time(cron_expression):
+        while _is_repeated_wall_time(next_run_tz, tz):
+            next_run_tz = cron.get_next(datetime)
     next_run_utc = next_run_tz.astimezone(UTC)
 
     return next_run_utc
+
+
+def _runs_at_fixed_time(cron_expression: str) -> bool:
+    """Return whether neither the minute nor the hour field is a wildcard, as cron decides."""
+    expression = cron_expression.strip().lower()
+    if expression.startswith("@"):
+        return expression != "@hourly"
+    minute, hour = expression.split()[:2]
+    return not minute.startswith("*") and not hour.startswith("*")
+
+
+def _is_repeated_wall_time(moment: datetime, tz: ZoneInfo) -> bool:
+    """Return whether ``moment`` is the second occurrence of an ambiguous local time."""
+    wall_time = moment.astimezone(tz).replace(tzinfo=None)
+    first = wall_time.replace(tzinfo=tz, fold=0)
+    second = wall_time.replace(tzinfo=tz, fold=1)
+    return first.utcoffset() != second.utcoffset() and moment.astimezone(UTC) == second.astimezone(UTC)
 
 
 def convert_12h_to_24h(time_str: str) -> tuple[int, int]:

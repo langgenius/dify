@@ -679,6 +679,49 @@ class TestDstTransitionRegression(unittest.TestCase):
         local_time = result.astimezone(ZoneInfo("Europe/Dublin"))
         assert (local_time.hour, local_time.minute) == (2, 0)
 
+    def test_fall_back_does_not_repeat_fixed_time_jobs(self):
+        """A daily job inside the repeated hour runs once, on its first occurrence."""
+        # America/New_York falls back on 2026-11-01 and Europe/Berlin on
+        # 2026-10-25, so 01:00 and 02:30 local happen twice on those days.
+        test_cases = [
+            (
+                "0 1 * * *",
+                "America/New_York",
+                datetime(2026, 11, 1, 5, 0, 30, tzinfo=UTC),
+                datetime(2026, 11, 2, 6, 0, tzinfo=UTC),
+            ),
+            (
+                "30 2 * * *",
+                "Europe/Berlin",
+                datetime(2026, 10, 25, 0, 30, 30, tzinfo=UTC),
+                datetime(2026, 10, 26, 1, 30, tzinfo=UTC),
+            ),
+            (
+                "0 1 * * SUN",
+                "America/New_York",
+                datetime(2026, 11, 1, 5, 0, 30, tzinfo=UTC),
+                datetime(2026, 11, 8, 6, 0, tzinfo=UTC),
+            ),
+        ]
+
+        for expr, timezone, last_run, expected in test_cases:
+            with self.subTest(timezone=timezone, expr=expr):
+                assert calculate_next_run_at(expr, timezone, last_run) == expected
+
+    def test_fall_back_keeps_wildcard_hour_jobs_running(self):
+        """Jobs with a wildcard hour or minute keep running through the repeated hour."""
+        # 05:30 UTC is 01:30 EDT; the next half hour is 01:00 EST (06:00 UTC).
+        base_time = datetime(2026, 11, 1, 5, 30, 30, tzinfo=UTC)
+        assert calculate_next_run_at("0 * * * *", "America/New_York", base_time) == datetime(
+            2026, 11, 1, 6, 0, tzinfo=UTC
+        )
+        assert calculate_next_run_at("@hourly", "America/New_York", base_time) == datetime(
+            2026, 11, 1, 6, 0, tzinfo=UTC
+        )
+        assert calculate_next_run_at("* 1 * * *", "America/New_York", base_time) == datetime(
+            2026, 11, 1, 5, 31, tzinfo=UTC
+        )
+
 
 class TestErrorHandlingEnhanced(unittest.TestCase):
     """Test error handling for enhanced syntax."""
