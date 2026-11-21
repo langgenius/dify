@@ -371,29 +371,38 @@ class DatasetSegmentApplicationService:
         segment_ids: Sequence[str],
         action: Literal["enable", "disable"],
     ) -> None:
+        """Apply the requested status and dispatch index reconciliation.
+
+        Requires an accessible document that is not being indexed. Segments
+        currently being indexed are excluded. A matching persisted status does
+        not prove that a previous dispatch succeeded, so explicit retries must
+        dispatch again. On dispatch failure the desired status remains persisted
+        and the caller receives SegmentStatusUpdateError and can retry.
+        """
         scope = self._require_scope(context, dataset_id=dataset_id, document_id=document_id)
         self._check_dataset_model(scope.dataset)
         self._check_embedding_model(scope.dataset)
         if self._indexing_state.is_document_indexing(scope.document.id):
             raise SegmentDocumentIndexingError("Document is being indexed, please try again later")
         try:
-            segments = self._store.get_segments(scope.document.ref, segment_ids)
-            ids = []
-            for segment in segments:
-                if segment.enabled == (action == "enable") or self._indexing_state.is_segment_indexing(segment.id):
-                    continue
-                ids.append(segment.id)
-            if ids:
+            segments = [
+                segment
+                for segment in self._store.get_segments(scope.document.ref, segment_ids)
+                if not self._indexing_state.is_segment_indexing(segment.id)
+            ]
+            changed_ids = [segment.id for segment in segments if segment.enabled != (action == "enable")]
+            if changed_ids:
                 self._store.set_segments(
                     scope.document.ref,
-                    ids,
+                    changed_ids,
                     {
                         "enabled": action == "enable",
                         "disabled_at": naive_utc_now() if action == "disable" else None,
                         "disabled_by": context.account_id if action == "disable" else None,
                     },
                 )
-                self._index.change_status(scope.document.ref, ids, action)
+            if segments:
+                self._index.change_status(scope.document.ref, [segment.id for segment in segments], action)
         except Exception as error:
             raise SegmentStatusUpdateError(str(error)) from error
 

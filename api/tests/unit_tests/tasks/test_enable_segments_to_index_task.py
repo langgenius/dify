@@ -234,3 +234,25 @@ def test_enable_segments_rolls_back_before_error_compensation(
     assert persisted_segment.disabled_at is not None
     assert phase_events == ["load", "rollback", "commit"]
     enable_summaries.assert_not_called()
+
+
+@pytest.mark.parametrize("document_state", ["disabled", "archived", "incomplete"])
+def test_repeated_batch_enable_preserves_document_eligibility(
+    sqlite_session: Session,
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    document_state: str,
+) -> None:
+    """Repeated tasks for an ineligible document leave its completed segment untouched."""
+    dataset, document, segment = indexed_segment
+    document.enabled = document_state != "disabled"
+    document.archived = document_state == "archived"
+    document.indexing_status = IndexingStatus.INDEXING if document_state == "incomplete" else IndexingStatus.COMPLETED
+    sqlite_session.commit()
+
+    for _ in range(2):
+        enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
+
+    sqlite_session.refresh(segment)
+    assert segment.status == SegmentStatus.COMPLETED
+    assert segment.error is None
+    assert segment.index_node_id == "node-1"
