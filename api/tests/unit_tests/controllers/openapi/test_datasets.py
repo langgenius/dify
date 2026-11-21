@@ -1,12 +1,12 @@
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from http import HTTPStatus
-from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import datasets as datasets_module
@@ -20,17 +20,23 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.datasets import DatasetsApi, _dataset_row, _display_status, _document_row
 from libs.oauth_bearer import AuthContext
-from tests.helpers.unit.model_factories import make_account, make_tenant
+from models.model import UploadFile
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 
 def _endpoint_handler(view: object) -> Callable[..., tuple[DatasetResponse, HTTPStatus]]:
-    """Return the request handler the `@endpoint` decorator attaches to a view."""
-    handler = getattr(view, "__handler__", None)
+    """Return the request handler the `@endpoint` decorator attaches to a view.
+
+    ``__handler__`` is injected at decoration time, so it is absent from the
+    static type of the decorated view; read it through the instance dictionary
+    once here instead of at every call site.
+    """
+    handler = vars(view).get("__handler__")
     assert callable(handler)
     return handler
 
 
-def _ctx() -> Context:
+def _ctx(session: Session) -> Context:
     auth = AuthContext(
         token_type=TokenType.OAUTH_ACCOUNT,
         subject_email="caller@example.com",
@@ -40,24 +46,86 @@ def _ctx() -> Context:
         token_id=uuid.uuid4(),
         expires_at=None,
     )
-    ctx = Context(AccountSubject(auth), Mock(), {"workspace_id": "ws-1"})
+    ctx = Context(AccountSubject(auth), session, {"workspace_id": "ws-1"})
     ctx._workspace = make_tenant(tenant_id="ws-1")
     ctx._caller = make_account(account_id="acct-1")
     return ctx
 
 
-def _services(
+class _FakeDatasets:
+    """Dataset service fake that records created values and returns one row."""
+
+    def __init__(self, row: Mapping[str, object] | None = None) -> None:
+        self.row = row if row is not None else _dataset()
+        self.created_values: list[Mapping[str, object]] = []
+        self.queried_dataset_ids: list[str] = []
+
+    def get_dataset(self, _request_context: object, *, dataset_id: str) -> Mapping[str, object]:
+        self.queried_dataset_ids.append(dataset_id)
+        return self.row
+
+    def create_dataset(self, _request_context: object, *, values: Mapping[str, object]) -> Mapping[str, object]:
+        self.created_values.append(values)
+        return self.row
+
+
+class _FakeDocuments:
+    """Documents service fake whose ingestion outcome the test chooses."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+
+    def create_documents(self, _request_context: object, **_kwargs: object) -> Mapping[str, object]:
+        if self.error is not None:
+            raise self.error
+        return _document()
+
+
+@dataclass
+class _FakeKnowledge:
+    datasets: _FakeDatasets
+    documents: _FakeDocuments
+
+
+@dataclass
+class _FakeServices:
+    knowledge: _FakeKnowledge
+
+
+class _FakeFileService:
+    """FileService stand-in that records deletions instead of touching storage."""
+
+    def __init__(self) -> None:
+        self.deleted_file_ids: list[str] = []
+
+    def upload_text(self, **_kwargs: object) -> UploadFile:
+        return make_upload_file(file_id="file-1")
+
+    def delete_file(self, *, upload_file_id: str, **_kwargs: object) -> None:
+        self.deleted_file_ids.append(upload_file_id)
+
+
+def _file_service_factory(file_service: _FakeFileService) -> Callable[[object], _FakeFileService]:
+    """Build the FileService constructor the controller calls with the engine."""
+
+    def build(_engine: object) -> _FakeFileService:
+        return file_service
+
+    return build
+
+
+def _bind_services(
+    monkeypatch: pytest.MonkeyPatch,
     *,
-    create_dataset=None,
-    get_dataset=None,
-    create_documents=None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        knowledge=SimpleNamespace(
-            datasets=SimpleNamespace(create_dataset=create_dataset, get_dataset=get_dataset),
-            documents=SimpleNamespace(create_documents=create_documents),
-        )
-    )
+    datasets: _FakeDatasets | None = None,
+    documents: _FakeDocuments | None = None,
+) -> tuple[_FakeDatasets, _FakeDocuments]:
+    """Bind the controller's service locator to explicit fakes."""
+    dataset_service = datasets if datasets is not None else _FakeDatasets()
+    document_service = documents if documents is not None else _FakeDocuments()
+    services = _FakeServices(_FakeKnowledge(dataset_service, document_service))
+    monkeypatch.setattr(datasets_module, "application_services", lambda: services)
+    return dataset_service, document_service
 
 
 def _dataset(**extra: object) -> dict[str, object]:
@@ -151,44 +219,43 @@ def test_update_document_requires_a_change() -> None:
         DocumentUpdateByTextPayload.model_validate({"name": ""})
 
 
-def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-
-    def create_dataset(_request_context, *, values):
-        captured.update(values)
-        return _dataset()
-
-    monkeypatch.setattr(datasets_module, "application_services", lambda: _services(create_dataset=create_dataset))
+def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    dataset_service, _ = _bind_services(monkeypatch)
 
     api = DatasetsApi()
     response, status = _endpoint_handler(api.post)(
-        api, _ctx(), workspace_id="ws-1", body=DatasetCreatePayload(name="Docs")
+        api, _ctx(sqlite_session), workspace_id="ws-1", body=DatasetCreatePayload(name="Docs")
     )
 
     assert status == HTTPStatus.CREATED
     assert response.name == "Docs"
+    [values] = dataset_service.created_values
     # The legacy adapter takes `indexing_technique` even when null.
-    assert "indexing_technique" in captured
-    assert captured["indexing_technique"] is None
+    assert "indexing_technique" in values
+    assert values["indexing_technique"] is None
 
 
-def _stub_defaults_and_upload(monkeypatch: pytest.MonkeyPatch, file_service: Mock) -> None:
-    file_service.upload_text.return_value = SimpleNamespace(id="file-1")
-    monkeypatch.setattr(datasets_module, "db", SimpleNamespace(engine=Mock()))
-    monkeypatch.setattr(datasets_module, "FileService", lambda *_args: file_service)
-    monkeypatch.setattr(
-        datasets_module,
-        "application_services",
-        lambda: _services(get_dataset=lambda *_args, **_kwargs: _dataset()),
-    )
+def _bind_document_services(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    file_service: _FakeFileService,
+    *,
+    documents: _FakeDocuments | None = None,
+) -> None:
+    """Point `db.engine` at the sqlite test database and bind the document services."""
+    monkeypatch.setattr(type(datasets_module.db), "engine", property(lambda _self: sqlite_session.get_bind()))
+    monkeypatch.setattr(datasets_module, "FileService", _file_service_factory(file_service))
+    _bind_services(monkeypatch, documents=documents)
 
 
-def test_document_settings_marks_create_as_non_duplicate(monkeypatch: pytest.MonkeyPatch) -> None:
-    file_service = Mock()
-    _stub_defaults_and_upload(monkeypatch, file_service)
+def test_document_settings_marks_create_as_non_duplicate(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    file_service = _FakeFileService()
+    _bind_document_services(monkeypatch, sqlite_session, file_service)
 
     settings = datasets_module._document_settings(
-        _ctx(),
+        _ctx(sqlite_session),
         "ds-1",
         DocumentCreateByTextPayload(name="guide.md", text="hello"),
         original_document_id=None,
@@ -198,11 +265,13 @@ def test_document_settings_marks_create_as_non_duplicate(monkeypatch: pytest.Mon
     assert settings["data_source"]["info_list"]["file_info_list"]["file_ids"] == ["file-1"]
 
 
-def test_document_settings_update_does_not_mark_duplicate(monkeypatch: pytest.MonkeyPatch) -> None:
-    _stub_defaults_and_upload(monkeypatch, Mock())
+def test_document_settings_update_does_not_mark_duplicate(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _bind_document_services(monkeypatch, sqlite_session, _FakeFileService())
 
     settings = datasets_module._document_settings(
-        _ctx(),
+        _ctx(sqlite_session),
         "ds-1",
         DocumentUpdateByTextPayload(name="renamed.md"),
         original_document_id="doc-1",
@@ -212,26 +281,21 @@ def test_document_settings_update_does_not_mark_duplicate(monkeypatch: pytest.Mo
     assert "duplicate" not in settings
 
 
-def test_failed_ingestion_keeps_the_uploaded_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    file_service = Mock()
-    file_service.upload_text.return_value = SimpleNamespace(id="file-1")
-    monkeypatch.setattr(datasets_module, "db", SimpleNamespace(engine=Mock()))
-    monkeypatch.setattr(datasets_module, "FileService", lambda *_args: file_service)
-    monkeypatch.setattr(
-        datasets_module,
-        "application_services",
-        lambda: _services(
-            get_dataset=lambda *_args, **_kwargs: _dataset(),
-            create_documents=Mock(side_effect=RuntimeError("ingestion failed")),
-        ),
+def test_failed_ingestion_keeps_the_uploaded_file(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    file_service = _FakeFileService()
+    _bind_document_services(
+        monkeypatch,
+        sqlite_session,
+        file_service,
+        documents=_FakeDocuments(RuntimeError("ingestion failed")),
     )
 
     with pytest.raises(RuntimeError, match="ingestion failed"):
         datasets_module._create_documents(
-            _ctx(),
+            _ctx(sqlite_session),
             "ds-1",
             DocumentCreateByTextPayload(name="guide.md", text="hello"),
             original_document_id=None,
         )
 
-    file_service.delete_file.assert_not_called()
+    assert file_service.deleted_file_ids == []
