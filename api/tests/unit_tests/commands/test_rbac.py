@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 from click.testing import CliRunner
@@ -145,11 +145,16 @@ class TestRbacMemberMigrationCases:
         monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain, workers: int
     ) -> None:
         def batches(
-            tenant_id: str | None, *, db_batch_size: int, api_batch_size: int
+            tenant_id: str | None,
+            *,
+            db_batch_size: int,
+            api_batch_size: int,
+            on_missing_owner: Callable[[str], None],
         ) -> Iterator[tuple[str, str, list[tuple[str, str]]]]:
             assert tenant_id is None
             assert db_batch_size > 0
             assert api_batch_size > 0
+            assert on_missing_owner is not None
             yield "workspace", "owner", [("first", "editor"), ("second", "normal")]
 
         def unexpected_session() -> None:
@@ -175,3 +180,34 @@ class TestRbacMemberMigrationCases:
             expected_role = "role-editor" if request.params["account_id"] == "first" else "role-normal"
             assert request.json == {"role_ids": [expected_role]}
         assert {request.params["account_id"] for request in sent if request.params} == {"first", "second"}
+
+    @staticmethod
+    def test_member_migration_skips_workspaces_without_an_owner(
+        monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain
+    ) -> None:
+        monkeypatch.setattr(rbac.session_factory, "create_session", rbac_domain.sessions)
+        with rbac_domain.sessions.begin() as session:
+            session.add_all(
+                [
+                    TenantAccountJoin(tenant_id="healthy", account_id="owner", role=TenantAccountRole.OWNER),
+                    TenantAccountJoin(tenant_id="healthy", account_id="member", role=TenantAccountRole.NORMAL),
+                    TenantAccountJoin(tenant_id="orphan", account_id="member", role=TenantAccountRole.NORMAL),
+                ]
+            )
+        monkeypatch.setattr(
+            rbac, "_resolve_builtin_role_ids", lambda *_args: {"owner": "role-owner", "normal": "role-normal"}
+        )
+        monkeypatch.setattr(rbac.RBACService.MemberRoles, "batch_get", lambda **_kwargs: [])
+        rbac_domain.transport.response = {"account_id": "member", "roles": []}
+
+        result = CliRunner().invoke(rbac.migrate_member_roles_to_rbac, [])
+
+        assert result.exit_code == 0, result.output
+        assert "Workspace owner not found, skipping tenant=orphan" in result.output
+        assert "Skipped 1 workspace(s) without an owner" in result.output
+        sent = rbac_domain.transport.requests
+        assert len(sent) == 2
+        for request in sent:
+            assert (request.method, request.endpoint) == ("PUT", "/rbac/members/rbac-roles")
+            assert (request.tenant_id, request.account_id) == ("healthy", "owner")
+        assert {request.params["account_id"] for request in sent if request.params} == {"owner", "member"}
