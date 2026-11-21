@@ -15,7 +15,7 @@ from dify_agent.client import DifyAgentHTTPError
 from dify_agent.protocol import RunFailureType
 
 
-def backend_reported_failure(exc: DifyAgentHTTPError) -> bool:
+def backend_reported_failure(exc: DifyAgentHTTPError | AgentBackendHTTPError) -> bool:
     """Whether the backend itself reported the failure.
 
     ``DifyAgentValidationError`` is a ``DifyAgentHTTPError`` that the client also
@@ -26,7 +26,7 @@ def backend_reported_failure(exc: DifyAgentHTTPError) -> bool:
 
 
 def backend_error_detail(
-    exc: DifyAgentHTTPError,
+    exc: DifyAgentHTTPError | AgentBackendHTTPError,
     *,
     default_code: str = "agent_backend_error",
 ) -> tuple[str, str]:

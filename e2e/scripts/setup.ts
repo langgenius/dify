@@ -494,6 +494,20 @@ export const startCelery = async ({ queues = 'workflow_based_app_execution' } = 
   })
 }
 
+export const captureMiddlewareLogs = async (logFilePath: string) => {
+  try {
+    const { stdout, stderr } = await runCommandOrThrow({
+      command: 'docker',
+      args: [...composeArgs, 'logs', '--no-color', '--timestamps'],
+      cwd: dockerDir,
+      stdio: 'pipe',
+    })
+    await writeFile(logFilePath, stdout + stderr)
+  } catch (error) {
+    console.warn('Failed to capture middleware logs:', error)
+  }
+}
+
 export const stopMiddleware = async () => {
   await runCommandOrThrow({
     command: 'docker',

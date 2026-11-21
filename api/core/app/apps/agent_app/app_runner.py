@@ -93,12 +93,9 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    if event.error_type is None:
-        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
-        if err_cls is not None:
-            return err_cls(event.error)
+    """Translate a terminal failure, preserving backend context as the cause of invoke errors."""
     message = event.error or "Agent backend run did not complete successfully."
-    return AgentBackendRunFailedError(
+    backend_err = AgentBackendRunFailedError(
         event.run_id,
         {
             "error": event.error,
@@ -110,6 +107,13 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
         reason=event.reason,
         source_event_id=event.source_event_id,
     )
+    if event.error_type is None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+        if err_cls is not None:
+            err = err_cls(event.error or None)
+            err.__cause__ = backend_err
+            return err
+    return backend_err
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:

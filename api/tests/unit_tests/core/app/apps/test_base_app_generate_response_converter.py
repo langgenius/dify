@@ -3,8 +3,17 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import ClassVar
 
+import pytest
+
+from clients.agent_backend.errors import (
+    AgentBackendHTTPError,
+    AgentBackendRequestBuildError,
+    AgentBackendStreamError,
+    AgentBackendTransportError,
+    AgentBackendValidationError,
+)
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.apps.exc import AppGenerateError
+from core.app.apps.exc import AppGenerateError, ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -13,6 +22,11 @@ from core.app.entities.task_entities import (
     WorkflowAppStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus
+from graphon.model_runtime.errors.invoke import InvokeError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 
 
 class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
@@ -110,3 +124,62 @@ def test_convert_routes_stream_response_by_invoke_from() -> None:
     assert simple_result == [{"kind": "stream-simple"}]
     assert len(_DummyConverter.stream_full_calls) == 1
     assert len(_DummyConverter.stream_simple_calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (
+            AgentBackendHTTPError("backend unavailable", status_code=503, detail={"code": "backend_unavailable"}),
+            503,
+            "backend_unavailable",
+        ),
+        (AgentBackendHTTPError("bad request", status_code=422, detail={"code": ""}), 422, "agent_backend_error"),
+        (AgentBackendHTTPError("invalid DTO", status_code=200, detail=[]), 502, "agent_backend_error"),
+        (AgentBackendTransportError("timeout"), 502, "agent_backend_error"),
+        (AgentBackendStreamError("incomplete SSE"), 502, "agent_backend_error"),
+        (AgentBackendValidationError("invalid DTO", detail=[]), 502, "agent_backend_error"),
+        (AgentBackendRequestBuildError("invalid config"), 400, "completion_request_error"),
+        (ValueError("invalid input"), 400, "invalid_param"),
+        (InvokeError(), 400, "completion_request_error"),
+    ],
+)
+def test_stream_error_mapping(error: Exception, status: int, code: str) -> None:
+    data = AppGenerateResponseConverter._error_to_stream_response(error)
+
+    assert data == {"status": status, "code": code, "message": str(error)}
+    data["message"] = "changed by caller"
+    assert AppGenerateResponseConverter._error_to_stream_response(error)["message"] == str(error)
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (ModerationRejectedInvocationError("input", "rejected"), 400, "moderation_rejected"),
+        (ModerationUnavailableInvocationError(), 503, "moderation_unavailable"),
+    ],
+)
+def test_stream_error_preserves_moderation_contract(error: ModerationInvocationError, status: int, code: str) -> None:
+    assert AppGenerateResponseConverter._error_to_stream_response(error) == {
+        "code": code,
+        "status": status,
+        "message": str(error),
+    }
+
+
+@pytest.mark.parametrize("has_cause", [False, True])
+def test_unhandled_stream_error_logs_original_exception(caplog: pytest.LogCaptureFixture, has_cause: bool) -> None:
+    error = RuntimeError("internal failure")
+    cause = OSError("original failure")
+    if has_cause:
+        error.__cause__ = cause
+
+    assert AppGenerateResponseConverter._error_to_stream_response(error) == {
+        "code": "internal_server_error",
+        "status": 500,
+        "message": "Internal Server Error, please contact support.",
+    }
+    record = caplog.records[-1]
+    assert record.message == "Unhandled error in app generate stream"
+    assert record.exc_info
+    assert record.exc_info[1] is (cause if has_cause else error)

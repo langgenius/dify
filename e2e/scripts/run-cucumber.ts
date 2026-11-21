@@ -11,6 +11,7 @@ import { e2eDir, isMainModule, runCommand } from './common.ts'
 import { parseRunOptions, shouldStartManagedAgentBackend } from './run-options.ts'
 import { runSeed } from './seed-runner.ts'
 import {
+  captureMiddlewareLogs,
   getManagedSandboxEnvironment,
   resetState,
   startMiddleware,
@@ -103,7 +104,15 @@ export const runCucumber = async (argv: string[]) => {
           { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
           { label: 'Stop agent backend', run: () => stopManagedProcess(difyAgentProcess) },
           { label: 'Stop shellctl sandbox', run: () => stopManagedProcess(shellctlProcess) },
-          ...(middlewareStarted ? [{ label: 'Stop middleware', run: stopMiddleware }] : []),
+          ...(middlewareStarted
+            ? [
+                {
+                  label: 'Capture middleware logs',
+                  run: () => captureMiddlewareLogs(path.join(logDir, 'cucumber-middleware.log')),
+                },
+                { label: 'Stop middleware', run: stopMiddleware },
+              ]
+            : []),
         ])
 
         if (cleanupErrors.length > 0)

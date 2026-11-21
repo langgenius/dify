@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Generator
 from datetime import datetime
 from inspect import getsource, unwrap
@@ -37,7 +38,9 @@ from controllers.console.agent.roster import (
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.app.error import CompletionRequestError
+from core.logging.context import clear_request_context, get_request_id, get_trace_id, init_request_context
 from enums import DeploymentEdition
+from libs.exception import RelayedHTTPError
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
@@ -741,10 +744,12 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
             self.closed = True
 
     stream = ClosableStream()
-    with pytest.raises(CompletionRequestError) as exc_info:
+    with pytest.raises(RelayedHTTPError) as exc_info:
         completion_controller._raise_agent_stream_error_before_response(stream)
     assert exc_info.value.description is not None
     assert "Incorrect API key provided" in exc_info.value.description
+    assert exc_info.value.code == 400
+    assert exc_info.value.error_code == "completion_request_error"
     assert stream.closed is True
 
 
@@ -794,8 +799,9 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     assert cast(Account, finalize_call["current_user"]).id == account_id
 
 
+@pytest.mark.parametrize("completed", [False, True])
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str, unbound_session: Session, completed: bool
 ) -> None:
     app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
     captured: dict[str, object] = {}
@@ -807,7 +813,8 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     def generate(**kwargs: object) -> object:
         captured["generate"] = kwargs
         return iter(
-            ["event: ping\n\n", 'data: {"event":"message","answer":"working"}\n\n', 'data: {"event":"message_end"}\n\n']
+            ["event: ping\n\n", 'data: {"event":"message","answer":"working"}\n\n']
+            + (['data: {"event":"message_end"}\n\n'] if completed else [])
         )
 
     monkeypatch.setattr(
@@ -815,14 +822,26 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     )
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
-        result = completion_controller._create_build_chat_finalization_message(
-            current_tenant_id="tenant-1",
-            current_user=_account(account_id=account_id),
-            app_model=app_model,
-            agent_id="agent-1",
-            session=unbound_session,
-        )
-    assert result == ({"result": "success"}, 200)
+        if completed:
+            assert completion_controller._create_build_chat_finalization_message(
+                current_tenant_id="tenant-1",
+                current_user=_account(account_id=account_id),
+                app_model=app_model,
+                agent_id="agent-1",
+                session=unbound_session,
+            ) == ({"result": "success"}, 200)
+        else:
+            with pytest.raises(RelayedHTTPError) as exc_info:
+                completion_controller._create_build_chat_finalization_message(
+                    current_tenant_id="tenant-1",
+                    current_user=_account(account_id=account_id),
+                    app_model=app_model,
+                    agent_id="agent-1",
+                    session=unbound_session,
+                )
+            assert exc_info.value.data is not None
+            assert exc_info.value.data["details"]["conversation_id"] == "debug-conversation-1"
+            assert exc_info.value.data["details"]["trace_id"] == "trace-1"
     resolve_call = cast(dict[str, object], captured["resolve_debug_conversation"])
     assert resolve_call.pop("current_user") is not None
     assert resolve_call == {
@@ -862,16 +881,131 @@ def test_drain_streaming_generate_response_returns_on_message_end() -> None:
     assert closed == [True]
 
 
-def test_drain_streaming_generate_response_maps_error_event() -> None:
-    response = (chunk for chunk in ['data: {"event":"error","message":"backend failed"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="backend failed"):
-        completion_controller._drain_streaming_generate_response(response)
+@pytest.mark.parametrize("finalize", [False, True])
+@pytest.mark.parametrize("external_trace_id", [None, "trace-1"])
+@pytest.mark.parametrize("status", [429, 503])
+def test_agent_stream_error_relays_status_and_correlation_ids(
+    app: Flask, finalize: bool, external_trace_id: str | None, status: int
+) -> None:
+    payload = {
+        "event": "error",
+        "code": "backend_failure",
+        "status": status,
+        "message": "backend failed",
+        "conversation_id": "conversation-1",
+        "message_id": "message-1",
+        "task_id": "task-1",
+        "credentials": "must not be relayed",
+    }
+    response = (chunk for chunk in [f"data: {json.dumps(payload)}\n\n"])
+    relay = (
+        completion_controller._drain_streaming_generate_response
+        if finalize
+        else completion_controller._raise_agent_stream_error_before_response
+    )
+    init_request_context()
+    try:
+        expected_details = {
+            "conversation_id": "conversation-1",
+            "message_id": "message-1",
+            "task_id": "task-1",
+            "trace_id": external_trace_id or get_trace_id(),
+            "request_id": get_request_id(),
+        }
+        with app.test_request_context(headers={"X-Trace-Id": external_trace_id} if external_trace_id else {}):
+            with pytest.raises(RelayedHTTPError) as exc_info:
+                relay(response)
+        assert exc_info.value.data == {
+            "code": "backend_failure",
+            "status": status,
+            "message": "backend failed",
+            "details": expected_details,
+        }
+    finally:
+        clear_request_context()
 
 
-def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
-    response = (chunk for chunk in ['data: {"event":"message","answer":"working"}\n\n'])
-    with pytest.raises(CompletionRequestError, match="did not complete"):
+@pytest.mark.parametrize("finalize", [False, True])
+@pytest.mark.parametrize(("status", "code", "message"), [(None, None, None), (True, 123, {}), ("503", "", "")])
+def test_agent_stream_error_defaults_invalid_fields(
+    finalize: bool, status: object, code: object, message: object
+) -> None:
+    clear_request_context()
+    payload = {
+        "event": "error",
+        "status": status,
+        "code": code,
+        "message": message,
+        "conversation_id": False,
+        "message_id": 123,
+        "task_id": "",
+    }
+    response = (chunk for chunk in [f"data: {json.dumps(payload)}\n\n"])
+    relay = (
+        completion_controller._drain_streaming_generate_response
+        if finalize
+        else completion_controller._raise_agent_stream_error_before_response
+    )
+    with pytest.raises(RelayedHTTPError) as exc_info:
+        relay(response)
+
+    assert exc_info.value.data == {
+        "code": "completion_request_error",
+        "status": 400,
+        "message": "Build chat finalization failed." if finalize else "Agent App chat failed.",
+    }
+
+
+@pytest.mark.parametrize("conversation_id", [None, "debug-conversation-1"])
+@pytest.mark.parametrize("with_frame", [False, True])
+def test_drain_streaming_generate_response_raises_when_stream_ends_early(
+    conversation_id: str | None, with_frame: bool
+) -> None:
+    clear_request_context()
+    closed: list[bool] = []
+    frame = {"event": "message", "conversation_id": "conversation-1", "message_id": "msg-1", "task_id": "task-1"}
+
+    def generate_response() -> Generator[str]:
+        try:
+            if with_frame:
+                yield f"data: {json.dumps(frame)}\n\n"
+        finally:
+            closed.append(True)
+
+    response = generate_response()
+    with pytest.raises(RelayedHTTPError, match="did not complete") as exc_info:
+        completion_controller._drain_streaming_generate_response(response, conversation_id=conversation_id)
+    expected_details = (
+        {"conversation_id": "conversation-1", "message_id": "msg-1", "task_id": "task-1"}
+        if with_frame
+        else {"conversation_id": conversation_id}
+        if conversation_id
+        else {}
+    )
+    assert exc_info.value.code == 502
+    assert exc_info.value.error_code == "agent_stream_incomplete"
+    assert exc_info.value.data is not None
+    assert exc_info.value.data.get("details", {}) == expected_details
+    assert closed == [True]
+
+
+def test_drain_streaming_generate_response_keeps_ids_from_earlier_frames_on_error() -> None:
+    clear_request_context()
+    response = (
+        chunk
+        for chunk in [
+            'data: {"event":"message","conversation_id":"conversation-1","message_id":"msg-1","task_id":"task-1"}\n\n',
+            'data: {"event":"error","code":"backend_failure","status":502,"message_id":null}\n\n',
+        ]
+    )
+    with pytest.raises(RelayedHTTPError) as exc_info:
         completion_controller._drain_streaming_generate_response(response)
+    assert exc_info.value.data is not None
+    assert exc_info.value.data["details"] == {
+        "conversation_id": "conversation-1",
+        "message_id": "msg-1",
+        "task_id": "task-1",
+    }
 
 
 @pytest.mark.parametrize(
@@ -1174,7 +1308,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
             completion_controller.ProviderModelCurrentlyNotSupportError,
         ),
         (completion_controller.InvokeRateLimitError("rate limited"), completion_controller.InvokeRateLimitHttpError),
-        (completion_controller.InvokeError("invoke failed"), completion_controller.CompletionRequestError),
+        (completion_controller.InvokeError("invoke failed"), CompletionRequestError),
         (RuntimeError("unexpected"), InternalServerError),
     ],
 )
