@@ -102,11 +102,25 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   bundleNodeSize: null,
   setBundleNodeSize: (bundleNodeSize) => set(() => ({ bundleNodeSize })),
   controlMode: 'pointer',
-  setControlMode: (controlMode) => set(() => ({ controlMode })),
+  // A draft comment belongs to comment mode, unless a quick add started it.
+  setControlMode: (controlMode) =>
+    set((state) => ({
+      controlMode,
+      ...(controlMode !== 'comment' && !state.isCommentQuickAdd && { pendingComment: null }),
+    })),
   pendingComment: null,
-  setPendingComment: (pendingComment) => set(() => ({ pendingComment })),
+  // A quick add ends with its draft, unless it is still placing one.
+  setPendingComment: (pendingComment) =>
+    set((state) => ({
+      pendingComment,
+      ...(!pendingComment && !state.isCommentPlacing && { isCommentQuickAdd: false }),
+    })),
   isCommentPlacing: false,
-  setCommentPlacing: (isCommentPlacing) => set(() => ({ isCommentPlacing })),
+  setCommentPlacing: (isCommentPlacing) =>
+    set((state) => ({
+      isCommentPlacing,
+      ...(!isCommentPlacing && !state.pendingComment && { isCommentQuickAdd: false }),
+    })),
   isCommentQuickAdd: false,
   setCommentQuickAdd: (isCommentQuickAdd) => set(() => ({ isCommentQuickAdd })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },

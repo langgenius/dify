@@ -1,18 +1,19 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatarInitial } from '@/utils/avatar'
+import { useStore } from '../store'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
+import { CommentComposerFrame } from './comment-composer'
+import { CommentMarker } from './comment-marker'
 import { MentionInput } from './mention-input'
 
 type CommentInputProps = {
   position: { x: number; y: number }
-  onSubmit: (content: string, mentionedUserIds: string[]) => void
+  onSubmit: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   onCancel: () => void
   autoFocus?: boolean
   disabled?: boolean
@@ -27,6 +28,7 @@ type CommentInputProps = {
 export const CommentInput: FC<CommentInputProps> = memo(
   ({ position, onSubmit, onCancel, autoFocus = true, disabled = false, onPositionChange }) => {
     const [content, setContent] = useState('')
+    const [submitting, setSubmitting] = useState(false)
     const [keyboardMoving, setKeyboardMoving] = useState(false)
     const moveDescriptionId = useId()
     const { t } = useTranslation(['workflow', 'workflowComments'])
@@ -34,11 +36,17 @@ export const CommentInput: FC<CommentInputProps> = memo(
       ...userProfileQueryOptions(),
       select: (data) => data.profile,
     })
+    const visibleCanvasWidth = useStore(
+      (state) => (state.workflowCanvasWidth ?? Infinity) - (state.rightPanelWidth ?? 0),
+    )
+    const opensLeft = position.x + 39 + 320 > visibleCanvasWidth && position.x - 12 - 320 >= 0
     const dragStateRef = useRef<
       {
         pointerId: number | null
         startPointerX: number
         startPointerY: number
+        startPageX: number
+        startPageY: number
         startX: number
         startY: number
         active: boolean
@@ -49,16 +57,24 @@ export const CommentInput: FC<CommentInputProps> = memo(
       pointerId: null,
       startPointerX: 0,
       startPointerY: 0,
+      startPageX: 0,
+      startPageY: 0,
       startX: 0,
       startY: 0,
       active: false,
       endHandler: undefined,
     })
 
+    // The text stays, read-only, while the comment is created: on success the composer
+    // closes into the new marker, and on failure the text is still there to send again.
     const handleMentionSubmit = useCallback(
-      (content: string, mentionedUserIds: string[]) => {
-        onSubmit(content, mentionedUserIds)
-        setContent('')
+      async (content: string, mentionedUserIds: string[]) => {
+        setSubmitting(true)
+        try {
+          await onSubmit(content, mentionedUserIds)
+        } finally {
+          setSubmitting(false)
+        }
       },
       [onSubmit],
     )
@@ -73,8 +89,8 @@ export const CommentInput: FC<CommentInputProps> = memo(
         const deltaX = event.clientX - state.startPointerX
         const deltaY = event.clientY - state.startPointerY
         onPositionChange({
-          pageX: event.clientX,
-          pageY: event.clientY,
+          pageX: state.startPageX + deltaX,
+          pageY: state.startPageY + deltaY,
           elementX: state.startX + deltaX,
           elementY: state.startY + deltaY,
         })
@@ -108,10 +124,13 @@ export const CommentInput: FC<CommentInputProps> = memo(
         const endHandler = (pointerEvent: PointerEvent) => {
           stopDragging(pointerEvent)
         }
+        const anchorRect = event.currentTarget.getBoundingClientRect()
         dragStateRef.current = {
           pointerId: event.pointerId,
           startPointerX: event.clientX,
           startPointerY: event.clientY,
+          startPageX: anchorRect.left,
+          startPageY: anchorRect.bottom,
           startX: position.x,
           startY: position.y,
           active: true,
@@ -134,7 +153,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
     return (
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The comment surface handles bubbling Escape after its child editor handles mentions.
       <div
-        className={cn('absolute z-40 w-96', disabled && 'pointer-events-none opacity-80')}
+        className={cn('absolute z-40', disabled && 'pointer-events-none opacity-80')}
         style={{
           left: position.x,
           top: position.y,
@@ -149,65 +168,56 @@ export const CommentInput: FC<CommentInputProps> = memo(
           onCancel()
         }}
       >
-        <div className="flex items-center gap-3">
-          <IconButton
-            aria-label={t(($) => $['keyboard.moveDraftComment'], { ns: 'workflow' })}
-            aria-describedby={moveDescriptionId}
-            aria-pressed={keyboardMoving}
-            disabled={disabled || !onPositionChange}
-            className="relative size-8 shrink-0 cursor-move p-0"
-            onPointerDown={handleDragPointerDown}
-            onClick={(event) => {
-              if (event.detail === 0) setKeyboardMoving((value) => !value)
-            }}
-            onBlur={() => setKeyboardMoving(false)}
-            onKeyDown={(event) => {
-              const delta = getKeyboardMovement(event)
-              if (!delta || !keyboardMoving || disabled || !onPositionChange) return
-              event.preventDefault()
-              event.stopPropagation()
-              const rect = event.currentTarget
-                .closest('[data-comment-input]')
-                ?.getBoundingClientRect()
-              onPositionChange({
-                pageX: (rect?.left ?? position.x) + delta.x,
-                pageY: (rect?.top ?? position.y) + delta.y,
-                elementX: position.x + delta.x,
-                elementY: position.y + delta.y,
-              })
-            }}
-          >
-            <div className="relative aspect-square h-8 w-8 shrink-0 rounded-ss-full rounded-se-full rounded-ee-full bg-primary-500 p-0.5">
-              <div className="flex size-full items-center justify-center overflow-hidden rounded-ss-full rounded-se-full rounded-ee-full bg-components-panel-bg-blur p-0.5">
-                <Avatar size="sm" className="block size-full rounded-full" aria-hidden="true">
-                  <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
-                </Avatar>
-              </div>
-            </div>
-          </IconButton>
-          <span id={moveDescriptionId} className="sr-only" aria-live="polite">
-            {t(($) => $['keyboard.moveDraftHelp'], { ns: 'workflow' })}{' '}
-            {t(($) => $['keyboard.position'], { ns: 'workflow', x: position.x, y: position.y })}
-          </span>
-          <div
-            className={cn(
-              'relative z-10 flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-1 shadow-md',
-            )}
-          >
-            <div className="relative ps-2.25 pt-1">
-              <MentionInput
-                value={content}
-                onChange={setContent}
-                onSubmit={handleMentionSubmit}
-                placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
-                autoFocus={autoFocus}
-                disabled={disabled}
-                className="relative"
-              />
-            </div>
-          </div>
-        </div>
+        <IconButton
+          aria-label={t(($) => $['keyboard.moveDraftComment'], { ns: 'workflow' })}
+          aria-describedby={moveDescriptionId}
+          aria-pressed={keyboardMoving}
+          disabled={disabled || !onPositionChange}
+          className="absolute bottom-0 size-auto cursor-move rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
+          onPointerDown={handleDragPointerDown}
+          onClick={(event) => {
+            if (event.detail === 0) setKeyboardMoving((value) => !value)
+          }}
+          onBlur={() => setKeyboardMoving(false)}
+          onKeyDown={(event) => {
+            const delta = getKeyboardMovement(event)
+            if (!delta || !keyboardMoving || disabled || !onPositionChange) return
+            event.preventDefault()
+            event.stopPropagation()
+            const rect = event.currentTarget.getBoundingClientRect()
+            onPositionChange({
+              pageX: rect.left + delta.x,
+              pageY: rect.bottom + delta.y,
+              elementX: position.x + delta.x,
+              elementY: position.y + delta.y,
+            })
+          }}
+        >
+          <CommentMarker
+            selected
+            participants={[
+              { id: userProfile.id, name: userProfile.name, avatarUrl: userProfile.avatar_url },
+            ]}
+          />
+        </IconButton>
+        <span id={moveDescriptionId} className="sr-only" aria-live="polite">
+          {t(($) => $['keyboard.moveDraftHelp'], { ns: 'workflow' })}{' '}
+          {t(($) => $['keyboard.position'], { ns: 'workflow', x: position.x, y: position.y })}
+        </span>
+        <CommentComposerFrame
+          className="absolute z-10 w-80 shadow-lg"
+          style={{ top: Math.max(-34, -position.y), ...(opensLeft ? { right: 12 } : { left: 39 }) }}
+        >
+          <MentionInput
+            value={content}
+            onChange={setContent}
+            onSubmit={handleMentionSubmit}
+            placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
+            autoFocus={autoFocus}
+            disabled={disabled}
+            loading={submitting}
+          />
+        </CommentComposerFrame>
       </div>
     )
   },

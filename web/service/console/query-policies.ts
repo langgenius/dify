@@ -1205,6 +1205,77 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflow: {
+            comments: {
+              // Collaborators change comments while the editor is closed, and their live
+              // updates reach only an open editor, so every mount reads comments again. While
+              // open, live updates keep them current; a read on window focus could land on an
+              // optimistic write.
+              get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+              byCommentId: {
+                get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+                resolve: {
+                  post: {
+                    // Resolving shows on the comment at once and is put back if it fails. The
+                    // list, which decides whether the comment stays on the canvas, changes only
+                    // once the server has it.
+                    mutationOptions: {
+                      onMutate: async ({ params }, context) => {
+                        const detailKey =
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          })
+                        await context.client.cancelQueries({ queryKey: detailKey })
+                        context.client.setQueryData(detailKey, (detail) =>
+                          detail ? { ...detail, resolved: true } : detail,
+                        )
+                      },
+                      onError: (_error, { params }, _result, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          }),
+                          (detail) => (detail ? { ...detail, resolved: false } : detail),
+                        )
+                      },
+                      onSuccess: (result, { params }, _result, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                            input: { params },
+                          }),
+                          (detail) =>
+                            detail
+                              ? {
+                                  ...detail,
+                                  resolved: result.resolved,
+                                  resolved_at: result.resolved_at,
+                                  resolved_by: result.resolved_by,
+                                }
+                              : detail,
+                        )
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                            input: { params: { app_id: params.app_id } },
+                          }),
+                          (list) =>
+                            list
+                              ? {
+                                  ...list,
+                                  data: list.data.map((comment) =>
+                                    comment.id === params.comment_id
+                                      ? { ...comment, resolved: result.resolved }
+                                      : comment,
+                                  ),
+                                }
+                              : list,
+                        )
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           annotations: {
             byAnnotationId: {
               post: {

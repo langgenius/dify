@@ -1,10 +1,8 @@
 import { useEventListener } from 'ahooks'
-import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowStore } from './store'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()
-  const { handleCreateComment, handleCommentCancel } = useWorkflowComment()
 
   useEventListener('click', (e) => {
     const { controlMode, mousePosition, pendingComment, isCommentPlacing } =
@@ -32,8 +30,8 @@ const CommentManager = () => {
       if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
         e.stopPropagation()
-        if (pendingComment) handleCommentCancel()
-        else handleCreateComment(mousePosition)
+        if (pendingComment) workflowStore.getState().setPendingComment(null)
+        else workflowStore.getState().setPendingComment(mousePosition)
       }
     }
   })
