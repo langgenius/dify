@@ -1386,6 +1386,9 @@ class WorkflowAppLog(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
         sa.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        # Serves the newest-first log list and its date-range filters without reading every
+        # log row of the app.
+        sa.Index("workflow_app_log_app_created_at_idx", "tenant_id", "app_id", "created_at"),
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
