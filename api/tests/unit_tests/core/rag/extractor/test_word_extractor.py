@@ -3,7 +3,11 @@
 import io
 import logging
 import os
+import shutil
+import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Protocol, cast
@@ -901,3 +905,250 @@ def test_extract_ignores_non_image_relationship_with_image_in_target(
     assert content == "Visible text"
     assert sqlite_session.scalars(select(UploadFile)).all() == []
     assert not local_image_storage.exists("image_files/")
+
+
+# --- Helpers and tests for malformed DOCX packages / disguised legacy .doc files (#46063) ---
+
+_OLE2_MAGIC = bytes.fromhex("D0CF11E0A1B11AE1")
+_EXPECTED_BASE_CONTENT = "Hello DOCX\n| A | B |\n| --- | --- |\n| C | D |"
+# LibreOffice's .docx -> .doc export flattens the table into a single paragraph,
+# so a .doc built that way holds the cell texts as "ABCD" rather than a table.
+_EXPECTED_LEGACY_CONTENT = "Hello DOCX\nABCD"
+_STRICT_NAMESPACE_REPLACEMENTS = [
+    (
+        "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+        "http://purl.oclc.org/ooxml/wordprocessingml/main",
+    ),
+    (
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+        "http://purl.oclc.org/ooxml/officeDocument/relationships",
+    ),
+    (
+        "http://schemas.openxmlformats.org/package/2006/relationships",
+        "http://purl.oclc.org/ooxml/officeDocument/relationships",
+    ),
+]
+
+
+def _make_base_docx_bytes() -> bytes:
+    doc = Document()
+    doc.add_paragraph("Hello DOCX")
+    table = doc.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "A"
+    table.cell(0, 1).text = "B"
+    table.cell(1, 0).text = "C"
+    table.cell(1, 1).text = "D"
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def _rewrite_docx_zip(
+    data: bytes,
+    replacements: list[tuple[str, str]] | None = None,
+    drop: list[str] | None = None,
+) -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as zin:
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                if drop and item.filename in drop:
+                    continue
+                content = zin.read(item.filename)
+                if replacements and item.filename.endswith((".xml", ".rels")):
+                    text = content.decode("utf-8")
+                    for old, new in replacements:
+                        text = text.replace(old, new)
+                    content = text.encode("utf-8")
+                zout.writestr(item, content)
+    return out.getvalue()
+
+
+def _new_extractor(monkeypatch: pytest.MonkeyPatch, path: Path) -> WordExtractor:
+    extractor = WordExtractor(str(path), "tenant_id", "user_id")
+    monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: {})
+    return extractor
+
+
+def test_parse_docx_falls_back_to_direct_xml_for_strict_namespaces(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    strict_bytes = _rewrite_docx_zip(_make_base_docx_bytes(), _STRICT_NAMESPACE_REPLACEMENTS)
+    # Sanity: python-docx itself cannot open the Strict package.
+    with pytest.raises(AttributeError, match="Relationship_lst"):
+        Document(io.BytesIO(strict_bytes))
+
+    path = tmp_path / "strict.docx"
+    path.write_bytes(strict_bytes)
+
+    extractor = _new_extractor(monkeypatch, path)
+    assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
+
+
+def test_parse_docx_falls_back_to_direct_xml_when_rels_stripped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    stripped_bytes = _rewrite_docx_zip(_make_base_docx_bytes(), drop=["_rels/.rels"])
+    # Sanity: python-docx itself cannot open the package without root rels.
+    with pytest.raises(KeyError, match="officeDocument"):
+        Document(io.BytesIO(stripped_bytes))
+
+    path = tmp_path / "stripped.docx"
+    path.write_bytes(stripped_bytes)
+
+    extractor = _new_extractor(monkeypatch, path)
+    assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None, reason="LibreOffice (soffice) is not installed")
+def test_parse_docx_converts_legacy_doc_renamed_to_docx(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    base_path = tmp_path / "base.docx"
+    base_path.write_bytes(_make_base_docx_bytes())
+    result = subprocess.run(
+        ["soffice", "--headless", "--convert-to", "doc", "--outdir", str(tmp_path), str(base_path)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    legacy_doc = tmp_path / "base.doc"
+    assert legacy_doc.read_bytes()[:8] == _OLE2_MAGIC
+
+    renamed = tmp_path / "report.docx"
+    renamed.write_bytes(legacy_doc.read_bytes())
+
+    extractor = _new_extractor(monkeypatch, renamed)
+    assert extractor.parse_docx(str(renamed)) == _EXPECTED_LEGACY_CONTENT
+
+
+def test_parse_docx_legacy_doc_without_libreoffice_names_the_cause(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: None)
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match=r"legacy.*\.doc.*LibreOffice"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_non_archive_raises_clear_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    path = tmp_path / "not-a-docx.docx"
+    path.write_bytes(b"this is not a zip archive at all")
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="not a valid .docx package"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_zip_without_document_xml_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        zout.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+        )
+    path = tmp_path / "no-document.docx"
+    path.write_bytes(buf.getvalue())
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="word/document.xml"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_legacy_conversion_timeout_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+
+    def _times_out(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd, 120)
+
+    monkeypatch.setattr(we.subprocess, "run", _times_out)
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="timed out"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_legacy_conversion_uses_renamed_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+
+    def _convert_with_renamed_output(cmd, **kwargs):
+        outdir = Path(cmd[5])
+        (outdir / "converted.docx").write_bytes(_make_base_docx_bytes())
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(we.subprocess, "run", _convert_with_renamed_output)
+
+    extractor = _new_extractor(monkeypatch, path)
+    assert extractor.parse_docx(str(path)) == _EXPECTED_BASE_CONTENT
+
+
+def test_parse_docx_legacy_conversion_failure_raises_clear_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "report.docx"
+    path.write_bytes(_OLE2_MAGIC + b"\x00" * 512)
+    monkeypatch.setattr(we.shutil, "which", lambda _name: "/usr/bin/soffice")
+    monkeypatch.setattr(
+        we.subprocess,
+        "run",
+        lambda cmd, **kwargs: subprocess.CompletedProcess(cmd, 1),
+    )
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="exit code 1"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_xml_fallback_rejects_malformed_document_xml(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        zout.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+        )
+        zout.writestr("word/document.xml", "this is not XML at all")
+    path = tmp_path / "malformed.docx"
+    path.write_bytes(buf.getvalue())
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="not valid XML"):
+        extractor.parse_docx(str(path))
+
+
+def test_parse_docx_xml_fallback_rejects_document_xml_without_body(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+        zout.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+        )
+        zout.writestr(
+            "word/document.xml",
+            '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            "<w:other/></w:document>",
+        )
+    path = tmp_path / "no-body.docx"
+    path.write_bytes(buf.getvalue())
+
+    extractor = _new_extractor(monkeypatch, path)
+    with pytest.raises(ValueError, match="has no body"):
+        extractor._parse_docx_xml_fallback(str(path))
+
+
+def test_fallback_table_to_markdown_returns_empty_string_for_table_without_rows() -> None:
+    table = ET.fromstring('<w:tbl xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>')
+    assert WordExtractor._fallback_table_to_markdown(table) == ""
