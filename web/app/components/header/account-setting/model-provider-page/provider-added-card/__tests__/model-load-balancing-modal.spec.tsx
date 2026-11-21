@@ -21,6 +21,8 @@ import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
 const api = vi.hoisted(() => ({
   save: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.post>(),
+  removeModel:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.delete>(),
   credentials:
     vi.fn<
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.credentials.get
@@ -50,6 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         credentials: { api_key: 'same-key' },
       }),
       'workspaces.current.modelProviders.byProvider.models.post': api.save,
+      'workspaces.current.modelProviders.byProvider.models.delete': api.removeModel,
     }),
   }
 })
@@ -391,13 +394,19 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  it('prevents duplicate submissions and keeps the draft available for retry after failure', async () => {
+  it('blocks dismissal and duplicate submissions while saving and allows retry after failure', async () => {
     const request = createDeferred<{ result: string }>()
     api.save.mockReturnValueOnce(request.promise)
     const { user, onClose, onSave } = renderModal()
     await screen.findByRole('switch', { name: 'Default' })
     await user.dblClick(saveButton())
-    expect(saveButton()).toBeDisabled()
+    expect(saveButton()).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Escape}')
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onClose).not.toHaveBeenCalled()
+    expect(saveButton()).toHaveAttribute('aria-disabled', 'true')
     expect(api.save).toHaveBeenCalledTimes(1)
     await act(async () => request.reject(new Error('Save failed')))
     expect(await screen.findByText('Save failed')).toBeInTheDocument()
@@ -416,5 +425,26 @@ describe('ModelLoadBalancingModal', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(api.save).not.toHaveBeenCalled()
+  })
+
+  it('does not start a save while the model is being removed', async () => {
+    const request = createDeferred<Awaited<ReturnType<typeof api.removeModel>>>()
+    api.removeModel.mockReturnValueOnce(request.promise)
+    const { user, onClose } = renderModal(ConfigurationMethodEnum.customizableModel)
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(screen.getByRole('button', { name: /removeModel$/ }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(api.removeModel).toHaveBeenCalledTimes(1)
+    expect(saveButton()).toBeDisabled()
+    await user.click(saveButton())
+    expect(api.save).not.toHaveBeenCalled()
+    await act(async () => request.resolve({ result: 'success' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
