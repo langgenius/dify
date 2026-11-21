@@ -5,14 +5,14 @@ import type {
   SkillFileResponse,
   SkillVersionResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ChangeEvent, InputEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, InputEvent, KeyboardEvent, Ref } from 'react'
 import type { SkillDraftMutationCoordinator } from '../mutations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import dynamic from 'next/dynamic'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -95,6 +95,10 @@ const SkillPdfPreview = dynamic(
   { ssr: false },
 )
 
+export type FileEditorHandle = {
+  prepareExport: () => Promise<boolean>
+}
+
 export function SkillFileEditor({
   canPublish,
   detail,
@@ -115,6 +119,7 @@ export function SkillFileEditor({
   openFiles,
   previewFilePath,
   publishing,
+  ref,
   readonly,
   selectedPath,
   selectedVersion,
@@ -140,6 +145,7 @@ export function SkillFileEditor({
   openFiles: SkillFileResponse[]
   previewFilePath: string | undefined
   publishing: boolean
+  ref?: Ref<FileEditorHandle>
   readonly: boolean
   selectedPath: string | undefined
   selectedVersion: SkillVersionResponse | undefined
@@ -168,6 +174,7 @@ export function SkillFileEditor({
     null,
   )
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
+  const savingDraftRef = useRef(false)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
   const [hasSaveConflict, setHasSaveConflict] = useState(false)
   const [saveConflictReloadContent, setSaveConflictReloadContent] = useState<string | null>(null)
@@ -190,7 +197,7 @@ export function SkillFileEditor({
   const liveBodyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
-  const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
+  const { mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
       context: { silent: true },
     }),
@@ -337,7 +344,7 @@ export function SkillFileEditor({
     async (content: string) => {
       const currentDetail = detailRef.current
       const currentFile = fileRef.current
-      if (!currentDetail || !currentFile || !canEdit || isSavingDraft) return false
+      if (!currentDetail || !currentFile || !canEdit || savingDraftRef.current) return false
       if (saveConflictContentRef.current === content) {
         setHasSaveConflict(true)
         if (saveConflictReloadContentRef.current != null)
@@ -347,6 +354,7 @@ export function SkillFileEditor({
 
       setHasSaveConflict(false)
       setSaveStatus('saving')
+      savingDraftRef.current = true
       try {
         const nextCachedDetail = await runSkillDraftMutation(
           draftMutationCoordinator,
@@ -449,12 +457,13 @@ export function SkillFileEditor({
         setSaveStatus('error')
         toast.error(t(($) => $['skillManagement.detail.saveFailed']))
         return false
+      } finally {
+        savingDraftRef.current = false
       }
     },
     [
       canEdit,
       draftMutationCoordinator,
-      isSavingDraft,
       onDraftDetailChange,
       onSaveConflictConfirm,
       queryClient,
@@ -603,6 +612,19 @@ export function SkillFileEditor({
   useEffect(() => {
     saveDraftContentRef.current = saveDraftContent
   }, [saveDraftContent])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      prepareExport: async () => {
+        await draftMutationCoordinator.queue
+        const content = draftContentRef.current
+        if (!canEditRef.current || content === lastSavedContentRef.current) return true
+        return saveDraftContentRef.current(content)
+      },
+    }),
+    [draftMutationCoordinator],
+  )
 
   useEffect(() => {
     return () => {

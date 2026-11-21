@@ -1,6 +1,7 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { FileEditorHandle } from './files/editor'
 import type { SkillDraftMutationCoordinator } from './mutations'
 import {
   AlertDialog,
@@ -12,7 +13,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -34,6 +35,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation(['skill'])
   const queryClient = useQueryClient()
   const { canEdit, canPublish, canDelete } = useSkillPermissions()
+  const fileEditorRef = useRef<FileEditorHandle>(null)
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])
   const [previewFilePath, setPreviewFilePath] = useState<string>()
@@ -314,6 +316,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           detail={detail}
           draftMutationCoordinator={draftMutationCoordinator}
           files={activeFiles}
+          onBeforeExport={() => fileEditorRef.current?.prepareExport() ?? Promise.resolve(true)}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
           readonly={!!activeVersionId || !canEdit}
@@ -321,6 +324,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           skillId={skillId}
         />
         <SkillFileEditor
+          ref={fileEditorRef}
           canPublish={canPublish}
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
