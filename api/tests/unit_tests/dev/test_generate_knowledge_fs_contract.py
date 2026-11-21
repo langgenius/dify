@@ -118,15 +118,18 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
         if change == "schema":
             document["components"] = {"schemas": {"KnowledgeSpace": {"type": "object"}}}
         elif change == "query":
-            openapi_operation(document, "get")["parameters"].append(
-                {"in": "query", "name": "limit", "schema": {"maximum": 200, "type": "integer"}}
-            )
+            get_operation = openapi_operation(document, "get")
+            parameters = get_operation["parameters"]
+            assert isinstance(parameters, list)
+            parameters.append({"in": "query", "name": "limit", "schema": {"maximum": 200, "type": "integer"}})
         elif change == "body":
             openapi_operation(document, "post")["requestBody"] = {
                 "content": {"application/json": {"schema": {"required": ["name"], "type": "object"}}}
             }
         elif change == "response":
-            responses = openapi_operation(document, "post")["responses"]
+            post_operation = openapi_operation(document, "post")
+            responses = post_operation["responses"]
+            assert isinstance(responses, dict)
             responses["201"] = responses.pop("200")
         elif change == "security":
             openapi_operation(document, "get")["security"] = []
@@ -221,7 +224,9 @@ def test_contract_update_requires_explicit_source_and_check_rejects_source(monke
 
 def test_product_operation_manifest_must_cover_ready_and_gap_runtime_registry() -> None:
     manifest = fixture_product_manifest()
-    manifest["operations"] = manifest["operations"][:-1]
+    operations = manifest["operations"]
+    assert isinstance(operations, list)
+    manifest["operations"] = operations[:-1]
 
     with pytest.raises(ValueError, match="completeness drifted.*createUploadSession"):
         validate_fixture_product_contracts(manifest=manifest)
@@ -229,7 +234,11 @@ def test_product_operation_manifest_must_cover_ready_and_gap_runtime_registry() 
 
 def test_product_operation_manifest_must_match_capability_and_openapi_fields() -> None:
     manifest = fixture_product_manifest()
-    manifest["operations"][0]["method"] = "POST"
+    operations = manifest["operations"]
+    assert isinstance(operations, list)
+    first_operation = operations[0]
+    assert isinstance(first_operation, dict)
+    first_operation["method"] = "POST"
 
     with pytest.raises(ValueError, match="getSpace field method drifted"):
         validate_fixture_product_contracts(manifest=manifest)
@@ -237,7 +246,7 @@ def test_product_operation_manifest_must_match_capability_and_openapi_fields() -
 
 def test_internal_capability_operation_requires_an_explicit_exclusion() -> None:
     gap_manifest = fixture_product_gap_manifest()
-    gap_manifest["internalKfsOperationExclusions"] = []
+    gap_manifest["internalKfsOperationExclusions"] = list[object]()
 
     with pytest.raises(ValueError, match="lifecycle operations must be explicit internal exclusions"):
         validate_fixture_product_contracts(gap_manifest=gap_manifest)
@@ -283,8 +292,8 @@ def test_validate_declarations_accepts_matching_contract() -> None:
     route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
     route["responses"] = {
         "200": {
-            "content": {"application/json": {}},
-            "headers": {"X-Trace-Id": {}},
+            "content": {"application/json": dict[str, object]()},
+            "headers": {"X-Trace-Id": dict[str, object]()},
         }
     }
     document = {"paths": {"/knowledge-spaces": {"get": route}}}
@@ -517,8 +526,8 @@ def console_registry_document() -> dict[str, object]:
         route["parameters"] = [{"in": "header", "name": "X-Trace-Id"}]
         route["responses"] = {
             "200": {
-                "content": {"application/json": {}},
-                "headers": {"X-Trace-Id": {}},
+                "content": {"application/json": dict[str, object]()},
+                "headers": {"X-Trace-Id": dict[str, object]()},
             }
         }
     return {"paths": {"/knowledge-spaces": {"get": list_route, "post": create_route}}}
@@ -617,7 +626,7 @@ def test_validate_declarations_ignores_undeclared_operations() -> None:
                 "get": operation("knowledge-spaces:read", "listKnowledgeSpaces"),
             },
             "/internal-maintenance": {
-                "head": {"responses": {"200": {}}},
+                "head": {"responses": {"200": dict[str, object]()}},
             },
         }
     }
@@ -643,9 +652,9 @@ def test_validate_declarations_preserves_public_operation_scope() -> None:
 def test_validate_declarations_accepts_inherited_bearer_security() -> None:
     route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
     route.pop("security")
-    document = {
+    document: dict[str, object] = {
         "paths": {"/knowledge-spaces": {"get": route}},
-        "security": [{"bearerAuth": []}],
+        "security": [{"bearerAuth": list[object]()}],
     }
 
     validate_declarations(document, (declaration(),))
@@ -655,7 +664,7 @@ def test_validate_declarations_accepts_inherited_bearer_security() -> None:
 def test_validate_declarations_rejects_missing_or_replaced_bearer_security(security: object) -> None:
     route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
     route.pop("security")
-    document = {"paths": {"/knowledge-spaces": {"get": route}}}
+    document: dict[str, object] = {"paths": {"/knowledge-spaces": {"get": route}}}
     if security is not None:
         document["security"] = security
 
@@ -725,7 +734,7 @@ def operation(scope: str | None, operation_id: str, **overrides: object) -> dict
     }
     if scope is not None:
         value["x-knowledge-fs-required-scope"] = scope
-        value["security"] = [{"bearerAuth": []}]
+        value["security"] = [{"bearerAuth": list[object]()}]
     value.update(overrides)
     return value
 
