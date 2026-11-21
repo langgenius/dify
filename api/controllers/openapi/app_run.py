@@ -179,15 +179,19 @@ def require_mode(app: App, *modes: AppMode) -> None:
         raise AppModeMismatch()
 
 
-def _respond(ctx: Context, stream: Any):
-    app_model = ctx.app
+def emit_run_audit(ctx: Context) -> None:
+    """Postcondition: the app run audit event for ctx's app and caller is emitted."""
     emit_app_run(
-        app_id=app_model.id,
-        tenant_id=app_model.tenant_id,
+        app_id=ctx.app.id,
+        tenant_id=ctx.app.tenant_id,
         caller_kind=ctx.subject.caller_role,
-        mode=str(app_model.mode),
+        mode=str(ctx.app.mode),
         surface="apps",
     )
+
+
+def _respond(ctx: Context, stream: Any):
+    emit_run_audit(ctx)
     # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(stream)
 

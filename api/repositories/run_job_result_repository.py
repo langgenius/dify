@@ -12,14 +12,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus
+from libs.stream import close_stream
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.run_job_contracts import JobStatus
 from services.run_job_frames import pending_form
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, close_frames
+from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS
 from services.run_job_service import RunResult
-from services.workflow.graph_check import GRAPH_MODES
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 PENDING_FORM_IDLE_TIMEOUT_SECONDS: Final = 2
@@ -46,7 +46,6 @@ class SQLAlchemyRunResultReader:
     def run(self, *, tenant_id: str, run_id: str) -> RunResult | None:
         """Read the stored result of a run.
 
-        Precondition: none.
         Postcondition: the run's job status, outputs and error, and for a running run when it started or last
         resumed (see _running_since); None when the run is not stored for the tenant or its stored status has no job
         status.
@@ -78,12 +77,10 @@ class SQLAlchemyRunResultReader:
     ) -> HumanInputRequiredResponse | None:
         """Read the human input form a paused run waits on.
 
-        Precondition: the run is paused.
+        Precondition: the run is paused; mode is a graph mode.
         Postcondition: the last human_input_required event of the run's snapshot, or None when the run is absent or
-        no longer paused, the mode has no snapshot, or no form is pending. The snapshot stream is closed.
+        no longer paused, or no form is pending. The snapshot stream is closed.
         """
-        if mode not in GRAPH_MODES:
-            return None
         row = self._runs.get_workflow_run_by_id_and_tenant_id(tenant_id=tenant_id, run_id=run_id)
         if row is None:
             return None
@@ -102,4 +99,4 @@ class SQLAlchemyRunResultReader:
         try:
             return pending_form(source)
         finally:
-            close_frames(source)
+            close_stream(source)

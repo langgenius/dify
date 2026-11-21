@@ -15,6 +15,7 @@ from flask import copy_current_request_context
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from libs.datetime_utils import naive_utc_now
+from libs.stream import close_stream
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
@@ -26,7 +27,7 @@ from services.run_job_contracts import (
     JobStatus,
     RunJobStore,
 )
-from services.run_job_reader import JobStopper, close_frames, read_to_end
+from services.run_job_reader import read_to_end
 
 if TYPE_CHECKING:
     from services.app_task_service import WorkflowStopOutcome
@@ -70,7 +71,7 @@ class JobView:
 
 class RunResultReader(Protocol):
     def run(self, *, tenant_id: str, run_id: str) -> RunResult | None:
-        """Precondition: none. Postcondition: the stored result of the run, or None when it is not stored."""
+        """Postcondition: the stored result of the run, or None when it is not stored."""
 
     def pending_form(
         self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
@@ -89,10 +90,10 @@ class RunTaskControl(Protocol):
         caller_role: CreatorUserRole,
         caller_id: str,
     ) -> WorkflowStopOutcome:
-        """Precondition: none. Postcondition: the run is asked to stop and the outcome is reported."""
+        """Postcondition: the run is asked to stop and the outcome is reported."""
 
     def stop_message_task(self, *, task_id: str, caller_role: CreatorUserRole, caller_id: str) -> bool:
-        """Precondition: none. Postcondition: the task is asked to stop."""
+        """Postcondition: the task is asked to stop."""
 
 
 class JobNotFoundError(Exception):
@@ -165,27 +166,6 @@ _STOPS_BY_FAMILY: Final[Mapping[JobFamily, Callable[[RunTaskControl, JobRecord],
 }
 
 
-class TaskControlStopper:
-    """Stops the run behind a job record through task control; serves the reader and RunJobService.stop."""
-
-    def __init__(self, tasks: RunTaskControl) -> None:
-        """Bind the task control.
-
-        Precondition: none.
-        Postcondition: stop sends stops through tasks.
-        """
-        self._tasks = tasks
-
-    def stop(self, record: JobRecord) -> None:
-        """Ask the run behind the record to stop.
-
-        Precondition: none.
-        Postcondition: the stop for the record's family was sent when the id it needs is known; otherwise nothing
-        happened.
-        """
-        _STOPS_BY_FAMILY[record.family](self._tasks, record)
-
-
 class RunJobService:
     """Starts jobs with their readers, and answers view, wait and stop for the owner of a job.
 
@@ -214,7 +194,7 @@ class RunJobService:
         """
         self._store = store
         self._results = results
-        self._stopper: JobStopper = TaskControlStopper(tasks)
+        self._tasks = tasks
         self._slots = threading.BoundedSemaphore(max_background_runs)
         self._waiters = threading.BoundedSemaphore(max_waiters)
         self._stalled_after = run_time_limit + RUN_TIME_LIMIT_MARGIN
@@ -248,7 +228,7 @@ class RunJobService:
             self._read_in_background(job_id, frames)
         except BaseException:
             self._slots.release()
-            close_frames(frames)
+            close_stream(frames)
             self._store.discard(job_id)
             raise
         return job_id
@@ -273,7 +253,7 @@ class RunJobService:
                     job_id=job_id,
                     frames=frames,
                     store=self._store,
-                    stopper=self._stopper,
+                    stopper=self._stop,
                 )
             finally:
                 self._slots.release()
@@ -285,10 +265,17 @@ class RunJobService:
         )
         thread.start()
 
+    def _stop(self, record: JobRecord) -> None:
+        """Ask the run behind the record to stop; serves the reader and stop.
+
+        Postcondition: the stop for the record's family was sent when the id it needs is known; otherwise nothing
+        happened.
+        """
+        _STOPS_BY_FAMILY[record.family](self._tasks, record)
+
     def view(self, owner: JobOwner, job_id: str) -> JobView:
         """Describe a job's current state.
 
-        Precondition: none.
         Postcondition: a view of the job; a GRAPH job with a stored run takes status, outputs and error from the
         run, and its form from the pending form while paused (None otherwise). A GRAPH job
         without a run id whose reader died (alive key gone, no ending) is FAILED as RUN_NOT_CONFIRMED, and that
@@ -306,7 +293,6 @@ class RunJobService:
     def _owned(self, owner: JobOwner, job_id: str) -> tuple[JobRecord, bool]:
         """Load the owner's job and whether its reader is alive, read before the record.
 
-        Precondition: none.
         Postcondition: the record and the alive flag; raises JobNotFoundError when the job is missing or owned by
         someone else.
         """
@@ -355,7 +341,6 @@ class RunJobService:
     def _stalled(self, run: RunResult) -> bool:
         """Report whether a run stays running past core's time limit and the margin, as when its worker died.
 
-        Precondition: none.
         Postcondition: true only for a running run whose time since it started or last resumed is known and longer
         than the limit plus RUN_TIME_LIMIT_MARGIN. Paused time never counts: a paused run is not running, and a
         resumed run counts from its resume, as core's limit does.
@@ -369,20 +354,19 @@ class RunJobService:
     def wait(self, owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         """Wait for a job to finish or pause.
 
-        Precondition: wait_seconds is not negative.
-        Postcondition: returns once the job is final or paused with a waiting form, the clamped wait time is used
-        up, or at once for wait_seconds of 0 or when max_waiters calls already wait in this process. Raises
-        JobNotFoundError as view does.
+        Precondition: wait_seconds is between 0 and WAIT_MAX_SECONDS; the routes validate it.
+        Postcondition: returns once the job is final or paused with a waiting form, the wait time is used up, or at
+        once for wait_seconds of 0 or when max_waiters calls already wait in this process. Raises JobNotFoundError as
+        view does.
         """
         view = self.view(owner, job_id)
-        seconds = min(wait_seconds, WAIT_MAX_SECONDS)
-        if seconds <= 0:
+        if wait_seconds <= 0:
             return view
         if not self._waiters.acquire(blocking=False):
             return view
         try:
-            deadline = self._monotonic() + seconds
-            remaining = float(seconds)
+            deadline = self._monotonic() + wait_seconds
+            remaining = float(wait_seconds)
             while not _settled(view) and remaining > 0:
                 self._sleep(min(POLL_INTERVAL_SECONDS, remaining))
                 view = self.view(owner, job_id)
@@ -394,7 +378,6 @@ class RunJobService:
     def stop(self, owner: JobOwner, job_id: str) -> JobView:
         """Ask a job to stop.
 
-        Precondition: none.
         Postcondition: for a job that is not final, stop_requested is stored and the run is stopped now when its id
         is known, otherwise the reader sends the stop once the id arrives; a final job is left untouched and
         nothing is sent. Returns the fresh view. Raises JobNotFoundError when the job is missing or owned by
@@ -407,14 +390,13 @@ class RunJobService:
         self._store.request_stop(job_id)
         # Re-read so ids stored by the reader since the first read are not missed.
         stopping = replace(self._store.get(job_id) or record, stop_requested=True)
-        self._stopper.stop(stopping)
+        self._stop(stopping)
         return self._view_of(stopping, reader_alive=reader_alive)
 
 
 def _settled(view: JobView) -> bool:
     """Report whether waiting for the job is pointless.
 
-    Precondition: none.
     Postcondition: true when the view's status is final, or paused with a form waiting for input. A paused job
     without a form is being resumed, so it is not settled.
     """
