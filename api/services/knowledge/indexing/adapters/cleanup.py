@@ -25,13 +25,13 @@ def delete_index_entries(
 ) -> None:
     """Delete index entries by node id; the single owner of how each index type is removed.
 
-    High-quality datasets delete ``vector_node_ids`` from the vector store; other datasets
-    delete ``keyword_node_ids`` from the keyword table under the dataset keyword lock.
+    High-quality datasets delete ``vector_node_ids`` from the vector store. Nonempty
+    ``keyword_node_ids`` are independently removed under the dataset keyword lock, including
+    child keyword entries in high-quality datasets. Callers select the indexes to clean.
     """
     if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
         if vector_node_ids:
             Vector(dataset, session=None, vector_type=vector_type).delete_by_ids(list(vector_node_ids))
-        return
     if not keyword_node_ids:
         return
 
@@ -109,6 +109,11 @@ def clean_document_indexes(
         high_quality = dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         node_ids = list(dict.fromkeys([*summary_node_ids, *body_node_ids]))
         vector_type = Vector.resolve_vector_type(dataset, session=session) if high_quality and node_ids else None
+        has_child_keyword_table = (
+            get_dataset_keyword_table(dataset, session=session) is not None
+            if high_quality and doc_form == IndexStructureType.PARENT_CHILD_INDEX and body_node_ids
+            else False
+        )
         session.expunge(dataset)
 
     if not node_ids and not summary_ids and not child_ids:
@@ -118,7 +123,7 @@ def clean_document_indexes(
         dataset,
         vector_node_ids=node_ids,
         vector_type=vector_type,
-        keyword_node_ids=body_node_ids,
+        keyword_node_ids=body_node_ids if not high_quality or has_child_keyword_table else [],
         new_session=new_session,
     )
 
