@@ -1,7 +1,9 @@
 """Framework-independent inputs and query port for Agent observability."""
 
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Protocol
+from datetime import datetime
+from typing import Literal, Protocol
 
 from machinery.context import RequestContext
 from services.entities.conversation_entities import ConsoleLogIdentity
@@ -38,6 +40,22 @@ class AgentLogExportQuery:
 class AgentLogExportCounts:
     log_count: int
     row_count: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AgentLogExportRow:
+    """A detached WebApp question and answer or Workflow Agent node execution."""
+
+    source: Literal["WebApp", "Workflow"]
+    end_user_id: str | None
+    conversation_id: str
+    message_id: str
+    created_at: datetime
+    user_input: str
+    app_response: str
+    status: str
+    feedback_rating: str | None
+    feedback_content: str | None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -81,6 +99,16 @@ class AgentObservability(Protocol):
 
         Raise AgentObservabilityNotFoundError for an unavailable Agent and ValueError
         for invalid sources or time bounds. No log contents leave the read session.
+        """
+        ...
+
+    def iter_export_rows(
+        self, context: RequestContext, agent_id: str, filters: AgentLogExportQuery
+    ) -> Generator[AgentLogExportRow]:
+        """Yield matching CSV rows for the admitted Agent with the same filters as the preview.
+
+        Raise AgentObservabilityNotFoundError if the Agent or backing App is unavailable.
+        Return detached rows without holding a database session open between batches.
         """
         ...
 

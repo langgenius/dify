@@ -9,12 +9,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from itertools import batched
+from tempfile import TemporaryFile
 from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy import Select, and_, func, or_, select
-from sqlalchemy.orm import Session, aliased, sessionmaker
+from sqlalchemy.orm import Session, aliased, load_only, sessionmaker
+from sqlalchemy.sql import Subquery
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -43,6 +46,7 @@ from repositories.log_export_count import execute_log_export_count
 from services.agent.observability_contracts import (
     AgentLogExportCounts,
     AgentLogExportQuery,
+    AgentLogExportRow,
     AgentLogQuery,
     AgentObservabilityNotFoundError,
     AgentStatisticsQuery,
@@ -50,6 +54,7 @@ from services.agent.observability_contracts import (
 from services.entities.conversation_entities import ConsoleLogIdentity
 
 _LOG_END_USER_SEARCH_LIMIT = 20
+_LOG_EXPORT_BATCH_SIZE = 100
 _WORKFLOW_END_USER_ROLES = (CreatorUserRole.END_USER, "end-user")
 
 
@@ -242,6 +247,27 @@ class AgentObservabilityQueries:
         A WebApp message contributes one row. A Workflow node execution
         contributes one log and one row, as in the Agent log detail.
         """
+        selected = self.matching_export_logs(app=app, agent_id=agent_id, params=params)
+        if selected is None:
+            return AgentLogExportCounts(log_count=0, row_count=0)
+        logs = (
+            select(func.count().label("row_count"))
+            .select_from(selected)
+            .group_by(selected.c.source, selected.c.log_id)
+            .subquery()
+        )
+        counts = execute_log_export_count(
+            self._session, select(func.count(), func.coalesce(func.sum(logs.c.row_count), 0)).select_from(logs)
+        )
+        if counts is None:
+            return None
+        return AgentLogExportCounts(log_count=int(counts[0]), row_count=int(counts[1]))
+
+    def matching_export_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> Subquery | None:
+        """Select distinct source, log and row IDs within the admitted Agent and filters.
+
+        Return None when no selected source addresses this Agent. The caller owns the read session.
+        """
         source_filters = self.resolve_source_filters(params.sources)
         workflow_app = aliased(App)
         matches = [
@@ -263,22 +289,115 @@ class AgentObservabilityQueries:
             if source_filter.kind in {"all", "workflow"}
         )
         if not matches:
-            return AgentLogExportCounts(log_count=0, row_count=0)
-        selected = (matches[0] if len(matches) == 1 else sa.union_all(*matches)).subquery()
-        # Multiple source selectors can overlap, e.g. a Workflow app and one of its nodes.
-        row_count = func.count(sa.distinct(selected.c.row_id)) if len(source_filters) > 1 else func.count()
-        logs = (
-            select(row_count.label("row_count"))
-            .select_from(selected)
-            .group_by(selected.c.source, selected.c.log_id)
-            .subquery()
-        )
-        counts = execute_log_export_count(
-            self._session, select(func.count(), func.coalesce(func.sum(logs.c.row_count), 0)).select_from(logs)
-        )
-        if counts is None:
             return None
-        return AgentLogExportCounts(log_count=int(counts[0]), row_count=int(counts[1]))
+        if len(matches) == 1:
+            return matches[0].subquery()
+        # Only selectors of the same source kind can overlap.
+        overlapping_sources = len(source_filters) > len({source_filter.kind for source_filter in source_filters})
+        combine = sa.union if overlapping_sources else sa.union_all
+        return combine(*matches).subquery()
+
+    def read_export_webapp_rows(self, *, app: App, row_ids: tuple[str, ...]) -> list[AgentLogExportRow]:
+        """Read a bounded batch for the admitted App, taking at most one end-user feedback per message."""
+        if not row_ids:
+            return []
+        feedback_id = (
+            select(MessageFeedback.id)
+            .where(
+                MessageFeedback.message_id == Message.id,
+                MessageFeedback.app_id == app.id,
+                MessageFeedback.from_source == FeedbackFromSource.USER,
+            )
+            .order_by(MessageFeedback.updated_at.desc(), MessageFeedback.id.desc())
+            .limit(1)
+            .correlate(Message)
+            .scalar_subquery()
+        )
+        statement = (
+            select(
+                Message,
+                func.coalesce(EndUser.session_id, sa.cast(Conversation.from_end_user_id, sa.String)),
+                MessageFeedback.rating,
+                MessageFeedback.content,
+            )
+            .select_from(Message)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .outerjoin(EndUser, and_(EndUser.id == Conversation.from_end_user_id, EndUser.tenant_id == app.tenant_id))
+            .outerjoin(MessageFeedback, MessageFeedback.id == feedback_id)
+            .where(Message.id.in_(row_ids), Message.app_id == app.id, Conversation.app_id == app.id)
+            .options(
+                load_only(
+                    Message.id,
+                    Message.conversation_id,
+                    Message.created_at,
+                    Message.query,
+                    Message.answer,
+                    Message.status,
+                    Message.error,
+                )
+            )
+            .order_by(Message.created_at, Message.id)
+        )
+        return [
+            AgentLogExportRow(
+                source="WebApp",
+                end_user_id=end_user_id,
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                created_at=message.created_at,
+                user_input=message.query,
+                app_response=message.answer,
+                status=self._message_status(message),
+                feedback_rating=rating.value if rating is not None else None,
+                feedback_content=content,
+            )
+            for message, end_user_id, rating, content in self._session.execute(statement)
+        ]
+
+    def read_export_workflow_rows(
+        self, *, app: App, agent_id: str, row_ids: tuple[str, ...]
+    ) -> list[AgentLogExportRow]:
+        """Read selected executions still bound to the Agent and render their logged question and answer."""
+        if not row_ids:
+            return []
+        node = WorkflowNodeExecutionModel
+        end_user_role = node.created_by_role.in_(_WORKFLOW_END_USER_ROLES)
+        statement = (
+            self._select_workflow_log_rows(
+                app=app,
+                agent_id=agent_id,
+                workflow_app=aliased(App),
+                params=AgentLogQueryParams(),
+                source_filter=AgentSourceFilter(kind="all"),
+            )
+            .with_only_columns(
+                node.id,
+                node.created_at,
+                node.title,
+                node.inputs,
+                node.outputs,
+                node.status,
+                sa.case((end_user_role, func.coalesce(EndUser.session_id, sa.cast(node.created_by, sa.String)))),
+            )
+            .outerjoin(EndUser, and_(end_user_role, EndUser.id == node.created_by, EndUser.tenant_id == app.tenant_id))
+            .where(node.id.in_(row_ids))
+            .order_by(node.created_at, node.id)
+        )
+        return [
+            AgentLogExportRow(
+                source="Workflow",
+                end_user_id=end_user_id,
+                conversation_id=node_id,
+                message_id=node_id,
+                created_at=created_at,
+                user_input=self._workflow_node_query(self._json_mapping(inputs), fallback=title),
+                app_response=self._workflow_node_answer(self._json_mapping(outputs)),
+                status=self._workflow_node_status(status),
+                feedback_rating=None,
+                feedback_content=None,
+            )
+            for node_id, created_at, title, inputs, outputs, status, end_user_id in self._session.execute(statement)
+        ]
 
     def search_log_end_users(self, *, app: App, agent_id: str, keyword: str) -> tuple[ConsoleLogIdentity, ...]:
         """Return matching end users of the admitted runtime App or Agent's bound Workflow nodes."""
@@ -1516,17 +1635,51 @@ class SQLAlchemyAgentObservabilityRepository:
     ) -> AgentLogExportCounts | None:
         """Count the admitted Agent's existing runtime logs without provisioning a backing App."""
         with self._existing_runtime(context, agent_id) as (session, app):
-            start, end = parse_time_range(query.start, query.end, self._timezone(session, context))
             return AgentObservabilityQueries(session).count_export_logs(
                 app=app,
                 agent_id=agent_id,
-                params=AgentLogQueryParams(
-                    sources=query.sources,
-                    end_user_ids=query.end_user_ids,
-                    start=start,
-                    end=end,
-                ),
+                params=self._export_log_params(session, context, query),
             )
+
+    @classmethod
+    def _export_log_params(
+        cls, session: Session, context: RequestContext, query: AgentLogExportQuery
+    ) -> AgentLogQueryParams:
+        """Interpret the preview and CSV filters in the admitted account's timezone."""
+        start, end = parse_time_range(query.start, query.end, cls._timezone(session, context))
+        return AgentLogQueryParams(sources=query.sources, end_user_ids=query.end_user_ids, start=start, end=end)
+
+    def iter_export_rows(
+        self, context: RequestContext, agent_id: str, filters: AgentLogExportQuery
+    ) -> Generator[AgentLogExportRow]:
+        """Stage matching IDs once and yield detached log rows in bounded read batches.
+
+        Stop if the Agent's runtime App changes. Rows removed before a batch read are omitted.
+        """
+        with TemporaryFile(mode="w+t", encoding="utf-8") as id_file:
+            with self._existing_runtime(context, agent_id) as (session, app):
+                app_id = app.id
+                selected = AgentObservabilityQueries(session).matching_export_logs(
+                    app=app, agent_id=agent_id, params=self._export_log_params(session, context, filters)
+                )
+                if selected is None:
+                    return
+                # Only IDs are streamed to disk during the initial scan.
+                statement = select(selected.c.source, selected.c.row_id).execution_options(yield_per=1000)
+                with session.execute(statement) as result:
+                    id_file.writelines(f"{source}\t{row_id}\n" for source, row_id in result)
+            id_file.seek(0)
+            selected_ids = (line.rstrip("\n").split("\t", 1) for line in id_file)
+            for batch in batched(selected_ids, _LOG_EXPORT_BATCH_SIZE, strict=False):
+                webapp_ids = tuple(row_id for source, row_id in batch if source == "webapp")
+                workflow_ids = tuple(row_id for source, row_id in batch if source == "workflow")
+                with self._existing_runtime(context, agent_id) as (session, app):
+                    if app.id != app_id:
+                        raise AgentObservabilityNotFoundError
+                    queries = AgentObservabilityQueries(session)
+                    rows = queries.read_export_webapp_rows(app=app, row_ids=webapp_ids)
+                    rows.extend(queries.read_export_workflow_rows(app=app, agent_id=agent_id, row_ids=workflow_ids))
+                yield from rows
 
     def search_log_end_users(
         self, context: RequestContext, agent_id: str, *, keyword: str

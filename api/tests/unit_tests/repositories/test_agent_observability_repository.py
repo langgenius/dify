@@ -1,19 +1,22 @@
+import csv
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from io import StringIO
 from sqlite3 import Connection
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
 from sqlalchemy import Select, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from machinery.context import RequestContext
+from models.agent import Agent, AgentScope, AgentSource, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
     ConversationFromSource,
@@ -38,9 +41,11 @@ from repositories.agent_observability_repository import (
     AgentLogQueryParams,
     AgentObservabilityQueries,
     AgentStatisticsQueryParams,
+    SQLAlchemyAgentObservabilityRepository,
 )
-from services.agent.observability_contracts import AgentLogExportCounts
+from services.agent.observability_contracts import AgentLogExportCounts, AgentLogExportQuery
 from services.entities.conversation_entities import ConsoleLogIdentity
+from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
@@ -513,6 +518,101 @@ class TestAgentObservabilityQueriesCases:
         assert queries.count_export_logs(
             app=app, agent_id="agent-1", params=AgentLogQueryParams(end=timestamp)
         ) == AgentLogExportCounts(log_count=0, row_count=0)
+
+    @staticmethod
+    def test_write_agent_log_csv_matches_preview_across_sources_and_batches(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(observability_repository_module, "_LOG_EXPORT_BATCH_SIZE", 1)
+        timestamp = datetime(2026, 7, 23, 7, 0, 19)
+        app = _agent_observability_service_app(mode=AppMode.AGENT)
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        agent = Agent(
+            id="agent-1",
+            tenant_id=app.tenant_id,
+            name="Iris",
+            app_id=app.id,
+            created_by="account-1",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+        )
+        message = _agent_observability_service_message(created_at=timestamp)
+        message.query = "=1+1"
+        debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
+        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+        execution = _agent_observability_service_node_execution()
+        execution.inputs = json.dumps(
+            {
+                "agent_backend_request": {
+                    "composition": {"layers": [{"name": "user_prompt", "config": {"text": "Workflow question"}}]}
+                }
+            }
+        )
+        execution.outputs = '{"output":"Workflow answer"}'
+        old_feedback = _feedback(rating=FeedbackRating.DISLIKE)
+        old_feedback.updated_at = timestamp
+        latest_feedback = _feedback(content="Useful, thanks!\nI have a follow-up.")
+        latest_feedback.updated_at = datetime(2026, 7, 23, 7, 1)
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    app,
+                    workflow_app,
+                    agent,
+                    make_end_user(session_id="customer-001"),
+                    _agent_observability_service_conversation(),
+                    message,
+                    debug_message,
+                    _agent_observability_service_message(message_id="old-message", created_at=datetime(2025, 7, 23)),
+                    old_feedback,
+                    latest_feedback,
+                    _feedback(source=FeedbackFromSource.ADMIN, content="Operator feedback"),
+                    _agent_observability_service_workflow_run(),
+                    _agent_observability_service_workflow_binding(),
+                    execution,
+                ]
+            )
+        logs = SQLAlchemyAgentObservabilityRepository(session_factory=sqlite_session_factory)
+        context = RequestContext(
+            request_id="request-1", trace_id=None, account_id="account-1", active_workspace_id="tenant-1"
+        )
+        filters = AgentLogExportQuery(
+            sources=(
+                "webapp:app-1",
+                "console",
+                "workflow:workflow-app-1",
+                "workflow:workflow-app-1:workflow-1:v1:node-1",
+            ),
+            end_user_ids=("end-user-1",),
+            start="2026-07-23 07:00",
+            end="2026-07-23 07:01",
+        )
+        assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=2, row_count=2)
+        output = StringIO(newline="")
+        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=filters, output=output) == 2
+        assert output.getvalue().startswith("\ufeff")
+        rows = {row["source"]: row for row in csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))}
+
+        assert rows.keys() == {"WebApp", "Workflow"}
+        assert all(
+            row["agent_id"] == agent.id and row["app_id"] == "" and row["app_type"] == "New Agent"
+            for row in rows.values()
+        )
+        webapp = rows["WebApp"]
+        assert webapp["end_user_id"] == "customer-001"
+        assert webapp["message_id"] == message.id
+        assert webapp["conversation_id"] == message.conversation_id
+        assert webapp["created_at"] == "2026-07-23T07:00:19+00:00"
+        assert webapp["user_input"] == "'=1+1"
+        assert webapp["app_response"] == "hi"
+        assert webapp["feedback_rating"] == "like"
+        assert webapp["feedback_content"] == "Useful, thanks!\nI have a follow-up."
+        workflow = rows["Workflow"]
+        assert workflow["end_user_id"] == "customer-001"
+        assert workflow["conversation_id"] == workflow["message_id"] == execution.id
+        assert workflow["user_input"] == "Workflow question"
+        assert workflow["app_response"] == "Workflow answer"
+        assert workflow["feedback_rating"] == workflow["feedback_content"] == ""
 
     @staticmethod
     def test_search_log_end_users_matches_both_sources_and_excludes_unrelated_identities(
