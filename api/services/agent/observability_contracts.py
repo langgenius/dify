@@ -134,10 +134,14 @@ class AgentObservability(Protocol):
         """
         ...
 
+    def get_log_export_workspace_id(self, agent_id: str) -> str:
+        """Resolve the Agent's workspace for a trusted server operator or raise if missing."""
+        ...
+
     def iter_export_rows(
-        self, context: RequestContext, agent_id: str, filters: AgentLogExportFilters
+        self, *, tenant_id: str, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:
-        """Yield matching CSV rows for the admitted Agent with the same filters as the preview.
+        """Yield matching CSV rows for the Agent in the supplied workspace with the same filters as the preview.
 
         Raise AgentObservabilityNotFoundError if the Agent or backing App is unavailable.
         Return detached rows without holding a database session open between batches.

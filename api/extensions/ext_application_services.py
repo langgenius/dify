@@ -224,6 +224,7 @@ from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from services.retention.agent.log_export_service import AgentLogExportService, AgentLogExportTask
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
+from services.retention.log_export_command import LogExportCommandService
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
@@ -357,6 +358,7 @@ class ApplicationServices:
     conversation_commands: ConversationCommandService
     conversation_queries: ConversationQueryService
     conversation_log_exports: ConversationLogExportService
+    log_export_command: LogExportCommandService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -670,6 +672,17 @@ def build_application_services(
     )
     workflow_app_logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=database_client))
     agent_observability = build_agent_observability(database_client=database_client)
+    agent_log_csv = AgentLogCsvWriter(logs=agent_observability)
+    workflow_log_csv = WorkflowLogCsvWriter(logs=workflow_app_logs)
+    conversation_log_exports = ConversationLogExportService(
+        conversations=conversations,
+        tasks=RedisLogExportTasks(
+            redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+        ),
+        dispatch=partial(dispatch_log_export, export_kind="conversation"),
+        store_csv=store_log_export_csv,
+        open_csv=open_log_export_csv,
+    )
 
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
@@ -702,14 +715,12 @@ def build_application_services(
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
         conversation_queries=conversation_queries,
-        conversation_log_exports=ConversationLogExportService(
-            conversations=conversations,
-            tasks=RedisLogExportTasks(
-                redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
-            ),
-            dispatch=partial(dispatch_log_export, export_kind="conversation"),
-            store_csv=store_log_export_csv,
-            open_csv=open_log_export_csv,
+        conversation_log_exports=conversation_log_exports,
+        log_export_command=LogExportCommandService(
+            apps=console_apps,
+            conversations=conversation_log_exports,
+            write_workflow_csv=workflow_log_csv.write_scoped_csv,
+            agents=agent_log_csv,
         ),
         accounts=account_services,
         apps=apps,
@@ -725,7 +736,7 @@ def build_application_services(
             tasks=RedisLogExportTasks(redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"),
             dispatch=partial(dispatch_log_export, export_kind="agent"),
             store_csv=store_log_export_csv,
-            write_csv=AgentLogCsvWriter(logs=agent_observability).write_csv,
+            write_csv=agent_log_csv.write_csv,
             open_csv=open_log_export_csv,
         ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
@@ -934,7 +945,7 @@ def build_application_services(
             tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
             dispatch=partial(dispatch_log_export, export_kind="workflow"),
             store_csv=store_log_export_csv,
-            write_csv=WorkflowLogCsvWriter(logs=workflow_app_logs).write_csv,
+            write_csv=workflow_log_csv.write_csv,
             open_csv=open_log_export_csv,
         ),
         workflow_comments=WorkflowCommentService(

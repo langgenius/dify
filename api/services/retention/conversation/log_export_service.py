@@ -12,7 +12,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationScope,
     ConversationLogExportRow,
 )
-from services.retention.log_export_csv import write_log_export_csv
+from services.retention.log_export_csv import CsvRowProgress, write_log_export_csv
 from services.retention.log_export_task import (
     LogExportDownload,
     LogExportStatus,
@@ -148,7 +148,21 @@ class ConversationLogExportService:
         Require an admitted caller and a writable stream opened with newline="". The caller
         owns the stream and publishes it only after success, since a failure may leave partial output.
         """
-        scope = self.get_scope(context, app_id)
+        return self.write_scoped_csv(scope=self.get_scope(context, app_id), filters=filters, output=output)
+
+    def write_scoped_csv(
+        self,
+        *,
+        scope: ConsoleConversationScope,
+        filters: ConsoleConversationLogFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
+    ) -> int:
+        """Write the CSV for a previously resolved app scope with UTC filters and return the row count.
+
+        Reject unsupported modes before writing. The caller owns the UTF-8 stream and
+        publishes it after success.
+        """
         layout = _LOG_CSV_LAYOUTS.get(scope.app_mode)
         if layout is None:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -178,4 +192,5 @@ class ConversationLogExportService:
                 for row in rows
             ),
             columns=columns,
+            report_rows=report_rows,
         )

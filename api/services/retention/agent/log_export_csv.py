@@ -7,7 +7,7 @@ from typing import TextIO
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
 from services.agent.observability_contracts import AgentLogExportFilters, AgentObservability
-from services.retention.log_export_csv import write_log_export_csv
+from services.retention.log_export_csv import CsvRowProgress, write_log_export_csv
 
 _LOG_CSV_COLUMNS = (
     "app_type",
@@ -41,7 +41,35 @@ class AgentLogCsvWriter:
         The caller owns the stream and publishes it only on success, since an error
         may leave partial output.
         """
-        with closing(self._logs.iter_export_rows(context, agent_id, filters)) as rows:
+        return self.write_scoped_csv(
+            tenant_id=context.active_workspace_id, agent_id=agent_id, filters=filters, output=output
+        )
+
+    def write_agent_csv(
+        self,
+        agent_id: str,
+        *,
+        filters: AgentLogExportFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
+    ) -> int:
+        """Resolve a trusted server operator's Agent target and write its existing logs to the open stream."""
+        tenant_id = self._logs.get_log_export_workspace_id(agent_id)
+        return self.write_scoped_csv(
+            tenant_id=tenant_id, agent_id=agent_id, filters=filters, output=output, report_rows=report_rows
+        )
+
+    def write_scoped_csv(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        filters: AgentLogExportFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
+    ) -> int:
+        """Write rows from an existing Agent runtime in the supplied workspace and return the row count."""
+        with closing(self._logs.iter_export_rows(tenant_id=tenant_id, agent_id=agent_id, filters=filters)) as rows:
             return write_log_export_csv(
                 output,
                 (
@@ -63,4 +91,5 @@ class AgentLogCsvWriter:
                     for row in rows
                 ),
                 columns=_LOG_CSV_COLUMNS,
+                report_rows=report_rows,
             )

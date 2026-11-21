@@ -28,13 +28,14 @@ def dispatch_log_export[FiltersT](task: LogExportTask[FiltersT], *, export_kind:
     prepare_log_export_task.apply_async(kwargs=kwargs, task_id=task.task_id, expires=task.expires_at)
 
 
-def store_log_export_csv(storage_key: str, write_csv: Callable[[TextIO], int]) -> None:
-    """Write a UTF-8 CSV to a private temporary file, then upload the completed file."""
+def store_log_export_csv(storage_key: str, write_csv: Callable[[TextIO], int]) -> int:
+    """Write a UTF-8 CSV to a private temporary file, then upload it and return the row count."""
     with TemporaryDirectory() as directory:
         path = Path(directory) / "logs.csv"
         with path.open("w", encoding="utf-8", newline="") as output:
-            write_csv(output)
+            row_count = write_csv(output)
         storage.save_file(storage_key, path)
+        return row_count
 
 
 def open_log_export_csv(storage_key: str, expires_in: int, filename: str) -> LogExportDownload:

@@ -5,8 +5,8 @@ from typing import TextIO
 
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
-from services.retention.log_export_csv import write_log_export_csv
-from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters
+from services.retention.log_export_csv import CsvRowProgress, write_log_export_csv
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 
 _LOG_CSV_COLUMNS = (
@@ -35,6 +35,17 @@ class WorkflowLogCsvWriter:
     ) -> int:
         """Write Workflow-run columns for an admitted Workflow app and return the data row count."""
         scope = self._logs.get_log_export_scope(context, app_id)
+        return self.write_scoped_csv(scope=scope, filters=filters, output=output)
+
+    def write_scoped_csv(
+        self,
+        *,
+        scope: WorkflowLogExportScope,
+        filters: WorkflowLogExportFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
+    ) -> int:
+        """Write matching published runs for an already resolved Workflow app to the caller's UTF-8 stream."""
         rows = self._logs.iter_log_export_rows(scope=scope, filters=filters)
         return write_log_export_csv(
             output,
@@ -55,4 +66,5 @@ class WorkflowLogCsvWriter:
                 for row in rows
             ),
             columns=_LOG_CSV_COLUMNS,
+            report_rows=report_rows,
         )

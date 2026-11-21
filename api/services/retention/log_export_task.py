@@ -16,7 +16,7 @@ _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
 logger = logging.getLogger(__name__)
 
-type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
+type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], int]
 type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 type OpenLogExportFile = Callable[[str, int, str], LogExportDownload]
 type LogExportKind = Literal["conversation", "workflow", "agent"]

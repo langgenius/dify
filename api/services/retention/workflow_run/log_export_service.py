@@ -21,7 +21,7 @@ from services.retention.log_export_task import (
 
 @dataclass(frozen=True, slots=True)
 class WorkflowLogExportScope:
-    """A Workflow app resolved within the caller's active workspace."""
+    """A resolved Workflow app and its owning workspace."""
 
     tenant_id: str
     app_id: str

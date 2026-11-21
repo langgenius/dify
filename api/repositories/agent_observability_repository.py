@@ -27,7 +27,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from machinery.context import RequestContext
 from models.account import Account, TenantAccountJoin
-from models.agent import AgentScope, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentScope, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
 from models.model import App, Conversation, EndUser, Message, MessageFeedback
 from models.workflow import (
@@ -1648,10 +1648,10 @@ class SQLAlchemyAgentObservabilityRepository:
         return app
 
     @contextmanager
-    def _existing_runtime(self, context: RequestContext, agent_id: str) -> Generator[tuple[Session, App]]:
-        """Resolve the admitted Agent's existing runtime App in a read session without provisioning state."""
+    def _existing_runtime(self, *, tenant_id: str, agent_id: str) -> Generator[tuple[Session, App]]:
+        """Resolve an existing runtime App in the supplied workspace without provisioning state."""
         with self._session_factory() as session:
-            app = self._require_existing_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            app = self._require_existing_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
             yield session, app
 
     @staticmethod
@@ -1689,7 +1689,7 @@ class SQLAlchemyAgentObservabilityRepository:
         self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
     ) -> AgentLogExportCounts | None:
         """Count the admitted Agent's existing runtime logs without provisioning a backing App."""
-        with self._existing_runtime(context, agent_id) as (session, app):
+        with self._existing_runtime(tenant_id=context.active_workspace_id, agent_id=agent_id) as (session, app):
             return AgentObservabilityQueries(session).count_export_logs(
                 app=app,
                 agent_id=agent_id,
@@ -1700,7 +1700,7 @@ class SQLAlchemyAgentObservabilityRepository:
         self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
     ) -> AgentLogExportFilters:
         """Check Agent ownership and resolve supplied source and time filters before saving a task."""
-        with self._existing_runtime(context, agent_id) as (session, _):
+        with self._existing_runtime(tenant_id=context.active_workspace_id, agent_id=agent_id) as (session, _):
             AgentObservabilityQueries.resolve_source_filters(query.sources)
             return self._export_log_filters(session, context, query)
 
@@ -1708,6 +1708,14 @@ class SQLAlchemyAgentObservabilityRepository:
         """Verify the admitted Agent and its runtime App before reading export task state."""
         with self._session_factory() as session:
             self._require_existing_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+
+    def get_log_export_workspace_id(self, agent_id: str) -> str:
+        """Resolve the operator's Agent target to its stored workspace without creating a backing App."""
+        with self._session_factory() as session:
+            tenant_id = session.scalar(select(Agent.tenant_id).where(Agent.id == agent_id))
+            if tenant_id is None:
+                raise AgentObservabilityNotFoundError
+            return tenant_id
 
     @classmethod
     def _export_log_filters(
@@ -1735,14 +1743,14 @@ class SQLAlchemyAgentObservabilityRepository:
         )
 
     def iter_export_rows(
-        self, context: RequestContext, agent_id: str, filters: AgentLogExportFilters
+        self, *, tenant_id: str, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:
         """Stage matching IDs once and yield detached log rows in bounded read batches.
 
         Stop if the Agent's runtime App changes. Rows removed before a batch read are omitted.
         """
         with TemporaryFile(mode="w+t", encoding="utf-8") as id_file:
-            with self._existing_runtime(context, agent_id) as (session, app):
+            with self._existing_runtime(tenant_id=tenant_id, agent_id=agent_id) as (session, app):
                 app_id = app.id
                 selected = AgentObservabilityQueries(session).matching_export_logs(
                     app=app, agent_id=agent_id, params=self._export_log_params(filters)
@@ -1758,7 +1766,7 @@ class SQLAlchemyAgentObservabilityRepository:
             for batch in batched(selected_ids, _LOG_EXPORT_BATCH_SIZE, strict=False):
                 webapp_ids = tuple(row_id for source, row_id in batch if source == "webapp")
                 workflow_ids = tuple(row_id for source, row_id in batch if source == "workflow")
-                with self._existing_runtime(context, agent_id) as (session, app):
+                with self._existing_runtime(tenant_id=tenant_id, agent_id=agent_id) as (session, app):
                     if app.id != app_id:
                         raise AgentObservabilityNotFoundError
                     queries = AgentObservabilityQueries(session)
@@ -1770,7 +1778,7 @@ class SQLAlchemyAgentObservabilityRepository:
         self, context: RequestContext, agent_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
         """Search the admitted Agent's visible log identities and return detached options."""
-        with self._existing_runtime(context, agent_id) as (session, app):
+        with self._existing_runtime(tenant_id=context.active_workspace_id, agent_id=agent_id) as (session, app):
             return AgentObservabilityQueries(session).search_log_identities(app=app, agent_id=agent_id, keyword=keyword)
 
     def list_log_messages(
