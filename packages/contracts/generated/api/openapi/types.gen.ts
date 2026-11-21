@@ -525,8 +525,6 @@ export type DatasetResponse = {
 
 export type DatasetUpdatePayload = {
   description?: string | null
-  embedding_model?: string | null
-  embedding_model_provider?: string | null
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   external_retrieval_model?: {
@@ -535,8 +533,6 @@ export type DatasetUpdatePayload = {
   icon_info?: {
     [key: string]: unknown
   } | null
-  indexing_technique?: DatasetIndexingTechnique | null
-  is_multimodal?: boolean | null
   name?: string | null
   partial_member_list?: Array<{
     [key: string]: string

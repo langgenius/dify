@@ -2329,10 +2329,14 @@ export const get45 = oc
  * Update a knowledge base
  *
  * Only the fields present in the body change.
+ *
+ * Indexing settings are fixed after creation; changing them rebuilds the
+ * whole index and is not exposed here.
  */
 export const patch15 = oc
   .route({
-    description: 'Only the fields present in the body change.',
+    description:
+      'Only the fields present in the body change.\n\nIndexing settings are fixed after creation; changing them rebuilds the\nwhole index and is not exposed here.',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchWorkspacesByWorkspaceIdDatasetsByDatasetId',

@@ -1792,14 +1792,18 @@ class DatasetCreatePayload(BaseModel):
 
 
 class DatasetUpdatePayload(BaseModel):
+    """Patchable knowledge-base settings.
+
+    Indexing settings are fixed after creation: `indexing_technique`,
+    `embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+    they are absent here and rejected as unknown fields.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, min_length=1, max_length=40)
     description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
     permission: DatasetPermission | None = None
-    indexing_technique: DatasetIndexingTechnique | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(
         default=None, description="Retrieval model configuration as a JSON object."
     )
@@ -1819,7 +1823,6 @@ class DatasetUpdatePayload(BaseModel):
         default=None, description="External knowledge API id; required on every update of an external knowledge base."
     )
     icon_info: dict[str, Any] | None = Field(default=None, description="Icon metadata as a JSON object.")
-    is_multimodal: bool | None = None
 
     @field_validator("retrieval_model", mode="before")
     @classmethod

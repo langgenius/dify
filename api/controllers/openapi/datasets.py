@@ -362,7 +362,11 @@ class DatasetApi(Resource):
         returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base updated"),
     )
     def patch(self, ctx: Context, workspace_id: str, dataset_id: str, *, body: DatasetUpdatePayload):
-        """Update a knowledge base. Only the fields present in the body change."""
+        """Update a knowledge base. Only the fields present in the body change.
+
+        Indexing settings are fixed after creation; changing them rebuilds the
+        whole index and is not exposed here.
+        """
         values = body.model_dump(exclude_unset=True)
         with _dataset_errors():
             result = application_services().knowledge.datasets.update_dataset(

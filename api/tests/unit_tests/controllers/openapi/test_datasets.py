@@ -13,6 +13,7 @@ from controllers.openapi import datasets as datasets_module
 from controllers.openapi._models import (
     DatasetCreatePayload,
     DatasetResponse,
+    DatasetUpdatePayload,
     DocumentCreateByTextPayload,
     DocumentUpdateByTextPayload,
 )
@@ -203,6 +204,27 @@ def test_invalid_retrieval_model_is_rejected_by_the_payload() -> None:
 def test_external_dataset_requires_binding_ids() -> None:
     with pytest.raises(ValidationError, match="external_knowledge_api_id and external_knowledge_id"):
         DatasetCreatePayload.model_validate({"name": "Docs", "provider": "external"})
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("indexing_technique", "economy"),
+        ("embedding_model", "text-embedding-3-small"),
+        ("embedding_model_provider", "openai"),
+        ("is_multimodal", True),
+    ],
+)
+def test_update_dataset_payload_rejects_indexing_changes(field: str, value: object) -> None:
+    """Indexing settings rebuild the whole index, so the patch contract omits them."""
+    with pytest.raises(ValidationError, match=field):
+        DatasetUpdatePayload.model_validate({field: value})
+
+
+def test_update_dataset_payload_accepts_non_indexing_changes() -> None:
+    payload = DatasetUpdatePayload.model_validate({"name": "Docs", "description": ""})
+
+    assert payload.model_dump(exclude_unset=True) == {"name": "Docs", "description": ""}
 
 
 def test_create_document_requires_name_and_text() -> None:

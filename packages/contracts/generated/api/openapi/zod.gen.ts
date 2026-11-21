@@ -583,17 +583,19 @@ export const zDatasetResponse = z.object({
 
 /**
  * DatasetUpdatePayload
+ *
+ * Patchable knowledge-base settings.
+ *
+ * Indexing settings are fixed after creation: `indexing_technique`,
+ * `embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+ * they are absent here and rejected as unknown fields.
  */
 export const zDatasetUpdatePayload = z.object({
   description: z.string().max(400).nullish(),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
-  indexing_technique: zDatasetIndexingTechnique.nullish(),
-  is_multimodal: z.boolean().nullish(),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
   permission: zDatasetPermission.nullish(),

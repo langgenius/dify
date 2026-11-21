@@ -1748,6 +1748,9 @@ knowledge API instead of indexing documents locally.
 
 Only the fields present in the body change.
 
+Indexing settings are fixed after creation; changing them rebuilds the
+whole index and is not exposed here.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -3741,17 +3744,19 @@ Whether the knowledge base indexes locally or proxies an external knowledge API.
 
 #### DatasetUpdatePayload
 
+Patchable knowledge-base settings.
+
+Indexing settings are fixed after creation: `indexing_technique`,
+`embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+they are absent here and rejected as unknown fields.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
 | external_knowledge_api_id | string | External knowledge API id; required on every update of an external knowledge base. | No |
 | external_knowledge_id | string | External knowledge base id; required on every update of an external knowledge base. | No |
 | external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
 | icon_info | object | Icon metadata as a JSON object. | No |
-| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) |  | No |
-| is_multimodal | boolean |  | No |
 | name | string |  | No |
 | partial_member_list | [ object ] | Member ids granted access when `permission` is `partial_members`. | No |
 | permission | [DatasetPermission](#datasetpermission) |  | No |
