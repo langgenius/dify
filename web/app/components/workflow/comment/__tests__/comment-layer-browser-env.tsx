@@ -43,14 +43,17 @@ export const thread = (screen: Screen) =>
 export const replyBox = (screen: Screen) =>
   screen.getByPlaceholder('workflowComments.comments.placeholder.reply')
 
-export async function openThread(screen: Screen, index = 0) {
-  await markers(screen).nth(index).click()
-  await expect.element(thread(screen)).toBeVisible()
-}
 export const pointerToEmptyCanvas = () =>
   page
     .elementLocator(document.querySelector('.react-flow__pane')!)
     .hover({ position: { x: 1000, y: 600 } })
+// The pointer may still rest where an earlier test left it, with a hover card over the marker.
+export async function openThread(screen: Screen, index = 0) {
+  await expect.element(markers(screen).nth(index)).toBeVisible()
+  await pointerToEmptyCanvas()
+  await markers(screen).nth(index).click()
+  await expect.element(thread(screen)).toBeVisible()
+}
 export async function sendReply(screen: Screen, text: string) {
   await replyBox(screen).fill(text)
   await userEvent.keyboard('{Enter}')
