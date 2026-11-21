@@ -22,6 +22,29 @@ API_TOOL_DEFAULT_TIMEOUT = (
 )
 
 
+def _is_unset_parameter_value(value: Any) -> bool:
+    """Tell whether a query, cookie or header parameter value means "not set".
+
+    Accepts any value returned by ``ApiTool.get_parameter_value``. Returns True for
+    ``None`` (an OpenAPI ``default: null``) and ``""`` (the fallback for an optional
+    parameter without a default), and False for every other value, including
+    ``0`` and ``False``. Pure function, no side effects.
+    """
+    return value is None or (isinstance(value, str) and value == "")
+
+
+def _serialize_scalar_parameter_value(value: Any) -> str:
+    """Serialize a header or cookie parameter value as text.
+
+    Accepts a set value (see ``_is_unset_parameter_value``). Booleans become ``"true"``
+    or ``"false"``, matching how httpx serializes query parameters; every other value
+    uses ``str()``. Pure function, no side effects.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 @dataclass
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
@@ -179,7 +202,10 @@ class ApiTool(Tool):
         Send an HTTP request using the API bundle and supplied parameters.
 
         For application/x-www-form-urlencoded, list/tuple values become repeated
-        fields; other values keep their existing string representation. Invalid
+        fields; other values keep their existing string representation. Optional
+        query, cookie and header parameters whose value is unset (``None`` or ``""``)
+        are omitted; required ones raise ``ToolParameterValidationError`` before
+        dispatch. Header and cookie booleans are sent as ``true``/``false``. Invalid
         required parameters raise before dispatch.
         """
         method = method.lower()
@@ -206,15 +232,21 @@ class ApiTool(Tool):
             if parameter["in"] == "path":
                 path_params[parameter["name"]] = value
 
+            elif _is_unset_parameter_value(value):
+                # A required query, cookie or header parameter must carry a value; an
+                # optional one without a value is left out of the request instead of
+                # being sent empty or as "None".
+                if parameter.get("required", False):
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
+
             elif parameter["in"] == "query":
-                if value != "":
-                    params[parameter["name"]] = value
+                params[parameter["name"]] = value
 
             elif parameter["in"] == "cookie":
-                cookies[parameter["name"]] = value
+                cookies[parameter["name"]] = _serialize_scalar_parameter_value(value)
 
             elif parameter["in"] == "header":
-                headers[parameter["name"]] = str(value)
+                headers[parameter["name"]] = _serialize_scalar_parameter_value(value)
 
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:
