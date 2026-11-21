@@ -20,7 +20,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
@@ -269,10 +269,9 @@ export function WorkflowCommentLayer() {
   const [shownComment, setShownComment] = useState<WorkflowCommentBasic | null>(null)
   if (activeComment && activeComment !== shownComment) setShownComment(activeComment)
 
-  const visibleComments = useMemo(
-    () => (showResolvedComments ? comments : comments.filter((comment) => !comment.resolved)),
-    [comments, showResolvedComments],
-  )
+  const visibleComments = showResolvedComments
+    ? comments
+    : comments.filter((comment) => !comment.resolved)
   const activeIndex = activeCommentId
     ? visibleComments.findIndex((comment) => comment.id === activeCommentId)
     : -1
@@ -457,19 +456,18 @@ function ShownThread({
   })
 
   // A send shows until its saved reply takes its row, under the same key.
-  const fetchedDetail = detailQuery.data
-  const comment = useMemo(() => {
-    const detail = fetchedDetail ?? { ...listItem, replies: [], mentions: [] }
-    const saved = detail.replies.map((reply): ThreadReply => {
-      const clientKey = sentKeys.get(reply.id)
-      return clientKey ? { ...reply, client_key: clientKey } : reply
-    })
-    const savedKeys = new Set(sentKeys.values())
-    return {
-      ...detail,
-      replies: [...saved, ...sends.filter((send) => !savedKeys.has(send.id))],
-    }
-  }, [fetchedDetail, listItem, sends, sentKeys])
+  const detail = detailQuery.data ?? { ...listItem, replies: [], mentions: [] }
+  const savedKeys = new Set(sentKeys.values())
+  const comment = {
+    ...detail,
+    replies: [
+      ...detail.replies.map((reply): ThreadReply => {
+        const clientKey = sentKeys.get(reply.id)
+        return clientKey ? { ...reply, client_key: clientKey } : reply
+      }),
+      ...sends.filter((send) => !savedKeys.has(send.id)),
+    ],
+  }
 
   const findSend = (key: string) =>
     queryClient.getMutationCache().find<unknown, unknown, ReplySendVariables>({
