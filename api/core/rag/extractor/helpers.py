@@ -35,6 +35,14 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
             sample = file.read(sample_size)
         rst = charset_normalizer.from_bytes(sample)
         best = rst.best()
+        if best is None and len(sample) == sample_size:
+            # A sample cut from a longer file can stop partway through a multi-byte
+            # character, which rules out every multi-byte encoding. Drop the partial
+            # character (at most 3 bytes) and try again.
+            for cut in range(1, 4):
+                best = charset_normalizer.from_bytes(sample[:-cut]).best()
+                if best is not None:
+                    break
         if best is None:
             return []
         file_encoding = FileEncoding(encoding=best.encoding, confidence=best.coherence, language=best.language)
