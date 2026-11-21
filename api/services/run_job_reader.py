@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, replace
 from types import MappingProxyType
 from typing import Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
-from services.run_job_contracts import JobEnding, JobFailure, JobFamily, JobIds, JobRecord, JobStatus, RunJobStore
+from services.run_job_contracts import JobEnding, JobIds, JobRecord, JobStatus, RunJobStore
 from services.run_job_frames import Misfit, RunFrame, read_frame
 
 logger = logging.getLogger(__name__)
@@ -41,70 +41,38 @@ class _Closable(Protocol):
     def close(self) -> None: ...
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class _FrameContext:
-    record: JobRecord
-    frame: RunFrame
+class StreamEndings(Protocol):
+    """A job family's rules for how its stream ends a job."""
+
+    @property
+    def ending_events(self) -> frozenset[StreamEvent]:
+        """The events at_frame can end a job on; the reader skips the job record for any other frame."""
+        ...
+
+    def at_frame(self, record: JobRecord, frame: RunFrame) -> JobEnding | None:
+        """Precondition: frame fits core's model. Postcondition: the job's ending, or None to leave it."""
+        ...
+
+    def at_stream_end(self, record: JobRecord) -> JobEnding | None:
+        """Precondition: the stream ended or raised. Postcondition: the job's ending, or None to leave it."""
+        ...
 
 
-_Handler = Callable[[_FrameContext], JobEnding | None]
-
-
-def _run_finished(context: _FrameContext) -> JobEnding | None:
+def run_finished_ending(frame: RunFrame) -> JobEnding | None:
     """Map a workflow_finished frame to a final job status.
 
-    Precondition: context.frame is a workflow_finished frame.
-    Postcondition: an ending for succeeded, partial-succeeded, failed or stopped runs; None for any other status.
-    The error is kept only for a failed run.
+    Precondition: none.
+    Postcondition: for a workflow_finished frame, an ending for succeeded, partial-succeeded, failed or stopped
+    runs, with the error kept only for a failed run; None for any other frame or status.
     """
-    run_status = context.frame.run_status
-    if run_status is None:
+    if frame.run_status is None:
         return None
-    status = RUN_STATUS_TO_JOB_STATUS.get(run_status)
+    status = RUN_STATUS_TO_JOB_STATUS.get(frame.run_status)
     if status is None:
         return None
     if status is not JobStatus.FAILED:
         return JobEnding(status=status)
-    return JobEnding(status=status, error=context.frame.error)
-
-
-def _message_ended(context: _FrameContext) -> JobEnding | None:
-    """Finish a message job at the end of its answer.
-
-    Precondition: context.record is a MESSAGE job.
-    Postcondition: STOPPED when a stop was requested, else SUCCEEDED.
-    """
-    if context.record.stop_requested:
-        return JobEnding(status=JobStatus.STOPPED)
-    return JobEnding(status=JobStatus.SUCCEEDED)
-
-
-def _answered_without_run(context: _FrameContext) -> JobEnding | None:
-    """End a chatflow that answered without starting its workflow.
-
-    Precondition: context.record is a GRAPH job and context.frame is message_end.
-    Postcondition: SUCCEEDED when the job has no run id (an annotation reply or input moderation answered it, and
-    the message is its result, as core's worker treats that stream); None once a run id is known, as the run row
-    then holds the job's state.
-    """
-    if context.record.run_id is not None:
-        return None
-    return JobEnding(status=JobStatus.SUCCEEDED)
-
-
-def _run_errored(context: _FrameContext) -> JobEnding | None:
-    """Precondition: context.frame is an error frame. Postcondition: an ending of FAILED with the frame's message."""
-    return JobEnding(status=JobStatus.FAILED, error=context.frame.error)
-
-
-# A graph job's stream ends with workflow_finished or workflow_paused: core's worker follows an error with a
-# failed workflow_finished that carries the same message, and it is the only outcome of a run that failed before
-# it was stored. A chatflow answered without a run (annotation reply, input moderation) ends with message_end.
-# Chat streams have no workflow_finished.
-ENDINGS_BY_FAMILY: Final[Mapping[JobFamily, Mapping[StreamEvent, _Handler]]] = {
-    JobFamily.GRAPH: {StreamEvent.WORKFLOW_FINISHED: _run_finished, StreamEvent.MESSAGE_END: _answered_without_run},
-    JobFamily.MESSAGE: {StreamEvent.MESSAGE_END: _message_ended, StreamEvent.ERROR: _run_errored},
-}
+    return JobEnding(status=status, error=frame.error)
 
 
 def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
@@ -134,15 +102,18 @@ def _report(job_id: str, misfit: Misfit, reading: _Reading) -> None:
     logger.error("Run job %s: a %s frame does not fit core's model at %s", job_id, misfit.event, misfit.fields)
 
 
-def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
+def _consume(
+    frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, endings: StreamEndings, reading: _Reading
+) -> None:
     """Apply one frame to the job.
 
     Precondition: the job exists; reading.stored holds the ids already written.
-    Postcondition: ids and status from the frame are stored and reading.stored names them; ids count as stored only
-    after the store accepted them, so a failed save is retried by the next frame that carries them; an ending stays
-    in reading.unsaved until the store accepted it, so a failed save is retried when the stream ends; a pending stop
-    is sent once when the task id is first stored. A frame that does not fit core's model changes nothing and is
-    reported.
+    Postcondition: ids and ending from the frame are stored and reading.stored names them; the job record is read
+    only when the frame carries an id not stored yet or one of the family's ending events; ids count as
+    stored only after the store accepted them, so a failed save is retried by the next frame that carries them; an
+    ending stays in reading.unsaved until the store accepted it, so a failed save is retried when the stream ends; a
+    pending stop is sent once when the task id is first stored. A frame that does not fit core's model changes
+    nothing and is reported.
     """
     read = read_frame(frame)
     if isinstance(read, Misfit):
@@ -151,6 +122,9 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if read is None:
         return
     found = _unstored_ids(read.ids, reading.stored)
+    if not found:
+        if read.event not in endings.ending_events:
+            return
     if found:
         store.record_ids(job_id, JobIds(**found))
     task_id_known = reading.stored.task_id is not None
@@ -161,10 +135,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
             stopper.stop(record)
-    handler = ENDINGS_BY_FAMILY[record.family].get(read.event)
-    if handler is None:
-        return
-    ending = handler(_FrameContext(record=record, frame=read))
+    ending = endings.at_frame(record, read)
     if ending is None:
         return
     reading.unsaved = ending
@@ -172,36 +143,36 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     reading.unsaved = None
 
 
-def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
+def _consume_safely(
+    frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, endings: StreamEndings, reading: _Reading
+) -> None:
     """Apply one frame, keeping a store or stopper failure from ending the read.
 
     Precondition: the job exists.
     Postcondition: see _consume; an error raised while applying the frame is logged and swallowed.
     """
     try:
-        _consume(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
+        _consume(frame, job_id=job_id, store=store, stopper=stopper, endings=endings, reading=reading)
     except Exception:
         logger.exception("Run job %s frame handling failed", job_id)
 
 
-def _end_of_stream(job_id: str, store: RunJobStore, unsaved: JobEnding | None) -> None:
+def _end_of_stream(job_id: str, store: RunJobStore, endings: StreamEndings, unsaved: JobEnding | None) -> None:
     """Record how the reader ended, then let go of the alive key.
 
     Precondition: the stream ended or raised; unsaved is the ending read from the stream that the store refused.
-    Postcondition: unsaved is saved first, so it is the job's ending unless the job had one; then a MESSAGE job
-    without an ending is FAILED for NO_RESULT; a GRAPH job without a run id is FAILED for RUN_NOT_CONFIRMED; a GRAPH
-    job with a run id is left to its run. The alive key is deleted last, so a viewer that finds it gone reads this
-    reader's final writes.
+    Postcondition: unsaved is saved first, so it is the job's ending unless the job had one; then the family's
+    stream-end ending is settled when it gives one. The alive key is deleted last, so a viewer that finds it gone
+    reads this reader's final writes.
     """
     if unsaved is not None:
         store.settle(job_id, unsaved)
     record = store.get(job_id)
     if record is None:
         return
-    if record.family is JobFamily.MESSAGE:
-        store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.NO_RESULT))
-    elif record.run_id is None:
-        store.settle(job_id, JobEnding(status=JobStatus.FAILED, failure=JobFailure.RUN_NOT_CONFIRMED))
+    ending = endings.at_stream_end(record)
+    if ending is not None:
+        store.settle(job_id, ending)
     store.drop_alive(job_id)
 
 
@@ -236,6 +207,7 @@ def read_to_end(
     frames: Iterable[str],
     store: RunJobStore,
     stopper: JobStopper,
+    endings: StreamEndings,
     alive_refresh_seconds: float = ALIVE_REFRESH_SECONDS,
 ) -> None:
     """Consume a run's SSE frames and record them as job state.
@@ -258,11 +230,11 @@ def read_to_end(
     reading = _Reading()
     try:
         for frame in frames:
-            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
+            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, endings=endings, reading=reading)
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:
         stop.set()
         alive.join()
         close_frames(frames)
-    _end_of_stream(job_id, store, reading.unsaved)
+    _end_of_stream(job_id, store, endings, reading.unsaved)

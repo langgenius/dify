@@ -89,9 +89,15 @@ class World:
         )
 
     def open_job(
-        self, *, caller_id: str | None = None, ids: JobIds | None = None, ending: JobEnding | None = None
+        self,
+        *,
+        caller_id: str | None = None,
+        ids: JobIds | None = None,
+        ending: JobEnding | None = None,
+        mode: AppMode = AppMode.WORKFLOW,
+        op: str = "start.x",
     ) -> str:
-        record = _record(self.owner(caller_id))
+        record = JobRecord(id=str(uuid.uuid4()), owner=self.owner(caller_id), mode=mode, op=op)
         self.store.create(record)
         if ids is not None:
             self.store.record_ids(record.id, ids)
@@ -220,12 +226,51 @@ def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
 
 
 @pytest.mark.parametrize("status", [JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED])
-def test_a_final_job_carries_no_hints(world: World, status: JobStatus) -> None:
+def test_a_final_job_without_a_conversation_carries_no_hints(world: World, status: JobStatus) -> None:
     job_id = world.open_job(ending=JobEnding(status=status))
 
     body = world.wait(job_id).get_json()
 
     assert body["status"] == status.value
+    assert body["hints"] == []
+
+
+@pytest.mark.parametrize(
+    ("mode", "op"),
+    [
+        (AppMode.CHAT, "start.console_app.chat"),
+        (AppMode.AGENT_CHAT, "start.console_app.chat"),
+        (AppMode.ADVANCED_CHAT, "start.console_app.advanced_chat"),
+    ],
+)
+def test_a_finished_chat_job_hints_a_reply_in_the_same_conversation(world: World, mode: AppMode, op: str) -> None:
+    job_id = world.open_job(
+        mode=mode,
+        op=op,
+        ids=JobIds(conversation_id="c1"),
+        ending=JobEnding(status=JobStatus.SUCCEEDED),
+    )
+
+    body = world.wait(job_id).get_json()
+
+    assert body["hints"] == [
+        {
+            "summary": jobs.REPLY_HINT_SUMMARY,
+            "op": op,
+            "input": {"app_id": world.client.app_id, "conversation_id": "c1", "query": None, "inputs": {}},
+            "form": None,
+        }
+    ]
+
+
+def test_a_finished_completion_job_has_no_reply_hint(world: World) -> None:
+    job_id = world.open_job(
+        mode=AppMode.COMPLETION, op="start.console_app.completion", ending=JobEnding(status=JobStatus.SUCCEEDED)
+    )
+
+    body = world.wait(job_id).get_json()
+
+    assert body["status"] == "succeeded"
     assert body["hints"] == []
 
 
