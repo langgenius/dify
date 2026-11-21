@@ -28,6 +28,8 @@ const inService = 'agentV2.agentDetail.access.status.inService'
 const unavailable = 'deployments.health.ENVIRONMENT_STATUS_FAILED'
 const unpublishedTitle = 'deployments.studio.accessPoint.noPublishedTitle'
 const publishedPath = '/apps/app-1/workflows/publish'
+const layoutGuardedPaths = [publishedPath, '/apps/app-1/server', '/apps/app-1/triggers']
+const noPermission = 'app.noAccessResourcePermission'
 
 const getWebCard = () =>
   screen.getByRole('region', { name: 'agentV2.agentDetail.access.webApp.title' })
@@ -86,17 +88,18 @@ function renderAccessPoints({
     }
     if (request.method !== 'GET') throw new Error(`Unexpected mutation: ${request.method} ${path}`)
     paths.push(path)
-    if (path === publishedPath) {
-      return role === 'normal' && !rbacEnabled
-        ? Response.json(
-            {
-              code: 'forbidden',
-              message: "You don't have the permission to access the requested resource.",
-            },
-            { status: 403 },
-          )
-        : Response.json(workflow)
-    }
+    const forbidden = () =>
+      Response.json(
+        {
+          code: 'forbidden',
+          message: "You don't have the permission to access the requested resource.",
+        },
+        { status: 403 },
+      )
+    // With RBAC the API guards these three reads with the layout permission.
+    if (rbacEnabled && !canViewLayout && layoutGuardedPaths.includes(path)) return forbidden()
+    if (path === publishedPath)
+      return role === 'normal' && !rbacEnabled ? forbidden() : Response.json(workflow)
     if (path === '/apps/app-1/server')
       return Response.json({ id: 'server-1', server_code: 'server-code', status: 'active' })
     if (path === '/apps/app-1/triggers') return triggerResponse ?? Response.json({ data: triggers })
@@ -227,6 +230,39 @@ it('honors RBAC layout access even for a Normal workspace member', async () => {
   await waitFor(() => expect(within(getMcpCard()).getByText(inService)).toBeInTheDocument())
   expect(paths.filter((path) => path === publishedPath)).toHaveLength(1)
   expect(toast.error).not.toHaveBeenCalled()
+})
+
+it('sends no layout-guarded request when an RBAC member cannot view a workflow layout', async () => {
+  const paths = renderAccessPoints({ rbacEnabled: true })
+
+  await waitFor(() => expect(getMcpCard()).not.toHaveAttribute('aria-busy', 'true'))
+  expect(paths.filter((path) => layoutGuardedPaths.includes(path))).toEqual([])
+  expect(toast.error).not.toHaveBeenCalled()
+  expect(within(getMcpCard()).getByText(noPermission)).toBeInTheDocument()
+  expect(within(getTriggerCard()).getByText(noPermission)).toBeInTheDocument()
+  // A trigger-only workflow cannot be ruled out without the trigger list.
+  for (const card of [getWebCard(), getApiCard()])
+    expect(within(card).getAllByText(unavailable).length).toBeGreaterThan(0)
+})
+
+it('keeps the MCP server closed to an RBAC manager who cannot view the layout', async () => {
+  const paths = renderAccessPoints({
+    mode: 'advanced-chat',
+    role: 'owner',
+    rbacEnabled: true,
+    canViewLayout: false,
+  })
+
+  await waitFor(() => expect(getMcpCard()).not.toHaveAttribute('aria-busy', 'true'))
+  expect(paths.filter((path) => layoutGuardedPaths.includes(path))).toEqual([])
+  expect(toast.error).not.toHaveBeenCalled()
+  expect(within(getWebCard()).getByText(inService)).toBeInTheDocument()
+  expect(within(getApiCard()).getByText(inService)).toBeInTheDocument()
+  expect(within(getMcpCard()).getByText(noPermission)).toBeInTheDocument()
+  expect(within(getMcpCard()).queryByRole('switch')).not.toBeInTheDocument()
+  expect(
+    within(getMcpCard()).getByRole('button', { name: 'tools.mcp.server.addDescription' }),
+  ).toBeDisabled()
 })
 
 it('keeps Owner MCP unavailable when the published graph has no Start node', async () => {

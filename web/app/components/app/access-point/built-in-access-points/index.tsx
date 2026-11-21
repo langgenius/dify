@@ -50,6 +50,9 @@ export function BuiltInAccessPoints({
     canViewLayout &&
     (systemFeatures.rbac_enabled ||
       (!workspaceLoading && ['owner', 'admin', 'editor'].includes(workspace.role)))
+  // The API guards the MCP server and the trigger list with the layout permission, but only under
+  // RBAC. Unlike the published workflow, they have no role restriction without it.
+  const passesLayoutGuard = canViewLayout || !systemFeatures.rbac_enabled
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo) && canReadWorkflow)
   const {
     data: workflow,
@@ -68,7 +71,7 @@ export function BuiltInAccessPoints({
   const triggersQuery = useQuery(
     consoleQuery.apps.byAppId.triggers.get.queryOptions({
       input: appInfo?.mode === 'workflow' ? { params: { app_id: appId } } : skipToken,
-      enabled: needsPublishedTriggers,
+      enabled: needsPublishedTriggers && passesLayoutGuard,
       retry: false,
     }),
   )
@@ -85,9 +88,11 @@ export function BuiltInAccessPoints({
     workflowState.requiresPublishedWorkflow &&
     (workspaceLoading ||
       (shouldFetchWorkflow && workflowLoading) ||
-      (needsPublishedTriggers && triggersQuery.isPending))
+      (needsPublishedTriggers && passesLayoutGuard && triggersQuery.isPending))
+  // Without the trigger list, a trigger-only workflow cannot be ruled out.
   const builtInError =
-    (shouldFetchWorkflow && workflowError) || (needsPublishedTriggers && triggersQuery.isError)
+    (shouldFetchWorkflow && workflowError) ||
+    (needsPublishedTriggers && (!passesLayoutGuard || triggersQuery.isError))
   const appCardsUnavailable =
     workflowState.requiresPublishedWorkflow && (builtInError || isUnpublished || hasTriggerNode)
   const appCardAvailability = builtInLoading
@@ -165,6 +170,7 @@ export function BuiltInAccessPoints({
         <MCPAccessPointCard
           appInfo={appInfo}
           canManageAccessPoint={canManageAccessPoint}
+          canReadServer={passesLayoutGuard}
           workflow={workflow}
           availability={mcpAvailability}
           highlighted={highlightedAccessPoint === 'mcp'}
@@ -174,6 +180,7 @@ export function BuiltInAccessPoints({
             appInfo={appInfo}
             availability={triggerAvailability}
             canManageAccessPoint={canManageAccessPoint}
+            canReadTriggers={passesLayoutGuard}
             highlighted={highlightedAccessPoint === 'trigger'}
           />
         )}

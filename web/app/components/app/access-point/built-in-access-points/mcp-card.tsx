@@ -17,7 +17,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { selectMCPServerDetail } from '@/app/components/tools/utils/query-select'
@@ -31,6 +31,7 @@ import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 type MCPAccessPointCardProps = {
   appInfo: AppDetailWithSite
   canManageAccessPoint: boolean
+  canReadServer: boolean
   highlighted?: boolean
   availability: AccessPointAvailability
   workflow: PublishedWorkflow
@@ -39,11 +40,12 @@ type MCPAccessPointCardProps = {
 export function MCPAccessPointCard({
   appInfo,
   canManageAccessPoint,
+  canReadServer,
   highlighted,
   availability,
   workflow,
 }: MCPAccessPointCardProps) {
-  const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
+  const { t } = useTranslation(['appOverview', 'app', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
   const [showServerModal, setShowServerModal] = useState(false)
@@ -53,7 +55,7 @@ export function MCPAccessPointCard({
   const queryClient = useQueryClient()
   const serverDetailQueryOptions = consoleQuery.apps.byAppId.server.get.queryOptions({
     input: { params: { app_id: appInfo.id } },
-    enabled: Boolean(appInfo.id),
+    enabled: Boolean(appInfo.id) && canReadServer,
     select: selectMCPServerDetail,
   })
   const { data: detail, isPending: serverDetailLoading } = useQuery(serverDetailQueryOptions)
@@ -89,8 +91,8 @@ export function MCPAccessPointCard({
     ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${detail?.server_code}/mcp`
     : '***********'
   const workflowNodes = getPublishedWorkflowNodes(workflow)
-  const loading = serverDetailLoading || availability === 'loading'
-  const unavailable = !loading && availability === 'unavailable'
+  const loading = (canReadServer && serverDetailLoading) || availability === 'loading'
+  const unavailable = !loading && (!canReadServer || availability === 'unavailable')
 
   const basicAppInputs = useMemo(() => {
     if (!basicApp || !basicAppInputForm) return []
@@ -181,24 +183,30 @@ export function MCPAccessPointCard({
           </Button>
         }
       >
-        <AccessPointUrl
-          label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
-          value={serverUrl}
-          enabled={activated}
-          copyDisabled={!serverPublished}
-          loading={loading}
-          unavailable={unavailable}
-          unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
-            ns: 'deployments',
-          })}
-          showRegenerate
-          regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
-            ns: 'appOverview',
-          })}
-          regenerateDisabled={!canManageAccessPoint || !serverPublished}
-          regenerating={regenerating}
-          onRegenerate={() => setShowRegenerate(true)}
-        />
+        {canReadServer ? (
+          <AccessPointUrl
+            label={t(($) => $['mcp.server.url'], { ns: 'tools' })}
+            value={serverUrl}
+            enabled={activated}
+            copyDisabled={!serverPublished}
+            loading={loading}
+            unavailable={unavailable}
+            unavailableLabel={t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], {
+              ns: 'deployments',
+            })}
+            showRegenerate
+            regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
+              ns: 'appOverview',
+            })}
+            regenerateDisabled={!canManageAccessPoint || !serverPublished}
+            regenerating={regenerating}
+            onRegenerate={() => setShowRegenerate(true)}
+          />
+        ) : (
+          <AccessPointEmptyContent>
+            {t(($) => $.noAccessResourcePermission, { ns: 'app' })}
+          </AccessPointEmptyContent>
+        )}
       </AccessPointCard>
 
       {showServerModal && (
