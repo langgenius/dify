@@ -223,7 +223,7 @@ class Jieba(BaseKeyword):
 
         # go through text chunks in order of most matching keywords
         chunk_indices_count: dict[str, int] = defaultdict(int)
-        keywords_list = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
+        keywords_list = [keyword for keyword in keywords if keyword in keyword_table]
         for keyword in keywords_list:
             for node_id in keyword_table[keyword]:
                 chunk_indices_count[node_id] += 1
