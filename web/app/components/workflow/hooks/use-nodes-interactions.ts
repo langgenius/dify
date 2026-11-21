@@ -2341,9 +2341,10 @@ export const useNodesInteractions = () => {
   const handleHistoryBack = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
 
+    if (!workflowHistoryStore.temporal.getState().pastStates.length) return
+
     undo()
     const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
@@ -2363,9 +2364,10 @@ export const useNodesInteractions = () => {
   const handleHistoryForward = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
 
+    if (!workflowHistoryStore.temporal.getState().futureStates.length) return
+
     redo()
     const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
     const { setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
