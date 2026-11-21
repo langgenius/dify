@@ -69,9 +69,11 @@ const ModelLoadBalancingModal = ({
       isModelCredential: true,
     })
   const [loading, setLoading] = useState(false)
+  const [pendingDraftSyncs, setPendingDraftSyncs] = useState(0)
+  const [removedCredentialIds, setRemovedCredentialIds] = useState<string[]>([])
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { isFetching, data, refetch } = useQuery({
+  const { data, refetch } = useQuery({
     ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
       {
         input: {
@@ -92,6 +94,9 @@ const ModelLoadBalancingModal = ({
     () =>
       data && {
         ...data,
+        available_credentials: data.available_credentials.filter(
+          (credential) => !removedCredentialIds.includes(credential.credential_id),
+        ),
         current_credential_id: data.current_credential_id ?? undefined,
         current_credential_name: data.current_credential_name ?? undefined,
         load_balancing: {
@@ -104,7 +109,7 @@ const ModelLoadBalancingModal = ({
           })),
         },
       },
-    [data],
+    [data, removedCredentialIds],
   )
   const { load_balancing, current_credential_id, available_credentials, current_credential_name } =
     modelCredential ?? {}
@@ -193,20 +198,27 @@ const ModelLoadBalancingModal = ({
   const [customModelCredential, setCustomModelCredential] = useState<Credential | undefined>(
     initialCustomModelCredential,
   )
+  const credentialIdToSave = customModelCredential?.credential_id || current_credential_id
+  const saveBlockedByCredentialChange =
+    doingAction ||
+    pendingDraftSyncs > 0 ||
+    (!providerFormSchemaPredefined && !credentialIdToSave) ||
+    Boolean(credentialIdToSave && removedCredentialIds.includes(credentialIdToSave))
   const { handleRefreshModel } = useRefreshModel()
   const handleSave = async () => {
+    if (saveBlockedByCredentialChange || loading || !draftConfig) return
     try {
       setLoading(true)
       const res = await updateModelLoadBalancingConfig({
         params: { provider: provider.provider },
         body: {
-          credential_id: customModelCredential?.credential_id || current_credential_id,
+          credential_id: credentialIdToSave,
           config_from: configFrom,
           model: model.model,
           model_type: model.model_type,
           load_balancing: {
             ...draftConfig,
-            configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
+            configs: draftConfig.configs.map(encodeConfigEntrySecretValues),
             enabled: Boolean(draftConfig?.enabled),
           },
         },
@@ -239,60 +251,69 @@ const ModelLoadBalancingModal = ({
     await handleConfirmDelete()
     onClose?.()
   }, [handleConfirmDelete, onClose])
+  const syncCredentialDraft = useCallback(async (sync: () => Promise<void>) => {
+    setPendingDraftSyncs((count) => count + 1)
+    try {
+      await sync()
+    } finally {
+      setPendingDraftSyncs((count) => count - 1)
+    }
+  }, [])
   const handleUpdate = useCallback(
-    async (modelCredential?: Credential, formValues?: Record<string, unknown>) => {
-      const result = await refetch()
-      const available_credentials = result.data?.available_credentials || []
-      const credentialName = formValues?.__authorization_name__
-      if (!available_credentials.length) {
-        onClose?.()
-        return
-      }
-      if (!modelCredential) {
-        const currentCredential = available_credentials.find(
-          (c) => c.credential_name === credentialName,
-        )
-        if (currentCredential) {
-          setDraftConfig((prev: any) => {
+    (modelCredential?: Credential, formValues?: Record<string, unknown>) =>
+      syncCredentialDraft(async () => {
+        const result = await refetch()
+        const available_credentials = result.data?.available_credentials || []
+        const credentialName = formValues?.__authorization_name__
+        if (!available_credentials.length) {
+          onClose?.()
+          return
+        }
+        if (!modelCredential) {
+          const currentCredential = available_credentials.find(
+            (c) => c.credential_name === credentialName,
+          )
+          if (currentCredential) {
+            setDraftConfig((prev: any) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                configs: [
+                  ...prev.configs,
+                  {
+                    credential_id: currentCredential.credential_id,
+                    enabled: true,
+                    name: currentCredential.credential_name,
+                  },
+                ],
+              }
+            })
+          }
+        } else {
+          setDraftConfig((prev) => {
             if (!prev) return prev
+            const newConfigs = [...prev.configs]
+            const prevIndex = newConfigs.findIndex(
+              (item) =>
+                item.credential_id === modelCredential.credential_id && item.name !== '__inherit__',
+            )
+            const newIndex = available_credentials.findIndex(
+              (c) => c.credential_id === modelCredential.credential_id,
+            )
+            if (newIndex > -1 && prevIndex > -1) {
+              newConfigs[prevIndex] = {
+                ...newConfigs[prevIndex]!,
+                name: available_credentials[newIndex]!.credential_name || '',
+              }
+            }
             return {
               ...prev,
-              configs: [
-                ...prev.configs,
-                {
-                  credential_id: currentCredential.credential_id,
-                  enabled: true,
-                  name: currentCredential.credential_name,
-                },
-              ],
+              configs: newConfigs,
             }
           })
         }
-      } else {
-        setDraftConfig((prev) => {
-          if (!prev) return prev
-          const newConfigs = [...prev.configs]
-          const prevIndex = newConfigs.findIndex(
-            (item) =>
-              item.credential_id === modelCredential.credential_id && item.name !== '__inherit__',
-          )
-          const newIndex = available_credentials.findIndex(
-            (c) => c.credential_id === modelCredential.credential_id,
-          )
-          if (newIndex > -1 && prevIndex > -1) {
-            newConfigs[prevIndex] = {
-              ...newConfigs[prevIndex]!,
-              name: available_credentials[newIndex]!.credential_name || '',
-            }
-          }
-          return {
-            ...prev,
-            configs: newConfigs,
-          }
-        })
-      }
-    },
-    [refetch, onClose],
+      }),
+    [refetch, onClose, syncCredentialDraft],
   )
   const handleUpdateWhenSwitchCredential = useCallback(async () => {
     const result = await refetch()
@@ -301,6 +322,7 @@ const ModelLoadBalancingModal = ({
   }, [refetch, onClose])
   const handleRemoveCredential = useCallback(
     (credentialId: string) => {
+      setRemovedCredentialIds((previous) => [...previous, credentialId])
       setDraftConfig(
         (previous) =>
           previous && {
@@ -308,9 +330,12 @@ const ModelLoadBalancingModal = ({
             configs: previous.configs.filter((config) => config.credential_id !== credentialId),
           },
       )
-      return handleUpdateWhenSwitchCredential()
+      setCustomModelCredential((previous) =>
+        previous?.credential_id === credentialId ? undefined : previous,
+      )
+      return syncCredentialDraft(handleUpdateWhenSwitchCredential)
     },
-    [handleUpdateWhenSwitchCredential],
+    [handleUpdateWhenSwitchCredential, syncCredentialDraft],
   )
   return (
     <>
@@ -467,8 +492,7 @@ const ModelLoadBalancingModal = ({
                   disabled={
                     (draftConfig?.enabled &&
                       (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) < 2) ||
-                    isFetching ||
-                    doingAction
+                    saveBlockedByCredentialChange
                   }
                 >
                   {t(($) => $['operation.save'], { ns: 'common' })}
