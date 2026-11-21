@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import LastRun from '../index'
@@ -71,6 +71,47 @@ it('shows the actual running status before the single run completes', () => {
   expect(screen.getByRole('status')).toHaveTextContent('appLog.status.running')
   expect(lastRun).not.toHaveBeenCalled()
 })
+
+it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+  'opens child logs for a completed %s single run',
+  async (nodeType) => {
+    const user = userEvent.setup()
+    const onShowDetails = vi.fn()
+    const details = [[createNodeTracing({ id: 'child-execution' })]]
+    const durationMap = { 0: 1.25 }
+    lastRun.mockResolvedValue({
+      ...result,
+      node_type: nodeType,
+      status: NodeRunningStatus.Succeeded,
+    })
+    setup({
+      runningStatus: NodeRunningStatus.Succeeded,
+      nodeInfo: createNodeTracing({
+        node_type: nodeType,
+        details,
+        execution_metadata: {
+          total_tokens: 0,
+          total_price: 0,
+          currency: 'USD',
+          ...(nodeType === BlockEnum.Iteration
+            ? { iteration_duration_map: durationMap }
+            : { loop_duration_map: durationMap }),
+        },
+      }),
+      handleShowIterationResultList: onShowDetails,
+      handleShowLoopResultList: onShowDetails,
+    })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: new RegExp(`nodes\\.${nodeType}\\.${nodeType}`),
+      }),
+    )
+    const expectedArgs =
+      nodeType === BlockEnum.Iteration ? [details, durationMap] : [details, durationMap, {}]
+    expect(onShowDetails).toHaveBeenCalledExactlyOnceWith(...expectedArgs)
+  },
+)
 
 it('offers single run for a missing last run', async () => {
   lastRun.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
