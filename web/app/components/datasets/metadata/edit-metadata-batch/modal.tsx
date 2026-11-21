@@ -137,6 +137,7 @@ const EditMetadataBatchModal: FC<Props> = ({
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onHide()
       }}
@@ -161,9 +162,9 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className="mt-4 pl-4.5">
+          <div className="mt-4 ps-4.5">
             <div className="flex items-center">
-              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
+              <div className="me-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
               </div>
               <Separator decorative className="my-2 h-[0.5px]" variant="gradient" />
@@ -203,16 +204,13 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
               <span
                 id={applyToAllLabelId}
-                className="mr-1 ml-2 system-xs-medium text-text-secondary"
+                className="ms-2 me-1 system-xs-medium text-text-secondary"
               >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
             <Infotip>
-              <InfotipTrigger
-                aria-labelledby={applyToAllLabelId}
-                className="p-px text-text-tertiary"
-              />
+              <InfotipTrigger aria-labelledby={applyToAllLabelId} className="text-text-tertiary" />
               <InfotipContent aria-labelledby={applyToAllLabelId} className="max-w-60">
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
               </InfotipContent>

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogContent,
@@ -53,8 +52,7 @@ const InstallBundle: FC<Props> = ({
       : InstallStep.uploading,
   )
 
-  const { modalClassName, foldAnimInto, setIsInstalling, handleStartToInstall } =
-    useHideLogic(onClose)
+  const { popupRef, foldAnimInto, setIsInstalling, handleStartToInstall } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -74,7 +72,8 @@ const InstallBundle: FC<Props> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('w-120', modalClassName, 'max-h-[calc(100dvh-48px)] min-w-140')}
+        ref={popupRef}
+        className="max-h-[calc(100dvh-3rem)] w-140"
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>

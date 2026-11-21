@@ -6,6 +6,7 @@ import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import Link from '@/next/link'
 import { newKnowledgeCreatePathWithStartMode } from '../routes'
 
@@ -22,22 +23,19 @@ const LOADING_CARD_IDS = [
 
 const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-ghost-card-${index}`)
 
-export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
-  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,296px),1fr))] gap-3'
-
 export function NewKnowledgeLoadingState() {
   const { t } = useTranslation(['common'])
 
   return (
     <div
-      className={KNOWLEDGE_SPACE_GRID_CLASS_NAME}
+      className={cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
       role="status"
       aria-label={t(($) => $.loading, { ns: 'common' })}
     >
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
-          className="h-41.5 rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          className="h-41.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <div className="flex gap-3">
@@ -104,9 +102,9 @@ function EmptyAction({
       href={href}
       aria-label={title}
       aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
+      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-start text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
     >
-      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
+      <span className="me-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
         <span
           aria-hidden
           className={cn(
@@ -137,7 +135,7 @@ function EmptyAction({
         </span>
       </span>
       {!href && (
-        <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+        <span id={unavailableId} className="ms-3 shrink-0 system-xs-medium text-text-disabled">
           {unavailable}
         </span>
       )}
@@ -145,7 +143,7 @@ function EmptyAction({
         <div id={recommendedId}>
           <CornerLabel
             label={recommendedLabel}
-            className="absolute top-0 right-0 z-5"
+            className="absolute inset-e-0 top-0 z-5"
             cornerClassName="text-util-colors-indigo-indigo-100"
             labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
             textClassName="text-util-colors-indigo-indigo-700"
@@ -184,9 +182,11 @@ function ButtonOrLink({
 function EmptyGhostGrid() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-x-8 inset-y-2 grid grid-cols-4 gap-3">
+      <div
+        className={cn('absolute inset-x-8 inset-y-2 gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
+      >
         {EMPTY_GHOST_CARD_IDS.map((id) => (
-          <div key={id} className="h-52.25 rounded-xl bg-background-default-lighter opacity-75" />
+          <div key={id} className="h-41.5 rounded-xl bg-background-default-lighter opacity-75" />
         ))}
       </div>
       <div className="absolute inset-0 bg-linear-to-b from-background-body-transparent to-background-body" />

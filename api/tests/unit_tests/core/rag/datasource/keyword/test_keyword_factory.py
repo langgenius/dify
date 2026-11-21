@@ -9,7 +9,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 from models.dataset import Dataset
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -288,7 +288,7 @@ async function readMultipartRunBody(
   return { json, parts }
 }
 
-const SLOW_STREAM_GAP_MS = 200
+export const SLOW_STREAM_GAP_MS = 1000
 
 function sseResponse(body: string | ReadableStream<Uint8Array>): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })
@@ -761,7 +761,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     )
   })
 
-  app.post('/openapi/v1/apps/:id/tasks/:taskId:stop', (c) => {
+  app.post('/openapi/v1/apps/:id/runs/:runId:stop', (c) => {
     return c.json({ result: 'success' })
   })
 
@@ -772,13 +772,13 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         {
           summary: 'Follow the run',
           op: OpId.RunEvents,
-          input: { app_id: c.req.param('id'), task_id: 'wf-run-hitl-1', continue_on_pause: false },
+          input: { app_id: c.req.param('id'), run_id: 'wf-run-hitl-1', continue_on_pause: false },
         },
       ],
     }),
   )
 
-  app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => sseResponse(hitlResumedResponse()))
+  app.get('/openapi/v1/apps/:id/runs/:run_id/events', (_c) => sseResponse(hitlResumedResponse()))
 
   app.post('/openapi/v1/oauth/device/code', (c) => {
     const scenario = getScenario()

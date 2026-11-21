@@ -1,15 +1,19 @@
 'use client'
 
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { DeleteKnowledgeForm } from '../components/delete-knowledge-form'
+import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { newKnowledgeListPath } from '../routes'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
 import { knowledgeSettingsHasPendingSaveAtom } from './state/workflow'
@@ -21,10 +25,11 @@ export function DeleteKnowledgeAction() {
   const queryClient = useQueryClient()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
-  const [open, setOpen] = useState(false)
-  const confirmationRef = useRef<HTMLInputElement>(null)
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const mutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   if (!space) return null
@@ -32,24 +37,33 @@ export function DeleteKnowledgeAction() {
   if (!canDelete) return null
   const name = space.technical_summary?.name ?? ''
 
-  const deleteKnowledge = async () => {
+  const deleteKnowledge = () => {
     if (mutation.isPending) return
-    try {
-      await mutation.mutateAsync({
-        params: { control_space_id: space.control_space_id },
-      })
-      setOpen(false)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-      })
-      router.replace(newKnowledgeListPath)
-    } catch {
-      toast.error(tCommon(($) => $['api.actionFailed']))
-    }
+    mutation.mutate(
+      { params: { control_space_id: space.control_space_id } },
+      {
+        onSuccess: () => {
+          deleteActionsRef.current?.close()
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+          })
+          router.replace(newKnowledgeListPath)
+        },
+      },
+    )
   }
 
   return (
-    <>
+    <AlertDialog
+      actionsRef={deleteActionsRef}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && mutation.isPending && details.reason !== 'imperative-action')
+          details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) mutation.reset()
+      }}
+    >
       <div className="h-px bg-divider-subtle" />
       <div className="flex min-w-0 flex-col gap-4 pt-7 sm:flex-row sm:gap-1">
         <h2 className="flex h-8 w-full shrink-0 items-center system-sm-semibold text-text-destructive sm:w-45">
@@ -64,34 +78,22 @@ export function DeleteKnowledgeAction() {
               {t(($) => $['settings.deleteDescription'], { ns: 'knowledgeSettings' })}
             </p>
           </div>
-          <Button
-            type="button"
-            tone="destructive"
-            disabled={hasPendingSave}
-            onClick={() => setOpen(true)}
+          <AlertDialogTrigger
+            render={<Button type="button" tone="destructive" disabled={hasPendingSave} />}
           >
             {tCommon(($) => $['operation.delete'])}
-          </Button>
+          </AlertDialogTrigger>
         </div>
       </div>
 
-      <AlertDialog
-        open={open}
-        onOpenChange={(nextOpen) => {
-          // The pending deletion redirects when it settles; keep it modal until then.
-          if (!nextOpen && mutation.isPending) return
-          setOpen(nextOpen)
-        }}
-      >
-        <AlertDialogContent initialFocus={confirmationRef}>
-          <DeleteKnowledgeForm
-            confirmationRef={confirmationRef}
-            knowledgeName={name}
-            isPending={mutation.isPending}
-            onSubmit={() => void deleteKnowledge()}
-          />
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <AlertDialogContent>
+        <DeleteKnowledgeForm
+          knowledgeName={name}
+          isPending={mutation.isPending}
+          error={mutation.isError ? tCommon(($) => $['api.actionFailed']) : undefined}
+          onSubmit={deleteKnowledge}
+        />
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

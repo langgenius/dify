@@ -22,7 +22,7 @@ describe('SkillDetailPage autosave', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -43,7 +43,7 @@ describe('SkillDetailPage autosave', () => {
     const { unmount } = renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -88,7 +88,7 @@ describe('SkillDetailPage autosave', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -208,7 +208,7 @@ describe('SkillDetailPage autosave', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -243,7 +243,7 @@ describe('SkillDetailPage autosave', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -264,7 +264,7 @@ describe('SkillDetailPage autosave', () => {
 
     renderSkillDetailPage()
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )

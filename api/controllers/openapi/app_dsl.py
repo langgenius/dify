@@ -8,10 +8,11 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, NotFound
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, ErrorDetail, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
@@ -113,7 +114,9 @@ class AppDslImportApi(Resource):
     @endpoint(
         context="workspace",
         op="import.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Import an app from DSL text or URL",
         examples=(
             Example(
@@ -174,7 +177,9 @@ class AppDslCheckApi(Resource):
     @endpoint(
         context="workspace",
         op="check.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
+        effect=Effect.READ,
         summary="Check a DSL without importing it: every problem with its node and field",
         examples=(Example(title="Check a DSL (pipe the YAML)", input={"yaml_content": "<yaml text of the app DSL>"}),),
         requirements=_DSL_WRITE_GUARDS,
@@ -211,7 +216,9 @@ class AppDslImportConfirmApi(Resource):
     @endpoint(
         context="workspace",
         op="confirm.console_app.dsl_import",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Confirm a pending DSL import",
         examples=(Example(title="Confirm an import that is pending confirmation", input={"import_id": "<import_id>"}),),
         requirements=_DSL_WRITE_GUARDS,
@@ -246,6 +253,7 @@ class AppDslExportApi(Resource):
     @endpoint(
         context="app",
         op="export.console_app.dsl",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Export app DSL as YAML text inside a JSON object",
         examples=(
@@ -288,6 +296,7 @@ class AppDslCheckDependenciesApi(Resource):
     @endpoint(
         context="workspace",
         op="check.console_app.dependency",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Check plugin dependencies of an app",
         examples=(Example(title="Check which plugins an app needs", input={"app_id": "<app_id>"}),),

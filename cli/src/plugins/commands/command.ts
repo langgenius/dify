@@ -15,7 +15,12 @@ import { commandRow } from './describe'
 
 export type { Descriptor, OpFacets } from './describe'
 
-export type CommandEffect = 'read' | 'write' | 'destructive'
+export const COMMAND_EFFECTS = ['read', 'write', 'destructive'] as const
+export type CommandEffect = (typeof COMMAND_EFFECTS)[number]
+
+export function isCommandEffect(value: string): value is CommandEffect {
+  return (COMMAND_EFFECTS as readonly string[]).includes(value)
+}
 
 export const HELP_WORD = 'help'
 

@@ -2,6 +2,7 @@ import type { EndpointListItemResponse } from '@dify/contracts/api/console/works
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import EndpointList from '../endpoint-list'
 import { createPluginDetail } from './endpoint-fixture'
@@ -58,14 +59,19 @@ beforeEach(() => {
       mutations.push({ path, method, body })
       await mutationGate
       if (rejectMutation && !failAfterWrite)
-        return Response.json({ message: 'Failed' }, { status: 500 })
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'Endpoint access denied' }, { status: 403 }),
+        )
       if (path.endsWith('/enable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: true }))
       else if (path.endsWith('/disable'))
         endpoints = endpoints.map((item) => ({ ...item, enabled: false }))
       else if (method === 'DELETE') endpoints = []
       else endpoints = [{ ...createEndpoint(), name: 'Saved endpoint' }]
-      if (rejectMutation) return Response.json({ message: 'Failed after write' }, { status: 500 })
+      if (rejectMutation)
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'Failed after write' }, { status: 500 }),
+        )
       return Response.json({ success: true })
     },
   )
@@ -106,6 +112,20 @@ describe('Endpoint management', () => {
         },
       },
     ])
+  })
+
+  it('preserves the server reason when endpoint creation fails', async () => {
+    const user = userEvent.setup()
+    endpoints = []
+    rejectMutation = true
+    renderEndpoints()
+    await user.click(
+      await screen.findByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' }),
+    )
+    await user.type(screen.getByPlaceholderText('Endpoint Name'), 'New endpoint')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(showError).toHaveBeenCalledExactlyOnceWith('Endpoint access denied'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('updates through the canonical item route without dropping falsy settings', async () => {
@@ -192,7 +212,9 @@ describe('Endpoint management', () => {
       await act(async () => {
         settle()
       })
-      await waitFor(() => expect(showError).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(showError).toHaveBeenCalledExactlyOnceWith('Endpoint access denied'),
+      )
       expect(screen.getByRole('button', { name: actionName })).not.toHaveAttribute(
         'aria-disabled',
         'true',

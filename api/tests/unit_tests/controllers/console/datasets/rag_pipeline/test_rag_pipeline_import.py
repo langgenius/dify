@@ -27,7 +27,7 @@ from models.engine import db
 from services.enterprise import rbac_service
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineImportInfo
-from tests.unit_tests.model_factories import make_account, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 def _account() -> Account:

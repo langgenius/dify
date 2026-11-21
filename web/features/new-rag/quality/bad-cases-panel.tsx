@@ -4,12 +4,7 @@ import type { KnowledgeFsBadCaseResponse } from '@dify/contracts/api/console/kno
 import type { GoldenQuestionDraft } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator } from '@langgenius/dify-ui/menu'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +12,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { newKnowledgeRetrievalTestPath } from '../routes'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
@@ -97,10 +93,16 @@ function BadCasePromotionDialog({
   const [submitting, setSubmitting] = useState(false)
   const promotedGoldenQuestionIdsRef = useRef(new Map<string, string>())
   const createGoldenMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const deleteGoldenMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
   )
 
   const close = () => {
@@ -108,22 +110,26 @@ function BadCasePromotionDialog({
     onOpenChange(undefined)
   }
   const getBadCase = (badCaseId: string) =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
-      params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
-    })
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
+      { params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId } },
+      { context: { silent: true } },
+    )
   const markBadCaseDismissed = async (
     badCase: KnowledgeFsBadCaseResponse,
     tags: string[] = badCase.tags,
   ) => {
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-        body: {
-          expected_revision: badCase.revision,
-          status: 'dismissed',
-          tags,
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
+        {
+          body: {
+            expected_revision: badCase.revision,
+            status: 'dismissed',
+            tags,
+          },
+          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
         },
-        params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-      })
+        { context: { silent: true } },
+      )
     } catch (mutationError) {
       const refreshed = await getBadCase(badCase.id).catch(() => undefined)
       if (refreshed?.status !== 'dismissed') throw mutationError
@@ -175,8 +181,8 @@ function BadCasePromotionDialog({
       ])
       toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
-    } catch {
-      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }
@@ -223,15 +229,19 @@ function BadCaseRow({
   const [pending, setPending] = useState(false)
 
   const getBadCase = () =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
-      params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
-    })
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
+      {
+        params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
+      },
+      { context: { silent: true } },
+    )
   const openTrace = async (retest: boolean) => {
     setPending(true)
     try {
       const reference =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.traceReference.get(
           { params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId } },
+          { context: { silent: true } },
         )
       const search = new URLSearchParams(
         retest
@@ -239,8 +249,8 @@ function BadCaseRow({
           : { trace: reference.trace_id },
       )
       router.push(`${newKnowledgeRetrievalTestPath(knowledgeSpaceId)}?${search.toString()}`)
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)
     }
   }
@@ -249,14 +259,17 @@ function BadCaseRow({
     try {
       const badCase = await getBadCase()
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-          body: {
-            expected_revision: badCase.revision,
-            status: 'dismissed',
-            tags: badCase.tags,
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
+          {
+            body: {
+              expected_revision: badCase.revision,
+              status: 'dismissed',
+              tags: badCase.tags,
+            },
+            params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
           },
-          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-        })
+          { context: { silent: true } },
+        )
       } catch (mutationError) {
         const refreshed = await getBadCase().catch(() => undefined)
         if (refreshed?.status !== 'dismissed') throw mutationError
@@ -267,28 +280,28 @@ function BadCaseRow({
           type: 'infinite',
         }),
       })
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       setPending(false)
     }
   }
 
   return (
     <tr className="h-12 border-t border-divider-subtle">
-      <th scope="row" className="truncate pr-3 text-left system-sm-medium text-text-primary">
+      <th scope="row" className="truncate pe-3 text-start system-sm-medium text-text-primary">
         {item.question}
       </th>
-      <td className="pr-3">
+      <td className="pe-3">
         <BadCaseStatus status={item.status} />
       </td>
-      <td className="pr-3 system-xs-regular text-text-secondary">
+      <td className="pe-3 system-xs-regular text-text-secondary">
         <BadCaseReason question={item.question} reason={item.reason} tags={item.tags} />
       </td>
-      <td className="pr-3 system-xs-regular text-text-secondary">
+      <td className="pe-3 system-xs-regular text-text-secondary">
         {formatQualityUpdatedAt(item.updated_at, i18n.language)}
       </td>
       <td>
-        <DropdownMenu modal={false}>
+        <Menu modal={false}>
           <QualityRowMenuTrigger
             disabled={pending}
             label={t(($) => $['qualityPage.questionActions'], {
@@ -296,54 +309,46 @@ function BadCaseRow({
               question: item.question ?? '',
             })}
           />
-          <DropdownMenuContent className="w-50">
+          <MenuContent align="end" className="w-50">
             {canEdit &&
               (item.status === 'fixed' ? (
-                <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
+                <MenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
                   <span aria-hidden className="i-ri-star-line size-4" />
                   {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
-                </DropdownMenuItem>
+                </MenuItem>
               ) : (
-                <DropdownMenuItem
+                <MenuItem
                   className="gap-2 px-3"
                   disabled={item.status === 'replaying' || pending}
                   onClick={() => void openTrace(true)}
                 >
                   <span aria-hidden className="i-ri-restart-line size-4" />
                   {t(($) => $['qualityPage.replay'], { ns: 'knowledgeQuality' })}
-                </DropdownMenuItem>
+                </MenuItem>
               ))}
-            <DropdownMenuItem
+            <MenuItem
               className="gap-2 px-3"
               disabled={pending}
               onClick={() => void openTrace(false)}
             >
               <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
               {t(($) => $['qualityPage.openTrace'], { ns: 'knowledgeQuality' })}
-            </DropdownMenuItem>
+            </MenuItem>
             {canEdit && item.status !== 'fixed' && (
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                disabled={pending}
-                onClick={() => onPromote(item)}
-              >
+              <MenuItem className="gap-2 px-3" disabled={pending} onClick={() => onPromote(item)}>
                 <span aria-hidden className="i-ri-star-line size-4" />
                 {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-            {canEdit && <DropdownMenuSeparator />}
+            {canEdit && <MenuSeparator />}
             {canEdit && (
-              <DropdownMenuItem
-                className="gap-2 px-3"
-                disabled={pending}
-                onClick={() => void ignore()}
-              >
+              <MenuItem className="gap-2 px-3" disabled={pending} onClick={() => void ignore()}>
                 <span aria-hidden className="i-ri-eye-off-line size-4" />
                 {t(($) => $['qualityPage.ignore'], { ns: 'knowledgeQuality' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       </td>
     </tr>
   )
@@ -403,7 +408,7 @@ export function BadCasesPanel() {
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
           <table
             aria-label={t(($) => $['qualityPage.badCasesTab'], { ns: 'knowledgeQuality' })}
-            className="w-full min-w-202 table-fixed border-collapse text-left"
+            className="w-full min-w-202 table-fixed border-collapse text-start"
           >
             <colgroup>
               <col />
@@ -414,16 +419,16 @@ export function BadCasesPanel() {
             </colgroup>
             <thead>
               <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.reason'], { ns: 'knowledgeQuality' })}
                 </th>
-                <th scope="col" className="pr-3 font-medium">
+                <th scope="col" className="pe-3 text-start font-medium">
                   {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
                 </th>
                 <td />

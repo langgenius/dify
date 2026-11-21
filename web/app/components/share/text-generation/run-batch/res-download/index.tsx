@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next'
 import { useCSVDownloader } from 'react-papaparse'
 
 type IResDownloadProps = {
-  isMobile: boolean
+  compact: boolean
   values: Record<string, string>[]
 }
 
-const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
+const ResDownload: FC<IResDownloadProps> = ({ compact, values }) => {
   const { t } = useTranslation(['common'])
   const { CSVDownloader, Type } = useCSVDownloader()
 
@@ -27,12 +27,12 @@ const ResDownload: FC<IResDownloadProps> = ({ isMobile, values }) => {
       }}
       data={values}
     >
-      {isMobile && (
+      {compact && (
         <IconButton aria-label={t(($) => $['operation.download'], { ns: 'common' })}>
           <RiDownloadLine aria-hidden="true" className="size-4" />
         </IconButton>
       )}
-      {!isMobile && (
+      {!compact && (
         <Button>
           <RiDownloadLine className="size-4" />
           <span>{t(($) => $['operation.download'], { ns: 'common' })}</span>

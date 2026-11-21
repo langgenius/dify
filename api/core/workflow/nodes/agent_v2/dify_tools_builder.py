@@ -26,7 +26,7 @@ from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_manager import ToolManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
-from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulToolsConfig
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulDifyToolConfig, AgentSoulToolsConfig
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -98,6 +98,7 @@ class WorkflowAgentDifyToolLayersBuilder(Protocol):
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
     ) -> WorkflowAgentToolLayers: ...
 
 
@@ -175,6 +176,7 @@ class WorkflowAgentDifyToolsBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
     ) -> WorkflowAgentToolLayers:
         """Resolve user-selected Dify tools into direct/core Agent backend DTOs.
 
@@ -194,32 +196,49 @@ class WorkflowAgentDifyToolsBuilder:
         for tool_config in self._expand_provider_entries(tenant_id=tenant_id, enabled_tools=enabled_tools):
             normalized_tool_config = self._normalized_tool_config(tenant_id=tenant_id, tool_config=tool_config)
             destination = self._tool_layer_destination(normalized_tool_config)
-            exposed_name = self._exposed_tool_name(normalized_tool_config)
-            if exposed_name in seen_names:
-                raise WorkflowAgentDifyToolsBuildError(
-                    "agent_tool_name_duplicated",
-                    f"Duplicate Dify Tool name {exposed_name!r}.",
-                )
-            seen_names.add(exposed_name)
+            choices = self._knowledge_fs_research_choices(normalized_tool_config, knowledge_fs_spaces)
+            for index, knowledge_space in enumerate(choices):
+                exposed_name = self._exposed_tool_name(normalized_tool_config)
+                if knowledge_space is not None and len(choices) > 1:
+                    exposed_name = f"{exposed_name}_{index + 1}"
+                if exposed_name in seen_names:
+                    raise WorkflowAgentDifyToolsBuildError(
+                        "agent_tool_name_duplicated",
+                        f"Duplicate Dify Tool name {exposed_name!r}.",
+                    )
+                seen_names.add(exposed_name)
 
-            agent_tool = self._to_agent_tool_entity(normalized_tool_config)
-            tool_runtime = self._fetch_tool_runtime(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                user_id=user_id,
-                agent_tool=agent_tool,
-                invoke_from=invoke_from,
-                tool_config=normalized_tool_config,
-            )
+                agent_tool = self._to_agent_tool_entity(
+                    normalized_tool_config,
+                    knowledge_fs_space_id=knowledge_space.control_space_id if knowledge_space else None,
+                )
+                tool_runtime = self._fetch_tool_runtime(
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    user_id=user_id,
+                    agent_tool=agent_tool,
+                    invoke_from=invoke_from,
+                    tool_config=normalized_tool_config,
+                )
 
-            if destination == "plugin":
-                prepared_plugin.append(
-                    self._to_plugin_backend_tool_config(normalized_tool_config, tool_runtime, exposed_name)
-                )
-            else:
-                prepared_core.append(
-                    self._to_core_backend_tool_config(normalized_tool_config, tool_runtime, exposed_name)
-                )
+                if destination == "plugin":
+                    prepared_plugin.append(
+                        self._to_plugin_backend_tool_config(normalized_tool_config, tool_runtime, exposed_name)
+                    )
+                else:
+                    description = self._description(normalized_tool_config, tool_runtime)
+                    if knowledge_space is not None and len(choices) > 1:
+                        description = (
+                            f"{description or 'Create a research task.'} "
+                            f"Agent Knowledge Base: {knowledge_space.name} (alias: {knowledge_space.id})."
+                        )
+                        if knowledge_space.description:
+                            description += f" {knowledge_space.description}"
+                    prepared_core.append(
+                        self._to_core_backend_tool_config(
+                            normalized_tool_config, tool_runtime, exposed_name, description=description
+                        )
+                    )
 
         return WorkflowAgentToolLayers(
             plugin_tools=DifyPluginToolsLayerConfig(tools=prepared_plugin) if prepared_plugin else None,
@@ -331,13 +350,42 @@ class WorkflowAgentDifyToolsBuilder:
             ) from exc
 
     @staticmethod
-    def _to_agent_tool_entity(tool_config: AgentSoulDifyToolConfig) -> AgentToolEntity:
+    def _knowledge_fs_research_choices(
+        tool_config: AgentSoulDifyToolConfig,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
+    ) -> tuple[AgentKnowledgeSpaceConfig | None, ...]:
+        if (
+            tool_config.provider_type is ToolProviderType.BUILT_IN
+            and WorkflowAgentDifyToolsBuilder._provider_id(tool_config) == "knowledge_fs"
+            and tool_config.tool_name == "create_research_task"
+        ):
+            spaces = tuple(space for space in knowledge_fs_spaces if not space.is_missing)
+            return spaces or (None,)
+        return (None,)
+
+    @staticmethod
+    def _to_agent_tool_entity(
+        tool_config: AgentSoulDifyToolConfig, *, knowledge_fs_space_id: str | None
+    ) -> AgentToolEntity:
         assert tool_config.tool_name is not None
+        tool_parameters: dict[str, Any] = dict(tool_config.runtime_parameters)
+        if (
+            tool_config.provider_type is ToolProviderType.BUILT_IN
+            and WorkflowAgentDifyToolsBuilder._provider_id(tool_config) == "knowledge_fs"
+            and tool_config.tool_name == "create_research_task"
+            and knowledge_fs_space_id is not None
+        ):
+            # The selected Agent Knowledge Base supplies the hidden form
+            # parameter. The model still sees only query and mode.
+            tool_parameters["resource"] = {
+                "kind": "knowledge_fs",
+                "control_space_id": knowledge_fs_space_id,
+            }
         return AgentToolEntity(
             provider_type=tool_config.provider_type,
             provider_id=WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
             tool_name=tool_config.tool_name,
-            tool_parameters=dict(tool_config.runtime_parameters),
+            tool_parameters=tool_parameters,
             credential_id=tool_config.credential_ref.id if tool_config.credential_ref else None,
         )
 
@@ -420,6 +468,7 @@ class WorkflowAgentDifyToolsBuilder:
         tool_config: AgentSoulDifyToolConfig,
         tool_runtime: Tool,
         exposed_name: str,
+        description: str | None = None,
     ) -> DifyCoreToolConfig:
         parameters = self._prepared_parameters(tool_runtime)
         return DifyCoreToolConfig(
@@ -428,7 +477,7 @@ class WorkflowAgentDifyToolsBuilder:
             tool_name=tool_config.tool_name or exposed_name,
             credential_id=tool_config.credential_ref.id if tool_config.credential_ref else None,
             name=exposed_name,
-            description=self._description(tool_config, tool_runtime),
+            description=description or self._description(tool_config, tool_runtime),
             runtime_parameters=self._runtime_parameters(tool_runtime, parameters),
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),

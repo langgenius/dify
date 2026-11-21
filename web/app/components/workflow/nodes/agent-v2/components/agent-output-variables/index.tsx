@@ -7,7 +7,9 @@ import type {
   EditingState,
 } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OutputVars from '../../../_base/components/output-vars'
@@ -45,7 +47,7 @@ function OutputRow({
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
-      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
+      <div className="flex h-6 items-center gap-x-1 ps-1 pe-0.5">
         <div className="flex min-w-0 grow items-center gap-x-1">
           <span className="flex h-5 min-w-0 items-center px-1">
             <span className="truncate code-sm-semibold leading-4 text-text-primary">
@@ -64,37 +66,56 @@ function OutputRow({
         {editable && (
           <div className="pointer-events-none flex shrink-0 items-center gap-x-0.5 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
             {onAddChild && (
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${output.name}`}
-                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={onAddChild}
-              >
-                <span aria-hidden="true" className="i-ri-add-circle-line size-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${output.name}`}
+                      className="hover:bg-state-base-hover-alt"
+                      onClick={onAddChild}
+                    >
+                      <span aria-hidden="true" className="i-ri-add-circle-line size-4" />
+                    </IconButton>
+                  }
+                />
+                <TooltipContent>{t(($) => $['operation.add'], { ns: 'common' })}</TooltipContent>
+              </Tooltip>
             )}
-            <button
-              type="button"
-              aria-label={t(($) => $['nodes.agent.outputVars.edit'], {
-                ns: 'workflowAgent',
-                name: output.name,
-              })}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onEdit}
-            >
-              <span aria-hidden="true" className="i-ri-pencil-line size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label={t(($) => $['nodes.agent.outputVars.delete'], {
-                ns: 'workflowAgent',
-                name: output.name,
-              })}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onDelete}
-            >
-              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['nodes.agent.outputVars.edit'], {
+                      ns: 'workflowAgent',
+                      name: output.name,
+                    })}
+                    className="hover:bg-state-base-hover-alt"
+                    onClick={onEdit}
+                  >
+                    <span aria-hidden="true" className="i-ri-pencil-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.edit'], { ns: 'common' })}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['nodes.agent.outputVars.delete'], {
+                      ns: 'workflowAgent',
+                      name: output.name,
+                    })}
+                    tone="destructive"
+                    className="hover:bg-state-base-hover-alt"
+                    onClick={onDelete}
+                  >
+                    <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.delete'], { ns: 'common' })}</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>

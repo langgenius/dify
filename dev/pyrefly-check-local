@@ -8,7 +8,7 @@ cd "$REPO_ROOT"
 
 EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
 UNIT_TESTS_CONFIG="tests/unit_tests/pyrefly.toml"
-TEST_CONTAINERS_DIR="tests/test_containers_integration_tests"
+TEST_CONTAINERS_DIR="tests/e2e_tests/containers"
 TEST_CONTAINERS_CONFIG="$TEST_CONTAINERS_DIR/pyrefly.toml"
 
 target_paths=()
@@ -65,7 +65,7 @@ run_pyrefly() {
 status=0
 
 pyrefly_command=(
-  uv run --directory api --dev pyrefly check
+  uv run --directory api --dev --group evaluation pyrefly check
   "${pyrefly_args[@]}"
 )
 if (( ${#target_paths[@]} > 0 )); then
@@ -85,7 +85,7 @@ if (( ${#target_paths[@]} == 0 )); then
     unit_tests_args+=("--output-format=github")
   fi
   run_pyrefly \
-    uv run --directory api --dev pyrefly check \
+    uv run --directory api --dev --group evaluation pyrefly check \
     "${unit_tests_args[@]}" \
     || status=$?
 
@@ -99,7 +99,7 @@ if (( ${#target_paths[@]} == 0 )); then
     test_containers_args+=("--output-format=github")
   fi
   run_pyrefly \
-    uv run --directory api --dev pyrefly check \
+    uv run --directory api --dev --group evaluation pyrefly check \
     "${test_containers_args[@]}" \
     || status=$?
 fi

@@ -1,15 +1,16 @@
 """Application service for Console Billing portal links."""
 
 from collections.abc import Callable
-from typing import TypedDict
+from typing import Protocol
 
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountRepository
 
 
-class BillingPortalLink(TypedDict):
-    url: str
+class BillingPortalLink(Protocol):
+    @property
+    def url(self) -> str: ...
 
 
 class BillingPortalService:

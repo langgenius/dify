@@ -12,7 +12,6 @@ from typing import Any, override
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -20,6 +19,10 @@ from libs.datetime_utils import naive_utc_now
 from models.model import ApiToken
 
 logger = logging.getLogger(__name__)
+
+
+class ApiTokenInvalidError(Exception):
+    """The credential does not identify a valid API token for the requested scope."""
 
 
 # ---------------------------------------------------------------------
@@ -320,7 +323,7 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
     """
     Query API token from database and cache the result.
 
-    Raises Unauthorized if token is invalid.
+    Raises ApiTokenInvalidError if the token is invalid for the requested scope.
     """
     with Session(db.engine, expire_on_commit=False) as session:
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
@@ -328,14 +331,14 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
 
         if not api_token:
             ApiTokenCache.set(auth_token, scope, None)
-            raise Unauthorized("Access token is invalid")
+            raise ApiTokenInvalidError("Access token is invalid")
 
         ApiTokenCache.set(auth_token, scope, api_token)
         record_token_usage(auth_token, scope)
         return api_token
 
 
-def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | Any:
+def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | CachedApiToken:
     """
     Fetch token from DB with single-flight pattern using Redis lock.
 
@@ -361,7 +364,7 @@ def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiTok
         else:
             logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
             return query_token_from_db(auth_token, scope)
-    except Unauthorized:
+    except ApiTokenInvalidError:
         raise
     except Exception as e:
         logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)

@@ -38,13 +38,13 @@ from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import Data
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.tool_fixtures import make_runtime_tool
-from tests.unit_tests.core.model_fixtures import make_model_config
 
 
 def _message(
@@ -143,12 +143,13 @@ def _app_config(
 def _app_generate(
     *,
     app_config: AgentChatAppConfig | None = None,
-    files: list[str] | None = None,
+    files: list[File] | None = None,
 ) -> AgentChatAppGenerateEntity:
-    """Build the real generate entity with only the fields used by these unit tests."""
+    """Given optional valid config and files, return a complete entity without I/O."""
 
-    return AgentChatAppGenerateEntity.model_construct(
+    return AgentChatAppGenerateEntity(
         task_id="task",
+        model_conf=make_model_config(provider="provider", model="model", mode="chat"),
         app_config=app_config or _app_config(),
         inputs={},
         files=files or [],
@@ -418,10 +419,10 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value, *args, **kwargs):
-        if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
+    def dumps_side_effect(value: object, *, ensure_ascii: bool = True) -> str:
+        if value in (tool_input, observation, tool_meta) and ensure_ascii is False:
             raise TypeError("fail")
-        return real_dumps(value, *args, **kwargs)
+        return real_dumps(value, ensure_ascii=ensure_ascii)
 
     mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
 
@@ -713,6 +714,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     mocker: MockerFixture,
     queue_manager: MessageBasedAppQueueManager,
 ) -> None:
+    """Given a real session and complete file model, retain files and initialize agent dependencies."""
     sqlite_session.add_all(
         [
             _thought(thought_id="thought-1", message_id="msg1"),
@@ -743,7 +745,8 @@ def test_init_uses_real_session_for_count_and_dependencies(
         ),
         additional_features=AppAdditionalFeatures(show_retrieve_source=True),
     )
-    app_generate = _app_generate(app_config=app_config, files=["file1"])
+    file = File(type=FileType.IMAGE, transfer_method=FileTransferMethod.LOCAL_FILE, reference="file1")
+    app_generate = _app_generate(app_config=app_config, files=[file])
     message = _message(message_id="msg1")
 
     initialized = BaseAgentRunner(
@@ -762,7 +765,7 @@ def test_init_uses_real_session_for_count_and_dependencies(
     )
 
     assert initialized.stream_tool_call is True
-    assert initialized.files == ["file1"]
+    assert initialized.files == [file]
     assert initialized.dataset_tools == ["ds_tool"]
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []

@@ -21,6 +21,7 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import Actions from './actions'
 import Content from './content'
 import Details from './details'
@@ -41,13 +42,14 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const queryClient = useQueryClient()
   const { refetch: getPipelineTemplateInfo } = useQuery(
     consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
+      context: { silent: true },
       input: { params: { template_id: pipeline.id }, query: { type } },
       enabled: false,
       select: selectPipelineTemplate,
     }),
   )
   const { mutate: createDataset } = useMutation(
-    consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions({ context: { silent: true } }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useCallback(() => {
@@ -55,13 +57,16 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [queryClient])
 
   const handleUseTemplate = useCallback(async () => {
-    const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
-    if (!pipelineTemplateInfo) {
-      toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+    const { data: pipelineTemplateInfo, error } = await getPipelineTemplateInfo()
+    if (error || !pipelineTemplateInfo) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+      )
       return
     }
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
+      icon_info: pipelineTemplateInfo.icon_info,
     }
     createDataset(
       { body: request },
@@ -78,8 +83,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           })
           push(`/datasets/${newDataset.dataset_id}/pipeline`)
         },
-        onError: () => {
-          toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }),
+          )
         },
       },
     )
@@ -104,7 +111,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [])
 
   const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
-    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions(),
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const handleExportDSL = useCallback(() => {
@@ -117,8 +126,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
           toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
         },
-        onError: () => {
-          toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }),
+          )
         },
       },
     )
@@ -170,7 +181,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         />
         <DialogContent
           // oxlint-disable-next-line shadcn/no-restyle -- Full-page template preview keeps its larger radius.
-          className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[1680px] overflow-hidden rounded-3xl"
+          className="h-dvh max-h-[calc(100dvh-4rem)] w-420 overflow-hidden rounded-3xl"
         >
           <Details
             id={pipeline.id}
@@ -183,6 +194,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       {showEditModal && (
         <Dialog
           open={showEditModal}
+          disablePointerDismissal
           onOpenChange={(open) => {
             if (!open) closeEditModal()
           }}

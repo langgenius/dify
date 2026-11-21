@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import AppIcon from '../../base/app-icon'
-import Dropdown from './dropdown'
+import ActionsMenu from './actions-menu'
 
 type DatasetInfoProps = {
   expand: boolean
@@ -48,7 +48,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
         {expand && (
           <>
             <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5">
-              <div className="flex w-full min-w-0 items-center gap-2 pr-1">
+              <div className="flex w-full min-w-0 items-center gap-2 pe-1">
                 <div
                   className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary"
                   title={dataset.name}
@@ -78,7 +78,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
               </div>
             </div>
             <div className="flex size-8 shrink-0 items-center justify-center">
-              <Dropdown expand />
+              <ActionsMenu expand />
             </div>
           </>
         )}

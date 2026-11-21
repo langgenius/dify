@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import { createToast, createToastManager } from '@langgenius/dify-ui/toast'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -55,7 +56,7 @@ describe('on-demand translation loading', () => {
 
   it('reads and updates the locale without loading any translation namespace', async () => {
     function LocaleLabel() {
-      return <span>{useLocale()}</span>
+      return <span dir={useDirection()}>{useLocale()}</span>
     }
     render(
       <I18nClientProvider locale="en-US" resource={{}}>
@@ -63,8 +64,16 @@ describe('on-demand translation loading', () => {
       </I18nClientProvider>,
     )
     expect(await screen.findByText('en-US')).toBeVisible()
+    expect(document.documentElement.lang).toBe('en-US')
+    expect(document.documentElement.dir).toBe('ltr')
+    await act(() => changeLanguage('ar-TN'))
+    expect(await screen.findByText('ar-TN')).toHaveAttribute('dir', 'rtl')
+    expect(document.documentElement.lang).toBe('ar-TN')
+    expect(document.documentElement.dir).toBe('rtl')
     await act(() => changeLanguage('zh-Hans'))
-    expect(await screen.findByText('zh-Hans')).toBeVisible()
+    expect(await screen.findByText('zh-Hans')).toHaveAttribute('dir', 'ltr')
+    expect(document.documentElement.lang).toBe('zh-Hans')
+    expect(document.documentElement.dir).toBe('ltr')
     expect(mocks.loadResource).not.toHaveBeenCalled()
   })
 

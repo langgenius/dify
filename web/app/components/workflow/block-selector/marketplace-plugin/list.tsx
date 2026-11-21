@@ -1,15 +1,16 @@
 'use client'
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Link from '@/next/link'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
 
 export type ListProps = {
+  marketplace: MarketplaceLinks
   wrapElemRef: React.RefObject<HTMLElement | null>
   list: Plugin[]
   searchText: string
@@ -24,6 +25,7 @@ export type ListProps = {
 export type ListRef = { handleScroll: () => void }
 
 function List({
+  marketplace,
   wrapElemRef,
   searchText,
   tags,
@@ -37,7 +39,7 @@ function List({
   const { t } = useTranslation(['plugin'])
   const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
-  const urlWithSearchText = getMarketplaceCategoryUrl(category, {
+  const urlWithSearchText = marketplace.category(category, {
     q: searchText,
     tags: tags.join(','),
   })
@@ -77,12 +79,12 @@ function List({
       <footer className="sticky bottom-0 z-10 flex h-8 items-center border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-1 system-sm-medium">
         <Link
           className="inline-flex items-center rounded-md text-text-accent-light-mode-only focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          href={getMarketplaceCategoryUrl(category)}
+          href={marketplace.category(category)}
           target="_blank"
           rel="noopener noreferrer"
         >
           <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-          <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+          <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
         </Link>
       </footer>
     )
@@ -103,7 +105,7 @@ function List({
           {scrollPosition === ScrollPosition.belowTheWrap ? (
             <button
               type="button"
-              className="flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent p-0 text-start focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
               onClick={handleScrollToResults}
             >
               {t(($) => $.fromMarketplace, { ns: 'plugin' })}
@@ -122,16 +124,16 @@ function List({
             href={urlWithSearchText}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-2 flex shrink-0 items-center rounded-md text-text-accent-light-mode-only focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+            className="ms-2 flex shrink-0 items-center rounded-md text-text-accent-light-mode-only focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span>{t(($) => $.searchInMarketplace, { ns: 'plugin' })}</span>
-            <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+            <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
           </Link>
         </div>
       )}
       <div className={cn('p-1', !disableMaxWidth && maxWidthClassName)} ref={nextToStickyELemRef}>
         {list.map((item) => (
-          <Item key={item.plugin_id} payload={item} />
+          <Item key={item.plugin_id} marketplace={marketplace} payload={item} />
         ))}
       </div>
     </>

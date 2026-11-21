@@ -45,7 +45,6 @@ export type StepByStepTourTaskView = {
   status: StepByStepTourTaskStatus
   primaryActionLabel: string
   disabledReason?: string
-  canToggleCompletion?: boolean
   learnMoreLabel?: string
   learnMoreHref?: string
 }

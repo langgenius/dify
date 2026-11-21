@@ -119,33 +119,42 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
       {rerankSettingModalOpen && (
         <Dialog
           open={rerankSettingModalOpen}
+          disablePointerDismissal
           onOpenChange={(open) => {
             if (!open) {
               setRerankSettingModalOpen(false)
             }
           }}
         >
-          <DialogContent className="w-120 p-6 sm:min-w-132">
-            <ConfigContent
-              datasetConfigs={tempDataSetConfigs}
-              onChange={handleSetTempDataSetConfigs}
-              selectedDatasets={selectedDatasets}
-            />
+          <DialogContent className="w-120 p-6 sm:w-132">
+            <form
+              className="contents"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleSave()
+              }}
+            >
+              <ConfigContent
+                datasetConfigs={tempDataSetConfigs}
+                onChange={handleSetTempDataSetConfigs}
+                selectedDatasets={selectedDatasets}
+              />
 
-            <div className="mt-6 flex justify-end">
-              <Button
-                className="mr-2 shrink-0"
-                onClick={() => {
-                  setTempDataSetConfigs(datasetConfigs)
-                  setRerankSettingModalOpen(false)
-                }}
-              >
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button variant="primary" className="shrink-0" onClick={handleSave}>
-                {t(($) => $['operation.save'], { ns: 'common' })}
-              </Button>
-            </div>
+              <div className="mt-6 flex justify-end">
+                <Button
+                  className="me-2 shrink-0"
+                  onClick={() => {
+                    setTempDataSetConfigs(datasetConfigs)
+                    setRerankSettingModalOpen(false)
+                  }}
+                >
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </Button>
+                <Button type="submit" variant="primary" className="shrink-0">
+                  {t(($) => $['operation.save'], { ns: 'common' })}
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
       )}

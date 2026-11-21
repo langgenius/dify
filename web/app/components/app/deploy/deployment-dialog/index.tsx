@@ -73,7 +73,7 @@ export function DeploymentDialogContent({
     <DialogContent
       initialFocus={titleRef}
       finalFocus={finalFocus}
-      className="max-h-[min(44rem,calc(100dvh-32px))]"
+      className="max-h-[min(44rem,calc(100dvh-2rem))]"
     >
       <DeploymentDialogSession {...sessionProps} titleRef={titleRef} />
     </DialogContent>

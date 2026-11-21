@@ -1,13 +1,14 @@
 {
+  "activateFailed": "Kami tidak dapat mengaktifkan diskon pendidikan Anda. Verifikasi pendidikan Anda saat ini mungkin masih aktif, atau email ini sudah tidak memenuhi syarat.",
   "applied.activeSubscription.description": "Anda memiliki langganan aktif. Anda dapat menggunakan diskon pendidikan setelah langganan Anda berakhir. Konfirmasi langganan Anda di <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Anda tidak memiliki izin pembayaran di workspace ini. Silakan beralih ke workspace di mana Anda dapat mengelola penagihan untuk menggunakan diskon pendidikan.",
   "applied.noPaymentPermission.returnHome": "Kembali ke Dify",
   "applied.step1.description": "Anda telah berhasil mengajukan diskon pendidikan.",
   "applied.step2.description": "Pilih workspace yang ingin Anda gunakan dengan diskon pendidikan.",
   "currentSigned": "SAAT INI MASUK SEBAGAI",
-  "educationPricingConfirm.cancel": "Tetap gunakan paket saat ini",
+  "educationPricingConfirm.cancel": "Lanjutkan tanpa diskon",
   "educationPricingConfirm.continue": "Beralih ke Professional Tahunan",
-  "educationPricingConfirm.description": "Diskon pendidikan hanya berlaku untuk paket Professional tahunan. Jika tetap menggunakan paket saat ini, diskon tidak akan disertakan.",
+  "educationPricingConfirm.description": "Anda memilih {{selected_plan_name}} ({{selected_billing_cycle}}). Pilih Professional tahunan untuk menggunakan diskon pendidikan atau lanjutkan dengan paket pilihan Anda tanpa diskon.",
   "educationPricingConfirm.title": "Paket yang Anda pilih tidak mendukung diskon pendidikan",
   "emailLabel": "Email Anda saat ini",
   "form.schoolName.noResults": "Tidak ada sekolah yang cocok. Anda tetap dapat memasukkan nama resmi sekolah.",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "Verifikasi ulang sekarang untuk mendapatkan kupon baru untuk tahun akademik mendatang. Kami akan menambahkannya ke akun Anda dan Anda dapat menggunakannya untuk peningkatan berikutnya.",
   "notice.stillInEducation.isAboutToExpire": "Verifikasi ulang sekarang untuk mendapatkan kupon baru untuk tahun akademik mendatang. Ini akan disimpan ke akun Anda dan siap digunakan pada perpanjangan berikutnya.",
   "notice.stillInEducation.title": "Masih dalam pendidikan?",
-  "planNotSupportEducationDiscount": "Tidak memenuhi syarat untuk harga pendidikan",
+  "planNotSupportEducationDiscount": "Tidak ada diskon pendidikan untuk paket ini",
   "rejectContent": "Sayangnya, Anda tidak memenuhi syarat untuk status Education Verified dan oleh karena itu tidak dapat menerima kupon 100% eksklusif untuk Paket Dify Professional jika Anda menggunakan alamat email ini.",
   "rejectTitle": "Verifikasi Pendidikan Dify Anda telah ditolak",
   "submit": "Kirim",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "kupon eksklusif 100%",
   "toVerifiedTip.end": "untuk Paket Profesional Dify.",
   "toVerifiedTip.front": "Anda sekarang memenuhi syarat untuk status Terverifikasi Pendidikan. Silakan masukkan informasi pendidikan Anda di bawah ini untuk menyelesaikan proses dan menerima",
-  "useEducationDiscount": "Gunakan diskon pendidikan"
+  "tooManyAttempts": "Terlalu banyak percobaan. Silakan coba lagi nanti.",
+  "useEducationDiscount": "Gunakan diskon pendidikan",
+  "verifyFailed": "Kami tidak dapat memverifikasi status pendidikan Anda. Jika Anda baru saja memverifikasi, verifikasi pendidikan Anda saat ini mungkin masih aktif. Jika tidak, silakan coba lagi nanti."
 }

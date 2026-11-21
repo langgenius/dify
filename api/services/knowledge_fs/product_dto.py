@@ -312,11 +312,13 @@ class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
 
 
 class KnowledgeFSInitialSourcePreviewDocumentResponse(ResponseModel):
+    has_children: bool | None = Field(default=None, validation_alias=AliasChoices("has_children", "hasChildren"))
     last_edited_time: str | None = Field(
         default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
     )
     name: str
     page_id: str = Field(validation_alias=AliasChoices("page_id", "pageId"))
+    parent_id: str | None = Field(default=None, validation_alias=AliasChoices("parent_id", "parentId"))
     provider_item_id: str = Field(validation_alias=AliasChoices("provider_item_id", "providerItemId"))
     type: str
     workspace_id: str = Field(validation_alias=AliasChoices("workspace_id", "workspaceId"))
@@ -341,6 +343,7 @@ class KnowledgeFSInitialSourcePreviewResponse(ResponseModel):
     documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = Field(default_factory=list)
     files: list[KnowledgeFSInitialSourcePreviewFileResponse] = Field(default_factory=list)
     kind: Literal["online_document", "online_drive", "website_crawl"]
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
     next_page_parameters: dict[str, JsonValue] | None = Field(
         default=None,
         validation_alias=AliasChoices("next_page_parameters", "nextPageParameters"),
@@ -486,6 +489,90 @@ class KnowledgeFSUpgradeDiscoveryResponse(ResponseModel):
     block_reason: KnowledgeFSUpgradeBlockReason | None = None
 
 
+class KnowledgeFSUpgradeModelChoice(BaseModel):
+    provider: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUpgradeModelsPayload(BaseModel):
+    embedding: KnowledgeFSUpgradeModelChoice
+    rerank: KnowledgeFSUpgradeModelChoice
+    reasoning: KnowledgeFSUpgradeModelChoice
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSUpgradeStartPayload(BaseModel):
+    # Older callers may omit the body; the server still resolves and validates all three models.
+    models: KnowledgeFSUpgradeModelsPayload | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+type KnowledgeFSUpgradeModelUnavailableReason = Literal[
+    "missing",
+    "not_found",
+    "deprecated",
+    "no-configure",
+    "quota-exceeded",
+    "no-permission",
+    "disabled",
+    "credential-removed",
+]
+
+
+class KnowledgeFSUpgradeModelRecommendationResponse(ResponseModel):
+    value: KnowledgeFSUpgradeModelChoice | None
+    source: Literal["legacy", "workspace_default"] | None
+    available: bool
+    unavailable_reason: (
+        Literal[
+            "missing",
+            "not_found",
+            "deprecated",
+            "no-configure",
+            "quota-exceeded",
+            "no-permission",
+            "disabled",
+            "credential-removed",
+        ]
+        | None
+    ) = None
+
+
+class KnowledgeFSUpgradeModelRecommendationsResponse(ResponseModel):
+    embedding: KnowledgeFSUpgradeModelRecommendationResponse
+    rerank: KnowledgeFSUpgradeModelRecommendationResponse
+    reasoning: KnowledgeFSUpgradeModelRecommendationResponse
+
+
+class KnowledgeFSUpgradePreparationResponse(KnowledgeFSUpgradeDiscoveryResponse):
+    # A blocked upgrade does not need model-provider I/O merely to explain its block reason.
+    models: KnowledgeFSUpgradeModelRecommendationsResponse | None = None
+
+
+class KnowledgeFSUpgradeModelIssueResponse(ResponseModel):
+    field: Literal["embedding", "reasoning", "rerank"]
+    reason: Literal[
+        "credential-removed",
+        "deprecated",
+        "disabled",
+        "missing",
+        "no-configure",
+        "no-permission",
+        "not_found",
+        "quota-exceeded",
+    ]
+    provider: str | None = None
+    model: str | None = None
+
+
+class KnowledgeFSUpgradeModelErrorDetailsResponse(ResponseModel):
+    issues: list[KnowledgeFSUpgradeModelIssueResponse] = Field(min_length=1, max_length=3)
+
+
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
     icon: KnowledgeFSIconIdentity | None = None
@@ -530,6 +617,19 @@ class KnowledgeFSCursorQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=1_000)
 
     model_config = ConfigDict(extra="forbid")
+
+
+type KnowledgeFSDocumentDisplayStatus = Literal["ready", "queued", "processing", "failed", "disabled"]
+
+
+class KnowledgeFSLogicalDocumentListQuery(KnowledgeFSCursorQuery):
+    query: str | None = Field(default=None, max_length=200)
+    status: KnowledgeFSDocumentDisplayStatus | None = None
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
 
 
 # Who produced a retrieval trace: the console retrieval test, a KnowledgeFS workflow node, the
@@ -2566,11 +2666,14 @@ class KnowledgeFSSourceCrawlResponse(ResponseModel):
 class KnowledgeFSSourcePagesQuery(BaseModel):
     cursor: str | None = Field(default=None, min_length=1, max_length=4_096)
     limit: int = Field(default=50, ge=1, le=200)
+    parent_id: str | None = Field(default=None, min_length=1, max_length=4_096, alias="parentId")
+    view: Literal["tree"] | None = None
 
     model_config = ConfigDict(extra="forbid")
 
 
 class KnowledgeFSSourcePageResponse(ResponseModel):
+    has_children: bool | None = Field(default=None, validation_alias=AliasChoices("has_children", "hasChildren"))
     last_edited_time: str | None = Field(
         default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
     )

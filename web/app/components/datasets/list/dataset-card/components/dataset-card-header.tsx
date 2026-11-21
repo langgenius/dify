@@ -122,14 +122,14 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
+        'flex items-center gap-x-3 ps-4 pe-14 pt-4 pb-2',
         !dataset.embedding_available && 'opacity-30',
       )}
     >
       <div className="relative shrink-0">
         <AppIcon size="large" icon={iconInfo} />
         {(isShowChunkingModeIcon || isExternalProvider) && (
-          <div className="absolute -right-1 -bottom-1 z-5">
+          <div className="absolute -inset-e-1 -bottom-1 z-5">
             <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         )}

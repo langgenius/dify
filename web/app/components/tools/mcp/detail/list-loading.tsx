@@ -8,27 +8,27 @@ const ListLoading = () => {
       <div className="space-y-3 rounded-xl bg-components-panel-on-panel-item-bg-hover p-4">
         <div className="h-2 w-45 rounded-xs bg-text-quaternary opacity-20"></div>
         <div className="h-2 rounded-xs bg-text-quaternary opacity-10"></div>
-        <div className="mr-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
+        <div className="me-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
       </div>
       <div className="space-y-3 rounded-xl bg-components-panel-on-panel-item-bg-hover p-4">
         <div className="h-2 w-37 rounded-xs bg-text-quaternary opacity-20"></div>
         <div className="h-2 rounded-xs bg-text-quaternary opacity-10"></div>
-        <div className="mr-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
+        <div className="me-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
       </div>
       <div className="space-y-3 rounded-xl bg-components-panel-on-panel-item-bg-hover p-4">
         <div className="h-2 w-49 rounded-xs bg-text-quaternary opacity-20"></div>
         <div className="h-2 rounded-xs bg-text-quaternary opacity-10"></div>
-        <div className="mr-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
+        <div className="me-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
       </div>
       <div className="space-y-3 rounded-xl bg-components-panel-on-panel-item-bg-hover p-4">
         <div className="h-2 w-37 rounded-xs bg-text-quaternary opacity-20"></div>
         <div className="h-2 rounded-xs bg-text-quaternary opacity-10"></div>
-        <div className="mr-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
+        <div className="me-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
       </div>
       <div className="space-y-3 rounded-xl bg-components-panel-on-panel-item-bg-hover p-4">
         <div className="h-2 w-45 rounded-xs bg-text-quaternary opacity-20"></div>
         <div className="h-2 rounded-xs bg-text-quaternary opacity-10"></div>
-        <div className="mr-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
+        <div className="me-10 h-2 rounded-xs bg-text-quaternary opacity-10"></div>
       </div>
     </div>
   )

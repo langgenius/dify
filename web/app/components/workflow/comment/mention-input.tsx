@@ -566,7 +566,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           {!isEditing && (
             <div
               ref={setActionContainerRef}
-              className="absolute right-1 bottom-0 z-20 flex items-end gap-1"
+              className="absolute inset-e-1 bottom-0 z-20 flex items-end gap-1"
             >
               <IconButton
                 aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
@@ -579,7 +579,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               </IconButton>
               <IconButton
                 aria-label={t(($) => $['operation.send'], { ns: 'common' })}
-                className="z-20 ml-2"
+                className="z-20 ms-2"
                 size="lg"
                 variant="primary"
                 disabled={!value.trim() || disabled || loading}
@@ -656,7 +656,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                 <div
                   key={user.id}
                   className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-md py-1 pr-3 pl-2 hover:bg-state-base-hover',
+                    'flex cursor-pointer items-center gap-2 rounded-md py-1 ps-2 pe-3 hover:bg-state-base-hover',
                     index === selectedMentionIndex && 'bg-state-base-hover',
                   )}
                   onClick={() => insertMention(user)}

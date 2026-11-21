@@ -1,0 +1,69 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
+
+export function ConfigureSectionConfigurableItem({
+  badge,
+  editAriaLabel,
+  icon,
+  label,
+  removeAriaLabel,
+  onEdit,
+  onRemove,
+}: {
+  badge?: ReactNode
+  editAriaLabel: string
+  icon: ReactNode
+  label: ReactNode
+  removeAriaLabel: string
+  onEdit?: () => void
+  onRemove: () => void
+}) {
+  const { t } = useTranslation(['common'])
+  const readOnly = useAgentOrchestrateReadOnly()
+  const hasBadge = badge !== undefined && badge !== null
+
+  return (
+    <div className="group relative flex min-h-8 items-center gap-1 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1.5 ps-2 pe-1.5 shadow-xs shadow-shadow-shadow-3 focus-within:border-components-panel-border focus-within:bg-components-panel-on-panel-item-bg-hover focus-within:shadow-sm hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm">
+      <div className="flex min-w-0 flex-1 items-center gap-2 py-0.5 pe-1">
+        {icon}
+        <span className="min-w-0 truncate system-sm-medium text-text-primary">{label}</span>
+      </div>
+      {!readOnly && (
+        <div className="pointer-events-none absolute inset-e-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 bg-components-panel-on-panel-item-bg-hover opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+          {onEdit && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton aria-label={editAriaLabel} onClick={onEdit}>
+                    <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.edit'])}</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton aria-label={removeAriaLabel} tone="destructive" onClick={onRemove}>
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{t(($) => $['operation.remove'])}</TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+      {hasBadge && (
+        <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:opacity-0 group-hover:opacity-0">
+          {badge}
+        </span>
+      )}
+    </div>
+  )
+}

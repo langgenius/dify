@@ -17,7 +17,7 @@ export CLICKZETTA_SCHEMA=dify
 The CI invocation from the repository root is:
 
 ```bash
-uv run --project api pytest api/providers/vdb/vdb-clickzetta/tests/integration_tests/
+uv run --project api pytest api/providers/vdb/vdb-clickzetta/tests/e2e_tests/
 ```
 
 For local verification, run the provider unit tests:

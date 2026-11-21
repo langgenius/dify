@@ -91,10 +91,13 @@ it('initializes a builder, verifies entered credentials and submits validated co
     <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={onClose} />,
   )
   await waitFor(() =>
-    expect(requests.create).toHaveBeenCalledExactlyOnceWith({
-      params: { provider: 'provider-a' },
-      body: { credential_type: TriggerCredentialType.ApiKey },
-    }),
+    expect(requests.create).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { provider: 'provider-a' },
+        body: { credential_type: TriggerCredentialType.ApiKey },
+      },
+      { context: { silent: true } },
+    ),
   )
   await user.type(screen.getByRole('textbox', { name: /API key/ }), 'secret')
   await user.click(screen.getByRole('button', { name: verifyName }))
@@ -122,10 +125,13 @@ it('initializes a builder, verifies entered credentials and submits validated co
   await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'dify')
   await user.click(screen.getByRole('button', { name: createName }))
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(requests.build).toHaveBeenCalledExactlyOnceWith({
-    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-    body: { name: 'Repo updates', parameters: { repo: 'dify' } },
-  })
+  expect(requests.build).toHaveBeenCalledExactlyOnceWith(
+    {
+      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+      body: { name: 'Repo updates', parameters: { repo: 'dify' } },
+    },
+    { context: { silent: true } },
+  )
   expect(requests.refetch).toHaveBeenCalledOnce()
 })
 
@@ -192,15 +198,21 @@ it('debounces manual property edits and validates them before creating the subsc
   await user.type(screen.getByRole('textbox', { name: /Channel/ }), 'release')
   expect(requests.update).not.toHaveBeenCalled()
   await waitFor(() =>
-    expect(requests.update).toHaveBeenCalledExactlyOnceWith({
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { properties: { channel: 'release' } },
-    }),
+    expect(requests.update).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+        body: { properties: { channel: 'release' } },
+      },
+      { context: { silent: true } },
+    ),
   )
   await user.click(screen.getByRole('button', { name: createName }))
-  expect(requests.build).toHaveBeenCalledWith({
-    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-    body: { name: 'Manual updates' },
-  })
+  expect(requests.build).toHaveBeenCalledWith(
+    {
+      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+      body: { name: 'Manual updates' },
+    },
+    { context: { silent: true } },
+  )
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 })

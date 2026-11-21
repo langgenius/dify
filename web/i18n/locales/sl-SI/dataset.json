@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Ustvari nov zunanji API za znanje",
   "creatorFilter.creators": "Ustvarjalci",
   "creatorFilter.maxCreators": "Največje število ustvarjalcev",
-  "datasetDeleted": "Znanje izbrisano",
   "datasetUsedByApp": "Znanje se uporablja v nekaterih aplikacijah. Aplikacije ne bodo več mogle uporabljati tega znanja, vse nastavitve pozivov in dnevniki bodo trajno izbrisani.",
   "defaultRetrievalTip": "Privzeto se uporablja večpotno pridobivanje. Znanje se pridobiva iz več baz znanja in nato ponovno razvrsti.",
   "deleteDatasetConfirmContent": "Brisanje znanja je nepovratno. Uporabniki do vašega znanja ne bodo več imeli dostopa, vse nastavitve pozivov in dnevniki bodo trajno izbrisani.",

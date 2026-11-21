@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import override
 
-from core.trigger.constants import (
+from constants.trigger import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,

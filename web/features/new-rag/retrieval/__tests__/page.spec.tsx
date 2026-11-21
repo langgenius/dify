@@ -6,6 +6,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -389,20 +390,26 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith({
-        body: { mode: 'research', query: 'Compare the refund policies' },
-        params: { control_space_id: 'space-1' },
-      }),
+      expect(apiMock.planResearch).toHaveBeenCalledWith(
+        {
+          body: { mode: 'research', query: 'Compare the refund policies' },
+          params: { control_space_id: 'space-1' },
+        },
+        { context: { silent: true } },
+      ),
     )
-    expect(apiMock.createResearch).toHaveBeenCalledWith({
-      body: {
-        budgetUsd: 1,
-        mode: 'research',
-        query: 'Compare the refund policies',
-        topK: 8,
+    expect(apiMock.createResearch).toHaveBeenCalledWith(
+      {
+        body: {
+          budgetUsd: 1,
+          mode: 'research',
+          query: 'Compare the refund policies',
+          topK: 8,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
   })
 
   it('uploads a query image and sends an image-only retrieval request', async () => {
@@ -750,15 +757,18 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.retry' }))
 
     await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledTimes(2))
-    expect(apiMock.createResearch).toHaveBeenLastCalledWith({
-      body: {
-        budgetUsd: 1,
-        mode: 'research',
-        query: 'Anything here?',
-        topK: 8,
+    expect(apiMock.createResearch).toHaveBeenLastCalledWith(
+      {
+        body: {
+          budgetUsd: 1,
+          mode: 'research',
+          query: 'Anything here?',
+          topK: 8,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
   })
 
   it('retries a historical image-only Research task with its persisted image references', async () => {
@@ -784,25 +794,31 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith({
+      expect(apiMock.planResearch).toHaveBeenCalledWith(
+        {
+          body: {
+            mode: 'research',
+            query: '',
+            queryImages: [{ uploadFileId: 'historical-image-1' }],
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        { context: { silent: true } },
+      ),
+    )
+    expect(apiMock.createResearch).toHaveBeenCalledWith(
+      {
         body: {
+          budgetUsd: 1,
           mode: 'research',
           query: '',
           queryImages: [{ uploadFileId: 'historical-image-1' }],
+          topK: 8,
         },
         params: { control_space_id: 'space-1' },
-      }),
-    )
-    expect(apiMock.createResearch).toHaveBeenCalledWith({
-      body: {
-        budgetUsd: 1,
-        mode: 'research',
-        query: '',
-        queryImages: [{ uploadFileId: 'historical-image-1' }],
-        topK: 8,
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
   })
 
   it('shows pending feedback while retrying a failed Research task', async () => {
@@ -2059,14 +2075,17 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.createBadCase).toHaveBeenCalledWith({
-        body: {
-          reason: 'low-score',
-          tags: ['retrieval-test'],
-          trace_id: 'trace-1',
+      expect(apiMock.createBadCase).toHaveBeenCalledWith(
+        {
+          body: {
+            reason: 'low-score',
+            tags: ['retrieval-test'],
+            trace_id: 'trace-1',
+          },
+          params: { control_space_id: 'space-1' },
         },
-        params: { control_space_id: 'space-1' },
-      }),
+        { context: { silent: true } },
+      ),
     )
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
     expect(screen.getByText('knowledgeRetrieval.retrievalTest.savedBadCase')).toBeInTheDocument()
@@ -2227,14 +2246,17 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.createBadCase).toHaveBeenCalledWith({
-        body: {
-          reason: 'retrieval-miss',
-          tags: ['retrieval-test'],
-          trace_id: 'trace-old',
+      expect(apiMock.createBadCase).toHaveBeenCalledWith(
+        {
+          body: {
+            reason: 'retrieval-miss',
+            tags: ['retrieval-test'],
+            trace_id: 'trace-old',
+          },
+          params: { control_space_id: 'space-1' },
         },
-        params: { control_space_id: 'space-1' },
-      }),
+        { context: { silent: true } },
+      ),
     )
   })
 
@@ -2313,10 +2335,13 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.createBadCase).toHaveBeenCalledWith({
-        body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
-        params: { control_space_id: 'space-1' },
-      }),
+      expect(apiMock.createBadCase).toHaveBeenCalledWith(
+        {
+          body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
+          params: { control_space_id: 'space-1' },
+        },
+        { context: { silent: true } },
+      ),
     )
   })
 
@@ -2525,13 +2550,63 @@ describe('RetrievalTestPage', () => {
       ),
     )
     expect(apiMock.resolveDocumentReference).toHaveBeenCalledOnce()
-    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1' },
-      query: {
-        document_asset_id: 'asset-1',
-        document_asset_version: 1,
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1' },
+        query: {
+          document_asset_id: 'asset-1',
+          document_asset_version: 1,
+        },
       },
-    })
+      { context: { silent: true } },
+    )
+  })
+
+  it('preserves the server reason when opening asset-only evidence fails', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    apiMock.resolveDocumentReference.mockRejectedValueOnce(
+      new Error('Document access has been revoked'),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'How are issues tracked?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            documentId: 'asset-1',
+            documentName: 'Issue Tracking Log',
+            documentVersion: 1,
+            score: 0.74,
+            text: 'Issues are recorded in the tracking log.',
+          },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+
+    await renderPage()
+    await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.open' }))
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Document access has been revoked'),
+    )
+    expect(apiMock.routerPush).not.toHaveBeenCalled()
   })
 
   it('keeps a failed run in Records and renders the failure inline', async () => {

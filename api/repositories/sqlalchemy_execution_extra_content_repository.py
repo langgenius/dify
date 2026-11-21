@@ -11,12 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.entities.execution_extra_content import (
-    ExecutionExtraContentDomainModel,
-    HumanInputFormDefinition,
-    HumanInputFormSubmissionData,
+    HumanInputContent as HumanInputContentDomainModel,
 )
 from core.entities.execution_extra_content import (
-    HumanInputContent as HumanInputContentDomainModel,
+    HumanInputFormDefinition,
+    HumanInputFormSubmissionData,
 )
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import FormDefinition
@@ -28,7 +27,11 @@ from models.execution_extra_content import (
     HumanInputContent as HumanInputContentModel,
 )
 from models.human_input import HumanInputFormRecipient, RecipientType
-from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
+from repositories.execution_extra_content_repository import (
+    ExecutionExtraContentRepository,
+    HumanInputFormReference,
+    StoredExecutionExtraContent,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +49,11 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
         self._session_maker = session_maker
 
     @override
-    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[ExecutionExtraContentDomainModel]]:
+    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[StoredExecutionExtraContent]]:
         if not message_ids:
             return []
 
-        grouped_contents: dict[str, list[ExecutionExtraContentDomainModel]] = {
-            message_id: [] for message_id in message_ids
-        }
+        grouped_contents: dict[str, list[StoredExecutionExtraContent]] = {message_id: [] for message_id in message_ids}
 
         stmt = (
             select(ExecutionExtraContentModel)
@@ -95,8 +96,12 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
         self,
         model: ExecutionExtraContentModel,
         recipients_by_form_id: dict[str, list[HumanInputFormRecipient]],
-    ) -> ExecutionExtraContentDomainModel | None:
+    ) -> StoredExecutionExtraContent | None:
         if isinstance(model, HumanInputContentModel):
+            # V2 forms live in a separate repository. Preserve their references
+            # so the service can restore presentation and initiator access.
+            if model.form is None:
+                return HumanInputFormReference(workflow_run_id=model.workflow_run_id, form_id=model.form_id)
             return self._map_human_input_content(model, recipients_by_form_id)
 
         logger.debug("Unsupported execution extra content type encountered: %s", model.type)

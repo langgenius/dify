@@ -104,6 +104,7 @@ def _triggered_from(value: str | None) -> WorkflowRunTriggeredFrom:
 class HumanInputPauseTypeResponse(ResponseModel):
     type: Literal["human_input"]
     form_id: str
+    form_version: Literal["1", "2"] = "1"
     backstage_input_url: str | None = None
 
 
@@ -408,6 +409,7 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                             "pause_type": {
                                 "type": "human_input",
                                 "form_id": node.form_id,
+                                "form_version": node.form_version,
                                 "backstage_input_url": _build_backstage_input_url(node.form_token),
                             },
                         }

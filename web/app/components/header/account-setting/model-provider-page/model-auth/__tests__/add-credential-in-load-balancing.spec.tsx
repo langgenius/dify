@@ -1,90 +1,83 @@
-import type { CustomModel, ModelCredential, ModelProvider } from '../../declarations'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { ConfigurationMethodEnum, ModelTypeEnum } from '../../declarations'
+import {
+  createCredentialProvider,
+  credential,
+  customModel,
+  renderCredentialComponent,
+} from '../../__tests__/credential-test-env'
+import { ConfigurationMethodEnum } from '../../declarations'
 import AddCredentialInLoadBalancing from '../add-credential-in-load-balancing'
 
-const { openModal } = vi.hoisted(() => ({ openModal: vi.fn() }))
+const requests = vi.hoisted(() => ({ read: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.byProvider.models.credentials.get': requests.read,
+    }),
+  }
+})
+beforeEach(() => {
+  requests.read.mockResolvedValue({
+    credentials: { api_key: 'saved-secret' },
+    available_credentials: [credential],
+  })
+})
 
-// Modal persistence is outside the credential menu; keep the menu and permission hooks real.
-vi.mock('../hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../hooks')>()),
-  useAuth: () => ({
-    handleOpenModal: openModal,
-    openConfirmDelete: vi.fn(),
-    closeConfirmDelete: vi.fn(),
-    handleActiveCredential: vi.fn(),
-    handleConfirmDelete: vi.fn(),
-    deleteCredentialId: null,
-    doingAction: false,
-  }),
-}))
-
-const provider = { provider: 'openai', allow_custom_token: true } as ModelProvider
-const model = { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration } as CustomModel
-const credential = { credential_id: 'cred-1', credential_name: 'Key 1' }
-const modelCredential = {
-  available_credentials: [credential],
-  credentials: {},
-  load_balancing: { enabled: false, configs: [] },
-} as ModelCredential
-
-const renderMenu = (permissions: string[], availableCredentials = [credential]) => {
-  const onSelectCredential = vi.fn()
-  renderWithConsoleQuery(
+function renderMenu(permissions: string[], credentials = [credential]) {
+  const onSelect = vi.fn()
+  renderCredentialComponent(
     <AddCredentialInLoadBalancing
-      provider={provider}
-      model={model}
+      provider={createCredentialProvider()}
+      model={customModel}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
-      modelCredential={{ ...modelCredential, available_credentials: availableCredentials }}
-      onSelectCredential={onSelectCredential}
+      modelCredential={{
+        available_credentials: credentials,
+        credentials: {},
+        load_balancing: { enabled: false, configs: [] },
+      }}
+      onSelectCredential={onSelect}
     />,
     { workspacePermissionKeys: permissions },
   )
-  return onSelectCredential
+  return onSelect
 }
-
-describe('AddCredentialInLoadBalancing', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('lets use-only users choose an existing credential without exposing creation or management', async () => {
-    const user = userEvent.setup()
-    const onSelect = renderMenu(['credential.use'])
-    await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
-    expect(screen.queryByText(/auth.addModelCredential/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'common.operation.delete' }),
-    ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Key 1' }))
-    expect(onSelect).toHaveBeenCalledExactlyOnceWith(credential, model)
-  })
-
-  it('lets manage-only users edit an existing credential without selecting or creating one', async () => {
-    const user = userEvent.setup()
-    const onSelect = renderMenu(['credential.manage'])
-    await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
-    expect(screen.queryByText(/auth.addModelCredential/)).not.toBeInTheDocument()
-    await user.click(screen.getByText('Key 1'))
-    expect(onSelect).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-    expect(openModal).toHaveBeenCalledExactlyOnceWith(credential, model)
-  })
-
-  it.each([{ permissions: [] }, { permissions: ['credential.manage'] }])(
-    'hides an empty menu without creation or use permission: %j',
-    ({ permissions }) => {
-      renderMenu(permissions, [])
-      expect(screen.queryByRole('button', { name: /auth.addCredential/ })).not.toBeInTheDocument()
-    },
-  )
-
-  it('opens credential creation directly when there are no existing credentials', async () => {
-    const user = userEvent.setup()
-    renderMenu(['credential.create'], [])
-    await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
-    expect(openModal).toHaveBeenCalledExactlyOnceWith()
-    expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
-  })
+it('lets use-only users choose an existing credential without creation or management', async () => {
+  const user = userEvent.setup()
+  const onSelect = renderMenu(['credential.use'])
+  await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
+  expect(screen.queryByRole('button', { name: /addModelCredential/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.delete' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Key 1' }))
+  expect(onSelect).toHaveBeenCalledExactlyOnceWith(credential, customModel)
+})
+it('lets manage-only users edit an existing credential without selecting or creating one', async () => {
+  const user = userEvent.setup()
+  const onSelect = renderMenu(['credential.manage'])
+  await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
+  expect(screen.queryByRole('button', { name: /addModelCredential/ })).not.toBeInTheDocument()
+  await user.click(screen.getByText('Key 1'))
+  expect(onSelect).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+  expect(await screen.findByRole('textbox', { name: /authorizationName/ })).toHaveValue('Key 1')
+  expect(await screen.findByLabelText(/API key/)).toHaveValue('saved-secret')
+  expect(screen.getByRole('dialog')).toHaveTextContent('gpt-4')
+})
+it.each([[], ['credential.manage']])(
+  'hides the empty menu without creation or use permission: %j',
+  (...permissions) => {
+    renderMenu(permissions.flat(), [])
+    expect(screen.queryByRole('button', { name: /auth.addCredential/ })).not.toBeInTheDocument()
+  },
+)
+it('opens a new credential form directly when there are no existing credentials', async () => {
+  const user = userEvent.setup()
+  renderMenu(['credential.create'], [])
+  await user.click(screen.getByRole('button', { name: /auth.addCredential/ }))
+  expect(await screen.findByLabelText(/API key/)).toHaveValue('')
+  expect(screen.getByRole('textbox', { name: /authorizationName/ })).toHaveValue('')
 })

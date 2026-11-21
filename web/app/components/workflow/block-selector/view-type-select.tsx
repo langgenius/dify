@@ -22,14 +22,14 @@ function ViewTypeSelect({ viewType, onChange }: Props) {
       <SegmentedControlItem<ViewType>
         value={ViewType.flat}
         aria-label={t(($) => $['tabs.listView'], { ns: 'workflow' })}
-        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
+        className="size-5.5 border-0 p-0 text-text-tertiary"
       >
         <span aria-hidden className="i-ri-sort-alphabet-asc size-4" />
       </SegmentedControlItem>
       <SegmentedControlItem<ViewType>
         value={ViewType.tree}
         aria-label={t(($) => $['tabs.treeView'], { ns: 'workflow' })}
-        className="size-5.5 rounded-lg border-0 p-0 text-text-tertiary"
+        className="size-5.5 border-0 p-0 text-text-tertiary"
       >
         <span aria-hidden className="i-ri-node-tree size-4" />
       </SegmentedControlItem>

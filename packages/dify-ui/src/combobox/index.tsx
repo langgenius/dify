@@ -113,7 +113,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
 }
 
 // The group owns the horizontal padding and the gap, so an icon, the input, and the controls sit in
-// it without margins of their own, like `DropdownMenuInputGroup`. The input keeps a narrow inset so
+// it without margins of their own, like `MenuInputGroup`. The input keeps a narrow inset so
 // its text lands where a standalone `Input` of the same size puts it.
 const comboboxInputGroupVariants = cva(
   [
@@ -199,7 +199,7 @@ const comboboxControlVariants = cva(
     insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent',
-    'group-data-readonly/combobox:hidden',
+    'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:hover:bg-transparent data-readonly:not-data-disabled:hover:text-text-tertiary',
   ],
   {
     variants: {
@@ -217,7 +217,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
-// Same look as `DropdownMenuClear`; change both together.
+// Same look as `MenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -232,7 +232,7 @@ function ComboboxClear({
       className={(state) =>
         cn(
           comboboxControlVariants({ size }),
-          'data-ending-style:opacity-0 data-starting-style:opacity-0',
+          'group-data-readonly/combobox:hidden data-ending-style:opacity-0 data-starting-style:opacity-0',
           resolveClassName(className, state),
         )
       }
@@ -409,7 +409,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
-// Same look as `DropdownMenuEmpty`; change both together.
+// Same look as `MenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty
@@ -483,7 +483,7 @@ function ComboboxChipRemove({
       }
       className={(state) =>
         cn(
-          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary hover:bg-state-base-hover-alt hover:text-text-secondary',
+          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary group-data-readonly/combobox:hidden hover:bg-state-base-hover-alt hover:text-text-secondary',
           focusRingClassName,
           resolveClassName(className, state),
         )

@@ -87,6 +87,7 @@ const saveSupportedBuildDraft = async (
 
   await saveAgentComposerDraft(client, agentId, {
     ...normalConfig,
+    config_files: [],
     ...(retainSkillInNormalDraft ? { config_skills: configSkills } : {}),
   })
   await saveAgentBuildDraft(client, agentId, {

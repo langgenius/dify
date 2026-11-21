@@ -4,8 +4,8 @@ import { act } from '@testing-library/react'
 import { useReactFlow } from 'reactflow'
 import { createIterationNode, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
+  renderWorkflowCanvasHook,
   renderWorkflowFlowHook,
-  renderWorkflowHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ITERATION_PADDING } from '@/app/components/workflow/constants'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
@@ -13,7 +13,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodeIterationInteractions } from '../use-interactions'
 
 const renderInteractions = (nodes: Node[]) => {
-  const { result: catalog } = renderWorkflowHook(useWorkflowNodeCatalog)
+  const { result: catalog } = renderWorkflowCanvasHook(useWorkflowNodeCatalog, { nodes })
   return renderWorkflowFlowHook(
     () => ({
       ...useNodeIterationInteractions(),

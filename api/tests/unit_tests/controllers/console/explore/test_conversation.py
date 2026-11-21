@@ -17,9 +17,14 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message
+from models.utils.file_input_compat import restore_input_files
 from models.web import PinnedConversation
-from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
+from repositories.conversation_repository import ConversationRepository
+from services.conversation_command_service import ConversationCommandService
+from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
 from services.installed_app_conversation_service import InstalledAppConversationService
+from services.message_query_adapters import MessageFileResolver
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -32,6 +37,10 @@ _CREATED_AT = datetime(2024, 1, 1)
 _CREATED_TIMESTAMP = int(_CREATED_AT.timestamp())
 type _Operation = Literal["list", "delete", "rename", "pin", "unpin"]
 _OPERATIONS: tuple[_Operation, ...] = ("list", "delete", "rename", "pin", "unpin")
+
+
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
 
 
 @dataclass(frozen=True)
@@ -117,9 +126,19 @@ def conversations(
     services = _Services(
         installed_apps=_InstalledAppServices(
             conversations=InstalledAppConversationService(
-                conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=factory),
-                generate_name=state.generate_name,
-                enqueue_delete_cleanup=state.enqueue_cleanup,
+                queries=ConversationQueryService(
+                    files=MessageFileResolver(),
+                    conversations=ConversationRepository(session_factory=factory),
+                    restore_inputs=restore_input_files,
+                ),
+                names=ConversationNameService(
+                    conversations=ConversationRepository(session_factory=factory), generate_name=state.generate_name
+                ),
+                commands=ConversationCommandService(
+                    conversations=ConversationRepository(session_factory=factory),
+                    enqueue_delete_cleanup=state.enqueue_cleanup,
+                    collect_agent_workspaces=_unexpected_agent_workspace_collection,
+                ),
             )
         )
     )

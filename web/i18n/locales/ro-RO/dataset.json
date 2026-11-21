@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Creați un nou API de cunoștințe externe",
   "creatorFilter.creators": "Creatori",
   "creatorFilter.maxCreators": "Număr maxim de creatori",
-  "datasetDeleted": "Cunoștințe șterse",
   "datasetUsedByApp": "Cunoștințele sunt utilizate de unele aplicații. Aplicațiile nu vor mai putea utiliza aceste Cunoștințe, iar toate configurațiile de prompt și jurnalele vor fi șterse definitiv.",
   "defaultRetrievalTip": "Recuperarea pe mai multe căi este utilizată în mod implicit. Cunoștințele sunt preluate din mai multe baze de cunoștințe și apoi reclasificate.",
   "deleteDatasetConfirmContent": "Ștergerea Cunoștințelor este ireversibilă. Utilizatorii nu vor mai putea accesa Cunoștințele, iar toate configurațiile și jurnalele prompt vor fi șterse permanent.",

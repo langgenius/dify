@@ -1,5 +1,5 @@
 import type { WebAppAddress } from './webapp-address'
-import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
+import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'

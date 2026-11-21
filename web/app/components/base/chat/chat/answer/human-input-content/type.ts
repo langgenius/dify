@@ -27,6 +27,7 @@ export type HumanInputFormProps = {
 export type HumanInputFormSubmitData = {
   inputs: Record<string, unknown>
   action: string
+  form_version?: HumanInputFormData['form_version']
 }
 
 export type ContentItemProps = {

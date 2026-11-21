@@ -1,17 +1,20 @@
 'use client'
 
 import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiFolder6Line } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useCallback, useId, useMemo } from 'react'
+import { useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { getVectorSpaceQuota, isQuotaReached } from '@/app/components/billing/quota'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
@@ -19,7 +22,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
-import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
+import EmptyDatasetCreationContent from '../empty-dataset-creation-modal'
 import FileUploader from '../file-uploader'
 import Website from '../website'
 import { DataSourceTypeSelector, NextStepButton, PreviewPanel } from './components'
@@ -124,8 +127,8 @@ const StepOne = ({
     hideWebsitePreview,
   } = usePreviewState()
 
-  // Empty dataset modal state
-  const [showModal, { setTrue: openModal, setFalse: closeModal }] = useBoolean(false)
+  const emptyDatasetDialogActionsRef = useRef<DialogActions>(null)
+  const isCreatingEmptyDatasetRef = useRef(false)
 
   // Plan upgrade modal state
   const [
@@ -143,7 +146,7 @@ const StepOne = ({
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0
-  const shouldCheckVectorSpace = deploymentEdition === 'CLOUD' && (allFileLoaded || hasNotion)
+  const shouldCheckVectorSpace = allFileLoaded || hasNotion
   const {
     data: vectorSpace,
     isFetching: isFetchingVectorSpacePlan,
@@ -155,12 +158,8 @@ const StepOne = ({
   const isVectorSpaceUnavailable =
     shouldCheckVectorSpace && plan === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
-    !!vectorSpace &&
-    !vectorSpace.usage_unknown &&
-    vectorSpace.limit > 0 &&
-    vectorSpace.size >= vectorSpace.limit
-  const isShowVectorSpaceFull =
-    (allFileLoaded || hasNotion) && isVectorSpaceFull && deploymentEdition === 'CLOUD'
+    !!vectorSpace && !vectorSpace.usage_unknown && isQuotaReached(getVectorSpaceQuota(vectorSpace))
+  const isShowVectorSpaceFull = shouldCheckVectorSpace && isVectorSpaceFull
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
   const supportBatchUpload =
     deploymentEdition !== 'CLOUD' || plan === 'professional' || plan === 'team'
@@ -366,18 +365,36 @@ const StepOne = ({
               {!datasetId && (
                 <>
                   <div className="my-8 h-px max-w-160 bg-divider-regular" />
-                  <button
-                    type="button"
-                    className="inline-flex cursor-pointer items-center rounded-sm text-left text-[13px] leading-4 text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
-                    onClick={openModal}
+                  <Dialog
+                    actionsRef={emptyDatasetDialogActionsRef}
+                    onOpenChange={(open, details) => {
+                      if (
+                        !open &&
+                        isCreatingEmptyDatasetRef.current &&
+                        details.reason !== 'imperative-action'
+                      )
+                        details.cancel()
+                    }}
                   >
-                    <RiFolder6Line aria-hidden="true" className="mr-1 size-4 shrink-0" />
-                    {t(($) => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
-                  </button>
+                    <DialogTrigger
+                      type="button"
+                      className="inline-flex cursor-pointer items-center rounded-sm text-start text-[13px] leading-4 text-text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-input-border-active"
+                    >
+                      <RiFolder6Line aria-hidden="true" className="me-1 size-4 shrink-0" />
+                      {t(($) => $['stepOne.emptyDatasetCreation'], { ns: 'datasetCreation' })}
+                    </DialogTrigger>
+                    <DialogContent className="w-130">
+                      <EmptyDatasetCreationContent
+                        onCreated={() => emptyDatasetDialogActionsRef.current?.close()}
+                        onPendingChange={(pending) => {
+                          isCreatingEmptyDatasetRef.current = pending
+                        }}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
             </div>
-            <EmptyDatasetCreationModal show={showModal} onHide={closeModal} />
           </div>
         </div>
 

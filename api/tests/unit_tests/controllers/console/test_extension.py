@@ -30,7 +30,7 @@ from services.api_based_extension_application_service import (
     APIBasedExtensionRecord,
     APIBasedExtensionUpdate,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 _NEEDS_METHOD_VIEW_CLEANUP = False
 if not hasattr(builtins, "MethodView"):

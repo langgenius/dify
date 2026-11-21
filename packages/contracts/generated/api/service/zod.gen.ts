@@ -505,21 +505,6 @@ export const zConversationVariableInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  value: z.unknown(),
-})
-
-/**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayloadWithUser = z.object({
-  user: z.string().optional(),
-  value: z.unknown(),
-})
-
-/**
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
@@ -945,6 +930,66 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AppAbnormalStatusError
+ *
+ * The app's status is abnormal.
+ */
+export const zAppAbnormalStatusError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_abnormal_status'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppApiDisabledError
+ *
+ * The app's API service has been disabled.
+ */
+export const zAppApiDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * The app no longer exists.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * The 'Suggested Questions After Answer' feature is disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppUnavailableError
  *
  * App unavailable, please check your app configurations.
@@ -988,6 +1033,66 @@ export const zAudioTooLargeError = zErrorResponse.and(
 export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableNotFoundError
+ *
+ * The conversation variable was not found for this conversation.
+ */
+export const zConversationVariableNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationVariableTypeMismatchError
+ *
+ * The new value does not match the conversation variable's type.
+ */
+export const zConversationVariableTypeMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_variable_type_mismatch'),
     status: z.literal(400),
   }),
 )
@@ -1168,6 +1273,18 @@ export const zFilenameNotExistsError = zErrorResponse.and(
 )
 
 /**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * HitTestingChildChunk
  */
 export const zHitTestingChildChunk = z.object({
@@ -1257,6 +1374,38 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputActionResponse
+ */
+export const zHumanInputActionResponse = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * HumanInputFileListResponse
+ */
+export const zHumanInputFileListResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file-list'),
+})
+
+/**
+ * HumanInputFileResponse
+ */
+export const zHumanInputFileResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file'),
+})
+
+/**
  * HumanInputFormExpiredError
  */
 export const zHumanInputFormExpiredError = zErrorResponse.and(
@@ -1269,7 +1418,7 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputFormSubmittedError
@@ -1359,6 +1508,21 @@ export const zJsonValueType = z.unknown()
 export const zJsonValue = z.unknown()
 
 /**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  value: zJsonValue,
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayloadWithUser = z.object({
+  user: z.string().optional(),
+  value: zJsonValue,
+})
+
+/**
  * DocumentResponse
  */
 export const zDocumentResponse = z.object({
@@ -1421,6 +1585,8 @@ export const zHumanInputFormSubmissionData = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
@@ -1429,6 +1595,8 @@ export const zHumanInputFormSubmitPayload = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayloadWithUser = z.object({
   action: z.string(),
@@ -1836,6 +2004,13 @@ export const zKnowledgeFsEmbeddingSettingsResponse = z.object({
 })
 
 /**
+ * KnowledgeFSLogicalDocumentDeletePayload
+ */
+export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
+  expectedRevision: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
  */
 export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
@@ -1963,6 +2138,8 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2473,6 +2650,8 @@ export const zKnowledgeFsDocumentProcessingTaskResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2806,6 +2985,8 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3048,6 +3229,8 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3196,6 +3379,7 @@ export const zKnowledgeFsSourceImportResponse = z.object({
  * KnowledgeFSSourcePageResponse
  */
 export const zKnowledgeFsSourcePageResponse = z.object({
+  has_children: z.boolean().nullish(),
   last_edited_time: z.string().nullish(),
   page_id: z.string(),
   page_name: z.string(),
@@ -3209,6 +3393,8 @@ export const zKnowledgeFsSourcePageResponse = z.object({
 export const zKnowledgeFsSourcePagesQuery = z.object({
   cursor: z.string().min(1).max(4096).nullish(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).nullish(),
+  view: z.literal('tree').nullish(),
 })
 
 /**
@@ -3349,6 +3535,8 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3900,6 +4088,18 @@ export const zMessageFeedbackPayloadWithUser = z.object({
   rating: z.enum(['dislike', 'like']).nullish(),
   user: z.string(),
 })
+
+/**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MessageFile
@@ -4647,7 +4847,7 @@ export const zSegmentUpdatePayload = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -4811,6 +5011,11 @@ export const zParameters = z.object({
   sensitive_word_avoidance: z.object({
     enabled: z.boolean().optional(),
   }),
+  show_thoughts: z
+    .object({
+      enabled: z.boolean().optional(),
+    })
+    .optional(),
   speech_to_text: z.object({
     enabled: z.boolean().optional(),
   }),
@@ -5281,6 +5486,60 @@ export const zUserActionConfig = z.object({
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
 /**
+ * HumanInputStringListSourceResponse
+ */
+export const zHumanInputStringListSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.array(z.string()),
+})
+
+/**
+ * HumanInputSelectResponse
+ */
+export const zHumanInputSelectResponse = z.object({
+  option_source: zHumanInputStringListSourceResponse,
+  output_variable_name: z.string(),
+  type: z.literal('select'),
+})
+
+/**
+ * HumanInputStringSourceResponse
+ */
+export const zHumanInputStringSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.string(),
+})
+
+/**
+ * HumanInputParagraphResponse
+ */
+export const zHumanInputParagraphResponse = z.object({
+  default: zHumanInputStringSourceResponse.nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph'),
+})
+
+export const zHumanInputResponse = z.discriminatedUnion('type', [
+  zHumanInputParagraphResponse,
+  zHumanInputSelectResponse,
+  zHumanInputFileResponse,
+  zHumanInputFileListResponse,
+])
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zHumanInputResponse),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zHumanInputActionResponse),
+})
+
+/**
  * StringListSource
  */
 export const zStringListSource = z.object({
@@ -5337,6 +5596,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -5352,17 +5612,6 @@ export const zHumanInputContent = z.object({
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(zFormInputConfig),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(zUserActionConfig),
 })
 
 /**
@@ -5557,7 +5806,7 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -5867,9 +6116,33 @@ export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
 )
 
 /**
+ * WorkspaceArchivedError
+ *
+ * The workspace's status is archived.
+ */
+export const zWorkspaceArchivedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_archived'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * WorkspaceNotFoundError
+ *
+ * Tenant does not exist.
+ */
+export const zWorkspaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * MessageListItem
@@ -6066,7 +6339,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversations list.
+ * Conversations retrieved successfully.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
@@ -6088,7 +6361,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 
@@ -6104,7 +6377,7 @@ export const zGetConversationsByConversationIdVariablesQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversation variables.
+ * Conversation variables retrieved successfully.
  */
 export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse
@@ -7065,6 +7338,26 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
+  zKnowledgeFsLogicalDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders = z.object(
+  {
+    'Idempotency-Key': z.string().min(8).max(255),
+  },
+)
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base logical document deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
+
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),
   document_id: z.string(),
@@ -7583,6 +7876,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z
 export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
   cursor: z.string().min(1).max(4096).optional(),
   limit: z.int().gte(1).lte(200).optional().default(50),
+  parentId: z.string().min(1).max(4096).optional(),
+  view: z.string().optional(),
 })
 
 /**

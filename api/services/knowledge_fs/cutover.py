@@ -16,7 +16,7 @@ from typing import Literal, NamedTuple, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -54,6 +54,7 @@ from repositories.knowledge_fs_cutover_repository import (
     KnowledgeFSShadowDiffCASUpdate,
 )
 from repositories.sqlalchemy_knowledge_fs_cutover_repository import SQLAlchemyKnowledgeFSCutoverRepository
+from services.knowledge_fs.greenfield_anchor import greenfield_activation_identity
 from services.knowledge_fs.lifecycle_port import (
     KnowledgeFSDifyIntegrationActivationAck,
     KnowledgeFSDifyIntegrationActivationRequest,
@@ -670,8 +671,7 @@ class KnowledgeFSWorkspaceCutoverService:
                     "Workspace with legacy dependencies is not eligible for automatic greenfield initialization"
                 )
             if control_spaces:
-                anchor_id = _greenfield_activation_anchor_id(tenant_id)
-                provisioning_key = _greenfield_activation_provisioning_key(tenant_id)
+                anchor_id, provisioning_key = greenfield_activation_identity(tenant_id)
                 if len(control_spaces) != 1:
                     raise KnowledgeFSCutoverGateBlockedError(
                         "Workspace with existing KnowledgeFS control state is not greenfield"
@@ -1301,7 +1301,7 @@ class KnowledgeFSWorkspaceCutoverService:
                 if isinstance(raw_ack, KnowledgeFSDifyIntegrationFreezeAck)
                 else KnowledgeFSDifyIntegrationFreezeAck.model_validate(raw_ack, from_attributes=True)
             )
-        except (TypeError, ValueError, ValidationError) as exc:
+        except (TypeError, ValueError) as exc:
             raise KnowledgeFSCutoverGateBlockedError("KnowledgeFS remote freeze acknowledgement was malformed") from exc
         _assert_exact_freeze_ack(freeze_request, ack)
         acknowledged_at = _naive_utc(self._clock())
@@ -1411,7 +1411,7 @@ class KnowledgeFSWorkspaceCutoverService:
                 if isinstance(raw_ack, KnowledgeFSDifyIntegrationActivationAck)
                 else KnowledgeFSDifyIntegrationActivationAck.model_validate(raw_ack, from_attributes=True)
             )
-        except (TypeError, ValueError, ValidationError) as exc:
+        except (TypeError, ValueError) as exc:
             raise KnowledgeFSCutoverGateBlockedError(
                 "KnowledgeFS remote activation acknowledgement was malformed"
             ) from exc
@@ -2401,8 +2401,7 @@ class KnowledgeFSWorkspaceCutoverService:
         if control_space is not None:
             return _ActivationAnchor(control_space.id, False)
 
-        greenfield_anchor = _greenfield_activation_anchor_id(tenant_id)
-        greenfield_provisioning_key = _greenfield_activation_provisioning_key(tenant_id)
+        greenfield_anchor, greenfield_provisioning_key = greenfield_activation_identity(tenant_id)
         local_control_space_count = session.scalar(
             sa.select(sa.func.count())
             .select_from(KnowledgeFSControlSpace)
@@ -2555,14 +2554,6 @@ def _shadow_traffic_zero_digest(payload: ShadowCompletionInput) -> str:
         separators=(",", ":"),
     ).encode()
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
-
-
-def _greenfield_activation_anchor_id(tenant_id: str) -> str:
-    return str(uuid5(NAMESPACE_URL, f"dify-kfs-greenfield-activation:{tenant_id}"))
-
-
-def _greenfield_activation_provisioning_key(tenant_id: str) -> str:
-    return f"dify-kfs-greenfield-activation:{tenant_id}"
 
 
 def _is_zero_space_cutover_ledger(ledger: KnowledgeFSWorkspaceCutoverLedger) -> bool:

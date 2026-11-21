@@ -1,13 +1,7 @@
 import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Ref } from 'react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
@@ -46,8 +40,8 @@ const Operator = ({
   )
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             ref={triggerRef}
@@ -59,8 +53,8 @@ const Operator = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent className="min-w-50">
-        <DropdownMenuItem
+      <MenuContent align="end" className="min-w-50">
+        <MenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"
           onClick={() => handleAction('setDefault', canUseCredential)}
@@ -69,9 +63,9 @@ const Operator = ({
           <div className="system-sm-semibold text-text-secondary">
             {t(($) => $['auth.setDefault'], { ns: 'plugin' })}
           </div>
-        </DropdownMenuItem>
+        </MenuItem>
         {type === CredentialTypeEnum.OAUTH2 && (
-          <DropdownMenuItem
+          <MenuItem
             disabled={!canManageCredential}
             className="h-auto gap-2 py-2"
             onClick={() => handleAction('rename', canManageCredential)}
@@ -80,10 +74,10 @@ const Operator = ({
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['operation.rename'], { ns: 'common' })}
             </div>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {type === CredentialTypeEnum.API_KEY && (
-          <DropdownMenuItem
+          <MenuItem
             disabled={!canManageCredential}
             className="h-auto gap-2 py-2"
             onClick={() => handleAction('edit', canManageCredential)}
@@ -92,10 +86,10 @@ const Operator = ({
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['operation.edit'], { ns: 'common' })}
             </div>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {type === CredentialTypeEnum.OAUTH2 && (
-          <DropdownMenuItem
+          <MenuItem
             disabled={!canManageCredential}
             className="h-auto gap-2 py-2"
             onClick={() => handleAction('change', canManageCredential)}
@@ -104,10 +98,10 @@ const Operator = ({
             <div className="mb-1 system-sm-semibold text-text-secondary">
               {t(($) => $['dataSource.notion.changeAuthorizedPages'], { ns: 'common' })}
             </div>
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
+        <MenuSeparator />
+        <MenuItem
           disabled={!canManageCredential}
           variant="destructive"
           className="h-auto gap-2 py-2"
@@ -117,9 +111,9 @@ const Operator = ({
           <div className="system-sm-semibold">
             {t(($) => $['operation.remove'], { ns: 'common' })}
           </div>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 

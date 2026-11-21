@@ -10,11 +10,13 @@ from core.datasource.datasource_manager import DatasourceManager
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
+from extensions.ext_redis import redis_client
 from repositories.data_source.api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from repositories.data_source.oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.credentials.redis_refresh_lock import RedisCredentialRefreshLock
 from services.data_source.auth.api_key_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -69,10 +71,21 @@ def build_data_source_credentials(*, database_client: sessionmaker[Session]) -> 
         oauth_clients=PluginDatasourceOAuthClientResolver(configs=credentials, provider_manager=provider_manager),
         oauth_handler=OAuthHandler(),
     )
+    refresh_lock = RedisCredentialRefreshLock(client=redis_client)
     return DataSourceCredentials(
-        providers=DatasourceProviderService(credentials=credentials),
-        actor=ActorAwareDatasourceCredentialGateway(credentials=credentials, codec=codec, refresher=refresher),
-        stored=TrustedStoredDatasourceCredentialGateway(credentials=credentials, codec=codec, refresher=refresher),
+        providers=DatasourceProviderService(
+            credentials=credentials,
+            codec=codec,
+            refresher=refresher,
+            refresh_lock=refresh_lock,
+            provider_manager=provider_manager,
+        ),
+        actor=ActorAwareDatasourceCredentialGateway(
+            credentials=credentials, codec=codec, refresher=refresher, refresh_lock=refresh_lock
+        ),
+        stored=TrustedStoredDatasourceCredentialGateway(
+            credentials=credentials, codec=codec, refresher=refresher, refresh_lock=refresh_lock
+        ),
     )
 
 

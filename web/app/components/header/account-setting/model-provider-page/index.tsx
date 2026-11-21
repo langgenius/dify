@@ -12,12 +12,14 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
+import { useTrialCredits } from './provider-added-card/use-trial-credits'
 import SystemModelSelector from './system-model-selector'
 
 const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
@@ -71,12 +73,22 @@ const ModelProviderPage = ({
     ModelTypeEnum.tts,
     defaultModelQueryOptions,
   )
-  const { data: providerSummary, isLoading: isLoadingModelProviders } = useQuery(
+  const { data: providerSummary, isLoading: isProviderSummaryLoading } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
   )
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloud = deploymentEdition === 'CLOUD'
+  const { isPending: isTrialModelsPending } = useQuery(
+    consoleQuery.trialModels.get.queryOptions({ enabled: isCloud }),
+  )
+  const { isLoading: isTrialCreditsLoading } = useTrialCredits()
+  const isLoadingModelProviders =
+    isProviderSummaryLoading || (isCloud && (isTrialModelsPending || isTrialCreditsLoading))
   const providers = providerSummary?.data ?? EMPTY_MODEL_PROVIDERS
   const modelProviderPlugins = providerSummary?.plugins ?? EMPTY_MODEL_PROVIDER_PLUGINS
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const marketplacePluginIds = useMemo(
     () =>
@@ -103,7 +115,7 @@ const ModelProviderPage = ({
     }
     return map
   }, [latestVersionData, modelProviderPlugins])
-  const enableMarketplace = systemFeatures.enable_marketplace
+  const marketplace = useMarketplace()
   const isDefaultModelLoading =
     isTextGenerationDefaultModelLoading ||
     isEmbeddingsDefaultModelLoading ||
@@ -201,7 +213,6 @@ const ModelProviderPage = ({
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
   const showNotConfiguredProviders =
     !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
-  const showMarketplace = !isLoadingModelProviders && enableMarketplace
   const toolbar = (
     <div
       className={
@@ -222,7 +233,7 @@ const ModelProviderPage = ({
         <div
           className={
             showWarning
-              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]'
+              ? 'relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 ps-2.5 pe-1 shadow-xs backdrop-blur-[5px]'
               : 'contents'
           }
         >
@@ -263,8 +274,7 @@ const ModelProviderPage = ({
       showEmptyProvider={showEmptyProvider}
       showConfiguredProviders={showConfiguredProviders}
       showNotConfiguredProviders={showNotConfiguredProviders}
-      showMarketplace={showMarketplace}
-      enableMarketplace={enableMarketplace}
+      marketplace={marketplace}
       searchText={searchText}
       pluginSummaryMap={pluginSummaryMap}
       onOpenMarketplace={onOpenMarketplace}

@@ -1,11 +1,23 @@
 import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { MutationFilters } from '@tanstack/react-query'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import type { FetchDatasetsParams } from '@/models/datasets'
+import type { ConsoleClientContext } from '@/service/console'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { DataSourceProvider } from '@/models/common'
 // oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
 import { post } from './base'
-import { consoleClient } from './console'
+import { consoleClient, consoleQuery } from './console'
+
+export function documentRenameFilter(datasetId: string, documentId: string): MutationFilters {
+  return {
+    mutationKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationKey(),
+    predicate: ({ state: { variables } }) =>
+      isPlainObject(variables) &&
+      variables.params?.dataset_id === datasetId &&
+      variables.params?.document_id === documentId,
+  }
+}
 
 // apis for documents in a dataset
 
@@ -26,52 +38,35 @@ type BatchReq = {
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
-export const updateDatasetSetting = ({
-  datasetId,
-  body,
-}: {
-  datasetId: string
-  body: DatasetUpdatePayload
-}) => {
-  return consoleClient.datasets.byDatasetId.patch({ params: { dataset_id: datasetId }, body })
+export const updateDatasetSetting = (
+  {
+    datasetId,
+    body,
+  }: {
+    datasetId: string
+    body: DatasetUpdatePayload
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.patch(
+    { params: { dataset_id: datasetId }, body },
+    { context },
+  )
 }
 
 export const fetchDatasets = ({ params }: FetchDatasetsParams) => {
   return consoleClient.datasets.get({ query: params })
 }
 
-export const createEmptyDataset = ({ name }: { name: string }) => {
-  return consoleClient.datasets.post({ body: { name } })
-}
-
-export const checkIsUsedInApp = (id: string) => {
-  return consoleClient.datasets.byDatasetId.useCheck.get(
-    { params: { dataset_id: id } },
-    { context: { silent: true } },
-  )
-}
-
-export const deleteDataset = (datasetID: string) => {
-  return consoleClient.datasets.byDatasetId.delete({ params: { dataset_id: datasetID } })
+export const createEmptyDataset = ({ name }: { name: string }, context?: ConsoleClientContext) => {
+  return consoleClient.datasets.post({ body: { name } }, { context })
 }
 
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
-export const updateExternalAPI = ({
-  apiTemplateId,
-  body,
-}: {
-  apiTemplateId: string
-  body: CreateExternalAPIReq
-}) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch({
-    params: { external_knowledge_api_id: apiTemplateId },
-    body,
-  })
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get(
+    { params: { external_knowledge_api_id: apiTemplateId } },
+    { context: { silent: true } },
+  )
 }
 
 export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
@@ -86,12 +81,11 @@ export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string
   })
 }
 
-export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
-  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
-}
-
-export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBaseReq }) => {
-  return consoleClient.datasets.external.post({ body })
+export const createExternalKnowledgeBase = (
+  { body }: { body: CreateKnowledgeBaseReq },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.external.post({ body }, { context })
 }
 
 export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq) => {
@@ -106,40 +100,45 @@ export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
   })
 }
 
-export const renameDocumentName = ({
-  datasetId,
-  documentId,
-  name,
-}: CommonDocReq & { name: string }) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post({
-    params: { dataset_id: datasetId, document_id: documentId },
-    body: { name },
-  })
+export const pauseDocIndexing = (
+  { datasetId, documentId }: CommonDocReq,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.pause.patch(
+    {
+      params: { dataset_id: datasetId, document_id: documentId },
+    },
+    { context },
+  )
 }
 
-export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.pause.patch({
-    params: { dataset_id: datasetId, document_id: documentId },
-  })
-}
-
-export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch({
-    params: { dataset_id: datasetId, document_id: documentId },
-  })
+export const resumeDocIndexing = (
+  { datasetId, documentId }: CommonDocReq,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch(
+    {
+      params: { dataset_id: datasetId, document_id: documentId },
+    },
+    { context },
+  )
 }
 
 // Not migrated to the console contract: the endpoint streams a zip file, which the
 // JSON-based console client cannot return as a Blob.
-export const downloadDocumentsZip = ({
-  datasetId,
-  documentIds,
-}: DocumentDownloadZipRequest): Promise<Blob> => {
-  return post<Blob>(`/datasets/${datasetId}/documents/download-zip`, {
-    body: {
-      document_ids: documentIds,
+export const downloadDocumentsZip = (
+  { datasetId, documentIds }: DocumentDownloadZipRequest,
+  options?: { silent?: boolean },
+): Promise<Blob> => {
+  return post<Blob>(
+    `/datasets/${datasetId}/documents/download-zip`,
+    {
+      body: {
+        document_ids: documentIds,
+      },
     },
-  })
+    options,
+  )
 }
 
 type WebsiteCrawlProvider = 'firecrawl' | 'jinareader' | 'watercrawl'

@@ -1,0 +1,187 @@
+import threading
+from collections.abc import Callable
+from unittest.mock import patch
+from uuid import uuid4
+
+import pytest
+from flask import Flask
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from opentelemetry.trace import StatusCode, get_current_span, get_tracer
+from sqlalchemy.orm import Session
+
+from core.rag.rerank.rerank_type import RerankMode
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from models.dataset import Dataset
+from tests.unit_tests.extensions.otel.conftest import memory_span_exporter as memory_span_exporter  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import mock_account_user as mock_account_user  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import mock_app_model as mock_app_model  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import mock_end_user as mock_end_user  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import mock_workflow_runner as mock_workflow_runner  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import reset_handler_instances as reset_handler_instances  # noqa: PLC0414
+from tests.unit_tests.extensions.otel.conftest import (
+    tracer_provider_with_memory_exporter as tracer_provider_with_memory_exporter,  # noqa: PLC0414
+)
+
+
+@pytest.fixture(autouse=True)
+def _otel_enabled(config_overrides: Callable[..., None]) -> None:
+    config_overrides(ENABLE_OTEL=True)
+
+
+def test_knowledge_retrieval_creates_a_child_otel_span(
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
+    sqlite_session: Session,
+) -> None:
+    """The retrieval entry point must be visible beneath its workflow node span."""
+    request = KnowledgeRetrievalRequest(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        app_id=str(uuid4()),
+        user_from="account",
+        dataset_ids=[str(uuid4())],
+        retrieval_mode="multiple",
+        query="test query",
+    )
+    retrieval = DatasetRetrieval()
+
+    with (
+        patch.object(retrieval, "_check_knowledge_rate_limit"),
+        patch.object(retrieval, "_get_available_datasets", return_value=[]),
+        get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
+    ):
+        assert retrieval.knowledge_retrieval(sqlite_session, request) == []
+
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name == "core.rag.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval"
+    )
+    node_span_context = node_span.get_span_context()
+    retrieval_context = retrieval_span.context
+    assert retrieval_context is not None
+    assert retrieval_context.trace_id == node_span_context.trace_id
+    assert retrieval_span.parent is not None
+    assert retrieval_span.parent.span_id == node_span_context.span_id
+
+
+def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
+    app: Flask,
+    tracer_provider_with_memory_exporter: TracerProvider,
+) -> None:
+    """Per-dataset retrieval spans must remain in the workflow node trace."""
+    retrieval = DatasetRetrieval()
+    dataset = Dataset(
+        id=str(uuid4()),
+        indexing_technique="high_quality",
+        embedding_model="text-embedding-3-small",
+        embedding_model_provider="openai",
+    )
+    observed_trace_ids: list[int] = []
+
+    def record_active_trace(**_kwargs: object) -> None:
+        observed_trace_ids.append(get_current_span().get_span_context().trace_id)
+
+    with (
+        app.app_context(),
+        patch.object(retrieval, "_multiple_retrieve_thread", side_effect=record_active_trace),
+        patch.object(retrieval, "_on_query"),
+        get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
+    ):
+        retrieval.multiple_retrieve(
+            app_id=str(uuid4()),
+            tenant_id=str(uuid4()),
+            user_id=str(uuid4()),
+            user_from="account",
+            available_datasets=[dataset],
+            query="test query",
+            top_k=4,
+            score_threshold=0.0,
+            reranking_mode=RerankMode.RERANKING_MODEL,
+            reranking_enable=False,
+        )
+
+    assert observed_trace_ids == [node_span.get_span_context().trace_id]
+
+
+def test_retriever_thread_exception_sets_error_span_and_is_collected(
+    app: Flask,
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
+) -> None:
+    retrieval = DatasetRetrieval()
+    cancel_event = threading.Event()
+    thread_exceptions: list[Exception] = []
+    expected_error = RuntimeError("retrieval failed")
+
+    with (
+        patch.object(retrieval, "_retriever", side_effect=expected_error),
+    ):
+        retrieval._run_retriever_thread_safely(
+            flask_app=app,
+            dataset_id=str(uuid4()),
+            query="test query",
+            top_k=4,
+            all_documents=[],
+            document_ids_filter=None,
+            metadata_condition=None,
+            attachment_ids=None,
+            cancel_event=cancel_event,
+            thread_exceptions=thread_exceptions,
+        )
+
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name.endswith("DatasetRetrieval._run_retriever_thread")
+    )
+    assert retrieval_span.status.status_code == StatusCode.ERROR
+    assert cancel_event.is_set()
+    assert thread_exceptions == [expected_error]
+
+
+def test_retriever_thread_exception_emits_skip_event_when_requested(
+    app: Flask,
+    memory_span_exporter: InMemorySpanExporter,
+    tracer_provider_with_memory_exporter: TracerProvider,
+) -> None:
+    retrieval = DatasetRetrieval()
+    cancel_event = threading.Event()
+    thread_exceptions: list[Exception] = []
+    expected_error = RuntimeError("retrieval failed")
+    dataset_id = str(uuid4())
+
+    with (
+        patch.object(retrieval, "_retriever", side_effect=expected_error),
+        get_tracer(__name__).start_as_current_span("dataset-retrieval-parent") as parent_span,
+    ):
+        retrieval._run_retriever_thread_safely(
+            flask_app=app,
+            dataset_id=dataset_id,
+            query="test query",
+            top_k=4,
+            all_documents=[],
+            document_ids_filter=None,
+            metadata_condition=None,
+            attachment_ids=None,
+            cancel_event=cancel_event,
+            thread_exceptions=thread_exceptions,
+            skip_on_error=True,
+        )
+
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name.endswith("DatasetRetrieval._run_retriever_thread")
+    )
+    assert isinstance(parent_span, ReadableSpan)
+    skip_event = next(event for event in parent_span.events if event.name == "dataset_retrieval.skipped")
+    assert retrieval_span.status.status_code == StatusCode.ERROR
+    skip_attributes = skip_event.attributes
+    assert skip_attributes is not None
+    assert skip_attributes["dataset_id"] == dataset_id
+    assert skip_attributes["error.message"] == "retrieval failed"
+    assert not cancel_event.is_set()
+    assert thread_exceptions == []

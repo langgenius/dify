@@ -13,8 +13,14 @@ Use `Form` when the Dify UI boundary should own Base UI's structured `onFormSubm
 consolidated errors, `actionsRef`, or `validationMode`. It renders a native `<form>`. A native form
 remains correct when another form library owns submission and validation; do not nest form owners.
 
-Set [`Button`] submit buttons to `type="submit"` explicitly. Keep every other button inside a form
-at `type="button"`.
+Set [`Button`] submit buttons to `type="submit"` explicitly.
+
+Keep submit available while the form is incomplete; submitting is what runs validation and marks
+the fields. Once a submission starts, the submit button shows `loading` until it settles.
+
+A rejected submission reports at the field it concerns: map a documented error code to that
+field's message through `Form` `errors`, rather than showing the server message or a toast.
+Rejections that belong to no field stay inside the form as an alert.
 
 ## Value and state ownership
 
@@ -38,6 +44,11 @@ Use `Field` when a control needs a shared name, label, validation, description, 
 standalone `Input` may use a native `<label htmlFor>` relationship, but normal form rows should
 prefer a visible label. `FieldDescription` and `FieldError` provide the corresponding accessible
 message relationships.
+
+`FieldError` follows native constraints, `validate`, and `Form` `errors`. When application code
+owns the validity instead, set `invalid` on `Field` and `match` on `FieldError`. A `Field` describes
+one control; a composite that renders its own controls, such as a picker with controls in its popup,
+does not go inside one.
 
 Choose the label primitive by the control:
 

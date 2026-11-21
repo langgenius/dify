@@ -9,7 +9,7 @@ from extensions import ext_knowledge_fs_observability
 from repositories.sqlalchemy_knowledge_fs_control_space_state_metrics import (
     SQLAlchemyKnowledgeFSControlSpaceStateCountReader,
 )
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
 
 
 def test_extension_registers_the_database_backed_control_space_gauge() -> None:

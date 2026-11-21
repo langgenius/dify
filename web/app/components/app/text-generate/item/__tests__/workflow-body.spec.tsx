@@ -1,79 +1,62 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
   createWorkflowProcessFixture,
 } from '@/test/fixtures/workflow-process'
 import WorkflowBody from '../workflow-body'
 
-const mockSubmit = vi.fn()
+const mockSubmit = vi.fn().mockResolvedValue(undefined)
 const mockSwitchTab = vi.fn()
-vi.mock('@/app/components/base/chat/chat/answer/workflow-process', () => ({
-  default: () => <div>workflow-process</div>,
-}))
-
-vi.mock('@/app/components/base/chat/chat/answer/human-input-form-list', () => ({
-  default: ({ onHumanInputFormSubmit }: { onHumanInputFormSubmit: typeof mockSubmit }) => (
-    <button
-      onClick={() =>
-        onHumanInputFormSubmit('token-1', { inputs: { name: 'dify' }, action: 'submit' })
-      }
-    >
-      submit-human-input
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/base/chat/chat/answer/human-input-filled-form-list', () => ({
-  default: () => <div>filled-human-input</div>,
-}))
-
-vi.mock('../result-tab', () => ({
-  default: ({ currentTab }: { currentTab: string }) => <div>{`result-tab:${currentTab}`}</div>,
-}))
+const form = createHumanInputFormFixture({
+  form_content: 'Name: {{#$output.name#}}',
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'name',
+      default: { type: 'constant', value: '', selector: [] },
+    },
+  ],
+  actions: [{ id: 'submit', title: 'Submit', button_style: UserActionButtonType.Primary }],
+})
 
 describe('WorkflowBody', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should render workflow information and allow tab switching', async () => {
     const user = userEvent.setup()
-    render(
-      <WorkflowBody
-        content="detail"
-        currentTab="RESULT"
-        depth={2}
-        isError={false}
-        onSubmitHumanInputForm={mockSubmit}
-        onSwitchTab={mockSwitchTab}
-        showResultTabs
-        siteInfo={{ title: 'Test app', show_workflow_steps: true }}
-        taskId="task-1"
-        workflowProcessData={createWorkflowProcessFixture({
-          resultText: 'done',
-          humanInputFormDataList: [createHumanInputFormFixture()],
-          humanInputFilledFormDataList: [
-            {
-              form_id: 'filled-form-1',
-              node_id: 'filled-1',
-              node_title: 'Human Input',
-              rendered_content: '',
-              action_id: 'submit',
-              action_text: 'Submit',
-            },
-          ],
-        })}
-      />,
-    )
+    function Scenario() {
+      const [tab, setTab] = useState('RESULT')
+      return (
+        <WorkflowBody
+          content="detail"
+          currentTab={tab}
+          depth={2}
+          isError={false}
+          onSubmitHumanInputForm={mockSubmit}
+          onSwitchTab={setTab}
+          showResultTabs
+          siteInfo={{ title: 'Test app', show_workflow_steps: true }}
+          taskId="task-1"
+          workflowProcessData={createWorkflowProcessFixture({
+            resultText: 'done',
+          })}
+        />
+      )
+    }
+    render(<Scenario />)
 
-    expect(screen.getByText('workflow-process')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /workflowProcessSucceeded/ })).toBeInTheDocument()
     expect(screen.getByText('task-1-1')).toBeInTheDocument()
-    expect(screen.getByText('result-tab:RESULT')).toBeInTheDocument()
+    expect(await screen.findByText('done')).toBeInTheDocument()
 
     await user.click(screen.getByText(/(?:^|\.)detail(?=$|:)/))
 
-    expect(mockSwitchTab).toHaveBeenCalledWith('DETAIL')
+    expect(screen.queryByText('done')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox')).toHaveValue(JSON.stringify('detail', null, 2))
   })
 
   it('should forward human input submissions', async () => {
@@ -90,12 +73,13 @@ describe('WorkflowBody', () => {
         siteInfo={null}
         workflowProcessData={createWorkflowProcessFixture({
           resultText: 'done',
-          humanInputFormDataList: [createHumanInputFormFixture()],
+          humanInputFormDataList: [form],
         })}
       />,
     )
 
-    await user.click(screen.getByText('submit-human-input'))
+    await user.type(screen.getByRole('textbox'), 'dify')
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(mockSubmit).toHaveBeenCalledWith('token-1', {
       action: 'submit',

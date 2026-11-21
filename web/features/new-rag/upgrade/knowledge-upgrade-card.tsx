@@ -167,7 +167,7 @@ export function KnowledgeUpgradeCard({
       {(active || failed) && (
         <div
           className={cn(
-            'absolute top-0 right-0 flex h-5 items-center gap-0.5 rounded-bl-lg px-2 system-2xs-medium-uppercase',
+            'absolute inset-e-0 top-0 flex h-5 items-center gap-0.5 rounded-es-lg px-2 system-2xs-medium-uppercase',
             active
               ? 'bg-util-colors-indigo-indigo-200 text-util-colors-indigo-indigo-700'
               : 'bg-util-colors-red-red-100 text-util-colors-red-red-600',

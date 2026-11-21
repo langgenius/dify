@@ -143,7 +143,7 @@ function ModelSelectorTrigger({
                 data-surface={surface}
                 disabled={isDisabled}
                 className={cn(
-                  'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled transition-colors',
+                  'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled transition-colors',
                   'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
                   'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                   'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled motion-reduce:transition-none',
@@ -152,7 +152,7 @@ function ModelSelectorTrigger({
                   'data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg data-[surface=workflow]:data-popup-open:bg-workflow-block-parma-bg',
                   'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled data-[model-status=configure-required]:bg-components-input-bg-disabled data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=incompatible]:bg-components-input-bg-disabled',
                   'disabled:data-[model-status=active]:bg-components-input-bg-normal! disabled:data-[model-status=empty]:bg-components-input-bg-normal! disabled:data-[surface=workflow]:bg-workflow-block-parma-bg!',
-                  'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-l-lg! data-[shape=split]:rounded-r-none! data-[shape=split]:focus-visible:z-1',
+                  'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-s-lg! data-[shape=split]:rounded-e-none! data-[shape=split]:focus-visible:z-1',
                   'data-[surface=workflow]:data-deprecated:[&>span]:opacity-50',
                   className,
                 )}
@@ -168,7 +168,7 @@ function ModelSelectorTrigger({
               className={cn(
                 'flex min-w-0 grow items-center gap-0.5',
                 showClear &&
-                  'group-focus-within/model-selector-clearable:mr-6 group-hover/model-selector-clearable:mr-6',
+                  'group-focus-within/model-selector-clearable:me-6 group-hover/model-selector-clearable:me-6',
               )}
             >
               {isEmpty ? (
@@ -295,7 +295,7 @@ function ModelSelectorTrigger({
           className={cn(
             'pointer-events-none absolute top-1/2 -translate-y-1/2 opacity-0 group-focus-within/model-selector-clearable:pointer-events-auto group-focus-within/model-selector-clearable:opacity-100 group-hover/model-selector-clearable:pointer-events-auto group-hover/model-selector-clearable:opacity-100',
             'text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset',
-            shape === 'split' ? 'right-1' : size === 'small' ? 'right-4.5' : 'right-5',
+            shape === 'split' ? 'inset-e-1' : size === 'small' ? 'inset-e-4.5' : 'inset-e-5',
           )}
         >
           <span aria-hidden="true" className="i-ri-close-circle-fill size-4" />

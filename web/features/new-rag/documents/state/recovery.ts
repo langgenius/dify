@@ -102,8 +102,9 @@ export const resultsAutoPaginationFactsAtom = atom((get) => {
 
   return {
     shouldFetchDocuments: Boolean(
-      (get(filterActiveAtom) ||
-        (get(documentTasksOpenAtom) && get(unresolvedTaskDocumentIdsAtom).size > 0)) &&
+      !get(filterActiveAtom) &&
+      get(documentTasksOpenAtom) &&
+      get(unresolvedTaskDocumentIdsAtom).size > 0 &&
       get(documentsQueryHasNextPageAtom) &&
       get(documentsQueryPageCountAtom) < MAX_AUTO_CURSOR_PAGES &&
       !get(documentsQueryIsFetchingNextPageAtom) &&

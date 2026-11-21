@@ -53,8 +53,8 @@ from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNo
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUploadResult
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 @pytest.fixture

@@ -1,13 +1,13 @@
 import type { ShortcutMapping } from './test-run-menu-helpers'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import {
   forwardRef,
   isValidElement,
@@ -66,7 +66,7 @@ const OptionRow = ({
   onSelect: (option: TriggerOption) => void
 }) => {
   return (
-    <DropdownMenuItem
+    <MenuItem
       className="h-auto gap-3 px-3 py-1.5 system-md-regular"
       onClick={() => onSelect(option)}
     >
@@ -75,7 +75,7 @@ const OptionRow = ({
         <span className="truncate">{option.name}</span>
       </div>
       {shortcutKey && <ShortcutKbd displayKey={shortcutKey} textColor="secondary" />}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -183,29 +183,27 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
     }
 
     return (
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <Menu open={open} onOpenChange={setOpen}>
         {isValidElement(children) ? (
-          <DropdownMenuTrigger render={children} style={{ userSelect: 'none' }} />
+          <MenuTrigger render={children} style={{ userSelect: 'none' }} />
         ) : (
-          <DropdownMenuTrigger style={{ userSelect: 'none' }}>{children}</DropdownMenuTrigger>
+          <MenuTrigger style={{ userSelect: 'none' }}>{children}</MenuTrigger>
         )}
-        <DropdownMenuContent
+        <MenuContent
           onKeyDown={(event) => handleShortcutMenuKeyDown(event, shortcutMappings, handleSelect)}
           align="start"
           sideOffset={8}
           alignOffset={-4}
-          className="w-71 px-1"
+          className="w-71"
         >
-          <DropdownMenuGroup className="flex flex-col gap-1">
-            <DropdownMenuGroupLabel className="pt-2 text-sm font-medium text-text-primary">
+          <MenuGroup className="flex flex-col gap-1">
+            <MenuGroupLabel className="pt-2 text-sm font-medium text-text-primary">
               {t(($) => $['common.chooseStartNodeToRun'], { ns: 'workflow' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             <div>
               {hasUserInput && renderOption(options.userInput!)}
 
-              {(hasTriggers || hasRunAll) && hasUserInput && (
-                <DropdownMenuSeparator className="mx-3" />
-              )}
+              {(hasTriggers || hasRunAll) && hasUserInput && <MenuSeparator className="mx-3" />}
 
               {hasRunAll && renderOption(options.runAll!)}
 
@@ -214,9 +212,9 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
                   .filter((trigger) => trigger.enabled !== false)
                   .map((trigger) => renderOption(trigger))}
             </div>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
     )
   },
 )

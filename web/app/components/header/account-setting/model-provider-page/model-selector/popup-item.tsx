@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
+import { modelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -65,7 +65,6 @@ function PopupItem({
   const language = useLanguage()
   const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'modelProvider' })
-  const { setShowModelModal } = useModalContext()
   const { data: currentProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data.find((provider) => provider.provider === model.provider),
@@ -88,12 +87,10 @@ function PopupItem({
 
     const detail = await loadProviderDetail()
     if (!detail) return
-    setShowModelModal({
-      payload: {
-        currentProvider: detail,
-        currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-      },
-      onSaveCallback: () => {
+    modelCredentialDialog.openWithPayload({
+      provider: detail,
+      configurateMethod: ConfigurationMethodEnum.predefinedModel,
+      onSave: () => {
         updateModelProviders()
 
         const modelType = model.models[0]!.model_type
@@ -153,7 +150,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
-                      <span className="ml-1 truncate">
+                      <span className="ms-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
                       </span>
                     </>
@@ -163,7 +160,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
-                      <span className="ml-1 truncate text-text-warning">
+                      <span className="ms-1 truncate text-text-warning">
                         {t(($) => $['modelProvider.selector.creditsExhausted'], {
                           ns: 'modelProvider',
                         })}
@@ -173,12 +170,12 @@ function PopupItem({
                 ) : credentialName ? (
                   <>
                     <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
-                    <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
+                    <span className="ms-1 truncate text-text-tertiary">{credentialName}</span>
                   </>
                 ) : (
                   <>
                     <StatusDot size="small" status="disabled" />
-                    <span className="ml-1 truncate text-text-tertiary">
+                    <span className="ms-1 truncate text-text-tertiary">
                       {t(($) => $['modelProvider.selector.configureRequired'], {
                         ns: 'modelProvider',
                       })}
@@ -219,7 +216,7 @@ function PopupItem({
             const needsConfiguration = modelItem.status === ModelStatusEnum.noConfigure
             const isSelectable = modelItem.status === ModelStatusEnum.active
             const rowClassName = cn(
-              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
+              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-start',
               isSelectable
                 ? 'cursor-pointer hover:bg-state-base-hover'
                 : 'cursor-not-allowed hover:bg-state-base-hover-alt',

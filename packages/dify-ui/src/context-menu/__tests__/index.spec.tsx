@@ -7,9 +7,8 @@ import {
   ContextMenuItem,
   ContextMenuLinkItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
+  ContextMenuSubmenu,
+  ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from '../index'
 
@@ -47,7 +46,7 @@ describe('context-menu wrapper', () => {
         .toBeCloseTo(triggerRect.left + 8, 0)
       await expect
         .poll(() => screen.getByRole('menu').element().getBoundingClientRect().top)
-        .toBeCloseTo(triggerRect.top + 8, 0)
+        .toBeCloseTo(triggerRect.top + 8 + 4, 0)
 
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
@@ -93,18 +92,18 @@ describe('context-menu wrapper', () => {
     })
   })
 
-  describe('ContextMenuSubContent', () => {
+  describe('ContextMenuContent inside a submenu', () => {
     it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
           <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
           <ContextMenuContent>
-            <ContextMenuSub open>
-              <ContextMenuSubTrigger>More actions</ContextMenuSubTrigger>
-              <ContextMenuSubContent>
+            <ContextMenuSubmenu open>
+              <ContextMenuSubmenuTrigger>More actions</ContextMenuSubmenuTrigger>
+              <ContextMenuContent>
                 <ContextMenuItem>Sub action</ContextMenuItem>
-              </ContextMenuSubContent>
-            </ContextMenuSub>
+              </ContextMenuContent>
+            </ContextMenuSubmenu>
           </ContextMenuContent>
         </ContextMenu>,
       )
@@ -172,16 +171,16 @@ describe('context-menu wrapper', () => {
           <ContextMenu>
             <ContextMenuTrigger aria-label="context trigger">Open</ContextMenuTrigger>
             <ContextMenuContent>
-              <ContextMenuSub open>
-                <ContextMenuSubTrigger
+              <ContextMenuSubmenu open>
+                <ContextMenuSubmenuTrigger
                   variant={variant}
                   aria-label="submenu action"
                   id={`context-sub-${variant}`}
                   onClick={handleClick}
                 >
                   Trigger item
-                </ContextMenuSubTrigger>
-              </ContextMenuSub>
+                </ContextMenuSubmenuTrigger>
+              </ContextMenuSubmenu>
             </ContextMenuContent>
           </ContextMenu>,
         )
@@ -304,12 +303,12 @@ it('resolves submenu popup classes with the popup state', async () => {
     <ContextMenu>
       <ContextMenuTrigger>Open audit menu</ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuSub open>
-          <ContextMenuSubTrigger>More audit actions</ContextMenuSubTrigger>
-          <ContextMenuSubContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+        <ContextMenuSubmenu open>
+          <ContextMenuSubmenuTrigger>More audit actions</ContextMenuSubmenuTrigger>
+          <ContextMenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
             <ContextMenuItem>Audit action</ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+          </ContextMenuContent>
+        </ContextMenuSubmenu>
       </ContextMenuContent>
     </ContextMenu>,
   )

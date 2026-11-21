@@ -2,19 +2,14 @@ import type { InputVar } from '@/models/pipeline'
 import { act } from '@testing-library/react'
 import {
   baseRunningData,
-  renderWorkflowHook,
+  renderWorkflowCanvasHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useSnippetStartRun } from '../use-snippet-start-run'
 
-const mockHandleCancelDebugAndPreviewPanel = vi.fn()
 const mockHandleRun = vi.fn()
-vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
-  useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
-  }),
-}))
 
 const inputFields: InputVar[] = [
   {
@@ -26,7 +21,7 @@ const inputFields: InputVar[] = [
 ]
 
 const renderStart = (initialStoreState = {}) =>
-  renderWorkflowHook(() => useSnippetStartRun({ handleRun: mockHandleRun }), {
+  renderWorkflowCanvasHook(() => useSnippetStartRun({ handleRun: mockHandleRun }), {
     resource: { kind: 'snippet', snippetId: 'snippet-1' },
     initialStoreState: { showEnvPanel: true, showGlobalVariablePanel: true, ...initialStoreState },
   })
@@ -60,10 +55,16 @@ it('runs immediately without leaving an old input form visible when there are no
 })
 
 it('closes an already open debug panel without starting another run', () => {
-  const { result } = renderStart({ showDebugAndPreviewPanel: true })
+  const { result, store } = renderStart({
+    showDebugAndPreviewPanel: true,
+    workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Succeeded } }),
+  })
   act(() => result.current.handleWorkflowStartRunInWorkflow())
 
-  expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledOnce()
+  expect(store.getState()).toMatchObject({
+    showDebugAndPreviewPanel: false,
+    workflowRunningData: undefined,
+  })
   expect(mockHandleRun).not.toHaveBeenCalled()
 })
 
@@ -77,5 +78,4 @@ it('leaves panels and the active run unchanged while already running', () => {
     showGlobalVariablePanel: true,
   })
   expect(mockHandleRun).not.toHaveBeenCalled()
-  expect(mockHandleCancelDebugAndPreviewPanel).not.toHaveBeenCalled()
 })

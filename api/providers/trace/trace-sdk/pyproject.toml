@@ -1,0 +1,18 @@
+[project]
+name = "dify-trace-sdk"
+version = "0.0.1"
+dependencies = [
+    "grpcio",
+    "httpx",
+    "opentelemetry-proto",
+    "protobuf",
+    "pydantic>=2",
+    "requests",
+]
+description = "Contracts shared by Dify trace producers, the trace pipeline, and trace providers."
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dify_trace_sdk = ["py.typed"]

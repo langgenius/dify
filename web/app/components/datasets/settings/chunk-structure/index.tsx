@@ -31,7 +31,7 @@ const ChunkStructure = ({ chunkStructure }: ChunkStructureProps) => {
           isActive={chunkStructure === option.id}
           effectColor={option.effectColor}
           showEffectColor
-          className="gap-x-1.5 p-3 pr-4"
+          className="gap-x-1.5 p-3 pe-4"
           disabled
         />
       ))}

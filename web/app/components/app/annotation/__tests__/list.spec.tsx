@@ -36,16 +36,16 @@ describe('List', () => {
     vi.clearAllMocks()
   })
 
-  it('should render annotation rows and call onView when clicking a row', async () => {
+  it('should render annotation rows and call onEdited when clicking a row', async () => {
     const user = userEvent.setup()
     const item = createAnnotation()
-    const onView = vi.fn()
+    const onEdited = vi.fn()
 
     render(
       <List
         appId="app-1"
         list={[item]}
-        onView={onView}
+        onEdited={onEdited}
         onRemoved={vi.fn()}
         selectedIds={[]}
         onSelectedIdsChange={vi.fn()}
@@ -55,7 +55,9 @@ describe('List', () => {
 
     await user.click(screen.getByText(item.question!))
 
-    expect(onView).toHaveBeenCalledWith(item)
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
     expect(mockFormatTime).toHaveBeenCalledWith(item.created_at, 'appLog.dateTimeFormat')
   })
 
@@ -65,7 +67,7 @@ describe('List', () => {
       createAnnotation({ id: 'a', question: 'A' }),
       createAnnotation({ id: 'b', question: 'B' }),
     ]
-    const onView = vi.fn()
+    const onEdited = vi.fn()
     const onSelectedIdsChange = vi.fn()
     function ControlledList() {
       const [selectedIds, setSelectedIds] = React.useState<string[]>([])
@@ -73,7 +75,7 @@ describe('List', () => {
         <List
           appId="app-1"
           list={list}
-          onView={onView}
+          onEdited={onEdited}
           onRemoved={vi.fn()}
           selectedIds={selectedIds}
           onSelectedIdsChange={(next) => {
@@ -93,7 +95,7 @@ describe('List', () => {
     expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['a', 'b'])
     await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
     expect(onSelectedIdsChange).toHaveBeenLastCalledWith([])
-    expect(onView).not.toHaveBeenCalled()
+    expect(onEdited).not.toHaveBeenCalled()
   })
 
   it('should confirm before removing an annotation and expose batch actions', async () => {
@@ -105,7 +107,7 @@ describe('List', () => {
       <List
         appId="app-1"
         list={[item]}
-        onView={vi.fn()}
+        onEdited={vi.fn()}
         onRemoved={onRemoved}
         selectedIds={[item.id]}
         onSelectedIdsChange={vi.fn()}
@@ -144,7 +146,7 @@ describe('List', () => {
       <List
         appId="app-1"
         list={[item]}
-        onView={vi.fn()}
+        onEdited={vi.fn()}
         onRemoved={vi.fn()}
         selectedIds={[]}
         onSelectedIdsChange={vi.fn()}

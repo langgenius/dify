@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "उदा. शोध सहायक",
   "roster.dateTimeFormat": "DD/MM/YYYY hh:mm:ss A",
   "roster.deleteDialog.description": "इससे {{name}} स्थायी रूप से हटा दिया जाएगा। इसका वेब ऐप, API एक्सेस और इसका उपयोग करने वाले वर्कफ़्लो तुरंत काम करना बंद कर देंगे।",
+  "roster.deleteDialog.inputLabel": "पुष्टि करने के लिए <name>{{name}}</name> टाइप करें",
+  "roster.deleteDialog.inputPlaceholder": "एजेंट का नाम दर्ज करें",
   "roster.deleteDialog.title": "{{name}} हटाएँ?",
   "roster.deleteFailed": "एजेंट हटाने में विफल।",
   "roster.duplicateDialog.description": "{{name}} की एक प्रति बनाएँ और उसकी Agent पहचान को अनुकूलित करें।",

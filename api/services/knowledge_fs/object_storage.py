@@ -444,7 +444,7 @@ def _decode_metadata(encoded: bytes) -> _DecodedStoredMetadata:
             if not isinstance(source_path, str) or not isinstance(tenant_id, str):
                 raise ValueError
             source_path = _normalize_adopted_source_path(source_path, tenant_id=tenant_id)
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError, KnowledgeFSObjectStorageInvalidInputError) as exc:
+    except (KeyError, TypeError, ValueError, KnowledgeFSObjectStorageInvalidInputError) as exc:
         raise KnowledgeFSObjectStorageCorruptError("object metadata sidecar is invalid") from exc
     return _DecodedStoredMetadata(
         metadata=KnowledgeFSObjectMetadata(

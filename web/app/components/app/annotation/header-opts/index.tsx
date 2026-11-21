@@ -1,19 +1,16 @@
 'use client'
 import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AnnotationItemBasic } from '../type'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { useMutation } from '@tanstack/react-query'
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSubmenu,
+  MenuSubmenuTrigger,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { noop, useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +19,7 @@ import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
-import AddAnnotationModal from '../add-annotation-modal'
+import AddAnnotationDialog from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
 import { ClearAllAnnotationsConfirmContent } from '../clear-all-annotations-confirm-modal'
 
@@ -31,7 +28,6 @@ const CSV_HEADER_QA_CN = ['问题', '答案']
 
 type Props = Readonly<{
   appId: string
-  onAdd: (payload: AnnotationItemBasic) => void
   onAdded: () => void
   controlUpdateList: number
 }>
@@ -75,7 +71,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 
   return (
     <>
-      <DropdownMenuItem
+      <MenuItem
         className="gap-2"
         onClick={() => {
           onBulkImport()
@@ -86,35 +82,35 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary"
         />
         {t(($) => $['table.header.bulkImport'], { ns: 'appAnnotation' })}
-      </DropdownMenuItem>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger className="gap-2">
+      </MenuItem>
+      <MenuSubmenu>
+        <MenuSubmenuTrigger className="gap-2">
           <span
             aria-hidden
             className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary"
           />
           {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent side="left" className="min-w-25">
-          <DropdownMenuItem
+        </MenuSubmenuTrigger>
+        <MenuContent side="left" className="min-w-25">
+          <MenuItem
             disabled={annotationUnavailable}
             onClick={() => {
               downloadAnnotationCsv(list, locale)
             }}
           >
             CSV
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </MenuItem>
+          <MenuItem
             disabled={annotationUnavailable}
             onClick={() => {
               onExportJsonl()
             }}
           >
             JSONL
-          </DropdownMenuItem>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-      <DropdownMenuItem
+          </MenuItem>
+        </MenuContent>
+      </MenuSubmenu>
+      <MenuItem
         variant="destructive"
         className="gap-2"
         onClick={() => {
@@ -123,12 +119,12 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
       >
         <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
         {t(($) => $['table.header.clearAll'], { ns: 'appAnnotation' })}
-      </DropdownMenuItem>
+      </MenuItem>
     </>
   )
 }
 
-const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
+const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
   const [list, setList] = useState<Annotation[]>([])
@@ -166,38 +162,32 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const handleExportJsonl = React.useCallback(() => {
     downloadAnnotationJsonl(list, locale)
   }, [list, locale])
-  const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
     <div className="flex space-x-2">
-      <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span aria-hidden className="i-ri-add-line size-4" />
-        <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
-      </Button>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <AddAnnotationDialog
+        appId={appId}
+        onAdded={() => {
+          onAdded()
+          void fetchList().catch(noop)
+        }}
+      />
+      <Menu modal={false}>
+        <MenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-          className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
+          className="me-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-38.75">
+        </MenuTrigger>
+        <MenuContent align="end" className="w-38.75">
           <OperationsMenu
             list={list}
             onBulkImport={handleShowBulkImportModal}
             onClearAll={handleClearAll}
             onExportJsonl={handleExportJsonl}
           />
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {showAddModal && (
-        <AddAnnotationModal
-          isShow={showAddModal}
-          onHide={() => setShowAddModal(false)}
-          onAdd={onAdd}
-        />
-      )}
-
+        </MenuContent>
+      </Menu>
       {showBulkImportModal && (
         <BatchAddModal
           appId={appId}

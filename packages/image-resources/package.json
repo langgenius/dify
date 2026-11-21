@@ -18,19 +18,11 @@
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/picomatch": "catalog:",
-    "@typescript/native": "catalog:",
     "tsrs": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "24.22.1",
-      "onFail": "download"
-    }
-  },
   "engines": {
-    "node": "^24.22.1"
+    "node": "^24.22.3"
   }
 }

@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "一度に複数のテキストを生成し、編集して生成を続ける",
   "feature.moreLikeThis.tip": "この機能を使用すると、追加のトークンオーバーヘッドが発生します",
   "feature.moreLikeThis.title": "これに似たもの",
+  "feature.showThoughts.description": "会話中にモデルの思考内容を表示します。",
+  "feature.showThoughts.title": "思考過程を表示",
   "feature.speechToText.description": "有効にすると、音声入力を使用できます。",
   "feature.speechToText.title": "音声からテキストへ",
   "feature.suggestedQuestionsAfterAnswer.description": "次の質問の提案を設定すると、ユーザーにより良いチャットが提供されます。",

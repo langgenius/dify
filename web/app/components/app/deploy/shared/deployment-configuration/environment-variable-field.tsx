@@ -10,6 +10,7 @@ import {
   EnvVarValueSource as EnvVarValueSourceEnum,
   EnvVarValueType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Field, FieldDescription, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -51,13 +52,11 @@ function displayEnvironmentVariableValue(value: unknown) {
 
 export const EnvironmentVariableField = memo(
   ({
-    error,
     slot,
     workflowId,
     getInitialSelection,
     onChange,
   }: {
-    error?: string
     slot: EnvironmentVariableSlot
     workflowId: string
     getInitialSelection: (
@@ -100,8 +99,6 @@ export const EnvironmentVariableField = memo(
     const labelId = `${inputId}-label`
     const descriptionId = `${inputId}-description`
     const errorId = `${inputId}-error`
-    const describedBy =
-      [slot.description && descriptionId, error && errorId].filter(Boolean).join(' ') || undefined
     const editable = source === EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM
     const inputType =
       editable && slot.value_type === EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET
@@ -206,7 +203,9 @@ export const EnvironmentVariableField = memo(
             tabIndex={-1}
             role="group"
             aria-labelledby={labelId}
-            aria-describedby={describedBy}
+            aria-describedby={[slot.description && descriptionId, errorId]
+              .filter(Boolean)
+              .join(' ')}
             className="flex w-full min-w-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <LLMEnvironmentVariableValueField
@@ -221,35 +220,30 @@ export const EnvironmentVariableField = memo(
               }
             />
           </div>
-        ) : (
-          <Input
-            id={inputId}
-            aria-describedby={describedBy}
-            aria-invalid={Boolean(error)}
-            step={inputType === 'number' ? 'any' : undefined}
-            type={inputType}
-            value={editable && typeof customValue === 'string' ? customValue : ''}
-            placeholder={placeholder}
-            disabled={!editable}
-            autoComplete="off"
-            onChange={(event) =>
-              updateSelection({
-                ...selection,
-                customValue: event.target.value,
-              })
-            }
-          />
-        )}
-        {slot.description && (
-          <p id={descriptionId} className="system-xs-regular text-text-tertiary">
-            {slot.description}
-          </p>
-        )}
-        {error && (
-          <p id={errorId} role="alert" className="system-xs-regular text-text-destructive">
-            {error}
-          </p>
-        )}
+        ) : null}
+        <Field name={inputId} className="contents">
+          {!isLLM && (
+            <Input
+              id={inputId}
+              step={inputType === 'number' ? 'any' : undefined}
+              type={inputType}
+              value={editable && typeof customValue === 'string' ? customValue : ''}
+              placeholder={placeholder}
+              disabled={!editable}
+              autoComplete="off"
+              onChange={(event) =>
+                updateSelection({
+                  ...selection,
+                  customValue: event.target.value,
+                })
+              }
+            />
+          )}
+          {slot.description && (
+            <FieldDescription id={descriptionId}>{slot.description}</FieldDescription>
+          )}
+          <FieldError id={errorId} />
+        </Field>
       </fieldset>
     )
   },

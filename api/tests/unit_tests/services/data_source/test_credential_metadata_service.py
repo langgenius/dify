@@ -2,7 +2,7 @@ from dataclasses import asdict
 
 from services.credentials.query import DatasourceCredentialListItem
 from services.data_source.credential_metadata_service import DatasourceCredentialMetadataService
-from tests.unit_tests.credential_query_fakes import DatasourceCredentialLookup, DatasourceCredentialQuery
+from tests.helpers.unit.credential_query_fakes import DatasourceCredentialLookup, DatasourceCredentialQuery
 
 
 def _credential(*, credential_id: str, name: str, is_default: bool) -> DatasourceCredentialListItem:

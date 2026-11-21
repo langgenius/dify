@@ -166,7 +166,7 @@ function Form<
       <Infotip>
         <InfotipTrigger
           aria-label={formSchema.label[language] || formSchema.label.en_US}
-          className="ml-1"
+          className="ms-1"
         />
         <InfotipContent
           aria-label={formSchema.label[language] || formSchema.label.en_US}
@@ -213,7 +213,7 @@ function Form<
             <label htmlFor={inputId}>
               {label[language] || label.en_US}
               {required && (
-                <span aria-hidden className="ml-1 text-red-500">
+                <span aria-hidden className="ms-1 text-red-500">
                   *
                 </span>
               )}
@@ -289,7 +289,7 @@ function Form<
               )}
             >
               <span>{translatedLabel}</span>
-              {required && <span className="ml-1 text-red-500">*</span>}
+              {required && <span className="ms-1 text-red-500">*</span>}
               {infotipContent}
             </FieldsetLegend>
             {options
@@ -366,7 +366,7 @@ function Form<
           >
             {translatedLabel}
 
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <Select
@@ -427,7 +427,7 @@ function Form<
                 )}
               >
                 <span>{translatedLabel}</span>
-                {required && <span className="ml-1 text-red-500">*</span>}
+                {required && <span className="ms-1 text-red-500">*</span>}
                 {infotipContent}
               </FieldsetLegend>
               <div className="flex items-center gap-3">
@@ -464,7 +464,7 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ModelParameterModal
@@ -495,7 +495,7 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <ToolSelector
@@ -559,7 +559,7 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <AppSelector
@@ -589,7 +589,7 @@ function Form<
             )}
           >
             {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {infotipContent}
           </div>
           <VarReferencePicker

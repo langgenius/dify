@@ -5,6 +5,7 @@ import { createTaskProgressStore } from '../tasks/progress-store'
 import { createTaskRuntimeState } from '../tasks/runtime-state'
 import { documentBulkPendingActionAtom } from './bulk'
 import {
+  documentRequestSearchAtom,
   documentsDownloadPermissionAtom,
   documentsKnowledgeSpaceIdAtom,
   documentsSpaceContextAtom,
@@ -26,6 +27,7 @@ export const taskRuntimeStateAtom = atomWithLazy(createTaskRuntimeState)
 export const taskProgressStoreAtom = atomWithLazy(createTaskProgressStore)
 
 export const documentsScopedAtoms = [
+  documentRequestSearchAtom,
   documentsKnowledgeSpaceIdAtom,
   documentsSpaceContextAtom,
   documentsDownloadPermissionAtom,

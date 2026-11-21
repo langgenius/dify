@@ -37,7 +37,7 @@ describe('SkillDetailPage export with unsaved content', () => {
       mocks.fetchSkillArchiveBlob.mockResolvedValue(new Blob(['archive']))
       renderSkillDetailPage()
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'skill.skillManagement.detail.markdownSourceMode',
         }),
       )
@@ -89,7 +89,7 @@ describe('SkillDetailPage export with unsaved content', () => {
     mocks.fetchSkillArchiveBlob.mockResolvedValue(new Blob(['archive']))
     renderSkillDetailPage()
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -124,7 +124,7 @@ describe('SkillDetailPage export with unsaved content', () => {
     mocks.fetchSkillArchiveBlob.mockResolvedValue(new Blob(['stale archive']))
     renderSkillDetailPage()
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )

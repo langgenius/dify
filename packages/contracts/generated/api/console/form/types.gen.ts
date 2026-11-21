@@ -4,13 +4,9 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type ConsoleHumanInputFormDefinitionResponse = {
-  [key: string]: unknown
-}
-
-export type HumanInputFormSubmittedError = ErrorResponse & {
-  code: 'human_input_form_submitted'
-  status: 412
+export type ConsoleHumanInputV2FormDefinitionResponse = {
+  expiration_time: number
+  resolved_form: ResolvedForm
 }
 
 export type ErrorResponse = {
@@ -21,6 +17,46 @@ export type ErrorResponse = {
   message: string
   params?: string
   status: number
+}
+
+export type AlreadySubmittedError = ErrorResponse & {
+  code: 'already_submitted'
+  status: 409
+}
+
+export type ExpiredError = ErrorResponse & {
+  code: 'expired'
+  status: 410
+}
+
+export type ConsoleHumanInputV2SubmitPayload = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+}
+
+export type ConsoleHumanInputV2SubmitResponse = {
+  [key: string]: unknown
+}
+
+export type InvalidInputError = ErrorResponse & {
+  code: 'invalid_input'
+  status: 400
+}
+
+export type WorkflowNotActiveError = ErrorResponse & {
+  code: 'workflow_not_active'
+  status: 409
+}
+
+export type ConsoleHumanInputFormDefinitionResponse = {
+  [key: string]: unknown
+}
+
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status: 412
 }
 
 export type HumanInputFormSubmitPayload = {
@@ -44,7 +80,131 @@ export type HumanInputFormExpiredError = ErrorResponse & {
   status: 412
 }
 
+export type ResolvedForm = {
+  actions: Array<HumanInputActionResponse>
+  legacy_form_content: string
+  parts: Array<ResolvedPartResponse>
+  title: string
+}
+
 export type JsonValue = unknown
+
+export type HumanInputActionResponse = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ResolvedPartResponse =
+  | ({
+      type: 'markdown_fragment'
+    } & ResolvedMarkdownResponse)
+  | ({
+      type: 'paragraph_input'
+    } & ResolvedParagraphResponse)
+  | ({
+      type: 'select_input'
+    } & ResolvedSelectResponse)
+  | ({
+      type: 'file_input'
+    } & ResolvedFileResponse)
+  | ({
+      type: 'file_list_input'
+    } & ResolvedFileListResponse)
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ResolvedMarkdownResponse = {
+  text: string
+  type: 'markdown_fragment'
+}
+
+export type ResolvedParagraphResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'paragraph_input'
+}
+
+export type ResolvedSelectResponse = {
+  default_value: string | null
+  options: Array<string>
+  output_variable_name: string
+  type: 'select_input'
+}
+
+export type ResolvedFileResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type: 'file_input'
+}
+
+export type ResolvedFileListResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type: 'file_list_input'
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type GetFormHumanInputV2ByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type GetFormHumanInputV2ByFormTokenErrors = {
+  401: ErrorResponse
+  404: ErrorResponse
+  409: AlreadySubmittedError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenError =
+  GetFormHumanInputV2ByFormTokenErrors[keyof GetFormHumanInputV2ByFormTokenErrors]
+
+export type GetFormHumanInputV2ByFormTokenResponses = {
+  200: ConsoleHumanInputV2FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenResponse =
+  GetFormHumanInputV2ByFormTokenResponses[keyof GetFormHumanInputV2ByFormTokenResponses]
+
+export type PostFormHumanInputV2ByFormTokenData = {
+  body: ConsoleHumanInputV2SubmitPayload
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type PostFormHumanInputV2ByFormTokenErrors = {
+  400: InvalidInputError | ErrorResponse
+  409: AlreadySubmittedError | WorkflowNotActiveError | ErrorResponse
+  410: ExpiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenError =
+  PostFormHumanInputV2ByFormTokenErrors[keyof PostFormHumanInputV2ByFormTokenErrors]
+
+export type PostFormHumanInputV2ByFormTokenResponses = {
+  200: ConsoleHumanInputV2SubmitResponse
+}
+
+export type PostFormHumanInputV2ByFormTokenResponse =
+  PostFormHumanInputV2ByFormTokenResponses[keyof PostFormHumanInputV2ByFormTokenResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never

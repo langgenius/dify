@@ -2,12 +2,12 @@ import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/typ
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -55,19 +55,19 @@ const ConditionNumberInput = ({
 
   return (
     <div className="flex cursor-pointer items-center">
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
+      <Menu>
+        <MenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
           <RiArrowDownSLine className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </MenuTrigger>
+        <MenuContent
           align="start"
           sideOffset={2}
-          className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+          className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur"
         >
-          <DropdownMenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
+          <MenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
             {options.map((option) => (
-              <DropdownMenuRadioItem
+              <MenuRadioItem
                 key={option}
                 value={option}
                 closeOnClick
@@ -78,13 +78,13 @@ const ConditionNumberInput = ({
                 )}
               >
                 {capitalize(option)}
-              </DropdownMenuRadioItem>
+              </MenuRadioItem>
             ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
       <div className="mx-1 h-4 w-px bg-divider-regular"></div>
-      <div className="ml-0.5 w-0 grow">
+      <div className="ms-0.5 w-0 grow">
         {numberVarType === VarKindType.variable && (
           <Popover open={variableSelectorVisible} onOpenChange={setVariableSelectorVisible}>
             <PopoverTrigger nativeButton={false} render={<div className="w-full" />}>
@@ -99,7 +99,7 @@ const ConditionNumberInput = ({
                 <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
                   <span
                     aria-hidden
-                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
+                    className="me-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
                   />
                   <div className="w-0 grow truncate">
                     {t(($) => $['nodes.ifElse.selectVariable'], { ns: 'workflowLogic' })}
@@ -133,17 +133,17 @@ const ConditionNumberInput = ({
             <input
               className={cn(
                 'block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-                unit && 'pr-6',
+                unit && 'pe-6',
               )}
               type="number"
               value={value}
               onChange={(e) => onValueChange(e.target.value)}
-              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
+              placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' })}
               onFocus={setFocus}
               onBlur={setBlur}
             />
             {!isFocus && unit && (
-              <div className="absolute top-[50%] right-2 translate-y-[-50%] system-sm-regular text-text-tertiary">
+              <div className="absolute inset-e-2 top-[50%] translate-y-[-50%] system-sm-regular text-text-tertiary">
                 {unit}
               </div>
             )}

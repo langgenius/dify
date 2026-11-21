@@ -223,7 +223,7 @@ describe('PreferencePage - Interactions', () => {
     const language = screen.getByRole('combobox', { name: 'common.language.displayLanguage' })
     const timezone = screen.getByRole('combobox', { name: 'common.language.timezone' })
     const appearance = screen.getByRole('combobox', {
-      name: 'accountSettings.account.appearanceLabel',
+      name: 'common.theme.label',
     })
 
     await selectOption('common.language.displayLanguage', chinese.name)
@@ -245,7 +245,7 @@ describe('PreferencePage - Interactions', () => {
       })
     await act(async () => save.resolve(response()))
     await waitFor(() => expect(mockGet).toHaveBeenCalled())
-    await waitFor(() => expect(setLocaleOnClient).toHaveBeenCalledWith(chinese.value, false))
+    await waitFor(() => expect(setLocaleOnClient).toHaveBeenCalledWith(chinese.value))
     expect(language).toHaveAttribute('aria-readonly', 'true')
     expect(timezone).toHaveAttribute('aria-readonly', 'true')
     expect(mockRefresh).not.toHaveBeenCalled()

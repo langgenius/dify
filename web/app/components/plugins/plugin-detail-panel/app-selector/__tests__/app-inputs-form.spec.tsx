@@ -1,15 +1,14 @@
 import type { ComponentProps, ReactNode } from 'react'
-import type { FileUploaderInAttachmentWrapperProps } from '@/app/components/base/file-uploader/file-uploader-in-attachment'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import { zAppAgentModePayload } from '@dify/contracts/api/console/apps/zod.gen'
-import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useFile } from '@/app/components/base/file-uploader/hooks'
-import { FileContextProvider, useStore } from '@/app/components/base/file-uploader/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { TransferMethod } from '@/types/app'
 import AppInputsForm from '../app-inputs-form'
 
 const render = (ui: ReactNode) => rtlRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
@@ -27,44 +26,6 @@ vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => (
 }))
 
 vi.mock('uuid', () => ({ v4: () => 'file-1' }))
-
-function UploadControls({ fileConfig }: Pick<FileUploaderInAttachmentWrapperProps, 'fileConfig'>) {
-  const files = useStore((state) => state.files)
-  const { handleLocalFileUpload, handleClearFiles, handleReUploadFile } = useFile(fileConfig)
-  return (
-    <div>
-      <span data-testid="file-uploader-value">{JSON.stringify(files)}</span>
-      <button
-        data-testid="file-uploader"
-        onClick={() => handleLocalFileUpload(new File(['png'], 'demo.png', { type: 'image/png' }))}
-      >
-        Upload
-      </button>
-      <button data-testid="file-uploader-empty" onClick={handleClearFiles}>
-        Upload Empty
-      </button>
-      {files
-        .filter((file) => file.progress === -1)
-        .map((file) => (
-          <button key={file.id} onClick={() => handleReUploadFile(file.id)}>
-            Retry {file.name}
-          </button>
-        ))}
-    </div>
-  )
-}
-
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    onChange,
-    value,
-    fileConfig,
-  }: FileUploaderInAttachmentWrapperProps) => (
-    <FileContextProvider value={value} onChange={onChange}>
-      <UploadControls fileConfig={fileConfig} />
-    </FileContextProvider>
-  ),
-}))
 
 type AppInputsFormProps = ComponentProps<typeof AppInputsForm>
 
@@ -91,6 +52,22 @@ const parseAgentToolInputs = (inputs: Record<string, unknown> | undefined) =>
     ],
   })
 
+const createUploadedFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
+  id: 'existing-file',
+  name: 'existing.png',
+  size: 3,
+  type: 'image/png',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'image',
+  uploadedId: 'uploaded-existing-file',
+  base64Url: 'data:image/png;base64,cG5n',
+  ...overrides,
+})
+
+const getFileInput = () => document.querySelector<HTMLInputElement>('input[type="file"]')!
+const createLocalFile = () => new File(['png'], 'demo.png', { type: 'image/png' })
+
 const renderControlledForm = ({
   inputsForms,
   initialInputs,
@@ -114,6 +91,11 @@ const renderControlledForm = ({
     return (
       <>
         <button onClick={() => setOpen(!open)}>{open ? 'Close inputs' : 'Open inputs'}</button>
+        <output aria-label="form values">
+          {JSON.stringify(inputs, (key, value) =>
+            key === 'originalFile' && value instanceof File ? value.name : value,
+          )}
+        </output>
         {open && (
           <AppInputsForm
             inputsForms={inputsForms}
@@ -226,13 +208,9 @@ describe('AppInputsForm', () => {
         onFormChange,
       })
 
-      await user.click(screen.getByRole('button', { name: 'Upload' }))
-      await waitFor(() =>
-        expect(screen.getByTestId('file-uploader-value')).toHaveTextContent('uploaded-file-1'),
-      )
+      await user.upload(getFileInput(), createLocalFile())
+      expect(await screen.findByText('demo.png')).toBeInTheDocument()
 
-      const selectedInputs = onFormChange.mock.lastCall?.[0]
-      expect(() => parseAgentToolInputs(selectedInputs)).not.toThrow()
       const persistedFile = {
         id: 'file-1',
         name: 'demo.png',
@@ -244,9 +222,20 @@ describe('AppInputsForm', () => {
         uploadedId: 'uploaded-file-1',
         base64Url: 'data:image/png;base64,cG5n',
       }
-      expect(selectedInputs).toEqual({
+      const expectedInputs = {
         attachment: type === InputVarType.singleFile ? persistedFile : [persistedFile],
-      })
+      }
+      await waitFor(() => expect(onFormChange).toHaveBeenLastCalledWith(expectedInputs))
+
+      const selectedInputs = onFormChange.mock.lastCall![0]
+      expect(() => parseAgentToolInputs(selectedInputs)).not.toThrow()
+      expect(selectedInputs).toEqual(expectedInputs)
+      expect(screen.getByRole('status', { name: 'form values' })).toHaveTextContent(
+        'uploaded-file-1',
+      )
+      await user.click(screen.getByRole('button', { name: 'Close inputs' }))
+      await user.click(screen.getByRole('button', { name: 'Open inputs' }))
+      expect(screen.getByText('demo.png')).toBeInTheDocument()
     },
   )
 
@@ -271,56 +260,79 @@ describe('AppInputsForm', () => {
       onFormChange,
     })
 
-    await user.click(screen.getByRole('button', { name: 'Upload' }))
-    await screen.findByRole('button', { name: 'Retry demo.png' })
+    await user.upload(getFileInput(), createLocalFile())
+    await screen.findByRole('button', { name: 'common.operation.retry demo.png' })
     const originalFile = mockFileUpload.mock.calls[0]?.[0].file
     expect(() => parseAgentToolInputs(onFormChange.mock.lastCall?.[0])).toThrow()
 
     await user.click(screen.getByRole('button', { name: 'Close inputs' }))
-    expect(screen.queryByRole('button', { name: 'Retry demo.png' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.retry demo.png' }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Open inputs' }))
-    await user.click(screen.getByRole('button', { name: 'Retry demo.png' }))
+    expect(screen.getByText('demo.png')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry demo.png' }))
 
     expect(mockFileUpload.mock.lastCall?.[0].file).toBe(originalFile)
-    expect(screen.queryByRole('button', { name: 'Retry demo.png' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.retry demo.png' }),
+    ).not.toBeInTheDocument()
     expect(() => parseAgentToolInputs(onFormChange.mock.lastCall?.[0])).not.toThrow()
+    expect(screen.getByRole('status', { name: 'form values' })).toHaveTextContent('uploaded-file-1')
   })
 
-  it('should keep multi-file values and forward empty multi-file uploads', () => {
+  it('should remove every multi-file value and publish an empty list', async () => {
+    const user = userEvent.setup()
     const onFormChange = vi.fn()
-    const existingFiles = [{ id: 'existing-file', name: 'existing.png' }]
+    const existingFiles = [
+      createUploadedFile(),
+      createUploadedFile({
+        id: 'remaining-file',
+        name: 'remaining.png',
+        uploadedId: 'uploaded-remaining-file',
+      }),
+    ]
 
-    render(
-      <AppInputsForm
-        inputsForms={[
-          {
-            variable: 'files',
-            label: 'Files',
-            type: InputVarType.multiFiles,
-            required: true,
-            max_length: 3,
-            allowed_file_types: ['image'],
-            allowed_file_extensions: ['.png'],
-            allowed_file_upload_methods: ['local_file'],
-          },
-        ]}
-        inputs={{ files: existingFiles }}
-        inputsRef={{ current: { files: existingFiles } }}
-        onFormChange={onFormChange}
-      />,
-    )
+    renderControlledForm({
+      inputsForms: [
+        {
+          variable: 'files',
+          label: 'Files',
+          type: InputVarType.multiFiles,
+          required: true,
+          max_length: 3,
+          allowed_file_types: ['image'],
+          allowed_file_extensions: ['.png'],
+          allowed_file_upload_methods: ['local_file'],
+        },
+      ],
+      initialInputs: { files: existingFiles },
+      onFormChange,
+    })
 
-    expect(screen.getByTestId('file-uploader-value')).toHaveTextContent('"existing-file"')
+    expect(screen.getByText('existing.png')).toBeInTheDocument()
+    expect(screen.getByText('remaining.png')).toBeInTheDocument()
     expect(screen.queryByText('workflow.panel.optional')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('file-uploader-empty'))
-    expect(onFormChange).toHaveBeenCalledWith({ files: [] })
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove existing.png' }))
+    expect(onFormChange).toHaveBeenLastCalledWith({ files: [existingFiles[1]] })
+    expect(screen.queryByText('existing.png')).not.toBeInTheDocument()
+    expect(screen.getByText('remaining.png')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'form values' })).toHaveTextContent(
+      'uploaded-remaining-file',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove remaining.png' }))
+    expect(onFormChange).toHaveBeenLastCalledWith({ files: [] })
+    expect(screen.queryByText('existing.png')).not.toBeInTheDocument()
+    expect(screen.queryByText('remaining.png')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'form values' }).textContent).toBe('{"files":[]}')
   })
 
   it('should remove cleared single-file inputs while keeping agent tool parameters publishable', async () => {
     const user = userEvent.setup()
     const onFormChange = vi.fn<(value: Record<string, unknown>) => void>()
-    const existingFile = { id: 'existing-file', name: 'existing.png' }
+    const existingFile = createUploadedFile()
     const siblingInputs = { enabled: false, count: 0, note: '', nullable: null }
 
     renderControlledForm({
@@ -339,13 +351,14 @@ describe('AppInputsForm', () => {
       onFormChange,
     })
 
-    expect(screen.getByTestId('file-uploader-value')).toHaveTextContent('"existing-file"')
+    expect(screen.getByText('existing.png')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Upload Empty' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove existing.png' }))
 
     expect(() => parseAgentToolInputs(onFormChange.mock.lastCall?.[0])).not.toThrow()
     expect(onFormChange).toHaveBeenLastCalledWith(siblingInputs)
     expect(onFormChange.mock.lastCall?.[0]).not.toHaveProperty('attachment')
-    expect(screen.getByTestId('file-uploader-value')).toHaveTextContent('[]')
+    expect(screen.queryByText('existing.png')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'form values' })).not.toHaveTextContent('attachment')
   })
 })

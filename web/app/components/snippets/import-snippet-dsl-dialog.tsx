@@ -24,7 +24,6 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -118,8 +117,8 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
-  const importSnippetMutation = useImportSnippetDSLMutation()
-  const confirmSnippetImportMutation = useConfirmSnippetImportMutation()
+  const importSnippetMutation = useImportSnippetDSLMutation({ silent: true })
+  const confirmSnippetImportMutation = useConfirmSnippetImportMutation({ silent: true })
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(
     ImportSnippetDSLDialogTab.FromFile,
   )
@@ -195,11 +194,12 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
   }, [
+    t,
     canCreateAndModifySnippet,
     currentTab,
     dslUrl,
@@ -215,11 +215,11 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
-  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
+  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId, t])
 
   const handleTabChange = (value: string | number) => {
     if (value === ImportSnippetDSLDialogTab.FromFile)
@@ -244,65 +244,74 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             />
           </DialogHeader>
-          <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
-            <TabsList
-              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
-              className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6"
-            >
-              <TabsTab
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (importDisabled || isSubmitting) return
+              void handleImport()
+            }}
+          >
+            <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+              <TabsList
+                aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+                className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6"
+              >
+                <TabsTab
+                  value={ImportSnippetDSLDialogTab.FromFile}
+                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  disabled={isSubmitting}
+                >
+                  {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
+                </TabsTab>
+                <TabsTab
+                  value={ImportSnippetDSLDialogTab.FromUrl}
+                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  disabled={isSubmitting}
+                >
+                  {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
+                </TabsTab>
+              </TabsList>
+              <TabsPanel
                 value={ImportSnippetDSLDialogTab.FromFile}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
+                tabIndex={-1}
+                render={<DialogBody />}
               >
-                {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
-              </TabsTab>
-              <TabsTab
+                <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
+              </TabsPanel>
+              <TabsPanel
                 value={ImportSnippetDSLDialogTab.FromUrl}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
+                tabIndex={-1}
+                render={<DialogBody />}
               >
-                {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
-              </TabsTab>
-            </TabsList>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromFile}
-              tabIndex={-1}
-              render={<DialogBody />}
-            >
-              <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-            </TabsPanel>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromUrl}
-              tabIndex={-1}
-              render={<DialogBody />}
-            >
-              <label
-                htmlFor={dslUrlInputId}
-                className="mb-1 block system-md-semibold text-text-secondary"
+                <label
+                  htmlFor={dslUrlInputId}
+                  className="mb-1 block system-md-semibold text-text-secondary"
+                >
+                  DSL URL
+                </label>
+                <Input
+                  id={dslUrlInputId}
+                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' })}
+                  value={dslUrl}
+                  onChange={(event) => setDslUrl(event.target.value)}
+                />
+              </TabsPanel>
+            </Tabs>
+            <DialogFooter>
+              <Button disabled={isSubmitting} onClick={onClose}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+              <Button
+                disabled={importDisabled}
+                loading={isSubmitting}
+                type="submit"
+                variant="primary"
               >
-                DSL URL
-              </label>
-              <Input
-                id={dslUrlInputId}
-                placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
-                value={dslUrl}
-                onChange={(event) => setDslUrl(event.target.value)}
-              />
-            </TabsPanel>
-          </Tabs>
-          <DialogFooter>
-            <Button disabled={isSubmitting} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button
-              disabled={importDisabled}
-              loading={isSubmitting}
-              variant="primary"
-              onClick={handleImport}
-            >
-              {t(($) => $['operation.create'], { ns: 'common' })}
-            </Button>
-          </DialogFooter>
+                {t(($) => $['operation.create'], { ns: 'common' })}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
       {showConfirmModal && (

@@ -59,7 +59,7 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMUsage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.llm.runtime_protocols import (
     LLMPollingCapableProtocol,
@@ -215,6 +215,15 @@ class DifyPreparedLLM(LLMProtocol):
 
     @override
     def get_model_schema(self) -> AIModelEntity:
+        model_schema = self._get_provider_model_schema()
+        if model_schema.features is None or ModelFeature.STRUCTURED_OUTPUT in model_schema.features:
+            return model_schema
+        # Graphon checks this adapter's capabilities before invocation. Dify can
+        # supply structured output through a schema prompt without native support.
+        # Copy the schema so provider metadata still selects the correct path.
+        return model_schema.model_copy(update={"features": [*model_schema.features, ModelFeature.STRUCTURED_OUTPUT]})
+
+    def _get_provider_model_schema(self) -> AIModelEntity:
         model_schema = cast(LargeLanguageModel, self._model_instance.model_type_instance).get_model_schema(
             self._model_instance.model_name,
             self._model_instance.credentials,
@@ -302,7 +311,7 @@ class DifyPreparedLLM(LLMProtocol):
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         return invoke_llm_with_structured_output(
             provider=self.provider,
-            model_schema=self.get_model_schema(),
+            model_schema=self._get_provider_model_schema(),
             model_instance=self._model_instance,
             prompt_messages=prompt_messages,
             json_schema=json_schema,
@@ -323,6 +332,11 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
+    @override
+    def get_model_schema(self) -> AIModelEntity:
+        # Polling passes the schema directly to the plugin and has no prompt fallback.
+        return self._get_provider_model_schema()
+
     def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
         super().__init__(model_instance, request_metadata=request_metadata)
         model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
@@ -336,20 +350,30 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         if reservation is not None:
             QuotaManagedModelInstance.release_quota_safely(reservation)
 
-    def _settle_polling_quota(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+    def _finalize_polling_result(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+        """Settle terminal usage before moderating successful output, including immediate success.
+
+        RUNNING results remain unchanged. Rejected successful output is never
+        delivered, but already consumed quota remains committed. Non-quota models
+        use the same policy, and backend failures propagate without approval.
+        """
         reservation = self._polling_quota_reservation
-        if reservation is None or polling_result.status == LLMPollingStatus.RUNNING:
+        if polling_result.status == LLMPollingStatus.RUNNING:
             return polling_result
 
         try:
             if polling_result.status == LLMPollingStatus.SUCCEEDED:
                 if polling_result.result is None:
                     raise ValueError("A successful LLM polling result must include a model result.")
-                reservation.commit(polling_result.result.usage)
-            else:
+                if reservation is not None:
+                    reservation.commit(polling_result.result.usage)
+                if self._model_instance.moderation is not None:
+                    self._model_instance.moderation.check_result(polling_result.result)
+            elif reservation is not None:
                 reservation.release()
         except Exception:
-            QuotaManagedModelInstance.release_quota_safely(reservation)
+            if reservation is not None:
+                QuotaManagedModelInstance.release_quota_safely(reservation)
             raise
         finally:
             self._polling_quota_reservation = None
@@ -366,7 +390,16 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
+        """Check assembly-bound input policy before reserving quota or submitting a polling task.
+
+        Previous task resources are finalized first. Rejected input submits no
+        new task and creates no new reservation; terminal output is checked after
+        accounting and before delivery. Submission and moderation failures propagate.
+        """
         self.finalize_llm_polling()
+
+        if self._model_instance.moderation is not None:
+            self._model_instance.moderation.check_inputs(prompt_messages)
 
         if isinstance(self._model_instance, QuotaManagedModelInstance):
             self._polling_quota_reservation = self._model_instance._reserve_quota_for_request(self._request_metadata)
@@ -382,7 +415,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
                 stop=stop,
                 json_schema=dict(json_schema) if json_schema is not None else None,
             )
-            return self._settle_polling_quota(polling_result)
+            return self._finalize_polling_result(polling_result)
         except Exception:
             self.finalize_llm_polling()
             raise
@@ -393,6 +426,12 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         *,
         plugin_state: Mapping[str, JsonValue],
     ) -> LLMPollingResult:
+        """Poll an existing task and deliver only approved successful results after quota settlement.
+
+        RUNNING results pass through unchanged. Polling and moderation failures
+        propagate, releasing only outstanding quota rather than refunding a
+        successful model invocation whose output was rejected.
+        """
         try:
             polling_result = self._polling_runtime.check_llm_polling(
                 provider=self.provider,
@@ -400,7 +439,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
                 credentials=self._model_instance.credentials,
                 plugin_state=dict(plugin_state),
             )
-            return self._settle_polling_quota(polling_result)
+            return self._finalize_polling_result(polling_result)
         except Exception:
             self.finalize_llm_polling()
             raise

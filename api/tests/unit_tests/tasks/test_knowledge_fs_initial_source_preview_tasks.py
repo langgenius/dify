@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Never
+from typing import Literal, Never
 from unittest.mock import patch
 
 from sqlalchemy import inspect
@@ -13,7 +13,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialSourcePreviewResponse,
 )
 from tasks.knowledge_fs_initial_source_preview_tasks import run_knowledge_fs_initial_source_preview
-from tests.unit_tests.tasks.task_options import task_options
+from tests.helpers.unit.tasks.task_options import task_options
 
 _JOB_KEY = {"tenant_id": "tenant-1", "account_id": "account-1", "job_id": "job-1"}
 
@@ -23,7 +23,7 @@ class _PreviewJobService:
     """Records preview job transitions; ``transition_results`` are consumed in order."""
 
     transition_results: list[bool]
-    job_status: str = "running"
+    job_status: Literal["pending", "running", "completed", "failed", "canceled"] = "running"
     transitions: list[dict[str, object]] = field(default_factory=list)
     stored: list[dict[str, object]] = field(default_factory=list)
     released: list[dict[str, str]] = field(default_factory=list)
@@ -40,8 +40,9 @@ class _PreviewJobService:
         self.released.append({"tenant_id": tenant_id, "account_id": account_id, "job_id": job_id})
 
     def get(self, *, tenant_id: str, account_id: str, job_id: str) -> KnowledgeFSInitialSourcePreviewJobResponse:
+        """Given lookup identifiers, return the complete job DTO and record the lookup."""
         self.lookups.append({"tenant_id": tenant_id, "account_id": account_id, "job_id": job_id})
-        return KnowledgeFSInitialSourcePreviewJobResponse.model_construct(status=self.job_status)
+        return KnowledgeFSInitialSourcePreviewJobResponse(job_id=job_id, status=self.job_status)
 
 
 @dataclass

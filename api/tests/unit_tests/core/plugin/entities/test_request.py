@@ -1,7 +1,10 @@
+import binascii
+from collections.abc import Mapping
+
 import pytest
 from pydantic import ValidationError
 
-from core.plugin.entities.request import RequestRequestDownloadFile
+from core.plugin.entities.request import RequestRequestDownloadFile, TriggerDispatchResponse
 from core.workflow.file_reference import build_file_reference
 
 
@@ -144,3 +147,20 @@ def test_request_download_file_rejects_non_remote_with_url(transfer_method: str)
                 },
             }
         )
+
+
+def test_trigger_dispatch_response() -> None:
+    raw_http_response = b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{"message": "Hello, world!"}'
+
+    data: Mapping[str, object] = {
+        "user_id": "123",
+        "events": ["event1", "event2"],
+        "response": binascii.hexlify(raw_http_response).decode(),
+        "payload": {"key": "value"},
+    }
+
+    response = TriggerDispatchResponse.model_validate(data)
+
+    assert response.response.status_code == 200
+    assert response.response.headers["Content-Type"] == "application/json"
+    assert response.response.get_data(as_text=True) == '{"message": "Hello, world!"}'

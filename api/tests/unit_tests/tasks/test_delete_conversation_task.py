@@ -38,7 +38,7 @@ from models.enums import (
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
 from models.tools import ToolConversationVariables, ToolFile
 from tasks.delete_conversation_task import _cleanup_conversation_related_data, sweep_deleted_conversations
-from tests.unit_tests.model_factories import make_conversation, make_message
+from tests.helpers.unit.model_factories import make_conversation, make_message
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"

@@ -42,12 +42,43 @@ class NetworkAccessGroupError(Exception):
 
 
 class NetworkAccessGroupUpstreamError(NetworkAccessGroupError):
-    """Failure returned by the network-access control plane."""
+    """The network-access control plane failed without a reason the use cases handle."""
 
-    def __init__(self, status_code: int, reason: str | None = None) -> None:
-        self.status_code = status_code
-        self.reason = reason
-        super().__init__(f"network access group upstream returned HTTP {status_code}")
+    def __init__(self, *, unavailable: bool) -> None:
+        self.unavailable = unavailable
+        super().__init__(
+            "network access group control plane is unavailable"
+            if unavailable
+            else "network access group control plane request failed"
+        )
+
+
+class NetworkAccessGroupInvalidInputError(NetworkAccessGroupError):
+    """The control plane rejected the requested policy or binding."""
+
+
+class NetworkAccessGroupForbiddenError(NetworkAccessGroupError):
+    """The control plane refused the workspace or actor."""
+
+
+class NetworkAccessGroupNotEntitledError(NetworkAccessGroupError):
+    """The workspace plan does not include network access control."""
+
+
+class NetworkAccessGroupNotFoundError(NetworkAccessGroupError):
+    """The network access group does not exist in the workspace."""
+
+
+class NetworkAccessGroupVersionConflictError(NetworkAccessGroupError):
+    """The resource changed since the version the caller read."""
+
+
+class NetworkAccessGroupNameConflictError(NetworkAccessGroupError):
+    """Another network access group in the workspace has the requested name."""
+
+
+class NetworkAccessGroupBoundError(NetworkAccessGroupError):
+    """The network access group is still bound to at least one app."""
 
 
 class NetworkAccessGroupAccessDeniedError(NetworkAccessGroupError):
@@ -170,11 +201,13 @@ class NetworkAccessGroupService:
         apps: NetworkAccessGroupAppQuery,
         memberships: WorkspaceMembershipRoleQuery,
         entitlement: NetworkAccessGroupEntitlement,
+        rbac_enabled: Callable[[], bool],
     ) -> None:
         self._control_plane = control_plane
         self._apps = apps
         self._memberships = memberships
         self._entitlement = entitlement
+        self._rbac_enabled = rbac_enabled
 
     def list_groups(self, context: RequestContext) -> NetworkAccessGroupList:
         self._ensure_workspace_role(context, _POLICY_READ_ROLES)
@@ -362,6 +395,8 @@ class NetworkAccessGroupService:
         return self._control_plane.cleanup_app_binding(workspace_id, app_id)
 
     def _ensure_workspace_role(self, context: RequestContext, allowed_roles: frozenset[str]) -> None:
+        if self._rbac_enabled():
+            return
         role = self._memberships.get_account_role(
             tenant_id=context.active_workspace_id,
             account_id=context.account_id,

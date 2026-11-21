@@ -13,7 +13,7 @@ from tasks.knowledge_fs_lifecycle_tasks import (
     cleanup_knowledge_fs_staged_uploads,
     run_knowledge_fs_lifecycle_worker,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @dataclass

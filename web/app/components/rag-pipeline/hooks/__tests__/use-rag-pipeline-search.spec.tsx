@@ -1,20 +1,11 @@
-import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { findRagPipelineNodes } from '../../goto-anything-search'
 import { useRagPipelineSearch } from '../use-rag-pipeline-search'
-
-const mockNodes: Array<{ id: string; data: Record<string, unknown> }> = []
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  default: () => mockNodes,
-}))
-
-const mockHandleNodeSelect = vi.fn()
-vi.mock('@/app/components/workflow/hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-}))
 
 vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
   useGetToolIcon: () => () => null,
@@ -24,24 +15,19 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => null,
 }))
 
-const mockCleanupListener = vi.fn()
-vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
-  setupNodeSelectionListener: () => mockCleanupListener,
-}))
+const renderSearch = (nodes: ReturnType<typeof createNode>[] = []) => {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '1.0' })
+  seedModelProviderQueries(queryClient)
+  return renderWorkflowCanvasHook(() => useRagPipelineSearch(), {
+    queryClient,
+    initialStoreState: { nodes },
+  })
+}
 
 describe('useRagPipelineSearch', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodes.length = 0
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('hook lifecycle', () => {
     it('should expose empty search results when no nodes exist', () => {
-      const { unmount } = renderHook(() => useRagPipelineSearch())
+      const { unmount } = renderSearch()
 
       expect(findRagPipelineNodes('LLM')).toEqual([])
 
@@ -49,57 +35,54 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should cleanup search function on unmount', () => {
-      mockNodes.push({
-        id: 'node-1',
-        data: { type: BlockEnum.Start, title: 'Start', desc: '' },
-      })
-
-      const { unmount } = renderHook(() => useRagPipelineSearch())
+      const { unmount } = renderSearch([
+        createNode({
+          id: 'node-1',
+          data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+        }),
+      ])
 
       expect(findRagPipelineNodes('Start')).not.toEqual([])
 
       unmount()
 
       expect(findRagPipelineNodes('Start')).toEqual([])
-      expect(mockCleanupListener).toHaveBeenCalledOnce()
     })
   })
 
   describe('search functionality', () => {
-    beforeEach(() => {
-      mockNodes.push(
-        {
-          id: 'node-1',
-          data: { type: BlockEnum.LLM, title: 'GPT Model', desc: 'Language model' },
+    const nodes = [
+      createNode({
+        id: 'node-1',
+        data: { type: BlockEnum.LLM, title: 'GPT Model', desc: 'Language model' },
+      }),
+      createNode({
+        id: 'node-2',
+        data: {
+          type: BlockEnum.KnowledgeRetrieval,
+          title: 'Knowledge Base',
+          desc: 'Search knowledge',
+          dataset_ids: ['ds1', 'ds2'],
         },
-        {
-          id: 'node-2',
-          data: {
-            type: BlockEnum.KnowledgeRetrieval,
-            title: 'Knowledge Base',
-            desc: 'Search knowledge',
-            dataset_ids: ['ds1', 'ds2'],
-          },
+      }),
+      createNode({
+        id: 'node-3',
+        data: {
+          type: BlockEnum.Tool,
+          title: 'Web Search',
+          desc: '',
+          tool_description: 'Search the web',
+          tool_label: 'WebSearch',
         },
-        {
-          id: 'node-3',
-          data: {
-            type: BlockEnum.Tool,
-            title: 'Web Search',
-            desc: '',
-            tool_description: 'Search the web',
-            tool_label: 'WebSearch',
-          },
-        },
-        {
-          id: 'node-4',
-          data: { type: BlockEnum.Start, title: 'Start Node', desc: 'Pipeline entry' },
-        },
-      )
-    })
+      }),
+      createNode({
+        id: 'node-4',
+        data: { type: BlockEnum.Start, title: 'Start Node', desc: 'Pipeline entry' },
+      }),
+    ]
 
     it('should find nodes by title', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('GPT')
 
@@ -107,7 +90,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should find nodes by type', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes(BlockEnum.LLM)
 
@@ -115,7 +98,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should sort by alphabetical order when no search term', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('')
       const titles = results.map((r) => r.title)
@@ -124,7 +107,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should sort by relevance score when search term provided', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('Search')
 
@@ -132,7 +115,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should return empty array when no nodes match', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('nonexistent-xyz-12345')
 
@@ -140,7 +123,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should enhance Tool node description from tool_description', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('web')
 
@@ -150,7 +133,7 @@ describe('useRagPipelineSearch', () => {
     })
 
     it('should include metadata with nodeId', () => {
-      renderHook(() => useRagPipelineSearch())
+      renderSearch(nodes)
 
       const results = findRagPipelineNodes('Start')
 

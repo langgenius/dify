@@ -8,17 +8,6 @@ import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
 import { EdgeContextmenu } from '../edge-contextmenu'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 
-const mockSaveStateToHistory = vi.fn()
-
-vi.mock('../hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => ({ saveStateToHistory: mockSaveStateToHistory }),
-  WorkflowHistoryEvent: {
-    EdgeDelete: 'EdgeDelete',
-    EdgeDeleteByDeleteBranch: 'EdgeDeleteByDeleteBranch',
-    EdgeSourceHandleChange: 'EdgeSourceHandleChange',
-  },
-}))
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean
@@ -124,6 +113,7 @@ function renderEdgeMenu(options?: {
     nodes,
     edges,
     initialStoreState,
+    historyStore: { nodes, edges },
     hooksStoreProps,
     reactFlowProps: { fitView: false },
   })
@@ -131,10 +121,10 @@ function renderEdgeMenu(options?: {
 
 describe('EdgeContextmenu', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     latestNodes = []
     latestEdges = []
   })
+  afterEach(() => vi.useRealTimers())
 
   it('should not render when edge context menu target is absent', () => {
     renderWorkflowFlowComponent(
@@ -189,7 +179,6 @@ describe('EdgeContextmenu', () => {
       expect(store.getState().contextMenuTarget).toBeUndefined()
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
-    expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
   it('should not render the menu when the referenced edge no longer exists', () => {
@@ -211,23 +200,34 @@ describe('EdgeContextmenu', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
-    const user = userEvent.setup()
-
-    renderEdgeMenu()
+  it('should delete the right-clicked edge and retain undoable history', async () => {
+    const { store } = renderEdgeMenu()
 
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
       clientX: 320,
       clientY: 180,
     })
 
-    await user.click(await screen.findByRole('menuitem', { name: /common\.operation\.delete/i }))
+    const deleteItem = await screen.findByRole('menuitem', { name: /common\.operation\.delete/i })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const timedUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await timedUser.click(deleteItem)
+    await act(async () => vi.advanceTimersByTimeAsync(500))
+    vi.useRealTimers()
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
       expect(latestEdges.map((edge) => edge.id)).toEqual(['e1'])
     })
-    expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
+    expect(store.getState().workflowHistory).toMatchObject({
+      workflowHistoryEvent: 'EdgeDelete',
+      edges: [expect.objectContaining({ id: 'e1', selected: false })],
+    })
+    expect(store.temporal.getState().pastStates).toHaveLength(1)
+    act(() => store.temporal.getState().undo())
+    expect(store.getState().workflowHistory.edges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
+    act(() => store.temporal.getState().redo())
+    expect(store.getState().workflowHistory.edges.map((edge) => edge.id)).toEqual(['e1'])
   })
 
   it.each([
@@ -372,6 +372,10 @@ describe('EdgeContextmenu', () => {
     expect(latestEdges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
     await user.click(item)
     expect(latestEdges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
-    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    await act(async () => vi.advanceTimersByTimeAsync(500))
+    vi.useRealTimers()
+    expect(store.temporal.getState().pastStates).toEqual([])
+    expect(store.getState().workflowHistory.edges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
   })
 })

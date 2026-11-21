@@ -8,7 +8,7 @@ from controllers.inner_api.datasource_credentials import (
     InnerDatasourceDefaultCredentialPayload,
 )
 from services.credentials.query import DatasourceCredentialListItem
-from tests.unit_tests.credential_query_fakes import CredentialServices, DatasourceCredentialQuery
+from tests.helpers.unit.credential_query_fakes import CredentialServices, DatasourceCredentialQuery
 
 
 def test_resolves_default_datasource_credential_metadata(monkeypatch: pytest.MonkeyPatch) -> None:

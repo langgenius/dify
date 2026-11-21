@@ -17,12 +17,12 @@ import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { StudioListLink, StudioListNavigation } from '@/app/components/apps/list-navigation'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
-import { useStudioListHref } from '@/features/studio-list-navigation'
-import { StudioListLink, StudioListNavigation } from '@/features/studio-list-navigation/navigation'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
@@ -36,10 +36,10 @@ import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
 import { serializeSnippetListQuery } from './query-params'
 
-const TagManagementModal = dynamic(
+const TagManagementDialog = dynamic(
   () =>
-    import('@/features/tag-management/components/tag-management-modal').then(
-      (mod) => mod.TagManagementModal,
+    import('@/features/tag-management/tag-management-dialog').then(
+      (mod) => mod.TagManagementDialog,
     ),
   {
     ssr: false,
@@ -83,7 +83,7 @@ const SnippetList = () => {
   const debouncedKeywords = useDebounce(keywords, { wait: SNIPPET_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
 
   useDocumentTitle(t(($) => $['tabs.snippets'], { ns: 'workflow' }))
 
@@ -222,7 +222,7 @@ const SnippetList = () => {
                 type="snippet"
                 value={tagIDs}
                 onChange={setTagIDs}
-                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onOpenTagManagement={() => setShowTagManagementDialog(true)}
               />
               <SearchInput
                 name="snippet-query"
@@ -260,7 +260,7 @@ const SnippetList = () => {
               <SnippetCard
                 key={snippet.id}
                 snippet={snippet}
-                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onOpenTagManagement={() => setShowTagManagementDialog(true)}
                 onRefresh={refetch}
                 onTagsChange={refetch}
               />
@@ -273,10 +273,10 @@ const SnippetList = () => {
         <div ref={anchorRef} className="h-0">
           {' '}
         </div>
-        <TagManagementModal
+        <TagManagementDialog
           type="snippet"
-          show={showTagManagementModal}
-          onClose={() => setShowTagManagementModal(false)}
+          show={showTagManagementDialog}
+          onClose={() => setShowTagManagementDialog(false)}
           onTagsChange={refetch}
         />
       </div>
