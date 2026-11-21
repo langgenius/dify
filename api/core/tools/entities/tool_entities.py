@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import base64
 import contextlib
 from collections.abc import Mapping
@@ -40,6 +41,28 @@ class EmojiIconDict(TypedDict):
 
 
 emoji_icon_adapter: TypeAdapter[EmojiIconDict] = TypeAdapter(EmojiIconDict)
+
+
+def _parse_multiple_select_string(value: str) -> list[str]:
+    """Normalize a stringified multiple-select value to a list of strings.
+
+    Preconditions: `value` is the raw string value of a multiple parameter.
+    Postconditions: returns the items as a list of strings. A value that is
+    the Python repr of a list of strings (for example "['a', 'b']", produced
+    when the workflow engine stringifies a list constant) parses back to
+    that list; any other string splits on commas, dropping empty items.
+    Never raises: an unparsable bracketed string falls back to comma
+    splitting, preserving the previous behavior for such values.
+    """
+    stripped = value.strip()
+    if stripped.startswith("["):
+        try:
+            parsed = ast.literal_eval(stripped)
+        except (ValueError, SyntaxError, RecursionError):
+            parsed = None
+        if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
+            return parsed
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 class ToolLabelEnum(StrEnum):
@@ -404,7 +427,10 @@ class ToolParameter(PluginParameter):
         if isinstance(parameter_value, str):
             # Historical workflows and older frontends stored a multiple-select
             # value as a comma-separated string; normalize it before the checks.
-            parameter_value = [item.strip() for item in parameter_value.split(",") if item.strip()]
+            # The workflow engine may also stringify a list constant to its
+            # Python repr, which must parse back to a list first: splitting it
+            # on commas would keep the brackets and quotes in the values.
+            parameter_value = _parse_multiple_select_string(parameter_value)
         if not isinstance(parameter_value, list):
             raise ValueError(f"tool parameter {self.name} must be a list when multiple is true")
         if not all(isinstance(item, str) for item in parameter_value):
