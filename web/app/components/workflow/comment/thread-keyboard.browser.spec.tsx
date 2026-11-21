@@ -90,21 +90,24 @@ it('confirms reply deletion in its menu: cancel returns to the menu button, dele
   })
   await expect.element(deleteItem).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  // The menu turns into the confirmation and starts on the safe choice.
-  const cancel = screen.getByRole('menuitem', { name: 'common.operation.cancel' })
+  // The confirmation opens beside the menu button and starts on the safe choice.
+  const confirmation = screen.getByRole('dialog', {
+    name: 'workflowComments.comments.confirm.deleteReplyTitle',
+  })
+  const cancel = confirmation.getByRole('button', { name: 'common.operation.cancel' })
   await expect.element(cancel).toHaveFocus()
-  await expect
-    .element(screen.getByText('workflowComments.comments.confirm.deleteReplyTitle'))
-    .toBeVisible()
-  await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+  // The menu button stays visible while the menu hands over to the confirmation.
+  expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(confirmation).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
   expect(onDelete).not.toHaveBeenCalled()
 
   await trigger.click()
   await deleteItem.click()
-  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  await confirmation.getByRole('button', { name: 'common.operation.delete' }).click()
   expect(onDelete).toHaveBeenCalledExactlyOnceWith('second-reply')
   await expect.element(screen.getByText('A second reply')).not.toBeInTheDocument()
   await expect.element(screen.getByText('A reply')).toBeVisible()

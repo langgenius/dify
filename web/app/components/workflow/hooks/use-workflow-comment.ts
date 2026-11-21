@@ -122,6 +122,30 @@ export const useWorkflowComment = () => {
     }
   }, [appId, isCollaborationEnabled, setComments, setCommentsLoading])
 
+  // Write a mutation's result into the cached detail right away, so the thread updates
+  // as soon as the request succeeds instead of after the refetches.
+  const patchCommentDetail = useCallback(
+    (commentId: string, update: (detail: WorkflowCommentDetail) => WorkflowCommentDetail) => {
+      const detail = commentDetailCacheRef.current[commentId]
+      if (!detail) return
+      const next = update(detail)
+      commentDetailCacheRef.current = { ...commentDetailCacheRef.current, [commentId]: next }
+      setCommentDetailCache(commentDetailCacheRef.current)
+      if (activeCommentIdRef.current === commentId) setActiveComment(next)
+    },
+    [setActiveComment, setCommentDetailCache],
+  )
+
+  // Reconcile with the server in the background; nothing waits on it.
+  const syncComment = useCallback(
+    (commentId: string) => {
+      Promise.all([refreshActiveComment(commentId), loadComments()]).catch((error) => {
+        console.error('Failed to refresh comments:', error)
+      })
+    },
+    [loadComments, refreshActiveComment],
+  )
+
   // Setup collaboration
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
@@ -332,30 +356,31 @@ export const useWorkflowComment = () => {
     async (commentId: string) => {
       if (!appId) return
 
-      setActiveCommentLoading(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post({
+        const result = await consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post({
           params: { app_id: appId, comment_id: commentId },
         })
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        await refreshActiveComment(commentId)
-        await loadComments()
+        patchCommentDetail(commentId, (detail) => ({
+          ...detail,
+          resolved: result.resolved,
+          resolved_at: result.resolved_at,
+          resolved_by: result.resolved_by,
+        }))
+        syncComment(commentId)
       } catch (error) {
         console.error('Failed to resolve comment:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setActiveCommentLoading],
+    [appId, patchCommentDetail, syncComment],
   )
 
   const handleCommentDelete = useCallback(
     async (commentId: string) => {
       if (!appId) return
 
-      setActiveCommentLoading(true)
       try {
         await consoleClient.apps.byAppId.workflow.comments.byCommentId.delete({
           params: { app_id: appId, comment_id: commentId },
@@ -373,7 +398,8 @@ export const useWorkflowComment = () => {
         const fallbackTarget =
           commentIndex >= 0 ? (comments[commentIndex + 1] ?? comments[commentIndex - 1]) : undefined
 
-        await loadComments()
+        setComments(currentComments)
+        loadComments()
 
         if (fallbackTarget) {
           handleCommentIconClick(fallbackTarget)
@@ -387,8 +413,6 @@ export const useWorkflowComment = () => {
         }
       } catch (error) {
         console.error('Failed to delete comment:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
     [
@@ -397,8 +421,8 @@ export const useWorkflowComment = () => {
       handleCommentIconClick,
       loadComments,
       setActiveCommentId,
-      setActiveCommentLoading,
       setCommentDetailCache,
+      setComments,
     ],
   )
 
@@ -492,13 +516,13 @@ export const useWorkflowComment = () => {
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        await refreshActiveComment(commentId)
-        await loadComments()
+        patchCommentDetail(commentId, (detail) => ({ ...detail, content: trimmed }))
+        syncComment(commentId)
       } catch (error) {
         console.error('Failed to update comment:', error)
       }
     },
-    [activeComment, appId, comments, loadComments, refreshActiveComment],
+    [activeComment, appId, comments, patchCommentDetail, syncComment],
   )
 
   const handleCommentReply = useCallback(
@@ -509,22 +533,47 @@ export const useWorkflowComment = () => {
 
       setReplySubmitting(true)
       try {
-        await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
+        const reply = await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.post({
           params: { app_id: appId, comment_id: commentId },
           body: { content: trimmed, mentioned_user_ids: mentionedUserIds },
         })
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        await refreshActiveComment(commentId)
-        await loadComments()
+        patchCommentDetail(commentId, (detail) => ({
+          ...detail,
+          replies: [
+            ...detail.replies,
+            {
+              id: reply.id,
+              content: trimmed,
+              created_at: normalizeTimestamp(reply.created_at),
+              created_by: userProfile.id,
+              created_by_account: {
+                id: userProfile.id,
+                name: userProfile.name,
+                email: userProfile.email,
+                avatar_url: userProfile.avatar_url || userProfile.avatar || null,
+              },
+            },
+          ],
+          mentions: [
+            ...detail.mentions,
+            ...mentionedUserIds.map((mentionedId) => ({
+              mentioned_user_id: mentionedId,
+              mentioned_user_account: mentionableUserById.get(mentionedId) ?? null,
+              reply_id: reply.id,
+            })),
+          ],
+        }))
+        syncComment(commentId)
       } catch (error) {
         console.error('Failed to create reply:', error)
       } finally {
         setReplySubmitting(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setReplySubmitting],
+    [appId, mentionableUserById, patchCommentDetail, setReplySubmitting, syncComment, userProfile],
   )
 
   const handleCommentReplyUpdate = useCallback(
@@ -547,22 +596,26 @@ export const useWorkflowComment = () => {
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        await refreshActiveComment(commentId)
-        await loadComments()
+        patchCommentDetail(commentId, (detail) => ({
+          ...detail,
+          replies: detail.replies.map((reply) =>
+            reply.id === replyId ? { ...reply, content: trimmed } : reply,
+          ),
+        }))
+        syncComment(commentId)
       } catch (error) {
         console.error('Failed to update reply:', error)
       } finally {
         setReplyUpdating(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setReplyUpdating],
+    [appId, patchCommentDetail, setReplyUpdating, syncComment],
   )
 
   const handleCommentReplyDelete = useCallback(
     async (commentId: string, replyId: string) => {
       if (!appId) return
 
-      setActiveCommentLoading(true)
       try {
         await consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete({
           params: { app_id: appId, comment_id: commentId, reply_id: replyId },
@@ -570,15 +623,17 @@ export const useWorkflowComment = () => {
 
         collaborationManager.emitCommentsUpdate(appId)
 
-        await refreshActiveComment(commentId)
-        await loadComments()
+        patchCommentDetail(commentId, (detail) => ({
+          ...detail,
+          replies: detail.replies.filter((reply) => reply.id !== replyId),
+          mentions: detail.mentions.filter((mention) => mention.reply_id !== replyId),
+        }))
+        syncComment(commentId)
       } catch (error) {
         console.error('Failed to delete reply:', error)
-      } finally {
-        setActiveCommentLoading(false)
       }
     },
-    [appId, loadComments, refreshActiveComment, setActiveCommentLoading],
+    [appId, patchCommentDetail, syncComment],
   )
 
   const handleCommentNavigate = useCallback(

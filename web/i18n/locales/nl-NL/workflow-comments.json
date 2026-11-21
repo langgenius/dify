@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "Vorige reactie",
   "comments.aria.replyActions": "Antwoordacties",
   "comments.aria.resolveComment": "Oplossen",
-  "comments.confirm.deleteReplyDesc": "Dit antwoord wordt permanent verwijderd.",
   "comments.confirm.deleteReplyTitle": "Dit antwoord verwijderen?",
   "comments.confirm.deleteThreadDesc": "Deze actie verwijdert de thread en alle antwoorden permanent. Dit kan niet ongedaan worden gemaakt.",
   "comments.confirm.deleteThreadTitle": "Deze thread verwijderen?",
@@ -26,7 +25,6 @@
   "comments.placeholder.editComment": "Reactie bewerken",
   "comments.placeholder.editReply": "Antwoord bewerken",
   "comments.placeholder.reply": "Antwoord",
-  "comments.reply": "Antwoord",
   "comments.replyCount_one": "{{count}} reactie",
   "comments.replyCount_other": "{{count}} reacties"
 }

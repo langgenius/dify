@@ -9,7 +9,7 @@ import {
   PopoverPortal,
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -176,15 +176,24 @@ describe('Comment thread focus', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    expect(screen.getByRole('menu')).toHaveTextContent(
-      'workflowComments.comments.confirm.deleteReplyTitle',
-    )
+    const confirmation = await screen.findByRole('dialog', {
+      name: 'workflowComments.comments.confirm.deleteReplyTitle',
+    })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     // The safe choice starts focused, so a second Enter cannot delete.
     await waitFor(() =>
-      expect(screen.getByRole('menuitem', { name: 'common.operation.cancel' })).toHaveFocus(),
+      expect(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      ).toHaveFocus(),
     )
     await user.keyboard('{Enter}')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).not.toBeInTheDocument(),
+    )
     await waitFor(() => expect(trigger).toHaveFocus())
     expect(onDelete).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
@@ -193,7 +202,13 @@ describe('Comment thread focus', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).getByRole('button', { name: 'common.operation.delete' }),
+    )
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -243,7 +258,13 @@ describe('Comment thread focus', () => {
     await user.click(
       screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
     )
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    await user.click(
+      within(
+        await screen.findByRole('dialog', {
+          name: 'workflowComments.comments.confirm.deleteReplyTitle',
+        }),
+      ).getByRole('button', { name: 'common.operation.delete' }),
+    )
     await act(async () => finishDeletion())
 
     expect(screen.queryByText('A reply')).not.toBeInTheDocument()

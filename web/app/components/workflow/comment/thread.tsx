@@ -15,8 +15,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import {
+  Popover,
+  PopoverClose,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+} from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -44,7 +53,7 @@ type CommentThreadProps = {
   replySubmitting?: boolean
   replyUpdating?: boolean
   onDelete?: (commentId: string) => Promise<void> | void
-  onResolve?: () => void
+  onResolve?: () => Promise<void> | void
   onPrev?: () => void
   onNext?: () => void
   canGoPrev?: boolean
@@ -112,6 +121,8 @@ export function CommentThread({
   // The comment a delete confirmation belongs to. It stays open only while that
   // comment is the one shown, so deleting it and moving on closes the dialog.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
+  const [resolvePending, setResolvePending] = useState(false)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(
@@ -160,11 +171,19 @@ export function CommentThread({
               render={
                 <button
                   type="button"
-                  disabled={comment.resolved || loading}
+                  disabled={comment.resolved || loading || resolvePending}
                   className={cn(
                     'flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
                   )}
-                  onClick={onResolve}
+                  onClick={async () => {
+                    if (!onResolve) return
+                    setResolvePending(true)
+                    try {
+                      await onResolve()
+                    } finally {
+                      setResolvePending(false)
+                    }
+                  }}
                   aria-label={t(($) => $['comments.aria.resolveComment'], {
                     ns: 'workflowComments',
                   })}
@@ -240,7 +259,7 @@ export function CommentThread({
         open={deletingCommentId === comment.id}
         onOpenChange={(open, eventDetails) => {
           if (open) return
-          if (loading) eventDetails.cancel()
+          if (deletePending) eventDetails.cancel()
           else setDeletingCommentId(null)
         }}
         onOpenChangeComplete={(open) => {
@@ -257,13 +276,19 @@ export function CommentThread({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton disabled={loading}>
+            <AlertDialogCancelButton disabled={deletePending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              loading={loading}
-              onClick={() => {
-                if (deletingCommentId) return onDelete?.(deletingCommentId)
+              loading={deletePending}
+              onClick={async () => {
+                if (!deletingCommentId || !onDelete) return
+                setDeletePending(true)
+                try {
+                  await onDelete(deletingCommentId)
+                } finally {
+                  setDeletePending(false)
+                }
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -447,7 +472,7 @@ type CommentThreadEntryProps = {
   /** Called after an edit is saved or cancelled. */
   onEditEnd: () => void
   deleteLabel?: string
-  /** Asked inside the menu before onDelete runs. */
+  /** Asked beside the actions button before onDelete runs. */
   deleteConfirmLabel?: string
   onDelete?: () => Promise<void> | void
 }
@@ -477,6 +502,9 @@ function CommentThreadEntry({
   })
   const [draft, setDraft] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const cancelDeleteRef = useRef<HTMLButtonElement>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const editing = draft !== null
 
@@ -502,57 +530,82 @@ function CommentThreadEntry({
   return (
     <CommentThreadItem>
       {isOwn && !editing && (
-        <Menu
-          onOpenChange={(open) => {
-            if (!open) setConfirmingDelete(false)
-          }}
-        >
+        <Menu>
           <MenuTrigger
-            className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+            ref={menuTriggerRef}
+            data-confirming={confirmingDelete || undefined}
+            className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-confirming:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
             aria-label={actionsLabel}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </MenuTrigger>
-          <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
-            {confirmingDelete ? (
-              <div className="flex flex-col gap-1.5 px-1 pt-0.5 pb-1">
-                <div className="system-sm-semibold text-text-primary">{deleteConfirmLabel}</div>
-                <div className="flex gap-1">
-                  <MenuItem
-                    // Start on the safe choice so a second Enter cannot delete.
-                    ref={focusOnMount}
-                    className="h-6 flex-1 justify-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 system-xs-medium text-components-button-secondary-text shadow-xs data-highlighted:bg-components-button-secondary-bg-hover"
-                  >
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </MenuItem>
-                  <MenuItem
-                    disabled={disabled}
-                    className="h-6 flex-1 justify-center rounded-md bg-components-button-destructive-primary-bg px-1.5 system-xs-medium text-components-button-destructive-primary-text data-highlighted:bg-components-button-destructive-primary-bg-hover"
-                    onClick={() => onDelete?.()}
-                  >
-                    {t(($) => $['operation.delete'], { ns: 'common' })}
-                  </MenuItem>
-                </div>
-              </div>
-            ) : (
-              <>
-                <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
-                  {editLabel}
-                </MenuItem>
-                {onDelete && (
-                  <MenuItem
-                    className="px-3"
-                    variant="destructive"
-                    closeOnClick={false}
-                    onClick={() => setConfirmingDelete(true)}
-                  >
-                    {deleteLabel}
-                  </MenuItem>
-                )}
-              </>
+          <MenuContent
+            align="end"
+            className="w-36 backdrop-blur-[10px]"
+            finalFocus={confirmingDelete ? false : undefined}
+          >
+            <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
+              {editLabel}
+            </MenuItem>
+            {onDelete && (
+              <MenuItem
+                className="px-3"
+                variant="destructive"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                {deleteLabel}
+              </MenuItem>
             )}
           </MenuContent>
         </Menu>
+      )}
+      {onDelete && (
+        <Popover
+          open={confirmingDelete}
+          onOpenChange={(open, eventDetails) => {
+            if (!open && deleting) eventDetails.cancel()
+            else setConfirmingDelete(open)
+          }}
+        >
+          <PopoverPortal>
+            <PopoverPositioner anchor={menuTriggerRef} side="bottom" align="end" sideOffset={4}>
+              <PopoverPopup
+                initialFocus={cancelDeleteRef}
+                finalFocus={menuTriggerRef}
+                className="flex w-36 flex-col gap-1.5 rounded-[10px] border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg-blur px-2 pt-1.5 pb-2 shadow-lg backdrop-blur-[5px] transition-none"
+              >
+                <PopoverTitle className="system-sm-semibold text-text-primary">
+                  {deleteConfirmLabel}
+                </PopoverTitle>
+                <div className="flex gap-1">
+                  <PopoverClose
+                    ref={cancelDeleteRef}
+                    render={<Button size="small" variant="secondary" className="flex-1" />}
+                  >
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </PopoverClose>
+                  <Button
+                    size="small"
+                    variant="primary"
+                    tone="destructive"
+                    className="flex-1"
+                    loading={deleting}
+                    onClick={async () => {
+                      setDeleting(true)
+                      try {
+                        await onDelete()
+                      } finally {
+                        setDeleting(false)
+                      }
+                    }}
+                  >
+                    {t(($) => $['operation.delete'], { ns: 'common' })}
+                  </Button>
+                </div>
+              </PopoverPopup>
+            </PopoverPositioner>
+          </PopoverPortal>
+        </Popover>
       )}
       {editing ? (
         <div className="flex gap-3">
@@ -596,14 +649,6 @@ function CommentThreadEntry({
       )}
     </CommentThreadItem>
   )
-}
-
-// Focus after the menu's own focus handling for the commit that mounted the element.
-function focusOnMount(element: HTMLElement | null) {
-  if (!element) return
-  queueMicrotask(() => {
-    if (element.isConnected) element.focus()
-  })
 }
 
 // An edit field opens focused with its text ready to extend. The menu that started the

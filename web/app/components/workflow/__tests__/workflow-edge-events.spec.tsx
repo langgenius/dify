@@ -515,7 +515,13 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     await screen.findByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
   )
   expect(api.deleteReply).not.toHaveBeenCalled()
-  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+  await user.click(
+    within(
+      await screen.findByRole('dialog', {
+        name: 'workflowComments.comments.confirm.deleteReplyTitle',
+      }),
+    ).getByRole('button', { name: 'common.operation.delete' }),
+  )
   await waitFor(() =>
     expect(api.deleteReply).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-1', comment_id: 'user-1', reply_id: 'reply-1' },

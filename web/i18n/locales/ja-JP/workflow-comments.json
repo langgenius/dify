@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "前のコメント",
   "comments.aria.replyActions": "返信アクション",
   "comments.aria.resolveComment": "解決",
-  "comments.confirm.deleteReplyDesc": "この返信は完全に削除されます。",
   "comments.confirm.deleteReplyTitle": "この返信を削除しますか？",
   "comments.confirm.deleteThreadDesc": "この操作によりスレッドとその返信がすべて完全に削除され、元に戻せません。",
   "comments.confirm.deleteThreadTitle": "このスレッドを削除しますか？",
@@ -26,7 +25,6 @@
   "comments.placeholder.editComment": "コメントを編集",
   "comments.placeholder.editReply": "返信を編集",
   "comments.placeholder.reply": "返信",
-  "comments.reply": "返信",
   "comments.replyCount_one": "{{count}} 件の返信",
   "comments.replyCount_other": "{{count}} 件の返信"
 }

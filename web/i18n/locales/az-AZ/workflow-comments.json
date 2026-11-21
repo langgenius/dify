@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "Əvvəlki şərhə keç",
   "comments.aria.replyActions": "Cavab əməliyyatları",
   "comments.aria.resolveComment": "Həll et",
-  "comments.confirm.deleteReplyDesc": "Bu cavab həmişəlik silinəcək.",
   "comments.confirm.deleteReplyTitle": "Bu cavab silinsin?",
   "comments.confirm.deleteThreadDesc": "Bu əməliyyat şərh zəncirini və ona verilmiş bütün cavabları həmişəlik siləcək. Bu əməliyyatı geri qaytarmaq mümkün deyil.",
   "comments.confirm.deleteThreadTitle": "Bu şərh zənciri silinsin?",
@@ -26,7 +25,6 @@
   "comments.placeholder.editComment": "Şərhi redaktə et",
   "comments.placeholder.editReply": "Cavabı redaktə et",
   "comments.placeholder.reply": "Cavab ver",
-  "comments.reply": "Cavab ver",
   "comments.replyCount_one": "{{count}} cavab",
   "comments.replyCount_other": "{{count}} cavab"
 }

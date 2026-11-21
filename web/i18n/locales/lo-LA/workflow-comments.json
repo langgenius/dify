@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "ຄຳເຫັນກ່ອນໜ້າ",
   "comments.aria.replyActions": "ຈັດການການຕອບກັບ",
   "comments.aria.resolveComment": "ແກ້ໄຂແລ້ວ",
-  "comments.confirm.deleteReplyDesc": "ການຕອບກັບນີ້ຈະຖືກລຶບຖາວອນ.",
   "comments.confirm.deleteReplyTitle": "ລຶບການຕອບກັບນີ້ບໍ?",
   "comments.confirm.deleteThreadDesc": "ການດຳເນີນການນີ້ຈະລຶບຫົວຂໍ້ຄຳເຫັນ ແລະ ການຕອບກັບທັງໝົດຖາວອນ. ບໍ່ສາມາດຍົກເລີກໄດ້.",
   "comments.confirm.deleteThreadTitle": "ລຶບຫົວຂໍ້ຄຳເຫັນນີ້ບໍ?",
@@ -26,7 +25,6 @@
   "comments.placeholder.editComment": "ແກ້ໄຂຄຳເຫັນ",
   "comments.placeholder.editReply": "ແກ້ໄຂການຕອບກັບ",
   "comments.placeholder.reply": "ຕອບກັບ",
-  "comments.reply": "ຕອບກັບ",
   "comments.replyCount_one": "{{count}} ການຕອບກັບ",
   "comments.replyCount_other": "{{count}} ການຕອບກັບ"
 }

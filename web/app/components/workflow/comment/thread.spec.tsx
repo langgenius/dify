@@ -292,12 +292,11 @@ describe('CommentThread', () => {
     })
     await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
     await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
-    // The menu turns into its own delete confirmation.
-    expect(
-      await screen.findByText('workflowComments.comments.confirm.deleteReplyTitle'),
-    ).toBeVisible()
+    const confirmation = await screen.findByRole('dialog', {
+      name: 'workflowComments.comments.confirm.deleteReplyTitle',
+    })
     expect(onReplyDelete).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.delete' }))
 
     expect(onReplyDelete).toHaveBeenCalledWith('reply-1')
   })

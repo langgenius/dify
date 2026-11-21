@@ -575,15 +575,11 @@ describe('useWorkflowComment', () => {
     expect(mockUpdateWorkflowCommentReply).not.toHaveBeenCalled()
   })
 
-  it.each(['create', 'update', 'delete'] as const)(
+  it.each(['create', 'update'] as const)(
     'keeps reply %s pending until failure, then permits retry',
     async (operation) => {
       const request =
-        operation === 'create'
-          ? mockCreateWorkflowCommentReply
-          : operation === 'update'
-            ? mockUpdateWorkflowCommentReply
-            : mockDeleteWorkflowCommentReply
+        operation === 'create' ? mockCreateWorkflowCommentReply : mockUpdateWorkflowCommentReply
       let rejectRequest!: (error: Error) => void
       request.mockReturnValueOnce(
         new Promise((_resolve, reject) => {
@@ -597,15 +593,9 @@ describe('useWorkflowComment', () => {
       const submit = () =>
         operation === 'create'
           ? result.current.handleCommentReply('comment-1', 'new reply')
-          : operation === 'update'
-            ? result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
-            : result.current.handleCommentReplyDelete('comment-1', 'reply-1')
+          : result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
       const isPending = () =>
-        operation === 'create'
-          ? result.current.replySubmitting
-          : operation === 'update'
-            ? result.current.replyUpdating
-            : result.current.activeCommentLoading
+        operation === 'create' ? result.current.replySubmitting : result.current.replyUpdating
       let pending!: Promise<void>
       act(() => {
         pending = submit()
@@ -625,6 +615,69 @@ describe('useWorkflowComment', () => {
       expect(isPending()).toBe(false)
     },
   )
+
+  it('shows thread changes once each request succeeds, without waiting for the refetches', async () => {
+    const commentA = baseComment()
+    const detail: WorkflowCommentDetail = {
+      ...baseCommentDetail(),
+      id: commentA.id,
+      replies: [
+        {
+          id: 'reply-1',
+          content: 'old reply',
+          created_at: 1,
+          created_by: 'user-1',
+        },
+      ],
+    }
+    mockCreateWorkflowCommentReply.mockResolvedValue({ id: 'reply-2', created_at: 2 })
+    mockResolveWorkflowComment.mockResolvedValue({
+      id: commentA.id,
+      resolved: true,
+      resolved_at: 3,
+      resolved_by: 'user-1',
+    })
+    // The reconciling refetches never finish, so anything shown came from the mutations.
+    mockFetchWorkflowComment.mockReturnValue(new Promise(() => {}))
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [commentA.id]: detail },
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentReply(commentA.id, ' new reply ')
+    })
+    expect(result.current.replySubmitting).toBe(false)
+    expect(store.getState().activeCommentDetail?.replies.map((reply) => reply.content)).toEqual([
+      'old reply',
+      'new reply',
+    ])
+
+    await act(async () => {
+      await result.current.handleCommentReplyUpdate(commentA.id, 'reply-1', 'edited reply')
+    })
+    expect(store.getState().activeCommentDetail?.replies[0]?.content).toBe('edited reply')
+
+    await act(async () => {
+      await result.current.handleCommentReplyDelete(commentA.id, 'reply-1')
+    })
+    expect(store.getState().activeCommentDetail?.replies.map((reply) => reply.id)).toEqual([
+      'reply-2',
+    ])
+
+    await act(async () => {
+      await result.current.handleCommentResolve(commentA.id)
+    })
+    expect(store.getState().activeCommentDetail?.resolved).toBe(true)
+    expect(store.getState().activeCommentDetailLoading).toBe(false)
+  })
 
   it('keeps the selected thread loading when an earlier thread request finishes', async () => {
     const first = baseComment()

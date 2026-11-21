@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "Comentario anterior",
   "comments.aria.replyActions": "Acciones de respuesta",
   "comments.aria.resolveComment": "Resolver comentario",
-  "comments.confirm.deleteReplyDesc": "Esta respuesta se eliminará de forma permanente.",
   "comments.confirm.deleteReplyTitle": "¿Eliminar esta respuesta?",
   "comments.confirm.deleteThreadDesc": "Esta acción eliminará permanentemente la conversación y todas sus respuestas. No se puede deshacer.",
   "comments.confirm.deleteThreadTitle": "¿Eliminar esta conversación?",
@@ -26,7 +25,6 @@
   "comments.placeholder.editComment": "Editar comentario",
   "comments.placeholder.editReply": "Editar respuesta",
   "comments.placeholder.reply": "Responder",
-  "comments.reply": "Responder",
   "comments.replyCount_one": "{{count}} respuesta",
   "comments.replyCount_other": "{{count}} respuestas"
 }

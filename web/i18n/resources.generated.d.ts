@@ -6910,7 +6910,6 @@ export default interface Resources {
     'comments.aria.previousComment': 'Previous comment'
     'comments.aria.replyActions': 'Reply actions'
     'comments.aria.resolveComment': 'Resolve'
-    'comments.confirm.deleteReplyDesc': 'This reply will be removed permanently.'
     'comments.confirm.deleteReplyTitle': 'Delete this reply?'
     'comments.confirm.deleteThreadDesc': 'This action will permanently delete the thread and all its replies. This cannot be undone.'
     'comments.confirm.deleteThreadTitle': 'Delete this thread?'
@@ -6925,7 +6924,6 @@ export default interface Resources {
     'comments.placeholder.editComment': 'Edit comment'
     'comments.placeholder.editReply': 'Edit reply'
     'comments.placeholder.reply': 'Reply'
-    'comments.reply': 'Reply'
     'comments.replyCount': '{{count}} reply' | '{{count}} replies'
   }
   workflowDebug: {
