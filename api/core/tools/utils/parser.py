@@ -109,6 +109,15 @@ class ApiBasedToolSchemaParser:
             # check if there is a request body
             if "requestBody" in interface["operation"]:
                 request_body = interface["operation"]["requestBody"]
+                if "$ref" in request_body:
+                    # The request body can be a reference to components/requestBodies.
+                    # Store the resolved object so the tool sends the body at run time.
+                    root = openapi
+                    reference = request_body["$ref"].split("/")[1:]
+                    for ref in reference:
+                        root = root[ref]
+                    request_body = root
+                    interface["operation"]["requestBody"] = request_body
                 if "content" in request_body:
                     for content_type, content in request_body["content"].items():
                         # if there is a reference, get the reference and overwrite the content

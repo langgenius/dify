@@ -584,3 +584,49 @@ def test_parse_openapi_to_tool_bundle_fills_variables_of_the_request_env_server(
 
     assert len(bundles) == 1
     assert bundles[0].server_url == "https://acme.example.com/"
+
+
+def test_parse_openapi_to_tool_bundle_resolves_request_body_reference(app: Flask) -> None:
+    openapi = {
+        "openapi": "3.0.0",
+        "info": {"title": "Pet API", "version": "1.0.0"},
+        "servers": [{"url": "https://api.example.com"}],
+        "paths": {
+            "/pets": {
+                "post": {
+                    "operationId": "createPet",
+                    "requestBody": {"$ref": "#/components/requestBodies/Pet"},
+                    "responses": {"200": {"description": "OK"}},
+                }
+            }
+        },
+        "components": {
+            "requestBodies": {
+                "Pet": {
+                    "required": True,
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Pet"}}},
+                }
+            },
+            "schemas": {
+                "Pet": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                }
+            },
+        },
+    }
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    assert bundles[0].parameters is not None
+    parameters = {parameter.name: parameter for parameter in bundles[0].parameters}
+    assert parameters.keys() == {"name", "age"}
+    assert parameters["name"].required is True
+    assert parameters["age"].type == ToolParameter.ToolParameterType.NUMBER
+    # The tool reads the request body from the stored operation at run time.
+    request_body = bundles[0].openapi["requestBody"]
+    assert "$ref" not in request_body
+    assert request_body["content"]["application/json"]["schema"]["properties"].keys() == {"name", "age"}
