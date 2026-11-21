@@ -21,6 +21,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -70,7 +71,7 @@ const ModelLoadBalancingModal = ({
   const [loading, setLoading] = useState(false)
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { isLoading, data, refetch } = useQuery({
+  const { isFetching, data, refetch } = useQuery({
     ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
       {
         input: {
@@ -316,8 +317,13 @@ const ModelLoadBalancingModal = ({
       <Dialog
         open={Boolean(model) && open}
         disablePointerDismissal
-        onOpenChange={(open) => {
-          if (!open) onClose?.()
+        onOpenChange={(open, eventDetails) => {
+          if (open) return
+          if (loading) {
+            eventDetails.cancel()
+            return
+          }
+          onClose?.()
         }}
       >
         <DialogContent className="w-160">
@@ -347,10 +353,11 @@ const ModelLoadBalancingModal = ({
             </DialogBody>
           ) : (
             <>
-              <DialogBody>
+              <DialogBody inert={loading}>
                 <div
                   className={cn(
                     'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+                    loading && 'opacity-60',
                     draftConfig.enabled
                       ? 'border-components-panel-border'
                       : 'cursor-default border-util-colors-blue-blue-600',
@@ -422,7 +429,7 @@ const ModelLoadBalancingModal = ({
                         __model_type: model.model_type,
                       },
                       configurationMethod: model.fetch_from,
-                      className: 'mt-2',
+                      className: cn('mt-2', loading && 'opacity-60'),
                       modelCredential,
                       onUpdate: handleUpdate,
                       onRemove: handleRemoveCredential,
@@ -438,6 +445,7 @@ const ModelLoadBalancingModal = ({
               <DialogFooter>
                 {!providerFormSchemaPredefined && (
                   <Button
+                    disabled={loading}
                     onClick={() =>
                       openConfirmDelete(undefined, {
                         model: model.model,
@@ -449,17 +457,18 @@ const ModelLoadBalancingModal = ({
                     {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
                   </Button>
                 )}
-                <Button onClick={onClose}>
+                <DialogClose render={<Button />} disabled={loading}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </Button>
+                </DialogClose>
                 <Button
                   variant="primary"
                   onClick={handleSave}
+                  loading={loading}
                   disabled={
-                    loading ||
                     (draftConfig?.enabled &&
                       (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) < 2) ||
-                    isLoading
+                    isFetching ||
+                    doingAction
                   }
                 >
                   {t(($) => $['operation.save'], { ns: 'common' })}
