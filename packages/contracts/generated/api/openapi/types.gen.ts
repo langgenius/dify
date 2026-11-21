@@ -469,6 +469,82 @@ export type CustomModelRow = {
   model_type: string
 }
 
+export type DatasetCreatePayload = {
+  description?: string
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_id?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
+  name: string
+  permission?: 'all_team_members' | 'only_me' | 'partial_members' | null
+  provider?: 'external' | 'vendor'
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type DatasetListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type DatasetListResponse = {
+  data: Array<DatasetResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type DatasetResponse = {
+  created_at: number
+  description: string | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  external_knowledge_api_id: string | null
+  external_knowledge_id: string | null
+  id: string
+  indexing_technique: string | null
+  name: string
+  permission: string
+  provider: string
+  retrieval_model: {
+    [key: string]: unknown
+  } | null
+  updated_at: number
+}
+
+export type DatasetUpdatePayload = {
+  description?: string | null
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_id?: string | null
+  external_retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  icon_info?: {
+    [key: string]: unknown
+  } | null
+  indexing_technique?: 'economy' | 'high_quality' | null
+  is_multimodal?: boolean | null
+  name?: string | null
+  partial_member_list?: Array<{
+    [key: string]: string
+  }> | null
+  permission?: 'all_team_members' | 'only_me' | 'partial_members' | null
+  provider?: 'external' | 'vendor' | null
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  summary_index_setting?: {
+    [key: string]: unknown
+  } | null
+}
+
 export type DefaultModelPayload = {
   model: string
   provider: string
@@ -542,6 +618,83 @@ export type DeviceTokenResponse = {
   token: string
   token_id: string
   workspaces?: Array<WorkspacePayload>
+}
+
+export type DocumentAndBatchResponse = {
+  batch: string
+  document: DocumentResponse
+}
+
+export type DocumentCreateByTextPayload = {
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model' | null
+  doc_language?: string | null
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
+  name?: string | null
+  process_rule?: {
+    [key: string]: unknown
+  } | null
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  text?: string | null
+}
+
+export type DocumentIndexingStatusResponse = {
+  batch: string
+  error: string | null
+  indexing_status: string
+}
+
+export type DocumentListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type DocumentListResponse = {
+  data: Array<DocumentResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type DocumentResponse = {
+  archived: boolean
+  completed_at: number | null
+  created_at: number | null
+  data_source_type: string | null
+  dataset_id: string
+  doc_form: string | null
+  doc_language: string | null
+  document_process_rule: {
+    [key: string]: unknown
+  } | null
+  enabled: boolean
+  error: string | null
+  id: string
+  indexing_status: string
+  name: string
+  updated_at: number | null
+}
+
+export type DocumentUpdateByTextPayload = {
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model' | null
+  doc_language?: string | null
+  embedding_model?: string | null
+  embedding_model_provider?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
+  name?: string | null
+  process_rule?: {
+    [key: string]: unknown
+  } | null
+  retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  text?: string | null
 }
 
 export type DraftWorkflowRunPayload = {
@@ -4448,6 +4601,288 @@ export type PostWorkspacesByWorkspaceIdAppsWorkflowResponses = {
 
 export type PostWorkspacesByWorkspaceIdAppsWorkflowResponse =
   PostWorkspacesByWorkspaceIdAppsWorkflowResponses[keyof PostWorkspacesByWorkspaceIdAppsWorkflowResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/datasets'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsError =
+  GetWorkspacesByWorkspaceIdDatasetsErrors[keyof GetWorkspacesByWorkspaceIdDatasetsErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsResponses = {
+  200: DatasetListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsResponse =
+  GetWorkspacesByWorkspaceIdDatasetsResponses[keyof GetWorkspacesByWorkspaceIdDatasetsResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsData = {
+  body: DatasetCreatePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsError =
+  PostWorkspacesByWorkspaceIdDatasetsErrors[keyof PostWorkspacesByWorkspaceIdDatasetsErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsResponses = {
+  201: DatasetResponse
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsResponse =
+  PostWorkspacesByWorkspaceIdDatasetsResponses[keyof PostWorkspacesByWorkspaceIdDatasetsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: DatasetResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdData = {
+  body: DatasetUpdatePayload
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}'
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
+  PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
+  200: DatasetResponse
+}
+
+export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
+  PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses[keyof PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchData = {
+  body?: never
+  path: {
+    batch: string
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses = {
+  200: DocumentIndexingStatusResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsData = {
+  body?: never
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses = {
+  200: DocumentListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdError =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdErrors]
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
+  200: DocumentResponse
+}
+
+export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
+  body: DocumentUpdateByTextPayload
+  path: {
+    dataset_id: string
+    document_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses =
+  {
+    200: DocumentAndBatchResponse
+  }
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextData = {
+  body: DocumentCreateByTextPayload
+  path: {
+    dataset_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText'
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextError =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextErrors]
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses = {
+  200: DocumentAndBatchResponse
+}
+
+export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponse =
+  PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses[keyof PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponses]
 
 export type GetWorkspacesByWorkspaceIdDefaultModelsByModelTypeData = {
   body?: never
