@@ -637,7 +637,9 @@ class DatasetService:
         if permission:
             dataset.permission = permission
 
-        # Validate and update external knowledge configuration
+        # Validate and update external knowledge configuration. The service
+        # requires both binding ids on every update, so the OpenAPI payload
+        # documents them as required rather than defaulting to the stored row.
         external_knowledge_id = data.get("external_knowledge_id", None)
         external_knowledge_api_id = data.get("external_knowledge_api_id", None)
 

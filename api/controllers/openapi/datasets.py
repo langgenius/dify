@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from http import HTTPStatus
 from typing import Any, Final
 
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
-from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import DatasetId, RBACCheck, RBACPermission
@@ -23,7 +22,9 @@ from controllers.openapi._models import (
     DatasetResponse,
     DatasetUpdatePayload,
     DocumentAndBatchResponse,
+    DocumentBatchItem,
     DocumentCreateByTextPayload,
+    DocumentDisplayStatus,
     DocumentIndexingStatusResponse,
     DocumentListQuery,
     DocumentListResponse,
@@ -33,18 +34,17 @@ from controllers.openapi._models import (
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     WORKSPACE_READ_GUARDS,
+    CheckDocumentsUploadQuota,
+    CheckKnowledgeRateLimit,
     CheckRBACPermission,
-    CheckScope,
-    CheckSubject,
-    CheckWorkspaceMember,
-    CheckWorkspaceRole,
+    CheckVectorSpaceQuota,
     workspace_write_guards,
 )
-from controllers.openapi.auth.subjects import AccountSubject
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models.account import TenantAccountRole
+from models.enums import DocumentCreatedFrom
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -77,24 +77,41 @@ _DOCUMENT_BATCH: Final = f"{_ITEM}/document-batches/<string:batch>"
 _PAT: Final = PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS
 
 
-def _dataset_write_guards(permission: RBACPermission, *, roles: frozenset[TenantAccountRole] | None):
-    """`workspace_write_guards` scoped to the `dataset_id` path parameter."""
-    return (
-        CheckSubject(allowed=(AccountSubject,)),
-        CheckScope(Scope.WORKSPACE_WRITE),
-        CheckWorkspaceMember(),
-        CheckRBACPermission(RBACCheck(permission, DatasetId())),
-        *((CheckWorkspaceRole(roles),) if roles is not None else ()),
-    )
-
-
 _DATASET_CREATE_GUARDS: Final = workspace_write_guards(
-    RBACPermission.DATASET_CREATE_AND_MANAGEMENT, roles=_DATASET_EDIT_ROLES
+    RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
+    roles=_DATASET_EDIT_ROLES,
+    extra=(CheckKnowledgeRateLimit(),),
 )
-_DATASET_UPDATE_GUARDS: Final = _dataset_write_guards(RBACPermission.DATASET_EDIT, roles=_DATASET_EDIT_ROLES)
-_DATASET_DELETE_GUARDS: Final = _dataset_write_guards(RBACPermission.DATASET_DELETE, roles=_DATASET_EDIT_ROLES)
-_DOCUMENT_CREATE_GUARDS: Final = _dataset_write_guards(RBACPermission.DATASET_USE, roles=_DATASET_EDIT_ROLES)
-_DOCUMENT_DELETE_GUARDS: Final = _dataset_write_guards(RBACPermission.DATASET_DELETE_FILE, roles=_DATASET_EDIT_ROLES)
+_DATASET_UPDATE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.DATASET_EDIT,
+    roles=_DATASET_EDIT_ROLES,
+    locator=DatasetId(),
+    extra=(CheckKnowledgeRateLimit(),),
+)
+_DATASET_DELETE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.DATASET_DELETE,
+    roles=_DATASET_EDIT_ROLES,
+    locator=DatasetId(),
+    extra=(CheckKnowledgeRateLimit(),),
+)
+_DOCUMENT_CREATE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.DATASET_USE,
+    roles=_DATASET_EDIT_ROLES,
+    locator=DatasetId(),
+    extra=(CheckKnowledgeRateLimit(), CheckDocumentsUploadQuota(), CheckVectorSpaceQuota()),
+)
+_DOCUMENT_UPDATE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.DATASET_USE,
+    roles=_DATASET_EDIT_ROLES,
+    locator=DatasetId(),
+    extra=(CheckKnowledgeRateLimit(), CheckVectorSpaceQuota()),
+)
+_DOCUMENT_DELETE_GUARDS: Final = workspace_write_guards(
+    RBACPermission.DATASET_DELETE_FILE,
+    roles=_DATASET_EDIT_ROLES,
+    locator=DatasetId(),
+    extra=(CheckKnowledgeRateLimit(),),
+)
 _DOCUMENT_READ_GUARDS: Final = (
     *WORKSPACE_READ_GUARDS,
     CheckRBACPermission(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())),
@@ -152,10 +169,10 @@ def _dataset_row(record: Mapping[str, Any]) -> DatasetResponse:
     )
 
 
-def _indexing_status(record: Mapping[str, Any]) -> str:
-    """Public vocabulary: `completed` reads `available`, `error` reads `failed`."""
-    status = str(record.get("indexing_status") or "")
-    return {"completed": "available", "error": "failed"}.get(status, status)
+def _display_status(record: Mapping[str, Any]) -> str | None:
+    """The public document status vocabulary shared with the legacy service API."""
+    status = record.get("display_status")
+    return str(status) if status is not None else None
 
 
 def _document_row(record: Mapping[str, Any], *, dataset_id: str) -> DocumentResponse:
@@ -164,7 +181,7 @@ def _document_row(record: Mapping[str, Any], *, dataset_id: str) -> DocumentResp
         dataset_id=dataset_id,
         name=record["name"],
         data_source_type=record.get("data_source_type"),
-        indexing_status=_indexing_status(record),
+        display_status=_display_status(record),
         error=record.get("error"),
         enabled=bool(record.get("enabled", True)),
         archived=bool(record.get("archived", False)),
@@ -190,10 +207,11 @@ def _document_settings(
     body: DocumentCreateByTextPayload | DocumentUpdateByTextPayload,
     *,
     original_document_id: str | None,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str | None]:
     """Translate the flat payload into `KnowledgeConfig` settings, uploading
-    `text` as a file first — the same shape the console's create-by-upload
-    path produces."""
+    `text` as a file last — the same shape the console's create-by-upload path
+    produces. Returns the uploaded file id so the caller can remove it when the
+    service rejects the rest of the settings."""
     defaults = _dataset_defaults(ctx, dataset_id)
     settings: dict[str, Any] = {
         "name": body.name,
@@ -212,6 +230,7 @@ def _document_settings(
     settings.update({key: value for key, value in extra_settings.items() if value is not None})
     if original_document_id is not None:
         settings["original_document_id"] = original_document_id
+    uploaded_file_id: str | None = None
     if body.text is not None:
         upload_file = FileService(db.engine).upload_text(
             text=body.text,
@@ -219,22 +238,53 @@ def _document_settings(
             user_id=ctx.account.id,
             tenant_id=ctx.workspace.id,
         )
+        uploaded_file_id = upload_file.id
         settings["data_source"] = {
             "info_list": {
                 "data_source_type": "upload_file",
-                "file_info_list": {"file_ids": [upload_file.id]},
+                "file_info_list": {"file_ids": [uploaded_file_id]},
             }
         }
-    return {key: value for key, value in settings.items() if value is not None}
+    return {key: value for key, value in settings.items() if value is not None}, uploaded_file_id
+
+
+def _create_documents(
+    ctx: Context,
+    dataset_id: str,
+    body: DocumentCreateByTextPayload | DocumentUpdateByTextPayload,
+    *,
+    original_document_id: str | None,
+) -> dict[str, Any]:
+    uploaded_file_id: str | None = None
+    try:
+        with _document_errors():
+            settings, uploaded_file_id = _document_settings(
+                ctx, dataset_id, body, original_document_id=original_document_id
+            )
+            return application_services().knowledge.documents.create_documents(
+                ctx.request_context,
+                dataset_id=dataset_id,
+                settings=settings,
+                created_from=DocumentCreatedFrom.API,
+            )
+    except Exception:
+        # The text upload commits before the service sees the rest of the
+        # settings; remove it when creation is rejected without masking the
+        # service error.
+        if uploaded_file_id is not None:
+            with suppress(Exception):
+                FileService(db.engine).delete_file(uploaded_file_id)
+        raise
 
 
 @openapi_ns.route(_COLLECTION)
 class DatasetsApi(Resource):
     @endpoint(
-        op="list.dataset",
+        op="get.dataset",
         pat_policy=_PAT,
         kind=Kind.LIST,
         summary="Knowledge bases in the workspace",
+        examples=(Example(title="List the first page of knowledge bases", input={"page": 1, "limit": 20}),),
         requirements=WORKSPACE_READ_GUARDS,
         query=DatasetListQuery,
         returns=(HTTPStatus.OK, DatasetListResponse, "Knowledge bases"),
@@ -273,11 +323,12 @@ class DatasetsApi(Resource):
         # `exclude_none` keeps schema defaults (description, permission,
         # provider) while dropping unset optional fields; `create_empty_dataset`
         # requires `description` even when the client omits it.
-        values = body.model_dump(exclude_none=True)
+        values = body.model_dump(exclude_none=True, exclude={"retrieval_model"})
         if "embedding_model" in values:
             values["embedding_model_name"] = values.pop("embedding_model")
-        if isinstance(values.get("retrieval_model"), dict):
-            values["retrieval_model"] = RetrievalModel.model_validate(values["retrieval_model"])
+        if body.retrieval_model is not None:
+            # The payload validates the shape so this can no longer escape as a 500.
+            values["retrieval_model"] = RetrievalModel.model_validate(body.retrieval_model)
         with _dataset_errors():
             result = application_services().knowledge.datasets.create_dataset(ctx.request_context, values=values)
         return _dataset_row(result), HTTPStatus.CREATED
@@ -290,6 +341,7 @@ class DatasetApi(Resource):
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="One knowledge base",
+        examples=(Example(title="Read a knowledge base", input={"dataset_id": "<dataset_id>"}),),
         requirements=WORKSPACE_READ_GUARDS,
         returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base"),
     )
@@ -304,6 +356,9 @@ class DatasetApi(Resource):
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="Update a knowledge base",
+        examples=(
+            Example(title="Rename a knowledge base", input={"dataset_id": "<dataset_id>", "name": "product-docs"}),
+        ),
         requirements=_DATASET_UPDATE_GUARDS,
         body=DatasetUpdatePayload,
         returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base updated"),
@@ -311,7 +366,6 @@ class DatasetApi(Resource):
     def patch(self, ctx: Context, workspace_id: str, dataset_id: str, *, body: DatasetUpdatePayload):
         """Update a knowledge base. Only the fields present in the body change."""
         values = body.model_dump(exclude_unset=True)
-        values.pop("provider", None)
         with _dataset_errors():
             result = application_services().knowledge.datasets.update_dataset(
                 ctx.request_context,
@@ -326,6 +380,7 @@ class DatasetApi(Resource):
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Delete a knowledge base",
+        examples=(Example(title="Delete a knowledge base", input={"dataset_id": "<dataset_id>"}),),
         requirements=_DATASET_DELETE_GUARDS,
         returns=(HTTPStatus.OK, SimpleResultResponse, "Knowledge base deleted"),
     )
@@ -343,18 +398,20 @@ class DocumentCreateByTextApi(Resource):
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="Create a document from text",
+        examples=(
+            Example(
+                title="Create a document from raw text",
+                input={"dataset_id": "<dataset_id>", "name": "guide.md", "text": "# Guide\nDeploy with Docker."},
+            ),
+        ),
         requirements=_DOCUMENT_CREATE_GUARDS,
         body=DocumentCreateByTextPayload,
         returns=(HTTPStatus.OK, DocumentAndBatchResponse, "Document created"),
     )
     def post(self, ctx: Context, workspace_id: str, dataset_id: str, *, body: DocumentCreateByTextPayload):
         """Create a document from raw text. Indexing runs asynchronously; track
-        it with the document's `indexing_status` or the batch indexing-status op."""
-        settings = _document_settings(ctx, dataset_id, body, original_document_id=None)
-        with _document_errors():
-            result = application_services().knowledge.documents.create_documents(
-                ctx.request_context, dataset_id=dataset_id, settings=settings
-            )
+        it with the document's `display_status` or the batch indexing-status op."""
+        result = _create_documents(ctx, dataset_id, body, original_document_id=None)
         return DocumentAndBatchResponse(
             document=_document_row(result["documents"][0], dataset_id=dataset_id),
             batch=result["batch"],
@@ -364,10 +421,11 @@ class DocumentCreateByTextApi(Resource):
 @openapi_ns.route(_DOCUMENTS)
 class DatasetDocumentsApi(Resource):
     @endpoint(
-        op="list.dataset_document",
+        op="get.dataset_document",
         pat_policy=_PAT,
         kind=Kind.LIST,
         summary="Documents in a knowledge base",
+        examples=(Example(title="Find documents by name", input={"dataset_id": "<dataset_id>", "query": "guide"}),),
         requirements=_DOCUMENT_READ_GUARDS,
         query=DocumentListQuery,
         returns=(HTTPStatus.OK, DocumentListResponse, "Documents"),
@@ -399,6 +457,12 @@ class DatasetDocumentApi(Resource):
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="One document",
+        examples=(
+            Example(
+                title="Read a document and its indexing status",
+                input={"dataset_id": "<dataset_id>", "document_id": "<document_id>"},
+            ),
+        ),
         requirements=_DOCUMENT_READ_GUARDS,
         returns=(HTTPStatus.OK, DocumentResponse, "Document"),
     )
@@ -416,6 +480,12 @@ class DatasetDocumentApi(Resource):
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Delete a document",
+        examples=(
+            Example(
+                title="Delete a document",
+                input={"dataset_id": "<dataset_id>", "document_id": "<document_id>"},
+            ),
+        ),
         requirements=_DOCUMENT_DELETE_GUARDS,
         returns=(HTTPStatus.OK, SimpleResultResponse, "Document deleted"),
     )
@@ -435,7 +505,18 @@ class DocumentUpdateByTextApi(Resource):
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="Replace a document's text",
-        requirements=_DOCUMENT_CREATE_GUARDS,
+        examples=(
+            Example(
+                title="Replace a document's text",
+                input={
+                    "dataset_id": "<dataset_id>",
+                    "document_id": "<document_id>",
+                    "name": "guide.md",
+                    "text": "# Guide\nUpdated deployment steps.",
+                },
+            ),
+        ),
+        requirements=_DOCUMENT_UPDATE_GUARDS,
         body=DocumentUpdateByTextPayload,
         returns=(HTTPStatus.OK, DocumentAndBatchResponse, "Document updated"),
     )
@@ -444,11 +525,7 @@ class DocumentUpdateByTextApi(Resource):
     ):
         """Replace a document's content and re-index it. Fields left out keep
         their current values; providing `text` replaces the document body."""
-        settings = _document_settings(ctx, dataset_id, body, original_document_id=document_id)
-        with _document_errors():
-            result = application_services().knowledge.documents.create_documents(
-                ctx.request_context, dataset_id=dataset_id, settings=settings
-            )
+        result = _create_documents(ctx, dataset_id, body, original_document_id=document_id)
         return DocumentAndBatchResponse(
             document=_document_row(result["documents"][0], dataset_id=dataset_id),
             batch=result["batch"],
@@ -458,10 +535,16 @@ class DocumentUpdateByTextApi(Resource):
 @openapi_ns.route(_DOCUMENT_BATCH)
 class DocumentBatchIndexingStatusApi(Resource):
     @endpoint(
-        op="describe.dataset_document_batch",
+        op="get.dataset_document.indexing_status",
         pat_policy=_PAT,
         kind=Kind.OBJECT,
         summary="Indexing status of a document batch",
+        examples=(
+            Example(
+                title="Check a document batch",
+                input={"dataset_id": "<dataset_id>", "batch": "<batch>"},
+            ),
+        ),
         requirements=_DOCUMENT_READ_GUARDS,
         returns=(HTTPStatus.OK, DocumentIndexingStatusResponse, "Indexing statuses"),
     )
@@ -472,12 +555,31 @@ class DocumentBatchIndexingStatusApi(Resource):
             result = application_services().knowledge.documents.get_batch_indexing_status(
                 ctx.request_context, dataset_id=dataset_id, batch=batch
             )
-        statuses = [_indexing_status(row) for row in result["data"]]
-        errors = [row.get("error") for row in result["data"] if row.get("error")]
-        if "failed" in statuses:
-            status = "failed"
-        elif statuses and all(status == "available" for status in statuses):
-            status = "available"
+        rows = result["data"]
+        statuses = [_display_status(row) for row in rows]
+        errors = [row.get("error") for row in rows if row.get("error")]
+        if DocumentDisplayStatus.ERROR in statuses:
+            status = DocumentDisplayStatus.ERROR
+        elif statuses and all(value == DocumentDisplayStatus.AVAILABLE for value in statuses):
+            status = DocumentDisplayStatus.AVAILABLE
+        elif statuses and all(value == DocumentDisplayStatus.QUEUING for value in statuses):
+            status = DocumentDisplayStatus.QUEUING
+        elif statuses and all(value == DocumentDisplayStatus.PAUSED for value in statuses):
+            status = DocumentDisplayStatus.PAUSED
         else:
-            status = "indexing"
-        return DocumentIndexingStatusResponse(batch=batch, indexing_status=status, error=errors[0] if errors else None)
+            status = DocumentDisplayStatus.INDEXING
+        return DocumentIndexingStatusResponse(
+            batch=batch,
+            display_status=status,
+            error=errors[0] if errors else None,
+            documents=[
+                DocumentBatchItem(
+                    id=row["id"],
+                    display_status=_display_status(row),
+                    error=row.get("error"),
+                    completed_segments=row.get("completed_segments"),
+                    total_segments=row.get("total_segments"),
+                )
+                for row in rows
+            ],
+        )

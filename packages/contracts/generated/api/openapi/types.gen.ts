@@ -542,7 +542,6 @@ export type DatasetUpdatePayload = {
     [key: string]: string
   }> | null
   permission?: DatasetPermission | null
-  provider?: DatasetProvider | null
   retrieval_model?: {
     [key: string]: unknown
   } | null
@@ -631,28 +630,46 @@ export type DocumentAndBatchResponse = {
   document: DocumentResponse
 }
 
+export type DocumentBatchItem = {
+  completed_segments: number | null
+  display_status: DocumentDisplayStatus | null
+  error: string | null
+  id: string
+  total_segments: number | null
+}
+
 export type DocumentCreateByTextPayload = {
   doc_form?: DocumentForm | null
   doc_language?: string | null
   embedding_model?: string | null
   embedding_model_provider?: string | null
   indexing_technique?: DatasetIndexingTechnique | null
-  name?: string | null
+  name: string
   process_rule?: {
     [key: string]: unknown
   } | null
   retrieval_model?: {
     [key: string]: unknown
   } | null
-  text?: string | null
+  text: string
 }
+
+export type DocumentDisplayStatus =
+  | 'archived'
+  | 'available'
+  | 'disabled'
+  | 'error'
+  | 'indexing'
+  | 'paused'
+  | 'queuing'
 
 export type DocumentForm = 'hierarchical_model' | 'qa_model' | 'text_model'
 
 export type DocumentIndexingStatusResponse = {
   batch: string
+  display_status: DocumentDisplayStatus
+  documents: Array<DocumentBatchItem>
   error: string | null
-  indexing_status: string
 }
 
 export type DocumentListQuery = {
@@ -676,6 +693,7 @@ export type DocumentResponse = {
   created_at: number | null
   data_source_type: string | null
   dataset_id: string
+  display_status: DocumentDisplayStatus | null
   doc_form: string | null
   doc_language: string | null
   document_process_rule: {
@@ -684,7 +702,6 @@ export type DocumentResponse = {
   enabled: boolean
   error: string | null
   id: string
-  indexing_status: string
   name: string
   updated_at: number | null
 }

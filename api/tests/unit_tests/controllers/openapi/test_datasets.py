@@ -1,6 +1,14 @@
 from datetime import UTC, datetime
 
-from controllers.openapi.datasets import _dataset_row, _document_row, _indexing_status
+import pytest
+from pydantic import ValidationError
+
+from controllers.openapi._models import (
+    DatasetCreatePayload,
+    DocumentCreateByTextPayload,
+    DocumentUpdateByTextPayload,
+)
+from controllers.openapi.datasets import _dataset_row, _display_status, _document_row
 
 
 def _dataset(**extra: object) -> dict[str, object]:
@@ -27,6 +35,7 @@ def _document(**extra: object) -> dict[str, object]:
         "name": "guide.md",
         "data_source_type": "upload_file",
         "indexing_status": "completed",
+        "display_status": "available",
         "error": None,
         "enabled": True,
         "archived": False,
@@ -56,15 +65,36 @@ def test_dataset_row_maps_external_knowledge_fields() -> None:
     assert row.retrieval_model == {"search_method": "semantic_search"}
 
 
-def test_indexing_status_uses_public_vocabulary() -> None:
-    assert _indexing_status({"indexing_status": "completed"}) == "available"
-    assert _indexing_status({"indexing_status": "error"}) == "failed"
-    assert _indexing_status({"indexing_status": "indexing"}) == "indexing"
-    assert _indexing_status({}) == ""
+def test_display_status_uses_public_vocabulary() -> None:
+    assert _display_status({"display_status": "available"}) == "available"
+    assert _display_status({"display_status": "error"}) == "error"
+    assert _display_status({}) is None
 
 
 def test_document_row_carries_dataset_id_and_mapped_status() -> None:
     row = _document_row(_document(), dataset_id="ds-1")
     assert row.dataset_id == "ds-1"
-    assert row.indexing_status == "available"
+    assert row.display_status == "available"
     assert row.document_process_rule == {"mode": "custom", "rules": {}}
+
+
+def test_invalid_retrieval_model_is_rejected_by_the_payload() -> None:
+    with pytest.raises(ValidationError, match="retrieval_model"):
+        DatasetCreatePayload.model_validate({"name": "Docs", "retrieval_model": {"search_method": "nope"}})
+
+
+def test_external_dataset_requires_binding_ids() -> None:
+    with pytest.raises(ValidationError, match="external_knowledge_api_id and external_knowledge_id"):
+        DatasetCreatePayload.model_validate({"name": "Docs", "provider": "external"})
+
+
+def test_create_document_requires_name_and_text() -> None:
+    with pytest.raises(ValidationError):
+        DocumentCreateByTextPayload.model_validate({"name": "guide.md"})
+    with pytest.raises(ValidationError):
+        DocumentCreateByTextPayload.model_validate({"text": "hello"})
+
+
+def test_update_document_requires_a_change() -> None:
+    with pytest.raises(ValidationError, match="provide at least one of text, name, or process_rule"):
+        DocumentUpdateByTextPayload.model_validate({})

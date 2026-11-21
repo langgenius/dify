@@ -597,7 +597,6 @@ export const zDatasetUpdatePayload = z.object({
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
   permission: zDatasetPermission.nullish(),
-  provider: zDatasetProvider.nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
 })
@@ -705,6 +704,32 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * DocumentDisplayStatus
+ *
+ * Public document status shared with the legacy service API.
+ */
+export const zDocumentDisplayStatus = z.enum([
+  'archived',
+  'available',
+  'disabled',
+  'error',
+  'indexing',
+  'paused',
+  'queuing',
+])
+
+/**
+ * DocumentBatchItem
+ */
+export const zDocumentBatchItem = z.object({
+  completed_segments: z.int().nullable(),
+  display_status: zDocumentDisplayStatus.nullable(),
+  error: z.string().nullable(),
+  id: z.string(),
+  total_segments: z.int().nullable(),
+})
+
+/**
  * DocumentForm
  *
  * Chunking shape of a document.
@@ -720,10 +745,10 @@ export const zDocumentCreateByTextPayload = z.object({
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
   indexing_technique: zDatasetIndexingTechnique.nullish(),
-  name: z.string().min(1).nullish(),
+  name: z.string().min(1),
   process_rule: z.record(z.string(), z.unknown()).nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  text: z.string().min(1).nullish(),
+  text: z.string().min(1),
 })
 
 /**
@@ -731,8 +756,9 @@ export const zDocumentCreateByTextPayload = z.object({
  */
 export const zDocumentIndexingStatusResponse = z.object({
   batch: z.string(),
+  display_status: zDocumentDisplayStatus,
+  documents: z.array(zDocumentBatchItem),
   error: z.string().nullable(),
-  indexing_status: z.string(),
 })
 
 /**
@@ -753,13 +779,13 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullable(),
   data_source_type: z.string().nullable(),
   dataset_id: z.string(),
+  display_status: zDocumentDisplayStatus.nullable(),
   doc_form: z.string().nullable(),
   doc_language: z.string().nullable(),
   document_process_rule: z.record(z.string(), z.unknown()).nullable(),
   enabled: z.boolean(),
   error: z.string().nullable(),
   id: z.string(),
-  indexing_status: z.string(),
   name: z.string(),
   updated_at: z.int().nullable(),
 })

@@ -36,6 +36,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
+from services.knowledge.entities.knowledge_entities import RetrievalModel
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -1683,6 +1684,15 @@ class WorkflowToolResponse(BaseModel):
     privacy_policy: str | None
 
 
+def _check_retrieval_model(value: object) -> None:
+    """Reject invalid retrieval settings at body validation instead of inside the handler.
+
+    The field stays a JSON object so the catalog's input schema remains flat;
+    validating it with `RetrievalModel` here still turns bad settings into a 422.
+    """
+    RetrievalModel.model_validate(value)
+
+
 class DatasetPermission(StrEnum):
     """Who can reach a knowledge base."""
 
@@ -1711,6 +1721,18 @@ class DatasetProvider(StrEnum):
 
     VENDOR = "vendor"
     EXTERNAL = "external"
+
+
+class DocumentDisplayStatus(StrEnum):
+    """Public document status shared with the legacy service API."""
+
+    QUEUING = "queuing"
+    INDEXING = "indexing"
+    PAUSED = "paused"
+    ERROR = "error"
+    AVAILABLE = "available"
+    DISABLED = "disabled"
+    ARCHIVED = "archived"
 
 
 class DatasetCreatePayload(BaseModel):
@@ -1752,6 +1774,21 @@ class DatasetCreatePayload(BaseModel):
         default=None, description="Retrieval model configuration as a JSON object."
     )
 
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
+
+    @model_validator(mode="after")
+    def _external_binding_required(self) -> Self:
+        if self.provider == DatasetProvider.EXTERNAL and (
+            not self.external_knowledge_api_id or not self.external_knowledge_id
+        ):
+            raise ValueError("external_knowledge_api_id and external_knowledge_id are required for external datasets")
+        return self
+
 
 class DatasetUpdatePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -1759,22 +1796,36 @@ class DatasetUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
     description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
     permission: DatasetPermission | None = None
-    provider: DatasetProvider | None = Field(default=None, description="Read-only; ignored on update.")
     indexing_technique: DatasetIndexingTechnique | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(
         default=None, description="Retrieval model configuration as a JSON object."
     )
-    summary_index_setting: dict[str, Any] | None = None
+    summary_index_setting: dict[str, Any] | None = Field(
+        default=None, description="Summary index settings as a JSON object."
+    )
     partial_member_list: list[dict[str, str]] | None = Field(
         default=None, description="Member ids granted access when `permission` is `partial_members`."
     )
-    external_retrieval_model: dict[str, Any] | None = None
-    external_knowledge_id: str | None = None
-    external_knowledge_api_id: str | None = None
-    icon_info: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration for external knowledge bases as a JSON object."
+    )
+    external_knowledge_id: str | None = Field(
+        default=None, description="External knowledge base id; required on every update of an external knowledge base."
+    )
+    external_knowledge_api_id: str | None = Field(
+        default=None, description="External knowledge API id; required on every update of an external knowledge base."
+    )
+    icon_info: dict[str, Any] | None = Field(default=None, description="Icon metadata as a JSON object.")
     is_multimodal: bool | None = None
+
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
 
 
 class DatasetListQuery(PageQuery):
@@ -1804,10 +1855,8 @@ class DatasetListResponse(PaginationEnvelope[DatasetResponse]):
 
 
 class DocumentTextPayload(BaseModel):
-    """Flat text-document fields shared by create-by-text and update-by-text."""
+    """Flat text-document settings shared by create-by-text and update-by-text."""
 
-    name: str | None = Field(default=None, description="Document name.")
-    text: str | None = Field(default=None, description="Document text content.")
     process_rule: dict[str, Any] | None = Field(
         default=None, description="Processing rules for chunking as a JSON object."
     )
@@ -1826,27 +1875,33 @@ class DocumentTextPayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
+
 
 class DocumentCreateByTextPayload(DocumentTextPayload):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=1, description="Document name.")
-    text: str | None = Field(default=None, min_length=1, description="Document text content.")
-
-    @model_validator(mode="after")
-    def _name_and_text_required(self) -> Self:
-        if self.name is None or self.text is None:
-            raise ValueError("name and text are required")
-        return self
+    name: str = Field(min_length=1, description="Document name.")
+    text: str = Field(min_length=1, description="Document text content.")
 
 
 class DocumentUpdateByTextPayload(DocumentTextPayload):
     model_config = ConfigDict(extra="forbid")
 
+    name: str | None = Field(default=None, description="Document name.")
+    text: str | None = Field(default=None, description="Document text content.")
+
     @model_validator(mode="after")
-    def _text_requires_name(self) -> Self:
+    def _requires_a_change(self) -> Self:
         if self.text is not None and self.name is None:
             raise ValueError("name is required when text is provided")
+        if self.text is None and self.name is None and self.process_rule is None:
+            raise ValueError("provide at least one of text, name, or process_rule")
         return self
 
 
@@ -1855,7 +1910,7 @@ class DocumentResponse(BaseModel):
     dataset_id: str
     name: str
     data_source_type: str | None
-    indexing_status: str
+    display_status: DocumentDisplayStatus | None
     error: str | None
     enabled: bool
     archived: bool
@@ -1882,7 +1937,16 @@ class DocumentListResponse(PaginationEnvelope[DocumentResponse]):
     pass
 
 
+class DocumentBatchItem(BaseModel):
+    id: str
+    display_status: DocumentDisplayStatus | None
+    error: str | None
+    completed_segments: int | None
+    total_segments: int | None
+
+
 class DocumentIndexingStatusResponse(BaseModel):
     batch: str
-    indexing_status: str
+    display_status: DocumentDisplayStatus
     error: str | None
+    documents: list[DocumentBatchItem]

@@ -3746,18 +3746,17 @@ Whether the knowledge base indexes locally or proxies an external knowledge API.
 | description | string |  | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_id | string |  | No |
-| external_retrieval_model | object |  | No |
-| icon_info | object |  | No |
+| external_knowledge_api_id | string | External knowledge API id; required on every update of an external knowledge base. | No |
+| external_knowledge_id | string | External knowledge base id; required on every update of an external knowledge base. | No |
+| external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
+| icon_info | object | Icon metadata as a JSON object. | No |
 | indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) |  | No |
 | is_multimodal | boolean |  | No |
 | name | string |  | No |
 | partial_member_list | [ object ] | Member ids granted access when `permission` is `partial_members`. | No |
 | permission | [DatasetPermission](#datasetpermission) |  | No |
-| provider | [DatasetProvider](#datasetprovider) | Read-only; ignored on update. | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
-| summary_index_setting | object |  | No |
+| summary_index_setting | object | Summary index settings as a JSON object. | No |
 
 #### DefaultModelPayload
 
@@ -3862,6 +3861,16 @@ instead of ``ErrorBody`` because device clients parse it.
 | batch | string |  | Yes |
 | document | [DocumentResponse](#documentresponse) |  | Yes |
 
+#### DocumentBatchItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_segments | integer |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| total_segments | integer |  | Yes |
+
 #### DocumentCreateByTextPayload
 
 | Name | Type | Description | Required |
@@ -3871,10 +3880,18 @@ instead of ``ErrorBody`` because device clients parse it.
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
 | indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
-| name | string | Document name. | No |
+| name | string | Document name. | Yes |
 | process_rule | object | Processing rules for chunking as a JSON object. | No |
 | retrieval_model | object | Retrieval model configuration. | No |
-| text | string | Document text content. | No |
+| text | string | Document text content. | Yes |
+
+#### DocumentDisplayStatus
+
+Public document status shared with the legacy service API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DocumentDisplayStatus | string | Public document status shared with the legacy service API. |  |
 
 #### DocumentForm
 
@@ -3889,8 +3906,9 @@ Chunking shape of a document.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | batch | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
+| documents | [ [DocumentBatchItem](#documentbatchitem) ] |  | Yes |
 | error | string |  | Yes |
-| indexing_status | string |  | Yes |
 
 #### DocumentListQuery
 
@@ -3920,13 +3938,13 @@ Chunking shape of a document.
 | created_at | integer |  | Yes |
 | data_source_type | string |  | Yes |
 | dataset_id | string |  | Yes |
+| display_status | [DocumentDisplayStatus](#documentdisplaystatus) |  | Yes |
 | doc_form | string |  | Yes |
 | doc_language | string |  | Yes |
 | document_process_rule | object |  | Yes |
 | enabled | boolean |  | Yes |
 | error | string |  | Yes |
 | id | string |  | Yes |
-| indexing_status | string |  | Yes |
 | name | string |  | Yes |
 | updated_at | integer |  | Yes |
 

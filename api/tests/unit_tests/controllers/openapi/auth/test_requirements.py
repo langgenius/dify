@@ -23,7 +23,7 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -44,11 +44,14 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppMode,
     CheckAppQuota,
+    CheckDocumentsUploadQuota,
+    CheckKnowledgeRateLimit,
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
     CheckSkillEnabled,
     CheckSubject,
+    CheckVectorSpaceQuota,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceInvitationQuota,
     CheckWorkspaceMember,
@@ -718,6 +721,72 @@ ROUTES: tuple[Route, ...] = (
         "knowledge_bases.list",
         "GET",
         "/workspaces/{workspace_id}/knowledge-bases",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "get.dataset",
+        "GET",
+        "/workspaces/{workspace_id}/datasets",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "create.dataset",
+        "POST",
+        "/workspaces/{workspace_id}/datasets",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "describe.dataset",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "set.dataset",
+        "PATCH",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "delete.dataset",
+        "DELETE",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "create.dataset_document",
+        "POST",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "get.dataset_document",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "describe.dataset_document",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "delete.dataset_document",
+        "DELETE",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "set.dataset_document",
+        "POST",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "get.dataset_document.indexing_status",
+        "GET",
+        "/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route(
@@ -1539,6 +1608,12 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "mcp_providers.set": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "mcp_providers.delete": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "mcp_providers.refresh": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "create.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "set.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "delete.dataset": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "create.dataset_document": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "delete.dataset_document": dict(_ACCOUNT_MEMBER_WITH_ROLE),
+    "get.dataset_document": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "workflow_tools.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "workflow_tools.describe": dict(_ACCOUNT_MEMBER_NO_ROLE),
     "workflow_tools.set": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1633,6 +1708,10 @@ _REQ_ACCOUNT_WORKSPACE_READ_MEMBER = (
     CheckScope(Scope.WORKSPACE_READ),
     CheckWorkspaceMember(),
 )
+_REQ_DATASET_READ = (
+    *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    CheckRBACPermission(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId())),
+)
 _REQ_SKILL_READ = (
     CheckSkillEnabled(),
     *_REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -1645,6 +1724,29 @@ _REQ_MEMBER_MANAGE = (
     CheckRBACPermission(RBACCheck(RBACPermission.WORKSPACE_MEMBER_MANAGE, Workspace())),
     CheckWorkspaceRole(_OWNER_ADMIN),
 )
+_DATASET_EDIT_ROLES = frozenset(
+    {
+        TenantAccountRole.OWNER,
+        TenantAccountRole.ADMIN,
+        TenantAccountRole.EDITOR,
+        TenantAccountRole.DATASET_OPERATOR,
+    }
+)
+
+
+def _req_dataset_write(
+    permission: RBACPermission, locator: object, *, extra: tuple[Requirement, ...] = ()
+) -> tuple[Requirement, ...]:
+    return (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckWorkspaceMember(),
+        CheckRBACPermission(RBACCheck(permission, locator)),
+        CheckWorkspaceRole(_DATASET_EDIT_ROLES),
+        *extra,
+    )
+
+
 _REQ_ROLE_MANAGE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),
@@ -1921,6 +2023,31 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         CapRequestBody(max_bytes=lambda: 0, max_parts=lambda: 0),
     ),
     "knowledge_bases.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "get.dataset": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "create.dataset": _req_dataset_write(
+        RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "describe.dataset": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
+    "set.dataset": _req_dataset_write(RBACPermission.DATASET_EDIT, DatasetId(), extra=(CheckKnowledgeRateLimit(),)),
+    "delete.dataset": _req_dataset_write(
+        RBACPermission.DATASET_DELETE, DatasetId(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "create.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_USE,
+        DatasetId(),
+        extra=(CheckKnowledgeRateLimit(), CheckDocumentsUploadQuota(), CheckVectorSpaceQuota()),
+    ),
+    "get.dataset_document": _REQ_DATASET_READ,
+    "describe.dataset_document": _REQ_DATASET_READ,
+    "delete.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_DELETE_FILE, DatasetId(), extra=(CheckKnowledgeRateLimit(),)
+    ),
+    "set.dataset_document": _req_dataset_write(
+        RBACPermission.DATASET_USE,
+        DatasetId(),
+        extra=(CheckKnowledgeRateLimit(), CheckVectorSpaceQuota()),
+    ),
+    "get.dataset_document.indexing_status": _REQ_DATASET_READ,
     "models.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "models.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "models.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
@@ -2284,6 +2411,9 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "provider_id": str(uuid.uuid4()),
         "provider_name": "weather",
         "workflow_tool_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid.uuid4()),
+        "document_id": str(uuid.uuid4()),
+        "batch": str(uuid.uuid4()),
     }
     query = route.query.format(**ids)
     if scenario.foreign_workspace_query:
@@ -2490,6 +2620,23 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
         {"200", "default"}
     ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/datasets"): frozenset({"201", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "default"}),
+    ("patch", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/workspaces/{workspace_id}/datasets/{dataset_id}"): frozenset({"200", "default"}),
+    ("post", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents:createByText"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}"): frozenset({"200", "default"}),
+    ("delete", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}"): frozenset(
+        {"200", "default"}
+    ),
+    ("post", "/workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText"): frozenset(
+        {"200", "422", "default"}
+    ),
+    ("get", "/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
@@ -2894,6 +3041,17 @@ class TestAuthMatrixCases:
             "app_api_keys.list",
             "app_api_keys.create",
             "app_api_keys.delete",
+            "get.dataset",
+            "create.dataset",
+            "describe.dataset",
+            "set.dataset",
+            "delete.dataset",
+            "create.dataset_document",
+            "get.dataset_document",
+            "describe.dataset_document",
+            "delete.dataset_document",
+            "set.dataset_document",
+            "get.dataset_document.indexing_status",
             "app_workflow.publish",
             "app_workflow.version.list",
             "app_workflow.version.restore",
