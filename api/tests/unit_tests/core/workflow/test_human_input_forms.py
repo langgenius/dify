@@ -36,7 +36,10 @@ def _persist_recipients(session: Session, recipients: list[HumanInputFormRecipie
 @pytest.mark.parametrize(
     ("surface", "expected_token"),
     [
-        (HumanInputSurface.CONSOLE, "backstage-token"),
+        # Ordinary Console interaction hands out the Console token, never Backstage.
+        (HumanInputSurface.CONSOLE, "console-token"),
+        # The management entry hands out the Backstage token.
+        (HumanInputSurface.BACKSTAGE, "backstage-token"),
         # SERVICE_API may only act on the web-app recipient.
         (HumanInputSurface.SERVICE_API, "web-token"),
     ],
@@ -74,6 +77,18 @@ def test_load_form_tokens_drops_forms_without_actionable_token(sqlite_session: S
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_form_tokens_backstage_surface_does_not_fall_back_to_console(sqlite_session: Session) -> None:
+    _persist_recipients(
+        sqlite_session,
+        [
+            _recipient("form-1", RecipientType.CONSOLE, "console-token"),
+        ],
+    )
+
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.BACKSTAGE) == {}
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
 def test_load_form_tokens_service_api_surface_uses_web_token(sqlite_session: Session) -> None:
     _persist_recipients(
         sqlite_session,
@@ -101,6 +116,18 @@ def test_load_dispositions_openapi_webapp_form_is_resumable(sqlite_session: Sess
 
     assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.OPENAPI) == {
         "form-1": FormDisposition(form_token="web-token", approval_channels=[ApprovalChannel.CONSOLE])
+    }
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+def test_load_dispositions_console_backstage_only_form_yields_channels_not_token(sqlite_session: Session) -> None:
+    _persist_recipients(
+        sqlite_session,
+        [_recipient("form-1", RecipientType.BACKSTAGE, "backstage-token")],
+    )
+
+    assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.CONSOLE) == {
+        "form-1": FormDisposition(form_token=None, approval_channels=[ApprovalChannel.CONSOLE])
     }
 
 
@@ -136,9 +163,16 @@ _EMAIL_EXTERNAL = (RecipientType.EMAIL_EXTERNAL, "t2")
             HumanInputSurface.OPENAPI,
             FormDisposition(None, [ApprovalChannel.CONSOLE, ApprovalChannel.EMAIL]),
         ),
-        # CONSOLE acts on console/backstage; a web-app recipient is blocked → web_app channel.
+        # CONSOLE hands out only the Console token; a web-app recipient is blocked → web_app channel.
         ([_CONSOLE, _WEB], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.WEB_APP])),
         ([_WEB], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.WEB_APP])),
+        # A Backstage recipient is not selectable on CONSOLE; its channel is still console.
+        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.CONSOLE])),
+        ([_BACKSTAGE], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.CONSOLE])),
+        # The management entry hands out only the Backstage token; a Console
+        # recipient is not selectable there, so it yields only its channel.
+        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_b", [ApprovalChannel.CONSOLE])),
+        ([_CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition(None, [ApprovalChannel.CONSOLE])),
     ],
 )
 def test_disposition_for_surface_partitions_token_and_channels(
