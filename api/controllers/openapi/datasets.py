@@ -203,10 +203,13 @@ def _document_settings(
     }
     if settings["indexing_technique"] is None:
         raise BadRequest("indexing_technique is required for the first document of a knowledge base.")
-    for key in ("process_rule", "retrieval_model", "embedding_model", "embedding_model_provider"):
-        value = getattr(body, key)
-        if value is not None:
-            settings[key] = value
+    extra_settings = {
+        "process_rule": body.process_rule,
+        "retrieval_model": body.retrieval_model,
+        "embedding_model": body.embedding_model,
+        "embedding_model_provider": body.embedding_model_provider,
+    }
+    settings.update({key: value for key, value in extra_settings.items() if value is not None})
     if original_document_id is not None:
         settings["original_document_id"] = original_document_id
     if body.text is not None:
