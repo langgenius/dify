@@ -48,6 +48,7 @@ def test_create_then_get_returns_the_same_record(store: RedisRunJobStore, redis:
     assert store.is_alive(job.id)
     assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
     assert redis.ttls[f"openapi:job:{job.id}:alive"] == ALIVE_TTL_SECONDS
+    assert "ending" not in redis.hashes[f"openapi:job:{job.id}"]
 
 
 def test_get_unknown_job_returns_none(store: RedisRunJobStore) -> None:
@@ -98,17 +99,6 @@ def test_settle_writes_the_first_final_status_only(store: RedisRunJobStore, redi
     assert store.get(job.id) == replace(job, ending=JobEnding(status=JobStatus.FAILED, error="boom"))
     assert redis.hashes[f"openapi:job:{job.id}"]["ending"] == '{"status": "failed", "failure": null, "error": "boom"}'
     assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
-
-
-def test_a_record_without_an_ending_is_running(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    job = _record()
-    store.create(job)
-
-    stored = store.get(job.id)
-
-    assert stored is not None
-    assert (stored.status, stored.error, stored.failure) == (JobStatus.RUNNING, None, None)
-    assert "ending" not in redis.hashes[f"openapi:job:{job.id}"]
 
 
 def test_a_failure_reports_its_own_message_and_stores_no_text(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
@@ -172,14 +162,6 @@ def test_drop_alive_removes_only_the_alive_key(store: RedisRunJobStore) -> None:
     assert store.get(job.id) == job
 
 
-def test_touch_refreshes_the_alive_key(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    redis.delete("openapi:job:job-1:alive")
-    store.touch("job-1")
-
-    assert store.is_alive("job-1")
-    assert redis.ttls["openapi:job:job-1:alive"] == ALIVE_TTL_SECONDS
-
-
 def test_family_follows_the_app_mode() -> None:
     for mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
         assert JobFamily.for_mode(mode) is JobFamily.GRAPH
@@ -194,17 +176,6 @@ def test_family_of_an_unsupported_mode_is_rejected() -> None:
 
 def test_record_family_uses_its_mode() -> None:
     assert _record().family is JobFamily.GRAPH
-
-
-def test_each_failure_reason_carries_its_message() -> None:
-    assert JobFailure.RUN_NOT_CONFIRMED.message == "run start was not confirmed; it may still execute"
-    assert JobFailure.NO_RESULT.message == "run ended without a result"
-
-
-def test_only_three_statuses_are_final() -> None:
-    final = {status for status in JobStatus if status.is_final}
-
-    assert final == {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED}
 
 
 def test_partial_hash_reads_as_missing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:

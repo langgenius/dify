@@ -32,7 +32,6 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     StreamResponse,
     WorkflowAppStreamResponse,
-    WorkflowFinishStreamResponse,
     WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
@@ -46,7 +45,7 @@ from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
 from services.run_job_frames import pending_form
 from services.run_job_reader import read_to_end
 from tasks.app_generate import workflow_execute_task
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
+from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper, workflow_finished
 
 JOB_ID = "job-1"
 TASK_ID = "task-1"
@@ -153,24 +152,6 @@ def _started() -> WorkflowStartStreamResponse:
     )
 
 
-def _finished(status: WorkflowExecutionStatus, error: str | None = None) -> WorkflowFinishStreamResponse:
-    return WorkflowFinishStreamResponse(
-        task_id=TASK_ID,
-        workflow_run_id=RUN_ID,
-        data=WorkflowFinishStreamResponse.Data(
-            id=RUN_ID,
-            workflow_id=WORKFLOW_ID,
-            status=status,
-            error=error,
-            elapsed_time=0.1,
-            total_tokens=0,
-            total_steps=1,
-            created_at=1,
-            finished_at=2,
-        ),
-    )
-
-
 def _paused() -> WorkflowPauseStreamResponse:
     return WorkflowPauseStreamResponse(
         task_id=TASK_ID,
@@ -221,7 +202,7 @@ def test_a_workflow_job_takes_its_ids_and_ending_from_cores_stream(
     error: str | None,
     expected: JobStatus,
 ) -> None:
-    stream = _workflow_stream(PingStreamResponse(task_id=TASK_ID), _started(), _finished(status, error))
+    stream = _workflow_stream(PingStreamResponse(task_id=TASK_ID), _started(), workflow_finished(status, error))
     frames = _graph_frames(monkeypatch, AppMode.WORKFLOW, WorkflowAppGenerateResponseConverter, stream)
 
     record = _read(AppMode.WORKFLOW, frames, caplog)
@@ -304,7 +285,7 @@ def test_a_chatflow_job_takes_its_ids_and_ending_from_cores_stream(
         _started(),
         MessageStreamResponse(task_id=TASK_ID, id=MESSAGE_ID, answer="hi"),
         MessageEndStreamResponse(task_id=TASK_ID, id=MESSAGE_ID),
-        _finished(WorkflowExecutionStatus.SUCCEEDED),
+        workflow_finished(WorkflowExecutionStatus.SUCCEEDED),
     )
     frames = _graph_frames(monkeypatch, AppMode.ADVANCED_CHAT, AdvancedChatAppGenerateResponseConverter, stream)
 

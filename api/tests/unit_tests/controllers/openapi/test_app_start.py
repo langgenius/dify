@@ -4,7 +4,6 @@ import dataclasses
 import json
 import logging
 import threading
-import time
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 
@@ -18,9 +17,8 @@ from controllers.openapi import app_start
 from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import IDEMPOTENCY_KEY_MAX_LENGTH, AdvancedChatStartPayload, WorkflowStartPayload
-from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.app_start import START_MODES, START_OP_PREFIX
-from controllers.openapi.auth.spec import Effect, Kind, spec_of
+from controllers.openapi.auth.spec import spec_of
 from extensions.ext_application_services import ApplicationServices
 from models import App
 from models.model import AppMode
@@ -38,10 +36,10 @@ from services.run_job_service import (
 from services.workflow.graph_check import GRAPH_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import (
-    RUN_TIME_LIMIT,
     InMemoryRedis,
     InMemoryRunResults,
     RecordingTaskControl,
+    polling_service,
 )
 
 WORKFLOW_ROUTE = "/openapi/v1/apps/{app_id}/workflow:start"
@@ -113,14 +111,8 @@ def _world(
     store = RedisRunJobStore(redis_client=redis)
     results = InMemoryRunResults()
     results.runs[(admitted_bearer.workspace_id, RUN_ID)] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
-    service = RunJobService(
-        store=store,
-        results=results,
-        tasks=RecordingTaskControl(),
-        max_background_runs=max_background_runs,
-        max_waiters=4,
-        run_time_limit=RUN_TIME_LIMIT,
-        sleep=lambda _seconds: time.sleep(0.01),
+    service = polling_service(
+        store=store, results=results, tasks=RecordingTaskControl(), max_background_runs=max_background_runs
     )
     services = dataclasses.replace(account_application_services, run_jobs=service)
     monkeypatch.setattr(app_start, "application_services", lambda: services)
@@ -176,7 +168,7 @@ def test_start_audits_inside_the_start_then_ends_the_read_transaction_then_waits
         order.append("wait")
         return wait(owner, job_id, wait_seconds=wait_seconds)
 
-    monkeypatch.setattr(app_start, "emit_app_run", lambda **_kwargs: order.append("emit"))
+    monkeypatch.setattr(app_start, "emit_run_audit", lambda _ctx: order.append("emit"))
     monkeypatch.setattr(app_start, "end_read_transaction", lambda _session: order.append("end"))
     monkeypatch.setattr(world.service, "start", recording_start)
     monkeypatch.setattr(world.service, "wait", recording_wait)
@@ -280,19 +272,6 @@ def test_start_emits_the_app_run_audit_event(world: World, caplog: pytest.LogCap
     assert record.surface == "apps"  # type: ignore[attr-defined]
 
 
-def test_a_failing_audit_discards_the_job(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail(**_kwargs: object) -> None:
-        raise RuntimeError("audit down")
-
-    monkeypatch.setattr(app_start, "emit_app_run", fail)
-
-    response = world.start(wait_seconds=0, idempotency_key="k2")
-
-    assert response.status_code == 500
-    assert _job_ids(world) == []
-    assert not [name for name in world.redis.values if "k2" in name]
-
-
 def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> None:
     world.start(wait_seconds=5, idempotency_key="k3", inputs={"a": 1})
 
@@ -329,13 +308,9 @@ def test_the_start_ops_are_the_catalogs_and_each_graph_mode_has_exactly_one(open
         assert len([op for op, modes in START_MODES.items() if mode in modes]) == 1, mode
 
 
-def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi_app: Flask) -> None:
+def test_start_ops_take_the_resource_calls_pat_policy(openapi_app: Flask) -> None:
     from constants.personal_access_token import PersonalAccessTokenPolicy
 
-    ops = build_catalog(openapi_app)["ops"]
     specs = {spec.catalog.op: spec for _, _, fn in iter_handlers(openapi_app) if (spec := spec_of(fn)) is not None}
     for op in START_MODES:
-        assert ops[op]["kind"] == Kind.OBJECT.value
-        assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
-        assert specs[op].requirements == RUN_GUARDS

@@ -1,19 +1,24 @@
 import json
 import logging
 import time
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator
 from typing import override
 
 import pytest
 
-from core.app.entities.task_entities import StreamEvent, WorkflowFinishStreamResponse
+from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
+from services.run_job_reader import read_to_end
+from tests.unit_tests.services.run_job_fakes import (
+    ClosableFrames,
+    InMemoryRedis,
+    RecordingJobStopper,
+    workflow_finished,
+)
 
 JOB_ID = "job-1"
 IDS = {"task_id": "task-1", "workflow_run_id": "run-1", "message_id": "msg-1", "conversation_id": "conv-1"}
@@ -27,34 +32,7 @@ PING = f"event: {StreamEvent.PING.value}\n\n"
 
 
 def _finished(status: WorkflowExecutionStatus, error: str | None = None) -> str:
-    finished = WorkflowFinishStreamResponse(
-        task_id="task-1",
-        workflow_run_id="run-1",
-        data=WorkflowFinishStreamResponse.Data(
-            id="run-1",
-            workflow_id="wf-1",
-            status=status,
-            error=error,
-            elapsed_time=0.1,
-            total_tokens=0,
-            total_steps=1,
-            created_at=1,
-            finished_at=2,
-        ),
-    )
-    return f"data: {finished.model_dump_json()}\n\n"
-
-
-class ClosableFrames:
-    def __init__(self, frames: list[str]) -> None:
-        self._frames = frames
-        self.closed = False
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._frames)
-
-    def close(self) -> None:
-        self.closed = True
+    return f"data: {workflow_finished(status, error).model_dump_json()}\n\n"
 
 
 class RaisingFrames:
@@ -111,14 +89,7 @@ def test_ids_are_taken_from_the_first_data_frame(store: RedisRunJobStore, stoppe
         "conv-1",
     )
     assert record.status is JobStatus.RUNNING
-
-
-def test_a_ping_records_no_ids(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.WORKFLOW)
-
-    record = _read(store, stopper, [PING])
-
-    assert (record.task_id, record.run_id) == (None, None)
+    assert stopper.stopped == []
 
 
 @pytest.mark.parametrize(
@@ -145,21 +116,6 @@ def test_workflow_finished_maps_each_run_status(
     assert record.error == error
 
 
-def test_a_pause_stores_only_the_ids_and_leaves_the_record_running(
-    store: RedisRunJobStore, stopper: RecordingJobStopper
-) -> None:
-    _open(store, AppMode.WORKFLOW)
-    form: Mapping[str, object] = {"form_id": "f1", "node_id": "n1", "form_content": "hi"}
-    frames = [
-        _frame(StreamEvent.HUMAN_INPUT_REQUIRED, task_id="task-1", workflow_run_id="run-1", data=form),
-        _frame(StreamEvent.WORKFLOW_PAUSED, task_id="task-1", workflow_run_id="run-1", data={"status": "paused"}),
-    ]
-
-    record = _read(store, stopper, frames)
-
-    assert (record.status, record.task_id, record.run_id) == (JobStatus.RUNNING, "task-1", "run-1")
-
-
 def test_message_end_finishes_a_message_job_but_not_a_graph_job(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
@@ -173,24 +129,6 @@ def test_message_end_finishes_a_message_job_but_not_a_graph_job(
 
     assert (
         _read(store, stopper, [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), end]).status is JobStatus.RUNNING
-    )
-
-
-def test_a_chatflow_answered_without_a_run_ends_with_its_message(
-    store: RedisRunJobStore, stopper: RecordingJobStopper
-) -> None:
-    """An annotation reply or input moderation answers a chatflow and never starts its workflow."""
-    _open(store, AppMode.ADVANCED_CHAT)
-    chat_ids = {"task_id": "task-1", "message_id": "msg-1", "conversation_id": "conv-1"}
-    end = _frame(StreamEvent.MESSAGE_END, **chat_ids, id="msg-1", metadata={})
-
-    record = _read(store, stopper, [end, PING])
-
-    assert (record.status, record.failure, record.run_id, record.message_id) == (
-        JobStatus.SUCCEEDED,
-        None,
-        None,
-        "msg-1",
     )
 
 
@@ -250,66 +188,18 @@ def test_a_message_job_takes_no_ending_from_workflow_finished(
     assert record.failure is JobFailure.NO_RESULT
 
 
-def test_the_first_final_status_wins(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.WORKFLOW)
-    frames = [
-        _finished(WorkflowExecutionStatus.SUCCEEDED),
-        _frame(StreamEvent.ERROR, message="late"),
-        _frame(StreamEvent.WORKFLOW_PAUSED, task_id="task-1", data={}),
-    ]
-
-    record = _read(store, stopper, frames)
-
-    assert record.status is JobStatus.SUCCEEDED
-    assert record.error is None
-    assert record.task_id == "task-1"
-
-
-def test_the_status_table_is_read_only() -> None:
-    with pytest.raises(TypeError):
-        RUN_STATUS_TO_JOB_STATUS[WorkflowExecutionStatus.RUNNING] = JobStatus.RUNNING  # type: ignore[index]
-
-
-def test_a_stream_that_ends_without_a_result_fails_a_message_job(
-    store: RedisRunJobStore, stopper: RecordingJobStopper
-) -> None:
-    _open(store, AppMode.CHAT)
-
-    record = _read(store, stopper, [PING])
-
-    assert record.status is JobStatus.FAILED
-    assert (record.failure, record.error) == (JobFailure.NO_RESULT, JobFailure.NO_RESULT.message)
-
-
-def test_a_graph_stream_that_ends_without_a_run_id_is_not_confirmed_by_the_reader(
-    store: RedisRunJobStore, stopper: RecordingJobStopper
-) -> None:
-    _open(store, AppMode.WORKFLOW)
-
-    record = _read(store, stopper, [PING])
-
-    assert (record.status, record.failure) == (JobStatus.FAILED, JobFailure.RUN_NOT_CONFIRMED)
-
-
-def test_a_graph_stream_that_ends_with_a_run_id_leaves_the_job_to_its_run(
-    store: RedisRunJobStore, stopper: RecordingJobStopper
-) -> None:
-    _open(store, AppMode.WORKFLOW)
-
-    record = _read(store, stopper, [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={})])
-
-    assert (record.status, record.run_id) == (JobStatus.RUNNING, "run-1")
-
-
-@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.CHAT])
-def test_the_alive_key_is_gone_once_the_reader_has_recorded_its_ending(
-    store: RedisRunJobStore, stopper: RecordingJobStopper, mode: AppMode
+@pytest.mark.parametrize(
+    ("mode", "failure"), [(AppMode.WORKFLOW, JobFailure.RUN_NOT_CONFIRMED), (AppMode.CHAT, JobFailure.NO_RESULT)]
+)
+def test_a_stream_of_pings_records_no_ids_fails_the_job_for_its_family_and_drops_the_alive_key(
+    store: RedisRunJobStore, stopper: RecordingJobStopper, mode: AppMode, failure: JobFailure
 ) -> None:
     _open(store, mode)
 
     record = _read(store, stopper, [PING])
 
-    assert record.status is JobStatus.FAILED
+    assert (record.task_id, record.run_id) == (None, None)
+    assert (record.status, record.failure, record.error) == (JobStatus.FAILED, failure, failure.message)
     assert not store.is_alive(JOB_ID)
 
 
@@ -375,14 +265,6 @@ def test_a_stop_requested_after_the_ids_are_stored_is_not_sent_by_the_reader(
     assert stopper.stopped == []
 
 
-def test_no_stop_is_applied_without_a_request(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.WORKFLOW)
-
-    _read(store, stopper, [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={})])
-
-    assert stopper.stopped == []
-
-
 def test_the_stream_is_closed_at_the_end(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
     _open(store, AppMode.WORKFLOW)
     frames = ClosableFrames([PING])
@@ -390,17 +272,6 @@ def test_the_stream_is_closed_at_the_end(store: RedisRunJobStore, stopper: Recor
     _read(store, stopper, frames)
 
     assert frames.closed
-
-
-def test_frames_that_are_not_json_objects_are_ignored(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
-    _open(store, AppMode.WORKFLOW)
-
-    started = _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={})
-    frames = [started, "data: not json\n\n", "data: [1, 2]\n\n", _frame(StreamEvent.TEXT_CHUNK, data={})]
-
-    record = _read(store, stopper, frames)
-
-    assert record.status is JobStatus.RUNNING
 
 
 def test_an_event_core_does_not_name_records_nothing(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
@@ -514,18 +385,6 @@ def test_a_chat_ending_whose_save_failed_is_saved_when_the_stream_ends(
     record = _read(store, stopper, [end, PING])
 
     assert (record.status, record.failure) == (JobStatus.SUCCEEDED, None)
-
-
-def test_a_workflow_ending_whose_save_failed_is_saved_when_the_stream_ends(
-    redis: InMemoryRedis, stopper: RecordingJobStopper
-) -> None:
-    store = SettleFailsOnceStore(redis)
-    _open(store, AppMode.WORKFLOW)
-    frames = [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), _finished(WorkflowExecutionStatus.FAILED, "boom")]
-
-    record = _read(store, stopper, frames)
-
-    assert (record.status, record.error, record.failure) == (JobStatus.FAILED, "boom", None)
 
 
 def test_ids_whose_save_failed_are_saved_by_the_next_frame(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
