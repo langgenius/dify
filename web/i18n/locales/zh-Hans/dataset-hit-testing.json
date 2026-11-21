@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "单个分段附件数量不能超过 {{limit}}",
   "imageUploader.tip": "上传或拖拽图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)",
   "imageUploader.tooltip": "上传图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)",
-  "input.countWarning": "不超过 200 个字符",
+  "input.countWarning": "不超过 16000 个字符",
   "input.placeholder": "请输入文本，建议使用简短的陈述句。",
   "input.testing": "测试",
   "input.title": "源文本",

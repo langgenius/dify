@@ -695,7 +695,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
     Tests for HitTestingService.hit_testing_args_check method.
 
     This test class covers query argument validation, ensuring queries
-    meet the required criteria (non-empty, max 250 characters).
+    meet the required criteria (non-empty, max 16000 characters).
     """
 
     def test_hit_testing_args_check_success(self):
@@ -738,26 +738,26 @@ class TestHitTestingServiceHitTestingArgsCheck:
 
     def test_hit_testing_args_check_too_long_query(self):
         """
-        Test validation fails with query exceeding 250 characters.
+        Test validation fails with query exceeding 16000 characters.
 
-        Verifies that queries longer than 250 characters raise a ValueError.
+        Verifies that queries longer than 16000 characters raise a ValueError.
         """
         # Arrange
-        args = {"query": "a" * 251}
+        args = {"query": "a" * 16001}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query cannot exceed 16000 characters"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_exactly_250_characters(self):
+    def test_hit_testing_args_check_exactly_16000_characters(self):
         """
-        Test validation succeeds with exactly 250 characters.
+        Test validation succeeds with exactly 16000 characters.
 
-        Verifies that queries with exactly 250 characters (the maximum)
+        Verifies that queries with exactly 16000 characters (the maximum)
         pass validation successfully.
         """
         # Arrange
-        args = {"query": "a" * 250}
+        args = {"query": "a" * 16000}
 
         # Act & Assert (should not raise)
         HitTestingService.hit_testing_args_check(args)

@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "सिंगल चंक अटैचमेंट की संख्या {{limit}} से अधिक नहीं हो सकती",
   "imageUploader.tip": "छवियाँ अपलोड करें या ड्रॉप करें (प्रत्येक अधिकतम {{batchCount}}, {{size}}MB)",
   "imageUploader.tooltip": "छवियां अपलोड करें (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)",
-  "input.countWarning": "अधिकतम 200 अक्षर।",
+  "input.countWarning": "अधिकतम 16000 अक्षर।",
   "input.placeholder": "कृपया एक पाठ दर्ज करें, एक छोटा वाक्यांश सुझाया गया है।",
   "input.testing": "परीक्षण कर रहा है",
   "input.title": "स्रोत पाठ",

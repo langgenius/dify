@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Die Anzahl der Einzelblock-Anhänge darf {{limit}} nicht überschreiten",
   "imageUploader.tip": "Bilder hochladen oder ablegen (Max. {{batchCount}}, {{size}} MB pro Bild)",
   "imageUploader.tooltip": "Bilder hochladen (Max. {{batchCount}}, jeweils {{size}} MB)",
-  "input.countWarning": "Bis zu 200 Zeichen.",
+  "input.countWarning": "Bis zu 16000 Zeichen.",
   "input.placeholder": "Bitte geben Sie einen Text ein, ein kurzer aussagekräftiger Satz wird empfohlen.",
   "input.testing": "Testen",
   "input.title": "Quelltext",

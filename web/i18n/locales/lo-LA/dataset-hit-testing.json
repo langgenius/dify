@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "ຈຳນວນໄຟລ໌ຄັດຕິດຂອງແຕ່ລະສ່ວນຂໍ້ມູນບໍ່ສາມາດເກີນ {{limit}}",
   "imageUploader.tip": "ອັບໂຫຼດ ຫຼື ລາກຮູບພາບລົງ (ສູງສຸດ {{batchCount}} ໄຟລ໌, ໄຟລ໌ລະ {{size}}MB)",
   "imageUploader.tooltip": "ອັບໂຫຼດຮູບພາບ (ສູງສຸດ {{batchCount}} ໄຟລ໌, ໄຟລ໌ລະ {{size}}MB)",
-  "input.countWarning": "ບໍ່ເກີນ 200 ຕົວອັກສອນ.",
+  "input.countWarning": "ບໍ່ເກີນ 16000 ຕົວອັກສອນ.",
   "input.placeholder": "ກະລຸນາປ້ອນຂໍ້ຄວາມ, ແນະນຳໃຫ້ໃຊ້ປະໂຫຍກບອກເລົ່າສັ້ນໆ.",
   "input.testing": "ທົດສອບ",
   "input.title": "ຂໍ້ຄວາມຕົ້ນສະບັບ",

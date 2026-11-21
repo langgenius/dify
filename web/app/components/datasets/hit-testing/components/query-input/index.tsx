@@ -107,7 +107,7 @@ const QueryInput = ({
   const isSubmitDisabled =
     !canRunRetrievalRecall ||
     (text.length === 0 && images.length === 0) ||
-    text.length > 200 ||
+    text.length > 16000 ||
     (images.length > 0 && !isAllUploaded)
 
   const handleSaveExternalRetrievalSettings = useCallback(

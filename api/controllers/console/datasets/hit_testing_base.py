@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class HitTestingPayload(BaseModel):
-    query: str = Field(description="Search query text.", max_length=250)
+    query: str = Field(description="Search query text.", max_length=16000)
     retrieval_model: RetrievalModel | None = Field(
         default=None,
         description=(

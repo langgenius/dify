@@ -9,7 +9,7 @@
   "imageUploader.singleChunkAttachmentLimitTooltip": "Bir hissənin qoşmalarının sayı {{limit}} həddini aşa bilməz",
   "imageUploader.tip": "Şəkilləri yükləyin və ya buraya buraxın (ən çox {{batchCount}} şəkil, hər biri {{size}} MB)",
   "imageUploader.tooltip": "Şəkilləri yükləyin (ən çox {{batchCount}} şəkil, hər biri {{size}} MB)",
-  "input.countWarning": "Ən çox 200 simvol.",
+  "input.countWarning": "Ən çox 16000 simvol.",
   "input.placeholder": "Mətn daxil edin, qısa nəqli cümlə tövsiyə olunur.",
   "input.testing": "Sına",
   "input.title": "Mənbə mətni",
