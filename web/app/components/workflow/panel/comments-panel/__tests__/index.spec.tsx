@@ -1,5 +1,5 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -47,8 +47,9 @@ const commentFixtures: WorkflowCommentBasic[] = [
   },
 ]
 
+const resolveRequest = vi.hoisted(() => ({ finish: undefined as undefined | (() => void) }))
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: { onCommentsUpdate: () => () => {} },
+  collaborationManager: { onCommentsUpdate: () => () => {}, emitCommentsUpdate: () => {} },
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -66,6 +67,20 @@ vi.mock('@/service/console', async (importOriginal) => {
         replies: [],
         mentions: [],
       }),
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': ({
+        params,
+      }: {
+        params: { app_id: string; comment_id: string }
+      }) =>
+        new Promise((resolve) => {
+          resolveRequest.finish = () =>
+            resolve({
+              id: params.comment_id,
+              resolved: true,
+              resolved_at: 5,
+              resolved_by: 'user-1',
+            })
+        }),
     }),
   }
 })
@@ -111,4 +126,18 @@ it('hides and restores resolved comments when the filter changes', async () => {
   expect(screen.getByText('my open thread')).toBeInTheDocument()
   await user.click(showResolved)
   expect(screen.getByText('others resolved thread')).toBeInTheDocument()
+})
+
+it('leaves the selection alone when a resolve from the list finishes after another thread opened', async () => {
+  const user = userEvent.setup()
+  const { store } = setup()
+  await screen.findByText('my open thread')
+  await user.click(
+    screen.getByRole('button', { name: 'workflowComments.comments.aria.resolveComment' }),
+  )
+  await user.click(screen.getByText('others resolved thread'))
+  await waitFor(() => expect(store.getState().activeCommentId).toBe('c-2'))
+
+  await act(async () => resolveRequest.finish?.())
+  expect(store.getState().activeCommentId).toBe('c-2')
 })

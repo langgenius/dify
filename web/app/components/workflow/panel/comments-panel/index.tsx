@@ -13,7 +13,6 @@ import {
 } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { RiCheckboxCircleFill, RiCheckboxCircleLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,14 +60,10 @@ const CommentsPanel = () => {
   const handleResolve = useCallback(
     async (comment: WorkflowCommentBasic) => {
       if (comment.resolved) return
-      try {
-        await handleCommentResolve(comment.id)
-        setActiveCommentId(comment.id)
-      } catch (e) {
-        console.error('Resolve comment failed', e)
-      }
+      // Resolving leaves the selection alone; the user may have opened another thread since.
+      await handleCommentResolve(comment.id)
     },
-    [handleCommentResolve, setActiveCommentId],
+    [handleCommentResolve],
   )
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments
@@ -159,16 +154,22 @@ const CommentsPanel = () => {
                   <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
                   <div className="ms-2 flex items-center">
                     {c.resolved ? (
-                      <RiCheckboxCircleFill className="size-4 text-text-secondary" />
+                      <span
+                        aria-hidden
+                        className="i-ri-checkbox-circle-fill size-4 text-text-secondary"
+                      />
                     ) : (
-                      <RiCheckboxCircleLine
-                        className="size-4 cursor-pointer text-text-tertiary hover:text-text-secondary"
+                      <IconButton
+                        aria-label={t(($) => $['comments.aria.resolveComment'], {
+                          ns: 'workflowComments',
+                        })}
                         onClick={(e) => {
-                          e.preventDefault()
                           e.stopPropagation()
                           handleResolve(c)
                         }}
-                      />
+                      >
+                        <span aria-hidden className="i-ri-checkbox-circle-line size-4" />
+                      </IconButton>
                     )}
                   </div>
                 </div>

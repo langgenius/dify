@@ -486,75 +486,42 @@ export const useWorkflowComment = () => {
     async (commentId: string, position: { x: number; y: number }) => {
       if (!appId) return
 
-      const targetComment = comments.find((c) => c.id === commentId)
+      const targetComment = workflowStore.getState().comments.find((c) => c.id === commentId)
       if (!targetComment) return
 
-      const nextPosition = {
-        position_x: position.x,
-        position_y: position.y,
+      // Only the position moves, on the latest list and detail, so a failed move puts back
+      // the position alone and keeps everything written to the thread meanwhile.
+      const setPosition = (value: { position_x: number; position_y: number }) => {
+        versions.list += 1
+        setComments(
+          workflowStore
+            .getState()
+            .comments.map((comment) =>
+              comment.id === commentId ? { ...comment, ...value } : comment,
+            ),
+        )
+        patchCommentDetail(commentId, (detail) => ({ ...detail, ...value }))
       }
-
-      const previousComments = comments
-      const updatedComments = comments.map((c) =>
-        c.id === commentId ? { ...c, ...nextPosition } : c,
-      )
-      versions.list += 1
-      setComments(updatedComments)
-
-      const cachedDetail = workflowStore.getState().commentDetailCache[commentId]
-      const updatedDetail = cachedDetail ? { ...cachedDetail, ...nextPosition } : null
-      if (updatedDetail) {
-        setCommentDetailCache({
-          ...workflowStore.getState().commentDetailCache,
-          [commentId]: updatedDetail,
-        })
-
-        if (activeCommentIdRef.current === commentId) setActiveComment(updatedDetail)
-      } else if (activeComment?.id === commentId) {
-        setActiveComment({ ...activeComment, ...nextPosition })
-      }
+      setPosition({ position_x: position.x, position_y: position.y })
 
       try {
         await consoleClient.apps.byAppId.workflow.comments.byCommentId.put({
           params: { app_id: appId, comment_id: commentId },
           body: {
             content: targetComment.content,
-            position_x: nextPosition.position_x,
-            position_y: nextPosition.position_y,
+            position_x: position.x,
+            position_y: position.y,
           },
         })
         collaborationManager.emitCommentsUpdate(appId)
       } catch (error) {
         console.error('Failed to update comment position:', error)
-        versions.list += 1
-        setComments(previousComments)
-
-        if (cachedDetail) {
-          setCommentDetailCache({
-            ...workflowStore.getState().commentDetailCache,
-            [commentId]: cachedDetail,
-          })
-
-          if (activeCommentIdRef.current === commentId) setActiveComment(cachedDetail)
-        } else if (activeComment?.id === commentId) {
-          setActiveComment(activeComment)
-        }
+        setPosition({ position_x: targetComment.position_x, position_y: targetComment.position_y })
       } finally {
-        // The local writes dropped any list fetch already running; fetch it again.
-        loadComments()
+        syncComment(commentId)
       }
     },
-    [
-      activeComment,
-      appId,
-      comments,
-      loadComments,
-      setComments,
-      setCommentDetailCache,
-      setActiveComment,
-      versions,
-      workflowStore,
-    ],
+    [appId, patchCommentDetail, setComments, syncComment, versions, workflowStore],
   )
 
   const handleCommentUpdate = useCallback(
@@ -691,11 +658,14 @@ export const useWorkflowComment = () => {
 
   const handleCommentReplyRetry = useCallback(
     async (commentId: string, localId: string) => {
-      const state = workflowStore.getState()
-      const detail =
-        state.commentDetailCache[commentId] ??
-        (state.activeCommentId === commentId ? state.activeCommentDetail : null)
-      const reply = detail?.replies.find((item) => item.id === localId) as ThreadReply | undefined
+      const findReply = () => {
+        const state = workflowStore.getState()
+        const detail =
+          state.commentDetailCache[commentId] ??
+          (state.activeCommentId === commentId ? state.activeCommentDetail : null)
+        return detail?.replies.find((item) => item.id === localId) as ThreadReply | undefined
+      }
+      const reply = findReply()
       if (!reply || reply.send_state !== 'failed') return
       patchCommentDetail(
         commentId,
@@ -707,9 +677,17 @@ export const useWorkflowComment = () => {
         }),
         { invalidate: false },
       )
+      // A reply whose response was lost may be saved already: refetching drops the local
+      // copy if so, and only a reply still unsaved is sent again.
+      try {
+        await fetchCommentDetail(commentId)
+      } catch (error) {
+        console.error('Failed to refresh the thread before retrying a reply:', error)
+      }
+      if (!findReply()) return
       await sendReply(commentId, localId, reply.content, reply.mentioned_user_ids ?? [])
     },
-    [patchCommentDetail, sendReply, workflowStore],
+    [fetchCommentDetail, patchCommentDetail, sendReply, workflowStore],
   )
 
   const handleCommentReplyDiscard = useCallback(

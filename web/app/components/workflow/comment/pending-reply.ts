@@ -16,9 +16,17 @@ export const createLocalReplyId = () => `local-${uuid()}`
 
 export const getReplyKey = (reply: ThreadReply) => reply.client_key ?? reply.id
 
+// The backend has no idempotency key for replies, so a reply this thread sent is matched
+// to a saved one by author and text, saved no earlier than a minute before it was sent.
+const isSavedAs = (local: ThreadReply, saved: WorkflowCommentReply) =>
+  saved.created_by === local.created_by &&
+  saved.content === local.content &&
+  (saved.created_at ?? 0) >= (local.created_at ?? 0) - 60
+
 /**
- * Fetched replies keep the keys the thread already rendered them with, and replies the
- * server does not have yet (sending or failed) stay at the end.
+ * Fetched replies keep the keys the thread already rendered them with. Replies the server
+ * does not have yet (sending or failed) stay at the end, unless the fetch shows the server
+ * saved them after all, for example when a send's response was lost.
  */
 export const mergeFetchedReplies = (
   current: ThreadReply[],
@@ -32,6 +40,8 @@ export const mergeFetchedReplies = (
       const clientKey = keys.get(reply.id)
       return clientKey ? { ...reply, client_key: clientKey } : reply
     }),
-    ...current.filter((reply) => reply.send_state),
+    ...current.filter(
+      (reply) => reply.send_state && !fetched.some((saved) => isSavedAs(reply, saved)),
+    ),
   ]
 }

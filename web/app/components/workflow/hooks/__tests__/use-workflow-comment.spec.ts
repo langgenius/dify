@@ -684,6 +684,11 @@ describe('useWorkflowComment', () => {
     const failed = replies()[1]!
     expect(failed).toMatchObject({ content: '@Bob second', send_state: 'failed' })
 
+    // The refetch before retrying shows the reply was not saved.
+    mockFetchWorkflowComment.mockResolvedValueOnce({
+      ...detail,
+      replies: [{ id: 'reply-1', content: 'first', created_at: 2, created_by: 'user-1' }],
+    })
     await act(async () => {
       await result.current.handleCommentReplyRetry(commentA.id, failed.id)
     })
@@ -729,6 +734,91 @@ describe('useWorkflowComment', () => {
     })
     expect(store.getState().activeCommentDetail?.resolved).toBe(false)
     expect(store.getState().comments[0]?.resolved).toBe(false)
+  })
+
+  it('does not send a failed reply again when the refetch shows it was saved', async () => {
+    const commentA = baseComment()
+    const detail: WorkflowCommentDetail = { ...baseCommentDetail(), id: commentA.id, replies: [] }
+    // The reply is saved, but its response is lost.
+    mockCreateWorkflowCommentReply.mockRejectedValueOnce(new Error('Network error'))
+    mockFetchWorkflowComment.mockReturnValue(new Promise(() => {}))
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [commentA.id]: detail },
+      },
+    })
+    await act(async () => {
+      await result.current.handleCommentReply(commentA.id, 'saved anyway')
+    })
+    const failed = store.getState().activeCommentDetail!.replies[0]!
+
+    mockFetchWorkflowComment.mockResolvedValueOnce({
+      ...detail,
+      replies: [
+        {
+          id: 'reply-1',
+          content: 'saved anyway',
+          created_at: failed.created_at,
+          created_by: failed.created_by,
+        },
+      ],
+    })
+    await act(async () => {
+      await result.current.handleCommentReplyRetry(commentA.id, failed.id)
+    })
+
+    expect(mockCreateWorkflowCommentReply).toHaveBeenCalledTimes(1)
+    expect(store.getState().activeCommentDetail?.replies.map((reply) => reply.id)).toEqual([
+      'reply-1',
+    ])
+  })
+
+  it('keeps replies written meanwhile when a marker move fails', async () => {
+    const commentA = baseComment()
+    const detail: WorkflowCommentDetail = { ...baseCommentDetail(), id: commentA.id, replies: [] }
+    let rejectMove!: (error: Error) => void
+    mockUpdateWorkflowComment.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectMove = reject
+      }),
+    )
+    mockCreateWorkflowCommentReply.mockResolvedValueOnce({ id: 'reply-1', created_at: 2 })
+    mockFetchWorkflowComment.mockReturnValue(new Promise(() => {}))
+    mockFetchWorkflowComments.mockReturnValue(new Promise(() => {}))
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [commentA.id]: detail },
+      },
+    })
+
+    let move!: Promise<void>
+    act(() => {
+      move = result.current.handleCommentPositionUpdate(commentA.id, { x: 300, y: 400 })
+    })
+    await act(async () => {
+      await result.current.handleCommentReply(commentA.id, 'written meanwhile')
+    })
+    await act(async () => {
+      rejectMove(new Error('Move failed'))
+      await move
+    })
+
+    expect(store.getState().activeCommentDetail).toMatchObject({
+      position_x: commentA.position_x,
+      position_y: commentA.position_y,
+    })
+    expect(store.getState().activeCommentDetail?.replies.map((reply) => reply.id)).toEqual([
+      'reply-1',
+    ])
   })
 
   it('drops a reply that failed to send', async () => {
