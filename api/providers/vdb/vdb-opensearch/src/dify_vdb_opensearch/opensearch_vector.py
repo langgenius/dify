@@ -35,6 +35,9 @@ class OpenSearchParamsDict(TypedDict, total=False):
     connection_class: type
     pool_maxsize: int
     http_auth: tuple[str | None, str | None] | Urllib3AWSV4SignerAuth
+    timeout: float
+    max_retries: int
+    retry_on_timeout: bool
 
 
 class OpenSearchConfig(BaseModel):
@@ -47,6 +50,10 @@ class OpenSearchConfig(BaseModel):
     password: str | None = None
     aws_region: str | None = None
     aws_service: str | None = None
+    # Transport defaults are opensearch-py's own, so leaving them unset changes nothing.
+    timeout: float = 10.0
+    max_retries: int = 3
+    retry_on_timeout: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -80,6 +87,9 @@ class OpenSearchConfig(BaseModel):
             verify_certs=self.verify_certs,
             connection_class=Urllib3HttpConnection,
             pool_maxsize=20,
+            timeout=self.timeout,
+            max_retries=self.max_retries,
+            retry_on_timeout=self.retry_on_timeout,
         )
 
         match self.auth_method:
@@ -332,6 +342,9 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             password=dify_config.OPENSEARCH_PASSWORD,
             aws_region=dify_config.OPENSEARCH_AWS_REGION,
             aws_service=dify_config.OPENSEARCH_AWS_SERVICE,
+            timeout=dify_config.OPENSEARCH_REQUEST_TIMEOUT,
+            max_retries=dify_config.OPENSEARCH_MAX_RETRIES,
+            retry_on_timeout=dify_config.OPENSEARCH_RETRY_ON_TIMEOUT,
         )
 
         return OpenSearchVector(collection_name=collection_name, config=open_search_config)
