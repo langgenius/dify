@@ -99,7 +99,7 @@ def test_get_builtin_data_reads_from_file_and_caches(mocker: MockerFixture) -> N
         mock_app,
     )
 
-    test_data = {"pipeline_templates": {"en-US": {"templates": []}}}
+    test_data: dict[str, object] = {"pipeline_templates": {"en-US": {"templates": list[object]()}}}
     mocker.patch(
         "services.rag_pipeline.pipeline_template.built_in.built_in_retrieval.Path.read_text",
         return_value=json.dumps(test_data),
@@ -115,7 +115,7 @@ def test_get_builtin_data_reads_from_file_and_caches(mocker: MockerFixture) -> N
 
 
 def test_get_builtin_data_returns_cache_on_second_call(mocker: MockerFixture) -> None:
-    cached_data = {"pipeline_templates": {"en-US": {}}}
+    cached_data: dict[str, object] = {"pipeline_templates": {"en-US": {}}}
     BuiltInPipelineTemplateRetrieval.builtin_data = cached_data
 
     result = BuiltInPipelineTemplateRetrieval._get_builtin_data()

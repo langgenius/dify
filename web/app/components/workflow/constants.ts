@@ -123,6 +123,7 @@ export const SUPPORT_OUTPUT_VARS_NODE: BlockEnum[] = [
   BlockEnum.AgentV2,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
+  BlockEnum.HumanInputV2,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

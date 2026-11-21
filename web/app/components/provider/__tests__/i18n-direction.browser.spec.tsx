@@ -14,8 +14,7 @@ import { setLocaleOnClient } from '@/i18n/client'
 import arTime from '@/i18n/locales/ar-TN/time.json'
 import enTime from '@/i18n/locales/en-US/time.json'
 
-vi.mock('react-i18next', async (importOriginal) => await importOriginal())
-vi.mock('@/next/navigation', () => ({ useServerInsertedHTML: () => {} }))
+vi.unmock('react-i18next')
 
 function LanguageControls() {
   return (
@@ -65,7 +64,8 @@ it('keeps document layout, keyboard navigation and portaled pickers aligned when
     await userEvent.keyboard('{ArrowLeft}')
     await expect.element(second).toHaveFocus()
     await screen.getByRole('button', { name: /^Date / }).click()
-    await expect.element(page.getByRole('dialog')).toHaveAttribute('dir', 'rtl')
+    await expect.element(page.getByRole('dialog')).toBeVisible()
+    expect(getComputedStyle(page.getByRole('dialog').element()).direction).toBe('rtl')
     await userEvent.keyboard('{Escape}')
     await second.click()
     await screen.getByRole('button', { name: 'English' }).click()

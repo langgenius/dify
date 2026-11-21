@@ -5,6 +5,12 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders,
   zKnowledgeFsDocumentDeletePayload,
 } from './generated/api/console/knowledge-fs/zod.gen.ts'
+import { logicalDocuments as serviceLogicalDocuments } from './generated/api/service/orpc.gen.ts'
+import {
+  zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody as zServiceAssetDeleteBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody as zServiceLogicalDeleteBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders as zServiceLogicalDeleteHeaders,
+} from './generated/api/service/zod.gen.ts'
 
 describe('generated KnowledgeFS logical document deletion contract', () => {
   it('exposes logical document deletion with revision and idempotency guards', () => {
@@ -33,6 +39,15 @@ describe('generated KnowledgeFS logical document deletion contract', () => {
       zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdHeaders.safeParse({
         'Idempotency-Key': 'logical-delete-1',
       }).success,
+    ).toBe(true)
+  })
+
+  it('exposes the same logical deletion target through the Service API', () => {
+    expect(serviceLogicalDocuments.byDocumentId.delete).toBeDefined()
+    expect(zServiceLogicalDeleteBody.safeParse({ expectedRevision: 0 }).success).toBe(true)
+    expect(zServiceAssetDeleteBody.safeParse({ expectedRevision: 0 }).success).toBe(false)
+    expect(
+      zServiceLogicalDeleteHeaders.safeParse({ 'Idempotency-Key': 'logical-delete-1' }).success,
     ).toBe(true)
   })
 })

@@ -16,6 +16,7 @@ import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-r
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 export function AgentLogDetailPanel({
   agentId,
@@ -31,7 +32,7 @@ export function AgentLogDetailPanel({
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
-    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions({ context: { silent: true } }),
   )
   const messagesQuery = useQuery(
     consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.queryOptions({
@@ -82,14 +83,16 @@ export function AgentLogDetailPanel({
         }),
       ])
     } catch (error) {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
       throw error
     }
   }
 
   return (
     <div className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
-      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
+      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg ps-4 pe-3 pt-3 pb-2">
         <div className="min-w-0 shrink-0">
           <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
             {log?.source?.type === 'workflow'

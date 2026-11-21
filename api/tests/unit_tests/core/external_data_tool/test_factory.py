@@ -4,7 +4,7 @@ from core.extension.extensible import ExtensionModule
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 
-def test_external_data_tool_factory_init():
+def test_external_data_tool_factory_init() -> None:
     with patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension:
         mock_extension_class = MagicMock()
         mock_code_based_extension.extension_class.return_value = mock_extension_class
@@ -23,7 +23,7 @@ def test_external_data_tool_factory_init():
         )
 
 
-def test_external_data_tool_factory_validate_config():
+def test_external_data_tool_factory_validate_config() -> None:
     with patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension:
         mock_extension_class = MagicMock()
         mock_code_based_extension.extension_class.return_value = mock_extension_class
@@ -38,7 +38,7 @@ def test_external_data_tool_factory_validate_config():
         mock_extension_class.validate_config.assert_called_once_with(tenant_id, config)
 
 
-def test_external_data_tool_factory_query():
+def test_external_data_tool_factory_query() -> None:
     with patch("core.external_data_tool.factory.code_based_extension") as mock_code_based_extension:
         mock_extension_class = MagicMock()
         mock_extension_instance = MagicMock()

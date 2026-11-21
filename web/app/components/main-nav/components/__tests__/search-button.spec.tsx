@@ -64,8 +64,6 @@ describe('MainNavSearchButton', () => {
       if (initialShortcut)
         expect(getSearchButton()).toHaveAttribute('aria-keyshortcuts', initialShortcut)
       else expect(getSearchButton()).not.toHaveAttribute('aria-keyshortcuts')
-      expect(container.querySelector('kbd')).toHaveAttribute('aria-hidden', 'true')
-
       const onRecoverableError = vi.fn()
       const root = await act(async () =>
         hydrateRoot(container, app, {

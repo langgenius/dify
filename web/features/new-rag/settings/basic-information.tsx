@@ -145,7 +145,7 @@ export function BasicInformationSection() {
               )}
             </Field>
             {current.name.length >= KNOWLEDGE_NAME_MAX_LENGTH * 0.9 && (
-              <p className="mt-1 text-right system-xs-medium text-text-warning-secondary">
+              <p className="mt-1 text-end system-xs-medium text-text-warning-secondary">
                 {current.name.length} / {KNOWLEDGE_NAME_MAX_LENGTH}
               </p>
             )}

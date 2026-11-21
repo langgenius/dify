@@ -3,8 +3,8 @@ import os
 import uuid
 from typing import override
 
+import pytest
 import tablestore
-from _pytest.python_api import approx
 from dify_vdb_tablestore.tablestore_vector import (
     TableStoreConfig,
     TableStoreVector,
@@ -80,7 +80,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         assert len(docs) == 1
         assert docs[0].metadata["doc_id"] == self.example_doc_id
         if self.tablestore_vector._config.normalize_full_text_bm25_score:
-            assert docs[0].metadata["score"] == approx(0.1214, abs=1e-3)
+            assert docs[0].metadata["score"] == pytest.approx(0.1214, abs=1e-3)
         else:
             assert docs[0].metadata.get("score") is None
 

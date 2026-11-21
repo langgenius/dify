@@ -9,6 +9,7 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.application_services.data_sources import build_data_source_credentials
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
@@ -186,11 +187,21 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
         ("credential-1", {"integration_secret": "saved-secret"}, None, "saved-secret"),
         ("deleted-credential", {}, DatasourceCredentialNotFoundError(), "environment-secret"),
         ("credential-1", {}, DatasourceCredentialRefreshError("credential-1"), "environment-secret"),
+        ("credential-1", {}, CredentialRefreshUnavailableError(), "environment-secret"),
         ("credential-1", {}, None, "environment-secret"),
         ("credential-1", {"integration_secret": ""}, None, "environment-secret"),
         ("credential-1", {"integration_secret": 42}, None, "environment-secret"),
     ],
-    ids=["legacy", "saved", "deleted", "refresh-failed", "missing-token", "empty-token", "invalid-token"],
+    ids=[
+        "legacy",
+        "saved",
+        "deleted",
+        "refresh-failed",
+        "refresh-unavailable",
+        "missing-token",
+        "empty-token",
+        "invalid-token",
+    ],
 )
 @pytest.mark.parametrize("integration_token", ["environment-secret", None, ""])
 def test_stored_notion_preview_and_indexing_use_same_integration(
@@ -234,7 +245,12 @@ def test_stored_notion_preview_and_indexing_use_same_integration(
             ),
         )
 
-    if expected_token == "environment-secret" and not integration_token:
+    if isinstance(error, CredentialRefreshUnavailableError) and not integration_token:
+        with pytest.raises(CredentialRefreshUnavailableError):
+            resolver.resolve(source)
+        with pytest.raises(CredentialRefreshUnavailableError):
+            indexing_extractor()
+    elif expected_token == "environment-secret" and not integration_token:
         with pytest.raises(SourceCredentialUnavailableError):
             resolver.resolve(source)
         with pytest.raises(ValueError, match="Must specify `integration_token`"):

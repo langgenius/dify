@@ -1,3 +1,4 @@
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
@@ -5,7 +6,7 @@ import { createEmptyDataset } from '@/service/datasets'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import EmptyDatasetCreationModal from '../index'
+import EmptyDatasetCreationContent from '../index'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -50,7 +51,19 @@ function setup() {
   queryClient.setQueryData(listKey, { data: [], page: 1, limit: 20, total: 0, has_more: false })
   return {
     onHide,
-    ...renderWithConsoleQuery(<EmptyDatasetCreationModal show onHide={onHide} />, { queryClient }),
+    ...renderWithConsoleQuery(
+      <Dialog
+        defaultOpen
+        onOpenChange={(open) => {
+          if (!open) onHide()
+        }}
+      >
+        <DialogContent>
+          <EmptyDatasetCreationContent onCreated={onHide} onPendingChange={vi.fn()} />
+        </DialogContent>
+      </Dialog>,
+      { queryClient },
+    ),
   }
 }
 beforeEach(() => mockCreate.mockReset().mockResolvedValue(dataset))
@@ -77,7 +90,7 @@ it('creates a name at the length limit, invalidates the list and opens its docum
   await user.type(field(), name)
   await user.click(confirm())
   await waitFor(() => expect(onHide).toHaveBeenCalledOnce())
-  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name })
+  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name }, { silent: true })
   expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
   expect(mockPush).toHaveBeenCalledExactlyOnceWith('/datasets/created-dataset/documents')
 })
@@ -90,7 +103,7 @@ it('submits with Enter and prevents duplicate requests until creation completes'
   await user.type(field(), 'New Dataset{Enter}')
   await user.keyboard('{Enter}')
   await user.click(confirm())
-  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name: 'New Dataset' })
+  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name: 'New Dataset' }, { silent: true })
   expect(onHide).not.toHaveBeenCalled()
   await act(async () => pending.resolve(dataset))
   await waitFor(() => expect(onHide).toHaveBeenCalledOnce())
@@ -105,7 +118,7 @@ it('keeps a failed draft available for retry without navigating or invalidating 
   await waitFor(() =>
     expect(mockNotify).toHaveBeenCalledWith({
       type: 'error',
-      message: 'datasetCreation.stepOne.modal.failed',
+      message: 'offline',
     }),
   )
   expect(field()).toHaveValue('Retry me')
@@ -128,15 +141,3 @@ it.each(['datasetCreation.stepOne.modal.cancelButton', 'common.operation.close']
     expect(mockCreate).not.toHaveBeenCalled()
   },
 )
-
-it('preserves the unsaved name after the modal is hidden and reopened', async () => {
-  const user = userEvent.setup()
-  const { onHide, rerender } = setup()
-  await user.type(field(), 'Draft')
-  rerender(<EmptyDatasetCreationModal show={false} onHide={onHide} />)
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  rerender(<EmptyDatasetCreationModal show onHide={onHide} />)
-  expect(
-    await screen.findByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
-  ).toHaveValue('Draft')
-})

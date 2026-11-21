@@ -8,6 +8,7 @@ const passwords = new Map<string, string>()
 const constructed: EntryArgs[] = []
 let getPasswordError: Error | null = null
 let setPasswordError: Error | null = null
+let deletePasswordError: Error | null = null
 
 class FakeEntry {
   private readonly key: string
@@ -27,6 +28,7 @@ class FakeEntry {
   }
 
   deletePassword(): boolean {
+    if (deletePasswordError !== null) throw deletePasswordError
     if (!passwords.has(this.key)) return false
     passwords.delete(this.key)
     return true
@@ -46,6 +48,7 @@ beforeEach(() => {
   constructed.length = 0
   getPasswordError = null
   setPasswordError = null
+  deletePasswordError = null
 })
 
 describe('KeychainTokenStore', () => {
@@ -70,6 +73,18 @@ describe('KeychainTokenStore', () => {
   it('treats remove of an absent credential as a no-op', async () => {
     const store = new KeychainTokenStore(SERVICE)
     await expect(store.remove('h', 'absent')).resolves.not.toThrow()
+  })
+
+  it('reports a native deletion failure and preserves the credential', async () => {
+    const store = new KeychainTokenStore(SERVICE)
+    await store.write('h', 'e', 'dfoa_secret')
+    deletePasswordError = new Error('keyring locked')
+
+    await expect(store.remove('h', 'e')).rejects.toMatchObject({
+      code: ErrorCode.KeyringUnavailable,
+      cause: deletePasswordError,
+    })
+    expect(await store.read('h', 'e')).toBe('dfoa_secret')
   })
 
   it('names the entry tokens.<host>.<email>', async () => {

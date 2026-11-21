@@ -1,4 +1,6 @@
+import json
 from collections.abc import Callable
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -125,9 +127,7 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
                 DatasetPermission(tenant_id="other", dataset_id="dataset", account_id="foreign"),
             ]
         )
-    result = operations.list_datasets(
-        CONTEXT, DatasetListFilter(page=0, limit=1000, ids=["dataset", "foreign"]), None, False
-    )
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(page=0, limit=1000, ids=["dataset", "foreign"]), None)
     response = DatasetListResponse.model_validate(result).model_dump(mode="json")
     assert response["total"] == 1
     assert response["page"] == 1
@@ -135,6 +135,37 @@ def test_listing_materializes_page_and_owner_scoped_partial_members(
     assert response["has_more"] is False
     assert response["data"][0]["partial_member_list"] == ["member"]
     assert response["data"][0]["retrieval_model_dict"]["top_k"] == 2
+
+
+def test_listing_serializes_legacy_retrieval_settings_without_rewriting_rows(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    stored = {
+        "search_method": "",
+        "reranking_enable": "",
+        "reranking_model": None,
+        "score_threshold_enabled": "false",
+        "top_k": 4,
+    }
+    with sqlite_session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.retrieval_model = stored
+
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset", "foreign"]), None)
+    response = DatasetListResponse.model_validate(result).model_dump(mode="json")
+
+    assert response["total"] == 1
+    assert response["data"][0]["id"] == "dataset"
+    retrieval = response["data"][0]["retrieval_model_dict"]
+    assert retrieval["search_method"] == "semantic_search"
+    assert retrieval["reranking_enable"] is False
+    assert retrieval["score_threshold_enabled"] is False
+    assert retrieval["top_k"] == 4
+    with sqlite_session_factory() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        assert row.retrieval_model == stored
 
 
 @pytest.mark.parametrize(
@@ -159,7 +190,7 @@ def test_listing_upgrade_discovery_uses_server_availability(
         KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
     )
 
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), None, False)
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), None)
     discovery = result["data"][0]["knowledge_fs_upgrade"]
 
     assert discovery["can_upgrade"] is can_upgrade
@@ -182,20 +213,29 @@ def test_listing_filters_tags_within_workspace(
         TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type="knowledge"),
     )
 
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None, False)
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None)
     response = DatasetListResponse.model_validate(result)
 
     assert [row.id for row in response.data] == ([] if foreign_tag else ["dataset"])
     assert response.total == (0 if foreign_tag else 1)
 
 
-@pytest.mark.parametrize(("ids", "own"), [([], False), (["dataset"], False)])
+@pytest.mark.parametrize("ids", [[], ["dataset"]])
+@pytest.mark.parametrize("maintainer", ["actor", "other"])
 def test_list_visibility_restricts_even_requested_ids(
-    operations: SQLAlchemyDatasetOperations, ids: list[str], own: bool, monkeypatch: pytest.MonkeyPatch
+    operations: SQLAlchemyDatasetOperations,
+    ids: list[str],
+    maintainer: str,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), ids, own)
-    assert result["total"] == len(ids)
+    with sqlite_session_factory.begin() as session:
+        row = session.get(Dataset, "dataset")
+        assert row is not None
+        row.maintainer = maintainer
+    result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), ids)
+    assert result["total"] == (1 if maintainer == "actor" else len(ids))
 
 
 @pytest.mark.parametrize(
@@ -418,3 +458,39 @@ def test_queries_and_related_apps_materialize_after_session_close(
     assert related["total"] == 1
     assert related["data"][0]["id"] == "app"
     assert related["data"][0]["mode"] == "chat"
+
+
+def test_query_history_pagination_preserves_invalid_image_records(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    contents = [
+        "legacy text",
+        json.dumps(
+            [{"content_type": "text_query", "content": "example"}, {"content_type": "image_query", "content": ""}]
+        ),
+    ]
+    ids = []
+    with sqlite_session_factory.begin() as session:
+        for day, content in enumerate(contents, 1):
+            row = DatasetQuery(
+                dataset_id="dataset",
+                content=content,
+                source=DatasetQuerySource.HIT_TESTING,
+                source_app_id=None,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by="actor",
+            )
+            row.created_at = datetime(2026, 1, day)
+            session.add(row)
+            session.flush()
+            ids.append(row.id)
+    first = DatasetQueryListResponse.model_validate(operations.queries(REF, page=1, limit=1))
+    second = DatasetQueryListResponse.model_validate(operations.queries(REF, page=2, limit=1))
+    assert (first.total, first.page, first.limit, first.has_more) == (2, 1, 1, True)
+    assert (second.total, second.page, second.limit, second.has_more) == (2, 2, 1, False)
+    assert [first.data[0].id, second.data[0].id] == list(reversed(ids))
+    assert [item.content for item in first.data[0].queries] == ["example", ""]
+    assert first.data[0].queries[1].file_info is None
+    assert second.data[0].queries[0].content == "legacy text"
+    with sqlite_session_factory() as session:
+        assert list(session.scalars(select(DatasetQuery.content).order_by(DatasetQuery.created_at))) == contents

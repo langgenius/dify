@@ -1,32 +1,30 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { MouseEvent } from 'react'
+import type { MouseEvent, Ref } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { memo, useCallback, useRef } from 'react'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { getAvatarInitial } from '@/utils/avatar'
-import MemberMenu from './member-menu'
-import RoleBadges from './role-badges'
+import { MemberMenu } from './member-menu'
+import { RoleBadges } from './role-badges'
 
 type MemberRowProps = {
+  ref?: Ref<HTMLTableRowElement>
   member: AccountWithRoleResponse
   onRemove: (row: HTMLTableRowElement | null) => void
-  roles: Array<{
-    id: string
-    name: string
-  }>
   isCurrentUser: boolean
   canManage: boolean
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
 }
 
-const MemberRow = ({
+export const MemberRow = ({
+  ref,
   member,
   onRemove,
-  roles,
   isCurrentUser,
   canManage,
   canTransferOwnership,
@@ -34,12 +32,13 @@ const MemberRow = ({
 }: MemberRowProps) => {
   const { t } = useTranslation(['workspaceMembers'])
   const rowRef = useRef<HTMLTableRowElement>(null)
+  const mergedRowRef = useMergedRefs(rowRef, ref)
   const detailsTriggerRef = useRef<HTMLButtonElement>(null)
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  const roleNames = roles.map((role) => role.name)
+  const roleNames = (member.roles ?? []).map((role) => role.name)
 
-  const handleRowClick = useCallback((event: MouseEvent<HTMLTableRowElement>) => {
+  const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
     const target = event.target
     if (
       !(target instanceof Element) ||
@@ -51,11 +50,11 @@ const MemberRow = ({
     if (selection && !selection.isCollapsed && selection.containsNode(event.currentTarget, true))
       return
     detailsTriggerRef.current?.click()
-  }, [])
+  }
 
   return (
     <tr
-      ref={rowRef}
+      ref={mergedRowRef}
       data-testid={`member-row-${member.id}`}
       className="cursor-pointer border-b border-divider-subtle hover:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:bg-state-base-hover has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-2 has-[[aria-haspopup=dialog]:focus-visible]:inset-ring-state-accent-solid has-[[aria-haspopup=dialog]:focus-visible]:outline-hidden has-[[aria-haspopup=menu]:hover]:bg-transparent"
       onClick={handleRowClick}
@@ -75,11 +74,6 @@ const MemberRow = ({
               >
                 {member.name}
               </DialogTrigger>
-              {member.status === 'pending' && (
-                <span className="ms-1 system-xs-medium text-text-warning">
-                  {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
-                </span>
-              )}
               {isCurrentUser && (
                 <span className="system-xs-regular text-text-tertiary">
                   {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
@@ -112,5 +106,3 @@ const MemberRow = ({
     </tr>
   )
 }
-
-export default memo(MemberRow)

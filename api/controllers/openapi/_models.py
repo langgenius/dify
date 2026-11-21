@@ -7,23 +7,30 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Final, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
 
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.api_entities import ToolApiEntity
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    ToolProviderType,
+    WorkflowToolParameterConfiguration,
+)
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
-from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, alphanumeric, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
@@ -588,8 +595,8 @@ class CheckDependenciesResponse(CheckDependenciesResult, Hinted):
 
 
 class TaskStopResponse(BaseModel):
-    """200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
-    {"result": "success"}, so `result` is required (no default) — the generated contract
+    """200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+    The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
     types it as a required `'success'` rather than an optional field."""
 
     result: Literal["success"]
@@ -729,9 +736,9 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
 class HumanInputFormDefinitionResponse(BaseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    user_actions: list[UserActionConfig] = Field(default_factory=list)
     expiration_time: int | None = None
 
 
@@ -1330,3 +1337,346 @@ class ModelCredentialCreatePayload(ModelRef):
 class ModelCredentialUpdatePayload(ModelRef):
     credentials: dict[str, Any] = Field(description=_CREDENTIALS_UPDATE_DESCRIPTION)
     name: str | None = None
+
+
+class SkillListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    keyword: str | None = Field(
+        None, max_length=200, description="Words to match in the name, display name or description"
+    )
+    tag: list[str] | None = Field(None, description="Only skills with every one of these tags; repeat to give several")
+
+
+class SkillRow(BaseModel):
+    id: str
+    name: str
+    display_name: str
+    description: str
+    icon: str | None
+    tags: list[str]
+    updated_at: int
+    latest_published_version_id: str | None = Field(description="Null while the skill has never been published")
+
+
+class SkillListResponse(PaginationEnvelope[SkillRow]):
+    pass
+
+
+class SkillVersionRow(BaseModel):
+    id: str
+    version_number: int
+    version_name: str | None
+    publish_note: str
+    created_at: int
+    created_by: str | None = Field(validation_alias="published_by", description="Account id that published it")
+
+
+class SkillDescribeResponse(SkillRow, Hinted):
+    draft_hash: str = Field(description="Opaque; names the draft this was read from")
+    latest_version: SkillVersionRow | None = Field(description="Null while the skill has never been published")
+
+
+class SkillVersionListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+
+class SkillVersionListResponse(PaginationEnvelope[SkillVersionRow]):
+    pass
+
+
+class SkillExportQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_id: UUIDStr | None = Field(None, description="Export this published version instead of the draft")
+
+
+class SkillPublishPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version_name: str | None = Field(None, max_length=128, description="Name for the new version")
+    publish_note: str = Field("", max_length=1024, description="Note for the new version")
+
+
+class SkillPublishResponse(SkillVersionRow, Hinted):
+    pass
+
+
+class SkillImportPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    files: UploadParts = Field(description="The skill folder, one part per file; SKILL.md at its root")
+    skill_id: UUIDStr | None = Field(None, description="Overwrite this skill's draft; omit to create a new skill")
+    draft_hash: str | None = Field(
+        None,
+        pattern=r"^[0-9]+$",
+        description="From describe.skill; rejects the overwrite if the draft changed since",
+    )
+
+    @field_validator("draft_hash")
+    @classmethod
+    def _needs_skill_id(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value is not None and info.data.get("skill_id") is None:
+            raise ValueError("draft_hash only applies to an overwrite; give skill_id too")
+        return value
+
+
+class SkillImportResponse(Hinted):
+    id: str
+    name: str
+    draft_hash: str = Field(description="Opaque; names the draft this wrote")
+    file_count: int
+
+
+class AppApiKeyRow(BaseModel):
+    """One app API key; `token` is the full secret, as the console returns it."""
+
+    id: str
+    token: str
+    created_at: int | None = None
+    last_used_at: int | None = None
+
+    @field_validator("created_at", "last_used_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AppApiKeyListResponse(BaseModel):
+    """Every API key of one app; unpaginated, as the console lists them."""
+
+    data: list[AppApiKeyRow]
+
+
+class ModelConfigFrom(StrEnum):
+    """Which credential table a model's load-balancing entries point at, as the console's config_from."""
+
+    PREDEFINED_MODEL = "predefined-model"
+    CUSTOM_MODEL = "custom-model"
+
+
+class ModelRefQuery(ModelRef):
+    """The model a credential or settings op addresses, as query parameters."""
+
+
+class DefaultModelPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    model: str
+
+
+class DefaultModelResponse(BaseModel):
+    model_type: str
+    provider: str | None = Field(description="Null when no default is set for the type")
+    model: str | None = Field(description="Null when no default is set for the type")
+
+
+class ModelSettingsQuery(ModelRef):
+    config_from: ModelConfigFrom = Field(
+        description="predefined-model: entries point at provider credentials; custom-model: at the model's own"
+    )
+
+
+class LoadBalancingEntry(BaseModel):
+    id: str
+    name: str
+    credential_id: str | None
+    enabled: bool
+    inherit: bool = Field(description="True for the entry that reuses the active credential")
+
+
+class LoadBalancingSettings(BaseModel):
+    enabled: bool
+    entries: list[LoadBalancingEntry]
+
+
+class ModelSettingsResponse(ModelSettingsQuery):
+    enabled: bool = Field(description="False while the model is disabled for this workspace")
+    load_balancing: LoadBalancingSettings
+
+
+class LoadBalancingEntryPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credential_id: str | None = Field(
+        None, description="A saved credential's id; null names the entry that reuses the active credential"
+    )
+    enabled: bool
+
+
+class LoadBalancingPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    entries: list[LoadBalancingEntryPayload] = Field(description="Desired entries; unlisted ones are deleted")
+
+
+class ModelSettingsPutPayload(ModelSettingsQuery):
+    enabled: bool
+    load_balancing: LoadBalancingPayload = Field(description="Load-balancing settings to replace the stored ones")
+
+    @model_validator(mode="after")
+    def _unique_credentials(self) -> Self:
+        seen: set[str] = set()
+        inherit = 0
+        for entry in self.load_balancing.entries:
+            if entry.credential_id is None:
+                inherit += 1
+            elif entry.credential_id in seen:
+                raise ValueError(f"duplicate credential_id {entry.credential_id}")
+            else:
+                seen.add(entry.credential_id)
+        if inherit > 1:
+            raise ValueError("at most one entry may reuse the active credential")
+        return self
+
+
+class ToolEmojiIcon(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    background: str
+    content: str
+
+
+class ApiToolProviderPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    name: str = Field(description="Provider name; on update it may differ from the path to rename")
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the provider")
+    credentials: dict[str, Any] = Field(description="Auth configuration the provider's calls send")
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema", description="The schema text that defines the provider's tools")
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    labels: list[str] | None = None
+
+
+class ApiToolProviderResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str
+    icon: ToolEmojiIcon
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema")
+    credentials: dict[str, Any] = Field(description="Masked secret values; never the stored secrets")
+    privacy_policy: str | None
+    custom_disclaimer: str | None
+    labels: list[str]
+    tools: list[str] = Field(description="Names of the tools the schema defines")
+    description: str | None = None
+
+
+class ApiToolProviderRow(BaseModel):
+    """One API tool provider summary, as a workspace list shows it."""
+
+    name: str
+    icon: dict[str, str] | str
+    description: str | None
+    labels: list[str]
+    tools: list[str] = Field(description="Names of the tools the provider's schema defines")
+
+
+class ApiToolProviderListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ApiToolProviderListResponse(PaginationEnvelope[ApiToolProviderRow]):
+    pass
+
+
+class McpProviderPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    server_url: str
+    name: str
+    icon: str
+    icon_type: str
+    icon_background: str = ""
+    server_identifier: str
+    configuration: MCPConfiguration | None = Field(
+        None, description="Connection settings such as timeouts; defaults apply when omitted"
+    )
+    headers: dict[str, str] | None = Field(None, description="Extra HTTP headers sent to the server")
+    authentication: MCPAuthentication | None = Field(
+        None, description="OAuth client configuration for servers that require it"
+    )
+
+    @field_validator("authentication", "configuration", mode="before")
+    @classmethod
+    def _empty_to_none(cls, value: object) -> object:
+        if value == {}:
+            return None
+        return value
+
+
+class McpProviderResponse(BaseModel):
+    """An MCP provider with every secret field already masked by the service."""
+
+    id: str
+    name: str
+    icon: str | dict[str, str]
+    server_url: str | None = Field(description="Masked server URL")
+    server_identifier: str | None
+    masked_headers: dict[str, str] | None
+    authentication: MCPAuthentication | None = Field(description="Masked OAuth client config")
+    is_team_authorization: bool = Field(description="True once the workspace authorized the provider")
+    is_dynamic_registration: bool
+    configuration: MCPConfiguration | None
+    identity_mode: str
+    updated_at: int
+    tools: list[str] = Field(description="Names of the tools the server advertised")
+
+
+class WorkflowToolCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_app_id: str = Field(description="The workflow app to publish as a tool")
+    name: str
+    label: str
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the tool")
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
+    privacy_policy: str | None = None
+    labels: list[str] | None = None
+
+    @field_validator("workflow_app_id")
+    @classmethod
+    def _valid_app_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+    @field_validator("name")
+    @classmethod
+    def _valid_name(cls, value: str) -> str:
+        return alphanumeric(value)
+
+
+class WorkflowToolSetPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    label: str
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the tool")
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
+    privacy_policy: str | None = None
+    labels: list[str] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _valid_name(cls, value: str) -> str:
+        return alphanumeric(value)
+
+
+class WorkflowToolResponse(BaseModel):
+    name: str
+    label: str
+    workflow_tool_id: str
+    workflow_app_id: str
+    icon: ToolEmojiIcon
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration]
+    output_schema: dict[str, Any]
+    tool: ToolApiEntity
+    synced: bool = Field(description="False once the app's published workflow moved past this tool's version")
+    privacy_policy: str | None

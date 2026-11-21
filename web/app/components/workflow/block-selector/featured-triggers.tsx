@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next'
 import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import type { PluginLanguage } from '@/i18n/metadata'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,13 +21,11 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/marketplace-plugin/action'
 import { useFeaturedTriggersCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
 import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -38,6 +37,7 @@ const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
 
 type FeaturedTriggersProps = {
+  marketplace: MarketplaceLinks
   plugins: Plugin[]
   providerMap: Map<string, TriggerWithProvider>
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
@@ -51,6 +51,7 @@ type FeaturedTriggerPreviewPayload = {
 }
 
 const FeaturedTriggers = ({
+  marketplace,
   plugins,
   providerMap,
   onSelect,
@@ -130,13 +131,13 @@ const FeaturedTriggers = ({
       open={!isCollapsed}
       onOpenChange={(open) => setIsCollapsed(!open)}
     >
-      <CollapsibleTrigger className="group/collapsible ml-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
+      <CollapsibleTrigger className="group/collapsible ms-2 flex min-h-0 w-fit touch-manipulation items-center justify-start gap-0 rounded-md px-2 py-1 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary focus-visible:ring-inset data-panel-open:text-text-primary">
         <span className="system-xs-medium text-text-primary">
           {t(($) => $['tabs.featuredTools'], { ns: 'workflow' })}
         </span>
         <span
           aria-hidden
-          className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
+          className="ms-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-4 -rotate-90 text-text-tertiary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none"
         />
       </CollapsibleTrigger>
 
@@ -151,7 +152,7 @@ const FeaturedTriggers = ({
           <p className="px-4 py-2 system-xs-regular text-text-tertiary">
             <Link
               className="text-text-accent"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
+              href={marketplace.category(PluginCategoryEnum.trigger)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -175,6 +176,7 @@ const FeaturedTriggers = ({
             {visibleUninstalledPlugins.map((plugin) => (
               <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
                 <FeaturedTriggerUninstalledItem
+                  marketplace={marketplace}
                   plugin={plugin}
                   language={language}
                   previewCardHandle={previewCardHandle}
@@ -192,7 +194,7 @@ const FeaturedTriggers = ({
           <Button
             variant="ghost"
             size="medium"
-            className="group mt-1 w-full justify-start pr-2 pl-3 text-left text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
+            className="group mt-1 w-full justify-start ps-3 pe-2 text-start text-text-tertiary hover:text-text-secondary focus-visible:ring-inset"
             onClick={() => {
               setVisibleCount((count) => {
                 if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
@@ -201,7 +203,7 @@ const FeaturedTriggers = ({
               })
             }}
           >
-            <div className="flex items-center pl-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
+            <div className="flex items-center ps-1 text-text-tertiary group-hover:text-text-secondary group-focus-visible:text-text-secondary">
               <span
                 aria-hidden
                 className="i-ri-more-line size-4 group-hover:hidden group-focus-visible:hidden"
@@ -237,6 +239,7 @@ const FeaturedTriggers = ({
 }
 
 type FeaturedTriggerUninstalledItemProps = {
+  marketplace: MarketplaceLinks
   plugin: Plugin
   language: PluginLanguage
   previewCardHandle: PreviewCardHandle<FeaturedTriggerPreviewPayload>
@@ -245,6 +248,7 @@ type FeaturedTriggerUninstalledItemProps = {
 }
 
 function FeaturedTriggerUninstalledItem({
+  marketplace,
   plugin,
   language,
   previewCardHandle,
@@ -278,7 +282,7 @@ function FeaturedTriggerUninstalledItem({
   const detailsLink = (
     <Link
       className="flex h-full w-full min-w-0 items-center rounded-lg px-3 group-hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
-      href={getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`)}
+      href={marketplace.plugin(plugin)}
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -288,11 +292,11 @@ function FeaturedTriggerUninstalledItem({
         size="sm"
         toolIcon={plugin.icon}
       />
-      <span className="ml-2 truncate system-sm-medium text-text-secondary">{label}</span>
+      <span className="ms-2 truncate system-sm-medium text-text-secondary">{label}</span>
       <span
         aria-hidden
         className={cn(
-          'ml-auto shrink-0 pl-2 system-xs-regular text-text-tertiary',
+          'ms-auto shrink-0 ps-2 system-xs-regular text-text-tertiary',
           actionOpen
             ? 'invisible'
             : 'group-focus-within:invisible group-hover:invisible [@media(hover:none)]:invisible',
@@ -319,7 +323,7 @@ function FeaturedTriggerUninstalledItem({
         )}
         <div
           className={cn(
-            'absolute inset-y-0 right-1 flex items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0',
+            'absolute inset-y-0 inset-e-1 flex items-center gap-1 system-xs-medium text-components-button-secondary-accent-text opacity-0',
             actionOpen
               ? 'pointer-events-auto opacity-100'
               : 'pointer-events-none group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
@@ -339,6 +343,7 @@ function FeaturedTriggerUninstalledItem({
             </Button>
           )}
           <Action
+            marketplace={marketplace}
             open={actionOpen}
             onOpenChange={setActionOpen}
             author={plugin.org}

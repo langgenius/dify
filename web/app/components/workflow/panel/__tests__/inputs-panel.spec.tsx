@@ -1,6 +1,7 @@
 import type { Shape as HooksStoreShape } from '../../hooks-store/store'
 import type { RunFile } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
@@ -10,9 +11,16 @@ import { InputVarType, WorkflowRunningStatus } from '../../types'
 import InputsPanel from '../inputs-panel'
 
 const mockNotify = vi.fn()
+const request = vi.hoisted(() => vi.fn<() => Promise<Response>>())
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request,
+}))
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/apps',
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -66,6 +74,7 @@ const renderInputsPanel = (
 describe('InputsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    request.mockReset()
   })
 
   describe('Rendering', () => {
@@ -238,6 +247,99 @@ describe('InputsPanel', () => {
       })
     })
   })
+
+  it.each([false, true])(
+    'submits the selected file and preserves clear semantics (required: %s)',
+    async (required) => {
+      const user = userEvent.setup()
+      const handleRun = vi.fn()
+      const defaultFile: FileEntity = {
+        id: 'default-file',
+        name: 'default.txt',
+        size: 10,
+        type: 'text/plain',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+        supportFileType: 'document',
+        uploadedId: 'default-upload',
+      }
+      renderInputsPanel(
+        createStartNode({
+          data: {
+            variables: [
+              {
+                type: InputVarType.singleFile,
+                variable: 'file',
+                label: 'File',
+                required,
+                default: defaultFile,
+                allowed_file_types: ['document'],
+                allowed_file_upload_methods: [TransferMethod.remote_url],
+              },
+            ],
+          },
+        }),
+        { hooksStoreProps: createHooksStoreProps({ handleRun, fileSettings: { enabled: false } }) },
+      )
+      const runButton = screen.getByRole('button', { name: 'workflow.singleRun.startRun' })
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          inputs: {
+            file: {
+              type: 'document',
+              transfer_method: 'local_file',
+              url: '',
+              upload_file_id: 'default-upload',
+            },
+          },
+        }),
+      )
+
+      await user.click(screen.getByRole('button', { name: /remove.*default.txt/ }))
+      expect(screen.queryByText('default.txt')).not.toBeInTheDocument()
+      handleRun.mockClear()
+      await user.click(runButton)
+      if (required) {
+        expect(handleRun).not.toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"File"}',
+        })
+      } else {
+        expect(handleRun).toHaveBeenCalledWith(expect.objectContaining({ inputs: { file: '' } }))
+      }
+
+      const replacementUrl = 'https://example.com/replacement.txt'
+      request.mockResolvedValue(
+        Response.json({
+          id: 'replacement-upload',
+          name: 'replacement.txt',
+          mime_type: 'text/plain',
+          size: 10,
+          url: replacementUrl,
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ }))
+      await user.type(screen.getByPlaceholderText(/pasteFileLinkInputPlaceholder/), replacementUrl)
+      await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+      await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
+      await user.keyboard('{Escape}')
+      await user.click(runButton)
+      expect(handleRun).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          inputs: {
+            file: {
+              type: 'document',
+              transfer_method: 'remote_url',
+              url: replacementUrl,
+              upload_file_id: 'replacement-upload',
+            },
+          },
+        }),
+      )
+    },
+  )
 
   it.each([false, true])(
     'accepts a zero default or explicit numeric override (%s)',

@@ -339,6 +339,9 @@ export type Parameters = {
   sensitive_word_avoidance: {
     enabled?: boolean
   }
+  show_thoughts?: {
+    enabled?: boolean
+  }
   speech_to_text: {
     enabled?: boolean
   }
@@ -711,8 +714,6 @@ export type TextToSpeechRequest = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -1009,6 +1010,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -2061,6 +2063,7 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
     | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2193,7 +2196,7 @@ export type PostTrialAppsByAppIdTextToAudioError =
   PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
 
 export type PostTrialAppsByAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostTrialAppsByAppIdTextToAudioResponse =

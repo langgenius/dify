@@ -162,17 +162,11 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: account_with_tenant)
 
-    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool) -> dict[str, object]:
+    def get_workspace_plan(tenant_id: str) -> CloudPlan:
         assert tenant_id == "tenant-1"
-        assert exclude_vector_space
-        return {
-            "subscription": {"plan": CloudPlan.TEAM},
-        }
+        return CloudPlan.TEAM
 
-    monkeypatch.setattr(
-        "controllers.console.wraps.BillingService.get_info",
-        get_billing_info,
-    )
+    monkeypatch.setattr("controllers.console.wraps.FeatureService.get_workspace_plan", get_workspace_plan)
     service = MagicMock()
     service.list_archives.return_value = object()
     monkeypatch.setattr(
@@ -202,8 +196,7 @@ def test_workflow_run_archive_role_permissions_when_rbac_is_disabled(
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(
-        "controllers.console.wraps.BillingService.get_info",
-        lambda _tenant_id, **_kwargs: {"subscription": {"plan": CloudPlan.TEAM}},
+        "controllers.console.wraps.FeatureService.get_workspace_plan", lambda _tenant_id: CloudPlan.TEAM
     )
     task = object()
     archives = object()

@@ -302,7 +302,7 @@ function SourcesTable({
 
   return (
     <div className="mt-3 min-w-0">
-      <table className="relative block w-full text-left">
+      <table className="relative block w-full text-start">
         <thead className="absolute size-px overflow-hidden text-[11px] leading-4 font-medium tracking-[0.3px] whitespace-nowrap text-text-tertiary uppercase [clip:rect(0,0,0,0)] @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:block @min-[768px]/knowledge-content:size-auto @min-[768px]/knowledge-content:overflow-visible @min-[768px]/knowledge-content:whitespace-normal @min-[768px]/knowledge-content:[clip:auto]">
           <tr className={cn(sourceTableGridClass, 'py-2.5')}>
             <th className="flex items-center">
@@ -326,7 +326,7 @@ function SourcesTable({
               aria-sort={
                 sort === 'name-asc' ? 'ascending' : sort === 'name-desc' ? 'descending' : 'none'
               }
-              className="min-w-0 @min-[768px]/knowledge-content:col-start-2 @min-[960px]/knowledge-content:col-start-auto"
+              className="min-w-0 text-start @min-[768px]/knowledge-content:col-start-2 @min-[960px]/knowledge-content:col-start-auto"
             >
               <Button
                 variant="ghost"
@@ -346,20 +346,20 @@ function SourcesTable({
                 )}
               </Button>
             </th>
-            <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
+            <th className="hidden min-w-0 text-start @min-[960px]/knowledge-content:block">
               {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
             </th>
-            <th className="min-w-0 @min-[768px]/knowledge-content:col-start-3 @min-[960px]/knowledge-content:col-start-auto">
+            <th className="min-w-0 text-start @min-[768px]/knowledge-content:col-start-3 @min-[960px]/knowledge-content:col-start-auto">
               {t(($) => $.statusColumn)}
             </th>
-            <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
+            <th className="hidden min-w-0 text-start @min-[960px]/knowledge-content:block">
               {t(($) => $.syncPolicyColumn, { ns: 'knowledgeSources' })}
             </th>
-            <th className="min-w-0 @min-[768px]/knowledge-content:col-start-4 @min-[960px]/knowledge-content:col-start-auto">
+            <th className="min-w-0 text-start @min-[768px]/knowledge-content:col-start-4 @min-[960px]/knowledge-content:col-start-auto">
               {t(($) => $.lastSyncColumn, { ns: 'knowledgeSources' })}
             </th>
             <th
-              className="@min-[768px]/knowledge-content:col-start-5 @min-[960px]/knowledge-content:col-start-auto"
+              className="text-start @min-[768px]/knowledge-content:col-start-5 @min-[960px]/knowledge-content:col-start-auto"
               aria-label={t(($) => $.actionsColumn)}
             />
           </tr>

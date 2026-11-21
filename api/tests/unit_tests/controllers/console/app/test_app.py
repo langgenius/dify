@@ -55,9 +55,6 @@ from controllers.console.app import (
     workflow_draft_variable as workflow_draft_variable_module,
 )
 from controllers.console.app import (
-    workflow_statistic as workflow_statistic_module,
-)
-from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.app import CreateAppPayload
@@ -69,6 +66,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.response import app_detail_response
 from controllers.console.app.site import AppSiteUpdatePayload
 from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
@@ -77,7 +75,6 @@ from controllers.console.app.workflow_draft_variable import (
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
-from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from fields import app_fields
 from fields.app_model_config_response import AppModelConfigResponse
 from libs.login import AccountWithTenant
@@ -648,180 +645,6 @@ class TestAppApisCases:
             assert captured["account"].id == USER_ID
             assert captured["session"].get_bind() is db.engine
 
-    class TestWorkflowStatisticEndpoints:
-        def test_workflow_statistic_time_range(self):
-            query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
-            assert query.start == "2024-01-01"
-
-        def test_workflow_statistic_blank_to_none(self):
-            query = WorkflowStatisticQuery(start="", end="")
-            assert query.start is None
-            assert query.end is None
-
-        def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            service = MagicMock()
-            service.get_daily_runs.return_value = [{"date": "2024-01-01", "runs": 2}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyRunsStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-01", "runs": 2}]}
-            service.get_daily_runs.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            service = MagicMock()
-            service.get_daily_terminals.return_value = [{"date": "2024-01-02", "terminal_count": 3}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-02", "terminal_count": 3}]}
-            service.get_daily_terminals.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_daily_token_cost_statistic(
-            self,
-            database_app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            service = MagicMock()
-            service.get_daily_token_costs.return_value = [{"date": "2024-01-03", "token_count": 4}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyTokenCostStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-03", "token_count": 4}]}
-            service.get_daily_token_costs.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_average_app_interaction_statistic(
-            self,
-            database_app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            service = MagicMock()
-            service.get_average_app_interactions.return_value = [{"date": "2024-01-04", "interactions": 2.5}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowAverageAppInteractionStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-04", "interactions": 2.5}]}
-            service.get_average_app_interactions.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_statistic_invalid_time_range(self, monkeypatch: pytest.MonkeyPatch) -> None:
-            account = _make_account()
-            account.timezone = "UTC"
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "current_account_with_tenant",
-                lambda: SimpleNamespace(account=account),
-            )
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "parse_time_range",
-                MagicMock(side_effect=ValueError("invalid range")),
-            )
-
-            with pytest.raises(BadRequest, match="invalid range"):
-                workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
-
-        @staticmethod
-        def _patch_statistic_time_range(monkeypatch: pytest.MonkeyPatch) -> None:
-            account = _make_account()
-            account.timezone = "UTC"
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "current_account_with_tenant",
-                lambda: SimpleNamespace(account=account),
-            )
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "parse_time_range",
-                lambda *_args, **_kwargs: (None, None),
-            )
-
     class TestWrapsEndpoints:
         def test_get_app_model_context(self):
             assert hasattr(wraps_module, "get_app_model")
@@ -910,21 +733,22 @@ def _app(
 def _workflow(
     *, app_id: str = _APP_RESPONSE_MODELS_APP_ID, tenant_id: str = _APP_RESPONSE_MODELS_TENANT_ID
 ) -> Workflow:
-    return Workflow(
+    workflow_record = Workflow(
         id=WORKFLOW_ID,
         tenant_id=tenant_id,
         app_id=app_id,
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by=ACCOUNT_ID,
-        created_at=_ts(8),
         updated_by=ACCOUNT_ID,
-        updated_at=_ts(9),
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
+    workflow_record.updated_at = _ts(9)
+    workflow_record.created_at = _ts(8)
+    return workflow_record
 
 
 def _persist_response_graph(session: Session) -> _app_response_models_App:
@@ -1174,7 +998,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 replace(
                     app_record(app_obj, session=sqlite_session, projection="detail-with-site"),
                     permission_keys=app_obj.permission_keys,
@@ -1278,6 +1102,58 @@ class TestAppResponseModelsCases:
         assert serialized["data"][1]["icon_url"] is None
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "selection",
+        [
+            {"provider": None, "name": None, "mode": "chat", "completion_params": {}},
+            {"provider": "openai", "name": None},
+            {"mode": "chat", "completion_params": {}},
+            {},
+            None,
+            {"provider": "openai", "name": "gpt-4o"},
+        ],
+    )
+    def test_list_and_detail_preserve_unset_model_selection(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, selection: dict[str, object] | None
+    ) -> None:
+        """Stored unset selections remain readable without changing configuration or hiding apps."""
+        app_obj = _persist_response_graph(sqlite_session)
+        app_obj.mode = AppMode.AGENT_CHAT
+        config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+        assert config is not None
+        stored_model = json.dumps(selection) if selection is not None else None
+        config.model = stored_model
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+        )
+        configured = replace(
+            app_record(app_obj, session=sqlite_session),
+            id="00000000-0000-0000-0000-000000000112",
+            app_model_config={"model": {"provider": "openai", "name": "gpt-4o"}},
+        )
+        without_config = replace(configured, id="00000000-0000-0000-0000-000000000113", app_model_config=None)
+        detail = app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        service = AppBoundary(
+            record=detail, records=[configured, without_config, app_record(app_obj, session=sqlite_session)]
+        )
+        monkeypatch.setattr(controller, "application_services", lambda: Services(AppServices(service)))
+
+        with app.test_request_context("/"):
+            data, status = unwrap(controller.AppListApi.get)(controller.AppListApi(), CONTEXT)
+            response = unwrap(controller.AppApi.get)(controller.AppApi(), CONTEXT, app_id=UUID(app_obj.id))
+
+        assert status == 200
+        assert [item["id"] for item in data["data"]] == [configured.id, without_config.id, app_obj.id]
+        assert data["data"][0]["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
+        assert data["data"][1]["model_config"] is None
+        assert data["data"][2]["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["pre_prompt"] == "hello"
+        sqlite_session.expire(config)
+        assert config.model == stored_model
+
+    @staticmethod
     @pytest.mark.parametrize("strategy", [None, "cot", "function-calling"])
     def test_app_detail_preserves_historical_agent_strategy(
         app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, strategy: str | None
@@ -1295,7 +1171,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1317,7 +1193,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1368,7 +1244,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1415,7 +1291,7 @@ class TestAppResponseModelsCases:
             "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
         )
         with app.test_request_context("/"):
-            detail = controller._app_detail_response(
+            detail = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1437,6 +1313,8 @@ class TestAppResponseModelsCases:
             {"dataset_configs": {"retrieval_model": "unsupported"}},
             {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},
             {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unsupported"}},
+            {"model": {"provider": 123, "name": "gpt-4o"}},
+            {"model": {"provider": "openai", "name": ["gpt-4o"]}},
             {"user_input_form": [{"unsupported": {"label": "Name", "variable": "name"}}]},
         ):
             with pytest.raises(ValidationError):
@@ -1488,10 +1366,11 @@ class AppBoundary:
     status: ImportStatus = ImportStatus.COMPLETED
     exported: str | RosterAgentPackageExport = "dsl"
     record: AppRecord = RECORD
+    records: list[AppRecord] = app_field(default_factory=lambda: [RECORD])
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
         self.calls.append(("list", context, params))
-        return AppPage(params.page, params.limit, 1, False, [RECORD])
+        return AppPage(params.page, params.limit, len(self.records), False, self.records)
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
         self.calls.append(("create", context, params))

@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { useDebounce } from 'ahooks'
 import { useAtomValueRawSync } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
@@ -12,7 +13,9 @@ import {
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useKnowledgeSpace } from '../../space/context'
 import {
+  documentRequestSearchAtom,
   documentsDownloadPermissionAtom,
+  documentSearchAtom,
   documentsKnowledgeSpaceIdAtom,
   documentsSpaceContextAtom,
 } from './inputs'
@@ -26,6 +29,8 @@ function DocumentsInputs({
   knowledgeSpaceId: string
 }) {
   const spaceContext = useKnowledgeSpace()
+  const search = useAtomValueRawSync(documentSearchAtom).trim()
+  const debouncedSearch = useDebounce(search, { wait: 300 })
   const permissionKeys = useAtomValueRawSync(datasetDefaultPermissionKeysAtom)
   const permissionsLoading = useAtomValueRawSync(workspacePermissionKeysLoadingAtom)
   const permissionsError = useAtomValueRawSync(workspacePermissionKeysErrorAtom)
@@ -35,6 +40,7 @@ function DocumentsInputs({
     hasPermission(permissionKeys, DatasetACLPermission.DocumentDownload)
   useHydrateAtoms(
     [
+      [documentRequestSearchAtom, search ? debouncedSearch : ''],
       [documentsKnowledgeSpaceIdAtom, knowledgeSpaceId],
       [documentsSpaceContextAtom, spaceContext],
       [documentsDownloadPermissionAtom, canDownload],

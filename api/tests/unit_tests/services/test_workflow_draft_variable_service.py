@@ -24,9 +24,10 @@ from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from graphon.enums import BuiltinNodeTypes as _workflow_draft_variable_service_BuiltinNodeTypes
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes import BuiltinNodeTypes as _workflow_draft_variable_service_sqlite_BuiltinNodeTypes
-from graphon.variables.segments import StringSegment
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.types import SegmentType
 from graphon.variables.variables import StringVariable
 from libs import datetime_utils
@@ -141,14 +142,18 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_object",
-                description="test description",
-                selector=json.dumps(["test-node-id", "test_object"]),
-                variable_file=variable_file,
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test description"
+            draft_var.variable_file = variable_file
 
             test_object = {"key1": "value1", "key2": 42}
             test_json_content = json.dumps(test_object, ensure_ascii=False, separators=(",", ":"))
@@ -171,9 +176,15 @@ class TestDraftVarLoaderSimpleCases:
 
         def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
             """Test that assertion error is raised when variable_file is None."""
-            draft_var = WorkflowDraftVariable(
-                variable_file=None,
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
+                node_id="test-node-id",
+                name="test_variable",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
             )
+            draft_var.variable_file = None
 
             with pytest.raises(AssertionError):
                 draft_var_loader._load_offloaded_variable(draft_var)
@@ -187,16 +198,87 @@ class TestDraftVarLoaderSimpleCases:
                 upload_file_id="upload-file-id",
                 size=0,
                 length=0,
-                value_type="file",
+                value_type=SegmentType.FILE,
             )
             variable_file.upload_file = None
 
-            draft_var = WorkflowDraftVariable(
-                variable_file=variable_file,
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
+                node_id="test-node-id",
+                name="test_variable",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.variable_file = variable_file
 
             with pytest.raises(AssertionError):
                 draft_var_loader._load_offloaded_variable(draft_var)
+
+        @pytest.mark.parametrize(
+            "sqlite_session",
+            [(WorkflowDraftVariable, WorkflowDraftVariableFile, UploadFile)],
+            indirect=True,
+        )
+        def test_load_variables_collects_file_values_for_storage_key_loading(
+            self,
+            draft_var_loader: DraftVarLoader,
+            sqlite_session: Session,
+        ):
+            """File and array-file variables surface their File objects to the storage-key loader."""
+
+            def _make_file(index: int) -> File:
+                return File(
+                    file_id=f"file-{index}",
+                    file_type=FileType.DOCUMENT,
+                    transfer_method=FileTransferMethod.LOCAL_FILE,
+                    reference=build_file_reference(record_id=f"upload-{index}", storage_key="legacy-storage-key"),
+                    filename=f"test_{index}.txt",
+                    extension=".txt",
+                    mime_type="text/plain",
+                    size=12,
+                )
+
+            single_file = _make_file(0)
+            array_files = [_make_file(1), _make_file(2)]
+            file_var = WorkflowDraftVariable.new_node_variable(
+                app_id="test-app-id",
+                user_id="test-user-id",
+                node_id="node1",
+                name="file_var",
+                value=FileSegment(value=single_file),
+                node_execution_id="execution-node1",
+            )
+            array_var = WorkflowDraftVariable.new_node_variable(
+                app_id="test-app-id",
+                user_id="test-user-id",
+                node_id="node1",
+                name="array_var",
+                value=ArrayFileSegment(value=array_files),
+                node_execution_id="execution-node1",
+            )
+            sqlite_session.add_all([file_var, array_var])
+            sqlite_session.commit()
+
+            rebuilt = {
+                file.id: file.model_copy(update={"storage_key": "canonical"}, deep=True)
+                for file in [single_file, *array_files]
+            }
+
+            with (
+                patch("models.workflow._resolve_workflow_app_tenant_id", return_value="test-tenant-id"),
+                patch(
+                    "models.workflow.build_file_from_stored_mapping",
+                    side_effect=lambda **kwargs: rebuilt[kwargs["file_mapping"]["id"]],
+                ),
+                patch("services.workflow_draft_variable_service.StorageKeyLoader") as storage_key_loader_cls,
+            ):
+                result = draft_var_loader.load_variables([["node1", "file_var"], ["node1", "array_var"]])
+
+            loaded_files = storage_key_loader_cls.return_value.load_storage_keys.call_args.args[0]
+            assert {file.id for file in loaded_files} == {"file-0", "file-1", "file-2"}
+            assert {variable.name for variable in result} == {"file_var", "array_var"}
 
         def test_load_variables_empty_selectors_unit(self, draft_var_loader):
             """Test load_variables returns empty list for empty selectors."""
@@ -237,14 +319,18 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_array",
-                description="test array description",
-                selector=json.dumps(["test-node-id", "test_array"]),
-                variable_file=variable_file,
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test array description"
+            draft_var.variable_file = variable_file
 
             test_array = ["item1", 2, True]
             test_json_content = json.dumps(test_array)
@@ -289,13 +375,16 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
                 app_id="app-1",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_file",
-                description="test file description",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test file description"
             draft_var._set_selector(["test-node-id", "test_file"])
             draft_var.variable_file = variable_file
 
@@ -591,7 +680,7 @@ class TestWorkflowDraftVariableServiceCases:
                 draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
             sys_var = draft_vars[0]
-            assert sys_var.get_value().value[0] == rebuilt_file
+            assert sys_var.get_value(session=sqlite_session).value[0] == rebuilt_file
             rebuild_file.assert_called_once_with(file_mapping=raw_file, tenant_id="tenant-1")
 
         @pytest.fixture
@@ -1282,7 +1371,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
             assert node_var is not None
             assert node_var.id == self._node1_str_var_id
             assert node_var.name == "str_var"
-            assert node_var.get_value() == build_segment("str_value")
+            assert node_var.get_value(session=self._session) == build_segment("str_value")
 
         def test_get_system_variable(self) -> None:
             srv = self._get_test_srv()
@@ -1290,7 +1379,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
             assert sys_var is not None
             assert sys_var.id == self._sys_var_id
             assert sys_var.name == "sys_var"
-            assert sys_var.get_value() == build_segment("sys_value")
+            assert sys_var.get_value(session=self._session) == build_segment("sys_value")
 
         def test_get_conversation_variable(self) -> None:
             srv = self._get_test_srv()
@@ -1298,7 +1387,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
             assert conv_var is not None
             assert conv_var.id == self._conv_var_id
             assert conv_var.name == "conv_var"
-            assert conv_var.get_value() == build_segment("conv_value")
+            assert conv_var.get_value(session=self._session) == build_segment("conv_value")
 
         def test_delete_node_variables(self) -> None:
             srv = self._get_test_srv()
@@ -1736,7 +1825,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
                 inputs='{"input": "test input"}',
                 process_data='{"test_var": "process_value", "other_var": "other_process"}',
                 outputs='{"test_var": "output_value", "other_var": "other_output"}',
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=1.5,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=str(uuid.uuid4()),

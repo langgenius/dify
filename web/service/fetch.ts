@@ -9,13 +9,13 @@ import {
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
   IS_MARKETPLACE,
-  MARKETPLACE_API_PREFIX,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
+import { getHttpErrorBodyMessage, httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
@@ -64,9 +64,7 @@ const afterResponseErrorCode = (
         !otherOptions.silent &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-      const errorMessage = [errorData?.message, errorData?.error].find(
-        (value): value is string => typeof value === 'string' && !!value.trim(),
-      )
+      const errorMessage = getHttpErrorBodyMessage(errorData)
       if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')

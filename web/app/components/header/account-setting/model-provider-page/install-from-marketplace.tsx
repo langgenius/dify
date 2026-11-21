@@ -1,32 +1,34 @@
 import type { Plugin } from '@/app/components/plugins/types'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
+  marketplace: MarketplaceLinks
   onOpenMarketplace?: () => void
   searchText: string
   stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
+  marketplace,
   onOpenMarketplace,
   searchText,
   stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation(['plugin', 'modelProvider'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
   const [hasEnteredViewport, setHasEnteredViewport] = useState(
@@ -68,11 +70,21 @@ const InstallFromMarketplace = ({
     })
   }
 
-  const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle') return null
+  const cardRender = useCallback(
+    (plugin: Plugin) => {
+      if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
-  }, [])
+      return (
+        <ProviderCard
+          key={plugin.plugin_id}
+          className="h-36.5"
+          marketplace={marketplace}
+          payload={plugin}
+        />
+      )
+    },
+    [marketplace],
+  )
 
   return (
     <div
@@ -122,7 +134,7 @@ const InstallFromMarketplace = ({
               <Link
                 target="_blank"
                 rel="noopener noreferrer"
-                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                href={marketplace.category(PluginCategoryEnum.model, { theme })}
                 className="inline-flex items-center system-sm-medium text-text-accent"
               >
                 {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}

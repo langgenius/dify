@@ -549,12 +549,14 @@ class TestCrawlerSsrfCases:
     def test_firecrawl_pagination_honors_proxy_rejection(
         proxy_transport: Callable[[Callable[[httpx.Request], httpx.Response]], list[httpx.Request]],
     ) -> None:
+        rejected = httpx.Response(403, headers={"Via": "squid", "X-Squid-Error": "ERR_ACCESS_DENIED 0"})
+
         def respond(request: httpx.Request) -> httpx.Response:
             if request.url.host == "crawler.example.com":
                 return httpx.Response(
                     200, json={"status": "completed", "total": 2, "data": [], "next": "http://127.0.0.1/next"}
                 )
-            return httpx.Response(403, headers={"Via": "squid"})
+            return rejected
 
         requests = proxy_transport(respond)
         firecrawl = FirecrawlApp(api_key="test-key", base_url="https://crawler.example.com")
@@ -566,6 +568,7 @@ class TestCrawlerSsrfCases:
             "https://crawler.example.com/v2/crawl/job",
             "http://127.0.0.1/next",
         ]
+        assert rejected.is_closed
 
     @staticmethod
     @pytest.mark.parametrize("provider", ["firecrawl", "watercrawl"])

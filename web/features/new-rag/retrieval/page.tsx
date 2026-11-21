@@ -46,7 +46,7 @@ function RetrievalTestSurface() {
       )}
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
-        <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
+        <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pe-6">
           <RetrievalComposer />
           <RetrievalHistoryPanel />
         </section>

@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import time
-import types
 import uuid
 from collections.abc import Generator, Iterator, Mapping
 from datetime import UTC, datetime
@@ -97,7 +95,13 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from services.moderation_service import ModerationPhase
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_moderation_fixtures import RecordingPollingRuntime, make_failing_moderated_model
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
@@ -180,6 +184,103 @@ def _llm_node_execution_behavior_mock_db_session_close(monkeypatch: pytest.Monke
 
 
 class TestLlmNodeExecutionBehaviorCases:
+    @staticmethod
+    @pytest.mark.parametrize("streamed", [False, True], ids=["blocking", "streaming"])
+    @pytest.mark.parametrize("response_kind", ["valid", "schema_echo", "missing_field", "wrong_type"])
+    def test_structured_output_validation_crosses_dify_model_boundary(
+        monkeypatch: pytest.MonkeyPatch, streamed: bool, response_kind: str
+    ) -> None:
+        """A parsed JSON object must satisfy the node schema before success (#44722)."""
+        from graphon.model_runtime.entities.llm_entities import (
+            LLMResult,
+            LLMResultChunk,
+            LLMResultChunkDelta,
+            LLMUsage,
+        )
+        from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+
+        output_schema = {
+            "type": "object",
+            "properties": {"platform_name": {"type": "string"}, "post_content": {"type": "string"}},
+            "required": ["platform_name", "post_content"],
+            "additionalProperties": False,
+        }
+        responses = {
+            "valid": {"platform_name": "RED", "post_content": "A short post"},
+            "schema_echo": output_schema,
+            "missing_field": {"platform_name": "RED"},
+            "wrong_type": {"platform_name": "RED", "post_content": 42},
+        }
+        response = responses[response_kind]
+        text = json.dumps(response)
+        model_instance = make_model_instance(provider="openai", model="gpt-3.5-turbo")
+        model_schema = make_model_config(provider="openai", model="gpt-3.5-turbo", mode="chat").model_schema
+        monkeypatch.setattr(
+            model_instance.model_type_instance, "get_model_schema", lambda *_args, **_kwargs: model_schema
+        )
+        usage = LLMUsage.empty_usage()
+
+        def invoke_model(**kwargs: object) -> LLMResult | Generator[LLMResultChunk]:
+            assert kwargs["stream"] is True
+            if not streamed:
+                return LLMResult(
+                    model=model_schema.model,
+                    prompt_messages=[],
+                    message=AssistantPromptMessage(content=text),
+                    usage=usage,
+                )
+            return (
+                LLMResultChunk(
+                    model=model_schema.model,
+                    prompt_messages=[],
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=AssistantPromptMessage(content=part),
+                        usage=usage if index == 1 else None,
+                        finish_reason="stop" if index == 1 else None,
+                    ),
+                )
+                for index, part in enumerate((text[: len(text) // 2], text[len(text) // 2 :]))
+            )
+
+        monkeypatch.setattr(model_instance, "invoke_llm", invoke_model)
+        node = init_llm_node(
+            config={
+                "id": "llm",
+                "data": {
+                    "title": "Structured post",
+                    "type": "llm",
+                    "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "user", "text": "Write a post"}],
+                    "context": {"enabled": False},
+                    "vision": {"enabled": False},
+                    "structured_output_enabled": True,
+                    "structured_output": {"schema": output_schema},
+                },
+            }
+        )
+        node._model_instance = DifyPreparedLLM(model_instance)
+        _llm_node_execution_behavior_mock_db_session_close(monkeypatch)
+        monkeypatch.setattr(
+            "graphon.nodes.llm.llm_utils.fetch_prompt_messages",
+            lambda **_: ([UserPromptMessage(content="Write a post")], []),
+        )
+
+        completions = [event.node_run_result for event in node._run() if isinstance(event, StreamCompletedEvent)]
+
+        assert len(completions) == 1
+        result = completions[0]
+        if response_kind == "valid":
+            assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
+            assert result.outputs is not None
+            assert result.outputs["structured_output"] == response
+        else:
+            assert result.status == WorkflowNodeExecutionStatus.FAILED
+            assert result.error_type == "LLMNodeError"
+            assert result.error is not None
+            assert "Structured output validation failed (stage=result, path=$" in result.error
+            assert not result.outputs
+
     @staticmethod
     def test_execute_llm(monkeypatch: pytest.MonkeyPatch) -> None:
         node = init_llm_node(
@@ -945,14 +1046,7 @@ def _build_tool_node_data() -> ToolNodeData:
 class TestToolNodeRuntimeCases:
     @staticmethod
     @pytest.fixture
-    def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
-        module_name = "core.ops.ops_trace_manager"
-        if module_name not in sys.modules:
-            ops_stub = types.ModuleType(module_name)
-            ops_stub.TraceQueueManager = object  # pragma: no cover - stub attribute
-            ops_stub.TraceTask = object  # pragma: no cover - stub attribute
-            monkeypatch.setitem(sys.modules, module_name, ops_stub)
-
+    def runtime(sqlite_engine: Engine) -> DifyToolNodeRuntime:
         init_params = build_test_graph_init_params(
             workflow_id="workflow-id",
             graph_config={"nodes": [], "edges": []},
@@ -1352,6 +1446,10 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
 
 
 class _ModelInstanceStub:
+    @property
+    def moderation(self) -> None:
+        return None
+
     def __init__(
         self,
         *,
@@ -2463,3 +2561,52 @@ class TestNodeRuntimeCases:
         assert isinstance(tool_file_manager, DifyToolFileManager)
         assert isinstance(file_reference_factory, DifyFileReferenceFactory)
         assert file_saver_cls.call_args.kwargs["http_client"] is http_client
+
+
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("immediate", [False, True])
+def test_polling_moderation_stops_delivery_without_refunding_consumed_usage(
+    phase: ModerationPhase, unavailable: bool, immediate: bool
+) -> None:
+    instance, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+    usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 7})
+    running = LLMPollingResult(status=LLMPollingStatus.RUNNING, plugin_state={"task_id": "task-1"})
+    terminal = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="test-model", message=_node_runtime_AssistantPromptMessage(content="output"), usage=usage
+        ),
+    )
+    runtime = RecordingPollingRuntime(initial=terminal if immediate else running, terminal=terminal)
+    provider.model_runtime = runtime
+    prepared = DifyPreparedPollingLLM(instance)
+    expected_error = ModerationUnavailableInvocationError if unavailable else ModerationRejectedInvocationError
+
+    def start() -> LLMPollingResult:
+        return prepared.start_llm_polling(
+            prompt_messages=[UserPromptMessage(content="input")],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    if phase == "input" or immediate:
+        with pytest.raises(expected_error):
+            start()
+    else:
+        assert start() == running
+        with pytest.raises(expected_error):
+            prepared.check_llm_polling(plugin_state={"task_id": "task-1"})
+
+    assert provider.invocations == 0
+    if phase == "input":
+        assert runtime.starts == 0
+        assert not instance.reservations
+    else:
+        assert runtime.starts == 1
+        assert runtime.checks == (0 if immediate else 1)
+        assert len(instance.reservations) == 1
+        assert instance.reservations[0].commits == [usage]
+        assert instance.reservations[0].released

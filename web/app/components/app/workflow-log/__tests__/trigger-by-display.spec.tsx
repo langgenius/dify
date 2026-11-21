@@ -1,13 +1,13 @@
+import type { ResolvedTheme } from '@/features/theme/theme'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
-import { Theme } from '@/types/app'
 import TriggerByDisplay from '../trigger-by-display'
 
-let theme = Theme.light
+let theme: ResolvedTheme = 'light'
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme }),
+vi.mock('@/features/theme/hooks', () => ({
+  useResolvedTheme: () => theme,
 }))
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string }) => (
@@ -17,7 +17,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 
 describe('TriggerByDisplay', () => {
   beforeEach(() => {
-    theme = Theme.light
+    theme = 'light'
   })
 
   it.each([
@@ -46,7 +46,7 @@ describe('TriggerByDisplay', () => {
   })
 
   it('uses the theme-specific plugin icon when available', () => {
-    theme = Theme.dark
+    theme = 'dark'
     render(
       <TriggerByDisplay
         triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN}

@@ -11,6 +11,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -41,12 +42,16 @@ import {
 import { removeDocumentFromSelectionAtom } from '../state/selection'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
-function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+export function useDocumentRowPendingAction(documentId: string) {
   const pendingActionAtom = useMemo(
     () => createDocumentRowPendingActionAtom(documentId),
     [documentId],
   )
-  const pendingAction = useAtomValue(pendingActionAtom)
+  return useAtomValue(pendingActionAtom)
+}
+
+function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+  const pendingAction = useDocumentRowPendingAction(documentId)
   const beginAction = useSetAtom(beginDocumentRowActionAtom)
   const finishAction = useSetAtom(finishDocumentRowActionAtom)
 
@@ -56,14 +61,6 @@ function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
     finish: () => finishAction({ action, documentId }),
     pending: pendingAction === action,
   }
-}
-
-export function useDocumentRowActionBusy(documentId: string) {
-  const pendingActionAtom = useMemo(
-    () => createDocumentRowPendingActionAtom(documentId),
-    [documentId],
-  )
-  return Boolean(useAtomValue(pendingActionAtom))
 }
 
 function useDocumentCanEdit(documentId: string) {
@@ -111,17 +108,12 @@ export function useRenameDocumentAction(document: LogicalDocument) {
   const canEdit = useDocumentCanEdit(document.id)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'rename')
-  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
-  const { mutateAsync: renameDocument } = useMutation({
-    mutationFn: (title: string) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-        body: {
-          expectedRowVersion: document.rowVersion,
-          patch: { displayName: title },
-        },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
-  })
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { mutateAsync: renameDocument } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
   const run = useCallback(
     async (title: string) => {
@@ -129,18 +121,26 @@ export function useRenameDocumentAction(document: LogicalDocument) {
       if (!canEdit || !normalizedTitle || normalizedTitle === documentTitle(document) || !begin())
         return false
       try {
-        await renameDocument(normalizedTitle)
-        invalidateDocuments()
+        await renameDocument({
+          body: {
+            expectedRowVersion: document.rowVersion,
+            patch: { displayName: normalizedTitle },
+          },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        })
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) onWriteDenied()
-        else toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
+        else
+          toast.error(
+            getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+          )
         return false
       } finally {
         finish()
       }
     },
-    [begin, canEdit, document, finish, invalidateDocuments, onWriteDenied, renameDocument, t],
+    [begin, canEdit, document, finish, knowledgeSpaceId, onWriteDenied, renameDocument, t],
   )
 
   return { busy, pending, run }
@@ -157,9 +157,12 @@ export function useDownloadDocumentAction(
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: downloadDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get({
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
+        {
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = useCallback(async () => {
@@ -180,8 +183,10 @@ export function useDownloadDocumentAction(
             : document.title,
       })
       return true
-    } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
       return false
     } finally {
       finish()
@@ -202,10 +207,13 @@ export function useToggleDocumentAvailabilityAction(
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: toggleDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch({
-        body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch(
+        {
+          body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = useCallback(async () => {
@@ -219,7 +227,7 @@ export function useToggleDocumentAvailabilityAction(
       else if (getHttpErrorStatus(error) === 409) {
         invalidateDocuments()
         toast.warning(t(($) => $.taskActionFailed))
-      } else toast.error(t(($) => $.documentsErrorDescription))
+      } else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()
@@ -243,11 +251,14 @@ export function useRemoveDocumentAction() {
     reset,
   } = useMutation({
     mutationFn: (document: LogicalDocument) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
-        body: { expectedRevision: document.rowVersion },
-        headers: { 'Idempotency-Key': createRequestId() },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete(
+        {
+          body: { expectedRevision: document.rowVersion },
+          headers: { 'Idempotency-Key': createRequestId() },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = async (documentId: string) => {
@@ -266,7 +277,7 @@ export function useRemoveDocumentAction() {
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish(action)

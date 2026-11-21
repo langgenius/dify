@@ -14,7 +14,7 @@ from flask import Flask
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.trigger.constants import (
+from constants.trigger import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
@@ -1497,11 +1497,6 @@ class TestAppDslService:
         )
 
         monkeypatch.setattr(
-            app_dsl_service.ToolNodeData,
-            "model_validate",
-            lambda _d: SimpleNamespace(provider_id="p1"),
-        )
-        monkeypatch.setattr(
             app_dsl_service.LLMNodeData,
             "model_validate",
             lambda _d: SimpleNamespace(model=SimpleNamespace(provider="m1")),
@@ -1536,7 +1531,19 @@ class TestAppDslService:
 
         graph = {
             "nodes": [
-                {"data": {"type": BuiltinNodeTypes.TOOL}},
+                {
+                    "data": {
+                        "type": BuiltinNodeTypes.TOOL,
+                        "title": "Tool",
+                        "provider_id": "p1",
+                        "provider_type": "builtin",
+                        "provider_name": "p1",
+                        "tool_name": "run",
+                        "tool_label": "Run",
+                        "tool_configurations": {},
+                        "tool_parameters": {},
+                    }
+                },
                 {"data": {"type": BuiltinNodeTypes.LLM}},
                 {"data": {"type": BuiltinNodeTypes.QUESTION_CLASSIFIER}},
                 {"data": {"type": BuiltinNodeTypes.PARAMETER_EXTRACTOR}},
@@ -1583,7 +1590,7 @@ class TestAppDslService:
                 "dataset_configs": {
                     "datasets": {"datasets": [{"reranking_model": {"reranking_provider_name": {"provider": "p2"}}}]}
                 },
-                "agent_mode": {"tools": [{"provider_id": "t1"}]},
+                "agent_mode": {"tools": [{"provider_type": "builtin", "provider_id": "t1"}]},
             }
         )
         assert deps == ["model:p1", "model:p2", "tool:t1"]

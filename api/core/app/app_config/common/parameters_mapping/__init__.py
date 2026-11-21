@@ -24,6 +24,7 @@ class AppParametersDict(TypedDict):
     speech_to_text: FeatureToggleDict
     text_to_speech: FeatureToggleDict
     retriever_resource: FeatureToggleDict
+    show_thoughts: FeatureToggleDict
     annotation_reply: FeatureToggleDict
     more_like_this: FeatureToggleDict
     user_input_form: list[dict[str, Any]]
@@ -36,7 +37,9 @@ def get_parameters_from_feature_dict(
     *, features_dict: Mapping[str, Any], user_input_form: list[dict[str, Any]]
 ) -> AppParametersDict:
     """
-    Mapping from feature dict to webapp parameters
+    Map a feature mapping and input form to webapp parameters without mutating either.
+
+    Missing or null show_thoughts is exposed as disabled for legacy configurations.
     """
     return {
         "opening_statement": features_dict.get("opening_statement"),
@@ -45,6 +48,7 @@ def get_parameters_from_feature_dict(
         "speech_to_text": features_dict.get("speech_to_text", {"enabled": False}),
         "text_to_speech": features_dict.get("text_to_speech", {"enabled": False}),
         "retriever_resource": features_dict.get("retriever_resource", {"enabled": False}),
+        "show_thoughts": features_dict.get("show_thoughts") or {"enabled": False},
         "annotation_reply": features_dict.get("annotation_reply", {"enabled": False}),
         "more_like_this": features_dict.get("more_like_this", {"enabled": False}),
         "user_input_form": user_input_form,

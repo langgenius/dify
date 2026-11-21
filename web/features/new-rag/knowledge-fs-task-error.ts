@@ -14,6 +14,7 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.documentProcessing'
   | 'taskFailure.documentCountQuotaExceeded'
   | 'taskFailure.documentCountQuotaUnavailable'
+  | 'taskFailure.documentSourceMissing'
   | 'taskFailure.embeddingDimension'
   | 'taskFailure.internal'
   | 'taskFailure.invalid'
@@ -36,6 +37,7 @@ export type KnowledgeFsTaskFailureMessageKey =
   | 'taskFailure.parserUnsupportedType'
   | 'taskFailure.pdfRender'
   | 'taskFailure.research'
+  | 'taskFailure.semanticGrounding'
   | 'taskFailure.source'
   | 'taskFailure.sourceConfigInvalid'
   | 'taskFailure.sourceConnection'
@@ -64,6 +66,7 @@ type KnowledgeFsTaskFailureStageKey =
   | 'taskFailure.stage.parsing'
   | 'taskFailure.stage.publication'
   | 'taskFailure.stage.queued'
+  | 'taskFailure.stage.semantic_chunking'
   | 'taskFailure.stage.semantic_enrichment'
   | 'taskFailure.stage.upload'
 
@@ -83,6 +86,8 @@ const failureMessageKeyByCode = {
   DOCUMENT_PARSER_UNAVAILABLE: 'taskFailure.parserUnavailable',
   DOCUMENT_PARSER_UNSUPPORTED_TYPE: 'taskFailure.parserUnsupportedType',
   DOCUMENT_PDF_RENDER_FAILED: 'taskFailure.pdfRender',
+  DOCUMENT_SEMANTIC_GROUNDING_FAILED: 'taskFailure.semanticGrounding',
+  DOCUMENT_SOURCE_NOT_FOUND: 'taskFailure.documentSourceMissing',
   DURABLE_DELETION_IDEMPOTENCY_CONFLICT: 'taskFailure.conflict',
   EMBEDDING_DIMENSION_INVALID: 'taskFailure.embeddingDimension',
   EMBEDDING_DIMENSION_UNSUPPORTED: 'taskFailure.embeddingDimension',
@@ -232,9 +237,14 @@ export async function knowledgeFsRequestFailureMessageKey(error: unknown) {
   } else {
     return
   }
-  if (typeof body === 'object' && body !== null && 'failure' in body) {
-    const failure = zKnowledgeFsPublicFailureResponse.safeParse(body.failure)
-    if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+  if (typeof body === 'object' && body !== null) {
+    for (const value of [
+      'details' in body ? body.details : undefined,
+      'failure' in body ? body.failure : undefined,
+    ]) {
+      const failure = zKnowledgeFsPublicFailureResponse.safeParse(value)
+      if (failure.success) return knowledgeFsTaskFailureMessageKey(failure.data)
+    }
   }
 }
 
@@ -260,6 +270,7 @@ const failureStageKeyByStage: Readonly<Record<string, KnowledgeFsTaskFailureStag
   publication: 'taskFailure.stage.publication',
   published: 'taskFailure.stage.publication',
   queued: 'taskFailure.stage.queued',
+  semantic_chunking: 'taskFailure.stage.semantic_chunking',
   semantic_enrichment: 'taskFailure.stage.semantic_enrichment',
   smoke_eval_passed: 'taskFailure.stage.publication',
   upload: 'taskFailure.stage.upload',

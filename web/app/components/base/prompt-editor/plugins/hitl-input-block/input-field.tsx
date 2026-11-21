@@ -51,8 +51,9 @@ const InputField: React.FC<InputFieldProps> = ({
   onChange,
   onCancel,
 }) => {
-  const rootRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLFormElement>(null)
   const outputVariableNameInputId = React.useId()
+  const optionsErrorId = React.useId()
   const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowHumanInput'])
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
     () => payload || createDefaultParagraphFormInput(),
@@ -91,18 +92,35 @@ const InputField: React.FC<InputFieldProps> = ({
     return new Set(unavailableVariableNames.map((name) => name.trim()).filter(Boolean))
   }, [unavailableVariableNames])
   const variableNameError = useMemo(() => {
-    const name = tempPayload.output_variable_name.trim()
-    if (!name) return null
-    if (name.includes(' ')) return 'variableNameInvalid'
-    if (!/^[a-z_]\w{0,29}$/.test(name)) return 'variableNameInvalid'
+    const name = tempPayload.output_variable_name
+    if (!name.trim()) return null
+    if (!/^[a-z_]\w{0,29}$/i.test(name)) return 'variableNameInvalid'
     if (unavailableVariableNameSet.has(name)) return 'variableNameDuplicated'
     return null
   }, [tempPayload.output_variable_name, unavailableVariableNameSet])
   const nameValid = useMemo(() => {
     return !!tempPayload.output_variable_name.trim() && !variableNameError
   }, [tempPayload.output_variable_name, variableNameError])
+
+  let optionsError = ''
+  if (isSelectFormInput(tempPayload) && tempPayload.option_source.type === 'constant') {
+    const options = tempPayload.option_source.value.map((option) => option.trim())
+    const blankOptionIndex = options.findIndex((option) => !option)
+    if (options.length === 0) {
+      optionsError = t(($) => $['variableConfig.errorMsg.atLeastOneOption'], { ns: 'appDebug' })
+    } else if (blankOptionIndex !== -1) {
+      const label = t(($) => $['variableConfig.options'], { ns: 'appDebug' })
+      optionsError = t(($) => $['errorMsg.fieldRequired'], {
+        ns: 'common',
+        field: `${label} ${blankOptionIndex + 1}`,
+      })
+    } else if (new Set(options).size !== options.length) {
+      optionsError = t(($) => $['variableConfig.errorMsg.optionRepeat'], { ns: 'appDebug' })
+    }
+  }
+
   const handleSave = useCallback(() => {
-    if (!nameValid) return
+    if (!nameValid || optionsError) return
     if (isFileListFormInput(tempPayload)) {
       const value = tempPayload.number_limits ?? 5
       if (!Number.isFinite(value)) {
@@ -114,7 +132,7 @@ const InputField: React.FC<InputFieldProps> = ({
       }
     }
     onChange(tempPayload)
-  }, [nameValid, onChange, tempPayload])
+  }, [nameValid, onChange, optionsError, tempPayload])
   const handleTypeChange = useCallback((item: TypeSelectItem) => {
     setTempPayload((prev) =>
       createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name),
@@ -220,7 +238,7 @@ const InputField: React.FC<InputFieldProps> = ({
       event.preventDefault()
       event.stopPropagation()
       if (event.repeat) return
-      handleSave()
+      rootRef.current?.requestSubmit()
     },
     {
       enabled: nameValid,
@@ -231,9 +249,27 @@ const InputField: React.FC<InputFieldProps> = ({
   )
 
   return (
-    <div
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The form handles bubbling Enter after child inputs handle their own keys.
+    <form
       ref={rootRef}
-      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+      className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 max-w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+      onSubmit={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        handleSave()
+      }}
+      onKeyDown={(event) => {
+        // Preserve Mod+Enter as the save shortcut while editing a field.
+        if (
+          event.key === 'Enter' &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.nativeEvent.isComposing &&
+          event.target instanceof HTMLInputElement &&
+          event.target.form === event.currentTarget
+        )
+          event.preventDefault()
+      }}
     >
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
@@ -311,7 +347,7 @@ const InputField: React.FC<InputFieldProps> = ({
                   filterVar={(varPayload) => varPayload.type === VarType.arrayString}
                 />
                 <TypeSwitch
-                  className="absolute bottom-1 left-1.5"
+                  className="absolute inset-s-1.5 bottom-1"
                   isVariable
                   onIsVariableChange={handleSelectOptionSourceTypeChange}
                 />
@@ -325,7 +361,18 @@ const InputField: React.FC<InputFieldProps> = ({
                 <ConfigSelect
                   options={tempPayload.option_source.value}
                   onChange={handleSelectOptionsChange}
+                  errorMessage={optionsError}
+                  errorId={optionsErrorId}
                 />
+                {optionsError && (
+                  <div
+                    id={optionsErrorId}
+                    role="alert"
+                    className="mt-1 px-1 system-xs-regular text-text-destructive-secondary"
+                  >
+                    {optionsError}
+                  </div>
+                )}
                 <TypeSwitch
                   className="mt-2"
                   isVariable={false}
@@ -362,13 +409,15 @@ const InputField: React.FC<InputFieldProps> = ({
       </div>
       <div className="shrink-0 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
-          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button type="button" onClick={onCancel}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
           {isEdit ? (
-            <Button variant="primary" onClick={handleSave} disabled={!nameValid}>
+            <Button type="submit" variant="primary" disabled={!nameValid}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           ) : (
-            <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
+            <Button type="submit" className="flex" variant="primary" disabled={!nameValid}>
               <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflowHumanInput' })}</span>
               <KbdGroup>
                 {formatForDisplay(SAVE_HOTKEY, { parts: true }).map((key) => (
@@ -381,7 +430,7 @@ const InputField: React.FC<InputFieldProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </form>
   )
 }
 

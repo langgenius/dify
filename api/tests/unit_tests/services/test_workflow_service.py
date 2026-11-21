@@ -1,7 +1,9 @@
 import json
+import os
+import time
 import uuid
 from collections.abc import Callable, Generator, Iterator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
@@ -31,7 +33,7 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
@@ -56,10 +58,15 @@ from models.account import Account as _workflow_service_Account
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -162,11 +169,11 @@ class TestWorkflowAssociatedDataFactory:
             type=workflow_type,
             version=version,
             graph=json.dumps(graph or {"nodes": [], "edges": []}),
-            features=json.dumps(features or {}),
+            _features=json.dumps(features or {}),
             created_by="user-123",
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         for key, value in kwargs.items():
             setattr(workflow, key, value)
@@ -833,11 +840,11 @@ class TestWorkflowServiceCases:
                 type=WorkflowType.WORKFLOW,
                 version="2026-03-19T00:00:00",
                 graph=json.dumps(TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()),
-                features=json.dumps(legacy_features),
+                _features=json.dumps(legacy_features),
                 created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
-                rag_pipeline_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
+                _rag_pipeline_variables=[],
             )
             draft_workflow = Workflow(
                 id="draft-workflow-id",
@@ -846,11 +853,11 @@ class TestWorkflowServiceCases:
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps({"nodes": [], "edges": []}),
-                features=json.dumps({}),
+                _features=json.dumps({}),
                 created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
-                rag_pipeline_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
+                _rag_pipeline_variables=[],
             )
             sqlite_session.add_all([source_workflow, draft_workflow])
             sqlite_session.commit()
@@ -1469,30 +1476,29 @@ class TestWorkflowServiceCases:
             ):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
-        def test_publish_workflow_trigger_limit_exceeded(
+        @pytest.mark.parametrize(
+            ("trigger_types", "exceeds_limit"),
+            [
+                (["trigger-webhook", "trigger-schedule"], False),
+                (["trigger-webhook", "trigger-schedule", "trigger-plugin"], True),
+            ],
+        )
+        def test_publish_workflow_enforces_sandbox_trigger_limit(
             self,
             workflow_service: WorkflowService,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
+            trigger_types: list[str],
+            exceeds_limit: bool,
         ):
+            """Cloud Sandbox may publish up to two trigger nodes; a third one is rejected."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            """
-            Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
-
-            Free/sandbox tier users have limits on the number of trigger nodes.
-            This prevents resource abuse while allowing users to test the feature.
-            The limit is enforced at publish time, not during draft editing.
-            """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
-            # Trigger nodes enable event-driven automation which consumes resources
             graph = {
                 "nodes": [
-                    {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
-                    {"id": "trigger-2", "data": {"type": "trigger-schedule"}},
-                    {"id": "trigger-3", "data": {"type": "trigger-plugin"}},
+                    {"id": f"trigger-{index}", "data": {"type": trigger_type}}
+                    for index, trigger_type in enumerate(trigger_types)
                 ],
                 "edges": [],
             }
@@ -1501,12 +1507,16 @@ class TestWorkflowServiceCases:
             sqlite_session.commit()
 
             with (
-                patch("services.workflow_service.BillingService") as mock_billing_service,
+                patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+                patch("services.workflow_service.app_published_workflow_was_updated"),
             ):
-                mock_billing_service.get_info.return_value = {"subscription": {"plan": "sandbox"}}
-
-                with pytest.raises(TriggerNodeLimitExceededError):
-                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                if exceeds_limit:
+                    with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                        workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert (exc_info.value.count, exc_info.value.limit) == (3, 2)
+                else:
+                    workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert workflow.version != Workflow.VERSION_DRAFT
 
         # ==================== Version Management Tests ====================
         # These tests verify listing and managing published workflow versions
@@ -3013,6 +3023,49 @@ class TestWorkflowServiceCases:
                 inputs={"k": "v"},
             )
 
+        def test_setup_variable_pool_should_read_the_timestamp_from_the_epoch(
+            self, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            """sys.timestamp is a Unix timestamp, so it must not follow the host timezone."""
+            if not hasattr(time, "tzset"):
+                pytest.skip("tzset is only available on POSIX platforms")
+
+            recorded_at = datetime(2024, 5, 1, tzinfo=UTC)
+            previous_tz = os.environ.get("TZ")
+            monkeypatch.setenv("TZ", "Asia/Shanghai")
+            time.tzset()
+            try:
+                workflow = self._make_workflow()
+                monkeypatch.setattr("services.workflow_service.naive_utc_now", lambda: recorded_at.replace(tzinfo=None))
+
+                with (
+                    patch("services.workflow_service.VariablePool"),
+                    patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+                    patch("services.workflow_service.build_bootstrap_variables"),
+                    patch("services.workflow_service.add_variables_to_pool"),
+                    patch("services.workflow_service.add_node_inputs_to_pool"),
+                ):
+                    _setup_variable_pool(
+                        query="hello",
+                        files=[],
+                        user_id="u-1",
+                        user_inputs={},
+                        workflow=workflow,
+                        node_id="start-node",
+                        node_type=BuiltinNodeTypes.START,
+                        conversation_id="conv-1",
+                        conversation_variables=[],
+                    )
+            finally:
+                if previous_tz is None:
+                    monkeypatch.delenv("TZ", raising=False)
+                else:
+                    monkeypatch.setenv("TZ", previous_tz)
+                time.tzset()
+
+            values = mock_build_system_variables.call_args.args[0]
+            assert values["timestamp"] == int(recorded_at.timestamp())
+
         def test_setup_variable_pool_should_use_default_system_variables_for_non_start_node(
             self,
         ) -> None:
@@ -4231,14 +4284,73 @@ class TestWorkflowAgentPreviewIdentityCases:
                 "edges": [],
             },
         )
+        agent = Agent(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            name="Preview Agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_node_id=node_id,
+        )
+        snapshot = AgentConfigSnapshot(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_version=workflow.version,
+            node_id=node_id,
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id=agent.id,
+            current_snapshot_id=snapshot.id,
+            node_job_config={},
+        )
         sessions = sessionmaker(sqlite_engine, expire_on_commit=False)
         with sessions.begin() as session:
-            session.add_all([app, account, workflow])
+            session.add_all([app, account, workflow, agent, snapshot, binding])
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
         )
         observed_created_at = []
         execution_ids: list[str] = []
+        other_workspace_id = str(uuid4())
+
+        def _sandbox(workspace_id: str, owner_id: str) -> tuple[AgentWorkspace, AgentWorkspaceBinding]:
+            workspace = AgentWorkspace(
+                id=workspace_id,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                owner_id=owner_id,
+                owner_scope_key=f"{node_id}:workflow-binding",
+                backend_workspace_ref=f"backend-{workspace_id}",
+                status=AgentWorkingResourceStatus.ACTIVE,
+                active_guard=1,
+            )
+            binding = AgentWorkspaceBinding(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workspace_id=workspace_id,
+                agent_id=agent.id,
+                agent_config_version_id=snapshot.id,
+                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                backend_binding_ref=f"binding-{workspace_id}",
+                status=AgentWorkingResourceStatus.ACTIVE,
+            )
+            return workspace, binding
+
+        with sessions.begin() as session:
+            # Another preview's sandbox must outlive this one.
+            session.add_all(_sandbox(other_workspace_id, str(uuid4())))
+        preview_workspace_ids: list[str] = []
 
         def events(node: DifyAgentNode) -> Generator[NodeRunStartedEvent | NodeRunSucceededEvent | NodeRunFailedEvent]:
             execution_id = node.execution_id
@@ -4277,6 +4389,10 @@ class TestWorkflowAgentPreviewIdentityCases:
                 # must not discard either piece of caller ownership.
                 caller.agent_workspace_binding_id = "workspace-binding"
                 caller.process_data = json.dumps({"workflow_agent_binding_id": "workflow-binding"})
+                # A run-less preview owns its sandbox by node execution id.
+                preview_workspace, preview_binding = _sandbox(str(uuid4()), execution_id)
+                session.add_all([preview_workspace, preview_binding])
+                preview_workspace_ids.append(preview_workspace.id)
             if outcome == "exception":
                 raise RuntimeError("private runtime error details")
             if outcome == "cancel":
@@ -4313,6 +4429,9 @@ class TestWorkflowAgentPreviewIdentityCases:
             ),
             patch("services.workflow_service.DraftVariableSaver.save"),
             patch("services.workflow_service.enqueue_draft_node_execution_trace"),
+            patch(
+                "core.workflow.nodes.agent_v2.workspace_retirement_layer.enqueue_agent_resource_collection"
+            ) as enqueue_collection,
         ):
             if outcome in {"exception", "cancel"}:
                 with pytest.raises(RuntimeError if outcome == "exception" else PreviewCancelled):
@@ -4343,6 +4462,15 @@ class TestWorkflowAgentPreviewIdentityCases:
             )
             if outcome in {"exception", "cancel"}:
                 assert row.error == "Agent preview execution interrupted"
+            preview_workspace = session.get_one(AgentWorkspace, preview_workspace_ids[0])
+            assert preview_workspace.status == AgentWorkingResourceStatus.RETIRED
+            preview_bindings = session.scalars(
+                select(AgentWorkspaceBinding).where(AgentWorkspaceBinding.workspace_id == preview_workspace.id)
+            ).all()
+            assert [binding.status for binding in preview_bindings] == [AgentWorkingResourceStatus.RETIRED]
+            other_workspace = session.get_one(AgentWorkspace, other_workspace_id)
+            assert other_workspace.status == AgentWorkingResourceStatus.ACTIVE
+        enqueue_collection.assert_called_once_with(tenant_id=tenant_id, workspace_ids=preview_workspace_ids)
 
     @staticmethod
     @pytest.mark.usefixtures("preview_flask_app")
@@ -4370,3 +4498,134 @@ class TestWorkflowAgentPreviewIdentityCases:
         prefill.assert_not_called()
         with sessions() as session:
             assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 0
+
+
+@pytest.mark.parametrize("source_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize(
+    ("access_mode", "outcome"),
+    [
+        ("public", "success"),
+        ("private", "success"),
+        ("private_all", "success"),
+        ("sso_verified", "success"),
+        ("private", "read_timeout"),
+        ("private", "write_error"),
+        ("private", "false_result"),
+        ("private", "disabled"),
+        ("private", "conversion_error"),
+    ],
+)
+def test_convert_to_workflow_inherits_webapp_access(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: AppMode,
+    access_mode: str,
+    outcome: str,
+) -> None:
+    import httpx
+    from blinker import Signal
+
+    from events.event_handlers.create_installed_app_when_app_created import handle as create_installation
+    from events.event_handlers.create_site_record_when_app_created import handle as create_site
+    from models.model import AppModelConfig, InstalledApp, Site
+    from services.enterprise.enterprise_service import EnterpriseRequest
+    from services.errors.enterprise import EnterpriseServiceError
+    from services.workflow import workflow_converter as converter_module
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY if outcome == "disabled" else DeploymentEdition.ENTERPRISE,
+    )
+    created_signal = Signal()
+    created_signal.connect(create_site)
+    created_signal.connect(create_installation)
+    monkeypatch.setattr(converter_module, "app_was_created", created_signal)
+    source_id = str(uuid4())
+    calls: list[str] = []
+    written: dict[str, str] = {}
+    write_error = EnterpriseServiceError("write failed")
+
+    def build_graph(
+        _converter: converter_module.WorkflowConverter,
+        *,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session,
+    ) -> Workflow:
+        assert app_model_config.app_id == app_model.id
+        if outcome == "conversion_error":
+            raise ValueError("conversion failed")
+        workflow = Workflow(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=WorkflowType.CHAT if source_mode == AppMode.CHAT else WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph='{"nodes": [], "edges": []}',
+            _features="{}",
+            created_by=account_id,
+            _environment_variables=[],
+            _conversation_variables=[],
+        )
+        session.add(workflow)
+        session.commit()
+        return workflow
+
+    monkeypatch.setattr(converter_module.WorkflowConverter, "convert_app_model_config_to_workflow", build_graph)
+    with sqlite_session_factory(expire_on_commit=True) as session:
+        account = make_account(account_id=str(uuid4()), interface_language="en-US")
+        source = make_app(app_id=source_id, mode=source_mode, tenant_id=str(uuid4()))
+        config = AppModelConfig(app_id=source_id)
+        source.app_model_config_id = config.id
+        session.add_all([account, source, config])
+        session.commit()
+
+        def request(method: str, endpoint: str, **kwargs: Any) -> dict[str, Any]:
+            assert not session.in_transaction(), "Enterprise I/O must run after conversion commits"
+            calls.append(method)
+            if method == "GET":
+                assert endpoint == "/webapp/access-mode/id"
+                assert kwargs["params"] == {"appId": source_id}
+                if outcome == "read_timeout":
+                    raise httpx.ReadTimeout("source unavailable")
+                return {"accessMode": access_mode}
+            assert method == "POST"
+            assert endpoint == "/webapp/access-mode"
+            target_id = kwargs["json"]["appId"]
+            assert target_id != source_id
+            assert kwargs["json"]["accessMode"] == ("public" if outcome == "read_timeout" else access_mode)
+            if outcome == "write_error":
+                raise write_error
+            written[target_id] = kwargs["json"]["accessMode"]
+            return {"result": outcome != "false_result"}
+
+        monkeypatch.setattr(EnterpriseRequest, "send_request", request)
+        service = WorkflowService(session_maker=sqlite_session_factory)
+        if outcome == "conversion_error":
+            with pytest.raises(ValueError, match="conversion failed"):
+                service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert calls == []
+            return
+        if outcome == "write_error":
+            with pytest.raises(EnterpriseServiceError) as raised:
+                service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert raised.value is write_error
+            assert calls == ["GET", "POST"]
+        else:
+            target = service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert target.id != source_id
+            assert target.mode == (AppMode.ADVANCED_CHAT if source_mode == AppMode.CHAT else AppMode.WORKFLOW)
+            assert target.workflow_id is None
+            assert calls == ([] if outcome == "disabled" else ["GET", "POST"])
+            if outcome != "disabled":
+                assert written == {target.id: "public" if outcome == "read_timeout" else access_mode}
+
+    with sqlite_session_factory() as verification:
+        target = verification.scalar(select(App).where(App.name == "Converted"))
+        assert target is not None
+        assert verification.get(App, source_id) is not None
+        workflow = verification.scalar(select(Workflow).where(Workflow.app_id == target.id))
+        assert workflow is not None
+        assert workflow.version == Workflow.VERSION_DRAFT
+        assert verification.scalar(select(Site).where(Site.app_id == target.id)) is not None
+        assert verification.scalar(select(InstalledApp).where(InstalledApp.app_id == target.id)) is not None

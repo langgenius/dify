@@ -1,75 +1,22 @@
-import type { ModelItem, ModelProvider } from '../../declarations'
-import { screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import ModelList from '../model-list'
+import { act, screen, waitFor } from '@testing-library/react'
+import { toast } from '@/app/notifications'
+import { dialogName, renderModelList } from './model-list-test-env'
 
-const { mockToastError } = vi.hoisted(() => ({
-  mockToastError: vi.fn(),
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: ['plugin.model_config'],
-  }))
-})
-
-vi.mock('../../hooks', () => ({
-  useLazyModelProviderDetail: () => ({
-    loadProviderDetail: vi.fn(),
-  }),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: mockToastError,
-  },
-}))
-
+// Keep the model row and its configuration action real; only module loading fails.
 vi.mock('../model-load-balancing-modal', () => {
   throw new Error('Failed to load model load balancing modal')
 })
 
-vi.mock('../model-list-item', () => ({
-  default: ({
-    model,
-    onModifyLoadBalancing,
-  }: {
-    model: ModelItem
-    onModifyLoadBalancing: (model: ModelItem) => void
-  }) => (
-    <button type="button" onClick={() => onModifyLoadBalancing(model)}>
-      {model.model}
-    </button>
-  ),
-}))
+afterEach(() => act(() => toast.dismiss()))
 
-describe('ModelList dynamic import failure', () => {
-  const provider = {
-    provider: 'test-provider',
-    configurate_methods: [],
-  } as unknown as ModelProvider
-  const model = {
-    model: 'gpt-4',
-    model_type: 'llm',
-    fetch_from: 'system',
-  } as unknown as ModelItem
+it('clears the loading dialog and reports an error when the modal module cannot load', async () => {
+  const { user } = renderModelList()
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.config' })[0]!)
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('clears the loading dialog and reports an error when the modal module cannot load', async () => {
-    render(<ModelList provider={provider} models={[model]} onCollapse={vi.fn()} />)
-
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'gpt-4' }))
-
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed')
-    })
+  expect(await screen.findByText('common.api.actionFailed')).toBeVisible()
+  await waitFor(() => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument()
   })
+  expect(screen.getAllByRole('button', { name: 'common.operation.config' })[0]).toBeEnabled()
 })

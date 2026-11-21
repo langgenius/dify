@@ -73,7 +73,7 @@ function isDocsProduct(segment: string): segment is DocsProduct {
 /**
  * Convert summary to URL slug
  * e.g., "Get Knowledge Base List" -> "get-knowledge-base-list"
- * e.g., "获取知识库列表" -> "获取知识库列表"
+ * Non-Latin summaries without spaces are preserved.
  */
 function summaryToSlug(summary: string): string {
   return summary.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')

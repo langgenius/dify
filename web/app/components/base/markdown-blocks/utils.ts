@@ -1,5 +1,6 @@
 import type { ExtraProps } from 'streamdown'
-import { ALLOW_UNSAFE_DATA_SCHEME, MARKETPLACE_API_PREFIX } from '@/config'
+import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
+import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 
 export const hasImageChild = (
   children: NonNullable<ExtraProps['node']>['children'] | undefined,
@@ -21,6 +22,6 @@ export const isValidUrl = (url: string): boolean => {
 export const getMarkdownImageURL = (url: string, pathname?: string) => {
   const regex = /^(?:\.\/|\/)?_assets(?=\/)/
   if (regex.test(url))
-    return `${MARKETPLACE_API_PREFIX}${MARKETPLACE_API_PREFIX.endsWith('/') ? '' : '/'}plugins/${pathname ?? ''}${url.replace(regex, '/_assets')}`
+    return getMarketplaceApiUrl(`plugins/${pathname ?? ''}${url.replace(regex, '/_assets')}`)
   return url
 }

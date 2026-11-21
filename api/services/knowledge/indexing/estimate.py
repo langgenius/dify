@@ -6,6 +6,7 @@ from typing import NamedTuple, Never, Protocol
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from machinery.context import RequestContext
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import DatasourceCredentialError
 from services.data_source.entities.notion_import import NotionPageType
 from services.knowledge.dataset_access import DatasetAccess, DatasetNotFoundError
@@ -23,6 +24,7 @@ from services.knowledge.indexing.errors import (
     UnsupportedStoredSourceError,
 )
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.moderation_service import ModerationError
 
 
 class DatasetEstimateRecord(NamedTuple):
@@ -133,7 +135,9 @@ class IndexingEstimateRunner(Protocol):
         doc_language: str = "English",
         dataset_id: str | None = None,
         indexing_technique: str = "economy",
-    ) -> IndexingEstimate: ...
+    ) -> IndexingEstimate:
+        """Return previews; propagate ModerationError without converting it to a generic estimate failure."""
+        ...
 
 
 class IndexingEstimateApplicationError(Exception):
@@ -328,7 +332,15 @@ class IndexingEstimateApplicationService:
 
     @staticmethod
     def _translate_error(error: Exception) -> Never:
-        if isinstance(error, IndexingEstimateApplicationError):
+        """Preserve application and moderation failures; translate only source and unexpected errors."""
+        if isinstance(
+            error,
+            (
+                IndexingEstimateApplicationError,
+                CredentialRefreshUnavailableError,
+                ModerationError,
+            ),
+        ):
             raise error
         if isinstance(error, UnsupportedStoredSourceError):
             raise UnsupportedEstimateSourceError(error.source_type) from error

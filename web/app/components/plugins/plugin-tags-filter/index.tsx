@@ -49,11 +49,11 @@ export function PluginTagsFilter({
                 name="tag-query"
                 autoComplete="off"
                 enterKeyHint="search"
-                aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                aria-label={t(($) => $.searchTags, { ns: 'pluginTags' })}
                 className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
                 onValueChange={setSearchText}
-                placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                placeholder={t(($) => $.searchTags, { ns: 'pluginTags' })}
               />
               <InputGroupAddon className="ps-1.75 pe-0.75">
                 <span
@@ -74,7 +74,7 @@ export function PluginTagsFilter({
                 key={option.name}
                 className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
               >
-                <Checkbox className="mr-1" value={option.name} />
+                <Checkbox className="me-1" value={option.name} />
                 <div className="px-1 system-sm-medium text-text-secondary">{option.label}</div>
               </label>
             ))}

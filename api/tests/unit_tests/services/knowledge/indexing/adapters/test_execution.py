@@ -1,7 +1,7 @@
 import json
 import threading
-from collections.abc import Generator, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import replace
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -14,6 +14,7 @@ from werkzeug.exceptions import NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, ChildDocument
@@ -25,6 +26,7 @@ from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
 from services.knowledge.indexing.adapters.execution import IndexingExecutionAdapter
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
@@ -33,6 +35,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
 
 MODULE = "services.knowledge.indexing.adapters.execution"
+CLEANUP_MODULE = "services.knowledge.indexing.adapters.cleanup"
 
 
 BackendFixture = tuple[
@@ -526,3 +529,245 @@ def test_partial_worker_failure_retries_only_incomplete_segments_and_keeps_total
         assert row.indexing_status == IndexingStatus.COMPLETED
         assert row.tokens == 30
         assert row.error is None
+
+
+def _delete_document_row(session_factory: sessionmaker[Session]) -> None:
+    with session_factory.begin() as session:
+        document = session.get(Document, "document-1")
+        assert document is not None
+        session.delete(document)
+
+
+def test_discard_removes_keywords_written_for_a_deleted_document(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    adapter, _, segments, _, job, redis = backend
+    table = {"existing": ["old-node"], "hello": ["old-node", "node"], "world": ["node"]}
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            DatasetKeywordTable(
+                dataset_id="dataset-1",
+                data_source_type="database",
+                keyword_table=json.dumps({"__type__": "keyword_table", "__data__": {"table": table}}),
+            )
+        )
+    _delete_document_row(sqlite_session_factory)
+
+    with patch(f"{CLEANUP_MODULE}.redis_client", redis):
+        adapter.discard(job, [IndexDocument(page_content="hello world", metadata={"doc_id": "node"})])
+
+    assert redis.lock.call_args.args == ("keyword_indexing_lock_dataset-1",)
+    _, encoded = segments.get_keyword_table(job.ref.dataset)
+    assert encoded is not None
+    assert json.loads(encoded)["__data__"]["table"] == {"existing": ["old-node"], "hello": ["old-node"]}
+
+
+@pytest.mark.parametrize("doc_form", [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.PARENT_CHILD_INDEX])
+def test_discard_deletes_the_vectors_load_writes(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], doc_form: IndexStructureType
+) -> None:
+    adapter, documents, _, _, job, _ = backend
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        document = session.get(Document, "document-1")
+        assert dataset is not None
+        assert document is not None
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        document.doc_form = doc_form
+    job = replace(documents.get_indexing_document(job.ref), processing_rule=job.processing_rule)
+    _delete_document_row(sqlite_session_factory)
+    child = ChildDocument(page_content="child", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})
+    chunk = IndexDocument(
+        page_content="parent",
+        metadata={"doc_id": "node", "doc_hash": "hash"},
+        children=[child] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else None,
+    )
+
+    with (
+        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{CLEANUP_MODULE}.Vector") as vector,
+    ):
+        adapter.discard(job, [chunk])
+
+    expected = ["child-node"] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else ["node"]
+    assert vector.call_args.kwargs["vector_type"] == "qdrant"
+    vector.return_value.delete_by_ids.assert_called_once_with(expected)
+
+
+def test_discard_leaves_index_cleanup_to_dataset_deletion(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    adapter, _, _, _, job, redis = backend
+    _delete_document_row(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        session.delete(dataset)
+
+    with patch(f"{CLEANUP_MODULE}.Vector") as vector, patch(f"{CLEANUP_MODULE}.redis_client", redis):
+        adapter.discard(job, [IndexDocument(page_content="hello", metadata={"doc_id": "node"})])
+
+    vector.assert_not_called()
+    redis.lock.assert_not_called()
+
+
+@pytest.mark.parametrize("paused_first", [False, True])
+def test_document_deleted_during_its_keyword_write_leaves_no_orphan_keywords(
+    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], paused_first: bool
+) -> None:
+    adapter, documents, segments, _, job, redis = backend
+    chunk = IndexDocument(page_content="hello world", metadata={"doc_id": "node", "doc_hash": "hash"})
+    segments.save_for_indexing(job, [chunk], [5])
+    service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
+    write_keywords = Jieba.update_texts
+
+    def cleanup_wins_the_race(
+        self: Jieba,
+        texts: Sequence[IndexDocument],
+        *,
+        read: Callable[[], tuple[str, str | None]],
+        write: Callable[[str, str, Mapping[str, Sequence[str]]], None],
+        lock: AbstractContextManager[object],
+        keywords_list: Sequence[Sequence[str] | None] | None = None,
+        replace_existing: bool = False,
+        deleted_ids: Sequence[str] = (),
+    ) -> None:
+        if texts:
+            # The user deletes the document after the write passed its existence check;
+            # document cleanup snapshots segment node ids before this write lands.
+            if paused_first:
+                redis.get.return_value = "True"  # the pause flag outlives the deleted document
+            _delete_document_row(sqlite_session_factory)
+            clean_document_indexes(
+                dataset_id="dataset-1",
+                document_ids=["document-1"],
+                doc_form=job.doc_form,
+                new_session=sqlite_session_factory,
+            )
+        write_keywords(
+            self,
+            texts,
+            read=read,
+            write=write,
+            lock=lock,
+            keywords_list=keywords_list,
+            replace_existing=replace_existing,
+            deleted_ids=deleted_ids,
+        )
+
+    with (
+        Flask(__name__).app_context(),
+        patch.object(Jieba, "update_texts", cleanup_wins_the_race),
+        patch(f"{CLEANUP_MODULE}.redis_client", redis),
+    ):
+        if paused_first:
+            with pytest.raises(DocumentIsPausedError):
+                service.run_in_indexing_status(job.ref)
+        else:
+            service.run_in_indexing_status(job.ref)
+
+    _, encoded = segments.get_keyword_table(job.ref.dataset)
+    assert encoded is not None
+    assert all("node" not in node_ids for node_ids in json.loads(encoded)["__data__"]["table"].values())
+
+
+@pytest.mark.parametrize(
+    ("indexing_technique", "chunk"),
+    [
+        # parent-child chunks without children wrote no vectors
+        (IndexTechniqueType.HIGH_QUALITY, IndexDocument(page_content="parent", metadata={"doc_id": "node"})),
+        # economy parent-child datasets never write keywords
+        (
+            IndexTechniqueType.ECONOMY,
+            IndexDocument(
+                page_content="parent",
+                metadata={"doc_id": "node"},
+                children=[ChildDocument(page_content="child", metadata={"doc_id": "child-node"})],
+            ),
+        ),
+    ],
+)
+def test_discard_touches_no_index_when_load_wrote_nothing(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    indexing_technique: IndexTechniqueType,
+    chunk: IndexDocument,
+) -> None:
+    adapter, documents, _, _, job, redis = backend
+    with sqlite_session_factory.begin() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        document = session.get(Document, "document-1")
+        assert dataset is not None
+        assert document is not None
+        dataset.indexing_technique = indexing_technique
+        document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    job = replace(documents.get_indexing_document(job.ref), processing_rule=job.processing_rule)
+    _delete_document_row(sqlite_session_factory)
+
+    with (
+        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{CLEANUP_MODULE}.Vector") as vector,
+        patch(f"{CLEANUP_MODULE}.redis_client", redis),
+    ):
+        adapter.discard(job, [chunk])
+
+    vector.assert_not_called()
+    redis.lock.assert_not_called()
+
+
+def _file_job(job: IndexingDocument) -> IndexingDocument:
+    return replace(job, source=job.source._replace(source_type="upload_file", source_info={"upload_file_id": "file-1"}))
+
+
+def test_extract_scans_the_uploaded_file_under_the_dataset_policy(backend: BackendFixture) -> None:
+    from services.file_scan import ScanOutcome, ScanScope
+
+    adapter, _, _, sources, job, _ = backend
+    with (
+        patch(f"{MODULE}.FileScanService") as scan_service,
+        patch(f"{MODULE}.IndexProcessorFactory") as processors,
+    ):
+        scan_service.return_value.scan_upload_file.return_value = ScanOutcome(allowed=True, status="clean")
+        processors.return_value.init_index_processor.return_value.extract.return_value = list[IndexDocument]()
+
+        adapter.extract(_file_job(job))
+
+    scan_service.return_value.scan_upload_file.assert_called_once_with(
+        tenant_id="workspace-1", upload_file_id="file-1", scope=ScanScope("dataset", "dataset-1")
+    )
+    sources.resolve_for_indexing.assert_called_once()
+
+
+def test_extract_stops_before_reading_a_file_the_malware_scan_rejects(backend: BackendFixture) -> None:
+    from services.file_scan import FileScanBlockedError, ScanErrorCode, ScanOutcome
+
+    adapter, _, _, sources, job, _ = backend
+    blocked = ScanOutcome(
+        allowed=False,
+        status="infected",
+        code=ScanErrorCode.MALWARE_DETECTED,
+        file_name="report.docx",
+        threats=("Win.Trojan.Agent-123",),
+    )
+    with patch(f"{MODULE}.FileScanService") as scan_service:
+        scan_service.return_value.scan_upload_file.return_value = blocked
+        with pytest.raises(FileScanBlockedError) as error:
+            adapter.extract(_file_job(job))
+
+    sources.resolve_for_indexing.assert_not_called()
+    # The stored document error is this sentence: it names the file, the reason and the consequence.
+    assert adapter.describe_error(error.value) == (
+        '"report.docx" was blocked by the malware scan: Win.Trojan.Agent-123 detected. The original file was deleted.'
+    )
+
+
+def test_extract_does_not_scan_sources_that_are_not_uploaded_files(backend: BackendFixture) -> None:
+    adapter, _, _, _, job, _ = backend
+    with (
+        patch(f"{MODULE}.FileScanService") as scan_service,
+        patch(f"{MODULE}.IndexProcessorFactory") as processors,
+    ):
+        processors.return_value.init_index_processor.return_value.extract.return_value = list[IndexDocument]()
+        adapter.extract(job)
+
+    scan_service.assert_not_called()

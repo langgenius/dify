@@ -1,12 +1,17 @@
 import type { FileEntity } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import { fileUpload } from '../../utils'
 import FileUploaderInAttachmentWrapper from '../index'
 
+// oxlint-disable-next-line typescript/no-deprecated -- Defer the generated client's transport response to test uploads across session changes.
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({ request }))
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/' }))
 vi.mock('../../utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../utils')>()),
@@ -128,3 +133,106 @@ it('retries the original file and stores the successful upload id', async () => 
     screen.queryByRole('button', { name: 'common.operation.retry report.txt' }),
   ).not.toBeInTheDocument()
 })
+
+it('ignores pending local upload progress and results after switching uploader sessions', async () => {
+  const user = userEvent.setup()
+  vi.mocked(fileUpload).mockReset()
+  const showError = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+  const onChange = vi.fn()
+  const fileConfig = createFileConfig()
+  const { rerender } = render(
+    <FileUploaderInAttachmentWrapper key="old" onChange={onChange} fileConfig={fileConfig} />,
+  )
+  const button = screen.getByRole('button', { name: /fileUploader.uploadFromComputer/ })
+  const input = button.querySelector<HTMLInputElement>('input[type="file"]')!
+  await user.upload(input, [
+    new File(['first'], 'pending-first.txt', { type: 'text/plain' }),
+    new File(['second'], 'pending-second.txt', { type: 'text/plain' }),
+  ])
+  await waitFor(() => expect(fileUpload).toHaveBeenCalledTimes(2))
+  expect(screen.getByText('pending-first.txt')).toBeInTheDocument()
+  expect(screen.getByText('pending-second.txt')).toBeInTheDocument()
+
+  const currentFile = createFile({ id: 'current', name: 'current.txt' })
+  rerender(
+    <FileUploaderInAttachmentWrapper
+      key="current"
+      value={[currentFile]}
+      onChange={onChange}
+      fileConfig={fileConfig}
+    />,
+  )
+  onChange.mockClear()
+  const [successful, failed] = vi.mocked(fileUpload).mock.calls.map(([callbacks]) => callbacks)
+  act(() => {
+    successful!.onProgressCallback(50)
+    successful!.onSuccessCallback({
+      id: 'old-upload',
+      name: 'pending-first.txt',
+      size: 5,
+      mime_type: 'text/plain',
+      extension: 'txt',
+      created_at: 1,
+      created_by: 'user-1',
+      preview_url: null,
+      source_url: '',
+    })
+    failed!.onErrorCallback(new Error('Old upload failed'))
+  })
+
+  expect(onChange).not.toHaveBeenCalled()
+  expect(showError).not.toHaveBeenCalled()
+  expect(screen.getByText(currentFile.name)).toBeInTheDocument()
+  expect(screen.queryByText('pending-first.txt')).not.toBeInTheDocument()
+  showError.mockRestore()
+})
+
+it.each(['success', 'failure'] as const)(
+  'ignores a pending remote upload %s after switching uploader sessions',
+  async (outcome) => {
+    const user = userEvent.setup()
+    const pending = createDeferred<Response>()
+    request.mockReset().mockReturnValue(pending.promise)
+    const showError = vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    const onChange = vi.fn()
+    const fileConfig = createFileConfig()
+    const { rerender, queryClient } = render(
+      <FileUploaderInAttachmentWrapper key="old" onChange={onChange} fileConfig={fileConfig} />,
+    )
+    await user.click(screen.getByRole('button', { name: /fileUploader.pasteFileLink/ }))
+    await user.type(screen.getByRole('textbox'), 'https://example.com/old.txt')
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    await waitFor(() => expect(request).toHaveBeenCalledOnce())
+    expect(onChange).toHaveBeenCalled()
+
+    const currentFile = createFile({ id: 'current', name: 'current.txt' })
+    rerender(
+      <FileUploaderInAttachmentWrapper
+        key="current"
+        value={[currentFile]}
+        onChange={onChange}
+        fileConfig={fileConfig}
+      />,
+    )
+    onChange.mockClear()
+    await act(async () => {
+      if (outcome === 'failure') pending.reject(new Error('Old upload failed'))
+      else
+        pending.resolve(
+          Response.json({
+            id: 'old-upload',
+            name: 'old.txt',
+            size: 10,
+            mime_type: 'text/plain',
+            url: 'https://example.com/old.txt',
+          }),
+        )
+    })
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0))
+
+    expect(screen.getByText(currentFile.name)).toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(showError).not.toHaveBeenCalled()
+    showError.mockRestore()
+  },
+)

@@ -147,7 +147,7 @@ export function SourceEditDialog({
 }) {
   const connectedDraft = connectedDraftFromSource(source)
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogContent className={connectedDraft ? 'w-180' : 'w-160'}>
         <SourceEditDialogContent
           connectedDraft={connectedDraft}

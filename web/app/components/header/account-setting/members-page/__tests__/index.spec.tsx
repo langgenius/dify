@@ -4,18 +4,30 @@ import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
-const { membersRequest, rolesRequest, memberRolesRequest, updateRoles, inviteMember } = vi.hoisted(
-  () => ({
-    membersRequest: vi.fn(),
-    rolesRequest: vi.fn(),
-    memberRolesRequest: vi.fn(),
-    updateRoles: vi.fn(),
-    inviteMember: vi.fn(),
-  }),
-)
+const {
+  membersRequest,
+  rolesRequest,
+  memberRolesRequest,
+  updateRoles,
+  inviteMember,
+  removeMember,
+  contactsEnabled,
+} = vi.hoisted(() => ({
+  membersRequest: vi.fn(),
+  rolesRequest: vi.fn(),
+  memberRolesRequest: vi.fn(),
+  updateRoles: vi.fn(),
+  inviteMember: vi.fn(),
+  removeMember: vi.fn(),
+  contactsEnabled: vi.fn(() => false),
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: contactsEnabled,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -26,11 +38,13 @@ vi.mock('@/service/console', async (importOriginal) => {
         (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
           is_allow_transfer_workspace: true,
         }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': membersRequest,
       'workspaces.current.rbac.roles.get': rolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.put': updateRoles,
       'workspaces.current.members.inviteEmail.post': inviteMember,
+      'workspaces.current.members.byMemberId.delete': removeMember,
     }),
   }
 })
@@ -87,19 +101,19 @@ const choices = [
   createRole({ id: 'role-extra', name: 'Extra role' }),
 ]
 async function renderMembersPage(options: ConsoleQueryTestOptions = {}) {
-  const view = renderWithConsoleQuery(
+  const page = (
     <NuqsTestingAdapter>
       <MembersPage />
-    </NuqsTestingAdapter>,
-    {
-      accountProfile: { id: '1', email: 'owner@example.com' },
-      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
-      workspacePermissionKeys: ['workspace.member.manage'],
-      features: { is_allow_transfer_workspace: true },
-      systemFeatures: { is_email_setup: true },
-      ...options,
-    },
+    </NuqsTestingAdapter>
   )
+  const view = renderWithConsoleQuery(page, {
+    accountProfile: { id: '1', email: 'owner@example.com' },
+    currentWorkspace: { name: 'Test Workspace', role: 'owner' },
+    workspacePermissionKeys: ['workspace.member.manage'],
+    features: { is_allow_transfer_workspace: true },
+    systemFeatures: { is_email_setup: true },
+    ...options,
+  })
   await screen.findByRole('button', { name: 'Admin User' })
   return view
 }
@@ -120,8 +134,13 @@ async function chooseRoles(user: ReturnType<typeof userEvent.setup>, multiple: b
 
 beforeEach(() => {
   vi.clearAllMocks()
+  contactsEnabled.mockReturnValue(false)
   accounts = structuredClone(defaultAccounts)
   membersRequest.mockImplementation(async () => ({ accounts }))
+  removeMember.mockImplementation(async ({ params }: { params: { member_id: string } }) => {
+    accounts = accounts.filter((account) => account.id !== params.member_id)
+    return { result: 'success', tenant_id: 'tenant-1' }
+  })
   rolesRequest.mockResolvedValue({
     data: choices,
     pagination: { current_page: 1, total_pages: 1, total_count: 3, per_page: 20 },
@@ -146,6 +165,44 @@ beforeEach(() => {
   })
 })
 
+async function openAdminRemoval(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /members\.memberActions: Admin User/ }))
+  await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam$/ }))
+  return screen.findByRole('alertdialog')
+}
+
+const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactOptions.get.key({
+  type: 'query',
+})
+
+describe('MembersPage removal', () => {
+  it.each([
+    { status: 'active', enabled: true, contactCopy: true },
+    { status: 'active', enabled: false, contactCopy: false },
+  ])(
+    'uses the supported member endpoint for status=$status and gate=$enabled',
+    async ({ status, enabled, contactCopy }) => {
+      contactsEnabled.mockReturnValue(enabled)
+      accounts[1] = { ...accounts[1]!, status }
+      const user = userEvent.setup()
+      const { queryClient } = await renderMembersPage()
+      queryClient.setQueryData(contactOptionsKey, { cached: true })
+      const dialog = await openAdminRemoval(user)
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      if (contactCopy) expect(dialog).toHaveTextContent('contacts.memberRemoval.accessImpact')
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: contactCopy ? 'contacts.memberRemoval.remove' : 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() =>
+        expect(removeMember).toHaveBeenCalledExactlyOnceWith({ params: { member_id: '2' } }),
+      )
+      expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
+    },
+  )
+})
+
 describe('MembersPage', () => {
   it('shows account roles and the created time fallback in separate table cells', async () => {
     accounts[1] = { ...accounts[1]!, last_active_at: null, created_at: 1700000000 }
@@ -158,9 +215,9 @@ describe('MembersPage', () => {
     )
   })
 
-  it('sends an invitation and displays the returned invitation link', async () => {
+  it('sends an invitation and displays the returned invitation link without email delivery', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
     await user.type(
       screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
@@ -280,6 +337,30 @@ describe('MembersPage', () => {
     expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
+  it('closes member details once a pending role save succeeds', async () => {
+    const user = userEvent.setup()
+    const save = updateRoles.getMockImplementation()!
+    let resolveSave!: () => void
+    updateRoles.mockImplementationOnce(async (input) => {
+      await new Promise<void>((resolve) => {
+        resolveSave = resolve
+      })
+      return save(input)
+    })
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await act(async () => {
+      resolveSave()
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(
+      await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText('Next role'),
+    ).toBeInTheDocument()
+  })
+
   it('opens ownership transfer from the owner action without opening member details', async () => {
     const user = userEvent.setup()
     await renderMembersPage()
@@ -352,7 +433,7 @@ describe('MembersPage', () => {
 
   it.each([
     ['sandbox', 5, 'plansCommon.member'],
-    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['sandbox', 0, 'plansCommon.memberAfter'],
     ['team', 50, 'plansCommon.memberAfter'],
   ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
     await renderMembersPage({
@@ -364,7 +445,7 @@ describe('MembersPage', () => {
 
   it('hands invitation results to a persistent dialog and closes them normally', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     const invite = screen.getByRole('button', { name: /members\.invite$/ })
     await user.click(invite)
     await user.type(

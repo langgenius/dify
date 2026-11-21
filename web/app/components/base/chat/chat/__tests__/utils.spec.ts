@@ -21,6 +21,25 @@ describe('chat/chat/utils.ts', () => {
       expect(result).toBe('Hello Alice')
     })
 
+    it.each([
+      { value: 0, type: InputVarType.number, expected: '0' },
+      { value: false, type: InputVarType.checkbox, expected: 'false' },
+    ])('replaces a $type variable with $expected', ({ value, type, expected }) => {
+      const result = processOpeningStatement('Value: {{value}}', { value }, [
+        inputForm('value', type, 'Value Label'),
+      ])
+
+      expect(result).toBe(`Value: ${expected}`)
+    })
+
+    it('keeps the label placeholder for an empty input value', () => {
+      const result = processOpeningStatement('Hello {{name}}', { name: '' }, [
+        inputForm('name', InputVarType.textInput, 'Name Label'),
+      ])
+
+      expect(result).toBe('Hello {{Name Label}}')
+    })
+
     it('replaces variables with labels when input value is not available but form has variable', () => {
       const result = processOpeningStatement('Hello {{user_name}}', {}, [
         inputForm('user_name', InputVarType.textInput, 'Name Label'),
@@ -68,6 +87,12 @@ describe('chat/chat/utils.ts', () => {
       const inputsForm = [inputForm('test', InputVarType.textInput)]
       const result = getProcessedInputs(inputs, inputsForm)
       expect(result).toEqual({ test: null })
+    })
+
+    it('preserves an explicitly cleared single file in the serialized request body', () => {
+      const inputs = getProcessedInputs({ file: '' }, [inputForm('file', InputVarType.singleFile)])
+
+      expect(JSON.stringify({ inputs })).toBe('{"inputs":{"file":""}}')
     })
 
     it('processes singleFile using transfer_method logic', () => {

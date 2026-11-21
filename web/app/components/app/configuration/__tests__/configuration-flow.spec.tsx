@@ -5,8 +5,11 @@ import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspa
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
+import * as reactI18next from 'react-i18next'
+import { onTestFinished } from 'vite-plus/test'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { PermissionType } from '@/app/components/plugins/types'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
@@ -32,6 +35,7 @@ import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixt
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { AppACLPermission } from '@/utils/permission'
 import Configuration from '../index'
 import { toast as configurationToast } from '../toast'
@@ -64,6 +68,7 @@ const api = vi.hoisted(() => ({
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
+  generate: vi.fn<typeof consoleClient.ruleGenerate.post>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -86,6 +91,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         api.rules(input),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'ruleGenerate.post': (input) => api.generate(input),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
@@ -252,7 +258,7 @@ afterEach(() =>
   act(() => {
     toast.dismiss()
     configurationToast.dismiss()
-    vi.unstubAllGlobals()
+    resetViewportWidth()
   }),
 )
 
@@ -357,6 +363,32 @@ it('selects another model and publishes only parameters supported by that model'
     body: { model: { name: 'gpt-4.1' } },
   })
   expect(api.publish.mock.lastCall![0].body.model.completion_params).toEqual({})
+})
+
+it('opens an agent with an unset model and lets the user select and publish a model', async () => {
+  const app = createApp({
+    mode: 'agent-chat',
+    model_config: createAppModelConfigFixture({
+      ...createApp().model_config,
+      agent_mode: { enabled: true, strategy: 'react', tools: [] },
+      model: { provider: null, name: null, mode: 'chat', completion_params: {} },
+    }),
+  })
+  api.app.mockResolvedValue(app)
+  const { user } = setup({ app })
+  await waitForPage()
+  expect(prompt()).toHaveTextContent('Explain concepts clearly.')
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+  const chooser = await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
+  await user.click(within(chooser).getByRole('button', { name: /^GPT-4.1/ }))
+  await publish(user)
+  expect(api.publish.mock.lastCall![0]).toMatchObject({
+    params: { app_id: 'app-1' },
+    body: {
+      pre_prompt: 'Explain concepts clearly.',
+      model: { provider: 'langgenius/openai/openai', name: 'gpt-4.1' },
+    },
+  })
 })
 
 it('keeps comparison mode when restoring the published prompt', async () => {
@@ -553,7 +585,7 @@ it('preserves feature drafts across reopening and restores the last published fe
 })
 
 it('opens and closes the mobile debug drawer while preserving the configuration draft', async () => {
-  vi.stubGlobal('innerWidth', 390)
+  setViewportWidth(390)
   const { user } = setup()
   await waitForPage()
   await user.type(prompt(), ' Mobile draft.')
@@ -691,6 +723,56 @@ it('adds a prompt variable, edits its label, and publishes the actual form schem
     body: {
       pre_prompt: expect.stringContaining('{{topic}}'),
       user_input_form: [{ 'text-input': { variable: 'topic', label: 'Discussion topic' } }],
+    },
+  })
+})
+
+it('keeps generated variables when the render after Apply waits for a translation namespace', async () => {
+  const namespace = createDeferred()
+  api.generate.mockResolvedValue({
+    prompt: 'Plan a trip to {{city}}.',
+    variables: ['city'],
+    opening_statement: 'Where to?',
+    error: '',
+  })
+  const { user } = setup()
+  await waitForPage()
+  await user.click(screen.getByRole('button', { name: 'appDebug.operation.automatic' }))
+  const dialog = await screen.findByRole('dialog', { name: 'appGeneration.generate.title' })
+  await replacePromptEditorText(
+    within(dialog).getByRole('textbox', { name: 'appGeneration.generate.instruction' }),
+    'Help plan a city trip',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'appGeneration.generate.generate' }))
+  await user.click(
+    await within(dialog).findByRole('button', { name: 'appGeneration.generate.apply' }),
+  )
+  // Namespaces load on demand, so the render that first needs this one suspends without committing.
+  const { useTranslation } = reactI18next
+  const namespaceLoading = vi.spyOn(reactI18next, 'useTranslation').mockImplementation(((
+    ...args: Parameters<typeof useTranslation>
+  ) => {
+    if (args[0]?.includes('appAnnotation')) throw namespace.promise
+    return useTranslation(...args)
+  }) as typeof useTranslation)
+  onTestFinished(() => namespaceLoading.mockRestore())
+  await user.click(
+    within(screen.getByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.confirm',
+    }),
+  )
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  await act(async () => {
+    namespaceLoading.mockRestore()
+    namespace.resolve()
+  })
+  expect(await screen.findByTitle('city · city')).toBeInTheDocument()
+  expect(screen.queryByText('appDebug.formattingChangedTitle')).not.toBeInTheDocument()
+  await publish(user)
+  expect(api.publish.mock.lastCall![0]).toMatchObject({
+    body: {
+      pre_prompt: 'Plan a trip to {{city}}.',
+      user_input_form: [{ 'text-input': { variable: 'city' } }],
     },
   })
 })

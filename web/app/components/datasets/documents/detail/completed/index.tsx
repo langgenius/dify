@@ -258,7 +258,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Batch Action Buttons */}
       {selectionState.selectedSegmentIds.length > 0 && (
         <BatchAction
-          className="absolute bottom-16 left-0 z-20"
+          className="absolute inset-s-0 bottom-16 z-20"
           selectedIds={selectionState.selectedSegmentIds}
           disabled={!canEdit}
           onBatchEnable={() => segmentListDataHook.onChangeSwitch(true, '')}

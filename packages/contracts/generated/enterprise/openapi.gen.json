@@ -1,0 +1,4037 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dify enterprise Console",
+    "version": "1"
+  },
+  "paths": {
+    "/enterprise/app-deploy/appInstanceSummaries": {
+      "get": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_ListAppInstanceSummaries",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "displayName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListAppInstanceSummariesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "listAppInstanceSummaries"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances": {
+      "get": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_ListAppInstances",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "displayName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListAppInstancesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "listAppInstances"
+        ]
+      },
+      "post": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_CreateAppInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateAppInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateAppInstanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "createAppInstance"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}": {
+      "get": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_GetAppInstance",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetAppInstanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "getAppInstance"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_DeleteAppInstance",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeleteAppInstanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "deleteAppInstance"
+        ]
+      },
+      "patch": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_UpdateAppInstance",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAppInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAppInstanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "updateAppInstance"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/accessChannels": {
+      "get": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_GetAccessChannels",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetAccessChannelsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "getAccessChannels"
+        ]
+      },
+      "put": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_UpdateAccessChannels",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAccessChannelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAccessChannelsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "updateAccessChannels"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/accessSettings": {
+      "get": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_GetAccessSettings",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetAccessSettingsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "getAccessSettings"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/deployments": {
+      "get": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_ListDeployments",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListDeploymentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "listDeployments"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/developerApiSettings": {
+      "get": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_GetDeveloperApiSettings",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetDeveloperApiSettingsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "getDeveloperApiSettings"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environmentDeployments": {
+      "get": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_ListEnvironmentDeployments",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListEnvironmentDeploymentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "listEnvironmentDeployments"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/accessPolicy": {
+      "get": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_GetAccessPolicy",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetAccessPolicyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "getAccessPolicy"
+        ]
+      },
+      "put": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_UpdateAccessPolicy",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAccessPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateAccessPolicyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "updateAccessPolicy"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/apiKeys": {
+      "get": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_ListApiKeys",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListApiKeysResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "listApiKeys"
+        ]
+      },
+      "post": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_CreateApiKey",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateApiKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "createApiKey"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/apiKeys/{apiKeyId}": {
+      "delete": {
+        "tags": [
+          "AccessService"
+        ],
+        "operationId": "AccessService_DeleteApiKey",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKeyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeleteApiKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "accessService",
+          "deleteApiKey"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}/rollbackTargets": {
+      "get": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_ListRollbackTargets",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListRollbackTargetsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "listRollbackTargets"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:cancelDeployment": {
+      "post": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_CancelDeployment",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CancelDeploymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CancelDeploymentResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "cancelDeployment"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:promote": {
+      "post": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_Promote",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.PromoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.PromoteResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "promote"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:rollback": {
+      "post": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_Rollback",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.RollbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.RollbackResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "rollback"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/environments/{environmentId}:undeploy": {
+      "post": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_Undeploy",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UndeployRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UndeployResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "undeploy"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/releaseSummaries": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ListReleaseSummaries",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "displayName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListReleaseSummariesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "listReleaseSummaries"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}/releases": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ListReleases",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "displayName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListReleasesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "listReleases"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}:computeReleaseDeploymentView": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ComputeReleaseDeploymentView",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "releaseId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ComputeReleaseDeploymentViewResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "computeReleaseDeploymentView"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances/{appInstanceId}:getOverview": {
+      "get": {
+        "tags": [
+          "AppInstanceService"
+        ],
+        "operationId": "AppInstanceService_GetAppInstanceOverview",
+        "parameters": [
+          {
+            "name": "appInstanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetAppInstanceOverviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appInstanceService",
+          "getAppInstanceOverview"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/appInstances:deploy": {
+      "post": {
+        "tags": [
+          "DeploymentService"
+        ],
+        "operationId": "DeploymentService_Deploy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeployRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeployResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "deploymentService",
+          "deploy"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/environments": {
+      "get": {
+        "tags": [
+          "EnvironmentService"
+        ],
+        "operationId": "EnvironmentService_ListEnvironments",
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "displayName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListEnvironmentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "environmentService",
+          "listEnvironments"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases": {
+      "post": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_CreateRelease",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateReleaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CreateReleaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "createRelease"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases/{releaseId}": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_GetRelease",
+        "parameters": [
+          {
+            "name": "releaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetReleaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "getRelease"
+        ]
+      },
+      "delete": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_DeleteRelease",
+        "parameters": [
+          {
+            "name": "releaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeleteReleaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "deleteRelease"
+        ]
+      },
+      "patch": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_UpdateRelease",
+        "parameters": [
+          {
+            "name": "releaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateReleaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UpdateReleaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "updateRelease"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases/{releaseId}:exportDsl": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ExportReleaseDSL",
+        "parameters": [
+          {
+            "name": "releaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ExportReleaseDSLResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "exportReleaseDsl"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases/{releaseId}:listCredentialCandidates": {
+      "get": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ListReleaseCredentialCandidates",
+        "parameters": [
+          {
+            "name": "releaseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListReleaseCredentialCandidatesResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "listReleaseCredentialCandidates"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases:computeDeploymentOptions": {
+      "post": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_ComputeDeploymentOptions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ComputeDeploymentOptionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ComputeDeploymentOptionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "computeDeploymentOptions"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/releases:precheck": {
+      "post": {
+        "tags": [
+          "ReleaseService"
+        ],
+        "operationId": "ReleaseService_PrecheckRelease",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.PrecheckReleaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.PrecheckReleaseResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "releaseService",
+          "precheckRelease"
+        ]
+      }
+    },
+    "/enterprise/sso/oauth2/login": {
+      "get": {
+        "tags": [
+          "ConsoleSSO"
+        ],
+        "operationId": "ConsoleSSO_OAuth2Login",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.OAuth2LoginReply"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "consoleSso",
+          "oAuth2Login"
+        ]
+      }
+    },
+    "/enterprise/sso/oidc/login": {
+      "get": {
+        "tags": [
+          "ConsoleSSO"
+        ],
+        "operationId": "ConsoleSSO_OIDCLogin",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.OIDCReply"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "consoleSso",
+          "oidcLogin"
+        ]
+      }
+    },
+    "/enterprise/sso/saml/login": {
+      "get": {
+        "tags": [
+          "ConsoleSSO"
+        ],
+        "operationId": "ConsoleSSO_SAMLLogin",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.SAMLLoginReply"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "consoleSso",
+          "samlLogin"
+        ]
+      }
+    },
+    "/enterprise/webapp/app/access-mode": {
+      "get": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_GetWebAppAccessMode",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.GetWebAppAccessModeRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "getWebAppAccessMode"
+        ]
+      },
+      "post": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_UpdateWebAppWhitelistSubjects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.enterprise.UpdateWebAppWhitelistSubjectsReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.UpdateWebAppWhitelistSubjectsRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "updateWebAppWhitelistSubjects"
+        ]
+      }
+    },
+    "/enterprise/webapp/app/subject/search": {
+      "get": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_SearchForWhilteListCandidates",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "resultsPerPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.SearchForWhilteListCandidatesRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "searchForWhilteListCandidates"
+        ]
+      }
+    },
+    "/enterprise/webapp/app/subjects": {
+      "get": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_GetWebAppWhitelistSubjects",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.GetWebAppWhitelistSubjectsRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "getWebAppWhitelistSubjects"
+        ]
+      }
+    },
+    "/enterprise/webapp/group/subjects": {
+      "get": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_GetGroupSubjects",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.GetGroupSubjectsRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "getGroupSubjects"
+        ]
+      }
+    },
+    "/enterprise/webapp/permission": {
+      "get": {
+        "tags": [
+          "WebAppAuth"
+        ],
+        "operationId": "WebAppAuth_IsUserAllowedToAccessWebApp",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.enterprise.IsUserAllowedToAccessWebAppRes"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "webAppAuth",
+          "isUserAllowedToAccessWebApp"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "dify.enterprise.api.appdeploy.v1.ListAppInstanceSummariesResponse": {
+        "required": [
+          "appInstanceSummaries",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceSummaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstanceSummary"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.AppInstanceSummary": {
+        "required": [
+          "appInstance",
+          "environmentDeployments",
+          "accessChannels",
+          "apiKeySummary"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          },
+          "environmentDeployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+            }
+          },
+          "latestRelease": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          },
+          "apiKeySummary": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ApiKeySummary"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.AppInstance": {
+        "required": [
+          "id",
+          "tenantId",
+          "displayName",
+          "description",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.Actor": {
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentDeployment": {
+        "required": [
+          "appInstanceId",
+          "environment",
+          "status",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RuntimeInstanceStatus"
+          },
+          "currentRelease": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "desiredRelease": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "currentDeployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentRecord"
+          },
+          "error": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Error"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releasesBehind": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.Environment": {
+        "required": [
+          "id",
+          "displayName",
+          "description",
+          "mode",
+          "backend",
+          "status",
+          "statusMessage",
+          "cpuCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/EnvironmentMode"
+          },
+          "backend": {
+            "$ref": "#/components/schemas/RuntimeBackend"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EnvironmentStatus"
+          },
+          "statusMessage": {
+            "type": "string"
+          },
+          "lastError": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Error"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "managedBy": {
+            "type": "string"
+          },
+          "runtimeEndpoint": {
+            "type": "string"
+          },
+          "cpuCount": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EnvironmentMode": {
+        "format": "enum",
+        "enum": [
+          "ENVIRONMENT_MODE_UNSPECIFIED",
+          "ENVIRONMENT_MODE_SHARED",
+          "ENVIRONMENT_MODE_ISOLATED"
+        ],
+        "type": "string"
+      },
+      "RuntimeBackend": {
+        "format": "enum",
+        "enum": [
+          "RUNTIME_BACKEND_UNSPECIFIED",
+          "RUNTIME_BACKEND_K8S",
+          "RUNTIME_BACKEND_EXTERNAL"
+        ],
+        "type": "string"
+      },
+      "EnvironmentStatus": {
+        "format": "enum",
+        "enum": [
+          "ENVIRONMENT_STATUS_UNSPECIFIED",
+          "ENVIRONMENT_STATUS_ADMISSION",
+          "ENVIRONMENT_STATUS_BOOTSTRAPPING",
+          "ENVIRONMENT_STATUS_READY",
+          "ENVIRONMENT_STATUS_FAILED",
+          "ENVIRONMENT_STATUS_DELETING"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RuntimeInstanceStatus": {
+        "format": "enum",
+        "enum": [
+          "RUNTIME_INSTANCE_STATUS_UNSPECIFIED",
+          "RUNTIME_INSTANCE_STATUS_UNDEPLOYED",
+          "RUNTIME_INSTANCE_STATUS_DEPLOYING",
+          "RUNTIME_INSTANCE_STATUS_READY",
+          "RUNTIME_INSTANCE_STATUS_FAILED",
+          "RUNTIME_INSTANCE_STATUS_DRIFTED",
+          "RUNTIME_INSTANCE_STATUS_INVALID",
+          "RUNTIME_INSTANCE_STATUS_UNDEPLOYING"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.Release": {
+        "required": [
+          "id",
+          "appInstanceId",
+          "displayName",
+          "description",
+          "source",
+          "gateCommitId",
+          "requiredSlots",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ReleaseSource"
+          },
+          "sourceAppId": {
+            "type": "string"
+          },
+          "gateCommitId": {
+            "type": "string"
+          },
+          "requiredSlots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.RequiredSlot"
+            }
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReleaseSource": {
+        "format": "enum",
+        "enum": [
+          "RELEASE_SOURCE_UNSPECIFIED",
+          "RELEASE_SOURCE_SOURCE_APP",
+          "RELEASE_SOURCE_UPLOAD"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.RequiredSlot": {
+        "required": [
+          "type",
+          "providerId",
+          "category",
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/SlotType"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "key": {
+            "type": "string"
+          }
+        }
+      },
+      "SlotType": {
+        "format": "enum",
+        "enum": [
+          "SLOT_TYPE_UNSPECIFIED",
+          "SLOT_TYPE_PLUGIN_CREDENTIAL",
+          "SLOT_TYPE_ENV_VAR"
+        ],
+        "type": "string"
+      },
+      "PluginCategory": {
+        "format": "enum",
+        "enum": [
+          "PLUGIN_CATEGORY_UNSPECIFIED",
+          "PLUGIN_CATEGORY_MODEL",
+          "PLUGIN_CATEGORY_TOOL"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentRecord": {
+        "required": [
+          "id",
+          "status",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeploymentStatus": {
+        "format": "enum",
+        "enum": [
+          "DEPLOYMENT_STATUS_UNSPECIFIED",
+          "DEPLOYMENT_STATUS_DEPLOYING",
+          "DEPLOYMENT_STATUS_READY",
+          "DEPLOYMENT_STATUS_FAILED",
+          "DEPLOYMENT_STATUS_CANCELLED"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.AccessChannels": {
+        "required": [
+          "id",
+          "appInstanceId",
+          "webAppEnabled",
+          "developerApiEnabled",
+          "updatedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "webAppEnabled": {
+            "type": "boolean"
+          },
+          "developerApiEnabled": {
+            "type": "boolean"
+          },
+          "updatedBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ApiKeySummary": {
+        "required": [
+          "apiKeyCount",
+          "environmentCount",
+          "developerApiEnabled",
+          "developerApiUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "apiKeyCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "environmentCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "developerApiEnabled": {
+            "type": "boolean"
+          },
+          "developerApiUrl": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeveloperApiUrl"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeveloperApiUrl": {
+        "required": [
+          "apiUrl",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "apiUrl": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeveloperApiUrlStatus"
+          },
+          "error": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Error"
+          }
+        }
+      },
+      "DeveloperApiUrlStatus": {
+        "format": "enum",
+        "enum": [
+          "DEVELOPER_API_URL_STATUS_UNSPECIFIED",
+          "DEVELOPER_API_URL_STATUS_CONFIGURED",
+          "DEVELOPER_API_URL_STATUS_NOT_CONFIGURED"
+        ],
+        "type": "string"
+      },
+      "pagination.Pagination": {
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "type": "integer",
+            "description": "Total number of items",
+            "format": "int32"
+          },
+          "perPage": {
+            "type": "integer",
+            "description": "Number of items per page",
+            "format": "int32"
+          },
+          "currentPage": {
+            "type": "integer",
+            "description": "Current page number",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Total number of pages",
+            "format": "int32"
+          }
+        },
+        "description": "Pagination ： Just for pagination by page"
+      },
+      "dify.enterprise.api.appdeploy.v1.ListAppInstancesResponse": {
+        "required": [
+          "appInstances",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateAppInstanceRequest": {
+        "required": [
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateAppInstanceResponse": {
+        "required": [
+          "appInstance"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetAppInstanceResponse": {
+        "required": [
+          "appInstance"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeleteAppInstanceResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAppInstanceRequest": {
+        "required": [
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAppInstanceResponse": {
+        "required": [
+          "appInstance"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetAccessChannelsResponse": {
+        "required": [
+          "accessChannels"
+        ],
+        "type": "object",
+        "properties": {
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAccessChannelsRequest": {
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "webAppEnabled": {
+            "type": "boolean"
+          },
+          "developerApiEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAccessChannelsResponse": {
+        "required": [
+          "accessChannels"
+        ],
+        "type": "object",
+        "properties": {
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetAccessSettingsResponse": {
+        "required": [
+          "accessChannels",
+          "environmentPolicies"
+        ],
+        "type": "object",
+        "properties": {
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          },
+          "environmentPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAccessPolicy"
+            }
+          },
+          "webAppEndpoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessEndpoint"
+            }
+          },
+          "cliEndpoint": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessEndpoint"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentAccessPolicy": {
+        "required": [
+          "environment",
+          "resolvedSubjects"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessPolicy"
+          },
+          "resolvedSubjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.AccessPolicy": {
+        "required": [
+          "id",
+          "appInstanceId",
+          "environmentId",
+          "mode",
+          "subjects",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AccessMode"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessSubject"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AccessMode": {
+        "format": "enum",
+        "enum": [
+          "ACCESS_MODE_UNSPECIFIED",
+          "ACCESS_MODE_PUBLIC",
+          "ACCESS_MODE_PRIVATE",
+          "ACCESS_MODE_PRIVATE_ALL"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.AccessSubject": {
+        "required": [
+          "subjectType",
+          "subjectId"
+        ],
+        "type": "object",
+        "properties": {
+          "subjectType": {
+            "$ref": "#/components/schemas/AccessSubjectType"
+          },
+          "subjectId": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessSubjectType": {
+        "format": "enum",
+        "enum": [
+          "ACCESS_SUBJECT_TYPE_UNSPECIFIED",
+          "ACCESS_SUBJECT_TYPE_ACCOUNT",
+          "ACCESS_SUBJECT_TYPE_GROUP"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.enterprise.Subject": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string"
+          },
+          "accountData": {
+            "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject_AccountData"
+          },
+          "groupData": {
+            "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject_GroupData"
+          }
+        },
+        "description": "Subject represents a subject (user or group) in access control"
+      },
+      "dify.enterprise.api.enterprise.Subject_AccountData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.Subject_GroupData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "groupSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.AccessEndpoint": {
+        "required": [
+          "endpointUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "endpointUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListDeploymentsResponse": {
+        "required": [
+          "deployments",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "deployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.Deployment": {
+        "required": [
+          "id",
+          "appInstanceId",
+          "status",
+          "action",
+          "environment",
+          "release",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentStatus"
+          },
+          "action": {
+            "$ref": "#/components/schemas/DeploymentAction"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "error": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Error"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finalizedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DeploymentAction": {
+        "format": "enum",
+        "enum": [
+          "DEPLOYMENT_ACTION_UNSPECIFIED",
+          "DEPLOYMENT_ACTION_DEPLOY",
+          "DEPLOYMENT_ACTION_PROMOTE",
+          "DEPLOYMENT_ACTION_ROLLBACK",
+          "DEPLOYMENT_ACTION_UNDEPLOY"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.GetDeveloperApiSettingsResponse": {
+        "required": [
+          "accessChannels",
+          "environments",
+          "apiKeys",
+          "developerApiUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+            }
+          },
+          "apiKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ApiKey"
+            }
+          },
+          "developerApiUrl": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeveloperApiUrl"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ApiKey": {
+        "required": [
+          "id",
+          "appInstanceId",
+          "environmentId",
+          "displayName",
+          "maskedToken",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "maskedToken": {
+            "type": "string"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Actor"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListEnvironmentDeploymentsResponse": {
+        "required": [
+          "environmentDeployments"
+        ],
+        "type": "object",
+        "properties": {
+          "environmentDeployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetAccessPolicyResponse": {
+        "required": [
+          "policy"
+        ],
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessPolicy"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAccessPolicyRequest": {
+        "required": [
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AccessMode"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessSubject"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateAccessPolicyResponse": {
+        "required": [
+          "policy"
+        ],
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessPolicy"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListApiKeysResponse": {
+        "required": [
+          "apiKeys",
+          "apiUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "apiKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ApiKey"
+            }
+          },
+          "apiUrl": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateApiKeyRequest": {
+        "required": [
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateApiKeyResponse": {
+        "required": [
+          "apiKey",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "apiKey": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ApiKey"
+          },
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeleteApiKeyResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.ListRollbackTargetsResponse": {
+        "required": [
+          "rollbackTargets",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "rollbackTargets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.RollbackTarget"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.RollbackTarget": {
+        "required": [
+          "release",
+          "resolvedDeploymentId",
+          "deployedAt",
+          "isCurrent"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "resolvedDeploymentId": {
+            "type": "string"
+          },
+          "deployedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CancelDeploymentRequest": {
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CancelDeploymentResponse": {
+        "required": [
+          "deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.PromoteRequest": {
+        "required": [
+          "releaseId",
+          "idempotencyKey"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "releaseId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSelectionInput"
+            }
+          },
+          "envVars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvVarInput"
+            }
+          },
+          "idempotencyKey": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialSelectionInput": {
+        "required": [
+          "providerId",
+          "credentialId"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "credentialId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvVarInput": {
+        "required": [
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueSource": {
+            "$ref": "#/components/schemas/EnvVarValueSource"
+          }
+        }
+      },
+      "EnvVarValueSource": {
+        "format": "enum",
+        "enum": [
+          "ENV_VAR_VALUE_SOURCE_UNSPECIFIED",
+          "ENV_VAR_VALUE_SOURCE_LITERAL",
+          "ENV_VAR_VALUE_SOURCE_DSL_DEFAULT",
+          "ENV_VAR_VALUE_SOURCE_LAST_DEPLOYMENT"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.PromoteResponse": {
+        "required": [
+          "deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.RollbackRequest": {
+        "required": [
+          "targetReleaseId",
+          "idempotencyKey"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "targetReleaseId": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.RollbackResponse": {
+        "required": [
+          "deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UndeployRequest": {
+        "required": [
+          "idempotencyKey"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UndeployResponse": {
+        "required": [
+          "deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListReleaseSummariesResponse": {
+        "required": [
+          "releaseSummaries",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseSummaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ReleaseSummary"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ReleaseSummary": {
+        "required": [
+          "release",
+          "deployedEnvironments",
+          "environmentActions",
+          "activeEnvironmentCount"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "deployedEnvironments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ReleaseEnvironmentDeployment"
+            }
+          },
+          "environmentActions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ReleaseEnvironmentAction"
+            }
+          },
+          "activeEnvironmentCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ReleaseEnvironmentDeployment": {
+        "required": [
+          "environment",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RuntimeInstanceStatus"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ReleaseEnvironmentAction": {
+        "required": [
+          "environment",
+          "kind",
+          "requiresRuntimeInputs",
+          "currentReleaseId"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReleaseEnvironmentActionKind"
+          },
+          "disabledReason": {
+            "type": "string"
+          },
+          "requiresRuntimeInputs": {
+            "type": "boolean"
+          },
+          "currentReleaseId": {
+            "type": "string"
+          }
+        }
+      },
+      "ReleaseEnvironmentActionKind": {
+        "format": "enum",
+        "enum": [
+          "RELEASE_ENVIRONMENT_ACTION_KIND_UNSPECIFIED",
+          "RELEASE_ENVIRONMENT_ACTION_KIND_PROMOTE",
+          "RELEASE_ENVIRONMENT_ACTION_KIND_ROLLBACK",
+          "RELEASE_ENVIRONMENT_ACTION_KIND_CURRENT",
+          "RELEASE_ENVIRONMENT_ACTION_KIND_DEPLOYING",
+          "RELEASE_ENVIRONMENT_ACTION_KIND_BLOCKED"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.ListReleasesResponse": {
+        "required": [
+          "releases",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ComputeReleaseDeploymentViewResponse": {
+        "required": [
+          "releases",
+          "environmentDeployments",
+          "environmentActions"
+        ],
+        "type": "object",
+        "properties": {
+          "releases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+            }
+          },
+          "environmentDeployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+            }
+          },
+          "environmentActions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ReleaseEnvironmentAction"
+            }
+          },
+          "options": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOptions"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeploymentOptions": {
+        "required": [
+          "dslDigest",
+          "appInstanceDefaults",
+          "releaseDefaults",
+          "credentialSlots",
+          "envVarSlots"
+        ],
+        "type": "object",
+        "properties": {
+          "dslDigest": {
+            "type": "string"
+          },
+          "appInstanceDefaults": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOptionsAppInstanceDefaults"
+          },
+          "releaseDefaults": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOptionsReleaseDefaults"
+          },
+          "credentialSlots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSlot"
+            }
+          },
+          "envVarSlots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvVarSlot"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeploymentOptionsAppInstanceDefaults": {
+        "required": [
+          "displayName",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeploymentOptionsReleaseDefaults": {
+        "required": [
+          "displayName",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialSlot": {
+        "required": [
+          "providerId",
+          "category",
+          "candidates",
+          "lastCredentialId"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialCandidate"
+            }
+          },
+          "lastCredentialId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialCandidate": {
+        "required": [
+          "credentialId",
+          "providerId",
+          "category",
+          "displayName",
+          "fromEnterprise"
+        ],
+        "type": "object",
+        "properties": {
+          "credentialId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "fromEnterprise": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvVarSlot": {
+        "required": [
+          "key",
+          "valueType",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "$ref": "#/components/schemas/EnvVarValueType"
+          },
+          "description": {
+            "type": "string"
+          },
+          "defaultValue": {
+            "type": "string"
+          },
+          "lastValue": {
+            "type": "string"
+          }
+        }
+      },
+      "EnvVarValueType": {
+        "format": "enum",
+        "enum": [
+          "ENV_VAR_VALUE_TYPE_UNSPECIFIED",
+          "ENV_VAR_VALUE_TYPE_STRING",
+          "ENV_VAR_VALUE_TYPE_NUMBER",
+          "ENV_VAR_VALUE_TYPE_SECRET"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.GetAppInstanceOverviewResponse": {
+        "required": [
+          "appInstance",
+          "environmentDeployments",
+          "recentReleases",
+          "accessChannels",
+          "apiKeySummary",
+          "totalReleaseCount"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          },
+          "environmentDeployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+            }
+          },
+          "recentReleases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+            }
+          },
+          "accessChannels": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AccessChannels"
+          },
+          "apiKeySummary": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ApiKeySummary"
+          },
+          "totalReleaseCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeployRequest": {
+        "required": [
+          "environmentId",
+          "idempotencyKey"
+        ],
+        "type": "object",
+        "properties": {
+          "dsl": {
+            "type": "string",
+            "format": "bytes"
+          },
+          "sourceAppId": {
+            "type": "string"
+          },
+          "newAppInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.NewAppInstance"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "releaseName": {
+            "type": "string"
+          },
+          "releaseDescription": {
+            "type": "string"
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSelectionInput"
+            }
+          },
+          "envVars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvVarInput"
+            }
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "expectedDslDigest": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.NewAppInstance": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeployResponse": {
+        "required": [
+          "appInstance",
+          "release",
+          "deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          },
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Deployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListEnvironmentsResponse": {
+        "required": [
+          "environments",
+          "pagination"
+        ],
+        "type": "object",
+        "properties": {
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Environment"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.Pagination"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateReleaseRequest": {
+        "type": "object",
+        "properties": {
+          "createAppInstance": {
+            "type": "boolean"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "dsl": {
+            "type": "string",
+            "format": "bytes"
+          },
+          "sourceAppId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.CreateReleaseResponse": {
+        "required": [
+          "release",
+          "appInstance"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          },
+          "appInstance": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppInstance"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetReleaseResponse": {
+        "required": [
+          "release"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeleteReleaseResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateReleaseRequest": {
+        "required": [
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UpdateReleaseResponse": {
+        "required": [
+          "release"
+        ],
+        "type": "object",
+        "properties": {
+          "release": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Release"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ExportReleaseDSLResponse": {
+        "required": [
+          "dsl"
+        ],
+        "type": "object",
+        "properties": {
+          "dsl": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListReleaseCredentialCandidatesResponse": {
+        "required": [
+          "slots"
+        ],
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSlot"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ComputeDeploymentOptionsRequest": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "appInstanceId": {
+            "type": "string"
+          },
+          "dsl": {
+            "type": "string",
+            "format": "bytes"
+          },
+          "sourceAppId": {
+            "type": "string"
+          },
+          "releaseId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ComputeDeploymentOptionsResponse": {
+        "required": [
+          "options"
+        ],
+        "type": "object",
+        "properties": {
+          "options": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOptions"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.PrecheckReleaseRequest": {
+        "type": "object",
+        "properties": {
+          "appInstanceId": {
+            "type": "string"
+          },
+          "dsl": {
+            "type": "string",
+            "format": "bytes"
+          },
+          "sourceAppId": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.PrecheckReleaseResponse": {
+        "required": [
+          "gateCommitId",
+          "canCreate",
+          "unsupportedNodes",
+          "unsupportedToolProviders"
+        ],
+        "type": "object",
+        "properties": {
+          "gateCommitId": {
+            "type": "string"
+          },
+          "canCreate": {
+            "type": "boolean"
+          },
+          "matchedRelease": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ReleaseContentMatch"
+          },
+          "unsupportedNodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UnsupportedDslNode"
+            }
+          },
+          "unsupportedToolProviders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UnsupportedToolProvider"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ReleaseContentMatch": {
+        "required": [
+          "releaseId",
+          "displayName",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "releaseId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UnsupportedDslNode": {
+        "required": [
+          "id",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UnsupportedToolProvider": {
+        "required": [
+          "nodeId",
+          "providerType"
+        ],
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "providerName": {
+            "type": "string"
+          },
+          "toolName": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.OAuth2LoginReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.OIDCReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.SAMLLoginReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.GetWebAppAccessModeRes": {
+        "type": "object",
+        "properties": {
+          "accessMode": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.UpdateWebAppWhitelistSubjectsReq": {
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject"
+            }
+          },
+          "accessMode": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.UpdateWebAppWhitelistSubjectsRes": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.SearchForWhilteListCandidatesRes": {
+        "type": "object",
+        "properties": {
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject"
+            }
+          },
+          "currPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.GetWebAppWhitelistSubjectsRes": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject_GroupData"
+            }
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.GetWebAppWhitelistSubjectsRes_Member"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.GetWebAppWhitelistSubjectsRes_Member": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.GetGroupSubjectsRes": {
+        "type": "object",
+        "properties": {
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.enterprise.Subject"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.enterprise.IsUserAllowedToAccessWebAppRes": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

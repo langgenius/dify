@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from domain.workflow.agent_node import is_dify_agent_node_data
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
@@ -39,11 +39,11 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_soul_state import agent_soul_has_model
 from models.model import App, AppModelConfig, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot, Skill
 from models.tools import ToolFile
 from models.workflow import Workflow
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.dependency_service import extract_agent_soul_dependencies
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,

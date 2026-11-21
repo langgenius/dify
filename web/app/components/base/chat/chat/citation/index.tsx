@@ -68,7 +68,6 @@ const Citation: FC<CitationProps> = ({
       const fullWidth =
         widths.reduce((total, width) => total + width, 0) + Math.max(0, widths.length - 1) * 4
       if (fullWidth <= containerWidth) {
-        // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
         setLimitNumberInOneLine(resources.length)
         return
       }
@@ -80,9 +79,9 @@ const Citation: FC<CitationProps> = ({
         if (totalWidth + 4 + 34 > containerWidth) break
         limit += 1
       }
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
       setLimitNumberInOneLine(limit)
     }
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Citation capacity depends on mounted element widths and must be measured again when the container resizes.
     updateLimit()
     const observer = new ResizeObserver(updateLimit)
     observer.observe(container)
@@ -109,7 +108,7 @@ const Citation: FC<CitationProps> = ({
         className="mb-2 flex items-center system-xs-medium text-text-tertiary"
       >
         {citationTitle}
-        <div className="ml-2 h-px grow bg-divider-regular" />
+        <div className="ms-2 h-px grow bg-divider-regular" />
       </div>
       <div className="relative flex flex-wrap">
         {resources.map((res, index) => (
@@ -117,7 +116,7 @@ const Citation: FC<CitationProps> = ({
             key={`${res.sources[0]?.dataset_id}:${res.documentId}:${res.sources[0]?.document_version}`}
             aria-hidden
             data-testid="citation-measurement-item"
-            className="absolute top-0 left-0 -z-10 mr-1 mb-1 h-7 w-auto max-w-60 pr-2 pl-7 text-xs whitespace-nowrap opacity-0"
+            className="absolute inset-s-0 top-0 -z-10 me-1 mb-1 h-7 w-auto max-w-60 ps-7 pe-2 text-xs whitespace-nowrap opacity-0"
             ref={(ele: HTMLDivElement | null) => {
               elesRef.current[index] = ele!
             }}
@@ -128,7 +127,7 @@ const Citation: FC<CitationProps> = ({
         {resources.slice(0, showMore ? resourcesLength : limitNumberInOneLine).map((res) => (
           <div
             key={`${res.sources[0]?.dataset_id}:${res.documentId}:${res.sources[0]?.document_version}`}
-            className="mr-1 mb-1 cursor-pointer"
+            className="me-1 mb-1 cursor-pointer"
           >
             <Popup data={res} showHitInfo={showHitInfo} />
           </div>

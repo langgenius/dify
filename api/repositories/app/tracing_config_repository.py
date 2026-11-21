@@ -1,4 +1,4 @@
-"""SQLAlchemy persistence adapter for app tracing provider configurations."""
+"""SQLAlchemy persistence adapter for app tracing provider configurations and policies."""
 
 import json
 from dataclasses import asdict, replace
@@ -19,11 +19,32 @@ from services.app_tracing_config_service import (
     AppTracingConfigRecord,
     AppTracingConfigStore,
 )
+from services.tracing.delivery import StoredTraceDestination, TraceDestinationQuery
+from services.tracing.scopes import TracingPolicyQuery
 
 _trace_settings = TypeAdapter(AppTraceSettings)
 
 
-class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore):
+def trace_settings_from_column(raw: str | None) -> AppTraceSettings:
+    """Read ``App.tracing`` for the trace pipeline: a value it cannot read disables tracing."""
+    if not raw:
+        return AppTraceSettings()
+    try:
+        stored = json.loads(raw)
+    except ValueError:
+        return AppTraceSettings()
+    if not isinstance(stored, dict):
+        return AppTraceSettings()
+    provider = stored.get("tracing_provider")
+    return AppTraceSettings(
+        enabled=stored.get("enabled") is True,
+        tracing_provider=provider if isinstance(provider, str) else None,
+        capture_content=stored.get("capture_content") is True,
+        capture_agent=stored.get("capture_agent") is not False,
+    )
+
+
+class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore, TracingPolicyQuery, TraceDestinationQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -126,6 +147,34 @@ class SQLAlchemyAppTracingConfigRepository(AppTracingConfigStore):
                 if not config.is_active or not config.tracing_config:
                     raise AppTracingConfigNotFoundError
             app.tracing = json.dumps(asdict(settings))
+
+    @override
+    def policy(self, *, tenant_id: str, app_id: str) -> AppTraceSettings | None:
+        with self._session_factory() as session:
+            row = session.execute(select(App.tracing).where(App.id == app_id, App.tenant_id == tenant_id)).first()
+        return trace_settings_from_column(row.tracing) if row is not None else None
+
+    @override
+    def active_destination(self, *, tenant_id: str, app_id: str) -> StoredTraceDestination | None:
+        with self._session_factory() as session:
+            settings = trace_settings_from_column(
+                session.scalar(select(App.tracing).where(App.id == app_id, App.tenant_id == tenant_id))
+            )
+            if not settings.enabled or settings.tracing_provider is None:
+                return None
+            stored = session.scalar(
+                select(TraceAppConfig.tracing_config)
+                .join(App, App.id == TraceAppConfig.app_id)
+                .where(
+                    TraceAppConfig.app_id == app_id,
+                    App.tenant_id == tenant_id,
+                    TraceAppConfig.tracing_provider == settings.tracing_provider,
+                    TraceAppConfig.is_active.is_(True),
+                )
+            )
+        if not isinstance(stored, dict):
+            return None
+        return StoredTraceDestination(provider_id=settings.tracing_provider, config=dict(stored))
 
     @staticmethod
     def _settings(app: App) -> AppTraceSettings:

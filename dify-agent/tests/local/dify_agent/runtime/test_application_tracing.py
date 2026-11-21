@@ -13,11 +13,11 @@ from uuid import uuid4
 import httpx
 import logfire
 import pytest
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export import SpanExportResult
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, use_span
+from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, set_span_in_context, use_span
 from pydantic import ValidationError
 from pydantic_ai import Tool
 from pydantic_ai.models.test import TestModel
@@ -138,7 +138,8 @@ def _tool() -> str:
 
 
 @pytest.mark.parametrize("capture_content", [False, True])
-def test_actual_agent_tree_uses_api_parent_and_per_run_content_policy(inbox, capture_content):
+@pytest.mark.parametrize("ambient_parent", ["otel", "logfire-unsampled", "logfire-recording"])
+def test_actual_agent_tree_uses_api_parent_and_per_run_content_policy(inbox, capture_content, ambient_parent):
     collector = configured_collector(inbox)
     tracing = tracing_context(capture_content=capture_content)
     agent = create_agent(
@@ -147,9 +148,38 @@ def test_actual_agent_tree_uses_api_parent_and_per_run_content_policy(inbox, cap
         capabilities=[],
     )
     collector.instrument(agent, execution_context=execution_context(tracing))
-    unrelated = NonRecordingSpan(SpanContext(trace_id=1, span_id=2, is_remote=True, trace_flags=TraceFlags(1)))
+    platform_client = None
+    unrelated = NonRecordingSpan(
+        SpanContext(
+            trace_id=1,
+            span_id=2,
+            is_remote=True,
+            trace_flags=TraceFlags(0 if ambient_parent == "logfire-unsampled" else 1),
+        )
+    )
+    if ambient_parent != "otel":
+        platform_client = logfire.configure(
+            local=True,
+            send_to_logfire=False,
+            console=False,
+            metrics=False,
+            inspect_arguments=False,
+        )
+        unrelated = (
+            platform_client.config.get_tracer_provider()
+            .get_tracer("platform")
+            .start_span("platform-parent", context=set_span_in_context(unrelated))
+        )
+        # The real Logfire wrapper advertises ReadableSpan even though the
+        # underlying non-recording OTel span has no attributes to inspect.
+        assert isinstance(unrelated, ReadableSpan)
+        if ambient_parent == "logfire-unsampled":
+            assert isinstance(unrelated.span, NonRecordingSpan)
+        else:
+            assert unrelated.is_recording()
+        assert unrelated.get_span_context().is_valid
     try:
-        with use_span(unrelated):
+        with use_span(unrelated, end_on_exit=True):
             assert agent.run_sync("prompt-private-content").output == "answer-private-content"
         assert asyncio.run(collector.finish_invocation(tracing))
         spans = [span for batch in inbox.batches for span in batch["spans"]]
@@ -173,6 +203,8 @@ def test_actual_agent_tree_uses_api_parent_and_per_run_content_policy(inbox, cap
         assert set(inbox.headers) == {"test-inner-key"}
     finally:
         asyncio.run(collector.aclose())
+        if platform_client is not None:
+            platform_client.shutdown()
 
 
 def test_retry_reuses_exact_batch_and_completion_waits_for_ack(inbox):

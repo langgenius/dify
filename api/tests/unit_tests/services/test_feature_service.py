@@ -1,21 +1,182 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.account_education_service import EDUCATION_EDITIONS
-from services.billing_service import BillingInfo
+from services.billing_client import billing
 from services.entities.feature_entities import FeatureModel, LimitationModel
+from services.errors.billing import BillingUpstreamUnavailableError
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
+from tests.helpers import billing_builders as builders
 
 
 def test_education_feature_is_disabled_by_default() -> None:
     assert FeatureModel().education.enabled is False
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "enabled", "expected", "upgrade_available"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False, False),
+    ],
+)
+def test_workflow_collaboration_feature_and_upgrade_use_the_loaded_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    enabled: bool,
+    expected: bool,
+    upgrade_available: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled)
+    billing_calls: list[str] = []
+
+    def fill_billing(features: FeatureModel, tenant_id: str, exclude_vector_space: bool = False) -> None:
+        assert exclude_vector_space is False
+        billing_calls.append(tenant_id)
+        features.billing.subscription.plan = plan
+
+    def fail_extra_plan_lookup(_tenant_id: str) -> CloudPlan:
+        raise AssertionError("the loaded plan should be reused")
+
+    monkeypatch.setattr(FeatureService, "_fulfill_params_from_billing_api", fill_billing)
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", fail_extra_plan_lookup)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    assert features.workflow_collaboration_enabled is expected
+    assert features.workflow_collaboration_upgrade_available is upgrade_available
+    assert billing_calls == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "expected", "upgrade_available"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+    ],
+)
+def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan,
+    expected: bool,
+    upgrade_available: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    def fill_billing(features: FeatureModel, *_args: object, **_kwargs: object) -> None:
+        features.billing.subscription.plan = plan
+
+    def fail_extra_plan_lookup(_tenant_id: str) -> CloudPlan:
+        raise AssertionError("the loaded plan should be reused")
+
+    monkeypatch.setattr(FeatureService, "_fulfill_params_from_billing_api", fill_billing)
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", fail_extra_plan_lookup)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    assert features.evaluation_enabled is expected
+    assert features.evaluation_upgrade_available is upgrade_available
+    assert FeatureService.is_evaluation_supported() is (edition != DeploymentEdition.COMMUNITY)
+
+
+@pytest.mark.parametrize(
+    ("edition", "plan", "expected"),
+    [
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
+        (DeploymentEdition.ENTERPRISE, None, True),
+        (DeploymentEdition.COMMUNITY, None, False),
+    ],
+)
+def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    plan: CloudPlan | None,
+    expected: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    plan_lookups: list[str] = []
+
+    def get_workspace_plan(tenant_id: str) -> CloudPlan:
+        plan_lookups.append(tenant_id)
+        assert plan is not None
+        return plan
+
+    monkeypatch.setattr(FeatureService, "get_workspace_plan", get_workspace_plan)
+
+    assert FeatureService.can_use_evaluation("tenant-1") is expected
+    assert plan_lookups == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+
+
+@pytest.mark.parametrize("plan", list(CloudPlan))
+def test_get_workspace_plan_reads_one_cloud_subscription(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], plan: CloudPlan
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    calls: list[tuple[str, bool]] = []
+
+    def get_info(tenant_id: str, exclude_vector_space: bool = False) -> billing.GetSubscriptionInfoReply:
+        calls.append((tenant_id, exclude_vector_space))
+        return builders.subscription_info(plan.value)
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    assert FeatureService.get_workspace_plan("tenant-1") is plan
+    assert calls == [("tenant-1", True)]
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_workspace_plan_is_none_outside_cloud(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    def get_info(*_args: object, **_kwargs: object) -> billing.GetSubscriptionInfoReply:
+        raise AssertionError("billing must not be queried")
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    assert FeatureService.get_workspace_plan("tenant-1") is None
+
+
+def test_get_workspace_plan_propagates_billing_failures(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    error = BillingUpstreamUnavailableError("billing unavailable")
+
+    def get_info(*_args: object, **_kwargs: object) -> billing.GetSubscriptionInfoReply:
+        raise error
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        FeatureService.get_workspace_plan("tenant-1")
+
+    assert exc_info.value is error
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
@@ -30,6 +191,20 @@ def test_education_is_advertised_only_where_its_endpoints_exist(
         features = FeatureService.get_features("")
 
     assert features.education.enabled is (edition in EDUCATION_EDITIONS)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_agent_preview_feature_matches_the_chat_admission_policy(
+    config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    with patch("services.feature_service.EnterpriseService.get_workspace_info", return_value={}):
+        features = FeatureService.get_features("")
+
+    expected = edition in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+    assert FeatureService.is_agent_preview_enabled() is expected
+    assert features.agent_preview_enabled is expected
 
 
 def test_education_stays_disabled_on_cloud_without_the_env_flag(
@@ -121,7 +296,7 @@ def test_get_vector_space_converts_billing_float_size(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: {"size": 5120.75, "limit": 20480},
+        lambda _tenant_id: builders.vector_space(size=5120.75, limit=20480),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -138,7 +313,7 @@ def test_get_vector_space_preserves_unknown_usage(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: {"size": 0.0, "limit": 50, "usage_unknown": True},
+        lambda _tenant_id: builders.vector_space(size=0.0, limit=50, usage_unknown=True),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -160,7 +335,7 @@ def test_get_vector_space_preserves_unknown_usage(
     ],
 )
 def test_get_knowledge_file_size_limit(
-    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
     config_overrides: Callable[..., None],
     deployment_edition: DeploymentEdition,
     tenant_id: str | None,
@@ -172,12 +347,9 @@ def test_get_knowledge_file_size_limit(
         UPLOAD_FILE_SIZE_LIMIT=15,
         KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=50,
     )
-    get_info = Mock(
-        return_value={
-            "subscription": {"plan": plan},
-        }
+    get_info = mocker.patch.object(
+        feature_service_module.BillingService, "get_info", return_value=builders.subscription_info(plan)
     )
-    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
 
     assert FeatureService.get_knowledge_file_size_limit(tenant_id) == expected
 
@@ -198,9 +370,7 @@ def test_paid_knowledge_file_size_limit_never_reduces_default(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_info",
-        lambda *_args, **_kwargs: {
-            "subscription": {"plan": CloudPlan.PROFESSIONAL},
-        },
+        lambda *_args, **_kwargs: builders.subscription_info("professional"),
     )
 
     assert FeatureService.get_knowledge_file_size_limit("tenant-1") == 100
@@ -230,6 +400,34 @@ def test_site_import_entitlement(
     assert get_plan.call_count == (1 if edition == DeploymentEdition.CLOUD else 0)
 
 
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_features_reports_plan_quotas_as_unlimited_outside_cloud(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    monkeypatch.setattr(feature_service_module.EnterpriseService, "get_workspace_info", lambda _tenant_id: {})
+
+    features = FeatureService.get_features("tenant-1")
+
+    for quota in (features.members, features.apps, features.annotation_quota_limit, features.documents_upload_quota):
+        assert (quota.size, quota.limit) == (0, 0)
+    assert features.vector_space is not None
+    assert features.vector_space.limit == -1
+    assert (features.trigger_event.limit, features.trigger_event.reset_date) == (-1, -1)
+    assert (features.api_rate_limit.limit, features.api_rate_limit.reset_date) == (-1, -1)
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_vector_space_is_unlimited_outside_cloud(
+    config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    result = FeatureService.get_vector_space("tenant-1")
+
+    assert (result.size, result.limit, result.usage_unknown) == (0, -1, False)
+
+
 def test_skill_feature_is_disabled_by_default() -> None:
     assert FeatureModel().enable_skill is True
 
@@ -240,6 +438,21 @@ def test_skill_feature_follows_env_config(config_overrides: Callable[..., None])
     features = FeatureService.get_features("")
 
     assert features.enable_skill is True
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_knowledge_fs_feature_follows_deployment_availability(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        KNOWLEDGE_FS_ENABLED=enabled,
+        KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=True,
+    )
+
+    features = FeatureService.get_features("")
+
+    assert features.enable_knowledge_fs is enabled
 
 
 def test_get_public_system_features_excludes_trial_models() -> None:
@@ -306,16 +519,17 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:
     tenant_id = "tenant-id"
-    billing_info = {
-        "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": False},
-        "members": {"size": 1, "limit": 10},
-        "apps": {"size": 2, "limit": 20},
-        "documents_upload_quota": {"size": 3, "limit": 100},
-        "annotation_quota_limit": {"size": 4, "limit": 50},
-        "can_replace_logo": True,
-        "model_load_balancing_enabled": True,
-        "knowledge_pipeline_publish_enabled": True,
-    }
+    billing_info = builders.subscription_info(
+        subscription=builders.subscription_plan("professional", interval="month", education=True),
+        members=billing.SubscriptionQuota(size=1, limit=10),
+        apps=billing.SubscriptionQuota(size=2, limit=20),
+        documents_upload_quota=billing.SubscriptionQuota(size=3, limit=100),
+        annotation_quota_limit=billing.SubscriptionQuota(size=4, limit=50),
+        can_replace_logo=True,
+        model_load_balancing_enabled=True,
+        knowledge_pipeline_publish_enabled=True,
+        next_credit_reset_date=1775001600,
+    )
 
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -325,11 +539,28 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_over
     )
     with (
         patch("services.feature_service.BillingService.get_info", return_value=billing_info) as get_info,
-        patch("services.feature_service.BillingService.get_quota_info", return_value={}),
+        patch(
+            "services.feature_service.BillingService.get_quota_info",
+            return_value=billing.QuotaGetInfoReply(
+                trigger_event=billing.QuotaFeatureInfo(usage=1, limit=3000, reset_date=0),
+                api_rate_limit=billing.QuotaFeatureInfo(usage=2, limit=5000, reset_date=0),
+            ),
+        ),
     ):
         features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
     assert features.vector_space is None
+    assert features.billing.subscription.plan == CloudPlan.PROFESSIONAL
+    assert features.billing.subscription.interval == "month"
+    assert features.education.activated is True
+    assert (features.members.size, features.members.limit) == (1, 10)
+    assert (features.apps.size, features.apps.limit) == (2, 20)
+    assert (features.documents_upload_quota.size, features.documents_upload_quota.limit) == (3, 100)
+    assert (features.annotation_quota_limit.size, features.annotation_quota_limit.limit) == (4, 50)
+    assert features.can_replace_logo is True
+    assert features.model_load_balancing_enabled is True
+    assert features.knowledge_pipeline.publish_enabled is True
+    assert features.next_credit_reset_date == 1775001600
     get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
 
 
@@ -338,7 +569,7 @@ def test_full_features_keep_treating_unknown_vector_usage_as_zero() -> None:
 
     FeatureService._fulfill_vector_space_from_billing_info(
         vector_space,
-        cast(BillingInfo, {"vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True}}),
+        builders.subscription_info(vector_space=builders.vector_space(size=0.0, limit=50, usage_unknown=True)),
     )
 
     assert vector_space.size == 0

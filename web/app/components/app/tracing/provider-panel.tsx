@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RadioItem } from '@langgenius/dify-ui/radio-group'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ProviderCapabilities } from './provider-capabilities'
@@ -26,7 +26,7 @@ type ProviderPanelProps = {
   readOnly: boolean
   pending: boolean
   isChosen: boolean
-  config: TraceAppConfigResponse['tracing_config']
+  config: TraceAppConfigResponse | null | undefined
   configError?: ProviderConfigError
 }
 
@@ -40,12 +40,13 @@ export function ProviderPanel({
   configError,
 }: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
-  const { data: agentTracingEnabled } = useQuery({
+  const { data: agentTracingEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })
   const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
+  const projectUrl = config?.tracing_config?.project_url
 
   return (
     <div
@@ -71,7 +72,7 @@ export function ProviderPanel({
         <div className="flex items-center">
           <span aria-hidden className={cn(iconClassName, 'h-6')} />
           {isChosen && (
-            <div className="ml-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
+            <div className="ms-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
               {t(($) => $[`${I18N_PREFIX}.inUse`], { ns: 'app' })}
             </div>
           )}
@@ -86,11 +87,11 @@ export function ProviderPanel({
               {hasConfigured && (
                 <a
                   className={buttonVariants({ size: 'small' })}
-                  href={config.project_url || undefined}
+                  href={projectUrl || undefined}
                   target="_blank"
                   rel="noopener noreferrer"
-                  role={config.project_url ? undefined : 'link'}
-                  aria-disabled={!config.project_url}
+                  role={projectUrl ? undefined : 'link'}
+                  aria-disabled={!projectUrl}
                 >
                   <span aria-hidden className="i-custom-vender-solid-general-eye size-3" />
                   {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}

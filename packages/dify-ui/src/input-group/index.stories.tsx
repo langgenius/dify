@@ -27,8 +27,6 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 function InputGroupsDemo() {
-  const [passwordVisible, setPasswordVisible] = React.useState(false)
-
   return (
     <div className="grid w-80 gap-4">
       <Field name="repositoryUrl">
@@ -44,29 +42,6 @@ function InputGroupsDemo() {
         <FieldDescription>
           https:// is displayed as a fixed prefix and is not part of the input value.
         </FieldDescription>
-      </Field>
-
-      <Field name="password">
-        <FieldLabel>Password</FieldLabel>
-        <InputGroup>
-          <InputGroupInput
-            type={passwordVisible ? 'text' : 'password'}
-            placeholder="Enter your password"
-            autoComplete="current-password"
-          />
-          <InputGroupAddon align="inline-end">
-            <IconButton
-              size="md"
-              aria-label={passwordVisible ? 'Hide password' : 'Show password'}
-              onClick={() => setPasswordVisible((visible) => !visible)}
-            >
-              <span
-                className={passwordVisible ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'}
-                aria-hidden="true"
-              />
-            </IconButton>
-          </InputGroupAddon>
-        </InputGroup>
       </Field>
     </div>
   )
@@ -162,13 +137,6 @@ function InputGroupDropdownDemo() {
 
 export const Basic: Story = {
   render: () => <InputGroupsDemo />,
-  play: async ({ canvas, userEvent }) => {
-    const passwordInput = canvas.getByLabelText('Password')
-
-    await expect(passwordInput).toHaveAttribute('type', 'password')
-    await userEvent.click(canvas.getByRole('button', { name: 'Show password' }))
-    await expect(passwordInput).toHaveAttribute('type', 'text')
-  },
 }
 
 export const WithAction: Story = {

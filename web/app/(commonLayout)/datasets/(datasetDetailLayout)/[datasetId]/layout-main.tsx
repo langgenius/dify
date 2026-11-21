@@ -44,6 +44,7 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
   if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
   if (pathname.endsWith('/hitTesting'))
     return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
+  if (pathname.endsWith('/evaluation')) return t(($) => $.title, { ns: 'evaluation' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
     return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
@@ -125,7 +126,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
-  const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath
+  const isEvaluationPath = pathname.endsWith('/evaluation')
+  const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath || isEvaluationPath
   const isCheckingRouteAccess =
     !!datasetRes &&
     isPermissionControlledPath &&
@@ -134,7 +136,11 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     !!datasetRes &&
     !isCheckingRouteAccess &&
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
-      (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
+      (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall) ||
+      (isEvaluationPath &&
+        (datasetRes.provider === 'external' ||
+          (datasetRes.runtime_mode === 'rag_pipeline' && !datasetRes.is_published) ||
+          !datasetACLCapabilities.canPipelineTest)))
   const pageTitle = datasetDetailPageTitle(pathname, t)
   const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
@@ -162,7 +168,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     <div
       className={cn(
         'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
-        !isPipelinePage && 'pt-1 pr-1 pb-1',
+        !isPipelinePage && 'pe-1 pt-1 pb-1',
       )}
     >
       <DatasetDetailContext.Provider

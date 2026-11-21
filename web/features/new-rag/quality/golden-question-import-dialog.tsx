@@ -19,11 +19,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { useKnowledgeSpace } from '../space/context'
-import {
-  maxGoldenQuestionCsvBytes,
-  maxGoldenQuestionCsvRows,
-  parseGoldenQuestionCsv,
-} from './golden-question-csv'
+import { maxGoldenQuestionCsvBytes, maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
 import { goldenQuestionQueriesKey } from './quality-model'
 
 export function GoldenQuestionImportDialog({
@@ -86,7 +82,11 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
     let nextRows: KnowledgeFsGoldenQuestionBulkImportRowPayload[] = []
     let nextError: GoldenQuestionCsvError | undefined
     try {
-      nextRows = parseGoldenQuestionCsv(await file.text())
+      const [{ parseGoldenQuestionCsv }, csv] = await Promise.all([
+        import('./golden-question-csv'),
+        file.text(),
+      ])
+      nextRows = parseGoldenQuestionCsv(csv)
     } catch (error) {
       const code = error instanceof Error ? error.message : 'parse'
       nextError = ['empty', 'headers', 'parse', 'required', 'tooManyRows'].includes(code)
@@ -153,7 +153,13 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogFooter>
         </>
       ) : (
-        <>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
+        >
           <DialogBody>
             <label
               htmlFor="golden-question-csv-file"
@@ -224,16 +230,15 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
             </Button>
             <Button
-              type="button"
+              type="submit"
               variant="primary"
               loading={mutation.isPending}
               disabled={rows.length === 0 || reading}
-              onClick={() => void submit()}
             >
               {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}
             </Button>
           </DialogFooter>
-        </>
+        </form>
       )}
     </>
   )

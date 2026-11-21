@@ -60,6 +60,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.installedIds.get': async () => ({ plugin_ids: [] }),
       'auth.plugin.datasource.list.get': async () => ({ result: [] }),
       'apiBasedExtension.get': async () => [],
+      'fileScan.providers.get': async () => ({ data: [] }),
+      'fileScan.providerTypes.get': async () => ({ data: [] }),
       'workspaces.current.toolProviders.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
@@ -181,6 +183,7 @@ function renderPage({
   workspacePermissionKeys = permissions,
   rbacEnabled = true,
   restrictLocalPackages = false,
+  fileScanEnabled = false,
   ui,
 }: {
   props?: ComponentProps<typeof IntegrationsPage>
@@ -188,10 +191,12 @@ function renderPage({
   workspacePermissionKeys?: string[]
   rbacEnabled?: boolean
   restrictLocalPackages?: boolean
+  fileScanEnabled?: boolean
   ui?: ReactElement
 } = {}) {
   const { wrapper: QueryProvider, queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys,
+    features: { enable_file_scan: fileScanEnabled },
     systemFeatures: {
       rbac_enabled: rbacEnabled,
       enable_marketplace: true,
@@ -241,18 +246,49 @@ it('defaults to models and preserves a real model search across section navigati
   expect(screen.queryByText('Anthropic')).not.toBeInTheDocument()
 })
 
+it('offers the malware scanners section after custom endpoints when the feature is on', async () => {
+  const user = userEvent.setup()
+  renderPage({ fileScanEnabled: true, ui: <SettingsIntegrations /> })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+  const items = within(navigation)
+    .getAllByRole('button')
+    .map((item) => item.textContent)
+  expect(items.indexOf('fileScan.settings.title')).toBe(
+    items.indexOf('navigation.settings.customEndpoint') + 1,
+  )
+
+  await user.click(within(navigation).getByRole('button', { name: 'fileScan.settings.title' }))
+
+  expect(screen.getByRole('heading', { name: 'fileScan.settings.title' })).toBeInTheDocument()
+  expect(screen.getByText('fileScan.settings.description')).toBeInTheDocument()
+  expect(await screen.findByText('fileScan.scanner.empty')).toBeInTheDocument()
+})
+
+it('hides the malware scanners section and falls back to models when the feature is off', () => {
+  renderPage({ props: { section: 'file-scan' } })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+
+  expect(
+    within(navigation).queryByRole('button', { name: 'fileScan.settings.title' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'navigation.settings.provider' })).toBeInTheDocument()
+  expect(screen.queryByText('fileScan.scanner.empty')).not.toBeInTheDocument()
+})
+
 it('closes compact navigation after changing the settings section', async () => {
   const user = userEvent.setup()
-  vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
-    matches: query === '(width < 48rem)',
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }) as unknown as MediaQueryList,
+  )
+  onTestFinished(() => matchMedia.mockRestore())
   renderPage({ ui: <SettingsIntegrations /> })
   await user.click(
     screen.getByRole('button', {
@@ -310,6 +346,18 @@ it('honors a legacy category-only MCP URL and the explicit route section takes p
   ).toHaveAttribute('href', '/integrations/tools/api')
 })
 
+it('expands tools in the same render that enters a tool section and keeps them expanded after leaving', () => {
+  const view = renderPage({ props: { section: 'provider' } })
+  const tools = screen.getByRole('button', { name: 'navigation.menus.tools' })
+  expect(tools).toHaveAttribute('aria-expanded', 'false')
+
+  view.rerender(<IntegrationsPage section="mcp" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+
+  view.rerender(<IntegrationsPage section="data-source" />)
+  expect(tools).toHaveAttribute('aria-expanded', 'true')
+})
+
 it('keeps tools expanded while visiting models and changes to tools only when opening the disclosure', async () => {
   const user = userEvent.setup()
   renderPage({ ui: <SettingsIntegrations /> })
@@ -365,14 +413,16 @@ it.each([
   )
 })
 
-it('passes the category marketplace path to the settings host from the install menu', async () => {
+it('opens the category marketplace path from the install menu', async () => {
   const user = userEvent.setup()
-  const onSwitchToMarketplace = vi.fn()
-  renderPage({ props: { section: 'trigger', onSwitchToMarketplace } })
+  renderPage({ props: { section: 'trigger' } })
   await user.click(await screen.findByRole('button', { name: 'plugin.installAction' }))
   await user.click(screen.getByRole('menuitem', { name: 'plugin.source.marketplace' }))
-  expect(onSwitchToMarketplace).toHaveBeenCalledExactlyOnceWith('/plugins/trigger')
-  expect(window.open).not.toHaveBeenCalled()
+  expect(window.open).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining('/plugins/trigger?source='),
+    '_blank',
+    'noopener,noreferrer',
+  )
 })
 
 it('saves category-specific automatic update settings from the toolbar', async () => {

@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "액션 값",
   "nodes.humanInput.userActions.buttonTextTooLong": "버튼 텍스트는 {{maxLength}}자 이하여야 합니다",
   "nodes.humanInput.userActions.chooseStyle": "버튼 스타일 선택",
+  "nodes.humanInput.userActions.defaultTitle": "버튼 텍스트 {{index}}",
   "nodes.humanInput.userActions.emptyTip": "'+' 버튼을 클릭하여 사용자 작업 추가",
   "nodes.humanInput.userActions.title": "사용자 작업",
   "nodes.humanInput.userActions.tooltip": "사용자가 이 양식에 응답하기 위해 클릭할 수 있는 버튼을 정의합니다. 작업 ID는 분기를 제어합니다. 액션 값은 선택된 내장 출력으로 다운스트림에 노출됩니다. 작업 ID는 문자 또는 밑줄로 시작하고 그 뒤에 문자, 숫자 또는 밑줄이 와야 합니다.",

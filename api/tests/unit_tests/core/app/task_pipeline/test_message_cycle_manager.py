@@ -18,7 +18,6 @@ from core.app.task_pipeline import message_cycle_manager as message_cycle_manage
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
 from graphon.file import FileTransferMethod, FileType
-from models import model as model_module
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
@@ -48,7 +47,6 @@ def cycle_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator
     with owned_session_factory() as request_session:
         sqlite_db = _SQLiteDb(engine=sqlite_engine, session=request_session)
         monkeypatch.setattr(message_cycle_manager_module, "db", sqlite_db)
-        monkeypatch.setattr(model_module, "db", sqlite_db)
         monkeypatch.setattr(message_cycle_manager_module.session_factory, "create_session", owned_session_factory)
         yield request_session
 
@@ -387,7 +385,12 @@ class TestMessageCycleManagerOptimization:
         assert conversation is not None
         assert conversation.name == "generated-title"
         mock_llm_generator.generate_conversation_name.assert_called_once_with(
-            "tenant-1", "hello", "conv-1", "app-id", message_id="message-1"
+            "tenant-1",
+            "hello",
+            "conv-1",
+            "app-id",
+            message_id="message-1",
+            trace_scope=message_cycle_manager._application_generate_entity.trace_scope,
         )
         mock_redis.setex.assert_called_once()
 

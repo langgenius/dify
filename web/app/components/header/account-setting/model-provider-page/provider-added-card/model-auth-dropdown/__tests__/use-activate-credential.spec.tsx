@@ -86,7 +86,7 @@ describe('useActivateCredential', () => {
     expect(result.current.selectedCredentialId).toBe('cred-2')
     await act(async () => request.reject(new Error('Activation failed')))
     await waitFor(() => expect(result.current.selectedCredentialId).toBe('cred-1'))
-    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.error).toHaveBeenCalledWith('Activation failed')
     expect(mockUpdateModelProviders).not.toHaveBeenCalled()
   })
 })

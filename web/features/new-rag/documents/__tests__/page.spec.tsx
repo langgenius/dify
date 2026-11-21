@@ -121,6 +121,7 @@ const toastMock = vi.hoisted(() => ({
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
+  activeProfileAvailable: undefined as boolean | undefined,
   refetch: vi.fn(),
 }))
 const workspacePermissions = vi.hoisted(() => (datasetKeys: string[]) => ({
@@ -249,6 +250,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const { documentDisplayStatus } = await import('../model')
   const forever = () => new Promise<never>(() => {})
   const track = async <T,>(read: () => Promise<T> | T) => {
     server.inflight += 1
@@ -276,7 +278,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
   const paged =
     <Item,>(resource: string, state: PagedState<Item>, toApi: (item: Item) => unknown) =>
-    (input: { query?: { cursor?: string } }) => {
+    (input: { query?: { cursor?: string; query?: string; status?: string } }) => {
       record(resource, input)
       if (state.isPending || (!state.data && !state.error)) return forever()
       return track(async () => {
@@ -312,6 +314,42 @@ vi.mock('@/service/console', async (importOriginal) => {
             : cursor.startsWith('page-')
               ? Number(cursor.slice('page-'.length))
               : pages.length
+        // The service filters the collection before applying its cursor. Fixtures describe the
+        // available collection; hasNextPage can also model a still-unavailable matching page.
+        if (resource === 'documents' && (input.query?.query || input.query?.status)) {
+          const names = new Map(
+            sourcesQuery.data?.pages.flatMap((page) =>
+              page.items.map((item) => [item.id, item.name] as const),
+            ) ?? [],
+          )
+          const matches = (pages.flatMap((page) => page.items) as LogicalDocument[]).filter(
+            (item) => {
+              if (
+                input.query?.status &&
+                documentDisplayStatus(item, item.latestTask) !== input.query.status
+              )
+                return false
+              const name = item.sourceId ? names.get(item.sourceId) : undefined
+              return `${item.title} ${name ?? item.userMetadata.sourceName ?? ''}`
+                .toLowerCase()
+                .includes(input.query?.query?.toLowerCase() ?? '')
+            },
+          )
+          const offset = cursor?.startsWith('match-')
+            ? Number(cursor.slice(6))
+            : cursor
+              ? matches.length
+              : 0
+          return {
+            data: matches.slice(offset, offset + 50).map((item) => toApi(item as Item)),
+            next_cursor:
+              offset + 50 < matches.length
+                ? `match-${offset + 50}`
+                : state.hasNextPage
+                  ? 'unavailable-matches'
+                  : null,
+          }
+        }
         const page = pages[index]
         // A page the test has not described yet is the end of the list.
         if (!page) return { data: [], next_cursor: null }
@@ -327,17 +365,19 @@ vi.mock('@/service/console', async (importOriginal) => {
     }
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const settingsResponse = () => {
-    const active = settingsState.configurationState === 'active'
+    const active =
+      settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+    const canIngest = active || settingsState.configurationState === 'active'
     return {
       active_profile_available: active,
       active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
       capabilities: {
         deep: active,
         index: active,
-        ingest: active,
+        ingest: canIngest,
         query: active,
         research: active,
-        source_sync: active,
+        source_sync: canIngest,
       },
       configuration_state: settingsState.configurationState,
       embedding: null,
@@ -413,6 +453,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
       [`${space}.backgroundTasks.get`]: paged('tasks', tasksQuery, taskApiResponse),
@@ -663,6 +704,7 @@ async function render(ui: ReactElement, options: RenderOptions = {}) {
   )
   const rendered = renderWithConsoleQuery(withProviders(ui), {
     knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
+    features: null,
     queryClient,
     systemFeatures: { deployment_edition: systemFeaturesStateMock.deploymentEdition },
   })
@@ -821,27 +863,32 @@ describe('DocumentsPage', () => {
     systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
     getUploadQuotaFailure.mockReset().mockResolvedValue(undefined)
     settingsState.configurationState = 'active'
-    settingsState.refetch.mockImplementation(async () => ({
-      data: {
-        active_profile_available: settingsState.configurationState === 'active',
-        active_profile_revisions:
-          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-        capabilities: {
-          deep: settingsState.configurationState === 'active',
-          index: settingsState.configurationState === 'active',
-          ingest: settingsState.configurationState === 'active',
-          query: settingsState.configurationState === 'active',
-          research: settingsState.configurationState === 'active',
-          source_sync: settingsState.configurationState === 'active',
+    settingsState.activeProfileAvailable = undefined
+    settingsState.refetch.mockImplementation(async () => {
+      const active =
+        settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+      const canIngest = active || settingsState.configurationState === 'active'
+      return {
+        data: {
+          active_profile_available: active,
+          active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+          capabilities: {
+            deep: active,
+            index: active,
+            ingest: canIngest,
+            query: active,
+            research: active,
+            source_sync: canIngest,
+          },
+          configuration_state: settingsState.configurationState,
+          embedding: null,
+          issues: [],
+          retrieval: null,
+          revision: 1,
         },
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        issues: [],
-        retrieval: null,
-        revision: 1,
-      },
-      isError: false,
-    }))
+        isError: false,
+      }
+    })
     documentsQuery.data = { pages: [{ items: [] }] }
     documentsQuery.error = null
     documentsQuery.hasNextPage = false
@@ -1230,9 +1277,12 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', document_id: 'report' },
-    })
+    expect(downloadDocumentMutation).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', document_id: 'report' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1271,9 +1321,12 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', document_id: 'failed-report' },
-    })
+    expect(downloadDocumentMutation).toHaveBeenCalledWith(
+      {
+        params: { control_space_id: 'space-1', document_id: 'failed-report' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1963,17 +2016,29 @@ describe('DocumentsPage', () => {
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('renames a document through its user-facing display metadata', async () => {
+  it('keeps a pending rename open and retains the draft for retry before returning to the row', async () => {
     const user = userEvent.setup()
+    const first = createDeferred()
+    renameDocumentMutation.mockReturnValueOnce(first.promise)
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+    seedGoldenQuestions()
+    const menuButton = screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ })
+    await user.click(menuButton)
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
     const input = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
     await user.clear(input)
     await user.type(input, 'Renamed handbook.pdf')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'common.operation.rename' })).toBeVisible()
+    first.reject(new Error('Rename failed'))
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(input).toHaveValue('Renamed handbook.pdf')
+    await user.click(save)
 
     expect(renameDocumentMutation).toHaveBeenCalledWith({
       body: {
@@ -1987,6 +2052,9 @@ describe('DocumentsPage', () => {
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
       ).not.toBeInTheDocument(),
     )
+    await waitFor(() => expect(menuButton).toHaveFocus())
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('disables the document from the row action', async () => {
@@ -1998,10 +2066,13 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
-      body: { enabled: false, expectedRowVersion: 1 },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { enabled: false, expectedRowVersion: 1 },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
@@ -2017,10 +2088,13 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
-      body: { enabled: true, expectedRowVersion: 1 },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { enabled: true, expectedRowVersion: 1 },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -2039,11 +2113,14 @@ describe('DocumentsPage', () => {
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    expect(removeDocumentMutation).toHaveBeenCalledWith({
-      body: { expectedRevision: 1 },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', document_id: 'document-1' },
-    })
+    expect(removeDocumentMutation).toHaveBeenCalledWith(
+      {
+        body: { expectedRevision: 1 },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', document_id: 'document-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -2495,7 +2572,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
-    expect(getUploadQuotaFailure).not.toHaveBeenCalled()
+    expect(getUploadQuotaFailure).toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -2810,7 +2887,7 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+    expect(toastMock.error).toHaveBeenCalledWith('settings refresh failed')
   })
 
   it('discards a staged upload without claiming it', async () => {
@@ -2831,7 +2908,7 @@ describe('DocumentsPage', () => {
     expect(screen.queryByLabelText('knowledgeCreate.uploadDocuments')).not.toBeInTheDocument()
   })
 
-  it('times out an exact 15 MiB staging request and discards a late success', async () => {
+  it('keeps a slow exact 15 MiB staging request alive until it settles', async () => {
     vi.useFakeTimers()
     let resolveStaging!: (value: { id: string }) => void
     let stagingSignal: AbortSignal | undefined
@@ -2853,31 +2930,25 @@ describe('DocumentsPage', () => {
         target: { files: [maxSizeFile] },
       })
 
-      expect(stageUploadMutation).toHaveBeenCalledOnce()
+      await vi.waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
+
+      await act(async () => {
+        vi.advanceTimersByTime(5 * 60_000)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
       expect(stagingSignal?.aborted).toBe(false)
+      expect(toastMock.error).not.toHaveBeenCalled()
 
       await act(async () => {
-        vi.advanceTimersByTime(30_000)
+        resolveStaging({ id: 'slow-boundary-upload' })
         await Promise.resolve()
         await Promise.resolve()
       })
 
-      expect(stagingSignal?.aborted).toBe(true)
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
-      expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
-      expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
-
-      await act(async () => {
-        resolveStaging({ id: 'late-boundary-upload' })
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-
-      expect(discardStagedUploadMutation).toHaveBeenCalledOnce()
-      expect(discardStagedUploadMutation).toHaveBeenCalledWith('late-boundary-upload')
-      expect(toastMock.error).toHaveBeenCalledOnce()
-      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(discardStagedUploadMutation).not.toHaveBeenCalled()
+      expect(toastMock.error).not.toHaveBeenCalled()
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -2902,7 +2973,7 @@ describe('DocumentsPage', () => {
       target: { files: [maxSizeFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledOnce()
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(stagingSignal?.aborted).toBe(true)
@@ -2938,7 +3009,7 @@ describe('DocumentsPage', () => {
       target: { files: [canceledFile, failedFile] },
     })
 
-    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(stageUploadMutation).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }))
     expect(canceledSignal?.aborted).toBe(true)
 
@@ -3646,25 +3717,288 @@ describe('DocumentsPage', () => {
     }
   })
 
-  it('filters and searches documents while continuing through cursor pages', async () => {
+  it('debounces server searches while keeping the input responsive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ title: 'Report.pdf' })] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    server.inputs.set('documents', [])
+
+    await user.type(screen.getByRole('searchbox'), 'report')
+    expect(screen.getByRole('searchbox')).toHaveValue('report')
+    expect(server.inputs.get('documents')).toEqual([])
+    await waitFor(() =>
+      expect(server.inputs.get('documents')).toEqual([
+        { params: { control_space_id: 'space-1' }, query: { query: 'report' } },
+      ]),
+    )
+    expect(await screen.findByRole('link', { name: 'Report.pdf' })).toBeInTheDocument()
+  })
+
+  it('clears search immediately and cancels the pending server search', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?query=sso' })
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: { query: 'sso' } },
+    ])
+    server.inputs.set('documents', [])
+
+    await user.type(screen.getByRole('searchbox'), ' pending')
+    await user.clear(screen.getByRole('searchbox'))
+    await settle()
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: {} },
+    ])
+    await user.type(screen.getByRole('searchbox'), 'missing')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: {} },
+      { params: { control_space_id: 'space-1' }, query: { query: 'missing' } },
+    ])
+  })
+
+  it('searches the server and only fetches another matching page on request', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ title: 'Product handbook.pdf' })] }] }
+    documentsQuery.hasNextPage = true
+    documentsQuery.fetchNextPage.mockReturnValue(new Promise(() => {}))
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(screen.getByRole('searchbox'), 'later page')
+    await settle()
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'later page' } }),
+    )
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  })
+
+  it('keeps search focused when clearing a direct-link filter while the full list loads', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?query=sso' })
+    expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+
+    const fullList = createDeferred<{ error: null }>()
+    documentsQuery.refetch.mockReturnValueOnce(fullList.promise)
+    await user.clear(screen.getByRole('searchbox'))
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    await user.type(screen.getByRole('searchbox'), 'missing')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    await act(async () => fullList.resolve({ error: null }))
+    expect(screen.getByRole('searchbox')).toHaveValue('missing')
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+  })
+
+  it('can clear a failed status request without retrying the broken filter', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = undefined
+    documentsQuery.error = createHttpError(new Response(null, { status: 500 }))
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?status=failed' })
+    expect(
+      await screen.findByRole('button', { name: /common.operation.retry/ }),
+    ).toBeInTheDocument()
+
+    documentsQuery.error = null
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'knowledgeDocuments.allDocumentStatuses' }))
+    expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+    expect(lastInput('documents')).toMatchObject({ query: {} })
+  })
+
+  it.each([
+    { filter: 'queued', from: 'queued', to: 'running', matches: false },
+    { filter: 'processing', from: 'queued', to: 'running', matches: true },
+    { filter: 'queued', from: 'running', to: 'retry_wait', matches: true },
+    { filter: 'processing', from: 'running', to: 'retry_wait', matches: false },
+  ] as const)(
+    'refreshes $filter matches when live progress changes $from to $to',
+    async ({ filter, from, to, matches }) => {
+      const progress = createDeferred<void>()
+      const moreProgress = createDeferred<void>()
+      const initialTask = task({ state: from })
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: initialTask })] }] }
+      tasksQuery.data = { pages: [{ items: [initialTask] }] }
+      streamProcessingTaskEvents.mockImplementation(async function* () {
+        await progress.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: to,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:changed',
+        }
+        await moreProgress.promise
+        yield {
+          data: {
+            progressPercent: 60,
+            stage: 'parsed' as const,
+            state: to,
+            updatedAt: '2026-07-20T10:03:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:more-progress',
+        }
+        await new Promise<void>(() => {})
+      })
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+        searchParams: `?status=${filter}`,
+      })
+      if (!matches)
+        expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else expect(screen.getByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+
+      const inactiveFilter = filter === 'queued' ? 'processing' : 'queued'
+      const inactiveKey = logicalDocumentsInfiniteOptions('space-1', {
+        filter: inactiveFilter,
+      }).queryKey
+      const otherSpaceKey = logicalDocumentsInfiniteOptions('space-2', { filter }).queryKey
+      for (const key of [inactiveKey, otherSpaceKey])
+        queryClient.setQueryData(key, { pages: [], pageParams: [] })
+      documentsQuery.refetch.mockClear()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({ latestTask: task({ state: to, updatedAt: '2026-07-20T10:02:00Z' }) }),
+            ],
+          },
+        ],
+      }
+      await act(async () => progress.resolve())
+      if (matches)
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else
+        expect(
+          await screen.findByText('knowledgeDocuments.noMatchingDocuments'),
+        ).toBeInTheDocument()
+      expect(documentsQuery.refetch).toHaveBeenCalledOnce()
+      expect(lastInput('documents')).toMatchObject({ query: { status: filter } })
+      expect(queryClient.getQueryState(inactiveKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(otherSpaceKey)?.isInvalidated).toBe(false)
+
+      await act(async () => moreProgress.resolve())
+      await settle()
+      expect(documentsQuery.refetch).toHaveBeenCalledOnce()
+    },
+  )
+
+  it.each(['retry_wait', 'succeeded'] as const)(
+    'tracks a filtered-out document outside loaded task history through %s',
+    async (nextState) => {
+      const running = createDeferred<void>()
+      const nextUpdate = createDeferred<void>()
+      const initialTask = task({ state: 'queued' })
+      const updatedTask = task({ state: nextState, updatedAt: '2026-07-20T10:03:00Z' })
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: initialTask })] }] }
+      tasksQuery.data = {
+        pages: [
+          {
+            items: Array.from({ length: 100 }, (_, index) =>
+              backgroundTask({ id: `other-${index}` }),
+            ),
+          },
+          { items: [initialTask] },
+        ],
+      }
+      tasksQuery.hasNextPage = true
+      getTaskSnapshot.mockResolvedValue(updatedTask)
+      streamProcessingTaskEvents.mockImplementation(async function* () {
+        await running.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:running',
+        }
+        await nextUpdate.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: nextState,
+            updatedAt: updatedTask.updatedAt,
+          },
+          event: 'progress' as const,
+          id: 'task-1:next',
+        }
+        if (nextState === 'succeeded')
+          yield { data: { state: nextState }, event: 'terminal' as const, id: 'task-1:terminal' }
+        await new Promise<void>(() => {})
+      })
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?status=queued' })
+      expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({
+                latestTask: task({ state: 'running', updatedAt: '2026-07-20T10:02:00Z' }),
+              }),
+            ],
+          },
+        ],
+      }
+      await act(async () => running.resolve())
+      expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+      documentsQuery.refetch.mockClear()
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: updatedTask })] }] }
+      await act(async () => nextUpdate.resolve())
+      await waitFor(() => expect(documentsQuery.refetch).toHaveBeenCalledOnce())
+      if (nextState === 'retry_wait')
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else {
+        await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('combobox'))
+        await user.click(
+          screen.getByRole('option', { name: 'knowledgeSpace.documentStatus.ready' }),
+        )
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      }
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('finds a document beyond twenty unfiltered pages and clears an exhausted search', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
-      pages: [{ items: [document({ title: 'Product handbook.pdf' })], nextCursor: 'next' }],
+      pages: Array.from({ length: 21 }, (_, pageIndex) => ({
+        items: Array.from({ length: 50 }, (_, itemIndex) =>
+          document({
+            id: `doc-${pageIndex}-${itemIndex}`,
+            title:
+              pageIndex === 20 && itemIndex === 49
+                ? 'Unique late document.pdf'
+                : `Other ${pageIndex}-${itemIndex}`,
+          }),
+        ),
+      })),
     }
-    documentsQuery.hasNextPage = true
-    // The next page is still loading when the user filters.
-    documentsQuery.fetchNextPage.mockReturnValue(new Promise(() => {}))
-
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
-      'later page',
-    )
-
-    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
-    expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.queryByText('Unique late document.pdf')).not.toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox'), 'Unique late')
+    expect(await screen.findByText('Unique late document.pdf')).toBeInTheDocument()
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(lastInput('documents')).toMatchObject({ query: { query: 'Unique late' } })
+    await user.clear(screen.getByRole('searchbox'))
+    await user.type(screen.getByRole('searchbox'), 'no such document')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    await user.clear(screen.getByRole('searchbox'))
+    expect(await screen.findByText('Other 0-0')).toBeInTheDocument()
   })
 
   it('blocks selection until filtered cursor pages are complete', async () => {
@@ -3681,6 +4015,10 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'product',
     )
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'product' } }),
+    )
+    await settle()
 
     expect(screen.getByRole('checkbox', { name: 'Product handbook.pdf' })).toHaveAttribute(
       'aria-disabled',
@@ -3963,7 +4301,7 @@ describe('DocumentsPage', () => {
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('combobox')).not.toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -4013,6 +4351,11 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'product',
     )
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'product' } }),
+    )
+    await settle()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
 
@@ -4045,6 +4388,9 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'sso',
     )
+    await waitFor(() => expect(lastInput('documents')).toMatchObject({ query: { query: 'sso' } }))
+    await settle()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
     const retry = screen.getByRole('button', {
       name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
@@ -4238,16 +4584,19 @@ describe('DocumentsPage', () => {
     ).toBeEnabled()
     await user.click(within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRowVersion: 2 },
-          { documentId: 'two', expectedRowVersion: 4 },
-        ],
-        enabled: false,
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRowVersion: 2 },
+            { documentId: 'two', expectedRowVersion: 4 },
+          ],
+          enabled: false,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4281,16 +4630,19 @@ describe('DocumentsPage', () => {
     })
     await user.click(within(actions).getByRole('button', { name: 'dataset.enable' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRowVersion: 3 },
-          { documentId: 'two', expectedRowVersion: 7 },
-        ],
-        enabled: true,
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRowVersion: 3 },
+            { documentId: 'two', expectedRowVersion: 7 },
+          ],
+          enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
       },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4366,10 +4718,13 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['one', 'two'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['one', 'two'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4405,10 +4760,13 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['download-only'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['download-only'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4451,10 +4809,13 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
-      body: { document_ids: ['failed'] },
-      params: { control_space_id: 'space-1' },
-    })
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: { document_ids: ['failed'] },
+        params: { control_space_id: 'space-1' },
+      },
+      { context: { silent: true } },
+    )
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4541,16 +4902,19 @@ describe('DocumentsPage', () => {
     expect(bulkRemoveDocumentsMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(bulkRemoveDocumentsMutation).toHaveBeenCalledOnce()
-    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith({
-      body: {
-        documents: [
-          { documentId: 'one', expectedRevision: 2 },
-          { documentId: 'two', expectedRevision: 4 },
-        ],
+    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith(
+      {
+        body: {
+          documents: [
+            { documentId: 'one', expectedRevision: 2 },
+            { documentId: 'two', expectedRevision: 4 },
+          ],
+        },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1' },
       },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1' },
-    })
+      { context: { silent: true } },
+    )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
@@ -4698,6 +5062,30 @@ describe('DocumentsPage', () => {
         name: 'knowledgeSpace.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('allows an explicit re-index while a complete model selection awaits first activation', async () => {
+    const user = userEvent.setup()
+    settingsState.activeProfileAvailable = false
+    documentsQuery.data = {
+      pages: [
+        { items: [document({ id: 'failed-document', title: 'Failed.pdf', status: 'failed' })] },
+      ],
+    }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+    expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
+      body: { documentIds: ['failed-document'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'knowledgeSpace.overview.attention.modelReadiness.title',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('explains why re-indexing becomes unavailable while results refresh', async () => {
@@ -8468,7 +8856,7 @@ describe('DocumentsPage', () => {
     expect(tasksQuery.refetch).not.toHaveBeenCalled()
   })
 
-  it('keeps source-name searches partial while unresolved sources have more pages', async () => {
+  it('finishes a server search without waiting for unrelated source pages', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
@@ -8488,11 +8876,11 @@ describe('DocumentsPage', () => {
       'source title from next page',
     )
 
-    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
-  it('bounds document and source pagination without scanning task history', async () => {
+  it('does not scan task or source history when paging search matches', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: Array.from({ length: 20 }, (_, index) => ({
@@ -8520,6 +8908,8 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'sso',
     )
+    await waitFor(() => expect(lastInput('documents')).toMatchObject({ query: { query: 'sso' } }))
+    await settle()
 
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
@@ -8527,17 +8917,19 @@ describe('DocumentsPage', () => {
       'aria-describedby',
       'partial-document-results',
     )
-    const loadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
-    expect(loadMore).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), 'missing')
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'missing' } }),
+    )
+    await settle()
     expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
-    await user.click(loadMore)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
   it('keeps task-history pagination out of document result pagination', async () => {

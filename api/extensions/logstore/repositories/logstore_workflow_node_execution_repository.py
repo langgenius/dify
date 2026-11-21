@@ -12,11 +12,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, override
 
+from pydantic import TypeAdapter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
@@ -37,6 +37,8 @@ from repositories.workflow_run_control import apply_workflow_stop_to_node, get_s
 
 logger = logging.getLogger(__name__)
 
+_JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+
 
 def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecution:
     """
@@ -50,10 +52,10 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     """
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
-    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
-    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
-    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
+    inputs = _JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
+    process_data = _JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
+    outputs = _JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
+    metadata = _JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}
@@ -273,6 +275,18 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             execution.node_execution_id,
             execution.status.value,
         )
+        execution = self._save_to_logstore(execution)
+
+        # Dual-write to SQL database if enabled (for safe migration)
+        if self._enable_dual_write:
+            try:
+                self.sql_repository.save(execution)
+                logger.debug("Dual-write: saved node execution to SQL database: id=%s", execution.id)
+            except Exception:
+                logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
+                # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    def _save_to_logstore(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
         execution, version = self._prepare_controlled_write(execution)
         try:
             logstore_model = self._to_logstore_model(execution, log_version=version)
@@ -291,15 +305,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 execution.node_execution_id,
             )
             raise
-
-        # Dual-write to SQL database if enabled (for safe migration)
-        if self._enable_dual_write:
-            try:
-                self.sql_repository.save(execution)
-                logger.debug("Dual-write: saved node execution to SQL database: id=%s", execution.id)
-            except Exception:
-                logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
+        return execution
 
     def _prepare_controlled_write(self, execution: WorkflowNodeExecution) -> tuple[WorkflowNodeExecution, int]:
         # Assign ordering before checking SQL so an in-flight pause cannot sort
@@ -345,39 +351,21 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self.sql_repository.save_synchronously(execution)
 
     @override
-    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
-        """
-        Save or update the inputs, process_data, or outputs associated with a specific
-        node_execution record.
-
-        For LogStore implementation, this is a no-op for the LogStore write because save()
-        already writes all fields including inputs, process_data, and outputs. The caller
-        typically calls save() first to persist status/metadata, then calls save_execution_data()
-        to persist data fields. Since LogStore writes complete records atomically, we don't
-        need a separate write here to avoid duplicate records.
-
-        However, if dual-write is enabled, we still need to call the SQL repository's
-        save_execution_data() method to properly update the SQL database.
-
-        Args:
-            execution: The NodeExecution instance with data to save
-        """
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        """Write the record to LogStore, and dual-write with execution data to SQL if enabled."""
         logger.debug(
-            "save_execution_data: no-op for LogStore (data already saved by save()): id=%s, node_execution_id=%s",
+            "save_with_execution_data: id=%s, node_execution_id=%s, status=%s",
             execution.id,
             execution.node_execution_id,
+            execution.status.value,
         )
-        # No-op for LogStore: save() already writes all fields including inputs, process_data, and outputs
-        # Calling save() again would create a duplicate record in the append-only LogStore
-
-        # Dual-write to SQL database if enabled (for safe migration)
+        execution = self._save_to_logstore(execution)
         if self._enable_dual_write:
             try:
-                self.sql_repository.save_execution_data(execution)
+                self.sql_repository.save_with_execution_data(execution)
                 logger.debug("Dual-write: saved node execution data to SQL database: id=%s", execution.id)
             except Exception:
                 logger.exception("Failed to dual-write node execution data to SQL database: id=%s", execution.id)
-                # Don't raise - LogStore write succeeded, SQL is just a backup
 
     @override
     def get_by_workflow_execution(

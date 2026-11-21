@@ -70,6 +70,7 @@ const PublishAsKnowledgePipelineModal = ({
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onCancel()
       }}
@@ -90,7 +91,7 @@ const PublishAsKnowledgePipelineModal = ({
           </DialogHeader>
           <DialogBody>
             <div className="mb-5 flex">
-              <Field className="mr-3 grow" name="name">
+              <Field className="me-3 grow" name="name">
                 <FieldLabel>
                   {t(($) => $['common.publishAsPipeline.name'], { ns: 'pipeline' })}
                 </FieldLabel>
@@ -98,10 +99,9 @@ const PublishAsKnowledgePipelineModal = ({
                   autoComplete="off"
                   value={pipelineName}
                   onChange={(e) => setPipelineName(e.target.value)}
-                  placeholder={
-                    t(($) => $['common.publishAsPipeline.namePlaceholder'], { ns: 'pipeline' }) ||
-                    ''
-                  }
+                  placeholder={t(($) => $['common.publishAsPipeline.namePlaceholder'], {
+                    ns: 'pipeline',
+                  })}
                 />
               </Field>
               <IconPicker
@@ -136,11 +136,9 @@ const PublishAsKnowledgePipelineModal = ({
               <Textarea
                 autoComplete="off"
                 className="resize-none"
-                placeholder={
-                  t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
-                    ns: 'pipeline',
-                  }) || ''
-                }
+                placeholder={t(($) => $['common.publishAsPipeline.descriptionPlaceholder'], {
+                  ns: 'pipeline',
+                })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />

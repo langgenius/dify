@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Generuj wiele tekstów na raz, a następnie edytuj i kontynuuj generowanie",
   "feature.moreLikeThis.tip": "Korzystanie z tej funkcji spowoduje dodatkowe zużycie tokenów",
   "feature.moreLikeThis.title": "Więcej takich jak ten",
+  "feature.showThoughts.description": "Wyświetlaj tok rozumowania modelu w rozmowach.",
+  "feature.showThoughts.title": "Pokaż tok rozumowania",
   "feature.speechToText.description": "Po włączeniu można używać wprowadzania głosowego.",
   "feature.speechToText.title": "Mowa na tekst",
   "feature.suggestedQuestionsAfterAnswer.description": "Ustawienie kolejnych pytań może poprawić czat.",

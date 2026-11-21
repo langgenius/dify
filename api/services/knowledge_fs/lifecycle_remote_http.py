@@ -223,6 +223,13 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
     def revoke_capability_grant(
         self, request: KnowledgeFSCapabilityGrantRevokeRequest
     ) -> KnowledgeFSCapabilityGrantRevokeAck:
+        """Send the bound grant revoke and return only a validated 200 ACK.
+
+        The caller supplies a lifecycle revoke request for one Space and event. A typed
+        deleted-Space conflict remains an error for the saga to verify locally; other
+        transport and response failures also raise without settling the command.
+        """
+
         token = self._issue_capability(
             namespace_id=request.namespace_id,
             control_space_id=request.control_space_id,
@@ -242,6 +249,7 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                 "revokeSequence": request.revoke_sequence,
             },
             expected_statuses=(HTTPStatus.OK,),
+            terminal_conflict_code="CAPABILITY_SPACE_DELETED",
         )
         try:
             ack = _CapabilityGrantRevokeResponse.model_validate(response)
@@ -496,7 +504,15 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
         payload: JsonValue | None,
         expected_statuses: tuple[HTTPStatus, ...],
         query: tuple[tuple[str, str], ...] = (),
+        terminal_conflict_code: str | None = None,
     ) -> JsonValue:
+        """Send an authenticated lifecycle request and return bounded JSON on allowed statuses.
+
+        The caller supplies a signed token and expected statuses. Every other response or
+        transport failure raises a remote error. A configured terminal conflict code only
+        identifies the remote condition; callers must verify local deletion before settling.
+        """
+
         headers = {
             "Accept": "application/json",
             "Accept-Encoding": "identity",
@@ -534,13 +550,23 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
                     "KnowledgeFS returned an unsupported lifecycle media type",
                 )
             if response.status_code not in {int(status) for status in expected_statuses}:
+                if response.status_code == HTTPStatus.CONFLICT and terminal_conflict_code is not None:
+                    try:
+                        error_payload = response.json()
+                    except ValueError:
+                        error_payload = None
+                    if isinstance(error_payload, dict) and error_payload.get("code") == terminal_conflict_code:
+                        raise KnowledgeFSLifecycleRemoteError(
+                            terminal_conflict_code,
+                            "KnowledgeFS reported a completed Space deletion",
+                        )
                 raise KnowledgeFSLifecycleRemoteError(
                     f"KNOWLEDGE_FS_HTTP_{response.status_code}",
                     f"KnowledgeFS lifecycle request returned HTTP {response.status_code}",
                 )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
-            except (ValueError, ValidationError) as exc:
+            except ValueError as exc:
                 raise KnowledgeFSLifecycleRemoteError(
                     "KNOWLEDGE_FS_RESPONSE_INVALID", "KnowledgeFS returned invalid lifecycle JSON"
                 ) from exc

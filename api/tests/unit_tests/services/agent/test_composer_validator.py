@@ -227,7 +227,7 @@ def test_duplicate_cli_tool_ids_rejected() -> None:
                     "cli_tools": [
                         {"id": "ct-1", "name": "ffmpeg"},
                         # disabled entries still occupy the id namespace
-                        {"id": "ct-1", "name": "pandoc", "enabled": False},
+                        {"id": "ct-1", "name": "jq", "enabled": False},
                     ]
                 },
             },
@@ -246,7 +246,7 @@ def test_save_backfills_missing_cli_tool_ids_and_keeps_existing() -> None:
             "variant": "agent_app",
             "agent_soul": {
                 "prompt": {"system_prompt": "plain"},
-                "tools": {"cli_tools": [{"name": "ffmpeg"}, {"id": "ct-1", "name": "pandoc"}]},
+                "tools": {"cli_tools": [{"name": "ffmpeg"}, {"id": "ct-1", "name": "jq"}]},
             },
             "save_strategy": "save_to_current_version",
         }

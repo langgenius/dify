@@ -261,7 +261,7 @@ def test_stop_task_rejects_other_token_owner(
 
     from werkzeug.exceptions import NotFound
 
-    from controllers.openapi.app_run import AppRunTaskStopApi
+    from controllers.openapi.app_run import AppTaskStopApi
 
     flask_app, app_id, _, _, end_user = resource_fixture
     data = call(flask_app, app_id)
@@ -275,10 +275,10 @@ def test_stop_task_rejects_other_token_owner(
         return_value=replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     ):
         with pytest.raises(NotFound):
-            inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
+            inspect.unwrap(AppTaskStopApi.post)(AppTaskStopApi(), data, app_id, "task")
         assert redis.operations == []
         redis.values["generate_task_belong:task"] = b"end-user-machine-user"
-        inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
+        inspect.unwrap(AppTaskStopApi.post)(AppTaskStopApi(), data, app_id, "task")
         assert redis.values["generate_task_stopped:task"] == b"1"
 
 

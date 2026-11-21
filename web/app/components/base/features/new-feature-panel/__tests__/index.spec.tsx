@@ -124,6 +124,13 @@ describe('NewFeaturePanel', () => {
     }
   })
 
+  it('does not offer thinking display in the shared application feature panel', () => {
+    renderPanel({ isChatMode: true, inWorkflow: false })
+    expect(
+      screen.queryByRole('switch', { name: 'appDebug.feature.showThoughts.title' }),
+    ).not.toBeInTheDocument()
+  })
+
   describe('Chat Mode Features', () => {
     it('should render speech-to-text in chat mode when model is available', () => {
       renderPanel({ isChatMode: true })
