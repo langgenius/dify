@@ -286,6 +286,58 @@ class TestGetHistoryPromptMessages:
         )
         assert database.session.get(Workflow, workflow.id) is workflow
 
+    def test_history_read_returns_the_scoped_session_connection_before_rendering(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        message = _persist_message(database, mem.conversation.id, query="My query", answer="My answer")
+        in_transaction_while_counting_tokens: list[bool] = []
+
+        def count_tokens(_prompt_messages: Sequence[PromptMessage]) -> int:
+            in_transaction_while_counting_tokens.append(database.session.in_transaction())
+            return 100
+
+        mem.model_instance.get_llm_num_tokens.side_effect = count_tokens
+        assert not database.session.in_transaction()
+
+        result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["My query", "My answer"]
+        assert in_transaction_while_counting_tokens == [False]
+        assert not database.session.in_transaction()
+        statement_count = len(database.statements)
+        assert message.answer == "My answer"
+        assert mem.conversation.name == "Memory test conversation"
+        assert len(database.statements) == statement_count
+
+    def test_history_read_leaves_the_callers_open_transaction_in_place(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        _persist_message(database, mem.conversation.id)
+        database.session.refresh(mem.conversation)
+        assert database.session.in_transaction()
+
+        result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["user query", "hello"]
+        assert database.session.in_transaction()
+
+    def test_history_read_does_not_commit_the_callers_pending_changes(self, database: Database) -> None:
+        mem = self._make_memory(database)
+        _persist_message(database, mem.conversation.id)
+        app = database.session.get(App, mem.conversation.app_id)
+        assert app is not None
+        database.session.rollback()
+        assert not database.session.in_transaction()
+        app.name = "renamed but not committed"
+
+        result = mem.get_history_prompt_messages()
+
+        assert [prompt.content for prompt in result] == ["user query", "hello"]
+        assert database.session.in_transaction()
+        database.session.rollback()
+        with Session(database.engine) as other_session:
+            stored_app = other_session.get(App, app.id)
+            assert stored_app is not None
+            assert stored_app.name == "Memory test app"
+
     def test_skips_newest_message_without_answer(self, database: Database) -> None:
         mem = self._make_memory(database)
         message = _persist_message(database, mem.conversation.id, answer="", answer_tokens=0)
