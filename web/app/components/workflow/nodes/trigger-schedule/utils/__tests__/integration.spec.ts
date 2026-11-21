@@ -1,6 +1,7 @@
 import type { ScheduleTriggerNodeType } from '../../types'
 import { BlockEnum } from '../../../../types'
 import { getNextExecutionTime, getNextExecutionTimes } from '../execution-time-calculator'
+import { toWall } from '../time-model'
 
 const createCronData = (cron_expression: string, timezone = 'UTC'): ScheduleTriggerNodeType => ({
   type: BlockEnum.TriggerSchedule,
@@ -11,14 +12,11 @@ const createCronData = (cron_expression: string, timezone = 'UTC'): ScheduleTrig
   timezone,
 })
 
-// The public calculator returns target-zone wall times in the Date's local fields.
-const wallTime = (date: Date) => [
-  date.getFullYear(),
-  date.getMonth() + 1,
-  date.getDate(),
-  date.getHours(),
-  date.getMinutes(),
-]
+// The calculator returns real instants. Read each one as the clock in the schedule timezone.
+const wallTime = (timezone: string) => (date: Date) => {
+  const { year, month, day, hour, minute } = toWall(date.getTime(), timezone)
+  return [year, month, day, hour, minute]
+}
 
 describe('cron schedule execution preview', () => {
   beforeEach(() => {
@@ -77,7 +75,9 @@ describe('cron schedule execution preview', () => {
       ],
     },
   ])('previews the next three runs for $expression', ({ expression, expected }) => {
-    expect(getNextExecutionTimes(createCronData(expression), 3).map(wallTime)).toEqual(expected)
+    expect(getNextExecutionTimes(createCronData(expression), 3).map(wallTime('UTC'))).toEqual(
+      expected,
+    )
   })
 
   it.each([
@@ -88,7 +88,9 @@ describe('cron schedule execution preview', () => {
     { expression: '0 9 ? * 1', expected: [2024, 1, 22, 9, 0] },
     { expression: '0 12 * * 7', expected: [2024, 1, 21, 12, 0] },
   ])('supports $expression', ({ expression, expected }) => {
-    expect(getNextExecutionTimes(createCronData(expression), 1).map(wallTime)).toEqual([expected])
+    expect(getNextExecutionTimes(createCronData(expression), 1).map(wallTime('UTC'))).toEqual([
+      expected,
+    ])
   })
 
   it.each([
@@ -99,15 +101,17 @@ describe('cron schedule execution preview', () => {
     { timezone: 'Australia/Adelaide', expected: [2024, 1, 16, 12, 0] },
     { timezone: 'Pacific/Kiritimati', expected: [2024, 1, 16, 12, 0] },
   ])('chooses the next local noon in $timezone', ({ timezone, expected }) => {
-    expect(getNextExecutionTimes(createCronData('0 12 * * *', timezone), 1).map(wallTime)).toEqual([
-      expected,
-    ])
+    expect(
+      getNextExecutionTimes(createCronData('0 12 * * *', timezone), 1).map(wallTime(timezone)),
+    ).toEqual([expected])
   })
 
   it('previews the daylight-saving gap at 3 AM, then returns to 2 AM', () => {
     vi.setSystemTime(new Date('2024-03-08T10:00:00Z'))
     expect(
-      getNextExecutionTimes(createCronData('0 2 * * *', 'America/New_York'), 3).map(wallTime),
+      getNextExecutionTimes(createCronData('0 2 * * *', 'America/New_York'), 3).map(
+        wallTime('America/New_York'),
+      ),
     ).toEqual([
       [2024, 3, 9, 2, 0],
       [2024, 3, 10, 3, 0],
