@@ -300,9 +300,12 @@ class NotionExtractor(BaseExtractor):
         """
         assert self._notion_access_token is not None, "Notion access token is required"
         has_more = True
-        result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
+        # The header row is the table's first child block and is only returned on
+        # the first page; continuation pages contain data rows only.
+        header_extracted = False
+        markdown_table = ""
         while has_more:
             query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
@@ -319,31 +322,36 @@ class NotionExtractor(BaseExtractor):
             )
             res.raise_for_status()
             data = _NotionTablePage.model_validate(res.json())
-            results = data.results
-            if results:
+            data_rows = data.results
+            if not header_extracted:
+                if not data_rows:
+                    # Header row not delivered yet, keep paginating for it.
+                    start_cursor = data.next_cursor
+                    has_more = start_cursor is not None
+                    continue
+                header_extracted = True
                 # get table headers text
                 table_header_cell_texts = []
-                table_header_cells = results[0]["table_row"]["cells"]
+                table_header_cells = data_rows[0]["table_row"]["cells"]
                 for table_header_cell in table_header_cells:
                     table_header_cell_texts.append(self._get_cell_text(table_header_cell))
                 # Initialize Markdown table with headers
-                markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
+                markdown_table += "| " + " | ".join(table_header_cell_texts) + " |\n"
                 markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
+                data_rows = data_rows[1:]
 
-                # Process data to format each row in Markdown table format
-                for result in results[1:]:
-                    column_texts = []
-                    table_column_cells = result["table_row"]["cells"]
-                    for table_column_cell in table_column_cells:
-                        column_texts.append(self._get_cell_text(table_column_cell))
-                    # Add row to Markdown table
-                    markdown_table += "| " + " | ".join(column_texts) + " |\n"
-                result_lines_arr.append(markdown_table)
+            # Process data to format each row in Markdown table format
+            for row in data_rows:
+                column_texts = []
+                table_column_cells = row["table_row"]["cells"]
+                for table_column_cell in table_column_cells:
+                    column_texts.append(self._get_cell_text(table_column_cell))
+                # Add row to Markdown table
+                markdown_table += "| " + " | ".join(column_texts) + " |\n"
             start_cursor = data.next_cursor
             has_more = start_cursor is not None
 
-        result_lines = "\n".join(result_lines_arr)
-        return result_lines
+        return markdown_table
 
     def update_last_edited_time(self, document_model: StoredDocumentExtractionInput | None):
         if not document_model:
