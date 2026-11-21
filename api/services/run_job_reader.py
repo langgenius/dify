@@ -56,7 +56,6 @@ class StreamEndings(Protocol):
 def run_finished_ending(frame: RunFrame) -> JobEnding | None:
     """Map a workflow_finished frame to a final job status.
 
-    Precondition: none.
     Postcondition: for a workflow_finished frame, an ending for succeeded, partial-succeeded, failed or stopped
     runs, with the error kept only for a failed run; None for any other frame or status.
     """
