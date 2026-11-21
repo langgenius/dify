@@ -27,6 +27,19 @@ import {
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
 export const VAR_REFERENCE_CHILD_POPUP_CLASS_NAME = 'var-reference-vars-child-popup'
 
+const toObjectProperties = (vars: Var[]): Record<string, Field> =>
+  Object.fromEntries(
+    vars.map(({ variable, type, children }) => [
+      variable,
+      {
+        type: varTypeToStructType(type),
+        ...(type === VarType.object && Array.isArray(children)
+          ? { properties: toObjectProperties(children) }
+          : {}),
+      },
+    ]),
+  )
+
 const resolveValueSelector = ({
   itemData,
   isFlat,
@@ -149,17 +162,10 @@ const Item: FC<ItemProps> = ({
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
-    const properties: Record<string, Field> = {}
-    const childrenVars = (itemData.children as Var[]) || []
-    childrenVars.forEach((c) => {
-      properties[c.variable] = {
-        type: varTypeToStructType(c.type),
-      }
-    })
     return {
       schema: {
         type: Type.object,
-        properties,
+        properties: toObjectProperties(Array.isArray(itemData.children) ? itemData.children : []),
         required: [],
         additionalProperties: false,
       },

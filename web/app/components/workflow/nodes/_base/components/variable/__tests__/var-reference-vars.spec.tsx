@@ -1,7 +1,10 @@
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { VarType } from '@/app/components/workflow/types'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { toNodeAvailableVars } from '../utils'
 import VarReferenceVars from '../var-reference-vars'
 
 describe('VarReferenceVars', () => {
@@ -307,6 +310,54 @@ describe('VarReferenceVars', () => {
     expect(onChange).toHaveBeenLastCalledWith(
       ['node-obj', 'payload', 'child'],
       expect.objectContaining({ variable: 'payload' }),
+    )
+  })
+
+  it('selects a nested Agent V2 output from its declared object schema', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const data: AgentV2NodeType = {
+      type: BlockEnum.Agent,
+      title: 'Agent',
+      desc: '',
+      agent_node_kind: 'dify_agent',
+      version: '2',
+      agent_declared_outputs: [
+        {
+          name: 'report',
+          type: 'object',
+          children: [
+            {
+              name: 'metrics',
+              type: 'object',
+              children: [{ name: 'score', type: 'number' }],
+            },
+          ],
+        },
+      ],
+    }
+    const agent = createNode({ data })
+    const vars = toNodeAvailableVars({
+      beforeNodes: [agent],
+      isChatflow: false,
+      filterVar: (variable) => variable.type === VarType.number,
+      allPluginInfoList: {},
+    })
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        keyboardTarget={keyboardTarget}
+        vars={vars}
+        onChange={onChange}
+      />,
+    )
+
+    await user.hover(screen.getByText('report'))
+    await user.click(await screen.findByText('score'))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      [agent.id, 'report', 'metrics', 'score'],
+      expect.objectContaining({ variable: 'report' }),
     )
   })
 
