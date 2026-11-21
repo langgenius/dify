@@ -15,7 +15,6 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.shared.values import AccountId, IMBindingId, TenantId
 from core.workflow.human_input_adapter import EmailDeliveryConfig
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData, MessageTemplateConfig
-from extensions.ext_mail import mail
 from graphon.runtime import VariablePool
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
@@ -30,12 +29,8 @@ from repositories.human_input_v2.email_channel.ports import (
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
-from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
-    DeploymentIMChannelReader,
-    WorkspaceIMChannelReader,
-)
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelReader
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
-from services.feature_service import FeatureService
 from services.human_input_v2.email_credential_codec import load_email_credentials
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService, HumanInputTestFormError
 from services.human_input_v2.im_credential_codec import IMCredentialError
@@ -80,6 +75,8 @@ class MessageTemplateTestService:
         email_repository_factory: Callable[[Session], EmailChannelRepository],
         email_gateway: ResendProviderGateway,
         im_adapter_factory: Callable[[IMChannel], IMProviderAdapter],
+        discovery_im_reader: Callable[[Session], IMChannel | None],
+        discovery_email_available: Callable[[Session], bool],
         form_service: HumanInputDeliveryTestFormService,
     ) -> None:
         self._sessions = session_factory
@@ -89,29 +86,20 @@ class MessageTemplateTestService:
         self._email_repositories = email_repository_factory
         self._email_gateway = email_gateway
         self._im_adapter_factory = im_adapter_factory
+        self._discovery_im_reader = discovery_im_reader
+        self._discovery_email_available = discovery_email_available
         self._forms = form_service
 
     def list_channels(self) -> tuple[DebugChannel, ...]:
-        """Read the admitted workspace's test channels using the deployment's channel ownership.
+        """Return identifiers from the admitted editor's injected discovery capabilities.
 
-        Enterprise uses its deployment IM channel and initialized global mail client;
-        Cloud uses workspace IM and tenant Email, and Community uses workspace IM.
-        Return identifiers only. No credentials are decrypted, providers contacted,
-        or configuration changed; storage failures propagate to the caller.
+        Requires owner-scoped readers selected by composition. Discovery does not
+        decrypt credentials, contact providers, or write state. Reader failures
+        propagate and no channel identifiers are returned on failure.
         """
-        centrally_managed = FeatureService.is_im_centrally_managed()
         with self._sessions() as session:
-            im_channel = (
-                DeploymentIMChannelReader(session).get()
-                if centrally_managed
-                else WorkspaceIMChannelReader(session, self._tenant_id).get()
-            )
-            email_available = (
-                mail.is_inited()
-                if centrally_managed
-                else FeatureService.use_tenant_scoped_email_config()
-                and self._email_repositories(session).load(self._tenant_id) is not None
-            )
+            im_channel = self._discovery_im_reader(session)
+            email_available = self._discovery_email_available(session)
         channels: list[DebugChannel] = []
         if email_available:
             channels.append(DebugChannel.EMAIL)

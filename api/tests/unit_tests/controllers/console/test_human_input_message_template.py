@@ -29,6 +29,11 @@ from models.model import App
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelStatus
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelReader,
+    WorkspaceIMChannelReader,
+)
+from services.feature_service import FeatureService
 from services.human_input_v2.email_channel_management_service import HumanInputEmailChannelManagementService
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService
 from services.human_input_v2.im_channel_service import WorkspaceIMChannelService
@@ -287,6 +292,23 @@ def test_enterprise_test_channel_discovery_does_not_fall_back_to_workspace_confi
 def _build_template_service(
     sessions: sessionmaker[Session], *, tenant_id: str, account_id: str, account_email: str
 ) -> MessageTemplateTestService:
+    scoped_tenant_id = TenantId(tenant_id)
+
+    def read_im(session: Session) -> IMChannel | None:
+        """Read the configured deployment or tenant channel in this test session."""
+        if FeatureService.is_im_centrally_managed():
+            return DeploymentIMChannelReader(session).get()
+        return WorkspaceIMChannelReader(session, scoped_tenant_id).get()
+
+    def email_available(session: Session) -> bool:
+        """Report the edition's Email source without provider I/O or writes."""
+        if FeatureService.is_im_centrally_managed():
+            return mail.is_inited()
+        return (
+            FeatureService.use_tenant_scoped_email_config()
+            and SQLAlchemyEmailChannelRepository(session).load(scoped_tenant_id) is not None
+        )
+
     def build_adapter(_channel: IMChannel) -> IMProviderAdapter:
         raise AssertionError("Controller dispatch must not resolve a provider")
 
@@ -295,15 +317,17 @@ def _build_template_service(
 
     return MessageTemplateTestService(
         session_factory=sessions,
-        tenant_id=TenantId(tenant_id),
+        tenant_id=scoped_tenant_id,
         account_id=AccountId(account_id),
         account_email=account_email,
         email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=ResendProviderGateway(),
         im_adapter_factory=build_adapter,
+        discovery_im_reader=read_im,
+        discovery_email_available=email_available,
         form_service=HumanInputDeliveryTestFormService(
             session_factory=sessions,
-            tenant_id=TenantId(tenant_id),
+            tenant_id=scoped_tenant_id,
             account_id=AccountId(account_id),
             variable_loader_factory=variable_loader,
         ),
