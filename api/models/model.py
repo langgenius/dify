@@ -557,16 +557,20 @@ class App(TypeBase):
         return session.scalar(select(Tenant).where(Tenant.id == self.tenant_id))
 
     def is_agent_with_session(self, *, session: Session) -> bool:
-        """Detect legacy agent mode, committing the compatible app mode through the supplied session."""
+        """Detect legacy agent mode using the supplied session.
+
+        Only enabled, recognized string strategies commit the compatible app mode.
+        Malformed strategy values return False without changing the app or its configuration.
+        """
         app_model_config = session.get(AppModelConfig, self.app_model_config_id) if self.app_model_config_id else None
         if not app_model_config:
             return False
         if not app_model_config.agent_mode:
             return False
 
-        if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
-            "strategy", ""
-        ) in {"function_call", "react"}:
+        agent_mode = app_model_config.agent_mode_dict
+        strategy = agent_mode.get("strategy", "")
+        if agent_mode.get("enabled", False) and isinstance(strategy, str) and strategy in {"function_call", "react"}:
             session.execute(sa.update(App).where(App.id == self.id).values(mode=AppMode.AGENT_CHAT))
             session.commit()
             self.mode = AppMode.AGENT_CHAT
