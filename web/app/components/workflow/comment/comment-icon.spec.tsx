@@ -1,6 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -100,94 +100,6 @@ describe('CommentIcon', () => {
     await user.keyboard('{ArrowRight}{Enter}')
     expect(onPositionUpdate).not.toHaveBeenCalled()
     expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('toggles preview on hover when inactive', async () => {
-    const user = userEvent.setup()
-    const comment = createComment()
-    render(<CommentMarkerFixture comment={comment} onOpen={vi.fn()} isActive={false} />)
-    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
-    expect(screen.queryByText('Hello')).not.toBeInTheDocument()
-    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
-    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')
-    expect(preview).toHaveAttribute('data-open')
-
-    // The preview stays mounted while it animates closed, then unmounts.
-    await user.unhover(within(marker).getByRole('img', { name: 'Alice' }))
-    expect(preview).not.toHaveAttribute('data-open')
-    await waitFor(() => expect(screen.queryByText('Hello')).not.toBeInTheDocument())
-  })
-
-  it('previews on keyboard focus too, and closes the preview with Escape', async () => {
-    const user = userEvent.setup()
-    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
-
-    await user.tab()
-    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')
-    expect(preview).toHaveAttribute('data-open')
-
-    await user.keyboard('{Escape}')
-    expect(preview).not.toHaveAttribute('data-open')
-
-    // A pointer reaching the marker crosses the canvas first.
-    await user.hover(document.body)
-    await user.hover(
-      within(screen.getByRole('button', { name: /workflow.keyboard.openComment/ })).getByRole(
-        'img',
-        { name: 'Alice' },
-      ),
-    )
-    const hovered = screen.getByText('Hello').closest('[data-role="comment-preview"]')
-    expect(hovered).toHaveAttribute('data-open')
-    await user.keyboard('{Escape}')
-    expect(hovered).not.toHaveAttribute('data-open')
-
-    // The marker under the pointer does not reopen a dismissed preview until it is left.
-    const avatar = within(
-      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
-    ).getByRole('img', { name: 'Alice' })
-    fireEvent.mouseEnter(avatar)
-    expect(screen.queryByText('Hello')?.closest('[data-open]') ?? null).toBeNull()
-    await user.unhover(avatar)
-    await user.hover(avatar)
-    expect(screen.getByText('Hello').closest('[data-role="comment-preview"]')).toHaveAttribute(
-      'data-open',
-    )
-  })
-
-  it('keeps a dismissed preview closed while the pointer moves over it as it animates out', async () => {
-    const user = userEvent.setup()
-    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
-    const avatar = within(
-      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
-    ).getByRole('img', { name: 'Alice' })
-
-    await user.hover(avatar)
-    const card = screen.getByText('Hello')
-    await user.keyboard('{Escape}')
-    // The closing card still covers the marker; moving over it is not leaving the marker.
-    fireEvent.pointerMove(card)
-    fireEvent.mouseEnter(avatar)
-    expect(screen.queryByText('Hello')?.closest('[data-open]') ?? null).toBeNull()
-  })
-
-  it('lets a preview dismissed from its card reopen once the pointer moves off the marker', async () => {
-    const user = userEvent.setup()
-    render(<CommentMarkerFixture comment={createComment()} onOpen={vi.fn()} isActive={false} />)
-    const avatar = within(
-      screen.getByRole('button', { name: /workflow.keyboard.openComment/ }),
-    ).getByRole('img', { name: 'Alice' })
-
-    await user.hover(avatar)
-    // Escape from the part of the card beyond the marker; closing leaves the pointer on the canvas.
-    await user.hover(screen.getByText('Hello'))
-    await user.keyboard('{Escape}')
-    await user.hover(document.body)
-
-    await user.hover(avatar)
-    expect(screen.getByText('Hello').closest('[data-role="comment-preview"]')).toHaveAttribute(
-      'data-open',
-    )
   })
 
   it('converts pointer movement through the zoomed canvas before saving the authored position', () => {

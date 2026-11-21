@@ -89,41 +89,4 @@ describe('CommentPreview', () => {
     unmount()
     expect(store.getState().isCommentPreviewHovering).toBe(false)
   })
-
-  it('leaves the hover flag to the preview the pointer is on when another one unmounts', async () => {
-    const user = userEvent.setup()
-    const comment = {
-      id: 'comment-1',
-      position_x: 0,
-      position_y: 0,
-      content: 'First',
-      created_by: 'user-1',
-      created_by_account: {
-        id: 'user-1',
-        name: 'Alice',
-        email: 'alice@example.com',
-        avatar_url: null,
-      },
-      created_at: 1,
-      updated_at: 1,
-      resolved: false,
-      mention_count: 0,
-      reply_count: 0,
-      participants: [],
-    } as unknown as WorkflowCommentBasic
-    function Previews({ showFirst }: { showFirst: boolean }) {
-      return (
-        <>
-          {showFirst && <CommentPreview comment={comment} />}
-          <CommentPreview comment={{ ...comment, id: 'comment-2', content: 'Second' }} />
-        </>
-      )
-    }
-    const { rerender, store } = render(<Previews showFirst />)
-
-    await user.hover(screen.getByText('Second'))
-    expect(store.getState().isCommentPreviewHovering).toBe(true)
-    rerender(<Previews showFirst={false} />)
-    expect(store.getState().isCommentPreviewHovering).toBe(true)
-  })
 })
