@@ -86,6 +86,8 @@ class ConversationLogFilterQuery(BaseModel):
     annotation_status: Literal["annotated", "not_annotated", "all"] = Field(
         default="all", description="Annotation status filter"
     )
+    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
+    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
 
     @field_validator("start", "end", mode="before")
     @classmethod
@@ -108,8 +110,6 @@ class ChatConversationFilterQuery(ConversationLogFilterQuery):
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort field and direction"
     )
-    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
-    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
 
 
 class ChatConversationQuery(BaseConversationQuery, ChatConversationFilterQuery):
@@ -147,7 +147,7 @@ class _ConversationLogValidationError(BaseHTTPException):
     code = HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def _validate_log_query[QueryT: ChatConversationFilterQuery](model: type[QueryT]) -> QueryT:
+def _validate_log_query[QueryT: ConversationLogFilterQuery](model: type[QueryT]) -> QueryT:
     """Read repeated identity IDs and preserve the Console list's sanitized 422 response."""
     try:
         return query_params_from_request(model, list_fields=("end_user_ids", "account_ids"))
@@ -280,6 +280,7 @@ class CompletionConversationApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
     )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        """Return the admitted Completion app's page of conversations matching the Logs filters."""
         queries = application_services().conversation_queries
         try:
             scope = queries.get_console_scope(request_context, str(app_id), kind="completion")
@@ -287,7 +288,7 @@ class CompletionConversationApi(Resource):
             raise AppNotFoundError(str(exc)) from exc
         except NoPermissionError as exc:
             raise UnauthorizedError(str(exc)) from exc
-        req_data = validate_request(CompletionConversationQuery)
+        req_data = _validate_log_query(CompletionConversationQuery)
         try:
             start, end = parse_time_range(req_data.start, req_data.end, scope.timezone)
         except ValueError as exc:
@@ -301,6 +302,8 @@ class CompletionConversationApi(Resource):
                     end=end.replace(second=59) if end else None,
                     annotation_status=req_data.annotation_status,
                     sort_by="-created_at",
+                    end_user_ids=tuple(str(user_id) for user_id in req_data.end_user_ids),
+                    account_ids=tuple(str(account_id) for account_id in req_data.account_ids),
                     page=req_data.page,
                     limit=req_data.limit,
                 ),

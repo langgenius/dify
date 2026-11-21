@@ -65,7 +65,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
   const isChatMode = appDetail.mode !== 'completion'
-  const sharesExportFilters = appDetail.mode === 'advanced-chat'
   const supportsLogExport =
     !isChatMode ||
     appDetail.mode === 'chat' ||
@@ -93,7 +92,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const logs = isChatMode ? chatConversations : completionConversations
   const identityOptions =
-    sharesExportFilters && (queryParams.identities?.length || requestQueryParams.identities?.length)
+    queryParams.identities?.length || requestQueryParams.identities?.length
       ? identityOptionsBeforeFilter
       : getLogIdentities(logs?.data ?? [])
   const total = logs?.total
@@ -135,7 +134,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           filterOptions={filterOptions}
           queryParams={effectiveQueryParams}
           setQueryParams={handleQueryParamsChange}
-          identityOptions={sharesExportFilters ? identityOptions : undefined}
+          identityOptions={supportsLogExport ? identityOptions : undefined}
           actions={
             supportsLogExport &&
             canExportLogs && (
@@ -145,7 +144,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 appName={appDetail.name}
                 appMode={appDetail.mode}
                 currentQueryParams={effectiveQueryParams}
-                shareFilters={sharesExportFilters}
                 filterOptions={filterOptions}
                 identityOptions={identityOptions}
                 planState={cloudSandboxPlanState}

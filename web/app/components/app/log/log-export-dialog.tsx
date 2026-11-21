@@ -7,7 +7,6 @@ import type {
   AppDetailWithSite,
   ConversationLogExportLatestResponse,
   ConversationLogExportLatestTaskResponse,
-  GetAppsByAppIdConversationLogExportsPreviewData,
   WorkflowLogExportLatestResponse,
   WorkflowLogExportLatestTaskResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -30,7 +29,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -48,7 +46,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { API_PREFIX } from '@/config'
@@ -62,28 +60,8 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { toWorkflowLogFilters } from '../workflow-log/log-filters'
-import { logDateRange, logIdentityFilters, TIME_PERIOD_MAPPING, toLogFilters } from './log-filters'
-import { LogIdentityField, LogIdentityPicker } from './log-identity-picker'
-
-type LogExportFilters = NonNullable<GetAppsByAppIdConversationLogExportsPreviewData['query']>
-
-type LogExportSelection = {
-  scope: 'current' | 'all'
-  period: '9' | '2' | '3' | 'custom'
-  startDate: string
-  endDate: string
-  identityMode: 'all' | 'selected'
-  identities: LogIdentity[]
-}
-
-const defaultSelection: LogExportSelection = {
-  scope: 'current',
-  period: '2',
-  startDate: '',
-  endDate: '',
-  identityMode: 'all',
-  identities: [],
-}
+import { toLogFilters } from './log-filters'
+import { LogIdentityField } from './log-identity-picker'
 
 const exportsApi = consoleQuery.apps.byAppId.conversationLogExports
 const workflowExportsApi = consoleQuery.apps.byAppId.workflowLogExports
@@ -91,20 +69,17 @@ const agentExportsApi = consoleQuery.agent.byAgentId.logExports
 
 function ExportSelect<T extends string>({
   label,
-  description,
   value,
   options,
   onChange,
   disabled,
 }: {
   label: string
-  description?: string
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
   disabled: boolean
 }) {
-  const descriptionId = useId()
   return (
     <Select
       value={value}
@@ -114,14 +89,9 @@ function ExportSelect<T extends string>({
     >
       <div className="flex flex-col gap-1.5">
         <SelectLabel>{label}</SelectLabel>
-        <SelectTrigger aria-describedby={description ? descriptionId : undefined}>
+        <SelectTrigger>
           <SelectValue />
         </SelectTrigger>
-        {description && (
-          <p id={descriptionId} className="system-sm-regular text-text-tertiary">
-            {description}
-          </p>
-        )}
       </div>
       <SelectContent>
         {options.map((option) => (
@@ -256,7 +226,6 @@ type LogExportDialogProps = {
       workflow?: undefined
       appMode: AppDetailWithSite['mode']
       currentQueryParams: QueryParam
-      shareFilters: boolean
       filterOptions: LogFilterOptions
     }
   | {
@@ -286,38 +255,17 @@ export function LogExportDialog(props: LogExportDialogProps) {
   const { appId, appName, identityOptions, planState, workflow, agent } = props
   const conversation = props.workflow || props.agent ? null : props
   const appMode = conversation?.appMode
-  const shareFilters = !!agent || !!workflow || !!conversation?.shareFilters
   const filterOptions = workflow?.filterOptions ?? conversation?.filterOptions
   const { t } = useTranslation(['appLog', 'common', 'time', 'appAnnotation', 'agentV2'])
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [selection, setSelection] = useState(defaultSelection)
   const [agentSelection, setAgentSelection] = useState(defaultAgentLogFilters)
   const [sharedSelection, setSharedSelection] = useState<
     Pick<QueryParam, 'period' | 'annotation_status' | 'identities' | 'sort_by'> &
       Pick<WorkflowLogQuery, 'status'>
   >({ period: '2' })
-  const { scope, period, startDate, endDate, identityMode, identities } = selection
   const isCompletion = appMode === 'completion'
-  const customDates = scope === 'all' && period === 'custom'
-  const filterIdentities = scope === 'all' && identityMode === 'selected'
-  const validDates = !customDates || Boolean(startDate && endDate && startDate <= endDate)
-  const validIdentities = !filterIdentities || identities.length > 0
-  const validFilters = validDates && validIdentities
-
-  let dates: Pick<LogExportFilters, 'start' | 'end'> = {}
-  if (customDates) dates = { start: `${startDate} 00:00`, end: `${endDate} 23:59` }
-  else if (scope === 'all' && period !== '9' && period !== 'custom')
-    dates = logDateRange(TIME_PERIOD_MAPPING[period]!.value)
-  const filters: LogExportFilters = conversation?.shareFilters
-    ? toLogFilters(sharedSelection, planState)
-    : scope === 'current' && conversation
-      ? toLogFilters(conversation.currentQueryParams, planState)
-      : {
-          sort_by: '-created_at',
-          ...dates,
-          ...(filterIdentities ? logIdentityFilters(identities) : {}),
-        }
+  const filters = conversation ? toLogFilters(sharedSelection, planState) : {}
   const workflowFilters = workflow
     ? toWorkflowLogFilters(sharedSelection, planState, workflow.timezone)
     : {}
@@ -394,7 +342,7 @@ export function LogExportDialog(props: LogExportDialogProps) {
   const busy = exporting || latest.isPending || (retryStatus && latest.isFetching)
   const filtersLocked = busy || retryStatus
 
-  const canPreview = canQuery && validFilters && !filtersLocked
+  const canPreview = canQuery && !filtersLocked
   const previewSettings = {
     context: { silent: true },
     retry: false,
@@ -432,11 +380,10 @@ export function LogExportDialog(props: LogExportDialogProps) {
       : counts?.message_count
   const previewPending = preview.isPending || preview.isPlaceholderData
   const noMatches = !previewPending && rowCount === 0
-  const canExport = validFilters && !previewPending && !noMatches
+  const canExport = !previewPending && !noMatches
   const title = t(($) => $['export.title'], { ns: 'appLog' })
   const exportingLabel = t(($) => $['operation.exporting'], { ns: 'common' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
-  const identityLabel = t(($) => $['table.header.endUser'], { ns: 'appLog' })
 
   let actionLabel: string = t(($) => $['export.submit'], { ns: 'appLog' })
   if (exporting) actionLabel = exportingLabel
@@ -481,8 +428,6 @@ export function LogExportDialog(props: LogExportDialogProps) {
   let error
   if (create.isError) error = t(($) => $['export.failed'], { ns: 'appLog' })
   else if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
-  else if (!validDates) error = t(($) => $['export.dateError'], { ns: 'appLog' })
-  else if (!validIdentities) error = t(($) => $['export.identityRequired'], { ns: 'appLog' })
   else if (noMatches && !filtersLocked) error = t(($) => $['export.noMatches'], { ns: 'appLog' })
 
   if (planState === 'pending') return null
@@ -498,11 +443,11 @@ export function LogExportDialog(props: LogExportDialogProps) {
           } else if (workflow) {
             const { period, status, identities } = workflow.currentQueryParams
             setSharedSelection({ period, status, identities })
-          } else if (conversation?.shareFilters) {
+          } else if (conversation) {
             const { period, annotation_status, identities, sort_by } =
               conversation.currentQueryParams
             setSharedSelection({ period, annotation_status, identities, sort_by })
-          } else setSelection(defaultSelection)
+          }
           create.reset()
         }
         setOpen(next)
@@ -586,7 +531,7 @@ export function LogExportDialog(props: LogExportDialogProps) {
                     />
                   </>
                 )}
-                {shareFilters && filterOptions && appId && (
+                {filterOptions && appId && (
                   <>
                     <ExportSelect
                       label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
@@ -633,101 +578,8 @@ export function LogExportDialog(props: LogExportDialogProps) {
                     />
                   </>
                 )}
-                {!shareFilters && (
-                  <ExportSelect
-                    label={t(($) => $['export.scope'], { ns: 'appLog' })}
-                    description={t(
-                      ($) => $[scope === 'current' ? 'export.currentHint' : 'export.allHint'],
-                      {
-                        ns: 'appLog',
-                      },
-                    )}
-                    value={scope}
-                    options={[
-                      { value: 'current', label: t(($) => $['export.current'], { ns: 'appLog' }) },
-                      { value: 'all', label: t(($) => $['export.all'], { ns: 'appLog' }) },
-                    ]}
-                    onChange={(scope) => setSelection((previous) => ({ ...previous, scope }))}
-                    disabled={filtersLocked}
-                  />
-                )}
-                {!shareFilters && appId && scope === 'all' && (
-                  <>
-                    <ExportSelect
-                      label={identityLabel}
-                      value={identityMode}
-                      options={[
-                        {
-                          value: 'all',
-                          label: t(($) => $['export.identitiesAll'], { ns: 'appLog' }),
-                        },
-                        {
-                          value: 'selected',
-                          label: t(($) => $['export.identitiesSelected'], { ns: 'appLog' }),
-                        },
-                      ]}
-                      onChange={(identityMode) =>
-                        setSelection((previous) => ({ ...previous, identityMode }))
-                      }
-                      disabled={filtersLocked}
-                    />
-                    {filterIdentities && (
-                      <LogIdentityPicker
-                        appId={appId}
-                        options={identityOptions}
-                        value={identities}
-                        onChange={(identities) =>
-                          setSelection((previous) => ({ ...previous, identities }))
-                        }
-                        disabled={filtersLocked}
-                      />
-                    )}
-                    <ExportSelect
-                      label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
-                      value={period}
-                      options={(['9', '2', '3', 'custom'] as const).map((value) => ({
-                        value,
-                        label: t(
-                          ($) =>
-                            $[
-                              `filter.period.${value === 'custom' ? 'custom' : TIME_PERIOD_MAPPING[value]!.name}`
-                            ],
-                          { ns: 'appLog' },
-                        ),
-                      }))}
-                      onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
-                      disabled={filtersLocked}
-                    />
-                    {customDates && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="flex min-w-0 flex-col gap-1.5 system-sm-medium text-text-secondary">
-                          {t(($) => $['picker.startDate'], { ns: 'time' })}
-                          <Input
-                            type="date"
-                            value={startDate}
-                            max={endDate || undefined}
-                            onChange={({ target: { value: startDate } }) =>
-                              setSelection((previous) => ({ ...previous, startDate }))
-                            }
-                          />
-                        </label>
-                        <label className="flex min-w-0 flex-col gap-1.5 system-sm-medium text-text-secondary">
-                          {t(($) => $['picker.endDate'], { ns: 'time' })}
-                          <Input
-                            type="date"
-                            value={endDate}
-                            min={startDate || undefined}
-                            onChange={({ target: { value: endDate } }) =>
-                              setSelection((previous) => ({ ...previous, endDate }))
-                            }
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </>
-                )}
               </fieldset>
-              {!taskInProgress && (busy || (validFilters && !retryStatus)) && (
+              {!taskInProgress && (busy || !retryStatus) && (
                 <div className="grid rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
                   {preview.isPlaceholderData && countSummary && previewDescription && (
                     <p aria-hidden className="invisible col-start-1 row-start-1">

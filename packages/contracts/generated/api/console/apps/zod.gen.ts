@@ -7731,8 +7731,10 @@ export const zGetAppsByAppIdCompletionConversationsPath = z.object({
 })
 
 export const zGetAppsByAppIdCompletionConversationsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),

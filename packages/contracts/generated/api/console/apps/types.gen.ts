@@ -6637,8 +6637,10 @@ export type GetAppsByAppIdCompletionConversationsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number

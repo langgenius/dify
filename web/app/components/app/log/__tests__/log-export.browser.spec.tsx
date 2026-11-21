@@ -41,7 +41,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('page=2'),
 }))
 
-const appId = '2015f4b7-90e7-4c04-a4a7-9ce976816d69'
 const taskId = 'bfb96e29-3cf9-4874-9c82-12a54749767a'
 const previousTaskId = '6b37bf24-2bfe-4b69-821c-3687c7b83bec'
 const endUserId = 'e0c627f9-78d3-4dce-86a0-a19e245f465b'
@@ -85,6 +84,7 @@ async function openExport(
   mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'chat',
   waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined,
 ) {
+  const appId = crypto.randomUUID()
   const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
@@ -202,6 +202,7 @@ async function openExport(
     dialog,
     lastExport,
     listQueries,
+    appId,
     previews,
     requests,
     renderLogs,
@@ -223,53 +224,64 @@ it.each([
   ['chat', 'previewConversationDescription'],
   ['agent-chat', 'previewConversationDescription'],
   ['completion', 'previewCompletionDescription'],
-] as const)('explains the export scope and CSV contents for %s', async (mode, descriptionKey) => {
-  const { trigger, dialog } = await openExport(false, mode)
-  await trigger.click()
-  const scope = dialog.getByRole('combobox', { name: 'appLog.export.scope' })
-  await expect.element(scope).toHaveAccessibleDescription('appLog.export.currentHint')
-  await expect
-    .element(dialog.getByText(`appLog.export.${descriptionKey}`, { exact: true }))
-    .toBeVisible()
+] as const)(
+  'uses the list filters and explains the CSV contents for %s',
+  async (mode, descriptionKey) => {
+    const { screen, trigger, dialog } = await openExport(false, mode)
+    await expect
+      .element(screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }))
+      .toBeVisible()
+    await trigger.click()
+    await expect
+      .element(dialog.getByRole('combobox', { name: 'appLog.export.timeRange' }))
+      .toHaveTextContent('appLog.filter.period.last7days')
+    await expect
+      .element(dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }))
+      .toHaveTextContent('appLog.export.identitiesAll')
+    await expect
+      .element(dialog.getByRole('combobox', { name: 'appLog.export.scope' }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(dialog.getByText(`appLog.export.${descriptionKey}`, { exact: true }))
+      .toBeVisible()
+  },
+)
 
-  await scope.click()
-  await page.getByRole('option', { name: 'appLog.export.all' }).click()
-  await expect.element(scope).toHaveAccessibleDescription('appLog.export.allHint')
-})
-
-it('previews CSV rows and submits a Completion export with the selected identity', async () => {
-  const { trigger, dialog, lastExport, requests } = await openExport(false, 'completion')
+it('previews CSV rows and submits a Completion export with the list identities', async () => {
+  const { screen, trigger, dialog, lastExport, listQueries, requests } = await openExport(
+    false,
+    'completion',
+  )
+  await screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await page.getByRole('option', { name: 'Mia Chen' }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect.poll(() => listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  expect(listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
   await trigger.click()
-  await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
-  await page.getByRole('option', { name: 'appLog.export.all' }).click()
-  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
-  await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
-  await dialog.getByRole('checkbox', { name: 'user-1024' }).click()
-  await expect.element(dialog.getByRole('status')).toHaveTextContent('CSV rows 2.')
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('CSV rows 4.')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
   await expect
     .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
     .toBeEnabled()
-  expect(requests).toEqual([expect.objectContaining({ end_user_ids: [endUserId] })])
+  expect(requests).toEqual([
+    expect.objectContaining({ end_user_ids: [endUserId], account_ids: [accountId] }),
+  ])
 })
 
 it('can export the same filters again after a CSV is ready', async () => {
   const downloadPaths = observeDownloads()
-  const { screen, trigger, dialog, lastExport, previews, requests } = await openExport()
+  const { screen, trigger, dialog, lastExport, listQueries, previews, requests } =
+    await openExport()
   await expect.element(screen.getByText(conversation.summary, { exact: true })).toBeVisible()
-  await expect
-    .element(screen.getByRole('button', { name: 'appLog.table.header.endUser' }))
-    .not.toBeInTheDocument()
   await screen.getByPlaceholder('common.operation.search').fill('refund')
+  await expect.poll(() => listQueries.at(-1)?.get('keyword')).toBe('refund')
   await trigger.click()
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await expect
-    .element(dialog.getByRole('combobox', { name: 'appLog.export.scope' }))
-    .toHaveTextContent('appLog.export.current')
-  await expect
     .element(dialog.getByRole('status'))
     .toHaveTextContent('Conversations 2 · CSV rows 4.')
-  expect(previews.at(-1)?.get('keyword')).toBe('refund')
+  expect(previews.at(-1)?.has('keyword')).toBe(false)
   expect(previews.at(-1)?.has('page')).toBe(false)
   await submit.click()
   await expect
@@ -277,12 +289,10 @@ it('can export the same filters again after a CSV is ready', async () => {
     .toBeDisabled()
   const download = lastExport.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeEnabled()
-  await expect.element(lastExport.getByText(/refund/)).toBeVisible()
   await expect.element(submit).toBeEnabled()
   expect(downloadPaths).toEqual([])
   expect(requests).toEqual([
     {
-      keyword: 'refund',
       annotation_status: 'all',
       sort_by: '-created_at',
       start: expect.any(String),
@@ -300,7 +310,7 @@ it('can export the same filters again after a CSV is ready', async () => {
 
 it('keeps the previous export and Download available while editing the form', async () => {
   const downloadPaths = observeDownloads()
-  const { trigger, dialog, lastExport, requests } = await openExport(true)
+  const { appId, trigger, dialog, lastExport, requests } = await openExport(true)
   await trigger.click()
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
@@ -310,8 +320,8 @@ it('keeps the previous export and Download available while editing the form', as
   await expect.element(lastExport.getByText(/invoice/)).toBeVisible()
   await expect.element(lastExport.getByText(/appLog\.export\.annotated/)).toBeVisible()
   await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
-  await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
-  await page.getByRole('option', { name: 'appLog.export.all' }).click()
+  await dialog.getByRole('combobox', { name: 'appLog.export.timeRange' }).click()
+  await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
   await expect.element(dialog.getByRole('button', { name: 'appLog.export.submit' })).toBeEnabled()
   await download.click()
   expect(downloadPaths).toEqual([
@@ -321,22 +331,15 @@ it('keeps the previous export and Download available while editing the form', as
 })
 
 it('shows the last export filters in its own row after the user leaves and returns', async () => {
-  const { screen, trigger, dialog, lastExport, renderLogs } = await openExport()
+  const { screen, trigger, dialog, lastExport, renderLogs, requests } = await openExport()
   await trigger.click()
-  const scope = dialog.getByRole('combobox', { name: 'appLog.export.scope' })
-  await scope.click()
-  await page.getByRole('option', { name: 'appLog.export.all' }).click()
-  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
-  await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
-  const user = dialog.getByRole('checkbox', { name: 'user-1024' })
-  await user.click()
   const period = dialog.getByRole('combobox', { name: 'appLog.export.timeRange' })
   await period.click()
-  await page.getByRole('option', { name: 'appLog.filter.period.custom' }).click()
-  const start = dialog.getByLabelText('time.picker.startDate')
-  const end = dialog.getByLabelText('time.picker.endDate')
-  await start.fill('2026-11-16')
-  await end.fill('2026-11-19')
+  await page.getByRole('option', { name: 'appLog.filter.period.last4weeks' }).click()
+  const identities = dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' })
+  await identities.click()
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await userEvent.keyboard('{Escape}')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
 
   await expect
@@ -347,43 +350,36 @@ it('shows the last export filters in its own row after the user leaves and retur
   await screen.unmount()
   const reopened = await renderLogs()
   await reopened.trigger.click()
-  await expect.element(scope).toHaveTextContent('appLog.export.current')
-  await expect.element(period).not.toBeInTheDocument()
-  await expect.element(start).not.toBeInTheDocument()
-  await expect.element(lastExport.getByText(/2026-11-16 00:00 – 2026-11-19 23:59/)).toBeVisible()
+  await expect.element(period).toHaveTextContent('appLog.filter.period.last7days')
+  await expect.element(identities).toHaveTextContent('appLog.export.identitiesAll')
+  const { start, end } = requests[0]!
+  await expect.element(lastExport.getByText(`${start} – ${end}`)).toBeVisible()
   await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
   await expect
     .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
     .toBeEnabled()
 })
 
-it('shows an inline identity list and previews selections beyond the visible Logs page', async () => {
-  const { trigger, dialog, previews, requests } = await openExport()
+it('can select identities beyond the visible Logs page when exporting legacy Agent logs', async () => {
+  const { trigger, dialog, previews, requests } = await openExport(false, 'agent-chat')
   await trigger.click()
-  await dialog.getByRole('combobox', { name: 'appLog.export.scope' }).click()
-  await page.getByRole('option', { name: 'appLog.export.all' }).click()
   const period = dialog.getByRole('combobox', { name: 'appLog.export.timeRange' })
   await expect.element(period).toHaveTextContent('appLog.filter.period.last7days')
-  const identities = dialog.getByRole('group', { name: 'appLog.table.header.endUser' })
-  await expect.element(identities).not.toBeInTheDocument()
-  await dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
-  await page.getByRole('option', { name: 'appLog.export.identitiesSelected' }).click()
+  const identityLabel = 'appLog.table.header.endUser'
+  await dialog.getByRole('combobox', { name: identityLabel }).click()
+  const picker = page.getByRole('dialog', { name: identityLabel })
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
-  await expect.element(submit).toBeDisabled()
-  await expect
-    .element(dialog.getByRole('alert'))
-    .toHaveTextContent('appLog.export.identityRequired')
-  await identities.getByRole('checkbox', { name: 'user-1024' }).click()
+  await picker.getByRole('option', { name: 'user-1024' }).click()
   await expect
     .element(dialog.getByRole('status'))
     .toHaveTextContent('Conversations 1 · CSV rows 2.')
-  await identities.getByRole('checkbox', { name: 'Mia Chen' }).click()
+  await picker.getByRole('option', { name: 'Mia Chen' }).click()
   await expect
-    .element(dialog.getByRole('button', { name: 'common.operation.clear' }))
+    .element(picker.getByRole('button', { name: 'common.operation.clear' }))
     .not.toBeInTheDocument()
-  const search = dialog.getByRole('searchbox', { name: 'common.operation.search' })
+  const search = picker.getByRole('combobox', { name: 'common.operation.search' })
   await search.fill('42')
-  await identities.getByRole('checkbox', { name: olderEndUser.label }).click()
+  await picker.getByRole('option', { name: olderEndUser.label }).click()
   await expect
     .element(dialog.getByRole('status'))
     .toHaveTextContent('Conversations 3 · CSV rows 6.')
@@ -395,6 +391,7 @@ it('shows an inline identity list and previews selections beyond the visible Log
   await search.click()
   await userEvent.keyboard('{Enter}')
   expect(requests).toEqual([])
+  await userEvent.keyboard('{Escape}')
   await period.click()
   await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)

@@ -2082,6 +2082,8 @@ export const byConversationId2 = {
 }
 
 /**
+ * Return the admitted Completion app's page of conversations matching the Logs filters
+ *
  * Get completion conversations with pagination and filtering
  */
 export const get30 = oc
@@ -2091,6 +2093,7 @@ export const get30 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdCompletionConversations',
     path: '/apps/{app_id}/completion-conversations',
+    summary: "Return the admitted Completion app's page of conversations matching the Logs filters",
     tags: ['console'],
   })
   .input(

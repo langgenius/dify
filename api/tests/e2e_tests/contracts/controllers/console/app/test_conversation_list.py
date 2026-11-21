@@ -363,10 +363,11 @@ def test_conversation_export_preview_counts_all_messages_in_matched_conversation
     }
 
 
+@pytest.mark.parametrize(("kind", "mode"), [("chat", AppMode.ADVANCED_CHAT), ("completion", AppMode.COMPLETION)])
 def test_list_and_export_preview_filter_by_selected_identities(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind, mode: AppMode
 ) -> None:
-    harness.mode(AppMode.ADVANCED_CHAT)
+    harness.mode(mode)
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     selected_user_ids = [str(uuid4()), str(uuid4())]
     first, second = _conversation(harness), _conversation(harness)
@@ -390,7 +391,7 @@ def test_list_and_export_preview_filter_by_selected_identities(
         ({"account_ids": [harness.account.id]}, {account.id}),
         ({"end_user_ids": selected_user_ids, "account_ids": [harness.account.id]}, {first.id, second.id, account.id}),
     ):
-        page = harness.get("chat", query=query)
+        page = harness.get(kind, query=query)
         preview = harness.get("export-preview", query=query)
 
         assert set(_ids(page)) == expected
@@ -504,9 +505,11 @@ def test_app_logs_support_identity_search_preview_and_export(
     assert result.get_json() == {"task_id": task.task_id, "status": "pending"}
 
 
-@pytest.mark.parametrize("kind", ["chat", "export-preview"])
+@pytest.mark.parametrize("kind", ["chat", "completion", "export-preview"])
 def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind) -> None:
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    if kind == "completion":
+        harness.mode(AppMode.COMPLETION)
     response = harness.get(kind, query={"end_user_ids": ["invalid-user-id"]})
     assert response.status_code == 422
     assert response.get_json()["code"] == "unprocessable_entity"
