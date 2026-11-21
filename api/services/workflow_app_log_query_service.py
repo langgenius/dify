@@ -115,6 +115,8 @@ class WorkflowAppLogQuery(Protocol):
         detail: bool = False,
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
+        end_user_ids: tuple[str, ...] = (),
+        account_ids: tuple[str, ...] = (),
     ) -> WorkflowAppLogPage: ...
 
 
@@ -160,6 +162,8 @@ class WorkflowAppLogQueryService:
         detail: bool = False,
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
+        end_user_ids: tuple[str, ...] = (),
+        account_ids: tuple[str, ...] = (),
     ) -> WorkflowAppLogPage:
         result = self._logs.get_paginated(
             tenant_id=tenant_id,
@@ -173,6 +177,8 @@ class WorkflowAppLogQueryService:
             detail=detail,
             created_by_end_user_session_id=created_by_end_user_session_id,
             created_by_account=created_by_account,
+            end_user_ids=end_user_ids,
+            account_ids=account_ids,
         )
 
         return WorkflowAppLogPage(

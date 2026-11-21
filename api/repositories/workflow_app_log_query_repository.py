@@ -182,8 +182,8 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         exact_end_user = EndUser.session_id == keyword
         account_match = Account.name.ilike(pattern, escape="\\")
         if identity_id is not None:
-            exact_end_user = or_(exact_end_user, EndUser.id == identity_id)
-            account_match = or_(account_match, Account.id == identity_id)
+            exact_end_user = or_(exact_end_user, EndUser.id == str(identity_id))
+            account_match = or_(account_match, Account.id == str(identity_id))
         visible_logs = (
             select(1)
             .select_from(WorkflowAppLog)
@@ -248,26 +248,34 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             WorkflowAppLog.tenant_id == scope.tenant_id,
             WorkflowAppLog.app_id == scope.app_id,
         )
-        candidates: list[ColumnElement[bool]] = []
-        if filters.end_user_ids:
-            candidates.append(
-                and_(
-                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
-                    WorkflowAppLog.created_by.in_(filters.end_user_ids),
-                )
-            )
-        if filters.account_ids:
-            candidates.append(
-                and_(
-                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
-                    WorkflowAppLog.created_by.in_(filters.account_ids),
-                )
-            )
-        if candidates:
-            statement = statement.where(or_(*candidates))
+        statement = self._filter_log_identities(
+            statement, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
+        )
         return self._filter_log_dates(
             statement, created_at_before=filters.created_at_before, created_at_after=filters.created_at_after
         )
+
+    @staticmethod
+    def _filter_log_identities[RowT: tuple[object, ...]](
+        statement: Select[RowT], *, end_user_ids: tuple[str, ...], account_ids: tuple[str, ...]
+    ) -> Select[RowT]:
+        """Match the selected IDs against their corresponding role in an app-scoped log query."""
+        candidates: list[ColumnElement[bool]] = []
+        if end_user_ids:
+            candidates.append(
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.END_USER,
+                    WorkflowAppLog.created_by.in_(end_user_ids),
+                )
+            )
+        if account_ids:
+            candidates.append(
+                and_(
+                    WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
+                    WorkflowAppLog.created_by.in_(account_ids),
+                )
+            )
+        return statement.where(or_(*candidates)) if candidates else statement
 
     @override
     def get_paginated(
@@ -284,6 +292,8 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         detail: bool = False,
         created_by_end_user_session_id: str | None = None,
         created_by_account: str | None = None,
+        end_user_ids: tuple[str, ...] = (),
+        account_ids: tuple[str, ...] = (),
     ) -> WorkflowAppLogPage:
         with self._session_factory() as session:
             workflow_run = aliased(WorkflowRun)
@@ -335,6 +345,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
 
             stmt = self._filter_runs(stmt, workflow_run, keyword=keyword, status=status)
             stmt = self._filter_log_dates(stmt, created_at_before=created_at_before, created_at_after=created_at_after)
+            stmt = self._filter_log_identities(stmt, end_user_ids=end_user_ids, account_ids=account_ids)
 
             if created_by_end_user_session_id:
                 log_creator = aliased(EndUser)

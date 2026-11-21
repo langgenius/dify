@@ -28,7 +28,7 @@ from controllers.console.app.error import (
 from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, model_validate
+from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
@@ -62,6 +62,8 @@ class WorkflowAppLogQuery(BaseModel):
     created_at__after: datetime | None = Field(default=None, description="Filter logs created after this timestamp")
     created_by_end_user_session_id: str | None = Field(default=None, description="Filter by end user session ID")
     created_by_account: str | None = Field(default=None, description="Filter by account")
+    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
+    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
     detail: bool = Field(default=False, description="Whether to return detailed logs")
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
@@ -168,8 +170,14 @@ register_schema_models(
 )
 
 
+class _WorkflowLogValidationError(BaseHTTPException):
+    error_code = "unprocessable_entity"
+    code = HTTPStatus.UNPROCESSABLE_ENTITY
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
 class WorkflowAppLogApi(Resource):
+    @error_responses(_WorkflowLogValidationError)
     @console_ns.doc("get_workflow_app_logs")
     @console_ns.doc(description="Get workflow application execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -183,16 +191,20 @@ class WorkflowAppLogApi(Resource):
         rbac_checks=[RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp())],
     )
     @get_app_model(mode=[AppMode.WORKFLOW])
-    @model_validate(WorkflowAppLogQuery)
     def get(
         self,
-        req_data: WorkflowAppLogQuery,
         _request_context: RequestContext,
         app_model: App,
     ):
         """
         Get workflow app logs
         """
+        try:
+            req_data = query_params_from_request(WorkflowAppLogQuery, list_fields=("end_user_ids", "account_ids"))
+        except ValidationError as exc:
+            raise _WorkflowLogValidationError(
+                exc.json(include_url=False, include_input=False, include_context=False)
+            ) from None
         result = application_services().workflow_app_logs.list_logs(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -205,6 +217,8 @@ class WorkflowAppLogApi(Resource):
             detail=req_data.detail,
             created_by_end_user_session_id=req_data.created_by_end_user_session_id,
             created_by_account=req_data.created_by_account,
+            end_user_ids=tuple(map(str, req_data.end_user_ids)),
+            account_ids=tuple(map(str, req_data.account_ids)),
         )
         return dump_response(WorkflowAppLogPaginationResponse, result)
 
@@ -297,19 +311,19 @@ class WorkflowLogExportIdentitySearchResponse(ResponseModel):
     data: list[WorkflowLogExportIdentityResponse]
 
 
-class _WorkflowLogExportValidationError(BaseHTTPException):
-    error_code = "unprocessable_entity"
-    code = HTTPStatus.UNPROCESSABLE_ENTITY
+def _get_workflow_log_scope(request_context: RequestContext, app_id: UUID) -> WorkflowLogExportScope:
+    """Resolve the Workflow app in the admitted caller's current workspace."""
+    try:
+        return application_services().workflow_app_logs.get_log_export_scope(request_context, str(app_id))
+    except ConsoleAppNotFoundError as exc:
+        raise AppNotFoundError(str(exc)) from exc
 
 
 def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> WorkflowLogExportScope:
     """Require an admitted workspace Owner or Admin, a Workflow app, and any Cloud export entitlement."""
     if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
         raise ForbiddenError()
-    try:
-        scope = application_services().workflow_app_logs.get_log_export_scope(request_context, str(app_id))
-    except ConsoleAppNotFoundError as exc:
-        raise AppNotFoundError(str(exc)) from exc
+    scope = _get_workflow_log_scope(request_context, app_id)
     if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
         scope.tenant_id
     ):
@@ -333,7 +347,7 @@ register_response_schema_models(
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/preview")
 class WorkflowLogExportPreviewApi(Resource):
     @error_responses(
-        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogExportValidationError
+        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogValidationError
     )
     @console_ns.doc("preview_workflow_log_export")
     @console_ns.doc(description="Count CSV rows for published Workflow runs matching the Logs filters")
@@ -348,7 +362,7 @@ class WorkflowLogExportPreviewApi(Resource):
                 WorkflowLogExportPreviewQuery, list_fields=("end_user_ids", "account_ids")
             )
         except ValidationError as exc:
-            raise _WorkflowLogExportValidationError(
+            raise _WorkflowLogValidationError(
                 exc.json(include_url=False, include_input=False, include_context=False)
             ) from None
         row_count = application_services().workflow_app_logs.count_log_export_rows(
@@ -359,7 +373,7 @@ class WorkflowLogExportPreviewApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/identity-options")
 class WorkflowLogExportIdentityOptionsApi(Resource):
-    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError, _WorkflowLogExportValidationError)
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError, _WorkflowLogValidationError)
     @console_ns.doc("search_workflow_log_export_identities")
     @console_ns.doc(description="Search end users and accounts with visible runs in the Workflow app")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(WorkflowLogExportIdentityQuery)})
@@ -370,22 +384,40 @@ class WorkflowLogExportIdentityOptionsApi(Resource):
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
         """Return up to 20 matches per identity type for the admitted Workflow app."""
         scope = _resolve_log_export_scope(request_context, app_id)
-        try:
-            query = query_params_from_request(WorkflowLogExportIdentityQuery)
-        except ValidationError as exc:
-            raise _WorkflowLogExportValidationError(
-                exc.json(include_url=False, include_input=False, include_context=False)
-            ) from None
-        matches = application_services().workflow_app_logs.search_log_export_identities(
-            scope=scope, keyword=query.keyword
-        )
-        return dump_response(WorkflowLogExportIdentitySearchResponse, {"data": matches})
+        return _search_log_identities(scope)
+
+
+def _search_log_identities(scope: WorkflowLogExportScope) -> dict[str, object]:
+    """Return matching visible identities for the resolved Workflow app."""
+    try:
+        query = query_params_from_request(WorkflowLogExportIdentityQuery)
+    except ValidationError as exc:
+        raise _WorkflowLogValidationError(
+            exc.json(include_url=False, include_input=False, include_context=False)
+        ) from None
+    matches = application_services().workflow_app_logs.search_log_export_identities(scope=scope, keyword=query.keyword)
+    return dump_response(WorkflowLogExportIdentitySearchResponse, {"data": matches})
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-app-logs/identity-options")
+class WorkflowAppLogIdentityOptionsApi(Resource):
+    @error_responses(AppNotFoundError, _WorkflowLogValidationError)
+    @console_ns.doc("search_workflow_app_log_identities")
+    @console_ns.doc(description="Search identities in the visible logs of a Workflow app")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(WorkflowLogExportIdentityQuery)})
+    @console_ns.response(
+        HTTPStatus.OK, "Matching identities", console_ns.models[WorkflowLogExportIdentitySearchResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        """Search app identities under the Logs permission granted by the route."""
+        return _search_log_identities(_get_workflow_log_scope(request_context, app_id))
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports")
 class WorkflowLogExportApi(Resource):
     @error_responses(
-        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogExportValidationError
+        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogValidationError
     )
     @console_ns.doc("create_workflow_log_export")
     @console_ns.doc(description="Create a pending CSV export task for published runs in a Workflow app")
@@ -401,7 +433,7 @@ class WorkflowLogExportApi(Resource):
         try:
             payload = WorkflowLogExportCreatePayload.model_validate(request.get_json(silent=True))
         except ValidationError as exc:
-            raise _WorkflowLogExportValidationError(
+            raise _WorkflowLogValidationError(
                 exc.json(include_url=False, include_input=False, include_context=False)
             ) from None
         task = application_services().workflow_log_exports.create_task(

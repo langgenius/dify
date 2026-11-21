@@ -193,7 +193,11 @@ def export_client(
     )
     api = ExternalApi(app)
     path = "/apps/<uuid:app_id>/workflow-log-exports"
+    logs_path = "/apps/<uuid:app_id>/workflow-app-logs"
+    api.add_resource(workflow_app_log.WorkflowAppLogApi, logs_path)
+    api.add_resource(workflow_app_log.WorkflowAppLogIdentityOptionsApi, f"{logs_path}/identity-options")
     api.add_resource(workflow_app_log.WorkflowLogExportApi, path)
+    api.add_resource(workflow_app_log.WorkflowLogExportIdentityOptionsApi, f"{path}/identity-options")
     api.add_resource(workflow_app_log.WorkflowLogExportLatestApi, f"{path}/latest")
     api.add_resource(workflow_app_log.WorkflowLogExportTaskApi, f"{path}/<uuid:task_id>")
     api.add_resource(workflow_app_log.WorkflowLogExportFileApi, f"/console/api{path}/<uuid:task_id>/file")
@@ -290,6 +294,40 @@ def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportCl
     assert export_client.get_file(str(uuid4())).status_code == 403
     export_client.redis.setex.assert_not_called()
     export_client.redis.get.assert_not_called()
+
+
+def test_workflow_list_accepts_multiple_identities_without_requiring_export_entitlement(
+    export_client: _ExportClient,
+) -> None:
+    export_client.paid.return_value = False
+    logs_path = f"/apps/{export_client.app_id}/workflow-app-logs"
+    query = {"keyword": export_client.account_id}
+
+    identities = export_client.client.get(
+        f"{logs_path}/identity-options", query_string=query, headers=export_client.headers
+    )
+    assert identities.status_code == 200
+    assert [(item["id"], item["source"]) for item in identities.get_json()["data"]] == [
+        (export_client.account_id, "account"),
+    ]
+    assert (
+        export_client.client.get(
+            f"{export_client.path}/identity-options", query_string=query, headers=export_client.headers
+        ).status_code
+        == 403
+    )
+
+    logs = export_client.client.get(
+        logs_path,
+        query_string=[
+            ("account_ids", str(uuid4())),
+            ("account_ids", export_client.account_id),
+            ("end_user_ids", str(uuid4())),
+        ],
+        headers=export_client.headers,
+    )
+    assert logs.status_code == 200
+    assert [item["workflow_run"]["id"] for item in logs.get_json()["data"]] == [export_client.run_id]
 
 
 def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client: _ExportClient) -> None:
