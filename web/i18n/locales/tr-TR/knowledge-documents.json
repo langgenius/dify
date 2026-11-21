@@ -42,7 +42,7 @@
   "emptyChunk": "Boş parça",
   "indexInformation": "Dizin",
   "lastIndexed": "Son dizinleme",
-  "lastReadyRevisionHint": "İşleme başarısız olsa da bilgi getirme kesintiye uğramaz; kullanıma hazır son sürüm içerik dizininde kalır.",
+  "lastReadyRevisionHint": "İşleme başarısız olsa da bilgi alımı kesintiye uğramaz; kullanıma hazır son sürüm içerik dizininde kalır.",
   "manualUpload": "Manuel yükleme",
   "noMatchingDocuments": "Bu aramayla eşleşen belge yok.",
   "parentChildChunkCount": "{{parentCount}} üst / {{childCount}} alt",

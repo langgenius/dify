@@ -63,7 +63,7 @@
   "sourceSyncProgress": "{{completed}} / {{total}} sayfa",
   "sourceTypeLabel": "Kaynak türü",
   "sourcesDescription": "Bilginin nereden geldiği, ne kadar yeni olduğu ve son senkronizasyonun başarılı olup olmadığı.",
-  "sourcesEmptyDescription": "Bir web sitesi, çalışma alanı veya sürücü bağlayın — Dify içeriği eşitlenmiş ve güncel tutar, böylece getirme işlemi hiçbir zaman kesintiye uğramaz.",
+  "sourcesEmptyDescription": "Bir web sitesi, çalışma alanı veya sürücü bağlayın — Dify içeriği eşitlenmiş ve güncel tutar, böylece alım işlemi hiçbir zaman kesintiye uğramaz.",
   "sourcesEmptyTitle": "Henüz bağlı kaynak yok",
   "sourcesErrorTitle": "Kaynaklar yüklenemedi",
   "stoppingCrawl": "Durduruluyor…",
