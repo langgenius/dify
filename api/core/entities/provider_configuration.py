@@ -6,9 +6,9 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Any, override
+from typing import Any, Self, override
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, model_validator
 from sqlalchemy import String, func, literal, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BindParameter
@@ -56,6 +56,36 @@ from models.provider_ids import ModelProviderID
 logger = logging.getLogger(__name__)
 
 original_provider_configurate_methods: dict[str, list[ConfigurateMethod]] = {}
+_PROVIDER_CONFIGURATE_METHODS_REGISTRY_CONTEXT_KEY = "provider_configurate_methods_registry"
+
+
+class ProviderConfigurateMethodsRegistry:
+    """Keep the first provider configurate-method snapshot for each provider ID.
+
+    Production validation uses the module registry to preserve the existing catalog-level snapshot,
+    while callers can supply an isolated registry through Pydantic validation context.
+    """
+
+    def __init__(self, methods_by_provider: dict[str, list[ConfigurateMethod]] | None = None) -> None:
+        """Use ``methods_by_provider`` as backing storage, or create a fresh isolated mapping.
+
+        Preconditions: supplied entries map provider IDs to their original configurate methods.
+        Postconditions: the registry keeps the mapping by reference so production can preserve its
+        module-level storage and tests can own a fresh mapping.
+        """
+        self.methods_by_provider: dict[str, list[ConfigurateMethod]] = (
+            methods_by_provider if methods_by_provider is not None else {}
+        )
+
+    def register_initial_methods(self, *, provider_id: str, methods: Sequence[ConfigurateMethod]) -> None:
+        """Record the first method snapshot for ``provider_id`` without replacing it.
+
+        Preconditions: ``methods`` is the provider's original configure-method sequence.
+        Postconditions: the mapping contains a copy of that sequence only if this provider has not
+        already been registered; later tenant/request configurations cannot overwrite the snapshot.
+        """
+        if provider_id not in self.methods_by_provider:
+            self.methods_by_provider[provider_id] = list(methods)
 
 
 def _model_type_db_values(model_type: ModelType) -> tuple[str, ...]:
@@ -101,6 +131,11 @@ class ProviderConfiguration(BaseModel):
     lookups instead of refetching the full provider catalog from the runtime on
     every request-scoped lookup.
 
+    Original configurate methods are snapshotted per instance before schema
+    normalization. Their first provider-level snapshot is retained in the
+    production registry by default; explicit validation context can supply an
+    isolated registry without changing the Pydantic fields or schema.
+
     TODO: lots of logic in a BaseModel entity should be separated, the exceptions should be classified
     """
 
@@ -119,14 +154,39 @@ class ProviderConfiguration(BaseModel):
     _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
     _policy_checked_credential_ids: set[str] = PrivateAttr(default_factory=set)
 
+    @classmethod
+    def model_validate_with_configurate_methods_registry(
+        cls, obj: Any, *, registry: ProviderConfigurateMethodsRegistry
+    ) -> Self:
+        """Validate provider configuration with a caller-owned registry.
+
+        Preconditions: ``obj`` satisfies this model's public fields and ``registry`` is a production
+        registry instance owned by the caller.
+        Postconditions: returns a validated configuration and records its first provider-method
+        snapshot in ``registry`` without adding registry data to the Pydantic model or JSON schema.
+        """
+        return cls.model_validate(obj, context={_PROVIDER_CONFIGURATE_METHODS_REGISTRY_CONTEXT_KEY: registry})
+
     @model_validator(mode="after")
-    def _(self):
+    def _record_original_provider_configurate_methods(self, info: ValidationInfo) -> Self:
+        """Snapshot provider methods per instance and register the provider's first global snapshot.
+
+        Preconditions: Pydantic has validated the provider configuration; an optional validation
+        context contains a ``ProviderConfigurateMethodsRegistry`` under the production-owned key.
+        Postconditions: this instance retains its own immutable method tuple, and the selected
+        registry's first-write-per-provider invariant remains intact. Invalid injected dependencies
+        raise ``TypeError``; absent context keeps the existing production module registry.
+        """
         self._original_provider_configurate_methods = tuple(self.provider.configurate_methods)
 
-        if self.provider.provider not in original_provider_configurate_methods:
-            original_provider_configurate_methods[self.provider.provider] = []
-            for configurate_method in self.provider.configurate_methods:
-                original_provider_configurate_methods[self.provider.provider].append(configurate_method)
+        registry = None
+        if isinstance(info.context, dict):
+            registry = info.context.get(_PROVIDER_CONFIGURATE_METHODS_REGISTRY_CONTEXT_KEY)
+        if registry is None:
+            registry = ProviderConfigurateMethodsRegistry(original_provider_configurate_methods)
+        elif not isinstance(registry, ProviderConfigurateMethodsRegistry):
+            raise TypeError("provider_configurate_methods_registry must be a ProviderConfigurateMethodsRegistry")
+        registry.register_initial_methods(provider_id=self.provider.provider, methods=self.provider.configurate_methods)
 
         if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             if (
