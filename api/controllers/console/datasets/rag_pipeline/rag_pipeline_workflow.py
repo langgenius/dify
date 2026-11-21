@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Literal, cast
 from uuid import UUID
 
@@ -33,7 +34,7 @@ from controllers.console.app.workflow import (
 )
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import PipelineNotFoundError
-from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
+from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.workspace.tool_providers import ToolProviderApiEntityResponse
 from controllers.console.wraps import (
     RBACPermission,
@@ -86,6 +87,30 @@ from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
+type PipelineGenerateResult = Mapping[str, Any] | Generator[str]
+
+
+def _generate_pipeline(
+    *,
+    pipeline: Pipeline,
+    session: Session,
+    generator: PipelineGenerator,
+    user: Account,
+    args: Mapping[str, Any],
+    invoke_from: InvokeFrom,
+    streaming: bool,
+) -> PipelineGenerateResult:
+    """Run one pipeline through ``PipelineGenerateService`` on the caller's session."""
+    return PipelineGenerateService.generate(
+        pipeline=pipeline,
+        user=user,
+        args=args,
+        invoke_from=invoke_from,
+        streaming=streaming,
+        session=session,
+        generator=generator,
+    )
 
 
 class DraftWorkflowSyncPayload(BaseModel):
@@ -411,18 +436,24 @@ class DraftRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @with_session
+    @get_rag_pipeline
     @model_validate(RagPipelineDraftWorkflowRunPayload)
     def post(
-        self, req_data: RagPipelineDraftWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID
+        self,
+        req_data: RagPipelineDraftWorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        pipeline: Pipeline,
+        *,
+        generate: Callable[..., PipelineGenerateResult] = _generate_pipeline,
     ):
         """
         Run draft workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id))
         args = req_data.model_dump()
 
         try:
-            response = PipelineGenerateService.generate(
+            response = generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
@@ -449,17 +480,25 @@ class PublishedRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @with_session
+    @get_rag_pipeline
     @model_validate(PublishedWorkflowRunPayload)
-    def post(self, req_data: PublishedWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID):
+    def post(
+        self,
+        req_data: PublishedWorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        pipeline: Pipeline,
+        *,
+        generate: Callable[..., PipelineGenerateResult] = _generate_pipeline,
+    ):
         """
         Run published workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id))
         args = req_data.model_dump(exclude_none=True)
         streaming = req_data.response_mode == "streaming"
 
         try:
-            response = PipelineGenerateService.generate(
+            response = generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
