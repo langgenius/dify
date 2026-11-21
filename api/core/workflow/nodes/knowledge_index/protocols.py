@@ -1,8 +1,11 @@
 from collections.abc import Mapping
-from typing import Any, Protocol, TypedDict
+from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 
 
 class IndexingResultDict(TypedDict):
@@ -35,6 +38,8 @@ class Preview(BaseModel):
 
 
 class IndexProcessorProtocol(Protocol):
+    """Indexing boundary of ``KnowledgeIndexNode``; ``IndexProcessor`` is the production implementation."""
+
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview: ...
 
     def index_and_clean(
@@ -44,7 +49,7 @@ class IndexProcessorProtocol(Protocol):
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict[str, Any] | None = None,
+        summary_index_setting: "SummaryIndexSettingDict | None" = None,
         *,
         session: Session,
     ) -> IndexingResultDict: ...
@@ -55,13 +60,19 @@ class IndexProcessorProtocol(Protocol):
         dataset_id: str,
         document_id: str,
         chunk_structure: str,
-        summary_index_setting: dict[str, Any] | None,
+        summary_index_setting: "SummaryIndexSettingDict | None",
         *,
         session: Session,
     ) -> Preview: ...
 
 
 class SummaryIndexServiceProtocol(Protocol):
+    """Summary boundary of ``KnowledgeIndexNode``; ``SummaryIndex`` is the production implementation."""
+
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] | None = None
+        self,
+        dataset_id: str,
+        document_id: str,
+        is_preview: bool,
+        summary_index_setting: "SummaryIndexSettingDict | None" = None,
     ) -> None: ...
