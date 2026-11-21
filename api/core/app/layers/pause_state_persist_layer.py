@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
     WorkflowAppGenerateEntity,
 )
+from core.workflow.response_stream_filter import DifyResponseStreamFilter
 from graphon.engine.filter import ResponseStreamFilter
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
@@ -77,7 +78,7 @@ class WorkflowResumptionContext(BaseModel):
         return self.generate_entity.entity
 
     def get_response_stream_filter(self) -> ResponseStreamFilter:
-        response_stream_filter = ResponseStreamFilter()
+        response_stream_filter = DifyResponseStreamFilter()
         if self.serialized_response_stream_filter_state is not None:
             response_stream_filter.loads(self.serialized_response_stream_filter_state)
         return response_stream_filter
