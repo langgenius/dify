@@ -9,6 +9,7 @@ from typing import Any, Final, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
 
+from configs import dify_config
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
@@ -1680,3 +1681,183 @@ class WorkflowToolResponse(BaseModel):
     tool: ToolApiEntity
     synced: bool = Field(description="False once the app's published workflow moved past this tool's version")
     privacy_policy: str | None
+
+
+_DATASET_PERMISSION = Literal["only_me", "all_team_members", "partial_members"]
+_DATASET_INDEXING_TECHNIQUE = Literal["high_quality", "economy"]
+_DOC_FORM = Literal["text_model", "hierarchical_model", "qa_model"]
+
+
+class DatasetCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=40, description="Knowledge base name")
+    description: str = Field(
+        "", max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH, description="Knowledge base description"
+    )
+    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models; `economy` uses keyword indexing.",
+    )
+    permission: _DATASET_PERMISSION | None = Field(
+        default="only_me",
+        description="`only_me` restricts to the creator, `all_team_members` grants workspace access, "
+        "`partial_members` grants access to `partial_member_list` members.",
+    )
+    provider: Literal["vendor", "external"] = Field(
+        default="vendor", description="`vendor` for internal knowledge bases, `external` for external ones."
+    )
+    external_knowledge_api_id: str | None = Field(
+        default=None, description="External knowledge API id (required when `provider` is `external`)."
+    )
+    external_knowledge_id: str | None = Field(
+        default=None, description="External knowledge base id (required when `provider` is `external`)."
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Embedding model name. Use the `model` field from "
+        "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`.",
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description="Embedding model provider. Use the `provider` field from "
+        "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`.",
+    )
+    retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration as a JSON object."
+    )
+
+
+class DatasetUpdatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
+    permission: _DATASET_PERMISSION | None = None
+    provider: Literal["vendor", "external"] | None = Field(default=None, description="Read-only; ignored on update.")
+    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+    retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration as a JSON object."
+    )
+    summary_index_setting: dict[str, Any] | None = None
+    partial_member_list: list[dict[str, str]] | None = Field(
+        default=None, description="Member ids granted access when `permission` is `partial_members`."
+    )
+    external_retrieval_model: dict[str, Any] | None = None
+    external_knowledge_id: str | None = None
+    external_knowledge_api_id: str | None = None
+    icon_info: dict[str, Any] | None = None
+    is_multimodal: bool | None = None
+
+
+class DatasetListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the knowledge base name")
+
+
+class DatasetResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    provider: str
+    permission: str
+    indexing_technique: str | None
+    embedding_model: str | None
+    embedding_model_provider: str | None
+    retrieval_model: dict[str, Any] | None
+    external_knowledge_api_id: str | None
+    external_knowledge_id: str | None
+    created_at: int
+    updated_at: int
+
+
+class DatasetListResponse(PaginationEnvelope[DatasetResponse]):
+    pass
+
+
+class DocumentTextPayload(BaseModel):
+    """Flat text-document fields shared by create-by-text and update-by-text."""
+
+    name: str | None = Field(default=None, description="Document name.")
+    text: str | None = Field(default=None, description="Document text content.")
+    process_rule: dict[str, Any] | None = Field(
+        default=None, description="Processing rules for chunking as a JSON object."
+    )
+    doc_form: _DOC_FORM | None = Field(
+        default=None,
+        description="`text_model` for standard chunking, `hierarchical_model` for parent-child, "
+        "`qa_model` for question-answer pairs. Defaults to the knowledge base's form.",
+    )
+    doc_language: str | None = Field(default=None, description="Language of the document.")
+    indexing_technique: _DATASET_INDEXING_TECHNIQUE | None = Field(
+        default=None,
+        description="Required for the first document when the knowledge base has no technique; "
+        "later documents inherit the knowledge base's.",
+    )
+    retrieval_model: dict[str, Any] | None = Field(default=None, description="Retrieval model configuration.")
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+
+
+class DocumentCreateByTextPayload(DocumentTextPayload):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, description="Document name.")
+    text: str | None = Field(default=None, min_length=1, description="Document text content.")
+
+    @model_validator(mode="after")
+    def _name_and_text_required(self) -> Self:
+        if self.name is None or self.text is None:
+            raise ValueError("name and text are required")
+        return self
+
+
+class DocumentUpdateByTextPayload(DocumentTextPayload):
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _text_requires_name(self) -> Self:
+        if self.text is not None and self.name is None:
+            raise ValueError("name is required when text is provided")
+        return self
+
+
+class DocumentResponse(BaseModel):
+    id: str
+    dataset_id: str
+    name: str
+    data_source_type: str | None
+    indexing_status: str
+    error: str | None
+    enabled: bool
+    archived: bool
+    doc_form: str | None
+    doc_language: str | None
+    document_process_rule: dict[str, Any] | None
+    created_at: int | None
+    updated_at: int | None
+    completed_at: int | None
+
+
+class DocumentAndBatchResponse(BaseModel):
+    document: DocumentResponse
+    batch: str
+
+
+class DocumentListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the document name")
+
+
+class DocumentListResponse(PaginationEnvelope[DocumentResponse]):
+    pass
+
+
+class DocumentIndexingStatusResponse(BaseModel):
+    batch: str
+    indexing_status: str
+    error: str | None
