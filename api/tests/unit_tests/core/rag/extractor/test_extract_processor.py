@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 import core.rag.extractor.extract_processor as processor_module
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.extractor.entity.extract_setting import (
+    ExtractSetting,
+    NotionInfo,
+    UploadFileExtractionInput,
+    WebsiteInfo,
+)
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.models.document import Document
 from models.model import UploadFile
@@ -41,13 +46,13 @@ class _ExtractorFactory:
             def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 calls.append((name, args, kwargs))
 
-            def extract(self):
+            def extract(self) -> list[Document]:
                 return [Document(page_content=f"extracted-by-{name}")]
 
         return DummyExtractor
 
 
-def _patch_all_extractors(monkeypatch) -> _ExtractorFactory:
+def _patch_all_extractors(monkeypatch: pytest.MonkeyPatch) -> _ExtractorFactory:
     factory = _ExtractorFactory()
 
     for cls_name in [
@@ -77,7 +82,7 @@ def _patch_all_extractors(monkeypatch) -> _ExtractorFactory:
 
 
 class TestExtractProcessorLoaders:
-    def test_load_from_upload_file_return_docs_and_text(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_from_upload_file_return_docs_and_text(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ExtractProcessor,
             "extract",
@@ -153,14 +158,20 @@ class TestExtractProcessorLoaders:
         ],
     )
     def test_load_from_url_builds_temp_file_with_correct_suffix(
-        self, monkeypatch: pytest.MonkeyPatch, url, headers, expected_suffix
-    ):
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        url: str,
+        headers: dict[str, str],
+        expected_suffix: str,
+    ) -> None:
         response = httpx.Response(200, headers=headers, content=b"body")
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
 
-        captured = {}
+        captured: dict[str, str | None] = {}
 
-        def fake_extract(extract_setting, is_automatic=False, file_path=None):
+        def fake_extract(
+            extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
+        ) -> list[Document]:
             key = "file_path_docs" if "file_path_docs" not in captured else "file_path_text"
             captured[key] = file_path
             return [Document(page_content="u1"), Document(page_content="u2")]
@@ -168,15 +179,19 @@ class TestExtractProcessorLoaders:
         monkeypatch.setattr(ExtractProcessor, "extract", fake_extract)
 
         docs = ExtractProcessor.load_from_url(url, return_text=False)
-        assert Path(captured["file_path_docs"]).suffix == expected_suffix
+        docs_path = captured["file_path_docs"]
+        assert docs_path is not None
+        assert Path(docs_path).suffix == expected_suffix
 
         text = ExtractProcessor.load_from_url(url, return_text=True)
-        assert Path(captured["file_path_text"]).suffix == expected_suffix
+        text_path = captured["file_path_text"]
+        assert text_path is not None
+        assert Path(text_path).suffix == expected_suffix
 
         assert len(docs) == 2
         assert text == "u1\nu2"
 
-    def test_load_from_url_extracts_long_text_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_from_url_extracts_long_text_without_upload_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         content = "a" * 100_000
         response = httpx.Response(200, headers={"Content-Type": "text/plain"}, content=content.encode())
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
@@ -186,7 +201,7 @@ class TestExtractProcessorLoaders:
 
         assert text == content
 
-    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_from_url_extracts_pdf_without_upload_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
         response = SimpleNamespace(headers={"Content-Type": "application/pdf"}, content=b"%PDF-1.1 body")
         monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         factory = _patch_all_extractors(monkeypatch)
@@ -201,7 +216,7 @@ class TestExtractProcessorLoaders:
         assert args[1] is None
         assert args[2] is None
 
-    def test_load_from_url_routes_parameterized_content_type(self, monkeypatch: pytest.MonkeyPatch):
+    def test_load_from_url_routes_parameterized_content_type(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Servers commonly append parameters such as "; charset=binary" to
         # Content-Type; the media type must be parsed before deriving the suffix.
         response = SimpleNamespace(
@@ -219,7 +234,7 @@ class TestExtractProcessorLoaders:
 
 class TestExtractProcessorFileRouting:
     @pytest.fixture(autouse=True)
-    def _set_unstructured_config(self, monkeypatch: pytest.MonkeyPatch):
+    def _set_unstructured_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         apply_config_overrides(
             monkeypatch,
             UNSTRUCTURED_API_URL="https://unstructured",
@@ -232,12 +247,12 @@ class TestExtractProcessorFileRouting:
         extension: str,
         etl_type: str,
         is_automatic: bool = False,
-        session: object | None = None,
-    ):
+        session: Session | None = None,
+    ) -> tuple[str, tuple[object, ...], dict[str, object]]:
         factory = _patch_all_extractors(monkeypatch)
         apply_config_overrides(monkeypatch, ETL_TYPE=etl_type)
 
-        def fake_download(key: str, local_path: str):
+        def fake_download(key: str, local_path: str) -> None:
             Path(local_path).write_text("content", encoding="utf-8")
 
         monkeypatch.setattr(processor_module.storage, "download", fake_download)
@@ -245,7 +260,7 @@ class TestExtractProcessorFileRouting:
 
         setting = ExtractSetting(
             datasource_type=DatasourceType.FILE,
-            upload_file=_upload_file(key=f"uploaded{extension}"),
+            upload_file=UploadFileExtractionInput.model_validate(_upload_file(key=f"uploaded{extension}")),
         )
 
         docs = ExtractProcessor.extract(setting, is_automatic=is_automatic, session=session)
@@ -277,8 +292,12 @@ class TestExtractProcessorFileRouting:
         ],
     )
     def test_extract_routes_file_extensions_for_unstructured_mode(
-        self, monkeypatch: pytest.MonkeyPatch, extension, expected_extractor, is_automatic
-    ):
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        extension: str,
+        expected_extractor: str,
+        is_automatic: bool,
+    ) -> None:
         extractor_name, args, kwargs = self._run_extract_for_extension(
             monkeypatch, extension, etl_type="Unstructured", is_automatic=is_automatic
         )
@@ -300,13 +319,13 @@ class TestExtractProcessorFileRouting:
         ],
     )
     def test_extract_routes_file_extensions_for_default_mode(
-        self, monkeypatch: pytest.MonkeyPatch, extension, expected_extractor
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, extension: str, expected_extractor: str
+    ) -> None:
         extractor_name, _, _ = self._run_extract_for_extension(monkeypatch, extension, etl_type="SelfHosted")
 
         assert extractor_name == expected_extractor
 
-    def test_extract_routes_excel_with_upload_context(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_routes_excel_with_upload_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor_name, args, kwargs = self._run_extract_for_extension(monkeypatch, ".xlsx", etl_type="SelfHosted")
 
         assert extractor_name == "ExcelExtractor"
@@ -316,14 +335,14 @@ class TestExtractProcessorFileRouting:
     @pytest.mark.parametrize("extension", [".pdf", ".docx"])
     def test_extract_passes_session_to_database_backed_file_extractors(
         self, monkeypatch: pytest.MonkeyPatch, extension: str, unbound_session: Session
-    ):
+    ) -> None:
         _, _, kwargs = self._run_extract_for_extension(
             monkeypatch, extension, etl_type="SelfHosted", session=unbound_session
         )
 
         assert kwargs["session"] is unbound_session
 
-    def test_extract_requires_upload_file_when_file_path_not_provided(self):
+    def test_extract_requires_upload_file_when_file_path_not_provided(self) -> None:
         setting = ExtractSetting(datasource_type=DatasourceType.FILE, upload_file=None)
 
         with pytest.raises(AssertionError, match="upload_file is required"):
@@ -331,7 +350,7 @@ class TestExtractProcessorFileRouting:
 
 
 class TestExtractProcessorDatasourceRouting:
-    def test_extract_routes_notion_datasource(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_routes_notion_datasource(self, monkeypatch: pytest.MonkeyPatch) -> None:
         factory = _patch_all_extractors(monkeypatch)
 
         notion_info = NotionInfo(
@@ -361,7 +380,7 @@ class TestExtractProcessorDatasourceRouting:
     )
     def test_extract_routes_website_datasource_providers(
         self, monkeypatch: pytest.MonkeyPatch, provider: str, expected: str
-    ):
+    ) -> None:
         factory = _patch_all_extractors(monkeypatch)
 
         website_info = WebsiteInfo(
@@ -378,7 +397,7 @@ class TestExtractProcessorDatasourceRouting:
         assert docs[0].page_content == f"extracted-by-{expected}"
         assert factory.calls[-1][0] == expected
 
-    def test_extract_unsupported_website_provider(self):
+    def test_extract_unsupported_website_provider(self) -> None:
         bad_provider = WebsiteInfo(
             provider="unknown",
             url="https://example.com",
@@ -392,14 +411,14 @@ class TestExtractProcessorDatasourceRouting:
         with pytest.raises(ValueError, match="Unsupported website provider"):
             ExtractProcessor.extract(setting)
 
-    def test_extract_unsupported_datasource_type(self):
+    def test_extract_unsupported_datasource_type(self) -> None:
         with pytest.raises(ValueError, match="Unsupported datasource type"):
             ExtractProcessor.extract(ExtractSetting(datasource_type="unknown"))
 
-    def test_extract_requires_notion_info(self):
+    def test_extract_requires_notion_info(self) -> None:
         with pytest.raises(AssertionError, match="notion_info is required"):
             ExtractProcessor.extract(ExtractSetting(datasource_type=DatasourceType.NOTION, notion_info=None))
 
-    def test_extract_requires_website_info(self):
+    def test_extract_requires_website_info(self) -> None:
         with pytest.raises(AssertionError, match="website_info is required"):
             ExtractProcessor.extract(ExtractSetting(datasource_type=DatasourceType.WEBSITE, website_info=None))
