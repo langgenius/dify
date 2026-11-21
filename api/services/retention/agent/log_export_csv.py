@@ -6,7 +6,7 @@ from typing import TextIO
 
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
-from services.agent.observability_contracts import AgentLogExportQuery, AgentObservability
+from services.agent.observability_contracts import AgentLogExportFilters, AgentObservability
 from services.retention.log_export_csv import write_log_export_csv
 
 
@@ -17,7 +17,9 @@ class AgentLogCsvWriter:
         """Use the Agent observability port for scoped, detached log reads."""
         self._logs = logs
 
-    def write_csv(self, context: RequestContext, agent_id: str, *, filters: AgentLogExportQuery, output: TextIO) -> int:
+    def write_csv(
+        self, context: RequestContext, agent_id: str, *, filters: AgentLogExportFilters, output: TextIO
+    ) -> int:
         """Write rows for an admitted Agent to an open UTF-8 text stream and return the row count.
 
         The caller owns the stream and publishes it only on success, since an error

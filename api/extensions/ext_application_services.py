@@ -220,6 +220,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
+from services.retention.agent.log_export_service import AgentLogExportService, AgentLogExportTask
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
 from services.retention.log_export_task_cache import RedisLogExportTasks
@@ -328,6 +329,7 @@ class ApplicationServices:
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
     agent_observability: AgentObservability
+    agent_log_exports: AgentLogExportService
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -666,6 +668,7 @@ def build_application_services(
         repository=messages,
     )
     workflow_app_logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=database_client))
+    agent_observability = build_agent_observability(database_client=database_client)
 
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
@@ -715,7 +718,13 @@ def build_application_services(
         agent_invite_options=build_agent_invite_options_service(
             database_client=database_client, rbac_members=rbac.members
         ),
-        agent_observability=build_agent_observability(database_client=database_client),
+        agent_observability=agent_observability,
+        agent_log_exports=AgentLogExportService(
+            logs=agent_observability,
+            save_task=RedisLogExportTasks(
+                redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"
+            ).save,
+        ),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(

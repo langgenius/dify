@@ -467,6 +467,26 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * AgentLogExportCreatePayload
+ *
+ * Submit the same unpaginated filters used by the export preview.
+ */
+export const zAgentLogExportCreatePayload = z.object({
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  sources: z.array(z.string()).optional(),
+  start: z.string().nullish(),
+})
+
+/**
+ * AgentLogExportTaskResponse
+ */
+export const zAgentLogExportTaskResponse = z.object({
+  status: z.literal('pending'),
+  task_id: z.string(),
+})
+
+/**
  * ForbiddenError
  *
  * You don't have the permission to access the requested resource.
@@ -4514,6 +4534,17 @@ export const zPostAgentByAgentIdFeedbacksPath = z.object({
  * Feedback updated successfully
  */
 export const zPostAgentByAgentIdFeedbacksResponse = zSimpleResultResponse
+
+export const zPostAgentByAgentIdLogExportsBody = zAgentLogExportCreatePayload
+
+export const zPostAgentByAgentIdLogExportsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Export task created
+ */
+export const zPostAgentByAgentIdLogExportsResponse = zAgentLogExportTaskResponse
 
 export const zGetAgentByAgentIdLogExportsPreviewPath = z.object({
   agent_id: z.uuid(),

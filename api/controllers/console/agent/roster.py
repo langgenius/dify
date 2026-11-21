@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -276,12 +276,28 @@ class AgentLogExportPreviewQuery(BaseModel):
     @classmethod
     def validate_source_ids(cls, sources: list[str]) -> list[str]:
         """Reject malformed structured source identifiers before querying UUID columns."""
-        for source in sources:
+        selections = [source.strip() for source in sources if source.strip()]
+        for source in selections:
             kind, *parts = source.split(":", 3)
             if kind.lower() == "workflow":
                 for identifier in parts[:2]:
                     UUID(identifier)
-        return sources
+        return selections
+
+    def to_query(self) -> AgentLogExportQuery:
+        """Pass validated filters and account-local date bounds to Agent log export."""
+        return AgentLogExportQuery(
+            sources=tuple(self.sources),
+            end_user_ids=tuple(str(user_id) for user_id in self.end_user_ids),
+            start=self.start,
+            end=self.end,
+        )
+
+
+class AgentLogExportCreatePayload(AgentLogExportPreviewQuery):
+    """Submit the same unpaginated filters used by the export preview."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class AgentLogEndUserSearchQuery(BaseModel):
@@ -307,6 +323,11 @@ class AgentLogExportCountsResponse(ResponseModel):
 
 class AgentLogExportPreviewResponse(ResponseModel):
     counts: AgentLogExportCountsResponse | None = Field(description="Matching log and CSV row counts, null on timeout")
+
+
+class AgentLogExportTaskResponse(ResponseModel):
+    task_id: str
+    status: Literal["pending"]
 
 
 class AgentAppPartial(GenericAppPartial):
@@ -407,6 +428,7 @@ register_schema_models(
     AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
+    AgentLogExportCreatePayload,
     AgentStatisticsQuery,
     AgentIdPath,
     AppListQuery,
@@ -431,6 +453,7 @@ register_response_schema_models(
     AgentLogEndUserSearchResponse,
     AgentLogListResponse,
     AgentLogExportPreviewResponse,
+    AgentLogExportTaskResponse,
     AgentLogMessageListResponse,
     AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
@@ -1069,6 +1092,16 @@ class AgentLogEndUserOptionsApi(Resource):
         return dump_response(AgentLogEndUserSearchResponse, {"data": matches})
 
 
+def _require_agent_log_export_access(context: RequestContext) -> None:
+    """Require a workspace Owner or Admin with the Cloud log export entitlement when applicable."""
+    if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
+        raise ForbiddenError()
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
+        context.active_workspace_id
+    ):
+        raise PaidPlanRequiredError()
+
+
 @console_ns.route("/agent/<uuid:agent_id>/log-exports/preview")
 class AgentLogExportPreviewApi(Resource):
     @error_responses(AgentNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError)
@@ -1078,13 +1111,7 @@ class AgentLogExportPreviewApi(Resource):
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
     def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Return filtered export counts for the admitted Agent, workspace role, and plan."""
-        if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
-            raise ForbiddenError()
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
-            context.active_workspace_id
-        ):
-            raise PaidPlanRequiredError()
-
+        _require_agent_log_export_access(context)
         query = AgentLogExportPreviewQuery.model_validate(
             {
                 "sources": _query_values("sources"),
@@ -1095,20 +1122,40 @@ class AgentLogExportPreviewApi(Resource):
         )
         try:
             counts = application_services().agent_observability.count_export_logs(
-                context,
-                str(agent_id),
-                AgentLogExportQuery(
-                    sources=tuple(query.sources),
-                    end_user_ids=tuple(str(user_id) for user_id in query.end_user_ids),
-                    start=query.start,
-                    end=query.end,
-                ),
+                context, str(agent_id), query.to_query()
             )
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
         except ValueError as exc:
             raise InvalidArgumentError(str(exc)) from exc
         return dump_response(AgentLogExportPreviewResponse, {"counts": counts})
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports")
+class AgentLogExportApi(Resource):
+    @error_responses(AgentNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError)
+    @console_ns.doc("create_agent_log_export", description="Create a pending CSV export task for the Agent")
+    @console_ns.expect(console_ns.models[AgentLogExportCreatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.ACCEPTED, "Export task created", console_ns.models[AgentLogExportTaskResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid log filters")
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def post(self, context: RequestContext, agent_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
+        """Admit the caller and return the Agent's task ID after the normalized filters are saved."""
+        _require_agent_log_export_access(context)
+        try:
+            payload = AgentLogExportCreatePayload.model_validate(request.get_json(silent=True))
+            task = application_services().agent_log_exports.create_task(context, str(agent_id), payload.to_query())
+        except ValidationError as exc:
+            raise InvalidArgumentError(
+                exc.json(include_url=False, include_input=False, include_context=False)
+            ) from None
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
+        return dump_response(AgentLogExportTaskResponse, task), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")

@@ -1131,6 +1131,7 @@ allow_indirect_imports = True
 name = Log export task creation is framework and persistence neutral
 type = forbidden
 source_modules =
+    services.retention.agent.log_export_service
     services.retention.log_export_task
     services.retention.workflow_run.log_export_service
 forbidden_modules =

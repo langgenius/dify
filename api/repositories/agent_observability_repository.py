@@ -45,6 +45,7 @@ from repositories.app.agent_runtime_app import (
 from repositories.log_export_count import execute_log_export_count
 from services.agent.observability_contracts import (
     AgentLogExportCounts,
+    AgentLogExportFilters,
     AgentLogExportQuery,
     AgentLogExportRow,
     AgentLogQuery,
@@ -1638,19 +1639,34 @@ class SQLAlchemyAgentObservabilityRepository:
             return AgentObservabilityQueries(session).count_export_logs(
                 app=app,
                 agent_id=agent_id,
-                params=self._export_log_params(session, context, query),
+                params=self._export_log_params(self._export_log_filters(session, context, query)),
             )
 
+    def resolve_log_export_filters(
+        self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
+    ) -> AgentLogExportFilters:
+        """Check Agent ownership and resolve supplied source and time filters before saving a task."""
+        with self._existing_runtime(context, agent_id) as (session, _):
+            AgentObservabilityQueries.resolve_source_filters(query.sources)
+            return self._export_log_filters(session, context, query)
+
     @classmethod
-    def _export_log_params(
+    def _export_log_filters(
         cls, session: Session, context: RequestContext, query: AgentLogExportQuery
-    ) -> AgentLogQueryParams:
-        """Interpret the preview and CSV filters in the admitted account's timezone."""
+    ) -> AgentLogExportFilters:
+        """Convert admitted account-local times to UTC for preview and task creation."""
         start, end = parse_time_range(query.start, query.end, cls._timezone(session, context))
-        return AgentLogQueryParams(sources=query.sources, end_user_ids=query.end_user_ids, start=start, end=end)
+        return AgentLogExportFilters(sources=query.sources, end_user_ids=query.end_user_ids, start=start, end=end)
+
+    @staticmethod
+    def _export_log_params(filters: AgentLogExportFilters) -> AgentLogQueryParams:
+        """Use the same resolved filters when counting and exporting matching rows."""
+        return AgentLogQueryParams(
+            sources=filters.sources, end_user_ids=filters.end_user_ids, start=filters.start, end=filters.end
+        )
 
     def iter_export_rows(
-        self, context: RequestContext, agent_id: str, filters: AgentLogExportQuery
+        self, context: RequestContext, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:
         """Stage matching IDs once and yield detached log rows in bounded read batches.
 
@@ -1660,7 +1676,7 @@ class SQLAlchemyAgentObservabilityRepository:
             with self._existing_runtime(context, agent_id) as (session, app):
                 app_id = app.id
                 selected = AgentObservabilityQueries(session).matching_export_logs(
-                    app=app, agent_id=agent_id, params=self._export_log_params(session, context, filters)
+                    app=app, agent_id=agent_id, params=self._export_log_params(filters)
                 )
                 if selected is None:
                     return

@@ -588,8 +588,9 @@ class TestAgentObservabilityQueriesCases:
             end="2026-07-23 07:01",
         )
         assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=2, row_count=2)
+        resolved_filters = logs.resolve_log_export_filters(context, agent.id, filters)
         output = StringIO(newline="")
-        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=filters, output=output) == 2
+        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 2
         assert output.getvalue().startswith("\ufeff")
         rows = {row["source"]: row for row in csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))}
 

@@ -450,8 +450,16 @@ export type MessageFeedbackRatingRequiredError = ErrorResponse & {
   status: 400
 }
 
-export type AgentLogExportPreviewResponse = {
-  counts: AgentLogExportCountsResponse | null
+export type AgentLogExportCreatePayload = {
+  end?: string | null
+  end_user_ids?: Array<string>
+  sources?: Array<string>
+  start?: string | null
+}
+
+export type AgentLogExportTaskResponse = {
+  status: 'pending'
+  task_id: string
 }
 
 export type ForbiddenError = ErrorResponse & {
@@ -462,6 +470,10 @@ export type ForbiddenError = ErrorResponse & {
 export type PaidPlanRequiredError = ErrorResponse & {
   code: 'paid_plan_required'
   status: 403
+}
+
+export type AgentLogExportPreviewResponse = {
+  counts: AgentLogExportCountsResponse | null
 }
 
 export type AgentLogSourceListResponse = {
@@ -3891,6 +3903,32 @@ export type PostAgentByAgentIdFeedbacksResponses = {
 
 export type PostAgentByAgentIdFeedbacksResponse =
   PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
+
+export type PostAgentByAgentIdLogExportsData = {
+  body: AgentLogExportCreatePayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports'
+}
+
+export type PostAgentByAgentIdLogExportsErrors = {
+  400: ErrorResponse
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdLogExportsError =
+  PostAgentByAgentIdLogExportsErrors[keyof PostAgentByAgentIdLogExportsErrors]
+
+export type PostAgentByAgentIdLogExportsResponses = {
+  202: AgentLogExportTaskResponse
+}
+
+export type PostAgentByAgentIdLogExportsResponse =
+  PostAgentByAgentIdLogExportsResponses[keyof PostAgentByAgentIdLogExportsResponses]
 
 export type GetAgentByAgentIdLogExportsPreviewData = {
   body?: never

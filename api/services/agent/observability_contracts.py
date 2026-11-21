@@ -36,6 +36,16 @@ class AgentLogExportQuery:
     end: str | None
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AgentLogExportFilters:
+    """Source and identity filters with resolved UTC bounds, absent for unbounded time."""
+
+    sources: tuple[str, ...]
+    end_user_ids: tuple[str, ...]
+    start: datetime | None
+    end: datetime | None
+
+
 @dataclass(frozen=True, slots=True)
 class AgentLogExportCounts:
     log_count: int
@@ -102,8 +112,18 @@ class AgentObservability(Protocol):
         """
         ...
 
+    def resolve_log_export_filters(
+        self, context: RequestContext, agent_id: str, query: AgentLogExportQuery
+    ) -> AgentLogExportFilters:
+        """Require an available Agent in the caller's workspace and normalize its valid filters to UTC.
+
+        Raise AgentObservabilityNotFoundError if the Agent or its runtime App is unavailable,
+        and ValueError if the sources or time range are invalid.
+        """
+        ...
+
     def iter_export_rows(
-        self, context: RequestContext, agent_id: str, filters: AgentLogExportQuery
+        self, context: RequestContext, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:
         """Yield matching CSV rows for the admitted Agent with the same filters as the preview.
 

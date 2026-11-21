@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from uuid import uuid4
 
@@ -21,6 +22,7 @@ from controllers.console.agent.roster import (
     AgentAppListApi,
     AgentInviteOptionsApi,
     AgentLogEndUserOptionsApi,
+    AgentLogExportApi,
     AgentLogExportPreviewApi,
     AgentLogMessagesApi,
     AgentLogsApi,
@@ -47,6 +49,7 @@ from models.engine import db
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
 from services.entities.app_entities import AppEvent
+from services.retention.agent.log_export_service import AgentLogExportTask
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -146,6 +149,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
         api.add_resource(AgentLogEndUserOptionsApi, "/agent/<uuid:agent_id>/logs/identity-options")
         api.add_resource(AgentLogExportPreviewApi, "/agent/<uuid:agent_id>/log-exports/preview")
+        api.add_resource(AgentLogExportApi, "/agent/<uuid:agent_id>/log-exports")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
@@ -296,8 +300,11 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
     monkeypatch.setattr(roster_controller, "is_cloud_edition_billing_paid_plan", lambda _tenant_id: False)
     with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
         response = harness.client.get(path, headers=harness.headers)
+        create = harness.client.post(path.removesuffix("/preview"), headers=harness.headers, json={})
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.json["code"] == "paid_plan_required"
+    assert create.status_code == HTTPStatus.FORBIDDEN
+    assert create.json["code"] == "paid_plan_required"
 
     with harness.sessions.begin() as session:
         membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == harness.account_id))
@@ -306,6 +313,61 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
     response = harness.client.get(path, headers=harness.headers)
     assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.json["code"] == "forbidden"
+    create = harness.client.post(path.removesuffix("/preview"), headers=harness.headers, json={})
+    assert create.status_code == HTTPStatus.FORBIDDEN
+    assert create.json["code"] == "forbidden"
+
+
+def test_create_agent_log_export_persists_pending_task_and_utc_filters(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved: dict[str, tuple[int, str]] = {}
+
+    def setex(_redis: RedisClientWrapper, key: str, expires_in: int, value: str) -> bool:
+        saved[key] = (expires_in, value)
+        return True
+
+    monkeypatch.setattr(RedisClientWrapper, "setex", setex)
+    agent_id, app_id = harness.create_agent()
+    foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
+    end_user_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        account = session.get(Account, harness.account_id)
+        assert account is not None
+        account.timezone = "Asia/Shanghai"
+
+    base = f"/console/api/agent/{agent_id}/log-exports"
+    response = harness.client.post(
+        base,
+        headers=harness.headers,
+        json={
+            "sources": [f"webapp:{app_id}"],
+            "end_user_ids": [end_user_id],
+            "start": "2026-07-23 15:00",
+            "end": "2026-07-23 16:00",
+        },
+    )
+    assert response.status_code == HTTPStatus.ACCEPTED
+    task_id = response.json["task_id"]
+    assert response.json == {"task_id": task_id, "status": "pending"}
+    task_ttl, task_json = saved[f"agent_log_export:{harness.tenant_id}:{agent_id}:{task_id}"]
+    task = AgentLogExportTask.model_validate_json(task_json)
+    assert task.app_id == agent_id
+    assert task.tenant_id == harness.tenant_id
+    assert task.requested_by == harness.account_id
+    assert task.filters.sources == (f"webapp:{app_id}",)
+    assert task.filters.end_user_ids == (end_user_id,)
+    assert task.filters.start == datetime(2026, 7, 23, 7, tzinfo=UTC)
+    assert task.filters.end == datetime(2026, 7, 23, 8, tzinfo=UTC)
+    assert task.expires_at - task.created_at == timedelta(days=1)
+    assert saved[f"agent_log_export_latest:{harness.tenant_id}:{agent_id}:{harness.account_id}"] == (task_ttl, task_id)
+
+    for body in ({"sources": ["unknown-source"]}, {"start": "2026-07-23 16:00", "end": "2026-07-23 15:00"}):
+        response = harness.client.post(base, headers=harness.headers, json=body)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+    response = harness.client.post(f"/console/api/agent/{foreign_id}/log-exports", headers=harness.headers, json={})
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert len(saved) == 2
 
 
 def test_unpublished_stored_enabled_state_is_hidden_and_can_be_disabled(harness: Harness) -> None:
