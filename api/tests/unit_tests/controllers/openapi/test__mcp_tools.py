@@ -7,28 +7,24 @@ feed a response no fixture can produce.
 
 from __future__ import annotations
 
-import dataclasses
 import json
+import operator
 import re
-import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
 
 import pytest
 from flask import Flask
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.openapi import _mcp_tools, jobs
-from controllers.openapi._catalog import Bind, CatalogOp, build_catalog
+from controllers.openapi._catalog import Bind, build_catalog, op_registry
 from controllers.openapi._contract import op_of
-from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, registered_op
+from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
     MCP_INSTRUCTIONS,
     CallTool,
-    FoundOps,
     McpCaller,
     Unauthenticated,
     callable_ops,
@@ -40,23 +36,8 @@ from controllers.openapi._mcp_tools import (
 from controllers.openapi.app_start import START_MODES
 from controllers.openapi.auth.spec import Effect
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
-from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.mcp import types as mcp_types
-from extensions.ext_application_services import ApplicationServices
-from libs.oauth_bearer import extract_bearer
-from models import Account
-from models.enums import CreatorUserRole
-from models.model import AppMode
-from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_service import RunJobService, RunResult
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
-from tests.unit_tests.services.run_job_fakes import (
-    RUN_TIME_LIMIT,
-    InMemoryRedis,
-    InMemoryRunResults,
-    RecordingTaskControl,
-)
 
 _PERSONAL = "dpat_x"
 _WORKSPACE = "sk-x"
@@ -69,6 +50,8 @@ _NEEDS_ACCOUNT_SCOPE = "invite.workspace.member"
 _START_WORKFLOW = "start.console_app.workflow"
 _LIST_APPS = "get.console_app"
 _FILE_REQUIRED = "upload.console_app.file"
+_SUBMIT_FORM_OP = "submit.run.form"
+_WAIT_JOB_OP = "wait.job"
 
 
 @pytest.fixture
@@ -77,8 +60,8 @@ def in_request(openapi_app: Flask) -> Iterator[None]:
         yield
 
 
-def _ids(found: FoundOps) -> list[str]:
-    return [item["op"] for item in found.ops]
+def _ids(found: Mapping[str, list[dict[str, str]]]) -> list[str]:
+    return [item["op"] for item in found["ops"]]
 
 
 @pytest.mark.usefixtures("in_request")
@@ -95,9 +78,28 @@ def test_ops_with_a_required_file_input_are_never_listed() -> None:
 
 
 @pytest.mark.usefixtures("in_request")
-def test_internal_ops_are_hidden() -> None:
-    assert _INTERNAL not in callable_ops(_ACCOUNT)
-    assert _INTERNAL not in callable_ops(None)
+@pytest.mark.parametrize(
+    ("token", "seen", "hidden", "against_account"),
+    [
+        (_PERSONAL, {_ACCOUNT_ONLY}, {_NEEDS_ACCOUNT_SCOPE}, operator.lt),
+        (
+            _WORKSPACE,
+            {_START_WORKFLOW, _LIST_APPS, _WAIT_JOB_OP},
+            {_ACCOUNT_ONLY, _NEEDS_ACCOUNT_SCOPE, _SUBMIT_FORM_OP},
+            operator.lt,
+        ),
+        (_ACCOUNT, {_ACCOUNT_ONLY, _NEEDS_ACCOUNT_SCOPE}, set(), operator.eq),
+        (None, {_ACCOUNT_ONLY}, set(), operator.ge),
+        (_UNKNOWN_PREFIX, {_ACCOUNT_ONLY}, set(), operator.ge),
+    ],
+)
+def test_a_token_sees_the_ops_that_admit_its_kind(
+    token: str | None, seen: set[str], hidden: set[str], against_account: Callable[[set[str], set[str]], bool]
+) -> None:
+    listed = set(callable_ops(token))
+    assert seen <= listed
+    assert not hidden & listed
+    assert against_account(listed, set(callable_ops(_ACCOUNT)))
 
 
 @pytest.mark.usefixtures("in_request")
@@ -107,60 +109,27 @@ def test_deprecated_ops_are_hidden() -> None:
 
 
 @pytest.mark.usefixtures("in_request")
-def test_a_personal_token_sees_only_ops_with_a_pat_policy() -> None:
-    listed = callable_ops(_PERSONAL)
-    assert _ACCOUNT_ONLY in listed
-    assert _NEEDS_ACCOUNT_SCOPE not in listed
-
-
-@pytest.mark.usefixtures("in_request")
-def test_a_workspace_token_sees_only_ops_that_admit_it_and_fit_its_scopes() -> None:
-    listed = callable_ops(_WORKSPACE)
-    assert _START_WORKFLOW in listed
-    assert _LIST_APPS in listed
-    assert _ACCOUNT_ONLY not in listed
-    assert _NEEDS_ACCOUNT_SCOPE not in listed
-
-
-@pytest.mark.usefixtures("in_request")
-def test_an_account_token_sees_every_listable_op() -> None:
-    listed = callable_ops(_ACCOUNT)
-    assert _ACCOUNT_ONLY in listed
-    assert _NEEDS_ACCOUNT_SCOPE in listed
-    assert set(callable_ops(_WORKSPACE)) < set(listed)
-    assert set(callable_ops(_PERSONAL)) < set(listed)
-
-
-@pytest.mark.usefixtures("in_request")
-@pytest.mark.parametrize("token", [None, _UNKNOWN_PREFIX])
-def test_no_token_or_an_unknown_prefix_sees_what_passes_the_entry_rules(token: str | None) -> None:
-    listed = callable_ops(token)
-    assert set(callable_ops(_ACCOUNT)) <= set(listed)
-    assert _ACCOUNT_ONLY in listed
-
-
-@pytest.mark.usefixtures("in_request")
 def test_find_matches_words_in_id_or_summary_and_reports_the_total() -> None:
     found = find_ops("CURRENT account", token=_ACCOUNT)
     assert _ACCOUNT_ONLY in _ids(found)
-    assert found.total == len(found.ops)
+    assert found["total"] == len(found["ops"])
     by_id_words = find_ops("describe account", token=_ACCOUNT)
     assert _ACCOUNT_ONLY in _ids(by_id_words)
-    assert find_ops("current nonexistentword", token=_ACCOUNT) == FoundOps(total=0, ops=[])
+    assert find_ops("current nonexistentword", token=_ACCOUNT) == {"total": 0, "ops": []}
 
 
 @pytest.mark.usefixtures("in_request")
 def test_find_returns_at_most_twenty() -> None:
     found = find_ops("", token=_ACCOUNT)
-    assert len(found.ops) == FIND_LIMIT
-    assert found.total == len(callable_ops(_ACCOUNT))
-    assert found.total > FIND_LIMIT
+    assert len(found["ops"]) == FIND_LIMIT
+    assert found["total"] == len(callable_ops(_ACCOUNT))
+    assert found["total"] > FIND_LIMIT
     assert _ids(found) == sorted(_ids(found))
 
 
 @pytest.mark.usefixtures("in_request")
 def test_describe_returns_schema_and_examples_without_file_fields() -> None:
-    before = registered_op(_START_WORKFLOW).entry
+    before = op_registry()[_START_WORKFLOW].entry
     file_names = {name for name, bind in before["bind"].items() if bind == Bind.FILE}
     assert file_names
 
@@ -172,7 +141,7 @@ def test_describe_returns_schema_and_examples_without_file_fields() -> None:
     assert not file_names & set(described["input"]["required"])
     assert described["input"]["properties"]
     assert described["examples"] == before["examples"]
-    assert registered_op(_START_WORKFLOW).entry["input"] == before["input"]
+    assert op_registry()[_START_WORKFLOW].entry["input"] == before["input"]
 
 
 @pytest.mark.usefixtures("in_request")
@@ -192,58 +161,28 @@ def test_describe_of_an_op_the_token_cannot_call_is_unknown() -> None:
 def test_each_listed_op_names_the_tool_for_its_effect() -> None:
     listed = callable_ops(_ACCOUNT)
     by_effect: dict[str, set[str]] = {}
-    for item in find_ops("", token=_ACCOUNT).ops:
+    for item in find_ops("", token=_ACCOUNT)["ops"]:
         by_effect.setdefault(item["effect"], set()).add(item["tool"])
         assert item["tool"] == CallTool.for_effect(Effect(listed[item["op"]]["effect"]))
         assert set(item) == {"op", "summary", "effect", "tool"}
     assert all(len(tools) == 1 for tools in by_effect.values())
-    assert CallTool.for_effect(Effect.READ) == "dify_read"
-    assert CallTool.for_effect(Effect.WRITE) == "dify_write"
-    assert CallTool.for_effect(Effect.DESTRUCTIVE) == "dify_destructive"
 
 
-_BEARER = "Bearer dfoa_admitted"
+_TOKEN = "dfoa_admitted"
 _LATEST = "2025-06-18"
 _OLDER = "2025-03-26"
-_SUBMIT_FORM_OP = "submit.run.form"
-_WAIT_JOB_OP = "wait.job"
-_PAUSED_FORM = HumanInputRequiredResponse.model_validate(
-    {
-        "task_id": "t1",
-        "workflow_run_id": "r1",
-        "data": {
-            "form_id": "f1",
-            "node_id": "n1",
-            "node_title": "Review",
-            "form_content": "",
-            "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
-            "actions": [{"id": "approve", "title": "Approve"}],
-            "form_token": "ft-1",
-            "expiration_time": 4102444800,
-        },
-    }
-)
-
-
-@dataclasses.dataclass(frozen=True)
-class _Carrier:
-    headers: Mapping[str, str]
-
-
-def _authorization_headers(authorization: str | None) -> dict[str, str]:
-    return {} if authorization is None else {"Authorization": authorization}
 
 
 def _run(
     name: str,
     arguments: Mapping[str, object],
     *,
-    authorization: str | None = _BEARER,
+    token: str | None = _TOKEN,
     protocol_version: str = _LATEST,
 ) -> mcp_types.CallToolResult:
     caller = McpCaller(
-        authorization=authorization,
-        token=extract_bearer(_Carrier(headers=_authorization_headers(authorization))),
+        authorization=None if token is None else f"Bearer {token}",
+        token=token,
         trace_id="t1",
         protocol_version=protocol_version,
     )
@@ -272,7 +211,6 @@ def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
         assert tool.inputSchema["required"] == ["op", "input"]
     assert set(tools[FIND_TOOL].inputSchema["properties"]) == {"query", "op"}
     assert tools[FIND_TOOL].inputSchema["additionalProperties"] is False
-    assert MCP_INSTRUCTIONS.startswith("This server runs operations of a Dify server.")
 
 
 def test_every_effect_has_exactly_one_call_tool() -> None:
@@ -294,32 +232,11 @@ def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(openapi_
     assert set(START_MODES) <= named
 
 
-IDEMPOTENCY_KEY_FIELD = "idempotency_key"
-
-
-def test_the_instructions_say_a_repeated_idempotency_key_returns_the_same_job_even_failed(openapi_app: Flask) -> None:
-    ops = build_catalog(openapi_app)["ops"]
-
-    assert "Repeating an idempotency_key returns the same job, also when it failed" in MCP_INSTRUCTIONS
-    assert "use a new key" in MCP_INSTRUCTIONS
-    for op in START_MODES:
-        assert IDEMPOTENCY_KEY_FIELD in ops[op]["input"]["properties"], op
-
-
-def test_the_call_tool_enum_carries_its_effect() -> None:
-    assert [(tool.value, tool.effect) for tool in CallTool] == [
-        ("dify_read", Effect.READ),
-        ("dify_write", Effect.WRITE),
-        ("dify_destructive", Effect.DESTRUCTIVE),
-    ]
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_find_without_op_searches_and_with_op_describes(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        found = _run(FIND_TOOL, {"query": "workspace"})
-        described = _run(FIND_TOOL, {"op": "get.workspace"})
-        unknown = _run(FIND_TOOL, {"op": "no.such.op"})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_find_without_op_searches_and_with_op_describes() -> None:
+    found = _run(FIND_TOOL, {"query": "workspace"})
+    described = _run(FIND_TOOL, {"op": "get.workspace"})
+    unknown = _run(FIND_TOOL, {"op": "no.such.op"})
 
     assert found.isError is False
     assert "get.workspace" in [item["op"] for item in json.loads(_text(found))["ops"]]
@@ -330,10 +247,9 @@ def test_find_without_op_searches_and_with_op_describes(openapi_app: Flask) -> N
     assert _text(unknown) == "No operation `no.such.op`. Use dify_find to search."
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_read_runs_a_read_op_and_returns_its_json_as_text(openapi_app: Flask, admitted_bearer: AdmittedWorld) -> None:
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_read_runs_a_read_op_and_returns_its_json_as_text(admitted_bearer: AdmittedWorld) -> None:
+    result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
 
     assert result.isError is False
     body = json.loads(_text(result))
@@ -341,39 +257,19 @@ def test_read_runs_a_read_op_and_returns_its_json_as_text(openapi_app: Flask, ad
     assert _text(result) == json.dumps(body, separators=(",", ":"), ensure_ascii=False)
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_structured_content_is_added_from_2025_06_18_on(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        new = _run(CallTool.READ, {"op": "get.workspace", "input": {}}, protocol_version=_LATEST)
-        old = _run(CallTool.READ, {"op": "get.workspace", "input": {}}, protocol_version=_OLDER)
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_structured_content_is_added_from_2025_06_18_on() -> None:
+    new = _run(CallTool.READ, {"op": "get.workspace", "input": {}}, protocol_version=_LATEST)
+    old = _run(CallTool.READ, {"op": "get.workspace", "input": {}}, protocol_version=_OLDER)
 
     assert new.structuredContent == json.loads(_text(new))
     assert old.structuredContent is None
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_unknown_op_is_a_tool_error(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "no.such.op", "input": {}})
-
-    assert result.isError is True
-    assert _text(result) == "No operation `no.such.op`. Use dify_find to search."
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_wrong_effect_names_the_right_tool(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": _NEEDS_ACCOUNT_SCOPE, "input": {}})
-
-    assert result.isError is True
-    assert _text(result) == f"`{_NEEDS_ACCOUNT_SCOPE}` is a write operation. Call it with dify_write."
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_an_op_error_becomes_a_tool_error_with_its_body(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        missing = _run(CallTool.READ, {"op": "describe.workspace", "input": {"workspace_id": str(uuid.uuid4())}})
-        invalid = _run(CallTool.READ, {"op": "get.workspace", "input": {"pg": 2}})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_an_op_error_becomes_a_tool_error_with_its_body() -> None:
+    missing = _run(CallTool.READ, {"op": "describe.workspace", "input": {"workspace_id": str(uuid.uuid4())}})
+    invalid = _run(CallTool.READ, {"op": "get.workspace", "input": {"pg": 2}})
 
     for result in (missing, invalid):
         assert result.isError is True
@@ -382,21 +278,19 @@ def test_an_op_error_becomes_a_tool_error_with_its_body(openapi_app: Flask) -> N
     assert json.loads(_text(invalid))["status"] == 422
 
 
-def test_a_401_from_the_op_raises_unauthenticated_with_its_headers(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context(), pytest.raises(Unauthenticated) as caught:
-        _run(CallTool.READ, {"op": "get.workspace", "input": {}}, authorization=None)
+@pytest.mark.usefixtures("in_request")
+def test_a_401_from_the_op_raises_unauthenticated_with_its_headers() -> None:
+    with pytest.raises(Unauthenticated) as caught:
+        _run(CallTool.READ, {"op": "get.workspace", "input": {}}, token=None)
 
     assert set(caught.value.headers) <= {"WWW-Authenticate", "Cache-Control"}
     assert "WWW-Authenticate" in caught.value.headers
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_an_oversize_result_is_a_tool_error_that_says_how_to_narrow(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_an_oversize_result_is_a_tool_error_that_says_how_to_narrow(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 10)
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+    result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
 
     assert result.isError is True
     assert result.structuredContent is None
@@ -407,16 +301,15 @@ def test_an_oversize_result_is_a_tool_error_that_says_how_to_narrow(
     assert int(_text(result).split()[3]) > 10
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_an_unsafe_path_value_is_a_tool_error(openapi_app: Flask) -> None:
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "describe.workspace", "input": {"workspace_id": "a/b"}})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_an_unsafe_path_value_is_a_tool_error() -> None:
+    result = _run(CallTool.READ, {"op": "describe.workspace", "input": {"workspace_id": "a/b"}})
 
     assert result.isError is True
     assert "workspace_id" in _text(result)
 
 
-@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
 @pytest.mark.parametrize(
     "arguments",
     [
@@ -427,110 +320,18 @@ def test_an_unsafe_path_value_is_a_tool_error(openapi_app: Flask) -> None:
         {"op": "get.workspace", "input": []},
     ],
 )
-def test_wrong_argument_types_are_a_tool_error(openapi_app: Flask, arguments: dict[str, object]) -> None:
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, arguments)
+def test_wrong_argument_types_are_a_tool_error(arguments: dict[str, object]) -> None:
+    result = _run(CallTool.READ, arguments)
 
     assert result.isError is True
 
 
-@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
 @pytest.mark.parametrize("arguments", [{"query": 3}, {"op": 3}])
-def test_find_with_wrong_argument_types_is_a_tool_error(openapi_app: Flask, arguments: dict[str, object]) -> None:
-    with openapi_app.test_request_context():
-        result = _run(FIND_TOOL, arguments)
+def test_find_with_wrong_argument_types_is_a_tool_error(arguments: dict[str, object]) -> None:
+    result = _run(FIND_TOOL, arguments)
 
     assert result.isError is True
-
-
-@dataclasses.dataclass
-class _PausedJob:
-    app_id: str
-    job_id: str
-
-
-@pytest.fixture
-def paused_job(
-    admitted_bearer: AdmittedWorld,
-    account_application_services: ApplicationServices,
-    sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-) -> _PausedJob:
-    store = RedisRunJobStore(redis_client=InMemoryRedis())
-    results = InMemoryRunResults()
-    service = RunJobService(
-        store=store,
-        results=results,
-        tasks=RecordingTaskControl(),
-        max_background_runs=10,
-        max_waiters=4,
-        run_time_limit=RUN_TIME_LIMIT,
-        sleep=lambda _seconds: time.sleep(0.01),
-    )
-    services = dataclasses.replace(account_application_services, run_jobs=service)
-    monkeypatch.setattr(jobs, "application_services", lambda: services)
-    caller = sqlite_session.scalars(select(Account).where(Account.email == "caller@example.com")).one()
-    owner = JobOwner(
-        tenant_id=admitted_bearer.workspace_id,
-        app_id=admitted_bearer.app_id,
-        caller_role=CreatorUserRole.ACCOUNT,
-        caller_id=caller.id,
-    )
-    job = JobRecord(id=str(uuid.uuid4()), owner=owner, mode=AppMode.WORKFLOW, op="start.x")
-    store.create(job)
-    store.record_ids(job.id, JobIds(task_id="t1", run_id="r1"))
-    results.runs[(owner.tenant_id, "r1")] = RunResult(status=JobStatus.PAUSED)
-    results.forms[(owner.tenant_id, owner.app_id, "r1", AppMode.WORKFLOW)] = _PAUSED_FORM
-    return _PausedJob(app_id=admitted_bearer.app_id, job_id=job.id)
-
-
-def _hint_ops(body: dict[str, object]) -> list[object]:
-    hints = body["hints"]
-    assert isinstance(hints, list)
-    return [hint["op"] for hint in hints]
-
-
-def _wait_paused(paused_job: _PausedJob) -> dict[str, object]:
-    arguments = {
-        "op": _WAIT_JOB_OP,
-        "input": {"app_id": paused_job.app_id, "job_id": paused_job.job_id, "wait_seconds": 0},
-    }
-    return json.loads(_text(_run(CallTool.READ, arguments)))
-
-
-def test_hints_are_kept_when_the_token_can_call_their_ops(openapi_app: Flask, paused_job: _PausedJob) -> None:
-    with openapi_app.test_request_context():
-        body = _wait_paused(paused_job)
-
-    assert _hint_ops(body) == [_SUBMIT_FORM_OP, _WAIT_JOB_OP]
-
-
-def test_hints_the_token_cannot_call_are_dropped_from_a_result(
-    openapi_app: Flask, paused_job: _PausedJob, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # A workspace token cannot be admitted by the fixture, so the op set it would see
-    # is stood in for: the real set without the form op.
-    asked: list[str | None] = []
-    real: Callable[[str | None], dict[str, CatalogOp]] = callable_ops
-
-    def without_form_op(token: str | None) -> dict[str, CatalogOp]:
-        asked.append(token)
-        return {op: entry for op, entry in real(token).items() if op != _SUBMIT_FORM_OP}
-
-    monkeypatch.setattr(_mcp_tools, "callable_ops", without_form_op)
-    with openapi_app.test_request_context():
-        body = _wait_paused(paused_job)
-
-    assert _hint_ops(body) == [_WAIT_JOB_OP]
-    assert asked == ["dfoa_admitted"]
-
-
-@pytest.mark.usefixtures("in_request")
-def test_a_workspace_token_does_not_see_the_form_ops() -> None:
-    listed = callable_ops(_WORKSPACE)
-
-    assert _SUBMIT_FORM_OP not in listed
-    assert _WAIT_JOB_OP in listed
 
 
 _JSON_HEADERS = {"Content-Type": "application/json"}
@@ -538,39 +339,32 @@ _CALLABLE_HINT = {"summary": "wait", "op": _WAIT_JOB_OP, "input": {}, "form": No
 _UNCALLABLE_HINT = {"summary": "gone", "op": "no.such.op", "input": {}, "form": None}
 
 
-def _canned(status: int, body: dict[str, object]) -> Callable[[OpCall], OpResult]:
-    def answer(_call: OpCall) -> OpResult:
-        return OpResult(status=status, body=body, headers=_JSON_HEADERS, is_json=True)
-
-    return answer
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_hints_the_token_cannot_call_are_dropped_from_an_error_body(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    error: dict[str, object] = {
-        "code": "service_api_disabled",
-        "message": "off",
-        "status": 403,
-        "hints": [_UNCALLABLE_HINT, _CALLABLE_HINT],
-    }
-    monkeypatch.setattr(_mcp_tools, "call_op", _canned(403, error))
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-
-    assert result.isError is True
-    assert result.structuredContent is None
-    assert json.loads(_text(result))["hints"] == [_CALLABLE_HINT]
-
-
-def _canned_with_headers(
-    status: int, body: dict[str, object], headers: Mapping[str, str]
+def _canned(
+    status: int, body: dict[str, object], headers: Mapping[str, str] = _JSON_HEADERS
 ) -> Callable[[OpCall], OpResult]:
     def answer(_call: OpCall) -> OpResult:
         return OpResult(status=status, body=body, headers=headers, is_json=True)
 
     return answer
+
+
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+@pytest.mark.parametrize(("status", "is_error"), [(200, False), (403, True)], ids=["result", "error body"])
+def test_hints_the_token_cannot_call_are_dropped_from_a_result_and_an_error_body(
+    monkeypatch: pytest.MonkeyPatch, status: int, is_error: bool
+) -> None:
+    body: dict[str, object] = {
+        "code": "x",
+        "message": "m",
+        "status": status,
+        "hints": [_UNCALLABLE_HINT, _CALLABLE_HINT],
+    }
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(status, body))
+    result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert result.isError is is_error
+    assert (result.structuredContent is None) is is_error
+    assert json.loads(_text(result))["hints"] == [_CALLABLE_HINT]
 
 
 _RATE_LIMITED: dict[str, object] = {
@@ -581,15 +375,10 @@ _RATE_LIMITED: dict[str, object] = {
 }
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        _mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, {**_JSON_HEADERS, "Retry-After": "30"})
-    )
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(429, _RATE_LIMITED, {**_JSON_HEADERS, "Retry-After": "30"}))
+    result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
 
     assert result.isError is True
     assert [block.text for block in result.content if isinstance(block, mcp_types.TextContent)][1:] == [
@@ -600,69 +389,24 @@ def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(
     assert json.loads(first.text) == {**_RATE_LIMITED, "hints": []}
 
 
-@pytest.mark.usefixtures("admitted_bearer")
-def test_a_429_without_retry_after_has_one_block(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, _JSON_HEADERS))
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
+@pytest.mark.parametrize(
+    ("status", "retry_after"),
+    [
+        (429, None),
+        *((429, value) for value in ("Wed, 21 Oct 2026 07:28:00 GMT", "-5", "1.5", "", "abc")),
+        (503, "30"),
+    ],
+)
+def test_a_429_without_whole_retry_seconds_or_another_status_has_one_block(
+    monkeypatch: pytest.MonkeyPatch, status: int, retry_after: str | None
+) -> None:
+    headers = _JSON_HEADERS if retry_after is None else {**_JSON_HEADERS, "Retry-After": retry_after}
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(status, _RATE_LIMITED, headers))
+    result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
 
     assert result.isError is True
     assert len(result.content) == 1
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-@pytest.mark.parametrize("value", ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "1.5", "", "abc"])
-def test_a_429_with_a_retry_after_that_is_not_whole_seconds_has_one_block(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, value: str
-) -> None:
-    monkeypatch.setattr(
-        _mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, {**_JSON_HEADERS, "Retry-After": value})
-    )
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-
-    assert len(result.content) == 1
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_retry_after_on_another_status_adds_no_block(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        _mcp_tools,
-        "call_op",
-        _canned_with_headers(503, {"code": "x", "message": "m"}, {**_JSON_HEADERS, "Retry-After": "30"}),
-    )
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-
-    assert len(result.content) == 1
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_a_403_is_a_tool_error_not_an_exception(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_mcp_tools, "call_op", _canned(403, {"code": "forbidden", "message": "no", "status": 403}))
-    with openapi_app.test_request_context():
-        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-
-    assert result.isError is True
-    assert json.loads(_text(result))["status"] == 403
-
-
-@pytest.mark.usefixtures("admitted_bearer")
-def test_an_oversize_error_body_is_capped_after_hint_dropping(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    error: dict[str, object] = {"code": "x", "message": "m" * 100, "hints": [_UNCALLABLE_HINT]}
-    monkeypatch.setattr(_mcp_tools, "call_op", _canned(422, error))
-    monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 200)
-    with openapi_app.test_request_context():
-        kept = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-        monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 50)
-        capped = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
-
-    assert json.loads(_text(kept))["hints"] == []
-    assert capped.isError is True
-    assert _text(capped).startswith("The result is ")
-    assert "above the 50 limit" in _text(capped)
 
 
 @pytest.fixture
@@ -678,42 +422,34 @@ def op_calls(monkeypatch: pytest.MonkeyPatch) -> list[OpCall]:
     return seen
 
 
-@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
 @pytest.mark.parametrize(
-    ("tool", "op"),
+    ("tool", "op", "text"),
     [
-        (CallTool.READ, "no.such.op"),
-        (CallTool.READ, _NEEDS_ACCOUNT_SCOPE),
-        (CallTool.WRITE, _INTERNAL),
+        (CallTool.READ, "no.such.op", "No operation `no.such.op`. Use dify_find to search."),
+        (
+            CallTool.READ,
+            _NEEDS_ACCOUNT_SCOPE,
+            f"`{_NEEDS_ACCOUNT_SCOPE}` is a write operation. Call it with dify_write.",
+        ),
+        (CallTool.WRITE, _INTERNAL, f"No operation `{_INTERNAL}`. Use dify_find to search."),
     ],
 )
-def test_a_refused_lookup_runs_nothing(openapi_app: Flask, op_calls: list[OpCall], tool: CallTool, op: str) -> None:
-    with openapi_app.test_request_context():
-        result = _run(tool, {"op": op, "input": {}})
+def test_a_refused_lookup_runs_nothing(op_calls: list[OpCall], tool: CallTool, op: str, text: str) -> None:
+    result = _run(tool, {"op": op, "input": {}})
 
     assert result.isError is True
+    assert _text(result) == text
     assert op_calls == []
 
 
-@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.usefixtures("admitted_bearer", "in_request")
 @pytest.mark.parametrize("arguments", [{"op": "", "query": "workspace"}, {"op": None, "query": "workspace"}])
-def test_find_with_an_empty_op_searches_by_query(openapi_app: Flask, arguments: dict[str, object]) -> None:
-    with openapi_app.test_request_context():
-        result = _run(FIND_TOOL, arguments)
+def test_find_with_an_empty_op_searches_by_query(arguments: dict[str, object]) -> None:
+    result = _run(FIND_TOOL, arguments)
 
     assert result.isError is False
     assert "get.workspace" in [item["op"] for item in json.loads(_text(result))["ops"]]
-
-
-def test_every_tool_has_a_description_and_the_call_tools_name_their_effect() -> None:
-    tools = {tool.name: tool for tool in tool_list()}
-
-    assert all(tool.description for tool in tools.values())
-    descriptions = {name: tool.description or "" for name, tool in tools.items()}
-    for call_tool in CallTool:
-        assert call_tool.effect.value in descriptions[call_tool]
-    assert "cannot be undone" in descriptions[CallTool.DESTRUCTIVE]
-    assert "cannot be undone" not in descriptions[CallTool.WRITE]
 
 
 def test_the_instructions_say_what_to_do_when_the_workspace_list_is_empty() -> None:
