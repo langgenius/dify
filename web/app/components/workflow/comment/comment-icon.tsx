@@ -267,7 +267,6 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       if (isActive || isDragging || dismissedRef.current) return
       setShowPreview(true)
     }, [isActive, isDragging])
-    const handleMouseEnter = openPreview
 
     // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
     useEffect(() => {
@@ -314,7 +313,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
                 participants={participants}
                 selected={isActive}
                 className={cursorClass}
-                onMouseEnter={handleMouseEnter}
+                onMouseEnter={openPreview}
                 onMouseLeave={handleMouseLeave}
               />
             </IconButton>

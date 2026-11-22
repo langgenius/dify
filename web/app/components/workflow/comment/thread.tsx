@@ -55,7 +55,6 @@ import {
 type CommentThreadProps = {
   comment: Omit<WorkflowCommentDetail, 'replies'> & { replies: ThreadReply[] }
   loading?: boolean
-  replyUpdating?: boolean
   onDelete?: (commentId: string) => Promise<void> | void
   onResolve?: () => void
   onPrev?: () => void
@@ -283,7 +282,6 @@ type CommentThreadSessionProps = Pick<
   CommentThreadProps,
   | 'comment'
   | 'loading'
-  | 'replyUpdating'
   | 'onCommentEdit'
   | 'onReply'
   | 'onReplyEdit'
@@ -298,7 +296,6 @@ type CommentThreadSessionProps = Pick<
 function CommentThreadSession({
   comment,
   loading = false,
-  replyUpdating = false,
   replyInputRef,
   onCommentEdit,
   onReply,
@@ -447,7 +444,6 @@ function CommentThreadSession({
               content={reply.content}
               mentionNames={mentionNames}
               isOwn={reply.created_by_account?.id === currentUserId}
-              saving={replyUpdating}
               actionsLabel={t(($) => $['comments.aria.replyActions'], { ns: 'workflowComments' })}
               editLabel={t(($) => $['comments.actions.editReply'], { ns: 'workflowComments' })}
               editPlaceholder={t(($) => $['comments.placeholder.editReply'], {
@@ -503,7 +499,6 @@ type CommentThreadEntryProps = {
   content: string
   mentionNames: string[]
   isOwn: boolean
-  saving?: boolean
   actionsLabel: string
   editLabel: string
   editPlaceholder: string
@@ -523,7 +518,6 @@ function CommentThreadEntry({
   content,
   mentionNames,
   isOwn,
-  saving = false,
   actionsLabel,
   editLabel,
   editPlaceholder,
@@ -670,7 +664,7 @@ function CommentThreadEntry({
                 onSubmit={handleSave}
                 onCancel={endEdit}
                 placeholder={editPlaceholder}
-                loading={saving || savingDraft}
+                loading={savingDraft}
                 isEditing
               />
             </CommentComposerFrame>

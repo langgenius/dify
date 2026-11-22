@@ -571,7 +571,6 @@ function ShownThread({
     <CommentThread
       comment={comment}
       loading={detailQuery.isPlaceholderData}
-      replyUpdating={editReply.isPending}
       onResolve={() => resolveComment.mutate({ params })}
       onDelete={async () => {
         try {
