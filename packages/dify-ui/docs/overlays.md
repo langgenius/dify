@@ -83,8 +83,9 @@ identifies its registered Trigger.
   Outside-press dismissal is the default and follows what an accidental close would cost. The Root
   sets `disablePointerDismissal` only when that close throws away work the user would have to
   redo, not merely because the content contains a field; a quick choice or a short value typed
-  again in seconds keeps the default. Escape and a visible cancel or close action stay available,
-  and a draft that is costly to re-enter can confirm discarding on every close path.
+  again in seconds keeps the default. Keep Escape and a visible cancel or close action available
+  by default. A draft that is costly to re-enter can confirm discarding on every close path.
+  See [Closing dialogs during requests] for request handling.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
@@ -111,12 +112,13 @@ renders a non-button element, set `nativeButton={false}`.
 
 A request's progress, outcome, and retry need a place the user can see. Briefly prevent dismissal
 only when closing would lose that path or expose an action that conflicts with the pending request.
-When the dialog owns the outcome, close it on success and preserve the draft or target on failure
-so the user can retry. When the page can show the outcome, or the work may take a long time, let the
-page own the progress, outcome, and retry so the dialog can close. During a request, disable only
-actions that would conflict with the work in progress.
+When the dialog owns the outcome, close it on success. On failure, keep it open with the error and
+the draft or target so the user can retry. When the page can show the outcome, or the work may take
+a long time, let the page own the progress, outcome, and retry so the dialog can close. During a
+request, disable only actions that would conflict with the work in progress.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Closing dialogs during requests]: #closing-dialogs-during-requests
 [Infotip contract]: ../src/infotip/README.md
 [MDN `isolation`]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/isolation
 [Selection]: selection.md
