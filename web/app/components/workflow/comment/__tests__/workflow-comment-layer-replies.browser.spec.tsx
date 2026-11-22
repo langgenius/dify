@@ -260,6 +260,23 @@ describe('replies', () => {
     await expect.element(thread(screen).getByText('Gone soon')).not.toBeInTheDocument()
   })
 
+  it('does not send while an input method confirms its text, in Safari’s event order', async () => {
+    const screen = await renderLayer()
+    await openThread(screen)
+    await replyBox(screen).fill('你好')
+    const box = replyBox(screen).element()
+
+    // Safari reports the composition as ended before the Enter that confirms it.
+    box.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    box.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '你好' }))
+    box.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    )
+
+    await expect.element(replyBox(screen)).toHaveValue('你好')
+    expect(api.reply).not.toHaveBeenCalled()
+  })
+
   it('keeps a reply in its own thread when another thread is opened before it is saved', async () => {
     const send = deferred<{ id: string; created_at: number }>()
     api.reply.mockReturnValueOnce(send.promise)

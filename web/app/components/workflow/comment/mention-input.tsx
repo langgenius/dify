@@ -268,10 +268,20 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       [loading, value, mentionedUserIds, onSubmit],
     )
 
+    const compositionEndedAtRef = useRef<number | null>(null)
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
-        // Ignore key events during IME composition (e.g., Chinese, Japanese input)
-        if (e.nativeEvent.isComposing) return
+        // A key during IME composition (Chinese, Japanese, Korean input) confirms or edits the
+        // composition, so Enter there must not send. Safari delivers the confirming Enter after
+        // compositionend, with isComposing already false, so a key that comes a moment after
+        // the composition ended still counts as part of it.
+        const compositionEndedAt = compositionEndedAtRef.current
+        if (
+          e.nativeEvent.isComposing ||
+          (compositionEndedAt !== null &&
+            Math.abs(e.nativeEvent.timeStamp - compositionEndedAt) < 50)
+        )
+          return
 
         if (isMentionMenuOpen) {
           if (e.key === 'ArrowDown') {
@@ -390,6 +400,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                 isMentionMenuOpen ? `${listboxId}-${selectedMentionIndex}` : undefined
               }
               onKeyDown={handleKeyDown}
+              onCompositionEnd={(e) => {
+                compositionEndedAtRef.current = e.nativeEvent.timeStamp
+              }}
               onScroll={syncHighlightScroll}
             />
           </div>
