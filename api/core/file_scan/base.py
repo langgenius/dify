@@ -86,12 +86,7 @@ class FileScanner(ABC):
         ``wait_for_result`` decides whether asynchronous scanners should poll until completion.
         """
         try:
-            try:
-                return self._scan(target, external_id=external_id, wait_for_result=wait_for_result)
-            except TypeError as error:
-                if "unexpected keyword argument 'wait_for_result'" in str(error):
-                    return self._scan(target, external_id=external_id)
-                raise
+            return self._scan(target, external_id=external_id, wait_for_result=wait_for_result)
         except ScannerError as error:
             return ScanVerdict.unavailable(error.problem, message=str(error), external_id=error.external_id)
         except Exception as error:

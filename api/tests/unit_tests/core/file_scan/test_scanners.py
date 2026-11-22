@@ -52,7 +52,8 @@ def _use_http(monkeypatch: pytest.MonkeyPatch, module: ModuleType, *responses: h
 def test_scan_never_raises_and_reports_unexpected_failures_as_unavailable() -> None:
     class Broken(CloudmersiveScanner):
         @override
-        def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+        def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
+            del wait_for_result
             raise RuntimeError(f"boom {target.file_name} {external_id}")
 
     verdict = Broken({"api_key": "k"}, {}).scan(_target())

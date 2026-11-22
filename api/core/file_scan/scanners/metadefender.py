@@ -75,15 +75,9 @@ class MetaDefenderScanner(FileScanner):
             raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id)
         deadline = self._clock() + self._wait_seconds
         while True:
-            remaining = deadline - self._clock()
-            if remaining <= 0:
-                raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id)
-            try:
-                verdict = self._result(data_id, timeout=min(POLL_REQUEST_TIMEOUT_SECONDS, remaining))
-            except ScannerError as error:
-                if error.problem is ScanProblem.TIMEOUT and self._clock() >= deadline:
-                    raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id) from error
-                raise
+            verdict = self._result(
+                data_id, timeout=min(POLL_REQUEST_TIMEOUT_SECONDS, max(0.0, deadline - self._clock()))
+            )
             if verdict is not None:
                 return verdict
             if self._clock() + POLL_INTERVAL_SECONDS > deadline:
