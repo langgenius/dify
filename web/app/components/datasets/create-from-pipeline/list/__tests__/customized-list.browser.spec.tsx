@@ -20,6 +20,7 @@ vi.mock('@/next/link', () => ({
     ...props
   }: React.ComponentProps<'a'> & { replace?: boolean }) => <a {...props}>{children}</a>,
 }))
+// boundary: Marketplace availability is deployment-specific and unrelated to customized templates.
 vi.mock('@/features/marketplace/client', () => ({ useMarketplace: () => null }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/service/console', async (importOriginal) => {
