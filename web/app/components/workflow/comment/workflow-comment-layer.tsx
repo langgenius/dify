@@ -33,6 +33,7 @@ import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 import { CommentIcon } from './comment-icon'
 import { CommentInput } from './comment-input'
+import { prefetchCommentThread } from './comment-prefetch'
 import { appIdOfWrite, commentWriteKey, isWritingComments } from './comment-writes'
 import { getCommentMarkerId } from './marker-id'
 import { CommentPlacementPreview } from './placement-preview'
@@ -270,6 +271,29 @@ export function WorkflowCommentLayer() {
       },
     }),
   )
+  // A thread is read ahead when its marker's preview opens, and the threads beside it when it
+  // becomes the open one, so opening or stepping to a thread shows its replies at once.
+  const prefetchThread = useCallback(
+    (commentId: string) => {
+      if (appId) prefetchCommentThread(queryClient, { app_id: appId, comment_id: commentId })
+    },
+    [appId, queryClient],
+  )
+  useEffect(() => {
+    if (!appId) return
+    return workflowStore.subscribe((state, previous) => {
+      const { activeCommentId: shownId, showResolvedComments: showResolved } = state
+      if (!shownId || shownId === previous.activeCommentId) return
+      const list = queryClient.getQueryData(listKeyOf(appId))?.data ?? []
+      const shown = showResolved ? list : list.filter((comment) => !comment.resolved)
+      const index = shown.findIndex((comment) => comment.id === shownId)
+      if (index === -1) return
+      for (const neighbor of [shown[index - 1], shown[index + 1]]) {
+        if (neighbor) prefetchCommentThread(queryClient, { app_id: appId, comment_id: neighbor.id })
+      }
+    })
+  }, [appId, queryClient, workflowStore])
+
   const moveCommentTo = useCallback(
     (commentId: string, position: { x: number; y: number }) => {
       const comment = comments.find((item) => item.id === commentId)
@@ -330,6 +354,7 @@ export function WorkflowCommentLayer() {
             threadHandle={threadHandle}
             isActive={open && comment.id === activeCommentId}
             onPositionUpdate={moveCommentTo}
+            onPreview={prefetchThread}
           />
         ) : null,
       )}

@@ -23,10 +23,12 @@ type CommentIconProps = {
   isActive?: boolean
   /** Called with the marker's comment, so the canvas can pass one stable handler to all. */
   onPositionUpdate?: (commentId: string, position: { x: number; y: number }) => void
+  /** Called with the marker's comment when its preview opens, a sign its thread may open next. */
+  onPreview?: (commentId: string) => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(
-  ({ comment, threadHandle, isActive = false, onPositionUpdate }) => {
+  ({ comment, threadHandle, isActive = false, onPositionUpdate, onPreview }) => {
     const markerId = getCommentMarkerId(comment.id)
     const { t } = useTranslation(['workflow'])
     const descriptionId = useId()
@@ -266,7 +268,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const openPreview = useCallback(() => {
       if (isActive || isDragging || dismissedRef.current) return
       setShowPreview(true)
-    }, [isActive, isDragging])
+      onPreview?.(comment.id)
+    }, [comment.id, isActive, isDragging, onPreview])
 
     // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
     useEffect(() => {

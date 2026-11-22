@@ -24,6 +24,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { prefetchCommentThread } from '@/app/components/workflow/comment/comment-prefetch'
 import { isWritingComments } from '@/app/components/workflow/comment/comment-writes'
 import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
 import {
@@ -169,6 +170,9 @@ const CommentsPanel = () => {
                 isActive && 'bg-components-panel-on-panel-item-bg-hover',
               )}
               onClick={() => revealComment(c)}
+              onPointerEnter={() => {
+                if (appId) prefetchCommentThread(queryClient, { app_id: appId, comment_id: c.id })
+              }}
             >
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">

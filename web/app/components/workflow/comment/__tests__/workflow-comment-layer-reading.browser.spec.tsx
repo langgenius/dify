@@ -1,5 +1,6 @@
-import { userEvent } from 'vite-plus/test/browser'
-import { openThread, renderLayer, sendReply, thread } from './comment-layer-browser-env'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { consoleQuery } from '@/service/console'
+import { markers, openThread, renderLayer, sendReply, thread } from './comment-layer-browser-env'
 import {
   api,
   collaboration,
@@ -193,5 +194,64 @@ describe('reading a thread', () => {
     await expect.element(thread(screen).getByText('Failure 6')).toBeInViewport()
     await expect.element(thread(screen).getByText('Failure 1')).toBeInViewport()
     send.resolve(saveReplyOnServer('first', 'Failure 1'))
+  })
+})
+
+describe('opening a thread with its replies', () => {
+  type Screen = Awaited<ReturnType<typeof renderLayer>>
+  const threadIsRead = (screen: Screen, commentId: string) =>
+    expect
+      .poll(
+        () =>
+          screen.queryClient.getQueryState(
+            consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+              input: { params: { app_id: 'app-1', comment_id: commentId } },
+            }),
+          )?.status,
+      )
+      .toBe('success')
+  // From here on a thread's own read never answers, so what it shows was read ahead.
+  const holdThreadReads = () => {
+    api.detailGate = new Promise(() => {})
+  }
+
+  it('shows a thread’s replies at once when it opens after its marker was hovered', async () => {
+    saveReplyOnServer('first', 'Read ahead on hover', 'reply-hover')
+    const screen = await renderLayer()
+    await markers(screen).first().hover()
+    await threadIsRead(screen, 'first')
+    holdThreadReads()
+
+    await openThread(screen)
+
+    await expect.element(thread(screen).getByText('Read ahead on hover')).toBeVisible()
+  })
+
+  it('shows the next thread’s replies at once when stepping to it', async () => {
+    saveReplyOnServer('second', 'Read ahead as a neighbor', 'reply-neighbor')
+    const screen = await renderLayer()
+    await openThread(screen)
+    await threadIsRead(screen, 'second')
+    holdThreadReads()
+
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+      .click()
+
+    await expect.element(thread(screen)).toMatchTextContent(/Second thread/)
+    await expect.element(thread(screen).getByText('Read ahead as a neighbor')).toBeVisible()
+  })
+
+  it('reads a hovered thread once, however often its marker is hovered', async () => {
+    const screen = await renderLayer()
+    for (let hover = 0; hover < 3; hover++) {
+      await markers(screen).first().hover()
+      await threadIsRead(screen, 'first')
+      await page.elementLocator(document.querySelector('.react-flow__pane')!).hover({
+        position: { x: 1000, y: 600 },
+      })
+    }
+
+    expect(api.detail.mock.calls.filter(([id]) => id === 'first')).toHaveLength(1)
   })
 })

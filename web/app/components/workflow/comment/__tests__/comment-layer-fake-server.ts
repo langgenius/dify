@@ -14,6 +14,10 @@ export const api = {
   reply: vi.fn(),
   updateReply: vi.fn(),
   detailFails: false,
+  // Each thread read, by comment id.
+  detail: vi.fn(),
+  // While set, a thread read answers with the thread as it was when asked, once the gate opens.
+  detailGate: undefined as undefined | Promise<unknown>,
   // While set, a list read answers with the list as it was when asked, once the gate opens.
   listGate: undefined as undefined | Promise<unknown>,
 }
@@ -77,8 +81,11 @@ export const consoleResponses = {
   }: {
     params: { comment_id: string }
   }) => {
+    api.detail(params.comment_id)
     if (api.detailFails) throw new Error('Network error')
-    return structuredClone(server.current.details[params.comment_id])
+    const detail = structuredClone(server.current.details[params.comment_id])
+    await api.detailGate
+    return detail
   },
   'apps.byAppId.workflow.comments.post': (input: unknown) => api.create(input),
   'apps.byAppId.workflow.comments.byCommentId.put': (input: unknown) => api.update(input),
@@ -101,6 +108,7 @@ export function resetFakeServer() {
   vi.resetAllMocks()
   api.detailFails = false
   api.listGate = undefined
+  api.detailGate = undefined
   collaboration.handler = undefined
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))
 }
