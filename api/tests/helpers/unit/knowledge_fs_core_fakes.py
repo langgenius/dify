@@ -117,9 +117,14 @@ def llm_schema(*, features: list[ModelFeature]) -> AIModelEntity:
 
 @dataclass
 class SchemaModelInstance:
+    """Model stand-in that counts schema reads without provider I/O."""
+
     schema: AIModelEntity
+    schema_calls: int = field(default=0, init=False)
 
     def get_model_schema(self) -> AIModelEntity:
+        """Return the configured schema and record one lookup."""
+        self.schema_calls += 1
         return self.schema
 
 
@@ -130,11 +135,15 @@ class RecordingModelFactory:
     schema: AIModelEntity
     run_contexts: list[object] = field(default_factory=list)
     model_lookups: list[tuple[str, str]] = field(default_factory=list)
+    model_instances: list[SchemaModelInstance] = field(default_factory=list, init=False)
 
     def __call__(self, *, run_context: object) -> RecordingModelFactory:
         self.run_contexts.append(run_context)
         return self
 
     def init_model_instance(self, provider: str, model: str) -> SchemaModelInstance:
+        """Create and record one schema instance for the selected provider/model."""
         self.model_lookups.append((provider, model))
-        return SchemaModelInstance(self.schema)
+        instance = SchemaModelInstance(self.schema)
+        self.model_instances.append(instance)
+        return instance

@@ -172,7 +172,7 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={
           <div className="flex items-center">
-            <h2 id={toolsLabelId} className="mr-1">
+            <h2 id={toolsLabelId} className="me-1">
               {t(($) => $['agent.tools.name'], { ns: 'appDebug' })}
             </h2>
             <Infotip>
@@ -192,7 +192,7 @@ const AgentTools: FC = () => {
             </div>
             {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
-                <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
+                <div className="ms-3 me-1 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
                   trigger={<OperationButton operation="add" />}
                   isShow={isShowChooseTool}
@@ -218,7 +218,7 @@ const AgentTools: FC = () => {
             <div
               key={index}
               className={cn(
-                'cursor group relative flex w-full items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                'cursor group relative flex w-full items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pe-2 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
                 isDeleting === index &&
                   'border-state-destructive-border hover:bg-state-destructive-hover',
               )}
@@ -250,11 +250,11 @@ const AgentTools: FC = () => {
                 )}
                 <div
                   className={cn(
-                    'ml-1.5 flex w-0 grow items-center truncate system-xs-regular',
+                    'ms-1.5 flex w-0 grow items-center truncate system-xs-regular',
                     item.isDeleted || item.notAuthor || !item.enabled ? 'opacity-50' : '',
                   )}
                 >
-                  <span className="pr-1.5 system-xs-medium text-text-secondary">
+                  <span className="pe-1.5 system-xs-medium text-text-secondary">
                     {getProviderShowName(item)}
                   </span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
@@ -262,7 +262,7 @@ const AgentTools: FC = () => {
                     <Infotip>
                       <InfotipTrigger
                         aria-label={item.tool_name}
-                        className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        className="ms-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       />
                       <InfotipContent
                         aria-labelledby={`${toolNameLabelId}-${index}`}
@@ -276,7 +276,7 @@ const AgentTools: FC = () => {
                         </div>
                         <button
                           type="button"
-                          className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-start text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           onClick={() => void writeTextToClipboard(item.tool_name)}
                         >
                           {t(($) => $.copyToolName, { ns: 'tools' })}
@@ -286,9 +286,9 @@ const AgentTools: FC = () => {
                   )}
                 </div>
               </div>
-              <div className="ml-1 flex shrink-0 items-center">
+              <div className="ms-1 flex shrink-0 items-center">
                 {item.isDeleted && (
-                  <div className="mr-2 flex items-center">
+                  <div className="me-2 flex items-center">
                     <Popover>
                       <PopoverTrigger
                         openOnHover
@@ -296,7 +296,7 @@ const AgentTools: FC = () => {
                         render={
                           <button
                             type="button"
-                            className="mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5"
+                            className="me-1 cursor-pointer rounded-md p-1 hover:bg-black/5"
                           >
                             <span
                               aria-hidden
@@ -328,7 +328,7 @@ const AgentTools: FC = () => {
                   </div>
                 )}
                 {!item.isDeleted && !readonly && (
-                  <div className="mr-2 hidden items-center gap-1 group-hover:flex">
+                  <div className="me-2 hidden items-center gap-1 group-hover:flex">
                     {!item.notAuthor && (
                       <Tooltip>
                         <TooltipTrigger

@@ -278,11 +278,6 @@ class TestSendToTenantQueue:
 class TestDispatchRouting:
     """Tests for the _dispatch / delay routing logic inherited from the base class."""
 
-    def _mock_features(self, plan: CloudPlan) -> MagicMock:
-        features = MagicMock()
-        features.billing.subscription.plan = plan
-        return features
-
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_should_send_to_normal_tenant_queue_in_cloud_with_sandbox_plan(self) -> None:
         """Sandbox plan routes to normal priority queue with tenant isolation."""
@@ -291,9 +286,9 @@ class TestDispatchRouting:
         # pyrefly: ignore [missing-attribute]
         proxy._tenant_isolated_task_queue.get_task_key.return_value = None
 
-        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
-
+        with patch(
+            "services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX
+        ):
             # Act
             with patch.object(proxy, "_send_to_default_tenant_queue") as mock_method:
                 proxy._dispatch()
@@ -307,9 +302,10 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(plan=CloudPlan.PROFESSIONAL)
-
+        with patch(
+            "services.document_indexing_proxy.base.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.PROFESSIONAL,
+        ):
             # Act
             with patch.object(proxy, "_send_to_priority_tenant_queue") as mock_method:
                 proxy._dispatch()
@@ -323,9 +319,7 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
-
+        with patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=None):
             # Act
             with patch.object(proxy, "_send_to_priority_direct_queue") as mock_method:
                 proxy._dispatch()
@@ -351,14 +345,15 @@ class TestDispatchRouting:
         # Arrange
         proxy = make_proxy()
 
-        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_features:
-            mock_features.return_value = self._mock_features(plan=CloudPlan.SANDBOX)
+        with patch(
+            "services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=None
+        ) as mock_get_plan:
             with patch.object(proxy, "_send_to_priority_direct_queue"):
                 # Act
                 proxy._dispatch()
 
         # Assert
-        mock_features.assert_not_called()
+        mock_get_plan.assert_not_called()
 
 
 class TestBaseRouterHelpers:

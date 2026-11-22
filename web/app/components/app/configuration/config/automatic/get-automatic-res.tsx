@@ -264,6 +264,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   return (
     <Dialog
       open={isShow}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onClose()
       }}

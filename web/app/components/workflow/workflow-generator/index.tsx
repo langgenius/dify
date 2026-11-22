@@ -587,6 +587,7 @@ function WorkflowGeneratorModal() {
   return (
     <Dialog
       open={isOpen}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) {
           // Cancel any in-flight request BEFORE closing the store — a

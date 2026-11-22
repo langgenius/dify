@@ -2,7 +2,6 @@ import type {
   AppDetailWithSite,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { AlertDialogActions, AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -17,16 +16,17 @@ import {
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
-type ExportAppDialogProps = Pick<AlertDialogProps, 'open' | 'onOpenChange'> & {
+type ExportAppDialogProps = {
+  open: boolean
+  onClose: () => void
   appDetail: AppDetailWithSite
 }
 
-export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDialogProps) {
-  const actionsRef = useRef<AlertDialogActions>(null)
+export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogProps) {
   const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const [secrets, setSecrets] = useState<EnvironmentVariableItemResponse[]>([])
@@ -51,7 +51,7 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
       feedback: 'dialog',
     })
     if (result.status === 'confirmation-required') setSecrets(result.secretEnvList)
-    else if (result.status === 'downloaded') actionsRef.current?.close()
+    else if (result.status === 'downloaded') onClose()
   }
   const download = async (includeSecret: boolean) => {
     if (isPending) return
@@ -61,15 +61,14 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
       includeSecret,
       feedback: 'dialog',
     })
-    if (result.status === 'downloaded') actionsRef.current?.close()
+    if (result.status === 'downloaded') onClose()
   }
   return (
     <AlertDialog
-      actionsRef={actionsRef}
       open={open}
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
+        if (!nextOpen && isPending) details.cancel()
+        else if (!nextOpen) onClose()
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
@@ -163,10 +162,10 @@ function ExportSecretsForm({
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
           <thead>
             <tr>
-              <th className="border-r border-b border-divider-regular p-2 text-left">
+              <th className="border-e border-b border-divider-regular p-2 text-start">
                 {t(($) => $['env.export.name'], { ns: 'workflow' })}
               </th>
-              <th className="border-b border-divider-regular p-2 text-left">
+              <th className="border-b border-divider-regular p-2 text-start">
                 {t(($) => $['env.export.value'], { ns: 'workflow' })}
               </th>
             </tr>
@@ -174,7 +173,7 @@ function ExportSecretsForm({
           <tbody>
             {secrets.map((secret) => (
               <tr key={secret.name}>
-                <td className="border-r border-divider-regular p-2 wrap-anywhere">{secret.name}</td>
+                <td className="border-e border-divider-regular p-2 wrap-anywhere">{secret.name}</td>
                 <td className="p-2 wrap-anywhere">
                   {typeof secret.value === 'object'
                     ? JSON.stringify(secret.value)

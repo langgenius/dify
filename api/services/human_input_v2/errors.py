@@ -39,18 +39,23 @@ class ChannelProviderError(ChannelManagementError):
         provider_error_code: str | None = None,
         missing_permissions: tuple[str, ...] = (),
         http_status: int | None = None,
+        provider_request_id: str | None = None,
     ) -> None:
+        """Expose safe provider diagnostics supplied by the adapter, without raw payloads."""
         if http_status is not None:
             status_description += f" HTTP status: {http_status}."
         if provider_error_code is not None:
             status_description += f" API error code: {provider_error_code}."
         if missing_permissions:
             status_description += f" Missing permissions: {', '.join(missing_permissions)}."
+        if provider_request_id is not None:
+            status_description += f" Request ID: {provider_request_id}."
         super().__init__(status_description)
         self.kind = kind
         self.status_description = status_description
         self.http_status = http_status
         self.provider_error_code = provider_error_code
+        self.provider_request_id = provider_request_id
 
 
 class UnexpectedChannelProviderError(ChannelManagementError):
