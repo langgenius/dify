@@ -195,7 +195,7 @@ def test_start_at_the_cap_refuses_before_launching_and_leaves_no_job() -> None:
         _join_readers()
 
     assert launches.count == 1
-    assert list(harness.redis.hashes) == [f"openapi:job:{first}"]
+    assert list(harness.redis.hashes) == [f"run_job:{first}"]
     harness.service.start(_opening(key="refused"), lambda: [])
     _join_readers()
 
@@ -356,7 +356,7 @@ def test_view_of_a_graph_job_without_a_run_id_uses_the_record() -> None:
 
 
 def _lapse_alive_key(harness: Harness, job_id: str) -> None:
-    harness.redis.delete(f"openapi:job:{job_id}:alive")
+    harness.redis.delete(f"run_job:{job_id}:alive")
 
 
 def test_view_of_a_chatflow_answered_without_a_run_carries_its_saved_answer() -> None:

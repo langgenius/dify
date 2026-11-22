@@ -23,8 +23,8 @@ from services.run_job import (
     JobStatus,
 )
 
-_JOB_KEY = "openapi:job:{job_id}"
-_ALIVE_KEY = "openapi:job:{job_id}:alive"
+_JOB_KEY = "run_job:{job_id}"
+_ALIVE_KEY = "run_job:{job_id}:alive"
 _ALIVE_VALUE = "1"
 _CREATED_FIELD: Final = "record"
 _ENDING_FIELD: Final = "ending"

@@ -45,9 +45,9 @@ def test_create_then_get_returns_the_same_record(store: RedisRunJobStore, redis:
     assert created is True
     assert store.get(job.id) == job
     assert store.is_alive(job.id)
-    assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
-    assert redis.ttls[f"openapi:job:{job.id}:alive"] == ALIVE_TTL_SECONDS
-    assert "ending" not in redis.hashes[f"openapi:job:{job.id}"]
+    assert redis.ttls[f"run_job:{job.id}"] == JOB_TTL_SECONDS
+    assert redis.ttls[f"run_job:{job.id}:alive"] == ALIVE_TTL_SECONDS
+    assert "ending" not in redis.hashes[f"run_job:{job.id}"]
 
 
 def test_get_unknown_job_returns_none(store: RedisRunJobStore) -> None:
@@ -63,7 +63,7 @@ def test_record_ids_changes_only_the_given_ids(store: RedisRunJobStore, redis: I
     store.record_ids(job.id, JobIds(run_id="r1"))
 
     assert store.get(job.id) == replace(job, run_id="r1")
-    assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
+    assert redis.ttls[f"run_job:{job.id}"] == JOB_TTL_SECONDS
 
 
 def test_record_ids_without_ids_writes_nothing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
@@ -96,8 +96,8 @@ def test_settle_writes_the_first_final_status_only(store: RedisRunJobStore, redi
 
     assert (first, second) == (True, False)
     assert store.get(job.id) == replace(job, ending=JobEnding(status=JobStatus.FAILED, error="boom"))
-    assert redis.hashes[f"openapi:job:{job.id}"]["ending"] == '{"status": "failed", "failure": null, "error": "boom"}'
-    assert redis.ttls[f"openapi:job:{job.id}"] == JOB_TTL_SECONDS
+    assert redis.hashes[f"run_job:{job.id}"]["ending"] == '{"status": "failed", "failure": null, "error": "boom"}'
+    assert redis.ttls[f"run_job:{job.id}"] == JOB_TTL_SECONDS
 
 
 def test_a_failure_reports_its_own_message_and_stores_no_text(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
@@ -113,7 +113,7 @@ def test_a_failure_reports_its_own_message_and_stores_no_text(store: RedisRunJob
         JobFailure.NO_RESULT,
         JobFailure.NO_RESULT.message,
     )
-    assert '"error": null' in redis.hashes[f"openapi:job:{job.id}"]["ending"]
+    assert '"error": null' in redis.hashes[f"run_job:{job.id}"]["ending"]
 
 
 def test_an_ending_must_be_final() -> None:
@@ -162,7 +162,7 @@ def test_drop_alive_removes_only_the_alive_key(store: RedisRunJobStore) -> None:
 
 
 def test_partial_hash_reads_as_missing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    redis.hset("openapi:job:late", mapping={"run_id": '"r1"'})
+    redis.hset("run_job:late", mapping={"run_id": '"r1"'})
 
     assert store.get("late") is None
 
@@ -170,6 +170,6 @@ def test_partial_hash_reads_as_missing(store: RedisRunJobStore, redis: InMemoryR
 def test_a_hash_with_fields_from_a_newer_version_still_decodes(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
     job = _record()
     store.create(job)
-    redis.hset("openapi:job:" + job.id, mapping={"added_later": '{"x": 1}'})
+    redis.hset("run_job:" + job.id, mapping={"added_later": '{"x": 1}'})
 
     assert store.get(job.id) == job
