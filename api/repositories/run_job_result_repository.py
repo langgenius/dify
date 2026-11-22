@@ -18,10 +18,7 @@ from libs.stream import close_stream
 from models.model import AppMode, Message
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.run_job_contracts import JobStatus
-from services.run_job_frames import pending_form
-from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS
-from services.run_job_service import MessageResult, RunResult
+from services.run_job import RUN_STATUS_TO_JOB_STATUS, JobStatus, MessageResult, RunResult, pending_form
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 PENDING_FORM_IDLE_TIMEOUT_SECONDS: Final = 2

@@ -11,10 +11,10 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_reader import StreamEndings, read_to_end
-from services.run_job_service import family_of
-from tests.unit_tests.services.run_job_fakes import (
+from services.run_job.contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job.reader import StreamEndings, read_to_end
+from services.run_job.service import family_of
+from tests.unit_tests.services.run_job.fakes import (
     ClosableFrames,
     InMemoryRedis,
     RecordingJobStopper,
@@ -450,7 +450,7 @@ def test_a_frame_that_does_not_fit_cores_model_is_logged_once_per_event(
     broken_end = _frame(StreamEvent.MESSAGE_END, id="msg-1", answer="secret answer")
     frames = [broken_end, broken_end, "data: not json\n\n", PING]
 
-    with caplog.at_level(logging.ERROR, logger="services.run_job_reader"):
+    with caplog.at_level(logging.ERROR, logger="services.run_job.reader"):
         record = _read(store, stopper, frames)
 
     misfits = [entry for entry in caplog.records if "does not fit" in entry.getMessage()]

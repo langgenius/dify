@@ -17,9 +17,8 @@ from models.model import AppMode, ConversationFromSource, Message
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from repositories import run_job_result_repository
 from repositories.run_job_result_repository import SQLAlchemyRunResultReader
-from services.run_job_contracts import JobStatus
-from services.run_job_service import MessageResult
-from tests.unit_tests.services.run_job_fakes import human_input_form
+from services.run_job import JobStatus, MessageResult
+from tests.unit_tests.services.run_job.fakes import human_input_form
 
 
 def _add_run(
@@ -260,7 +259,7 @@ def test_pending_form_is_none_when_the_last_form_does_not_fit_cores_model(
     unreadable = {"event": "human_input_required", "data": {"form_token": "t2"}}
     _patch_stream(monkeypatch, _RecordedFrames([_FORM_FRAME, unreadable, _PAUSED_FRAME]))
 
-    with caplog.at_level(logging.ERROR, logger="services.run_job_frames"):
+    with caplog.at_level(logging.ERROR, logger="services.run_job.frames"):
         assert _read_form(sqlite_session, sqlite_session_factory) is None
 
     assert "human_input_required" in caplog.text

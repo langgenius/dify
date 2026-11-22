@@ -33,12 +33,13 @@ from extensions.ext_application_services import ApplicationServices
 from models import App
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobStatus
-from services.run_job_service import (
+from services.run_job import (
     READER_THREAD_NAME,
     WAIT_DEFAULT_SECONDS,
     WAIT_MAX_SECONDS,
     JobOpening,
+    JobOwner,
+    JobStatus,
     JobView,
     MessageResult,
     RunJobService,
@@ -46,7 +47,7 @@ from services.run_job_service import (
 )
 from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
-from tests.unit_tests.services.run_job_fakes import (
+from tests.unit_tests.services.run_job.fakes import (
     InMemoryRedis,
     InMemoryRunResults,
     RecordingTaskControl,

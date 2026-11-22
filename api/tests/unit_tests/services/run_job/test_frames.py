@@ -7,9 +7,9 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from graphon.enums import WorkflowExecutionStatus
-from services.run_job_contracts import JobIds
-from services.run_job_frames import Misfit, RunFrame, read_frame
-from tests.unit_tests.services.run_job_fakes import workflow_finished
+from services.run_job.contracts import JobIds
+from services.run_job.frames import Misfit, RunFrame, read_frame
+from tests.unit_tests.services.run_job.fakes import workflow_finished
 
 
 def _sse(payload: object) -> str:

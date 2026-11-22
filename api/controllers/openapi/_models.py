@@ -38,8 +38,7 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.knowledge.entities.knowledge_entities import RetrievalModel
-from services.run_job_contracts import JobStatus
-from services.run_job_service import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS
+from services.run_job import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, JobStatus
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 

@@ -19,7 +19,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.stream import close_stream
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from services.run_job_contracts import (
+from services.run_job.contracts import (
     JobEnding,
     JobFailure,
     JobOwner,
@@ -27,8 +27,8 @@ from services.run_job_contracts import (
     JobStatus,
     RunJobStore,
 )
-from services.run_job_frames import RunFrame
-from services.run_job_reader import StreamEndings, read_to_end, run_finished_ending
+from services.run_job.frames import RunFrame
+from services.run_job.reader import StreamEndings, read_to_end, run_finished_ending
 from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 
 if TYPE_CHECKING:

@@ -14,8 +14,8 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.app_task_service import WorkflowStopOutcome
-from services.run_job_contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_service import (
+from services.run_job.contracts import JobEnding, JobFailure, JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job.service import (
     GRAPH_JOBS,
     MESSAGE_JOBS,
     POLL_INTERVAL_SECONDS,
@@ -29,7 +29,7 @@ from services.run_job_service import (
     RunResult,
     family_of,
 )
-from tests.unit_tests.services.run_job_fakes import (
+from tests.unit_tests.services.run_job.fakes import (
     RUN_TIME_LIMIT,
     ClosableFrames,
     InMemoryRedis,

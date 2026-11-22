@@ -24,7 +24,7 @@ from core.app.entities.task_entities import (
     WorkflowFinishStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus
-from services.run_job_contracts import JobIds
+from services.run_job.contracts import JobIds
 
 logger = logging.getLogger(__name__)
 

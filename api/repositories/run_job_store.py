@@ -12,7 +12,7 @@ from typing import Any, Final, Protocol
 
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from services.run_job_contracts import (
+from services.run_job import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
     JobEnding,

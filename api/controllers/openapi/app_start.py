@@ -26,7 +26,7 @@ from controllers.openapi.jobs import JOB_STATE_RESPONSE, job_owner, job_state_fr
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from models.model import AppMode
-from services.run_job_service import JobCapacityError, JobOpening
+from services.run_job import JobCapacityError, JobOpening
 
 START_OP_PREFIX: Final = "start.console_app."
 WORKFLOW_START_OP: Final = f"{START_OP_PREFIX}workflow"

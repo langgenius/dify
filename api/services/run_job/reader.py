@@ -12,8 +12,8 @@ from typing import Final, Protocol
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
 from libs.stream import close_stream
-from services.run_job_contracts import JobEnding, JobIds, JobRecord, JobStatus, RunJobStore
-from services.run_job_frames import Misfit, RunFrame, read_frame
+from services.run_job.contracts import JobEnding, JobIds, JobRecord, JobStatus, RunJobStore
+from services.run_job.frames import Misfit, RunFrame, read_frame
 
 logger = logging.getLogger(__name__)
 

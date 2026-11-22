@@ -5,7 +5,7 @@ import pytest
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import (
+from services.run_job import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
     JobEnding,
@@ -15,7 +15,7 @@ from services.run_job_contracts import (
     JobRecord,
     JobStatus,
 )
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis
+from tests.unit_tests.services.run_job.fakes import InMemoryRedis
 
 
 @pytest.fixture

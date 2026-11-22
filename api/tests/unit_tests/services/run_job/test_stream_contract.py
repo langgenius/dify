@@ -45,12 +45,12 @@ from libs.broadcast_channel.channel import Subscription
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
-from services.run_job_frames import pending_form
-from services.run_job_reader import read_to_end
-from services.run_job_service import family_of
+from services.run_job.contracts import JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job.frames import pending_form
+from services.run_job.reader import read_to_end
+from services.run_job.service import family_of
 from tasks.app_generate import workflow_execute_task
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper, workflow_finished
+from tests.unit_tests.services.run_job.fakes import InMemoryRedis, RecordingJobStopper, workflow_finished
 
 JOB_ID = "job-1"
 TASK_ID = "task-1"
@@ -132,7 +132,7 @@ def _graph_frames[R: AppBlockingResponse](
 def _read(mode: AppMode, frames: list[str], caplog: pytest.LogCaptureFixture) -> JobRecord:
     store = RedisRunJobStore(redis_client=InMemoryRedis())
     store.create(JobRecord(id=JOB_ID, owner=OWNER, mode=mode, op="start.test"))
-    with caplog.at_level(logging.ERROR, logger="services.run_job_reader"):
+    with caplog.at_level(logging.ERROR, logger="services.run_job.reader"):
         read_to_end(job_id=JOB_ID, frames=frames, store=store, stopper=RecordingJobStopper(), endings=family_of(mode))
     assert "does not fit" not in caplog.text
     record = store.get(JOB_ID)
@@ -265,7 +265,7 @@ def test_a_paused_graph_job_keeps_its_ids_stays_running_and_its_form_parses(
 
     assert (record.task_id, record.run_id) == (TASK_ID, RUN_ID)
     assert record.status is JobStatus.RUNNING
-    with caplog.at_level(logging.ERROR, logger="services.run_job_frames"):
+    with caplog.at_level(logging.ERROR, logger="services.run_job.frames"):
         assert pending_form(events) == _form()
     assert "does not fit" not in caplog.text
 

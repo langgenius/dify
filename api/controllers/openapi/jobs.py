@@ -17,8 +17,7 @@ from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.context import Context
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi, form_hints
 from extensions.ext_application_services import application_services
-from services.run_job_contracts import JobOwner, JobStatus
-from services.run_job_service import WAIT_DEFAULT_SECONDS, JobNotFoundError, JobView
+from services.run_job import WAIT_DEFAULT_SECONDS, JobNotFoundError, JobOwner, JobStatus, JobView
 
 WAIT_JOB_OP: Final = "wait.job"
 STOP_JOB_OP: Final = "stop.job"

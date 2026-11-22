@@ -10,8 +10,8 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.app_task_service import WorkflowStopOutcome
-from services.run_job_contracts import JobRecord, RunJobStore
-from services.run_job_service import MessageResult, RunJobService, RunResult, RunResultReader, RunTaskControl
+from services.run_job.contracts import JobRecord, RunJobStore
+from services.run_job.service import MessageResult, RunJobService, RunResult, RunResultReader, RunTaskControl
 
 # Core's default WORKFLOW_MAX_EXECUTION_TIME.
 RUN_TIME_LIMIT = timedelta(hours=1)

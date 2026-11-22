@@ -15,7 +15,7 @@ from extensions.ext_redis import RedisClientWrapper
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobEnding, JobFailure, JobOwner, JobRecord, JobStatus
+from services.run_job import JobEnding, JobFailure, JobOwner, JobRecord, JobStatus
 
 RACERS = 8
 
