@@ -1,5 +1,6 @@
 import type { PipelineTemplateListResponse } from '@dify/contracts/api/console/rag/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
+import { createRef } from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -24,7 +25,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 it('shows the customized section only once saved templates have loaded', async () => {
   const pending = createDeferred<PipelineTemplateListResponse>()
   getTemplates.mockReturnValue(pending.promise)
-  render(<CustomizedList />)
+  render(<CustomizedList fallbackFocusRef={createRef<HTMLDivElement>()} />)
   expect(screen.queryByText('datasetPipeline.templates.customized')).not.toBeInTheDocument()
   await act(async () =>
     pending.resolve({
@@ -50,7 +51,7 @@ it('shows the customized section only once saved templates have loaded', async (
 
 it('omits the customized section when there are no saved templates', async () => {
   getTemplates.mockResolvedValue({ pipeline_templates: [] })
-  const { queryClient } = render(<CustomizedList />)
+  const { queryClient } = render(<CustomizedList fallbackFocusRef={createRef<HTMLDivElement>()} />)
   await waitFor(() => expect(queryClient.isFetching()).toBe(0))
   expect(screen.queryByText('datasetPipeline.templates.customized')).not.toBeInTheDocument()
   expect(
