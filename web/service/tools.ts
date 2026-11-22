@@ -1,5 +1,4 @@
 import type {
-  Credential,
   CustomCollectionBackend,
   ToolCredential,
   WorkflowToolProviderParameter,
@@ -117,25 +116,8 @@ export const updateCustomCollection = (collection: CustomCollectionBackend) => {
   })
 }
 
-export const removeCustomCollection = (collectionName: string) => {
-  return toolProvider.api.delete.post({ body: { provider: collectionName } })
-}
-
 export const importSchemaFromURL = (url: string) => {
   return toolProvider.api.remote.get({ query: { url } })
-}
-
-export const testAPIAvailable = (payload: {
-  provider_name: string
-  tool_name: string
-  credentials: Credential
-  schema_type: string
-  schema: string
-  parameters: Record<string, string>
-}) => {
-  return toolProvider.api.test.pre.post({
-    body: { ...payload, schema_type: toSchemaType(payload.schema_type) },
-  })
 }
 
 export const createWorkflowToolProvider = (
@@ -176,8 +158,4 @@ export const fetchWorkflowToolDetail = (toolID: string) => {
   return toolProvider.workflow.get
     .get({ query: { workflow_tool_id: toolID } })
     .then(selectWorkflowToolDetail)
-}
-
-export const deleteWorkflowTool = (toolID: string) => {
-  return toolProvider.workflow.delete.post({ body: { workflow_tool_id: toolID } })
 }

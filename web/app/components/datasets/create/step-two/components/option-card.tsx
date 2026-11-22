@@ -55,7 +55,7 @@ const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
         {isActive && effectImg && (
           <img
             src={effectImg}
-            className="absolute top-0 left-0 size-full"
+            className="absolute inset-s-0 top-0 size-full"
             alt=""
             width={56}
             height={56}
@@ -69,11 +69,11 @@ const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
       </div>
       <TriangleArrow
         className={cn(
-          'absolute -bottom-1.5 left-4 text-transparent',
+          'absolute inset-s-4 -bottom-1.5 text-transparent',
           isActive && 'text-components-panel-bg',
         )}
       />
-      <div className="min-w-0 flex-1 space-y-0.5 py-3 pr-4">
+      <div className="min-w-0 flex-1 space-y-0.5 py-3 pe-4">
         <div id={titleId} className="system-md-semibold text-text-secondary">
           {title}
         </div>
@@ -141,7 +141,7 @@ export const OptionCard = <Value,>({ ref, ...props }: OptionCardProps<Value>) =>
         disabled={disabled}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="flex w-full min-w-0 rounded-t-xl border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        className="flex w-full min-w-0 rounded-t-xl border-0 bg-transparent p-0 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
       >
         <OptionCardHeader
           titleId={titleId}

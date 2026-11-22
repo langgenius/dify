@@ -74,8 +74,8 @@ function CloudPlanFeature({ label, description }: { label: string; description?:
           aria-labelledby={labelId}
           payload={{ labelId, description }}
           iconVariant="information"
-          iconSize="small"
-          className="relative -m-1 size-[18px] text-(--pricing-info)"
+          size="lg"
+          className="-m-0.75 text-(--pricing-info)"
         />
       )}
     </li>

@@ -33,7 +33,7 @@ const CustomPage = () => {
   return (
     <div className="flex flex-col overflow-x-hidden">
       {showBillingTip && (
-        <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
+        <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 ps-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">
             <h4 className="title-xl-semi-bold">
               {t(($) => $['upgradeTip.title'], { ns: 'custom' })}

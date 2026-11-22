@@ -27,7 +27,7 @@ type CustomizeDialogProps = {
 }
 
 const StepNum = ({ children }: { children: ReactNode }) => (
-  <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
+  <div className="me-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
 )
@@ -130,7 +130,7 @@ export function CustomizeDialog({
                   rel="noopener noreferrer"
                   className={buttonVariants()}
                 >
-                  <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
+                  <div className="border-s-[7px] border-e-[7px] border-t-0 border-b-12 border-solid border-text-primary border-s-transparent border-e-transparent border-t-transparent"></div>
                   <span>
                     {t(($) => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}
                   </span>

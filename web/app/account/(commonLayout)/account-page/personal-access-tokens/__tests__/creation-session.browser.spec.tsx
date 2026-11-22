@@ -1,4 +1,5 @@
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
@@ -25,20 +26,25 @@ beforeEach(async () => {
 })
 
 it('clears the one-time secret and name after closing and reopening creation', async () => {
-  api.create.mockResolvedValue({ ...token, secret: 'dpat_created_secret' })
+  const pending = createDeferred<typeof token & { secret: string }>()
+  api.create.mockReturnValueOnce(pending.promise)
   const { screen } = await renderTokenPage()
   const create = screen.getByRole('button', { name: 'Create token' })
   await create.click()
   const dialog = screen.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Name' }).fill('release')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toBeDisabled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).toBeVisible()
+  pending.resolve({ ...token, secret: 'dpat_created_secret' })
   const secret = dialog.getByRole('textbox', { name: 'Token', exact: true })
   await expect.element(secret).toHaveValue('dpat_created_secret')
   await expect.element(secret).toHaveAttribute('readonly')
   const docs = dialog.getByRole('link', { name: 'How to use it' })
   await expect
     .element(docs)
-    .toHaveAttribute('href', expect.stringContaining('/api-reference/guides/get-started'))
+    .toHaveAttribute('href', expect.stringContaining('/cli/personal-access-tokens'))
   await expect.element(docs).toHaveAttribute('rel', 'noopener noreferrer')
   expect(api.create).toHaveBeenCalledWith(
     expect.objectContaining({

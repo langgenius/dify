@@ -2,6 +2,7 @@ import type {
   MarketplaceTemplate,
   MarketplaceTemplateCollection,
 } from '@dify/contracts/marketplace'
+import { cache } from 'react'
 import { SERVER_PREFETCH_BUDGET_MS } from '@/app/components/plugins/marketplace/server-budget'
 import { marketplaceClient } from '@/service/marketplace'
 
@@ -63,7 +64,6 @@ let collectionsCache: {
   expiresAt: number
   result: MarketplaceTemplateCollectionsResult
 } | null = null
-let collectionsInFlight: Promise<MarketplaceTemplateCollectionsResult> | null = null
 
 async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollectionsResult> {
   const budget = AbortSignal.timeout(SERVER_PREFETCH_BUDGET_MS)
@@ -135,23 +135,21 @@ async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollec
  * `marketplaceClient` opts out of the framework fetch cache (`no-store`), so
  * without this cache every server render of /templates would fan out to up to
  * 1 + N external requests. Successful results are reused for a few minutes and
- * concurrent renders share a single in-flight fetch; failures are not cached.
+ * calls within one render share a fetch; failures are not cached.
+ *
+ * Only settled results are shared across requests. An in-flight promise must not
+ * outlive its request: Cloudflare Workers never settle a promise in a request other
+ * than the one that created it, so a module-level in-flight promise left behind by
+ * an aborted or redirected render would hang every later /templates render.
  */
+const fetchCollectionsForRender = cache(fetchCollectionsAndTemplates)
+
 export async function getMarketplaceTemplateCollectionsAndTemplates(): Promise<MarketplaceTemplateCollectionsResult> {
   if (collectionsCache && collectionsCache.expiresAt > Date.now()) return collectionsCache.result
-  if (collectionsInFlight) return collectionsInFlight
 
-  collectionsInFlight = fetchCollectionsAndTemplates()
-    .then((result) => {
-      if (result.ok) collectionsCache = { expiresAt: Date.now() + COLLECTIONS_CACHE_TTL_MS, result }
-      return result
-    })
-    .catch(() => FAILED_COLLECTIONS_RESULT)
-    .finally(() => {
-      collectionsInFlight = null
-    })
-
-  return collectionsInFlight
+  const result = await fetchCollectionsForRender().catch(() => FAILED_COLLECTIONS_RESULT)
+  if (result.ok) collectionsCache = { expiresAt: Date.now() + COLLECTIONS_CACHE_TTL_MS, result }
+  return result
 }
 
 export async function searchMarketplaceTemplates({

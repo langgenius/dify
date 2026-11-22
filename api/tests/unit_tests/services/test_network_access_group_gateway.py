@@ -32,7 +32,6 @@ from services.network_access_group_service import (
     NetworkAccessGroupUpstreamError,
     NetworkAccessGroupVersionConflictError,
 )
-from tests.helpers import billing_builders as builders
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
 ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
@@ -449,20 +448,17 @@ def test_non_boolean_flags_are_invalid(respond: Respond, field: str, value: obje
 def test_billing_entitlement_gateway_accepts_paid_plans(plan: CloudPlan) -> None:
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with patch(
-        "services.network_access_group_gateway.BillingService.get_info",
-        return_value=builders.subscription_info(plan),
-    ) as get_info:
+        "services.network_access_group_gateway.FeatureService.get_workspace_plan", return_value=plan
+    ) as get_workspace_plan:
         assert gateway.is_paid_plan(TENANT_ID) is True
 
-    get_info.assert_called_once_with(TENANT_ID, exclude_vector_space=True)
+    get_workspace_plan.assert_called_once_with(TENANT_ID)
 
 
-def test_billing_entitlement_gateway_rejects_unpaid_plan() -> None:
+@pytest.mark.parametrize("plan", [CloudPlan.SANDBOX, None])
+def test_billing_entitlement_gateway_rejects_unpaid_plan(plan: CloudPlan | None) -> None:
     gateway = BillingNetworkAccessGroupEntitlementGateway()
-    with patch(
-        "services.network_access_group_gateway.BillingService.get_info",
-        return_value=builders.subscription_info("sandbox"),
-    ):
+    with patch("services.network_access_group_gateway.FeatureService.get_workspace_plan", return_value=plan):
         assert gateway.is_paid_plan(TENANT_ID) is False
 
 
@@ -473,7 +469,7 @@ def test_billing_entitlement_gateway_rejects_unpaid_plan() -> None:
 def test_billing_entitlement_gateway_maps_billing_upstream_errors(error: Exception) -> None:
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with (
-        patch("services.network_access_group_gateway.BillingService.get_info", side_effect=error),
+        patch("services.network_access_group_gateway.FeatureService.get_workspace_plan", side_effect=error),
         pytest.raises(NetworkAccessGroupEntitlementUnavailableError),
     ):
         gateway.is_paid_plan(TENANT_ID)
@@ -483,7 +479,7 @@ def test_billing_entitlement_gateway_does_not_mask_unexpected_value_error() -> N
     gateway = BillingNetworkAccessGroupEntitlementGateway()
     with (
         patch(
-            "services.network_access_group_gateway.BillingService.get_info",
+            "services.network_access_group_gateway.FeatureService.get_workspace_plan",
             side_effect=ValueError("programming error"),
         ),
         pytest.raises(ValueError, match="programming error"),

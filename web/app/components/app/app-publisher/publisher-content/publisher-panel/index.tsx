@@ -52,7 +52,7 @@ export function PublisherPanel({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <Button variant="primary" className="py-2 pr-2 pl-3" disabled={disabled}>
+          <Button variant="primary" className="py-2 ps-3 pe-2" disabled={disabled}>
             {t(($) => $['common.publish'], { ns: 'workflow' })}
             <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
           </Button>

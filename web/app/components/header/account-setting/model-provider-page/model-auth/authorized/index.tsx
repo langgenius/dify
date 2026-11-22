@@ -8,6 +8,7 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -20,6 +21,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { noop } from '@tanstack/react-query'
 import { Fragment, memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
@@ -32,7 +34,7 @@ type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   authParams?: {
     isModelCredential?: boolean
-    onUpdate?: (newPayload?: Record<string, unknown>, formValues?: Record<string, unknown>) => void
+    onUpdate?: CredentialSaved
     onRemove?: (credentialId: string) => void
     mode?: ModelModalModeEnum
   }
@@ -98,6 +100,7 @@ const Authorized = ({
     openConfirmDelete,
     closeConfirmDelete,
     doingAction,
+    isDeleting,
     handleActiveCredential,
     handleConfirmDelete,
     deleteCredentialId,
@@ -256,7 +259,14 @@ const Authorized = ({
       </Popover>
       <AlertDialog
         open={!!deleteCredentialId}
-        onOpenChange={(open) => !open && closeConfirmDelete()}
+        onOpenChange={(open, eventDetails) => {
+          if (open) return
+          if (isDeleting) {
+            eventDetails.cancel()
+            return
+          }
+          closeConfirmDelete()
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -265,10 +275,16 @@ const Authorized = ({
             </AlertDialogTitle>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirmDelete}>
+            <AlertDialogConfirmButton
+              loading={isDeleting}
+              disabled={doingAction && !isDeleting}
+              onClick={() => {
+                void handleConfirmDelete().catch(noop)
+              }}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

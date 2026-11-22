@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock, create_autospec
@@ -243,7 +244,11 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     return result
 
 
-def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _Context) -> None:
+def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(
+    context: _Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # URL-safe base64 encodes this prefix as `_g_-`, which Markdown can parse as emphasis.
+    monkeypatch.setattr(secrets, "token_bytes", lambda _size: bytes.fromhex("fe0ffe" + "a1" * 29))
     context.send(**{"#start.name#": "Alice\r\nBcc: other@example.com"})
 
     candidate = context.gateway.send_message.call_args.args[0]
@@ -428,7 +433,7 @@ def test_test_form_resolves_form_only_draft_values_and_message_test_overrides(co
         "Review Alice: Saved context\n{{#$output.note#}}\n{{#$output.choice#}}"
     )
     paragraph = next(part for part in form.resolved_form.parts if isinstance(part, ParagraphInput))
-    assert paragraph.default_value == "Saved context"
+    assert paragraph.resolved_default_value == "Saved context"
     select = next(part for part in form.resolved_form.parts if isinstance(part, SelectInput))
     assert select.options == ("Yes", "No")
 

@@ -284,23 +284,18 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             onMouseLeave={handleMouseLeave}
           >
             <div
-              className="relative h-10 rounded-t-full rounded-br-full"
+              className="relative h-10 rounded-ee-full rounded-t-full"
               style={{ width: dynamicWidth }}
             >
               <div
-                className={`absolute inset-1.5 overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
+                className={`absolute inset-1.5 overflow-hidden rounded-ss-full rounded-se-full rounded-ee-full border bg-components-panel-bg transition-shadow ${
                   isActive
                     ? 'border-primary-500 ring-1 ring-primary-500'
                     : 'border-components-panel-border'
                 }`}
               >
                 <div className="flex size-full items-center justify-center px-1">
-                  <UserAvatarList
-                    users={participants}
-                    maxVisible={3}
-                    size="sm"
-                    className="translate-y-[-1.5px]"
-                  />
+                  <UserAvatarList users={participants} maxVisible={3} size="sm" />
                 </div>
               </div>
             </div>

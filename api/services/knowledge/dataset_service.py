@@ -1275,6 +1275,16 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user, session)
 
+        from models.evaluation import EvaluationTargetType
+        from services.evaluation_service import EvaluationService
+
+        EvaluationService.stage_target_evaluation_cleanup(
+            session=session,
+            tenant_id=dataset.tenant_id,
+            target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
+            target_id=dataset.id,
+        )
+
         dataset_was_deleted.send(dataset)
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
@@ -1393,8 +1403,7 @@ class DatasetService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return {"document_ids": [], "count": 0}
 
-        features = FeatureService.get_features(dataset_ref.tenant_id, exclude_vector_space=True)
-        if features.billing.subscription.plan == CloudPlan.SANDBOX:
+        if FeatureService.get_workspace_plan(dataset_ref.tenant_id) == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
                 "count": 0,

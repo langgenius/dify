@@ -11,10 +11,13 @@ import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from events.app_event import app_was_created
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
+    AgentConfigRevision,
     AgentConfigSnapshot,
     AgentDebugConversation,
     AgentScope,
@@ -25,11 +28,13 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import TagType
 from models.model import App, AppMode, AppModelConfig, Conversation, Tag, TagBinding
+from models.provider import TenantDefaultModel
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.invite_options_store import AgentInviteOptionsPage
 from services.enterprise.base import EnterpriseRequest
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AppEvent, AppListParams
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
@@ -91,7 +96,9 @@ def test_list_applies_visible_agent_ids_before_pagination_and_counts(harness: Ha
             app = session.get(App, app_id)
             assert app is not None
             app.maintainer = str(uuid4())
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids={first_id})
     assert result.total == 1
@@ -109,7 +116,9 @@ def test_list_rolls_back_build_conversation_if_app_projection_fails(harness: Har
         session.flush()
         app.app_model_config_id = config.id
 
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     context = RequestContext("test", None, harness.account_id, harness.tenant_id)
     with pytest.raises(json.JSONDecodeError):
         repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)
@@ -495,13 +504,49 @@ def test_list_includes_distinct_published_workflow_references(harness: Harness) 
 
 
 def test_create_returns_agent_detail_and_commits_app_and_agent(harness: Harness) -> None:
-    response = harness.client.post(
-        "/console/api/agent",
-        headers=harness.headers,
-        json={"name": "New Agent", "description": "Example", "role": "Helper"},
-    )
+    with harness.sessions.begin() as session:
+        session.add(
+            TenantDefaultModel(
+                tenant_id=harness.tenant_id,
+                model_type=ModelType.LLM,
+                provider_name="langgenius/openai/openai",
+                model_name="gpt-4o",
+            )
+        )
+    published: list[AppEvent] = []
+
+    def on_created(sender: object, *, created_records_initialized: bool) -> None:
+        assert isinstance(sender, AppEvent)
+        assert created_records_initialized is True
+        with harness.sessions() as session:
+            assert session.get(App, sender.id) is not None
+            agent = session.scalar(select(Agent).where(Agent.app_id == sender.id))
+            assert agent is not None
+            assert agent.active_config_has_model is True
+            snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+            assert snapshot is not None
+            model = snapshot.config_snapshot.model
+            assert model is not None
+            assert (model.plugin_id, model.model_provider, model.model) == (
+                "langgenius/openai",
+                "langgenius/openai/openai",
+                "gpt-4o",
+            )
+            assert session.scalar(
+                select(AgentConfigRevision.id).where(AgentConfigRevision.current_snapshot_id == snapshot.id)
+            )
+            assert session.scalar(select(AgentDebugConversation.id).where(AgentDebugConversation.agent_id == agent.id))
+        published.append(sender)
+
+    with app_was_created.connected_to(on_created):
+        response = harness.client.post(
+            "/console/api/agent",
+            headers=harness.headers,
+            json={"name": "New Agent", "description": "Example", "role": "Helper"},
+        )
     assert response.status_code == HTTPStatus.CREATED
     body = response.get_json()
+    assert published == [AppEvent(id=body["app_id"], tenant_id=harness.tenant_id, mode=AppMode.AGENT)]
     assert body["name"] == "New Agent"
     assert body["role"] == "Helper"
     assert body["debug_conversation_id"]
@@ -523,7 +568,14 @@ def test_create_omitted_role_and_duplicate_name(harness: Harness) -> None:
     first = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
     assert first.status_code == HTTPStatus.CREATED
     assert first.get_json()["role"] == ""
-    duplicate = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    published: list[object] = []
+
+    def record_created(sender: object, **_kwargs: object) -> None:
+        published.append(sender)
+
+    with app_was_created.connected_to(record_created):
+        duplicate = harness.client.post("/console/api/agent", headers=harness.headers, json={"name": "Unique"})
+    assert published == []
     assert duplicate.status_code == HTTPStatus.CONFLICT
     assert duplicate.get_json()["code"] == "agent_name_conflict_error"
     with harness.sessions() as session:
@@ -531,6 +583,9 @@ def test_create_omitted_role_and_duplicate_name(harness: Harness) -> None:
             select(Agent).where(Agent.tenant_id == harness.tenant_id, Agent.name == "Unique")
         ).all()
         assert len(agents) == 1
+        assert session.scalars(select(App.id).where(App.tenant_id == harness.tenant_id)).all() == [
+            first.get_json()["app_id"]
+        ]
 
 
 def test_member_can_list_but_cannot_create(harness: Harness) -> None:
