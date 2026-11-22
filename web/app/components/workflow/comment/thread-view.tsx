@@ -20,7 +20,7 @@ type CommentThreadPopupProps = Omit<PopoverPopupProps, 'title' | 'children' | 'r
 /**
  * The comment thread popup: a header with the title, `actions` and a close
  * button, then the body. Compose it in a dify-ui `Popover` whose positioner
- * spreads `commentPopupPlacement`; the close button closes that popover.
+ * spreads `commentThreadPlacement`; the close button closes that popover.
  */
 export function CommentThreadPopup({
   title,

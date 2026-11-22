@@ -17,7 +17,7 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
 import { getCommentMarkerId } from '../marker-id'
-import { commentPopupPlacement } from '../popup-placement'
+import { commentThreadPlacement } from '../popup-placement'
 import { CommentThread } from '../thread'
 import { seedMentionableUsers } from './comment-query-data'
 import { CommentThreadFixture } from './comment-thread-fixture'
@@ -118,7 +118,7 @@ describe('Comment thread focus', () => {
             onOpenChange={setOpened}
           >
             <PopoverPortal>
-              <PopoverPositioner {...commentPopupPlacement}>
+              <PopoverPositioner {...commentThreadPlacement}>
                 {opened && <CommentThread comment={comment} onReply={() => {}} />}
               </PopoverPositioner>
             </PopoverPortal>

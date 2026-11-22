@@ -17,7 +17,7 @@ import { CommentComposerFrame } from './comment-composer'
 import { CommentMarker } from './comment-marker'
 import { MentionInput } from './mention-input'
 import { toCommentCollaborator } from './participants'
-import { useCommentPopupPositioner } from './popup-placement'
+import { commentDraftPlacement, useCommentPopupBounds } from './popup-placement'
 
 type FlowPosition = { x: number; y: number }
 
@@ -56,7 +56,7 @@ export function CommentInput({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const popupPositioner = useCommentPopupPositioner()
+  const popupBounds = useCommentPopupBounds()
   const { screenToFlowPosition } = useReactFlow()
   // The canvas fills the comment layer, so the marker sits where the viewport puts the point.
   const viewport = useViewport()
@@ -139,7 +139,7 @@ export function CommentInput({
             (see `CommentManager`), never from a press or key elsewhere on the page. */}
       <Popover open onOpenChange={(_open, eventDetails) => eventDetails.cancel()}>
         <PopoverPortal>
-          <PopoverPositioner anchor={markerRef} {...popupPositioner}>
+          <PopoverPositioner anchor={markerRef} {...commentDraftPlacement} {...popupBounds}>
             <PopoverPopup
               aria-label={addLabel}
               initialFocus={disabled ? false : inputRef}

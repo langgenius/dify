@@ -173,6 +173,24 @@ describe('markers and the composer', () => {
     await expect.element(composer).toHaveValue('Not created')
   })
 
+  it('places a new comment’s input beside its marker as the design does', async () => {
+    const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
+    screen.store.getState().setPendingComment({ x: 300, y: 300 })
+    const marker = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+    const input = screen.getByRole('dialog', { name: 'workflowComments.comments.placeholder.add' })
+    await expect.element(input).toBeVisible()
+
+    // 12px to the right of the 27px marker, top 6.5px above the marker's (to the device pixel).
+    const gaps = () => {
+      const markerBox = marker.element().getBoundingClientRect()
+      const inputBox = input.element().getBoundingClientRect()
+      return { side: inputBox.left - markerBox.right, top: inputBox.top - markerBox.top }
+    }
+    await expect.poll(() => gaps().side).toBe(12)
+    expect(Math.abs(gaps().top + 6.5)).toBeLessThanOrEqual(0.5)
+  })
+
   it('follows the pointer while a draft comment is dragged', async () => {
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()

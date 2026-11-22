@@ -37,7 +37,7 @@ import { prefetchCommentThread } from './comment-prefetch'
 import { appIdOfWrite, commentWriteKey, isWritingComments } from './comment-writes'
 import { getCommentMarkerId } from './marker-id'
 import { CommentPlacementPreview } from './placement-preview'
-import { useCommentPopupPositioner } from './popup-placement'
+import { commentThreadPlacement, useCommentPopupBounds } from './popup-placement'
 import { CommentThread } from './thread'
 import { useRevealComment } from './use-reveal-comment'
 
@@ -135,7 +135,7 @@ export function WorkflowCommentLayer() {
   const appId = useAtomValue(editorAppIdAtom)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const queryClient = useQueryClient()
-  const popupPositioner = useCommentPopupPositioner()
+  const popupBounds = useCommentPopupBounds()
   const workflowStore = useWorkflowStore()
   const revealComment = useRevealComment()
   const controlMode = useStore((s) => s.controlMode)
@@ -432,7 +432,7 @@ export function WorkflowCommentLayer() {
         }}
       >
         <PopoverPortal>
-          <PopoverPositioner {...popupPositioner}>
+          <PopoverPositioner {...commentThreadPlacement} {...popupBounds}>
             {appId && shownComment && (
               <ShownThread
                 appId={appId}
