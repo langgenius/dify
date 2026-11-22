@@ -140,12 +140,12 @@ it('polls real indexing progress and announces completion without retaining a pr
       screen.getByRole('status').filter({ hasText: 'datasetDocuments.embedding.processing' }),
     )
     .toBeVisible()
-  await vi.advanceTimersByTimeAsync(2499)
-  await expect.element(progress).toHaveAttribute('aria-valuenow', '50')
-  expect(fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get).toHaveBeenCalledTimes(
-    1,
-  )
-  await vi.advanceTimersByTimeAsync(1)
+  // Locator retries advance fake timers, so assert the polling contract rather than an exact
+  // millisecond boundary: one request on mount, the next after the polling interval.
+  const indexingStatus = fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get
+  expect(indexingStatus).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(2500)
+  await expect.poll(() => indexingStatus).toHaveBeenCalledTimes(2)
   await expect.element(progress).not.toBeInTheDocument()
   await expect
     .element(
@@ -154,10 +154,9 @@ it('polls real indexing progress and announces completion without retaining a pr
         .filter({ hasText: 'report.pdf: datasetDocuments.embedding.completed' }),
     )
     .toHaveTextContent('report.pdf: datasetDocuments.embedding.completed')
+  // Completion stops polling.
   await vi.advanceTimersByTimeAsync(5000)
-  expect(fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get).toHaveBeenCalledTimes(
-    2,
-  )
+  expect(indexingStatus).toHaveBeenCalledTimes(2)
 })
 
 it.each(['Parse failed', null])(
