@@ -32,7 +32,7 @@ function CreationCardContent({ creation }: { creation: CreatorCreation }) {
         )}
       />
 
-      <div className="flex min-w-0 shrink-0 items-center gap-3 px-4 pt-4 pr-20 pb-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-3 px-4 pe-20 pt-4 pb-2">
         {creation.icon.type === 'image' ? (
           <AppIcon
             size="large"

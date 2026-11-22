@@ -5,8 +5,6 @@ import { chatItem, renderChatOwner } from '../../__tests__/chat-owner-preset'
 import Answer from '../index'
 
 vi.unmock('react-i18next')
-// boundary: real file owners consume Next params without a running application.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 it('downloads the displayed generated and message files with their actual names and destinations', async () => {
   await page.viewport(1000, 800)

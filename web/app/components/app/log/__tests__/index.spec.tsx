@@ -2,14 +2,21 @@ import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { APP_PAGE_LIMIT } from '@/config'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createReactI18nextMock } from '@/test/i18n-mock'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Logs from '../index'
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>)
+
+const render = (ui: React.ReactElement, searchParams = '') => {
+  const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({
+    searchParams,
+    hasMemory: true,
+  })
+  return { ...renderWithConsoleQuery(<UrlState>{ui}</UrlState>), onUrlUpdate }
+}
 
 vi.mock('react-i18next', () => {
   const mock = createReactI18nextMock()
@@ -26,24 +33,10 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-const mockReplace = vi.fn()
 const getChatConversations = vi.fn()
 const getCompletionConversations = vi.fn()
 const mockPlanState = vi.hoisted(() => ({
   value: 'unrestricted' as CloudSandboxPlanState,
-}))
-
-let mockSearchParams = new URLSearchParams()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-  }),
-  usePathname: () => '/apps/app-1/logs',
-  useSearchParams: () => ({
-    get: (key: string) => mockSearchParams.get(key),
-    toString: () => mockSearchParams.toString(),
-  }),
 }))
 
 vi.mock('../cloud-sandbox-retention', async (importOriginal) => {
@@ -60,7 +53,6 @@ vi.mock('../retention-upgrade-notice', () => ({
 
 describe('Logs', () => {
   beforeEach(() => {
-    mockSearchParams = new URLSearchParams()
     mockPlanState.value = 'unrestricted'
     getChatConversations.mockReturnValue(new Promise(() => {}))
     getCompletionConversations.mockReturnValue(new Promise(() => {}))
@@ -113,11 +105,48 @@ describe('Logs', () => {
       has_more: false,
     })
 
-    render(<Logs appDetail={createAppDetailFixture({ id: 'app-3', mode: 'chat' })} />)
+    const { onUrlUpdate } = render(
+      <Logs appDetail={createAppDetailFixture({ id: 'app-3', mode: 'chat' })} />,
+    )
 
     await user.click(await screen.findByRole('button', { name: 'Go to page 2' }))
 
-    expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
+    await waitFor(() =>
+      expect(onUrlUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryString: '?page=2',
+          options: expect.objectContaining({ shallow: true }),
+        }),
+      ),
+    )
+    expect(getChatConversations.mock.calls.at(-1)?.[0].query.page).toBe(2)
+  })
+
+  it('keeps a typed Chatflow search focused and requests the first page once the keyword settles', async () => {
+    const { onUrlUpdate } = render(
+      <Logs appDetail={createAppDetailFixture({ id: 'chatflow-search', mode: 'advanced-chat' })} />,
+      '?page=2',
+    )
+    expect(getChatConversations.mock.calls.at(-1)?.[0].query.page).toBe(2)
+    getChatConversations.mockClear()
+
+    const search = screen.getByRole('searchbox', { name: /common\.operation\.search/ })
+    await runDebouncedUserInteraction(500, async (user) => {
+      await user.type(search, 'invoice')
+      expect(search).toHaveValue('invoice')
+      expect(search).toHaveFocus()
+      expect(getChatConversations).not.toHaveBeenCalled()
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+    })
+
+    expect(getChatConversations).toHaveBeenCalledTimes(1)
+    expect(getChatConversations.mock.calls[0]?.[0].query).toMatchObject({
+      page: 1,
+      keyword: 'invoice',
+    })
+    expect(onUrlUpdate).toHaveBeenCalledOnce()
+    expect(onUrlUpdate.mock.calls[0]?.[0].searchParams.has('page')).toBe(false)
+    expect(search).toHaveFocus()
   })
 
   it('should query the last 30 days when a Sandbox user selects the longest period', async () => {
@@ -148,13 +177,15 @@ describe('Logs', () => {
     expect(
       await screen.findByRole('combobox', { name: /appLog\.filter\.period\.last30days/ }),
     ).toBeInTheDocument()
-    expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({
-        query: expect.objectContaining({
-          start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+    await waitFor(() =>
+      expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({
+          query: expect.objectContaining({
+            start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+            end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+          }),
         }),
-      }),
+      ),
     )
   })
 
@@ -231,13 +262,15 @@ describe('Logs', () => {
       await screen.findByRole('combobox', { name: /appLog\.filter\.period\.last7days/ }),
     )
     await user.click(await screen.findByText(/appLog\.filter\.period\.allTime/))
-    expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({
-        query: expect.not.objectContaining({
-          start: expect.anything(),
-          end: expect.anything(),
+    await waitFor(() =>
+      expect(getChatConversations.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({
+          query: expect.not.objectContaining({
+            start: expect.anything(),
+            end: expect.anything(),
+          }),
         }),
-      }),
+      ),
     )
     unrestrictedRender.unmount()
 

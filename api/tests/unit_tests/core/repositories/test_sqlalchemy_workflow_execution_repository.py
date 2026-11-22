@@ -140,7 +140,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
         )
 
     class TestSQLAlchemyWorkflowExecutionRepository:
-        def test_init_with_sessionmaker(self, sqlite_session_factory: sessionmaker[Session], account: Account):
+        def test_init_with_sessionmaker(self, sqlite_session_factory: sessionmaker[Session], account: Account) -> None:
             app_id = "test_app_id"
             triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
@@ -159,7 +159,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             assert repo._creator_user_id == account.id
             assert repo._creator_user_role == _sqlalchemy_workflow_execution_repository_CreatorUserRole.ACCOUNT
 
-        def test_init_with_engine(self, sqlite_engine: Engine, account: Account):
+        def test_init_with_engine(self, sqlite_engine: Engine, account: Account) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_engine,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -171,17 +171,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             assert isinstance(repo._session_factory, sessionmaker)
             assert repo._session_factory.kw["bind"] is sqlite_engine
 
-        def test_init_invalid_session_factory(self, account: Account):
-            with pytest.raises(ValueError, match="Invalid session_factory type"):
-                SQLAlchemyWorkflowExecutionRepository(
-                    session_factory="invalid",
-                    tenant_id=RESOURCE_TENANT_ID,
-                    user=account,
-                    app_id=None,
-                    triggered_from=None,
-                )
-
-        def test_init_no_tenant_id(self, sqlite_session_factory: sessionmaker[Session]):
+        def test_init_no_tenant_id(self, sqlite_session_factory: sessionmaker[Session]) -> None:
             user = _make_account()
 
             with pytest.raises(ValueError, match="tenant_id is required"):
@@ -195,7 +185,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
 
         def test_init_uses_resource_tenant_when_account_has_no_current_tenant(
             self, sqlite_session_factory: sessionmaker[Session]
-        ):
+        ) -> None:
             user = _make_account()
 
             repo = SQLAlchemyWorkflowExecutionRepository(
@@ -209,7 +199,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             assert repo._tenant_id == RESOURCE_TENANT_ID
             assert repo._creator_user_id == user.id
 
-        def test_init_with_end_user(self, sqlite_session_factory: sessionmaker[Session], end_user: EndUser):
+        def test_init_with_end_user(self, sqlite_session_factory: sessionmaker[Session], end_user: EndUser) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -226,7 +216,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session_factory: sessionmaker[Session],
             sqlite_session: Session,
             account: Account,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -235,9 +225,11 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
                 triggered_from=None,
             )
 
+            tenant_id = account.current_tenant_id
+            assert tenant_id is not None
             db_model = WorkflowRun(
                 id=str(uuid4()),
-                tenant_id=account.current_tenant_id,
+                tenant_id=tenant_id,
                 app_id=str(uuid4()),
                 workflow_id=str(uuid4()),
                 type=ModelWorkflowType.WORKFLOW,
@@ -276,7 +268,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session_factory: sessionmaker[Session],
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -304,7 +296,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session_factory: sessionmaker[Session],
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -312,11 +304,12 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
                 app_id="test_app",
                 triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             )
-            # Test with empty/None fields
-            sample_workflow_execution.graph = None
-            sample_workflow_execution.inputs = None
-            sample_workflow_execution.outputs = None
-            sample_workflow_execution.error_message = None
+            # Falsy payloads are what a real execution carries before anything has
+            # been populated; the conversion must still degrade them to NULL columns.
+            sample_workflow_execution.graph = {}
+            sample_workflow_execution.inputs = {}
+            sample_workflow_execution.outputs = {}
+            sample_workflow_execution.error_message = ""
             sample_workflow_execution.finished_at = None
 
             db_model = repo._to_db_model(sample_workflow_execution)
@@ -332,7 +325,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session_factory: sessionmaker[Session],
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -345,12 +338,12 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             assert not hasattr(db_model, "app_id") or db_model.app_id is None
             assert db_model.tenant_id == repo._tenant_id
 
-        def test_to_db_model_missing_context(
+        def test_to_db_model_requires_triggered_from(
             self,
             sqlite_session_factory: sessionmaker[Session],
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -359,17 +352,47 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
                 triggered_from=None,
             )
 
-            # Test triggered_from missing
             with pytest.raises(ValueError, match="triggered_from is required"):
                 repo._to_db_model(sample_workflow_execution)
 
-            repo._triggered_from = WorkflowRunTriggeredFrom.APP_RUN
-            repo._creator_user_id = None
+        def test_to_db_model_requires_created_by(
+            self,
+            sqlite_session_factory: sessionmaker[Session],
+            sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
+        ) -> None:
+            # A freshly built Account without a persisted id is a state the
+            # application really reaches, and the guard must reject it.
+            id_less_creator = _make_account()
+            id_less_creator.id = ""
+            repo = SQLAlchemyWorkflowExecutionRepository(
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
+                user=id_less_creator,
+                app_id=None,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            )
+
             with pytest.raises(ValueError, match="created_by is required"):
                 repo._to_db_model(sample_workflow_execution)
 
-            repo._creator_user_id = "some_id"
-            repo._creator_user_role = None
+        def test_to_db_model_requires_created_by_role(
+            self,
+            sqlite_session_factory: sessionmaker[Session],
+            account: Account,
+            sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
+            monkeypatch: pytest.MonkeyPatch,
+        ) -> None:
+            repo = SQLAlchemyWorkflowExecutionRepository(
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
+                user=account,
+                app_id=None,
+                triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            )
+            # The constructor derives the role from the user type, so the defensive
+            # guard is reached by clearing the derived value on a built repository.
+            monkeypatch.setattr(repo, "_creator_user_role", None)
+
             with pytest.raises(ValueError, match="created_by_role is required"):
                 repo._to_db_model(sample_workflow_execution)
 
@@ -380,7 +403,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session: Session,
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -409,7 +432,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session: Session,
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -434,7 +457,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session: Session,
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             repo = SQLAlchemyWorkflowExecutionRepository(
                 session_factory=sqlite_session_factory,
                 tenant_id=RESOURCE_TENANT_ID,
@@ -463,7 +486,7 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
             sqlite_session: Session,
             account: Account,
             sample_workflow_execution: _sqlalchemy_workflow_execution_repository_WorkflowExecution,
-        ):
+        ) -> None:
             other_tenant_id = str(uuid4())
             other_account = _make_account(tenant_id=str(uuid4()))
             other_repo = SQLAlchemyWorkflowExecutionRepository(

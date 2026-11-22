@@ -105,8 +105,8 @@ const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
           {item.title}
         </span>
         <div className="flex items-center">
-          <span className="ml-2 shrink-0">{item.type}</span>
-          <div className="mr-1 ml-2 h-2.5 w-px bg-divider-regular"></div>
+          <span className="ms-2 shrink-0">{item.type}</span>
+          <div className="ms-2 me-1 h-2.5 w-px bg-divider-regular"></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}

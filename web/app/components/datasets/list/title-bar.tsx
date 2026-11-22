@@ -30,7 +30,7 @@ export function KnowledgeListTitleBar({ apiReferenceUrl, className, viewSwitcher
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
 
   return (
-    <div className={cn('shrink-0 bg-background-body pt-4', className)}>
+    <div className={cn('shrink-0 bg-background-body pt-4 focus-within:z-20', className)}>
       <div className="flex min-h-6 w-full flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">

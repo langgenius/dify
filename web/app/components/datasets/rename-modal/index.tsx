@@ -56,6 +56,7 @@ const RenameDatasetModal = ({
   return (
     <Dialog
       open={open}
+      disablePointerDismissal
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && loading) {
           details.cancel()

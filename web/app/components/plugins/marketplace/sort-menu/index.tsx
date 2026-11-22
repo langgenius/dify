@@ -41,7 +41,7 @@ const SortMenu = () => {
 
   return (
     <Menu>
-      <MenuTrigger className="flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-state-base-hover-alt px-2 pr-3">
+      <MenuTrigger className="flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-state-base-hover-alt px-2 pe-3">
         <span className="system-sm-regular text-text-secondary">
           {t(($) => $['marketplace.sortBy'], { ns: 'plugin' })}
         </span>
@@ -61,7 +61,7 @@ const SortMenu = () => {
               key={`${option.value}-${option.order}`}
               value={`${option.value}-${option.order}`}
               closeOnClick
-              className="justify-between pl-3 system-md-regular text-text-primary"
+              className="justify-between ps-3 system-md-regular text-text-primary"
             >
               {option.text}
               <MenuRadioItemIndicator />

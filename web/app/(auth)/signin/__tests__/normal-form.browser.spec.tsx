@@ -18,10 +18,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
-vi.mock('@/next/link', () => ({
-  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
-}))
-
 type ProfileState =
   | 'pending'
   | 'signed-out'

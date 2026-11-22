@@ -24,6 +24,7 @@ from pydantic_ai.settings import ModelSettings
 DifyPluginCredentialValue: TypeAlias = str | int | float | bool | None
 DifyPluginToolCredentialType: TypeAlias = Literal["api-key", "oauth2", "unauthorized"]
 DifyPluginToolValue: TypeAlias = JsonValue
+type DifyModelModality = Literal["vision", "audio", "video", "document"]
 
 
 def _default_parameters_json_schema() -> dict[str, JsonValue]:
@@ -103,7 +104,14 @@ class DifyPluginToolParameter(BaseModel):
 
 
 class DifyPluginLLMLayerConfig(BaseModel):
-    """Public config for selecting a plugin-backed business provider/model."""
+    """Public config for selecting a plugin-backed business provider/model.
+
+    ``supported_modalities`` declares credential-bound schema input capabilities,
+    never inferred from model names. The empty default keeps read_media text-only;
+    individual absent modalities also return text instead of attaching media.
+    Marked read_media content rejected before the first chunk is folded to text
+    and retried once, excluding auth, quota, lookup and infrastructure failures.
+    """
 
     execution_context: str = "execution_context"
 
@@ -112,6 +120,7 @@ class DifyPluginLLMLayerConfig(BaseModel):
     model: str
     model_settings: ModelSettings | None = None
     context_window_tokens: int | None = Field(default=None, gt=0)
+    supported_modalities: list[DifyModelModality] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
@@ -178,6 +187,7 @@ class DifyPluginToolsLayerConfig(BaseModel):
 
 
 __all__ = [
+    "DifyModelModality",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",
     "DifyPluginToolCredentialType",

@@ -2,7 +2,6 @@
   "dialog.addTitle": "Tarayıcı ekle",
   "dialog.apiKey": "API anahtarı",
   "dialog.apiSecret": "API gizli anahtarı",
-  "dialog.clamavHint": "ClamAV bu dağıtımın içinde çalışır. Adresi dağıtım yöneticisi tarafından belirlenir.",
   "dialog.dataNotice": "Dosya içerikleri bu hizmete gönderilir.",
   "dialog.editTitle": "Tarayıcıyı düzenle",
   "dialog.endpoint": "Uç nokta (isteğe bağlı)",
