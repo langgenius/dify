@@ -5,7 +5,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagSearchContent } from '../components/tag-search-content'
+import { TagSearchContent } from '../tag-search-content'
 
 const tags: Tag[] = [
   { id: 'frontend', name: 'Frontend', type: 'app' },

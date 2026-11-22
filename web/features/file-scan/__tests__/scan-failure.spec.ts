@@ -43,7 +43,7 @@ describe('fileScanFailureFromError', () => {
           file_name: 'archive.zip',
           problem: 'encrypted',
           provider_name: 'Office scanner',
-          provider_type: 'clamav',
+          provider_type: 'scanii',
           retryable: false,
           size_limit: null,
           threats: [],

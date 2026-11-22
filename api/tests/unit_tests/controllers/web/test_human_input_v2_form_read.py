@@ -106,8 +106,8 @@ def public_form(
                     ),
                     parts=(
                         MarkdownFragment(text="Review "),
-                        ParagraphInput(output_variable_name="note", default_value="Draft"),
-                        SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value="No"),
+                        ParagraphInput(output_variable_name="note", resolved_default_value="Draft"),
+                        SelectInput(output_variable_name="choice", options=("Yes", "No"), resolved_default_value="No"),
                         FileInput(
                             output_variable_name="file",
                             allowed_file_types=(FileType.DOCUMENT,),
@@ -242,7 +242,7 @@ def test_reads_refresh_file_signatures_without_changing_the_snapshot(
         update={
             "parts": (
                 MarkdownFragment(text=f"[Report]({old_url}) "),
-                ParagraphInput(output_variable_name="note", default_value="Draft"),
+                ParagraphInput(output_variable_name="note", resolved_default_value="Draft"),
             ),
             "legacy_form_content": content,
         }

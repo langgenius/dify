@@ -8,10 +8,10 @@ from core.human_input_v2.entities import IMProvider
 
 
 class _ProviderCredentials(BaseModel):
-    """Strict immutable credentials bound to one provider adapter lifetime."""
+    """Immutable provider credentials accepting additive persisted fields."""
 
     model_config = ConfigDict(
-        extra="forbid",
+        extra="allow",
         frozen=True,
         strict=True,
         hide_input_in_errors=True,

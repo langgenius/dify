@@ -22,7 +22,7 @@ const ShowAllSettings = ({ initialData, handleShowAllSettings }: ShowAllSettings
       return (
         <button
           type="button"
-          className="flex w-full cursor-pointer items-center gap-x-4 border-none bg-transparent p-0 text-left"
+          className="flex w-full cursor-pointer items-center gap-x-4 border-none bg-transparent p-0 text-start"
           onClick={handleShowAllSettings}
         >
           <div className="flex grow flex-col">
