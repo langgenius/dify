@@ -5,15 +5,15 @@ import type { FC } from 'react'
 import type { LogIdentity, QueryParam } from './log-filters'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import { parseAsInteger, useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
 import { resolveLogTimePeriod, useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
@@ -41,11 +41,8 @@ const logsStateCache = new Map<
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t, ready } = useTranslation(['appLog', 'common'], { useSuspense: false })
   const docLink = useDocLink()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const pageParam = Number.parseInt(searchParams.get('page') || '1', 10)
-  const currPage = Number.isNaN(pageParam) || pageParam < 1 ? 0 : pageParam - 1
+  const [pageParam, setPageParam] = useQueryState('page', parseAsInteger)
+  const page = Math.max(pageParam ?? 1, 1)
   const cloudSandboxPlanState = useCloudSandboxPlanStatus()
   const filterOptions = useLogFilterOptions(appDetail.id, cloudSandboxPlanState)
   const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
@@ -53,6 +50,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const [queryParams, setQueryParams] = useState<QueryParam>(
     cachedState?.queryParams ?? defaultQueryParams,
   )
+  const [appliedQueryParams, setAppliedQueryParams] = useState(queryParams)
   const [limit, setLimit] = useState(cachedState?.limit ?? APP_PAGE_LIMIT)
   const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState(
     cachedState?.identityOptionsBeforeFilter ?? [],
@@ -60,10 +58,23 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   useEffect(() => {
     logsStateCache.set(appDetail.id, { queryParams, limit, identityOptionsBeforeFilter })
   }, [appDetail.id, queryParams, limit, identityOptionsBeforeFilter])
-  const effectivePeriod = resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState)
-  const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
-  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
-  const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+
+  const { run: applyQueryParams } = useDebounceFn(
+    (next: QueryParam) => {
+      setAppliedQueryParams(next)
+      if (pageParam !== null) void setPageParam(null)
+    },
+    { wait: 500 },
+  )
+
+  const effectiveQueryParams = {
+    ...queryParams,
+    period: resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState),
+  }
+  const requestQueryParams = {
+    ...appliedQueryParams,
+    period: resolveLogTimePeriod(appliedQueryParams.period, cloudSandboxPlanState),
+  }
   const isChatMode = appDetail.mode !== 'completion'
   const supportsLogExport =
     !isChatMode ||
@@ -73,7 +84,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const query = {
     ...toLogFilters(requestQueryParams, cloudSandboxPlanState),
-    page: currPage + 1,
+    page,
     limit,
   }
 
@@ -98,23 +109,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const total = logs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
-  const handlePageChange = useCallback(
-    (page: number) => {
-      const params = new URLSearchParams(searchParams.toString())
-      const nextPageValue = page + 1
-      if (nextPageValue === 1) params.delete('page')
-      else params.set('page', String(nextPageValue))
-      const queryString = params.toString()
-      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
-    },
-    [pathname, router, searchParams],
-  )
-
-  function handleQueryParamsChange(next: QueryParam) {
+  const handleQueryParamsChange = (next: QueryParam) => {
     if (next.identities?.length && !queryParams.identities?.length)
       setIdentityOptionsBeforeFilter(identityOptions)
-    handlePageChange(0)
     setQueryParams(next)
+    applyQueryParams(next)
   }
 
   if (!ready) return null
@@ -160,9 +159,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {/* Show Pagination only if the total is more than the limit */}
         {total !== undefined && total > APP_PAGE_LIMIT ? (
           <Pagination
-            page={currPage + 1}
+            page={page}
             totalPages={totalPages}
-            onPageChange={(page) => handlePageChange(page - 1)}
+            onPageChange={(nextPage) => void setPageParam(nextPage === 1 ? null : nextPage)}
             labels={{
               previous: t(($) => $['pagination.previous'], { ns: 'common' }),
               next: t(($) => $['pagination.next'], { ns: 'common' }),

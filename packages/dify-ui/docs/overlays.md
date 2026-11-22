@@ -82,6 +82,11 @@ identifies its registered Trigger.
   gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
   A dialog that submits a form cancels user-initiated closes while the submission is pending and
   closes itself when it succeeds; a failure keeps the dialog open with the draft intact.
+  Outside-press dismissal is the default and follows what an accidental close would cost. The Root
+  sets `disablePointerDismissal` only when that close throws away work the user would have to
+  redo, not merely because the content contains a field; a quick choice or a short value typed
+  again in seconds keeps the default. Escape and a visible cancel or close action stay available,
+  and a draft that is costly to re-enter can confirm discarding on every close path.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and

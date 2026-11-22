@@ -642,6 +642,21 @@ const zAgentNotPublishedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zTriggerNodeLimitDetails = /* @__PURE__ */ (() =>
+  z.object({
+    count: z.int(),
+    limit: z.int(),
+  }))()
+
+const zTriggerNodeLimitExceededError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('trigger_node_limit_exceeded'),
+      details: zTriggerNodeLimitDetails.optional(),
+      status: z.literal(403),
+    }),
+  ))()
+
 export const getErrors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const post2Errors = {
@@ -1386,6 +1401,7 @@ export const get92Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const post70Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  trigger_node_limit_exceeded: { status: 403, data: zTriggerNodeLimitExceededError },
 }
 
 export const get93Errors = {

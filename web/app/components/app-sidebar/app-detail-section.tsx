@@ -3,16 +3,15 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
-import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
+import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -65,7 +64,11 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
-  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
+  const { data: evaluationEntry } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  )
+  const isEvaluationVisible = evaluationEntry?.visible ?? false
+  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled
@@ -96,9 +99,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
             },
           ]
         : []),
-      ...(appDetail.mode === 'workflow' &&
-      appACLCapabilities.canViewLayout &&
-      isEvaluationEdition(systemFeatures.deployment_edition)
+      ...(appDetail.mode === 'workflow' && appACLCapabilities.canViewLayout && isEvaluationVisible
         ? [
             {
               name: t(($) => $.title, { ns: 'evaluation' }),
@@ -180,6 +181,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     workspacePermissionKeys,
     isRbacEnabled,
     systemFeatures,
+    isEvaluationVisible,
     evaluationRequiresUpgrade,
   ])
 

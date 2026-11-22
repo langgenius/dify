@@ -105,7 +105,7 @@ const EmailConfigureModal = ({
   }, [checkValidConfig, onConfirm, recipients, subject, body, debugMode])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogContent className="max-h-[calc(100dvh-4rem)] w-180">
         <DialogHeader>
           <DialogTitle>
@@ -120,97 +120,105 @@ const EmailConfigureModal = ({
           </DialogDescription>
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <DialogBody className="space-y-5">
-          <div>
-            <label
-              htmlFor={subjectId}
-              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-            >
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
-                ns: 'workflowHumanInput',
-              })}
-            </label>
-            <Input
-              id={subjectId}
-              className="w-full"
-              value={subject}
-              onValueChange={setSubject}
-              placeholder={t(
-                ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
-                { ns: 'workflowHumanInput' },
-              )}
-            />
-          </div>
-          <div>
-            <div
-              id={bodyLabelId}
-              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-            >
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
-                ns: 'workflowHumanInput',
-              })}
-            </div>
-            <MailBodyInput
-              aria-labelledby={bodyLabelId}
-              value={body}
-              onChange={setBody}
-              nodesOutputVars={nodesOutputVars}
-              availableNodes={availableNodes}
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], {
-                ns: 'workflowHumanInput',
-              })}
-            </div>
-            <Recipient data={recipients} onChange={setRecipients} />
-          </div>
-          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 ps-2.5 shadow-xs">
-            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
-              <RiBugLine className="size-3.5 text-text-primary-on-surface" />
-            </div>
-            <div className="grow space-y-1">
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleConfirm()
+          }}
+        >
+          <DialogBody className="space-y-5">
+            <div>
               <label
-                htmlFor={debugModeId}
-                className="cursor-pointer system-sm-medium text-text-secondary"
+                htmlFor={subjectId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
               >
-                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
+                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
                   ns: 'workflowHumanInput',
                 })}
               </label>
-              <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
-                <Trans
-                  i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
-                  ns="workflowHumanInput"
-                  components={{
-                    email: <span className="body-md-medium text-text-primary">{email}</span>,
-                  }}
-                  values={{ email }}
-                />
-                <div>
-                  {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], {
+              <Input
+                id={subjectId}
+                className="w-full"
+                value={subject}
+                onValueChange={setSubject}
+                placeholder={t(
+                  ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
+                  { ns: 'workflowHumanInput' },
+                )}
+              />
+            </div>
+            <div>
+              <div
+                id={bodyLabelId}
+                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+              >
+                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
+                  ns: 'workflowHumanInput',
+                })}
+              </div>
+              <MailBodyInput
+                aria-labelledby={bodyLabelId}
+                value={body}
+                onChange={setBody}
+                nodesOutputVars={nodesOutputVars}
+                availableNodes={availableNodes}
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+                {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], {
+                  ns: 'workflowHumanInput',
+                })}
+              </div>
+              <Recipient data={recipients} onChange={setRecipients} />
+            </div>
+            <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 ps-2.5 shadow-xs">
+              <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
+                <RiBugLine className="size-3.5 text-text-primary-on-surface" />
+              </div>
+              <div className="grow space-y-1">
+                <label
+                  htmlFor={debugModeId}
+                  className="cursor-pointer system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
                     ns: 'workflowHumanInput',
                   })}
+                </label>
+                <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
+                  <Trans
+                    i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
+                    ns="workflowHumanInput"
+                    components={{
+                      email: <span className="body-md-medium text-text-primary">{email}</span>,
+                    }}
+                    values={{ email }}
+                  />
+                  <div>
+                    {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], {
+                      ns: 'workflowHumanInput',
+                    })}
+                  </div>
                 </div>
               </div>
+              <Switch
+                id={debugModeId}
+                aria-describedby={debugDescriptionId}
+                checked={debugMode}
+                onCheckedChange={(checked) => setDebugMode(checked)}
+              />
             </div>
-            <Switch
-              id={debugModeId}
-              aria-describedby={debugDescriptionId}
-              checked={debugMode}
-              onCheckedChange={(checked) => setDebugMode(checked)}
-            />
-          </div>
-        </DialogBody>
-        <DialogFooter>
-          <Button className="w-18" onClick={() => onOpenChange(false)}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button variant="primary" className="w-18" onClick={handleConfirm}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
+          </DialogBody>
+          <DialogFooter>
+            <Button className="w-18" onClick={() => onOpenChange(false)}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button variant="primary" className="w-18" type="submit">
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

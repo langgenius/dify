@@ -37,7 +37,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
             <button
               type="button"
               aria-label={tooltip}
-              className="group/copy flex w-full items-center gap-0.5 text-left"
+              className="group/copy flex w-full items-center gap-0.5 text-start"
               onClick={(event) => {
                 event.stopPropagation()
                 onClickCopy()

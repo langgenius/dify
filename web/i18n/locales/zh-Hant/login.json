@@ -44,6 +44,7 @@
   "invalidInvitationCode": "無效的邀請碼",
   "invitationCode": "邀請碼",
   "invitationCodePlaceholder": "輸入邀請碼",
+  "invitationWorkspaceFull": "這個工作區的成員名額已滿，暫時無法加入。請聯絡邀請你的人釋放名額或升級方案。",
   "join": "加入",
   "joinTipEnd": "團隊",
   "joinTipStart": "邀請你加入",

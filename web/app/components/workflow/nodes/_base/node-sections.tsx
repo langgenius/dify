@@ -19,7 +19,7 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
   return (
     <>
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-        <div className="ml-1 flex items-center gap-1">
+        <div className="ms-1 flex items-center gap-1">
           <span className="rounded-[5px] border border-text-warning px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning">
             {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
           </span>
@@ -43,7 +43,7 @@ export const NodeHeaderMeta = ({ data, hasVarValue, isLoading, loopIndex, t }: H
         data._iterationIndex &&
         data._runningStatus === NodeRunningStatus.Running
       ) && (
-        <div className="mr-1.5 text-xs font-medium text-text-accent">
+        <div className="me-1.5 text-xs font-medium text-text-accent">
           {data._iterationIndex > data._iterationLength
             ? data._iterationLength
             : data._iterationIndex}

@@ -1,3 +1,4 @@
+import re
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import TypeVar
@@ -179,6 +180,28 @@ def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
     ]
     assert result.metrics[0].details["success_criteria_assessments"][0]["score"] == 0.7
     assert "TARGET METRIC: task_completion" in fake_model.system_prompt
+
+
+def test_agent_metric_error_hides_provider_payload_and_links_to_log(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    secret = "provider-response-secret"
+
+    def fail_model(*_args: object) -> None:
+        raise RuntimeError(f"PluginInvokeError: {{'args': '{secret}'}}")
+
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", fail_model)
+    item = AgentEvaluationItem(index=0, inputs={"task": "Help"}, output="No result")
+
+    result = AgentLLMJudgeEvaluator().evaluate([item], ["task_completion"], "provider", "model", "tenant")[0]
+
+    assert result.error is not None
+    assert result.error.startswith("EVAL_MODEL_REQUEST_FAILED:")
+    assert secret not in result.error
+    error_id = re.search(r"error_id=([0-9a-f]{32})", result.error)
+    assert error_id is not None
+    assert error_id.group(1) in caplog.text
 
 
 def test_task_completion_caps_goal_satisfaction_with_failed_observable_requirement(
@@ -651,9 +674,9 @@ def test_tool_argument_payload_marks_calls_without_visible_schema_unassessable()
     ("metric", "available_tools", "tool_calls", "expected_status", "expected_error"),
     [
         ("tool_selection_correctness", [], [], "not_applicable", None),
-        ("tool_selection_correctness", None, [], None, "runtime tool snapshot is missing"),
-        ("tool_argument_correctness", None, [AgentToolCall(name="weather")], None, "runtime tool snapshot is missing"),
-        ("trajectory_quality", [], [], None, "normalized Agent trajectory is missing"),
+        ("tool_selection_correctness", None, [], None, "EVAL_TARGET_DATA_MISSING"),
+        ("tool_argument_correctness", None, [AgentToolCall(name="weather")], None, "EVAL_TARGET_DATA_MISSING"),
+        ("trajectory_quality", [], [], None, "EVAL_TARGET_DATA_MISSING"),
     ],
 )
 def test_agent_judge_preconditions_return_row_local_results(

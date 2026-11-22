@@ -59,12 +59,12 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
             className={cn(
               'relative text-text-tertiary select-none focus-visible:ring-inset',
               embedded
-                ? 'mr-1 h-7 rounded-md'
+                ? 'me-1 h-7 rounded-md'
                 : 'h-8 min-w-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-normal px-2',
               embedded && !value.length && 'size-7 min-h-0 p-0',
               embedded &&
                 value.length > 0 &&
-                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-1.5 pl-1 shadow-xs shadow-shadow-shadow-3',
+                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 ps-1 pe-1.5 shadow-xs shadow-shadow-shadow-3',
               !embedded && 'hover:bg-components-input-bg-hover',
               embedded &&
                 !value.length &&
@@ -122,7 +122,7 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
               key={tag.id}
               className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
             >
-              <Checkbox className="mr-1" value={tag.id} />
+              <Checkbox className="me-1" value={tag.id} />
               <div className="px-1 system-sm-medium text-text-secondary">{tag.name}</div>
             </label>
           ))}

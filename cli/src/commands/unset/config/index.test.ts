@@ -1,4 +1,5 @@
 import type { TestWorld } from '@test/fixtures/kernel'
+import { writeFile } from 'node:fs/promises'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { commands } from '@/plugins/commands'
@@ -12,9 +13,11 @@ afterEach(async () => {
 it('removes a value, restoring its default', async () => {
   const w = await testContext({ login: false, argv: ['unset', 'config', 'http.timeout'] })
   worlds.push(w)
-  await (await w.ctx.get(config)).set('http.timeout', '5000')
+  const service = await w.ctx.get(config)
+  await writeFile(service.path, 'http:\n  timeout: 5000\n')
+
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(await (await w.ctx.get(config)).get('http.timeout')).toBe(30_000)
+  expect(await service.get('http.timeout')).toBe(30_000)
 })
 
 it('rejects an unknown key with exit 2', async () => {

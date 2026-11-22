@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react'
 import type { InputVar } from '@/models/pipeline'
 import type { SnippetDetail } from '@/models/snippet'
 import { useState } from 'react'
@@ -20,9 +19,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/snippets/snippet-1/orchestrate',
   useRouter: () => ({ replace: vi.fn() }),
   useSelectedLayoutSegment: () => 'orchestrate',
-}))
-vi.mock('@/next/link', () => ({
-  default: ({ children, ...props }: ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 const MIB = 1024 * 1024

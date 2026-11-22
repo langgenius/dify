@@ -15,7 +15,7 @@ const Header = () => {
         aria-label={t(($) => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}
         className={cn(
           iconButtonVariants({ variant: 'secondary-accent', size: 'xl' }),
-          'absolute bottom-0 left-5 rounded-full',
+          'absolute inset-s-5 bottom-0 rounded-full',
         )}
         href="/datasets"
         replace

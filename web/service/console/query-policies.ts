@@ -11,7 +11,10 @@ import type {
 import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import type { AccountWithRoleListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AccountWithRoleListResponse,
+  RbacRoleList,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
@@ -905,17 +908,29 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSettled: (_data, error, _variables, _result, context) =>
-                      error
-                        ? undefined
-                        : Promise.all([
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                            }),
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.members.get.key(),
-                            }),
-                          ]),
+                    onSettled: (_data, error, { params }, _result, { client }) => {
+                      if (error) return
+                      const roles = consoleQuery.workspaces.current.rbac.roles.get
+                      const removeRole = (page: RbacRoleList): RbacRoleList =>
+                        page.data?.some((role) => role.id === params.role_id)
+                          ? {
+                              ...page,
+                              data: page.data.filter((role) => role.id !== params.role_id),
+                            }
+                          : page
+                      client.setQueriesData<RbacRoleList>(
+                        { queryKey: roles.key({ type: 'query' }) },
+                        (data) => data && removeRole(data),
+                      )
+                      client.setQueriesData<InfiniteData<RbacRoleList>>(
+                        { queryKey: roles.key({ type: 'infinite' }) },
+                        (data) => data && { ...data, pages: data.pages.map(removeRole) },
+                      )
+                      void client.invalidateQueries({ queryKey: roles.key() })
+                      void client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.members.get.key(),
+                      })
+                    },
                   },
                 },
                 copy: {
