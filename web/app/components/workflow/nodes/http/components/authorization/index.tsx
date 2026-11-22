@@ -49,7 +49,7 @@ function Field({
     <div>
       <div className="text-[13px] leading-8 font-medium text-text-secondary">
         {htmlFor ? <label htmlFor={htmlFor}>{title}</label> : title}
-        {isRequired && <span className="ml-0.5 text-text-destructive">*</span>}
+        {isRequired && <span className="ms-0.5 text-text-destructive">*</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -265,7 +265,7 @@ export function AuthorizationDialog({
   const label = (
     <span className="text-xs font-medium text-text-tertiary">
       {t(($) => $[`${i18nPrefix}.authorization`])}
-      <span className="ml-1 text-text-secondary">
+      <span className="ms-1 text-text-secondary">
         {t(($) => $[`${i18nPrefix}.${payload.type}`])}
       </span>
     </span>
@@ -276,7 +276,7 @@ export function AuthorizationDialog({
   }
 
   return (
-    <Dialog actionsRef={actionsRef}>
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
       <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover">
         <span
           aria-hidden

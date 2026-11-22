@@ -86,14 +86,14 @@ const TagInput = ({
       className={cn(
         'flex flex-wrap',
         !isInWorkflow && 'min-w-50',
-        isSpecialMode ? 'rounded-lg bg-components-input-bg-normal pb-1 pl-1' : '',
+        isSpecialMode ? 'rounded-lg bg-components-input-bg-normal ps-1 pb-1' : '',
       )}
     >
       {(items || []).map((item, index) => (
         <div
           key={item}
           className={cn(
-            'mt-1 mr-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 pr-1 pl-1.5 system-xs-regular text-text-secondary',
+            'me-1 mt-1 flex items-center rounded-md border border-divider-deep bg-components-badge-white-to-dark py-1 ps-1.5 pe-1 system-xs-regular text-text-secondary',
           )}
         >
           {item}
@@ -105,7 +105,7 @@ const TagInput = ({
               onClick={() => handleRemove(index)}
             >
               <span
-                className="ml-0.5 i-ri-close-line size-3.5 text-text-tertiary"
+                className="ms-0.5 i-ri-close-line size-3.5 text-text-tertiary"
                 aria-hidden="true"
               />
             </button>

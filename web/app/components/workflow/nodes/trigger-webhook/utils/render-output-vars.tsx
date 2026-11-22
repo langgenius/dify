@@ -31,7 +31,7 @@ const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
       <div className="flex items-center leading-4.5">
         <span className="code-sm-regular text-text-tertiary">{prefix}.</span>
         <span className="code-sm-semibold text-text-secondary">{name}</span>
-        <span className="ml-2 system-xs-regular text-text-tertiary">{type}</span>
+        <span className="ms-2 system-xs-regular text-text-tertiary">{type}</span>
       </div>
     </div>
   )

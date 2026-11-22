@@ -38,11 +38,18 @@ class TestCreateRagPipelineDatasetApi:
     def _valid_payload(self) -> dict[str, str]:
         return {"yaml_content": "name: test"}
 
-    def test_post_success(self, app: Flask, unbound_session: Session) -> None:
+    @pytest.mark.parametrize(
+        "template_icon",
+        [None, {"icon": "📊", "icon_background": "#CAFFDA", "icon_type": "emoji"}],
+        ids=["default-icon", "template-icon"],
+    )
+    def test_post_success(self, app: Flask, unbound_session: Session, template_icon: dict[str, str] | None) -> None:
         api = CreateRagPipelineDatasetApi()
         method = unwrap(api.post)
 
-        payload = self._valid_payload()
+        payload: dict[str, object] = {**self._valid_payload()}
+        if template_icon is not None:
+            payload["icon_info"] = template_icon
         user = _account(editor=True)
         import_info = {
             "id": "import-1",
@@ -70,6 +77,10 @@ class TestCreateRagPipelineDatasetApi:
             )
 
         dsl_service_cls.assert_called_once_with(unbound_session)
+        entity = mock_service.create_rag_pipeline_dataset.call_args.kwargs["rag_pipeline_dataset_create_entity"]
+        assert entity.icon_info.model_dump(exclude_none=True) == (
+            template_icon or {"icon": "📙", "icon_background": "#FFF4ED", "icon_type": "emoji"}
+        )
         assert status == 201
         assert response == {
             "id": "import-1",

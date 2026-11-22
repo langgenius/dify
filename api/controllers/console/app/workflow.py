@@ -37,6 +37,7 @@ from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
+    TriggerNodeLimitExceededError,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
 from controllers.console.app.wraps import get_app_model, with_session
@@ -96,6 +97,7 @@ from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.trigger.debug_service import TriggerDebugEvent
@@ -222,7 +224,7 @@ class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload)
 class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
     language: str | None = None
     voice: str | None = None
-    autoPlay: Literal["enabled", "disabled"] | None = None
+    autoPlay: Literal["enabled", "disabled"] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
@@ -255,7 +257,7 @@ class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
     video: WorkflowFileUploadTransferPayload | None = None
     custom: WorkflowFileUploadTransferPayload | None = None
     preview_config: WorkflowFileUploadPreviewConfigPayload | None = None
-    fileUploadConfig: dict[str, Any] | None = None
+    fileUploadConfig: dict[str, Any] | None = None  # noqa: N815  # Public field name.
 
 
 class WorkflowFeaturesConfigPayload(BaseModel):
@@ -1341,7 +1343,7 @@ class PublishedWorkflowApi(Resource):
 
         return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
-    @error_responses(PaidPlanRequiredError)
+    @error_responses(PaidPlanRequiredError, TriggerNodeLimitExceededError)
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @setup_required
@@ -1371,6 +1373,8 @@ class PublishedWorkflowApi(Resource):
                 raise PaidPlanRequiredError() from exc
             except EvaluationEntitlementUnavailableError as exc:
                 raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+            except TriggerNodeLimitExceededServiceError as exc:
+                raise TriggerNodeLimitExceededError(count=exc.count, limit=exc.limit) from exc
 
             # Update app_model within the same session to ensure atomicity
             app_model_in_session = session.get(App, app_model.id)

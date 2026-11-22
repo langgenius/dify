@@ -85,7 +85,8 @@ async function setup(ids: string[]) {
     await userEvent.click(card.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!)
     await screen.getByRole('menuitem', { name: 'common.operation.delete', exact: true }).click()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    // The modal hides the menu from the accessibility tree before its exit animation unmounts it.
+    await expect.element(screen.getByRole('menu', { includeHidden: true })).not.toBeInTheDocument()
   }
   return { screen, open }
 }

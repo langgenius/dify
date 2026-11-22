@@ -56,7 +56,7 @@ const createData = (overrides: Partial<HumanInputV2NodeType> = {}): HumanInputV2
 })
 
 const renderPanel = (data = createData(), entry?: Node) => {
-  const queryClient = createChannelsQueryClient(['resend', 'slack'])
+  const queryClient = createChannelsQueryClient(['email', 'slack'])
   seedToolProviders(queryClient, {
     builtInTools: [],
     customTools: [],
@@ -68,6 +68,12 @@ const renderPanel = (data = createData(), entry?: Node) => {
   const nodes = entry ? [entry, createNode({ id: 'node', data })] : undefined
   return renderNodePanel(HumanInputV2Panel, data, {
     queryClient,
+    resource: {
+      kind: 'app',
+      appId: 'app-test-channels',
+      mode: 'workflow',
+      collaborationEnabled: false,
+    },
     nodes,
     initialStoreState: nodes ? { nodes } : undefined,
     hooksStoreProps: { doSyncWorkflowDraft: async () => null },

@@ -497,7 +497,8 @@ const RecipientsContent = ({
                           <InfotipTrigger
                             aria-label={infoName(item.label)}
                             iconVariant="information"
-                            iconSize="small"
+                            size="sm"
+                            className="m-0.5"
                           />
                           <InfotipContent side="left" align="start">
                             <InfotipTitle className="wrap-anywhere">

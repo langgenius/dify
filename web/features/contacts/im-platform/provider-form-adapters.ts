@@ -1,8 +1,8 @@
 import type { ContactImProviderDefinition } from './types'
-import type { DocPathWithoutLang } from '@/types/doc-paths'
+import type { ChannelDocPath } from './use-channel-doc-link'
 import { ContactImProvider, ContactImProviderField } from './types'
 
-const setupGuidePaths: Record<Exclude<ContactImProvider, 'resend'>, DocPathWithoutLang> = {
+const setupGuidePaths: Record<Exclude<ContactImProvider, 'resend'>, ChannelDocPath> = {
   slack: '/use-dify/workspace/channels/slack',
   feishu: '/use-dify/workspace/channels/feishu-lark',
   lark: '/use-dify/workspace/channels/feishu-lark',

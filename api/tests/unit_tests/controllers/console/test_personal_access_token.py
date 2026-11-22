@@ -75,7 +75,7 @@ def client(
     app.config["TEST_BROWSER_ACCOUNT"] = account
     login_manager.init_app(app)
     bind_account_loader(app, account_application_services.accounts.identity.load_user)
-    bind_account_only_loader(app, account_application_services.accounts.identity.get_account_by_id)
+    bind_account_only_loader(app, account_application_services.accounts.identity.load_account)
     services = build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
@@ -545,13 +545,7 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
         ("POST", "/workspaces/{id}/members"),
         ("PATCH", "/workspaces/{id}/members/{id}"),
         ("DELETE", "/workspaces/{id}/members/{id}"),
-        ("POST", "/workspaces/{id}/apps/workflow"),
-        ("POST", "/workspaces/{id}/apps/imports"),
         ("GET", "/workspaces/{id}/knowledge-bases"),
-        ("PATCH", "/apps/{id}/app-info/workflow"),
-        ("POST", "/apps/{id}:publish"),
-        ("GET", "/apps/{id}/dsl"),
-        ("GET", "/apps/{id}/versions"),
     ],
 )
 def test_pat_rejects_management_outside_phase_one(

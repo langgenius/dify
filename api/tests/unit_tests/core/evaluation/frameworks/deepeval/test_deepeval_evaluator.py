@@ -360,8 +360,11 @@ def test_non_finite_deepeval_score_is_a_row_error(monkeypatch: pytest.MonkeyPatc
     )[0]
 
     assert result.metrics == []
-    assert "non-finite score" in (result.error or "")
-    assert "unsupported_metric" in (result.error or "")
+    assert result.error is not None
+    assert "EVAL_METRIC_FAILED:" in result.error
+    assert "non-finite score" not in result.error
+    assert "EVAL_UNSUPPORTED_METRIC:" in result.error
+    assert "unsupported_metric" not in result.error
 
 
 def test_agent_test_case_requires_agent_input() -> None:
