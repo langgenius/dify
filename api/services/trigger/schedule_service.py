@@ -192,7 +192,9 @@ class TriggerScheduleService:
         total_dispatched = 0
         has_more = True
         while has_more:
-            with self._schedules.claim_due(now=self._now(), limit=self._batch_size) as claimed:
+            remaining_limit = self._max_dispatch_per_tick - total_dispatched
+            batch_limit = min(self._batch_size, remaining_limit) if remaining_limit > 0 else self._batch_size
+            with self._schedules.claim_due(now=self._now(), limit=batch_limit) as claimed:
                 schedules = claimed.schedules
                 if schedules:
                     next_run_times = {
