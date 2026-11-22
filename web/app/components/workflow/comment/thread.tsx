@@ -347,9 +347,13 @@ function CommentThreadSession({
   )
 
   const replies = comment.replies || []
-  // A send from here, new or sent again, is the newest one still sending.
-  const sendingKey = replies.filter((reply) => reply.send_state === 'pending').at(-1)?.client_key
-  const previousSendingKeyRef = useRef(sendingKey)
+  // A send from here, new or sent again, is one this list has not seen sending before; a
+  // send that finishes is not. Joined, the keys compare by value between renders.
+  const sendingKeys = replies
+    .filter((reply) => reply.send_state === 'pending')
+    .map((reply) => reply.client_key)
+    .join(' ')
+  const seenSendingKeysRef = useRef(new Set(sendingKeys.split(' ')))
 
   useEffect(() => {
     const container = messageListRef.current
@@ -362,7 +366,7 @@ function CommentThreadSession({
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
     else if (
-      (sendingKey && sendingKey !== previousSendingKeyRef.current) ||
+      sendingKeys.split(' ').some((key) => key && !seenSendingKeysRef.current.has(key)) ||
       (replies.length > previousReplyCount && atNewestRef.current)
     ) {
       // Heading to the newest message, so the next reply follows too.
@@ -376,8 +380,8 @@ function CommentThreadSession({
     }
 
     previousReplyCountRef.current = replies.length
-    previousSendingKeyRef.current = sendingKey
-  }, [loading, replies.length, sendingKey])
+    for (const key of sendingKeys.split(' ')) seenSendingKeysRef.current.add(key)
+  }, [loading, replies.length, sendingKeys])
 
   // The reply shows in the thread at once, so the box clears for the next one. A reply
   // that fails to send stays in the thread with its own retry.

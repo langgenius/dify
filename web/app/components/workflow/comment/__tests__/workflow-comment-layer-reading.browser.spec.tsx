@@ -139,6 +139,38 @@ describe('reading a thread', () => {
       .toBeInViewport({ ratio: 1 })
   })
 
+  it('keeps the reader’s place when one of several sends finishes', async () => {
+    for (let index = 0; index < 12; index++)
+      saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
+    const first = deferred<{ id: string; created_at: number }>()
+    const second = deferred<{ id: string; created_at: number }>()
+    api.reply.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const screen = await renderLayer()
+    await openThread(screen)
+    await sendReply(screen, 'Sending first')
+    await sendReply(screen, 'Sending second')
+    await expect.element(thread(screen).getByText('Sending second')).toBeInViewport()
+
+    await userEvent.wheel(thread(screen).getByText('Sending second'), {
+      direction: 'up',
+      times: 10,
+    })
+    const oldest = thread(screen).getByText('Reply number 0')
+    await expect.element(oldest).toBeInViewport()
+    const list = scrollingParent(oldest.element())
+    const readingAt = list.scrollTop
+    second.resolve(saveReplyOnServer('first', 'Sending second'))
+    await expect
+      .poll(() =>
+        thread(screen).getByText('Sending second').element().closest('[aria-busy="true"]'),
+      )
+      .toBeNull()
+    await nextFrames(2)
+
+    expect(list.scrollTop).toBe(readingAt)
+    first.resolve(saveReplyOnServer('first', 'Sending first'))
+  })
+
   it('brings a failed reply into view when it is sent again', async () => {
     const failures = ['Failure 1', 'Failure 2', 'Failure 3', 'Failure 4', 'Failure 5', 'Failure 6']
     for (const _ of failures) api.reply.mockRejectedValueOnce(new Error('Network error'))
