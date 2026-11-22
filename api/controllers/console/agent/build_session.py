@@ -19,18 +19,7 @@ from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.errors import (
-    AgentBuildSandboxNotFoundError,
-    AgentHomeSnapshotCreateFailedError,
-    AgentHomeSnapshotTooLargeError,
-    AgentNotFoundError,
-    AgentSoulLockedError,
-    AgentVersionConflictError,
-    AgentVersionNotFoundError,
-    InvalidComposerConfigError,
-    PlaintextSecretNotAllowedError,
-)
-from services.app.agent_build_session_store import (
+from services.agent.build_session_store import (
     AgentBuildAgentNotFoundError,
     AgentBuildApplyChangedError,
     AgentBuildBaseUnavailableError,
@@ -42,6 +31,17 @@ from services.app.agent_build_session_store import (
     AgentBuildSnapshotFailedError,
     AgentBuildSnapshotTooLargeError,
     AgentBuildSoulLockedError,
+)
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+    AgentNotFoundError,
+    AgentSoulLockedError,
+    AgentVersionConflictError,
+    AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+    PlaintextSecretNotAllowedError,
 )
 from services.entities.agent_entities import ComposerSavePayload
 

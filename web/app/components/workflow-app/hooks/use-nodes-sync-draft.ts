@@ -17,7 +17,6 @@ import {
   editorCollaborationEnabledAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
@@ -30,6 +29,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
+import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'

@@ -39,6 +39,7 @@ from repositories.agent_drafts import (
     save_agent_draft,
 )
 from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
@@ -59,7 +60,6 @@ from services.agent.knowledge_datasets import (
 from services.agent.knowledge_spaces import sync_agent_app_knowledge_bindings, validate_agent_knowledge_spaces
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
-from services.app.agent_build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,

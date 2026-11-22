@@ -32,7 +32,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
 
   return (
     <div
-      className="w-80 cursor-pointer rounded-3xl rounded-bl-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
+      className="w-80 cursor-pointer rounded-3xl rounded-es-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
       onMouseEnter={() => setCommentPreviewHovering(true)}
       onMouseLeave={() => setCommentPreviewHovering(false)}

@@ -182,7 +182,6 @@ function CreateKnowledgeSession() {
   }
 
   const checkUploadQuota = async () => {
-    if (deploymentEdition !== 'CLOUD') return true
     const failure = await getKnowledgeFsUploadQuotaFailure(queryClient)
     if (!failure) return true
     setUploadError(tError(($) => $[failure]))
@@ -207,7 +206,7 @@ function CreateKnowledgeSession() {
       return
     }
     resetUnsubmittedError()
-    if (deploymentEdition === 'CLOUD' && addedUploads.some((upload) => !upload.issue)) {
+    if (addedUploads.some((upload) => !upload.issue)) {
       uploadSelectionPendingRef.current = true
       setStagingCount((count) => count + 1)
       try {
@@ -294,7 +293,6 @@ function CreateKnowledgeSession() {
 
     if (
       startMode === 'upload' &&
-      deploymentEdition === 'CLOUD' &&
       validUploads.some(({ id }) => uploadProgressRef.current.get(id)?.phase !== 'completed')
     ) {
       setSubmissionLocked(true)
@@ -441,6 +439,7 @@ function CreateKnowledgeSession() {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) requestClose()
       }}

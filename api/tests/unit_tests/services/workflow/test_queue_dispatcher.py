@@ -3,15 +3,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from services.workflow.queue_dispatcher import (
+    BaseQueueDispatcher,
     ProfessionalQueueDispatcher,
     QueueDispatcherManager,
     QueuePriority,
     SandboxQueueDispatcher,
     TeamQueueDispatcher,
 )
-from tests.helpers import billing_builders as builders
 
 
 class TestQueuePriority:
@@ -43,43 +43,29 @@ class TestQueueDispatcherManager:
     def _cloud_edition(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_cloud_edition_professional_plan(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.return_value = builders.subscription_info("professional")
+    @pytest.mark.parametrize(
+        ("plan", "expected"),
+        [
+            (CloudPlan.PROFESSIONAL, ProfessionalQueueDispatcher),
+            (CloudPlan.TEAM, TeamQueueDispatcher),
+            (CloudPlan.SANDBOX, SandboxQueueDispatcher),
+        ],
+    )
+    @patch("services.workflow.queue_dispatcher.FeatureService.get_workspace_plan")
+    def test_cloud_edition_routes_by_plan(
+        self, mock_get_plan: MagicMock, plan: CloudPlan, expected: type[BaseQueueDispatcher]
+    ) -> None:
+        mock_get_plan.return_value = plan
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
 
-        assert isinstance(dispatcher, ProfessionalQueueDispatcher)
+        assert isinstance(dispatcher, expected)
+        mock_get_plan.assert_called_once_with("tenant-1")
 
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_cloud_edition_team_plan(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.return_value = builders.subscription_info("team")
-
-        dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
-
-        assert isinstance(dispatcher, TeamQueueDispatcher)
-
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_cloud_edition_sandbox_plan(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.return_value = builders.subscription_info("sandbox")
-
-        dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
-
-        assert isinstance(dispatcher, SandboxQueueDispatcher)
-
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_cloud_edition_unknown_plan_defaults_to_sandbox(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.return_value = builders.subscription_info(
-            subscription=builders.subscription_plan().model_copy(update={"plan": "enterprise"})
-        )
-
-        dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
-
-        assert isinstance(dispatcher, SandboxQueueDispatcher)
-
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_cloud_edition_billing_failure_defaults_to_sandbox(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.side_effect = Exception("billing unavailable")
+    @pytest.mark.parametrize("error", [Exception("billing unavailable"), ValueError("'enterprise' is not a CloudPlan")])
+    @patch("services.workflow.queue_dispatcher.FeatureService.get_workspace_plan")
+    def test_cloud_edition_plan_failure_defaults_to_sandbox(self, mock_get_plan: MagicMock, error: Exception) -> None:
+        mock_get_plan.side_effect = error
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
 
@@ -91,11 +77,3 @@ class TestQueueDispatcherManager:
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
 
         assert isinstance(dispatcher, TeamQueueDispatcher)
-
-    @patch("services.workflow.queue_dispatcher.BillingService")
-    def test_missing_subscription_key_defaults_to_sandbox(self, mock_billing: MagicMock) -> None:
-        mock_billing.get_info.return_value = builders.subscription_info().model_copy(update={"subscription": None})
-
-        dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
-
-        assert isinstance(dispatcher, SandboxQueueDispatcher)

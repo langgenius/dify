@@ -194,7 +194,7 @@ const EmbeddingProcess = ({
             />
           )}
         {deploymentEdition === 'CLOUD' && (plan === 'sandbox' || plan === 'professional') && (
-          <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
+          <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 ps-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />
             </div>
@@ -216,11 +216,11 @@ const EmbeddingProcess = ({
             >
               {isSourceEmbedding(indexingStatusDetail) && (
                 <div
-                  className="absolute top-0 left-0 h-full min-w-0.5 border-r-2 border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
+                  className="absolute inset-s-0 top-0 h-full min-w-0.5 border-e-2 border-e-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className="z-1 flex h-full items-center gap-1 pr-2 pl-1.5">
+              <div className="z-1 flex h-full items-center gap-1 ps-1.5 pe-2">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
                     size="sm"
@@ -243,7 +243,7 @@ const EmbeddingProcess = ({
                   <div className="truncate system-xs-medium text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
-                  <PriorityLabel className="ml-0" />
+                  <PriorityLabel className="ms-0" />
                 </div>
                 {isSourceEmbedding(indexingStatusDetail) && (
                   <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>

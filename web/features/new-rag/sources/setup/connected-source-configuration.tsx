@@ -437,10 +437,10 @@ function ConnectedSourceConfigurationFields({
                 ? t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })
                 : t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })}
             </span>
-            <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
+            <span role="status" className="ms-auto system-xs-regular text-text-tertiary">
               {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
               {selectionAtLimit && (
-                <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
+                <span id={SELECTION_LIMIT_ID} className="ms-2 text-text-destructive">
                   {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
                 </span>
               )}

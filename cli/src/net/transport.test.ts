@@ -120,7 +120,8 @@ afterEach(async () => {
   for (const dir of directories.splice(0)) rmSync(dir, { recursive: true, force: true })
 })
 
-describe('Bun CLI transport', () => {
+// Each case spawns a cold Bun CLI (up to 10s per spawn), so the 5s default is too tight on CI.
+describe('Bun CLI transport', { timeout: 30_000 }, () => {
   it('requires --insecure to log in to a self-signed HTTPS server', async () => {
     const target = await deviceServer(true)
     const dir = configDir()

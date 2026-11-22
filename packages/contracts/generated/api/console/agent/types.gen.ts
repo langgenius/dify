@@ -73,6 +73,8 @@ export type AgentAppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentNameConflictError = ErrorResponse & {
@@ -810,6 +812,8 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentPublicationCountsResponse = {
@@ -914,6 +918,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -1488,8 +1494,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -2595,6 +2601,8 @@ export type AgentAppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentAppPartialWritable = {
@@ -2631,6 +2639,8 @@ export type AgentAppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {

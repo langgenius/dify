@@ -76,9 +76,9 @@ from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
 
 
 class _ImmutableJSONModel(BaseModel):
-    """Strict immutable base for structured JSON persistence values."""
+    """Read-only historical JSON; never write a parsed value over its original JSON."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
 
 class _ImmutableJSONObject(RootModel[dict[str, JsonValue]]):

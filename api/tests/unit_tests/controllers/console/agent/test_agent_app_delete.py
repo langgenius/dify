@@ -25,11 +25,19 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from models.model import App, AppMode
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.app.agent_app_service import AgentAppDeletionService
 from services.entities.app_entities import AppDeletion, AppEvent
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
@@ -58,7 +66,9 @@ class RecordedCleanup:
 def cleanup(harness: Harness) -> RecordedCleanup:
     services = harness.client.application.extensions["application_services"]
     recorded = RecordedCleanup(sessions=harness.sessions)
-    repository = AgentAppRepository(session_factory=harness.sessions)
+    repository = AgentAppRepository(
+        session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    )
     harness.client.application.extensions["application_services"] = replace(
         services,
         agent_apps=replace(
@@ -86,6 +96,35 @@ def _create_access_token(harness: Harness, app_id: str) -> str:
             )
         )
         return token.id
+
+
+def _create_evaluation(harness: Harness, *, agent_id: str, tenant_id: str) -> tuple[str, str, str]:
+    """Persist a completed Agent evaluation and its config and item for transaction assertions."""
+    with harness.sessions.begin() as session:
+        config = EvaluationConfiguration(
+            tenant_id=tenant_id,
+            target_type=EvaluationTargetType.AGENTS,
+            target_id=agent_id,
+            created_by=harness.account_id,
+            updated_by=harness.account_id,
+        )
+        session.add(config)
+        session.flush()
+        run = EvaluationRun(
+            tenant_id=tenant_id,
+            target_type=EvaluationTargetType.AGENTS,
+            target_id=agent_id,
+            evaluation_config_id=config.id,
+            config_snapshot="{}",
+            status=EvaluationRunStatus.COMPLETED,
+            created_by=harness.account_id,
+        )
+        session.add(run)
+        session.flush()
+        item = EvaluationRunItem(evaluation_run_id=run.id, item_index=0)
+        session.add(item)
+        session.flush()
+        return config.id, run.id, item.id
 
 
 def test_delete_archives_agent_and_removes_access_grants_before_cleanup(
@@ -188,6 +227,10 @@ def test_delete_retires_resources_and_preserves_shared_tokens(harness: Harness, 
 
 def test_real_cleanup_publishes_tasks_after_commit(harness: Harness) -> None:
     agent_id, app_id = harness.create_agent()
+    config_id, run_id, item_id = _create_evaluation(harness, agent_id=agent_id, tenant_id=harness.tenant_id)
+    foreign_config_id, foreign_run_id, foreign_item_id = _create_evaluation(
+        harness, agent_id=agent_id, tenant_id=str(uuid4())
+    )
     restore_app = current_celery_app.set_current
     broker = Celery("agent-app-delete-test", broker="memory://")
     broker.conf.update(task_always_eager=False, task_ignore_result=True, task_publish_retry=False)
@@ -198,6 +241,9 @@ def test_real_cleanup_publishes_tasks_after_commit(harness: Harness) -> None:
         if sender is not None:
             with harness.sessions() as session:
                 assert session.get(App, app_id) is None
+                assert session.get(EvaluationConfiguration, config_id) is None
+                assert session.get(EvaluationRun, run_id) is None
+                assert session.get(EvaluationRunItem, item_id) is None
             published.append(sender)
 
     def on_deleted(sender: object) -> None:
@@ -218,6 +264,10 @@ def test_real_cleanup_publishes_tasks_after_commit(harness: Harness) -> None:
     assert [event.id for event in events] == [app_id]
     assert any("remove_app_and_related_data" in name for name in published)
     assert any("collect_agent_resources" in name for name in published)
+    with harness.sessions() as session:
+        assert session.get(EvaluationConfiguration, foreign_config_id) is not None
+        assert session.get(EvaluationRun, foreign_run_id) is not None
+        assert session.get(EvaluationRunItem, foreign_item_id) is not None
 
 
 def test_delete_rejects_cross_tenant_and_wrong_app_mode(harness: Harness, cleanup: RecordedCleanup) -> None:
@@ -271,6 +321,7 @@ def test_rbac_allows_agent_owner_with_normal_workspace_role(harness: Harness, cl
 def test_delete_rolls_back_grants_and_agent_when_app_write_fails(harness: Harness, cleanup: RecordedCleanup) -> None:
     agent_id, app_id = harness.create_agent()
     token_id = _create_access_token(harness, app_id)
+    config_id, run_id, item_id = _create_evaluation(harness, agent_id=agent_id, tenant_id=harness.tenant_id)
 
     def reject_delete(_mapper: object, _connection: object, _target: object) -> None:
         raise RuntimeError("delete failed")
@@ -287,6 +338,9 @@ def test_delete_rolls_back_grants_and_agent_when_app_write_fails(harness: Harnes
         assert agent is not None
         assert agent.status == AgentStatus.ACTIVE
         assert session.get(ResourceAccessToken, token_id) is not None
+        assert session.get(EvaluationConfiguration, config_id) is not None
+        assert session.get(EvaluationRun, run_id) is not None
+        assert session.get(EvaluationRunItem, item_id) is not None
         assert (
             session.scalar(
                 select(ResourceAccessTokenRelation.id).where(ResourceAccessTokenRelation.token_id == token_id)

@@ -38,6 +38,36 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:moderation-service-boundary]
+name = Strict moderation use cases depend only on plain contracts and injected gateways
+type = forbidden
+source_modules =
+    services.moderation_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-moderation-runtime-boundary]
+name = Model assembly and invocation receive moderation through injection rather than application or persistence imports
+type = forbidden
+source_modules =
+    core.model_manager
+    core.workflow.node_runtime
+forbidden_modules =
+    services.moderation_service
+    services.moderation_adapters
+    repositories.api_based_extension_repository
+allow_indirect_imports = True
+
 [importlinter:contract:backend-layers]
 name = Backend modules follow the transport, application, execution-kernel, and shared-library layers
 type = layers
@@ -1233,6 +1263,7 @@ allow_indirect_imports = True
 name = Workflow comment application service is framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs
@@ -1287,11 +1318,13 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:agent-app-access-service-boundary]
-name = Agent App access services and contracts are framework and persistence neutral
+name = Agent App access and Sandbox services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.app.agent_app_service
     services.app.agent_app_contracts
+    services.agent.sandbox_service
+    services.agent.sandbox_contracts
 forbidden_modules =
     configs
     controllers
@@ -1304,10 +1337,11 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:console-agent-api-access-boundary]
-name = Agent API access controller reaches persistence through the composition root
+name = Agent API access and Sandbox controllers reach persistence through the composition root
 type = forbidden
 source_modules =
     controllers.console.agent.api_access
+    controllers.console.app.agent_app_sandbox
 forbidden_modules =
     extensions.ext_database
     models.model
@@ -1668,7 +1702,7 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:agent-app-repository-boundary]
-name = Agent App persistence adds no dependencies on Agent services
+name = Agent App persistence depends on Agent contracts rather than service implementations
 type = forbidden
 source_modules =
     repositories.app.agent_app_repository
@@ -1677,6 +1711,8 @@ forbidden_modules =
     services.agent
 allow_indirect_imports = True
 ignore_imports =
+    # This neutral store port is covered by the application boundary below.
+    repositories.app.agent_app_repository -> services.agent.build_session_store
     repositories.app.agent_app_repository -> services.agent.errors
     repositories.app.agent_app_repository -> services.agent.roster_service
 
@@ -1684,8 +1720,8 @@ ignore_imports =
 name = Agent Build session use cases and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
-    services.app.agent_build_session_service
-    services.app.agent_build_session_store
+    services.agent.build_session_service
+    services.agent.build_session_store
 forbidden_modules =
     celery
     configs

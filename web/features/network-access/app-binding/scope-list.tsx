@@ -2,7 +2,7 @@
 
 import type { AccessControlDraft } from './draft'
 import type { AccessControlAppIcon } from './index'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'

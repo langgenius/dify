@@ -25,8 +25,8 @@ export function ParameterItem({ payload, readonly, onSave, onDelete }: Props) {
             aria-hidden
             className="i-custom-vender-solid-development-variable-02 size-3.5 text-text-accent-secondary"
           />
-          <div className="ml-1 text-[13px] font-medium text-text-primary">{payload.name}</div>
-          <div className="ml-2 text-xs font-normal text-text-tertiary capitalize">
+          <div className="ms-1 text-[13px] font-medium text-text-primary">{payload.name}</div>
+          <div className="ms-2 text-xs font-normal text-text-tertiary capitalize">
             {payload.type}
           </div>
         </div>
@@ -42,7 +42,7 @@ export function ParameterItem({ payload, readonly, onSave, onDelete }: Props) {
         {payload.description}
       </div>
       {!readonly && (
-        <div className="pointer-events-none absolute top-0 right-0 flex h-full w-29.75 items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pr-1 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="pointer-events-none absolute inset-e-0 top-0 flex h-full w-29.75 items-center justify-end space-x-1 rounded-lg bg-linear-to-l from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent pe-1 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           <ParameterDialog type="edit" payload={payload} onSave={onSave} />
           <IconButton
             aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${payload.name}`}
