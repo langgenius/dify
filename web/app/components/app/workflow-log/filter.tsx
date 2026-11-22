@@ -65,7 +65,7 @@ export default function Filter({
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         onValueChange={(keyword) => setQueryParams({ ...queryParams, keyword })}
       />
-      {actions && <div className="ms-auto">{actions}</div>}
+      {actions ? <div className="ms-auto">{actions}</div> : null}
     </div>
   )
 }

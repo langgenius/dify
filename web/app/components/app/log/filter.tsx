@@ -96,7 +96,7 @@ const Filter: FC<IFilterProps> = ({
           />
         </>
       )}
-      {actions && <div className="ms-auto">{actions}</div>}
+      {actions ? <div className="ms-auto">{actions}</div> : null}
     </div>
   )
 }

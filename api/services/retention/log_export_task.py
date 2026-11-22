@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Generator
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal, Protocol, Self, TextIO
+from typing import Protocol, Self, TextIO
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
@@ -19,7 +19,12 @@ logger = logging.getLogger(__name__)
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], int]
 type LogExportDownload = str | tuple[bytes, Generator[bytes]]
 type OpenLogExportFile = Callable[[str, int, str], LogExportDownload]
-type LogExportKind = Literal["conversation", "workflow", "agent"]
+
+
+class LogExportKind(StrEnum):
+    CONVERSATION = "conversation"
+    WORKFLOW = "workflow"
+    AGENT = "agent"
 
 
 class LogExportStatus(StrEnum):

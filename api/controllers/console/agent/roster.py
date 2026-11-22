@@ -124,6 +124,7 @@ from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
+from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportStatus,
@@ -327,7 +328,7 @@ class AgentLogIdentitySearchQuery(BaseModel):
 class AgentLogIdentityOptionResponse(ResponseModel):
     id: str
     label: str
-    source: Literal["end-user", "account"]
+    source: ConsoleLogIdentitySource
 
 
 class AgentLogIdentitySearchResponse(ResponseModel):

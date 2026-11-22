@@ -1393,22 +1393,6 @@ export const zAgentLogListResponse = z.object({
   total: z.int(),
 })
 
-/**
- * AgentLogIdentityOptionResponse
- */
-export const zAgentLogIdentityOptionResponse = z.object({
-  id: z.string(),
-  label: z.string(),
-  source: z.enum(['account', 'end-user']),
-})
-
-/**
- * AgentLogIdentitySearchResponse
- */
-export const zAgentLogIdentitySearchResponse = z.object({
-  data: z.array(zAgentLogIdentityOptionResponse),
-})
-
 export const zAnyJsonValue = z.unknown()
 
 /**
@@ -1963,6 +1947,27 @@ export const zAgentLogExportLatestTaskResponse = z.object({
  */
 export const zAgentLogExportLatestResponse = z.object({
   task: zAgentLogExportLatestTaskResponse.nullable(),
+})
+
+/**
+ * ConsoleLogIdentitySource
+ */
+export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
+
+/**
+ * AgentLogIdentityOptionResponse
+ */
+export const zAgentLogIdentityOptionResponse = z.object({
+  id: z.string(),
+  label: z.string(),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * AgentLogIdentitySearchResponse
+ */
+export const zAgentLogIdentitySearchResponse = z.object({
+  data: z.array(zAgentLogIdentityOptionResponse),
 })
 
 /**

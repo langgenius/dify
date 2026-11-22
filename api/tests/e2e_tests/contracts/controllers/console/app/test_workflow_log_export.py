@@ -8,8 +8,7 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -25,7 +24,6 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import utc_now
@@ -37,7 +35,7 @@ from models.model import AppMode, DifySetup
 from models.workflow import WorkflowAppLogCreatedFrom, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.retention import log_export_adapters
-from services.retention.log_export_task import LogExportStatus
+from services.retention.log_export_task import LogExportKind, LogExportStatus
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
 from services.retention.workflow_run.log_export_service import (
@@ -47,7 +45,14 @@ from services.retention.workflow_run.log_export_service import (
 )
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from tasks.log_export_tasks import prepare_log_export_task
+from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app
+
+
+@dataclass(frozen=True)
+class _Services:
+    workflow_app_logs: WorkflowAppLogQueryService
+    workflow_log_exports: WorkflowLogExportService
 
 
 @dataclass(frozen=True)
@@ -58,10 +63,10 @@ class _ExportClient:
     tenant_id: str
     app_id: str
     account_id: str
-    redis: Mock
-    paid: Mock
-    publish: Mock
-    storage: Mock
+    redis: LogExportRedisIo
+    paid: MagicMock
+    publish: MagicMock
+    storage: LogExportStorageIo
     files: dict[str, str]
     run_id: str
 
@@ -84,7 +89,9 @@ def export_client(
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_redis: LogExportRedisIo,
+    log_export_publish: MagicMock,
+    log_export_storage: LogExportStorageIo,
 ) -> Iterator[_ExportClient]:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -154,7 +161,7 @@ def export_client(
             return loaded
 
     cache: dict[str, str] = {}
-    redis = Mock(spec=RedisClientWrapper)
+    redis = log_export_redis
     redis.setex.side_effect = lambda key, _ttl, value: cache.__setitem__(key, value)
     redis.get.side_effect = cache.get
 
@@ -167,25 +174,23 @@ def export_client(
         return 1
 
     redis.register_script.return_value = transition
-    paid = Mock(return_value=True)
-    monkeypatch.setattr(workflow_app_log, "is_cloud_edition_billing_paid_plan", paid)
-    publish = Mock()
-    monkeypatch.setattr(prepare_log_export_task, "apply_async", publish)
+    publish = log_export_publish
     files: dict[str, str] = {}
-    storage = Mock()
+    storage = log_export_storage
 
     def save_file(key: str, path: Path) -> None:
         """Read the completed file while it is available for upload."""
         files[key] = path.read_text(encoding="utf-8-sig")
 
     storage.save_file.side_effect = save_file
-    monkeypatch.setattr(log_export_adapters, "storage", storage)
     logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory))
-    app.extensions["application_services"] = SimpleNamespace(
+    app.extensions["application_services"] = _Services(
         workflow_app_logs=logs,
         workflow_log_exports=WorkflowLogExportService(
-            tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
-            dispatch=partial(log_export_adapters.dispatch_log_export, export_kind="workflow"),
+            tasks=RedisLogExportTasks(
+                redis=redis.client, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"
+            ),
+            dispatch=partial(log_export_adapters.dispatch_log_export, export_kind=LogExportKind.WORKFLOW),
             store_csv=log_export_adapters.store_log_export_csv,
             write_csv=WorkflowLogCsvWriter(logs=logs).write_csv,
             open_csv=log_export_adapters.open_log_export_csv,
@@ -208,20 +213,21 @@ def export_client(
         session["_fresh"] = True
     token = generate_csrf_token(account.id)
     client.set_cookie(COOKIE_NAME_CSRF_TOKEN, token)
-    yield _ExportClient(
-        client,
-        {HEADER_NAME_CSRF_TOKEN: token},
-        f"/apps/{target.id}/workflow-log-exports",
-        tenant.id,
-        target.id,
-        account.id,
-        redis,
-        paid,
-        publish,
-        storage,
-        files,
-        run.id,
-    )
+    with patch.object(workflow_app_log, "is_cloud_edition_billing_paid_plan", return_value=True) as paid:
+        yield _ExportClient(
+            client,
+            {HEADER_NAME_CSRF_TOKEN: token},
+            f"/apps/{target.id}/workflow-log-exports",
+            tenant.id,
+            target.id,
+            account.id,
+            redis,
+            paid,
+            publish,
+            storage,
+            files,
+            run.id,
+        )
     with app.app_context():
         db.session.remove()
         db.engine.dispose()
@@ -236,7 +242,7 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
     )
 
     assert response.status_code == 202
-    task_id = response.json["task_id"]
+    task_id = response.get_json()["task_id"]
     assert str(UUID(task_id)) == task_id
     assert response.json == {"task_id": task_id, "status": "pending"}
     key, ttl, raw = export_client.redis.setex.call_args_list[0].args
@@ -337,7 +343,7 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
         json={"status": "succeeded", "account_ids": [export_client.account_id]},
     )
     assert response.status_code == 202
-    task_id = response.json["task_id"]
+    task_id = response.get_json()["task_id"]
     pending = export_client.get_status(task_id)
     assert (pending.status_code, pending.json) == (200, {"task_id": task_id, "status": "pending"})
     arguments = export_client.publish.call_args.kwargs["kwargs"]
@@ -378,7 +384,7 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     ready = export_client.get_status(task_id)
     assert (ready.status_code, ready.json) == (200, {"task_id": task_id, "status": "ready"})
     assert ready.headers["Cache-Control"] == "no-store"
-    assert export_client.get_latest().json["task"]["status"] == "ready"
+    assert export_client.get_latest().get_json()["task"]["status"] == "ready"
 
 
 def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
@@ -399,7 +405,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
     assert (empty.status_code, empty.json) == (200, {"task": None})
     missing = export_client.get_status(str(uuid4()))
     assert missing.status_code == 404
-    assert missing.json["code"] == "workflow_log_export_task_not_found"
+    assert missing.get_json()["code"] == "workflow_log_export_task_not_found"
 
     previous = export_client.client.post(export_client.path, headers=export_client.headers, json={})
     assert previous.status_code == 202
@@ -423,7 +429,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
     assert latest.headers["Cache-Control"] == "no-store"
     assert latest.json == {
         "task": {
-            "task_id": submitted.json["task_id"],
+            "task_id": submitted.get_json()["task_id"],
             "status": "pending",
             "filters": {
                 "keyword": "report",
@@ -540,12 +546,12 @@ def test_workflow_export_download_streams_for_self_hosted_s3(
 def test_workflow_export_download_requires_login_and_ready_task(export_client: _ExportClient) -> None:
     submitted = export_client.client.post(export_client.path, headers=export_client.headers, json={})
     assert submitted.status_code == 202
-    task_id = submitted.json["task_id"]
+    task_id = submitted.get_json()["task_id"]
 
     assert export_client.get_file(task_id, authenticated=False).status_code == 401
     export_client.redis.get.assert_not_called()
     response = export_client.get_file(task_id)
-    assert (response.status_code, response.json["code"]) == (409, "workflow_log_export_task_not_ready")
+    assert (response.status_code, response.get_json()["code"]) == (409, "workflow_log_export_task_not_ready")
     export_client.storage.exists.assert_not_called()
     export_client.storage.load.assert_not_called()
 
@@ -560,5 +566,5 @@ def test_workflow_export_download_reports_missing_file(
 
     response = export_client.get_file(ready_export.task_id)
 
-    assert (response.status_code, response.json["code"]) == (404, "workflow_log_export_file_not_found")
+    assert (response.status_code, response.get_json()["code"]) == (404, "workflow_log_export_file_not_found")
     export_client.storage.generate_presigned_url.assert_not_called()

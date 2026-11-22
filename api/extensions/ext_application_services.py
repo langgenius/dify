@@ -228,6 +228,7 @@ from services.retention.agent.log_export_service import AgentLogExportService, A
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
 from services.retention.log_export_command import LogExportCommandService
+from services.retention.log_export_task import LogExportKind
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
     dispatch_workflow_run_archive_deletion_task,
@@ -685,7 +686,7 @@ def build_application_services(
         tasks=RedisLogExportTasks(
             redis=redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
         ),
-        dispatch=partial(dispatch_log_export, export_kind="conversation"),
+        dispatch=partial(dispatch_log_export, export_kind=LogExportKind.CONVERSATION),
         store_csv=store_log_export_csv,
         open_csv=open_log_export_csv,
     )
@@ -741,7 +742,7 @@ def build_application_services(
         agent_log_exports=AgentLogExportService(
             logs=agent_observability,
             tasks=RedisLogExportTasks(redis=redis, task_type=AgentLogExportTask, key_prefix="agent_log_export"),
-            dispatch=partial(dispatch_log_export, export_kind="agent"),
+            dispatch=partial(dispatch_log_export, export_kind=LogExportKind.AGENT),
             store_csv=store_log_export_csv,
             write_csv=agent_log_csv.write_csv,
             open_csv=open_log_export_csv,
@@ -954,7 +955,7 @@ def build_application_services(
         workflow_app_logs=workflow_app_logs,
         workflow_log_exports=WorkflowLogExportService(
             tasks=RedisLogExportTasks(redis=redis, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"),
-            dispatch=partial(dispatch_log_export, export_kind="workflow"),
+            dispatch=partial(dispatch_log_export, export_kind=LogExportKind.WORKFLOW),
             store_csv=store_log_export_csv,
             write_csv=workflow_log_csv.write_csv,
             open_csv=open_log_export_csv,

@@ -25,7 +25,7 @@ from models.trigger import WorkflowTriggerLog
 from repositories.app.console_repository import find_console_app
 from repositories.log_export_count import execute_log_export_count
 from services.app.console_service import ConsoleAppNotFoundError
-from services.entities.conversation_entities import ConsoleLogIdentity
+from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
 from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
 from services.workflow_app_log_query_service import (
     WorkflowAppLogAccount,
@@ -226,8 +226,14 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 .limit(_LOG_IDENTITY_SEARCH_LIMIT)
             ).all()
             return (
-                *(ConsoleLogIdentity(identity, label or identity, "end-user") for identity, label in end_users),
-                *(ConsoleLogIdentity(identity, label, "account") for identity, label in accounts),
+                *(
+                    ConsoleLogIdentity(identity, label or identity, ConsoleLogIdentitySource.END_USER)
+                    for identity, label in end_users
+                ),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.ACCOUNT)
+                    for identity, label in accounts
+                ),
             )
 
     def _matching_export_logs(

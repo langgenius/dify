@@ -43,6 +43,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationRecord,
     ConsoleConversationScope,
     ConsoleLogIdentity,
+    ConsoleLogIdentitySource,
     ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationInputValue,
@@ -278,8 +279,14 @@ class ConversationRepository:
                 .limit(_LOG_IDENTITY_SEARCH_LIMIT)
             ).all()
             return (
-                *(ConsoleLogIdentity(identity, label, "end-user") for identity, label in end_users),
-                *(ConsoleLogIdentity(identity, label, "account") for identity, label in accounts),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.END_USER)
+                    for identity, label in end_users
+                ),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.ACCOUNT)
+                    for identity, label in accounts
+                ),
             )
 
     @staticmethod

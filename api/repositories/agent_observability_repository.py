@@ -48,11 +48,12 @@ from services.agent.observability_contracts import (
     AgentLogExportFilters,
     AgentLogExportQuery,
     AgentLogExportRow,
+    AgentLogExportSource,
     AgentLogQuery,
     AgentObservabilityNotFoundError,
     AgentStatisticsQuery,
 )
-from services.entities.conversation_entities import ConsoleLogIdentity
+from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
 _LOG_EXPORT_BATCH_SIZE = 100
@@ -343,7 +344,7 @@ class AgentObservabilityQueries:
         )
         return [
             AgentLogExportRow(
-                source="WebApp",
+                source=AgentLogExportSource.WEB_APP,
                 end_user_id=end_user_id,
                 account_id=account_id,
                 conversation_id=message.conversation_id,
@@ -390,7 +391,7 @@ class AgentObservabilityQueries:
         )
         return [
             AgentLogExportRow(
-                source="Workflow",
+                source=AgentLogExportSource.WORKFLOW,
                 end_user_id=end_user_id,
                 account_id=account_id,
                 conversation_id=node_id,
@@ -466,8 +467,8 @@ class AgentObservabilityQueries:
             .limit(_LOG_IDENTITY_SEARCH_LIMIT)
         ).all()
         return (
-            *(ConsoleLogIdentity(identity, label, "end-user") for identity, label in end_users),
-            *(ConsoleLogIdentity(identity, label, "account") for identity, label in accounts),
+            *(ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.END_USER) for identity, label in end_users),
+            *(ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.ACCOUNT) for identity, label in accounts),
         )
 
     def list_log_messages(

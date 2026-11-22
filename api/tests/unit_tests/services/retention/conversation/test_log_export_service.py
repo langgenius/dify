@@ -2,10 +2,10 @@
 
 import csv
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
+from functools import partial
 from io import StringIO
-from typing import Literal
-from unittest.mock import Mock
+from typing import override
 
 import pytest
 from sqlalchemy import Engine
@@ -28,16 +28,35 @@ from models.workflow import WorkflowRun, WorkflowType
 from repositories import conversation_repository
 from repositories.conversation_repository import ConversationRepository
 from services.entities.conversation_entities import ConsoleConversationLogFilters
+from services.retention import log_export_adapters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportTask,
 )
-from services.retention.log_export_task import LogExportTaskStore
+from services.retention.log_export_task import LogExportKind
+from services.retention.log_export_task_cache import RedisLogExportTasks
+from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+
+
+@pytest.fixture
+def export(
+    sqlite_session_factory: sessionmaker[Session], log_export_redis: LogExportRedisIo
+) -> ConversationLogExportService:
+    return ConversationLogExportService(
+        conversations=ConversationRepository(session_factory=sqlite_session_factory),
+        tasks=RedisLogExportTasks(
+            redis=log_export_redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+        ),
+        dispatch=partial(log_export_adapters.dispatch_log_export, export_kind=LogExportKind.CONVERSATION),
+        store_csv=log_export_adapters.store_log_export_csv,
+        open_csv=log_export_adapters.open_log_export_csv,
+    )
 
 
 def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
     sqlite_session_factory: sessionmaker[Session],
+    export: ConversationLogExportService,
 ) -> None:
     """Keep variable values and legacy prompts while matching the export row preview."""
     account = make_account(timezone="UTC")
@@ -45,7 +64,11 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
     conversation = make_conversation(
         app_id=app.id, mode=app.mode, from_source=ConversationFromSource.CONSOLE, from_account_id=account.id
     )
-    variables = {"topic": "中文标题", "count": 0, "include_tags": False, "empty": None}
+    variables: dict[str, object] = {"topic": "中文标题", "count": 0, "include_tags": False, "empty": None}
+    generations: list[tuple[str, dict[str, object], str]] = [
+        ("generation-1", variables, ""),
+        ("generation-2", {}, "Legacy prompt"),
+    ]
     messages = [
         make_message(
             message_id=message_id,
@@ -58,7 +81,7 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
             created_at=datetime(2026, 1, 15, 6),
             currency="USD",
         )
-        for message_id, inputs, query in [("generation-1", variables, ""), ("generation-2", {}, "Legacy prompt")]
+        for message_id, inputs, query in generations
     ]
     with sqlite_session_factory.begin() as session:
         session.add_all([account, app, conversation, *messages])
@@ -68,9 +91,6 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
         keyword="result", start=None, end=None, annotation_status="all", sort_by="-created_at"
     )
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    export = ConversationLogExportService(
-        conversations=repository, tasks=Mock(), dispatch=Mock(), store_csv=Mock(), open_csv=Mock()
-    )
     scope = export.get_scope(context, app.id)
     counts = repository.get_console_log_export_counts(scope=scope, filters=filters)
     assert counts is not None
@@ -104,20 +124,13 @@ def test_completion_csv_writes_saved_inputs_and_counts_each_generation_once(
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT])
 def test_chat_csv_header_includes_conversation_and_message_ids_on_an_empty_export(
-    sqlite_session_factory: sessionmaker[Session], mode: AppMode
+    sqlite_session_factory: sessionmaker[Session], mode: AppMode, export: ConversationLogExportService
 ) -> None:
     account = make_account(timezone="UTC")
     app = make_app(mode=mode)
     with sqlite_session_factory.begin() as session:
         session.add_all([account, app])
     context = RequestContext(request_id="test", trace_id=None, account_id=account.id, active_workspace_id=app.tenant_id)
-    export = ConversationLogExportService(
-        conversations=ConversationRepository(session_factory=sqlite_session_factory),
-        tasks=Mock(),
-        dispatch=Mock(),
-        store_csv=Mock(),
-        open_csv=Mock(),
-    )
     output = StringIO(newline="")
     filters = ConsoleConversationLogFilters(
         keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at"
@@ -130,55 +143,71 @@ def test_chat_csv_header_includes_conversation_and_message_ids_on_an_empty_expor
 
 
 @pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])
-def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost", "failed", "ready"]) -> None:
+def test_prepare_export_records_only_claimed_work(
+    outcome: str,
+    sqlite_session_factory: sessionmaker[Session],
+    export: ConversationLogExportService,
+    log_export_redis: LogExportRedisIo,
+    log_export_storage: LogExportStorageIo,
+) -> None:
     """Store a file only for the winning worker and publish its final state."""
-    created_at = datetime(2026, 1, 15, tzinfo=UTC)
-    task = ConversationLogExportTask(
-        task_id="task-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        requested_by="account-1",
+    app = make_app()
+    account = make_account(timezone="UTC")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, account])
+    task = ConversationLogExportTask.pending(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        requested_by=account.id,
         filters=ConsoleConversationLogFilters(
             keyword=None, start=None, end=None, annotation_status="all", sort_by="-updated_at"
         ),
-        created_at=created_at,
-        expires_at=created_at + timedelta(days=1),
     )
-    tasks = Mock(spec=LogExportTaskStore)
-    tasks.get.return_value = task
-    tasks.transition.return_value = outcome != "claim_lost"
-    store_csv = Mock(side_effect=OSError("upload failed") if outcome == "failed" else None)
-    service = ConversationLogExportService(
-        conversations=Mock(), tasks=tasks, dispatch=Mock(), store_csv=store_csv, open_csv=Mock()
-    )
+    current = task
+    transitions: list[tuple[str, str]] = []
+
+    def transition(*, keys: list[str], args: list[str]) -> int:
+        """Apply the expected-state update at the Redis boundary."""
+        nonlocal current
+        assert keys == [f"conversation_log_export:{task.tenant_id}:{task.app_id}:{task.task_id}"]
+        previous_status, raw = args
+        candidate = ConversationLogExportTask.model_validate_json(raw)
+        transitions.append((previous_status, candidate.status))
+        if outcome == "claim_lost" or current.status != previous_status:
+            return 0
+        current = candidate
+        log_export_redis.get.return_value = raw
+        return 1
+
+    log_export_redis.get.return_value = task.model_dump_json()
+    log_export_redis.register_script.return_value = transition
+    if outcome == "failed":
+        log_export_storage.save_file.side_effect = OSError("upload failed")
 
     if outcome == "failed":
         with pytest.raises(OSError, match="upload failed"):
-            service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+            export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
     else:
-        service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
 
-    claim = tasks.transition.call_args_list[0]
-    assert claim.args[0].status == "processing"
-    assert claim.kwargs == {"from_status": "pending"}
     if outcome == "claim_lost":
-        tasks.transition.assert_called_once()
-        store_csv.assert_not_called()
+        assert transitions == [("pending", "processing")]
+        log_export_storage.save_file.assert_not_called()
     else:
-        store_csv.assert_called_once()
-        storage_key = "conversation-log-exports/tenant-1/app-1/task-1.csv"
-        assert store_csv.call_args.args[0] == storage_key
-        completion = tasks.transition.call_args_list[1]
-        assert completion.args[0].status == outcome
-        assert completion.args[0].storage_key == (storage_key if outcome == "ready" else None)
-        assert completion.kwargs == {"from_status": "processing"}
-        tasks.get.return_value = completion.args[0]
-        service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        store_csv.assert_called_once()
+        storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
+        assert transitions == [("pending", "processing"), ("processing", outcome)]
+        assert log_export_storage.save_file.call_args.args[0] == storage_key
+        assert current.status == outcome
+        assert current.storage_key == (storage_key if outcome == "ready" else None)
+        export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        log_export_storage.save_file.assert_called_once()
 
 
 def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
-    sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    export: ConversationLogExportService,
 ) -> None:
     """Check that CSV uses the Console filters and yields each message once across batch boundaries."""
     monkeypatch.setattr(conversation_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
@@ -285,24 +314,18 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         account_ids=(account.id,),
     )
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    service = ConversationLogExportService(
-        conversations=repository,
-        tasks=Mock(spec=LogExportTaskStore),
-        dispatch=Mock(),
-        store_csv=Mock(),
-        open_csv=Mock(),
-    )
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)
 
     class Output(StringIO):
+        @override
         def write(self, text: str, /) -> int:
             assert pool.checkedout() == 0
             return super().write(text)
 
     output = Output(newline="")
 
-    assert service.write_csv(context, app.id, filters=filters, output=output) == 3
+    assert export.write_csv(context, app.id, filters=filters, output=output) == 3
     scope = repository.get_console_scope(context, app.id, kind="chat")
     counts = repository.get_console_log_export_counts(scope=scope, filters=filters)
     assert counts is not None

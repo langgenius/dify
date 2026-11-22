@@ -23,8 +23,8 @@ def dispatch_log_export[FiltersT](task: LogExportTask[FiltersT], *, export_kind:
 
     kwargs = {"tenant_id": task.tenant_id, "app_id": task.app_id, "task_id": task.task_id}
     # Keep Conversation submissions readable by workers running the previous version.
-    if export_kind != "conversation":
-        kwargs["export_kind"] = export_kind
+    if export_kind != LogExportKind.CONVERSATION:
+        kwargs["export_kind"] = export_kind.value
     prepare_log_export_task.apply_async(kwargs=kwargs, task_id=task.task_id, expires=task.expires_at)
 
 

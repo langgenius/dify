@@ -24,9 +24,9 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    InvokeFrom,
     MessageStatus,
 )
-from models.enums import InvokeFrom as _workflow_tool_agent_statistics_InvokeFrom
 from models.model import App, AppMode, Conversation, Message, MessageFeedback
 from models.workflow import (
     Workflow,
@@ -45,7 +45,7 @@ from repositories.agent_observability_repository import (
     SQLAlchemyAgentObservabilityRepository,
 )
 from services.agent.observability_contracts import AgentLogExportCounts, AgentLogExportQuery
-from services.entities.conversation_entities import ConsoleLogIdentity
+from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
 from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
@@ -481,7 +481,7 @@ class TestAgentObservabilityQueriesCases:
         account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
         account_execution.created_by_role = CreatorUserRole.ACCOUNT
         debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
-        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
         sqlite_session.add_all(
             [
                 app,
@@ -540,7 +540,7 @@ class TestAgentObservabilityQueriesCases:
         message = _agent_observability_service_message(created_at=timestamp)
         message.query = "=1+1"
         debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
-        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
         execution = _agent_observability_service_node_execution()
         execution.inputs = json.dumps(
             {
@@ -660,7 +660,7 @@ class TestAgentObservabilityQueriesCases:
         debug_message = _agent_observability_service_message(
             message_id="debug-message", conversation_id=debug_conversation.id
         )
-        debug_message.invoke_from = _agent_observability_service_InvokeFrom.DEBUGGER
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
 
         executions = []
         for user in (web_user, workflow_user, account_user, foreign_user, foreign_account):
@@ -694,9 +694,9 @@ class TestAgentObservabilityQueriesCases:
         )
         sqlite_session.flush()
         queries = AgentObservabilityQueries(sqlite_session)
-        web_option = ConsoleLogIdentity(web_user.id, "customer-001", "end-user")
-        workflow_option = ConsoleLogIdentity(workflow_user.id, "workflow-001", "end-user")
-        account_option = ConsoleLogIdentity(account.id, account.name, "account")
+        web_option = ConsoleLogIdentity(web_user.id, "customer-001", ConsoleLogIdentitySource.END_USER)
+        workflow_option = ConsoleLogIdentity(workflow_user.id, "workflow-001", ConsoleLogIdentitySource.END_USER)
+        account_option = ConsoleLogIdentity(account.id, account.name, ConsoleLogIdentitySource.ACCOUNT)
 
         assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="001") == (
             web_option,
@@ -1428,7 +1428,7 @@ def _seed_nested_agent(sqlite_session: Session, *, workflow_type: WorkflowType) 
         message = _workflow_tool_agent_statistics_message(app_id=outer_app.id, created_at=datetime(2026, 7, 22, 8, 0))
         message.workflow_run_id = run.id
         message.from_source = ConversationFromSource.API
-        message.invoke_from = _workflow_tool_agent_statistics_InvokeFrom.WEB_APP
+        message.invoke_from = InvokeFrom.WEB_APP
         message.from_account_id = None
         message.from_end_user_id = "end-user-1"
         sqlite_session.add_all([conversation, message])

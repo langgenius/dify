@@ -308,11 +308,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/workflow-log/filter.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/app/workflow-log/list.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 2

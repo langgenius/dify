@@ -3664,6 +3664,9 @@ export const zConversationWithSummaryPagination = z.object({
   total: z.int(),
 })
 
+/**
+ * ConsoleLogIdentitySource
+ */
 export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
 
 /**

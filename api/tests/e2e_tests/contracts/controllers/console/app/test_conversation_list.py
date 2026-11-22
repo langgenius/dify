@@ -35,7 +35,6 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from fields.conversation_fields import (
     ConversationPagination,
@@ -59,9 +58,10 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportTask,
 )
 from services.retention.log_export_task_cache import RedisLogExportTasks
+from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
-type _Kind = Literal["chat", "completion", "export-preview", "export-latest", "identity-options"]
+type _Kind = Literal["chat", "completion"]
 _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 
 
@@ -78,14 +78,14 @@ class _Harness:
     account: Account
     tenant: Tenant
     target: App
-    redis: Mock = field(default_factory=lambda: Mock(spec=RedisClientWrapper))
+    redis: LogExportRedisIo
     dispatch: Mock = field(default_factory=Mock)
     sessions: list[Session] = field(default_factory=list)
     after_account_load: Callable[[], None] | None = None
 
     def get(
         self,
-        kind: _Kind,
+        kind: str,
         *,
         query: Mapping[str, str | int | list[str]] | None = None,
         app_id: str | None = None,
@@ -145,7 +145,10 @@ class _Harness:
 
 @pytest.fixture
 def harness(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    log_export_redis: LogExportRedisIo,
 ) -> Iterator[_Harness]:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -192,7 +195,7 @@ def harness(
         return loaded
 
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    state = _Harness(app, sqlite_session_factory, account, tenant, target)
+    state = _Harness(app, sqlite_session_factory, account, tenant, target, log_export_redis)
 
     @event.listens_for(factory, "after_begin")
     def record_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
@@ -209,10 +212,10 @@ def harness(
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
             tasks=RedisLogExportTasks(
-                redis=state.redis, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+                redis=state.redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
             ),
             dispatch=state.dispatch,
-            store_csv=Mock(),
+            store_csv=log_export_adapters.store_log_export_csv,
             open_csv=log_export_adapters.open_log_export_csv,
         ),
     )
@@ -446,7 +449,7 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
     end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
     partial_user = {"id": partial_user_id, "label": "other-customer-42", "source": "end-user"}
     account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
-    for keyword, expected in (
+    cases: tuple[tuple[str, list[dict[str, str]]], ...] = (
         (" customer-42 ", [end_user, partial_user]),
         ("42", [partial_user, end_user]),
         ("MER-4", [partial_user, end_user]),
@@ -454,7 +457,8 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         ("port ag", [account]),
         (harness.account.id, [account]),
         ("%", []),
-    ):
+    )
+    for keyword, expected in cases:
         response = harness.get("identity-options", query={"keyword": keyword})
         assert response.status_code == 200
         assert response.get_json() == {"data": expected}
@@ -800,7 +804,7 @@ def test_get_conversation_log_export_status_checks_access_before_redis(
 def test_download_conversation_log_export_redirects_to_storage(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Authorize the navigation and sign the stored key without reading the CSV."""
@@ -811,12 +815,8 @@ def test_download_conversation_log_export_redirects_to_storage(
     harness.redis.get.return_value = task.model_copy(
         update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
     ).model_dump_json()
-    sign = Mock(return_value=url)
-    exists = Mock(return_value=True)
-    load = Mock()
-    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
-    monkeypatch.setattr(log_export_adapters.storage, "exists", exists)
-    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+    log_export_storage.generate_presigned_url.return_value = url
+    log_export_storage.exists.return_value = True
 
     response = harness.get_export_file(task.task_id)
 
@@ -824,14 +824,14 @@ def test_download_conversation_log_export_redirects_to_storage(
     assert response.headers["Location"] == url
     assert response.cache_control.no_store
     harness.redis.get.assert_called_once_with(key)
-    sign.assert_called_once_with(
+    log_export_storage.generate_presigned_url.assert_called_once_with(
         storage_key,
         expires_in=3600,
         content_type="text/csv; charset=utf-8",
         download_filename=f"conversation-logs-{task.task_id}.csv",
     )
-    exists.assert_called_once_with(storage_key)
-    load.assert_not_called()
+    log_export_storage.exists.assert_called_once_with(storage_key)
+    log_export_storage.load.assert_not_called()
 
 
 def test_download_conversation_log_export_requires_login(
@@ -849,7 +849,7 @@ def test_download_conversation_log_export_requires_login(
 def test_download_conversation_log_export_streams_and_closes_the_csv(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Stream a self-hosted export even when its S3 endpoint is private."""
@@ -872,8 +872,7 @@ def test_download_conversation_log_export_streams_and_closes_the_csv(
         finally:
             closed = True
 
-    load = Mock(return_value=chunks())
-    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+    log_export_storage.load.return_value = chunks()
 
     with harness.get_export_file(task.task_id) as response:
         assert response.status_code == 200
@@ -885,7 +884,7 @@ def test_download_conversation_log_export_streams_and_closes_the_csv(
 
     assert closed
     harness.redis.get.assert_called_once_with(key)
-    load.assert_called_once_with(storage_key, stream=True)
+    log_export_storage.load.assert_called_once_with(storage_key, stream=True)
 
 
 @pytest.mark.parametrize(
@@ -896,27 +895,25 @@ def test_download_conversation_log_export_requires_a_ready_task(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
     status: ConversationLogExportStatus,
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Reject unfinished exports without opening storage."""
     config_overrides(STORAGE_TYPE=StorageType.S3)
     _, task = created_export
     harness.redis.get.return_value = task.model_copy(update={"status": status}).model_dump_json()
-    sign = Mock()
-    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
     response = harness.get_export_file(task.task_id)
 
     assert response.status_code == 409
     assert response.get_json()["code"] == "conversation_log_export_task_not_ready"
-    sign.assert_not_called()
+    log_export_storage.generate_presigned_url.assert_not_called()
 
 
 @pytest.mark.parametrize("signed", [True, False], ids=["storage-url", "stream"])
 def test_download_conversation_log_export_reports_missing_csv(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     signed: bool,
     config_overrides: Callable[..., None],
 ) -> None:
@@ -927,17 +924,14 @@ def test_download_conversation_log_export_reports_missing_csv(
     ).model_dump_json()
     if signed:
         config_overrides(STORAGE_TYPE=StorageType.S3)
-        sign = Mock()
-        monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
-        monkeypatch.setattr(log_export_adapters.storage, "exists", Mock(return_value=False))
+        log_export_storage.exists.return_value = False
     else:
-        monkeypatch.setattr(log_export_adapters.storage, "load", Mock(side_effect=FileNotFoundError))
+        log_export_storage.load.side_effect = FileNotFoundError
     response = harness.get_export_file(task.task_id)
 
     assert response.status_code == 404
     assert response.get_json()["code"] == "conversation_log_export_file_not_found"
-    if signed:
-        sign.assert_not_called()
+    log_export_storage.generate_presigned_url.assert_not_called()
 
 
 @pytest.mark.parametrize(

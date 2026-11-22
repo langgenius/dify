@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -60,11 +59,11 @@ from models.enums import ApiTokenType, ConversationFromSource
 from models.model import ApiToken, App, AppMode
 from services.agent.observability_contracts import AgentLogExportFilters
 from services.entities.app_entities import AppEvent
-from services.retention import log_export_adapters
 from services.retention.agent.log_export_service import AgentLogExportTask
 from services.retention.log_export_task import LogExportStatus
 from tasks.log_export_tasks import prepare_log_export_task
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.log_export_fixtures import LogExportStorageIo
 from tests.helpers.unit.model_factories import make_conversation, make_end_user, make_message
 
 
@@ -324,9 +323,9 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
         response = harness.client.get(path, headers=harness.headers)
         create = harness.client.post(path.removesuffix("/preview"), headers=harness.headers, json={})
     assert response.status_code == HTTPStatus.FORBIDDEN
-    assert response.json["code"] == "paid_plan_required"
+    assert response.get_json()["code"] == "paid_plan_required"
     assert create.status_code == HTTPStatus.FORBIDDEN
-    assert create.json["code"] == "paid_plan_required"
+    assert create.get_json()["code"] == "paid_plan_required"
 
     with harness.sessions.begin() as session:
         membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == harness.account_id))
@@ -334,14 +333,17 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
         membership.role = TenantAccountRole.EDITOR
     response = harness.client.get(path, headers=harness.headers)
     assert response.status_code == HTTPStatus.FORBIDDEN
-    assert response.json["code"] == "forbidden"
+    assert response.get_json()["code"] == "forbidden"
     create = harness.client.post(path.removesuffix("/preview"), headers=harness.headers, json={})
     assert create.status_code == HTTPStatus.FORBIDDEN
-    assert create.json["code"] == "forbidden"
+    assert create.get_json()["code"] == "forbidden"
 
 
 def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
-    harness: Harness, monkeypatch: pytest.MonkeyPatch
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    log_export_publish: MagicMock,
+    log_export_storage: LogExportStorageIo,
 ) -> None:
     saved: dict[str, tuple[int, str]] = {}
 
@@ -360,16 +362,15 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     monkeypatch.setattr(RedisClientWrapper, "setex", setex)
     monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: saved[key][1] if key in saved else None)
     monkeypatch.setattr(RedisClientWrapper, "register_script", lambda _redis, _script: transition)
-    publish = Mock()
-    monkeypatch.setattr(prepare_log_export_task, "apply_async", publish)
+    publish = log_export_publish
     uploaded: dict[str, list[dict[str, str]]] = {}
 
     def upload(key: str, path: Path) -> None:
         with path.open(encoding="utf-8-sig", newline="") as csv_file:
             uploaded[key] = list(DictReader(csv_file))
 
-    save_file = Mock(side_effect=upload)
-    monkeypatch.setattr(log_export_adapters, "storage", SimpleNamespace(save_file=save_file))
+    save_file = log_export_storage.save_file
+    save_file.side_effect = upload
     agent_id, app_id = harness.create_agent()
     foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
     end_user_id, conversation_id, message_id = (str(uuid4()) for _ in range(3))
@@ -428,7 +429,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
         f"{agent_url}/logs", headers=harness.headers, query_string={"account_ids[0]": harness.account_id}
     )
     assert account_logs.status_code == HTTPStatus.OK
-    assert [row["account_id"] for row in account_logs.json["data"]] == [harness.account_id]
+    assert [row["account_id"] for row in account_logs.get_json()["data"]] == [harness.account_id]
     preview = harness.client.get(
         f"{base}/preview",
         headers=harness.headers,
@@ -447,7 +448,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
         },
     )
     assert response.status_code == HTTPStatus.ACCEPTED
-    task_id = response.json["task_id"]
+    task_id = response.get_json()["task_id"]
     assert response.json == {"task_id": task_id, "status": "pending"}
     task_key = f"agent_log_export:{harness.tenant_id}:{agent_id}:{task_id}"
     task_ttl, task_json = saved[task_key]
@@ -474,9 +475,10 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert len(saved) == 2
 
+    published_arguments = publish.call_args.kwargs["kwargs"]
     with harness.client.application.app_context():
-        prepare_log_export_task.run(**arguments)
-        prepare_log_export_task.run(**arguments)
+        prepare_log_export_task.run(**published_arguments)
+        prepare_log_export_task.run(**published_arguments)
 
     ready = AgentLogExportTask.model_validate_json(saved[task_key][1])
     assert ready.status is LogExportStatus.READY
@@ -550,7 +552,7 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
         f"/console/api/agent/{other_agent_id}/log-exports/{task.task_id}", headers=harness.headers
     )
     assert wrong_agent.status_code == HTTPStatus.NOT_FOUND
-    assert wrong_agent.json["code"] == "agent_log_export_task_not_found"
+    assert wrong_agent.get_json()["code"] == "agent_log_export_task_not_found"
     foreign = harness.client.get(f"/console/api/agent/{foreign_agent_id}/log-exports/latest", headers=harness.headers)
     assert foreign.status_code == HTTPStatus.NOT_FOUND
 
@@ -559,13 +561,16 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
     ).model_dump_json()
     expired = harness.client.get(f"{path}/{task.task_id}", headers=harness.headers)
     assert expired.status_code == HTTPStatus.NOT_FOUND
-    assert expired.json["code"] == "agent_log_export_task_not_found"
+    assert expired.get_json()["code"] == "agent_log_export_task_not_found"
     assert harness.client.get(f"{path}/latest", headers=harness.headers).json == {"task": None}
 
 
 @pytest.mark.parametrize("edition", [DeploymentEdition.CLOUD, DeploymentEdition.COMMUNITY])
 def test_agent_log_export_file_downloads_from_a_browser_session(
-    harness: Harness, monkeypatch: pytest.MonkeyPatch, edition: DeploymentEdition
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    log_export_storage: LogExportStorageIo,
 ) -> None:
     agent_id, _ = harness.create_agent()
     task = AgentLogExportTask.pending(
@@ -578,13 +583,12 @@ def test_agent_log_export_file_downloads_from_a_browser_session(
     cache = {task_key: task.model_dump_json()}
     monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: cache.get(key))
     monkeypatch.setattr(roster_controller, "is_cloud_edition_billing_paid_plan", lambda _tenant_id: True)
-    storage = Mock()
+    storage = log_export_storage
     storage.exists.return_value = True
     url = "https://storage.example.test/agent-logs.csv?signature=signed"
     storage.generate_presigned_url.return_value = url
     payload = b"\xef\xbb\xbfagent_id,message_id\r\nagent,message\r\n"
     storage.load.return_value = (chunk for chunk in (payload[:16], payload[16:]))
-    monkeypatch.setattr(log_export_adapters, "storage", storage)
     path = f"/console/api/agent/{agent_id}/log-exports/{task.task_id}/file"
     browser = harness.client.application.test_client()
 
@@ -595,7 +599,7 @@ def test_agent_log_export_file_downloads_from_a_browser_session(
         )
         assert browser.get(path.removesuffix("/file")).status_code == HTTPStatus.UNAUTHORIZED
         pending = browser.get(path)
-        assert (pending.status_code, pending.json["code"]) == (
+        assert (pending.status_code, pending.get_json()["code"]) == (
             HTTPStatus.CONFLICT,
             "agent_log_export_task_not_ready",
         )
@@ -636,7 +640,10 @@ def test_agent_log_export_file_downloads_from_a_browser_session(
         storage.exists.return_value = False
         storage.load.side_effect = FileNotFoundError
         missing = browser.get(path)
-        assert (missing.status_code, missing.json["code"]) == (HTTPStatus.NOT_FOUND, "agent_log_export_file_not_found")
+        assert (missing.status_code, missing.get_json()["code"]) == (
+            HTTPStatus.NOT_FOUND,
+            "agent_log_export_file_not_found",
+        )
 
 
 def test_unpublished_stored_enabled_state_is_hidden_and_can_be_disabled(harness: Harness) -> None:

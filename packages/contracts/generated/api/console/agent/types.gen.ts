@@ -1267,7 +1267,7 @@ export type AgentLogConversationItemResponse = {
 export type AgentLogIdentityOptionResponse = {
   id: string
   label: string
-  source: 'account' | 'end-user'
+  source: ConsoleLogIdentitySource
 }
 
 export type AgentLogMessageItemResponse = {
@@ -1895,6 +1895,8 @@ export type AgentLogExportFilters = {
   sources: Array<string>
   start: string | null
 }
+
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
 
 export type AgentLogFeedbackResponse = {
   content?: string | null

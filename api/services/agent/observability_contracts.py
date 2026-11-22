@@ -3,7 +3,8 @@
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Protocol
+from enum import StrEnum
+from typing import Protocol
 
 from machinery.context import RequestContext
 from services.entities.conversation_entities import ConsoleLogIdentity
@@ -56,11 +57,16 @@ class AgentLogExportCounts:
     row_count: int
 
 
+class AgentLogExportSource(StrEnum):
+    WEB_APP = "WebApp"
+    WORKFLOW = "Workflow"
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AgentLogExportRow:
     """A detached WebApp question and answer or Workflow Agent node execution."""
 
-    source: Literal["WebApp", "Workflow"]
+    source: AgentLogExportSource
     end_user_id: str | None
     conversation_id: str
     message_id: str

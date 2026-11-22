@@ -67,7 +67,7 @@ export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePe
   9: { value: -1, name: 'allTime' },
 }
 
-export function logDateRange(days: number) {
+function logDateRange(days: number) {
   const today = dayjs()
   return {
     start: today.subtract(days, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
