@@ -1231,59 +1231,39 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
                 resolve: {
                   post: {
-                    // Resolving shows on the comment at once and is put back if it fails. The
-                    // list, which decides whether the comment stays on the canvas, changes only
-                    // once the server has it.
+                    // Resolving shows at once, on the thread and on the canvas: a thread resolved
+                    // while resolved ones are hidden closes and its marker goes. Reads running for
+                    // the comment are stopped first, and a failed resolve puts both back.
                     mutationOptions: {
                       onMutate: async ({ params }, context) => {
-                        const detailKey =
-                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-                            input: { params },
-                          })
-                        await context.client.cancelQueries({ queryKey: detailKey })
-                        context.client.setQueryData(detailKey, (detail) =>
-                          detail ? { ...detail, resolved: true } : detail,
-                        )
+                        await Promise.all([
+                          context.client.cancelQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: params.app_id } },
+                            }),
+                          }),
+                          context.client.cancelQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: true,
+                        })
                       },
                       onError: (_error, { params }, _result, context) => {
-                        context.client.setQueryData(
-                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-                            input: { params },
-                          }),
-                          (detail) => (detail ? { ...detail, resolved: false } : detail),
-                        )
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: false,
+                        })
                       },
                       onSuccess: (result, { params }, _result, context) => {
-                        context.client.setQueryData(
-                          consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-                            input: { params },
-                          }),
-                          (detail) =>
-                            detail
-                              ? {
-                                  ...detail,
-                                  resolved: result.resolved,
-                                  resolved_at: result.resolved_at,
-                                  resolved_by: result.resolved_by,
-                                }
-                              : detail,
-                        )
-                        context.client.setQueryData(
-                          consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
-                            input: { params: { app_id: params.app_id } },
-                          }),
-                          (list) =>
-                            list
-                              ? {
-                                  ...list,
-                                  data: list.data.map((comment) =>
-                                    comment.id === params.comment_id
-                                      ? { ...comment, resolved: result.resolved }
-                                      : comment,
-                                  ),
-                                }
-                              : list,
-                        )
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: result.resolved,
+                          resolved_at: result.resolved_at,
+                          resolved_by: result.resolved_by,
+                        })
                       },
                     },
                   },
@@ -3480,6 +3460,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   })
 
   return consoleQuery
+}
+
+// A comment's resolved state, on its thread and in its app's comment list.
+function setCommentResolved(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  params: { app_id: string; comment_id: string },
+  fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
+) {
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
+    (detail) => (detail ? { ...detail, ...fields } : detail),
+  )
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: params.app_id } },
+    }),
+    (list) =>
+      list
+        ? {
+            ...list,
+            data: list.data.map((comment) =>
+              comment.id === params.comment_id
+                ? { ...comment, resolved: fields.resolved }
+                : comment,
+            ),
+          }
+        : list,
+  )
 }
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {

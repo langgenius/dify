@@ -354,6 +354,25 @@ describe('thread actions', () => {
     await expect.poll(() => collaboration.emit.mock.calls.length).toBe(1)
   })
 
+  it('closes a thread and hides its marker the moment it is resolved, and brings it back if that fails', async () => {
+    const resolve = deferred<never>()
+    api.resolve.mockReturnValueOnce(resolve.promise)
+    const screen = await renderLayer({ hideResolved: true })
+    await openThread(screen)
+
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.resolveComment' })
+      .click()
+
+    // The request is still running.
+    await expect.element(thread(screen)).not.toBeInTheDocument()
+    expect(markers(screen).elements()).toHaveLength(1)
+
+    resolve.reject(new Error('Network error'))
+    await expect.poll(() => markers(screen).elements().length).toBe(2)
+    expect(collaboration.emit).not.toHaveBeenCalled()
+  })
+
   it('closes a thread resolved while resolved threads are hidden and tells collaborators', async () => {
     api.resolve.mockImplementationOnce(async ({ params }: { params: { comment_id: string } }) => {
       server.current.list = server.current.list.map((item) =>
