@@ -347,6 +347,9 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
         } catch (error) {
           // oRPC would turn this into a 500; flag it so the dispatcher rejects like an offline fetch.
           if (error instanceof FakeNetworkFailure) (context as RequestContext).networkFailed = true
+          // Only apiError() and networkError() simulate failures; anything else is a broken handler.
+          else if (!(error instanceof ORPCError))
+            reportUnexpected(report, options.path.join('.'), error)
           throw error
         }
       },
@@ -385,10 +388,11 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
   })
 }
 
-function errorResponse(error: unknown) {
-  if (error instanceof ORPCError)
-    return Response.json(backendErrorBody(error), { status: error.status })
-  throw error
+function reportUnexpected(report: (problem: string) => void, where: string, error: unknown) {
+  const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+  report(
+    `${where}: handler threw unexpectedly (${detail}); throw apiError() or networkError() to simulate a failure`,
+  )
 }
 
 type Dispatch = (request: Request) => Promise<Response>
@@ -403,6 +407,30 @@ type Flight = {
   aborted?: boolean
 }
 
+// The regular (non-once) implementation of each spy the fake creates, kept in sync with
+// `mockImplementation()`, `mockReset()` and `mockRestore()`. Vitest's `getMockImplementation()`
+// returns the next queued `mockImplementationOnce`, so `hold().release()` cannot rely on it.
+const regularImplementations = new WeakMap<object, AnyFunction>()
+function trackRegularImplementation<T extends Mock<AnyFunction>>(spy: T, original: AnyFunction) {
+  regularImplementations.set(spy, original)
+  const setImplementation = spy.mockImplementation.bind(spy)
+  const reset = spy.mockReset.bind(spy)
+  const restore = spy.mockRestore.bind(spy)
+  spy.mockImplementation = ((implementation: AnyFunction) => {
+    regularImplementations.set(spy, implementation)
+    return setImplementation(implementation as never)
+  }) as never
+  spy.mockReset = () => {
+    regularImplementations.set(spy, original)
+    return reset()
+  }
+  spy.mockRestore = () => {
+    regularImplementations.set(spy, original)
+    return restore()
+  }
+  return spy
+}
+
 // Responses created by `hold()`, and whether the test has settled them yet.
 const heldResponses = new WeakMap<Promise<unknown>, { settled: boolean }>()
 const isHeld = (flight: Flight) =>
@@ -413,6 +441,7 @@ function noteHeld(flight: Flight | undefined, result: unknown) {
 // Captured before any test fakes timers, so teardown can always wait in real time.
 const realSetTimeout = globalThis.setTimeout
 const realClearTimeout = globalThis.clearTimeout
+const realNow = Date.now.bind(Date)
 const PENDING_REQUEST_GRACE_MS = 2_000
 type RequestContext = {
   networkFailed?: boolean
@@ -633,7 +662,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
         existing.mockImplementation(handler as never)
         continue
       }
-      const spy = vi.fn(handler)
+      const spy = trackRegularImplementation(vi.fn(handler), handler)
       spies.set(key, spy)
       setAt(spyTrees[contract], path, spy)
       // A new procedure needs a new router; existing ones keep resolving their spy.
@@ -660,7 +689,13 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
   let routes: SpiedRoute[] = []
   const addRoutes = (added: FakeRoute[] = []) => {
     // Later routes take precedence, so `use()` can override an endpoint.
-    routes = [...added.map((entry) => ({ ...entry, spy: vi.fn(entry.handler) })), ...routes]
+    routes = [
+      ...added.map((entry) => ({
+        ...entry,
+        spy: trackRegularImplementation(vi.fn(entry.handler), entry.handler),
+      })),
+      ...routes,
+    ]
   }
   addRoutes(api.routes)
 
@@ -719,7 +754,11 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
         const result = await pending
         return result instanceof Response ? result : Response.json(result ?? null)
       } catch (error) {
-        return errorResponse(error)
+        if (error instanceof ORPCError)
+          return Response.json(backendErrorBody(error), { status: error.status })
+        if (error instanceof FakeNetworkFailure) throw error
+        reportUnexpected(report, `${request.method} ${url.pathname}`, error)
+        return Response.json({ code: 'internal_error', message: 'Handler failed' }, { status: 500 })
       }
     }
     report(`unhandled ${base} request: ${request.method} ${path}${url.search}`)
@@ -744,35 +783,47 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
     return response
   }
 
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof fetch>((input, init) => abortable(new Request(input, init), tracked)),
+  const fakeFetch = vi.fn<typeof fetch>((input, init) =>
+    abortable(new Request(input, init), tracked),
   )
-  vi.stubGlobal('XMLHttpRequest', createFakeXMLHttpRequest(tracked))
+  const FakeXMLHttpRequest = createFakeXMLHttpRequest(tracked)
+
+  const stubTransports = () => {
+    vi.stubGlobal('fetch', fakeFetch)
+    vi.stubGlobal('XMLHttpRequest', FakeXMLHttpRequest)
+  }
+  stubTransports()
 
   const teardown = async () => {
-    vi.unstubAllGlobals()
-    // Responses still being produced are validated after the test body ends; wait for them,
-    // except the ones the test deliberately holds open with `hold()`.
-    const settling = (flight: Flight) => !isHeld(flight) && !flight.aborted
-    const waiting = [...flights].filter(settling)
-    if (waiting.length) {
-      let timer: ReturnType<typeof setTimeout> | undefined
-      await Promise.race([
-        Promise.all(waiting.map((flight) => flight.done)),
-        new Promise<void>((resolve) => {
-          timer = realSetTimeout(resolve, PENDING_REQUEST_GRACE_MS)
-        }),
-      ])
-      realClearTimeout(timer)
-      for (const flight of waiting) {
-        if (flights.has(flight) && settling(flight))
-          report(
-            `${flight.label}: still pending when the test finished; settle it, or hold it with hold() or pendingResponse()`,
-          )
+    // Keep serving (and checking) requests while in-flight responses finish, even if an
+    // `afterEach` already restored the globals; restore the real transports only at the end.
+    stubTransports()
+    try {
+      // Responses still being produced are validated after the test body ends; wait for them,
+      // including requests they trigger, except ones the test holds open or the client aborted.
+      const settling = (flight: Flight) => !isHeld(flight) && !flight.aborted
+      const deadline = realNow() + PENDING_REQUEST_GRACE_MS
+      let waiting = [...flights].filter(settling)
+      while (waiting.length && realNow() < deadline) {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        await Promise.race([
+          Promise.all(waiting.map((flight) => flight.done)),
+          new Promise<void>((resolve) => {
+            timer = realSetTimeout(resolve, deadline - realNow())
+          }),
+        ])
+        realClearTimeout(timer)
+        waiting = [...flights].filter(settling)
       }
+      for (const flight of waiting) {
+        report(
+          `${flight.label}: still pending when the test finished; settle it, or hold it with hold() or pendingResponse()`,
+        )
+      }
+      if (problems.length) throw new Error(`Fake API problems:\n${problems.join('\n')}`)
+    } finally {
+      vi.unstubAllGlobals()
     }
-    if (problems.length) throw new Error(`Fake API problems:\n${problems.join('\n')}`)
   }
   return Object.assign(teardown, {
     console: spyTrees.console,
@@ -863,7 +914,10 @@ export type HeldRequest<F> = {
  * hold never surfaces as an unhandled rejection.
  */
 export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
-  type Outcome = { ok: true; value: unknown } | { ok: false; error: unknown }
+  type Outcome =
+    | { kind: 'value'; value: unknown }
+    | { kind: 'error'; error: unknown }
+    | { kind: 'release' }
   let outcome: Outcome | undefined
   let settle: ((result: Outcome) => void) | undefined
   let arrive!: (input: SpyInput<F>) => void
@@ -874,13 +928,24 @@ export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
   const finish = (result: Outcome) => {
     if (outcome) throw new Error('Fake API: a held request can only be settled once')
     outcome = result
+    // From now on teardown waits for this request instead of treating it as deliberately held.
     state.settled = true
     settle?.(result)
   }
   spy.mockImplementationOnce(((input: SpyInput<F>) => {
     arrive(input)
     const response = new Promise((resolve, reject) => {
-      settle = (result) => (result.ok ? resolve(result.value) : reject(result.error))
+      settle = (result) => {
+        if (result.kind === 'value') return resolve(result.value)
+        if (result.kind === 'error') return reject(result.error)
+        const regular = regularImplementations.get(spy)
+        if (!regular) return reject(new Error('Fake API: release() needs a fake API spy'))
+        try {
+          resolve(regular(input as never))
+        } catch (error) {
+          reject(error)
+        }
+      }
       if (outcome) settle(outcome)
     })
     heldResponses.set(response, state)
@@ -888,17 +953,12 @@ export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
   }) as never)
   return {
     arrived,
-    resolve: (value) => finish({ ok: true, value }),
-    reject: (error) => finish({ ok: false, error }),
+    resolve: (value) => finish({ kind: 'value', value }),
+    reject: (error) => finish({ kind: 'error', error }),
     release: () => {
-      const regular = spy.getMockImplementation()
-      if (!regular) throw new Error('Fake API: release needs a spy with an implementation')
-      void arrived
-        .then((input) => (regular as AnyFunction)(input as never))
-        .then(
-          (value) => finish({ ok: true, value }),
-          (error: unknown) => finish({ ok: false, error }),
-        )
+      if (!regularImplementations.has(spy))
+        throw new Error('Fake API: release() needs a fake API spy')
+      finish({ kind: 'release' })
     },
   }
 }

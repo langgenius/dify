@@ -615,6 +615,104 @@ describe('teardown', () => {
   })
 })
 
+describe('teardown with released and late requests', () => {
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  it('answers a request released before it arrives with the regular handler, not the next hold', async () => {
+    const fake = installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+    const spy = fake.console.workspaces.current.networkAccessGroups.get
+    const first = hold(spy)
+    hold(spy)
+    first.release()
+
+    const result = await consoleClient.workspaces.current.networkAccessGroups.get({})
+
+    expect(result.groups).toHaveLength(1)
+    await fake()
+  })
+
+  it('waits for a released request whose regular handler is still running', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: async () => {
+                await wait(50)
+                return { ...groupList, groups: 'not-a-list' } as never
+              },
+            },
+          },
+        },
+      },
+    })
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    await request.arrived
+    request.release()
+
+    await expect(fake()).rejects.toThrow(/Output validation failed/)
+  })
+
+  it('keeps serving requests made while teardown waits, even after globals were restored', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: async () => {
+                await wait(50)
+                void fetch('http://localhost:5001/console/api/not-configured').catch(
+                  () => undefined,
+                )
+                return groupList
+              },
+            },
+          },
+        },
+      },
+    })
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    await expect
+      .poll(() => fake.console.workspaces.current.networkAccessGroups.get)
+      .toHaveBeenCalled()
+    // Like an `afterEach` that restores globals before `onTestFinished` teardown runs.
+    vi.unstubAllGlobals()
+
+    await expect(fake()).rejects.toThrow(/unhandled console request: GET \/not-configured/)
+  })
+
+  it('fails the test when a contract or route handler throws something other than apiError()', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: () => {
+                throw new TypeError('fixture is undefined')
+              },
+            },
+          },
+        },
+      },
+      routes: [
+        route('POST', 'console', '/files/upload', () => {
+          throw new Error('route fixture broke')
+        }),
+      ],
+    })
+
+    await expect(consoleClient.workspaces.current.networkAccessGroups.get({})).rejects.toThrow()
+    const upload = await fetch('http://localhost:5001/console/api/files/upload', { method: 'POST' })
+    expect(upload.status).toBe(500)
+    await expect(fake()).rejects.toThrow(
+      /workspaces\.current\.networkAccessGroups\.get: handler threw unexpectedly \(TypeError: fixture is undefined\)[\s\S]*POST \/console\/api\/files\/upload: handler threw unexpectedly \(Error: route fixture broke\)/,
+    )
+  })
+})
+
 describe('REST route bodies', () => {
   const upload = () =>
     installFakeApi({
