@@ -38,20 +38,19 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    consoleQuery: createTanstackQueryUtils(
-      {
-        apps: {
-          byAppId: {
-            export: { get: mocks.exportAppDsl },
-            workflows: {
-              draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
-            },
-          },
+  const consoleClient = {
+    apps: {
+      byAppId: {
+        export: { get: mocks.exportAppDsl },
+        workflows: {
+          draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
         },
       },
-      { path: ['console'] },
-    ),
+    },
+  }
+  return {
+    consoleClient,
+    consoleQuery: createTanstackQueryUtils(consoleClient, { path: ['console'] }),
   }
 })
 
