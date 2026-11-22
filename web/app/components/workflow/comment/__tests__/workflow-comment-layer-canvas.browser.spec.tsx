@@ -127,9 +127,7 @@ describe('markers and the composer', () => {
     api.create.mockReturnValueOnce(create.promise)
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store
-      .getState()
-      .setPendingComment({ pageX: 600, pageY: 400, elementX: 600, elementY: 400 })
+    screen.store.getState().setPendingComment({ x: 600, y: 400 })
     const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
 
     await composer.fill('New thread')
@@ -146,9 +144,7 @@ describe('markers and the composer', () => {
   it('keeps a new comment’s draft when Escape ends an input method composition, in Safari’s event order', async () => {
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store
-      .getState()
-      .setPendingComment({ pageX: 600, pageY: 400, elementX: 600, elementY: 400 })
+    screen.store.getState().setPendingComment({ x: 600, y: 400 })
     const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
     await composer.fill('草稿')
     const box = composer.element()
@@ -167,9 +163,7 @@ describe('markers and the composer', () => {
     api.create.mockRejectedValueOnce(new Error('Network error'))
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store
-      .getState()
-      .setPendingComment({ pageX: 600, pageY: 400, elementX: 600, elementY: 400 })
+    screen.store.getState().setPendingComment({ x: 600, y: 400 })
     const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
 
     await composer.fill('Not created')
@@ -182,9 +176,7 @@ describe('markers and the composer', () => {
   it('follows the pointer while a draft comment is dragged', async () => {
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store
-      .getState()
-      .setPendingComment({ pageX: 300, pageY: 300, elementX: 300, elementY: 300 })
+    screen.store.getState().setPendingComment({ x: 300, y: 300 })
     const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
     await expect.element(handle).toBeVisible()
     const start = handle.element().getBoundingClientRect()
@@ -203,6 +195,65 @@ describe('markers and the composer', () => {
     const end = handle.element().getBoundingClientRect()
     expect(end.x - start.x).toBeGreaterThan(350)
     expect(end.y - start.y).toBeGreaterThan(150)
+  })
+})
+
+describe('panning the canvas', () => {
+  const canvas = () => document.getElementById('workflow-container')!.getBoundingClientRect()
+  const panLeft = (distance: number) =>
+    userEvent.dragAndDrop(
+      page.elementLocator(document.querySelector('.react-flow__pane')!),
+      page.elementLocator(document.querySelector('.react-flow__pane')!),
+      {
+        sourcePosition: { x: 1000, y: 650 },
+        targetPosition: { x: 1000 - distance, y: 650 },
+        steps: 4,
+      } as Parameters<typeof userEvent.dragAndDrop>[2],
+    )
+  const inCanvas = (element: Element) => {
+    const box = element.getBoundingClientRect()
+    const bounds = canvas()
+    return box.left >= bounds.left && box.right <= bounds.right
+  }
+
+  it('keeps a new comment where it was placed, and its input in use once panned out of view', async () => {
+    const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
+    screen.store.getState().setPendingComment({ x: 600, y: 300 })
+    const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+    const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
+    await composer.fill('Placed here')
+    const start = handle.element().getBoundingClientRect()
+
+    await panLeft(800)
+
+    await expect
+      .poll(() => handle.element().getBoundingClientRect().right)
+      .toBeLessThan(canvas().left)
+    expect(start.left - handle.element().getBoundingClientRect().left).toBeCloseTo(800, -1)
+    await expect.element(composer).toBeVisible()
+    expect(inCanvas(composer.element())).toBe(true)
+    await composer.click()
+    await userEvent.keyboard('{Enter}')
+    await expect
+      .poll(() => api.create.mock.calls[0]?.[0])
+      .toMatchObject({ body: { position_x: 600, position_y: 300, content: 'Placed here' } })
+  })
+
+  it('keeps an open thread in view and in use once its marker is panned out of view', async () => {
+    const screen = await renderLayer()
+    await openThread(screen)
+
+    await panLeft(300)
+
+    await expect
+      .poll(() => markers(screen).first().element().getBoundingClientRect().right)
+      .toBeLessThan(canvas().left)
+    await expect.element(thread(screen)).toBeVisible()
+    expect(inCanvas(thread(screen).element())).toBe(true)
+    await expect.element(replyBox(screen)).toBeEnabled()
+    await replyBox(screen).fill('Still here')
+    await expect.element(replyBox(screen)).toHaveValue('Still here')
   })
 })
 

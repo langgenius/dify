@@ -32,7 +32,7 @@ const renderReveal = () => {
     {
       initialStoreState: {
         rightPanelWidth: 200,
-        pendingComment: { pageX: 1, pageY: 2, elementX: 3, elementY: 4 },
+        pendingComment: { x: 1, y: 2 },
       },
       reactFlowProps: { fitView: false, defaultViewport: { x: 80, y: 160, zoom: 2 } },
     },

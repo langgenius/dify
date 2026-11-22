@@ -42,7 +42,7 @@ function Fixture({ draft = false }: { draft?: boolean }) {
             position={position}
             onSubmit={() => {}}
             onCancel={() => {}}
-            onPositionChange={(next) => setPosition({ x: next.elementX, y: next.elementY })}
+            onPositionChange={setPosition}
           />
         ) : (
           <CommentMarkerFixture

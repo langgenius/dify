@@ -9,8 +9,8 @@ import {
 import { useState } from 'react'
 import { CommentIcon } from '../comment-icon'
 import { getCommentMarkerId } from '../marker-id'
+import { commentPopupPlacement } from '../popup-placement'
 import { CommentThread } from '../thread'
-import { commentThreadPlacement } from '../thread-placement'
 
 type CommentThreadFixtureProps = ComponentProps<typeof CommentThread> & {
   onClose?: () => void
@@ -35,7 +35,7 @@ export function CommentThreadFixture({ onClose, ...props }: CommentThreadFixture
         }}
       >
         <PopoverPortal>
-          <PopoverPositioner {...commentThreadPlacement}>
+          <PopoverPositioner {...commentPopupPlacement}>
             <CommentThread {...props} />
           </PopoverPositioner>
         </PopoverPortal>

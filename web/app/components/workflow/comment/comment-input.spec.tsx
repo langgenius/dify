@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { ReactFlowProvider } from 'reactflow'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient } from '@/test/console/query-data'
@@ -23,7 +24,7 @@ const render = (ui: ReactElement) => {
   seedMentionableUsers(queryClient, [
     { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: '' },
   ])
-  return renderWorkflowComponent(ui, {
+  return renderWorkflowComponent(<ReactFlowProvider>{ui}</ReactFlowProvider>, {
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     queryClient,
   })
@@ -37,24 +38,23 @@ describe('CommentInput', () => {
       const [position, setPosition] = useState({ x: 100, y: 100 })
       return (
         <CommentInput
-          autoFocus={false}
           position={position}
           onCancel={vi.fn()}
           onSubmit={vi.fn()}
           onPositionChange={(next) => {
             onPositionChange(next)
-            setPosition({ x: next.elementX, y: next.elementY })
+            setPosition(next)
           }}
         />
       )
     }
     render(<Draft />)
     const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+    // The input takes focus as the draft opens.
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
     handle.focus()
     await user.keyboard('{Enter}{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
-    expect(onPositionChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ elementX: 105, elementY: 120 }),
-    )
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 105, y: 120 })
     expect(handle).toHaveAttribute('aria-pressed', 'true')
     await user.keyboard('{Enter}{ArrowRight}')
     expect(handle).toHaveAttribute('aria-pressed', 'false')

@@ -22,7 +22,6 @@ import {
 } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorAppIdAtom,
@@ -38,8 +37,8 @@ import { prefetchCommentThread } from './comment-prefetch'
 import { appIdOfWrite, commentWriteKey, isWritingComments } from './comment-writes'
 import { getCommentMarkerId } from './marker-id'
 import { CommentPlacementPreview } from './placement-preview'
+import { useCommentPopupPositioner } from './popup-placement'
 import { CommentThread } from './thread'
-import { commentThreadPlacement } from './thread-placement'
 import { useRevealComment } from './use-reveal-comment'
 
 const commentsApi = consoleQuery.apps.byAppId.workflow.comments
@@ -136,7 +135,7 @@ export function WorkflowCommentLayer() {
   const appId = useAtomValue(editorAppIdAtom)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const queryClient = useQueryClient()
-  const reactflow = useReactFlow()
+  const popupPositioner = useCommentPopupPositioner()
   const workflowStore = useWorkflowStore()
   const revealComment = useRevealComment()
   const controlMode = useStore((s) => s.controlMode)
@@ -233,16 +232,12 @@ export function WorkflowCommentLayer() {
   )
   const submitComment = async (content: string, mentionedUserIds: string[]) => {
     if (!pendingComment || !appId) return
-    const position = reactflow.screenToFlowPosition({
-      x: pendingComment.pageX,
-      y: pendingComment.pageY,
-    })
     try {
       await createComment.mutateAsync({
         params: { app_id: appId },
         body: {
-          position_x: position.x,
-          position_y: position.y,
+          position_x: pendingComment.x,
+          position_y: pendingComment.y,
           content,
           mentioned_user_ids: mentionedUserIds,
         },
@@ -379,7 +374,7 @@ export function WorkflowCommentLayer() {
       />
       {pendingComment && (
         <CommentInput
-          position={{ x: pendingComment.elementX, y: pendingComment.elementY }}
+          position={pendingComment}
           onSubmit={submitComment}
           submitting={createComment.isPending}
           onCancel={() => workflowStore.getState().setPendingComment(null)}
@@ -437,7 +432,7 @@ export function WorkflowCommentLayer() {
         }}
       >
         <PopoverPortal>
-          <PopoverPositioner {...commentThreadPlacement}>
+          <PopoverPositioner {...popupPositioner}>
             {appId && shownComment && (
               <ShownThread
                 appId={appId}

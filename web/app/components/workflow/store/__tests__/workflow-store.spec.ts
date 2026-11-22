@@ -7,7 +7,7 @@ import { createWorkflowStore, useStore, useWorkflowStore } from '../workflow'
 describe('workflow store composition', () => {
   it('ends a draft comment with comment mode unless a quick add started it', () => {
     const store = createTestWorkflowStore()
-    const draft = { pageX: 1, pageY: 2, elementX: 3, elementY: 4 }
+    const draft = { x: 1, y: 2 }
 
     store.getState().setControlMode('comment')
     store.getState().setPendingComment(draft)
@@ -22,7 +22,7 @@ describe('workflow store composition', () => {
 
   it('ends a quick add with its draft, but not while it is still placing one', () => {
     const store = createTestWorkflowStore()
-    const draft = { pageX: 1, pageY: 2, elementX: 3, elementY: 4 }
+    const draft = { x: 1, y: 2 }
 
     store.getState().setCommentQuickAdd(true)
     store.getState().setCommentPlacing(true)

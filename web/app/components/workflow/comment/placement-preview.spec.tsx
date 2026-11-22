@@ -1,6 +1,7 @@
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ReactFlowProvider } from 'reactflow'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../__tests__/workflow-test-env'
@@ -14,10 +15,12 @@ function renderPlacement(placing = true) {
   seedMentionableUsers(queryClient, [])
   const result = renderWorkflowComponent(
     <HotkeysProvider>
-      <button>Canvas action</button>
-      <button onKeyDown={(event) => event.preventDefault()}>Local escape owner</button>
-      <input aria-label="Node input" />
-      <CommentPlacementPreview onSubmit={vi.fn()} onCancel={onCancel} />
+      <ReactFlowProvider>
+        <button>Canvas action</button>
+        <button onKeyDown={(event) => event.preventDefault()}>Local escape owner</button>
+        <input aria-label="Node input" />
+        <CommentPlacementPreview onSubmit={vi.fn()} onCancel={onCancel} />
+      </ReactFlowProvider>
     </HotkeysProvider>,
     { initialStoreState: { isCommentPlacing: placing }, queryClient },
   )
@@ -64,7 +67,7 @@ it('stops owning Escape when inactive or once the editable draft is placed', asy
   act(() =>
     store.setState({
       isCommentPlacing: true,
-      pendingComment: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
+      pendingComment: { x: 0, y: 0 },
     }),
   )
   await user.keyboard('{Escape}')

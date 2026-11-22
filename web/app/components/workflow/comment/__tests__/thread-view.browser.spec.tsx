@@ -1,7 +1,7 @@
 import { Popover, PopoverPortal, PopoverPositioner } from '@langgenius/dify-ui/popover'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { commentThreadPlacement } from '../thread-placement'
+import { commentPopupPlacement } from '../popup-placement'
 import { CommentThreadPopup } from '../thread-view'
 
 function Fixture({
@@ -30,7 +30,7 @@ function Fixture({
       <Popover open>
         <PopoverPortal>
           <PopoverPositioner
-            {...commentThreadPlacement}
+            {...commentPopupPlacement}
             anchor={() => document.getElementById('marker')}
           >
             <CommentThreadPopup title="Comments" closeLabel="Close comment">

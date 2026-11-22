@@ -19,13 +19,6 @@ type PreviewRunningData = WorkflowRunningData & {
   extraContentAndFormData?: Record<string, unknown>
 }
 
-type MousePosition = {
-  pageX: number
-  pageY: number
-  elementX: number
-  elementY: number
-}
-
 export type WorkflowSliceShape = {
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
@@ -52,7 +45,8 @@ export type WorkflowSliceShape = {
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
-  pendingComment: MousePosition | null
+  /** A new comment's place on the canvas, in flow coordinates, while it is written. */
+  pendingComment: { x: number; y: number } | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
   isCommentPlacing: boolean
   setCommentPlacing: (isCommentPlacing: boolean) => void
