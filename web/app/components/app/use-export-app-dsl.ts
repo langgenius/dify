@@ -29,7 +29,7 @@ type ExportWorkflowAppDslInput = Pick<
   'appId' | 'appName' | 'feedback' | 'signal'
 >
 
-type ExportAppDslResult = { status: 'downloaded' } | { status: 'failed' }
+type ExportAppDslResult = { status: 'downloaded' } | { status: 'failed' } | { status: 'cancelled' }
 
 export type ExportWorkflowAppDslResult =
   | ExportAppDslResult
@@ -130,7 +130,12 @@ async function downloadAppDsl(
 ): Promise<ExportAppDslResult> {
   const download = exportAppDslFile(queryClient, input)
   if (input.feedback === 'dialog') {
-    await download
+    try {
+      await download
+    } catch (error) {
+      if (input.signal?.aborted) return { status: 'cancelled' }
+      throw error
+    }
   } else {
     await toast.promise(download, {
       loading: { title: messages.loading },
@@ -180,18 +185,19 @@ export function useExportWorkflowAppDsl() {
   const queryClient = useQueryClient()
   const { mutateAsync, isPending, error, reset } = useMutation({
     mutationFn: async (input: ExportWorkflowAppDslInput): Promise<ExportWorkflowAppDslResult> => {
-      input.signal?.throwIfAborted()
+      if (input.signal?.aborted) return { status: 'cancelled' }
       let secretEnvList: EnvironmentVariableItemResponse[]
       try {
         secretEnvList = await getSecretEnvironmentVariables(queryClient, input.appId, input.signal)
       } catch (error) {
+        if (input.signal?.aborted) return { status: 'cancelled' }
         if (input.feedback !== 'dialog') {
           toast.error(messages.error, { description: getErrorMessage(error) })
         }
         throw error
       }
 
-      input.signal?.throwIfAborted()
+      if (input.signal?.aborted) return { status: 'cancelled' }
       if (secretEnvList.length > 0) {
         return { status: 'confirmation-required', secretEnvList }
       }
