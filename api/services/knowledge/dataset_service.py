@@ -148,6 +148,8 @@ class DatasetService:
         *,
         tags: TagTargetQuery,
         service_api_grant: DatasetServiceApiGrant | None = None,
+        for_selection: bool = False,
+        ids: list[str] | None = None,
     ):
         """Return datasets under account or Dataset Service API visibility.
 
@@ -221,9 +223,24 @@ class DatasetService:
                 # if no user, only show datasets that are shared with all team members
                 query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
+        if ids is not None:
+            query = query.where(Dataset.id.in_(ids))
+        if for_selection:
+            query = query.order_by(None).order_by(
+                Dataset.name.collate(
+                    {"sqlite": "BINARY", "postgresql": "C", "mysql": "utf8mb4_bin"}[session.get_bind().dialect.name]
+                ),
+                Dataset.id,
+            )
+
         if search:
             escaped_search = helper.escape_like_pattern(search)
-            query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+            name_filter = Dataset.name.ilike(f"%{escaped_search}%", escape="\\")
+            query = query.where(
+                sa.or_(name_filter, sa.cast(Dataset.id, sa.String).ilike(f"%{escaped_search}%", escape="\\"))
+                if for_selection
+                else name_filter
+            )
 
         if creator_ids:
             query = query.where(Dataset.created_by.in_(creator_ids))
@@ -1258,6 +1275,16 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user, session)
 
+        from models.evaluation import EvaluationTargetType
+        from services.evaluation_service import EvaluationService
+
+        EvaluationService.stage_target_evaluation_cleanup(
+            session=session,
+            tenant_id=dataset.tenant_id,
+            target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
+            target_id=dataset.id,
+        )
+
         dataset_was_deleted.send(dataset)
 
         # Remove any dataset API key scoped only to this knowledge base, so it cannot
@@ -1376,8 +1403,7 @@ class DatasetService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return {"document_ids": [], "count": 0}
 
-        features = FeatureService.get_features(dataset_ref.tenant_id, exclude_vector_space=True)
-        if features.billing.subscription.plan == CloudPlan.SANDBOX:
+        if FeatureService.get_workspace_plan(dataset_ref.tenant_id) == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
                 "count": 0,

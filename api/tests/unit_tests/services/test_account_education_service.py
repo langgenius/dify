@@ -104,7 +104,11 @@ def test_status_and_autocomplete_delegate_framework_neutral_contracts(
         BillingService.EducationIdentity,
         "status",
         return_value=billing.GetEducationIdentityStatusReply(
-            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+            result=True,
+            is_student=True,
+            expire_at="2027-01-01T00:00:00+00:00",
+            allow_refresh=False,
+            can_redeem_discount=False,
         ),
     )
     autocomplete = mocker.patch.object(
@@ -116,7 +120,11 @@ def test_status_and_autocomplete_delegate_framework_neutral_contracts(
     )
 
     assert service.status(_context()) == AccountEducationStatus(
-        result=True, is_student=True, expire_at=datetime(2027, 1, 1, tzinfo=UTC), allow_refresh=False
+        result=True,
+        is_student=True,
+        expire_at=datetime(2027, 1, 1, tzinfo=UTC),
+        allow_refresh=False,
+        can_redeem_discount=False,
     )
     assert service.autocomplete(_context(), keywords="Example", page=0, limit=20) == AccountEducationAutocomplete(
         data=("Example University",), curr_page=0, has_next=False

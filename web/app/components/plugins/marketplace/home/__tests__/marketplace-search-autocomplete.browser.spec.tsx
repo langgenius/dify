@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appMessages from '@/i18n/locales/en-US/app.json'
+import commonMessages from '@/i18n/locales/en-US/common.json'
+import navigationMessages from '@/i18n/locales/en-US/navigation.json'
+import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
@@ -19,23 +25,9 @@ const api = vi.hoisted(() => ({
   searchTemplates: vi.fn(),
 }))
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return {
-    ...original,
-    ...createReactI18nextMock({
-      clearSearch: 'Clear search',
-      loading: 'Loading',
-      'marketplace.loadError': 'Failed to load. Please try again.',
-      'marketplace.home.plugins': 'Plugins',
-      'marketplace.home.templates': 'Templates',
-      'marketplace.noPluginFound': 'No integration found',
-      'newApp.noTemplateFound': 'No templates found',
-    }),
-  }
-})
+vi.unmock('react-i18next')
 
+// boundary: autocomplete suggestions stop at the external Marketplace HTTP client.
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/service/marketplace')>()
   return {
@@ -86,9 +78,14 @@ const template = {
 }
 
 let queryClient: QueryClient
+let i18n: ReturnType<typeof createInstance>
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+    </QueryClientProvider>
+  )
 }
 
 function StickyTemplateSearch() {
@@ -152,6 +149,19 @@ describe('Marketplace search autocomplete', () => {
   beforeEach(async () => {
     await page.viewport(1280, 720)
     queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } })
+    i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      keySeparator: false,
+      resources: {
+        'en-US': {
+          app: appMessages,
+          common: commonMessages,
+          navigation: navigationMessages,
+          plugin: pluginMessages,
+        },
+      },
+    })
     vi.clearAllMocks()
     api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
     api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
@@ -189,9 +199,7 @@ describe('Marketplace search autocomplete', () => {
     await new Promise(requestAnimationFrame)
 
     const input = screen.getByRole('combobox', { name: 'Search templates' })
-    const navigation = screen
-      .getByRole('region', { name: 'navigation.mainNav.marketplace' })
-      .element()
+    const navigation = screen.getByRole('region', { name: 'Marketplace' }).element()
     const scrollTop = scrollContainer.scrollTop
     const inputTop = input.element().getBoundingClientRect().top
     const navigationTop = navigation.getBoundingClientRect().top
@@ -318,7 +326,7 @@ describe('Marketplace search autocomplete', () => {
     await expect.element(screen.getByText('No integration found')).toBeVisible()
     await expect.element(screen.getByText('Loading')).not.toBeInTheDocument()
     await userEvent.keyboard('{Escape}')
-    await screen.getByRole('button', { name: 'Clear search' }).click()
+    await screen.getByRole('button', { name: 'Clear Search plugins' }).click()
 
     await expect.element(input).toHaveValue('')
     await expect.element(input).toHaveFocus()

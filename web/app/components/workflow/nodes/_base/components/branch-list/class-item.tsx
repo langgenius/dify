@@ -139,7 +139,7 @@ const ClassItem: FC<Props> = ({
   ) : readonly ? (
     <div
       id={labelId}
-      className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary"
+      className="-ms-1 px-1 py-0.5 text-start text-xs/4 font-semibold text-text-secondary"
     >
       {displayLabel}
     </div>
@@ -148,7 +148,7 @@ const ClassItem: FC<Props> = ({
       id={labelId}
       type="button"
       className={cn(
-        '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
+        '-ms-1 rounded px-1 py-0.5 text-start text-xs/4 font-semibold text-text-secondary transition-colors',
         'cursor-text hover:bg-state-base-hover',
       )}
       onDoubleClick={handleLabelEditStart}

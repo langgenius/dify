@@ -933,7 +933,7 @@ def test_sync_assistant_model_config_updates_draft_without_active_snapshot() -> 
         assert agent.active_config_has_model is True
 
 
-def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
+def test_update_display_name_syncs_draft_and_keeps_name() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
     original_skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
@@ -949,12 +949,16 @@ def test_update_display_name_keeps_name_and_draft_content_unchanged() -> None:
     assert updated["name"] == created["name"]
     assert updated["name_manually_edited"] is False
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
-    assert skill_md["content"] == original_skill_md["content"]
+    assert "display-name: Finance Audit" in skill_md["content"]
+    assert skill_md["content"].endswith(original_skill_md["content"])
 
 
-def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sync() -> None:
+@pytest.mark.parametrize("display_name", ["Finance Audit", "财务: 审核"])
+def test_update_display_name_preserves_manually_edited_name_after_publish(display_name: str) -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
-    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload())
+    created = service.create_skill(
+        tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop", description="Finance SOP")
+    )
 
     manually_named = service.apply_draft_file_operation(
         tenant_id=TENANT,
@@ -963,7 +967,10 @@ def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sy
         payload=SkillDraftFileOperationPayload(
             operation="upsert_text",
             path="SKILL.md",
-            content=_skill_md(name="manual-name", body="# Body"),
+            content=(
+                "---\nname: manual-name\ndescription: Finance SOP\nlicense: MIT\n"
+                "metadata:\n  display-name: Old Name\n  author: Alice\n---\n# Body"
+            ),
         ),
     )
     assert manually_named["name"] == "manual-name"
@@ -973,14 +980,22 @@ def test_frontmatter_name_change_marks_manual_takeover_and_stops_display_name_sy
         tenant_id=TENANT,
         user_id=USER,
         skill_id=created["id"],
-        payload=SkillMetadataPayload(display_name="Finance Audit"),
+        payload=SkillMetadataPayload(display_name=display_name),
     )
 
     assert updated["name"] == "manual-name"
-    assert updated["display_name"] == "Finance Audit"
+    assert updated["display_name"] == display_name
     skill_md = next(item for item in service.get_skill(tenant_id=TENANT, skill_id=created["id"])["files"])
     assert "name: manual-name" in skill_md["content"]
-    assert "display-name: Finance Audit" not in skill_md["content"]
+    frontmatter = service._parse_frontmatter(skill_md["content"])
+    assert frontmatter["metadata"] == {"display-name": display_name, "author": "Alice"}
+    assert frontmatter["license"] == "MIT"
+    assert skill_md["content"].endswith("# Body")
+
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    refreshed = service.get_skill(tenant_id=TENANT, skill_id=created["id"])
+    assert refreshed["display_name"] == display_name
+    assert refreshed["name"] == "manual-name"
 
 
 def test_delete_unreferenced_placeholder_skill_deletes_initial_draft() -> None:

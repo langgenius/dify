@@ -26,16 +26,20 @@ from models.account import Account
 from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
-from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
+from repositories.app.agent_runtime_app import create_backing_agent_for_app
+from repositories.app.console_repository import (
+    ConsoleAppRepository,
+    StageTargetEvaluationCleanup,
+    console_app_actor,
+    require_console_app,
+)
 from repositories.app.response import app_record
 from services.agent.errors import AgentNameConflictError
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
-from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService
 from services.app.access import AppAccessFilter, resolve_app_access_filter
+from services.app.agent_app_contracts import AgentAppDetail
 from services.app.console_service import (
     AppLifecycle,
     AppPermissions,
@@ -253,9 +257,8 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
-        return (
-            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or FeatureService.get_workspace_plan(workspace_id).is_paid
+        return dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or (
+            (plan := FeatureService.get_workspace_plan(workspace_id)) is not None and plan.is_paid
         )
 
 
@@ -533,6 +536,25 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return self._agent_packages.export(tenant_id=workspace_id, agent_id=agent_id, version_id=version_id)
 
 
+def notify_agent_app_updated(tenant_id: str, app_id: str) -> None:
+    """Notify existing listeners after an Agent App change has committed."""
+    app_was_updated.send(AppEvent(app_id, tenant_id, str(AppMode.AGENT)))
+
+
+def notify_app_created(context: RequestContext, app: AppRecord) -> None:
+    """Notify existing listeners and initialize access for a committed App."""
+    AppService.notify_created_app(
+        event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
+        account_id=context.account_id,
+        backing_agent_id=app.bound_agent_id,
+    )
+
+
+def notify_app_deleted(context: RequestContext, deleted: AppDeletion) -> None:
+    """Publish cleanup for an already committed deletion."""
+    AppService.notify_deleted_app(deleted, account_id=context.account_id)
+
+
 class AppLifecycleGateway(AppLifecycle):
     """Integrate App persistence with existing Agent transaction participants.
 
@@ -540,8 +562,12 @@ class AppLifecycleGateway(AppLifecycle):
     the App transaction; notification and resource cleanup run after it closes.
     """
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+    ) -> None:
+        """Prepare legacy App operations with transactional evaluation cleanup supplied by composition."""
         self._session_factory = session_factory
+        self._stage_evaluation_cleanup = stage_evaluation_cleanup
 
     @override
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
@@ -553,7 +579,8 @@ class AppLifecycleGateway(AppLifecycle):
             if app.mode == AppMode.AGENT:
                 initial_soul = AppService.prepare_agent_soul(context.active_workspace_id, session=session)
                 try:
-                    AgentRosterService(session).create_backing_agent_for_app(
+                    create_backing_agent_for_app(
+                        session,
                         tenant_id=context.active_workspace_id,
                         account_id=context.account_id,
                         app_id=app.id,
@@ -588,22 +615,12 @@ class AppLifecycleGateway(AppLifecycle):
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            deleted = ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
-            for binding_id in deleted.binding_ids:
-                AgentWorkspaceService.retire_binding(
-                    session=session, tenant_id=context.active_workspace_id, binding_id=binding_id
-                )
-            snapshots = (
-                AgentHomeSnapshotService.retire_all_for_agent(
-                    session=session, tenant_id=context.active_workspace_id, agent_id=deleted.backing_agent_id
-                )
-                if deleted.backing_agent_id is not None
-                else []
+            return ConsoleAppRepository.delete_app_record(
+                app,
+                account_id=context.account_id,
+                session=session,
+                stage_evaluation_cleanup=self._stage_evaluation_cleanup,
             )
-            workspaces = AgentWorkspaceService.retire_all_for_app(
-                session=session, tenant_id=context.active_workspace_id, app_id=app_id
-            )
-            return replace(deleted, home_snapshot_ids=snapshots, workspace_ids=workspaces)
 
     @override
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:
@@ -611,11 +628,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def created(self, context: RequestContext, app: AppRecord) -> None:
-        AppService.notify_created_app(
-            event=AppEvent(app.id, context.active_workspace_id, app.mode_compatible_with_agent),
-            account_id=context.account_id,
-            backing_agent_id=app.bound_agent_id,
-        )
+        notify_app_created(context, app)
 
     @override
     def updated(self, context: RequestContext, app: AppRecord) -> None:
@@ -623,7 +636,7 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        AppService.notify_deleted_app(deleted, account_id=context.account_id)
+        notify_app_deleted(context, deleted)
 
     @override
     def present(self, context: RequestContext, app: AppRecord, *, mask_credentials: bool = False) -> AppRecord:
@@ -631,3 +644,35 @@ class AppLifecycleGateway(AppLifecycle):
             app, deleted_tools=AppResponseGateway.find_deleted_tools(context.active_workspace_id, app.tool_references)
         )
         return AppResponseGateway.mask_record(context, app) if mask_credentials else app
+
+
+class AgentAppDetailPresentationGateway:
+    """Resolve Agent detail metadata without holding the App persistence session."""
+
+    def __init__(self, *, members: MemberService) -> None:
+        self._members = members
+
+    def present(self, context: RequestContext, detail: AgentAppDetail) -> AgentAppDetail:
+        """Enrich a detached App record with access mode, permissions and tool availability."""
+        access_mode = (
+            EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=detail.app.id).access_mode
+            if SystemFeatureService.is_webapp_auth_enabled()
+            else None
+        )
+        app = replace(
+            detail.app,
+            access_mode=access_mode,
+            deleted_tools=AppResponseGateway.find_deleted_tools(
+                context.active_workspace_id, detail.app.tool_references
+            ),
+        )
+        app = (
+            AppResponseGateway.mask_agent_mode(context, app)
+            if detail.should_mask_agent_mode
+            else AppResponseGateway.mask_record(context, app)
+        )
+        permissions = self._members.permissions(
+            context.active_workspace_id, context.account_id, agent_id=detail.agent_id
+        )
+        keys = permissions.agent.permission_keys_by_resource_ids([detail.agent_id]).get(detail.agent_id, [])
+        return replace(detail, app=replace(app, permission_keys=keys))

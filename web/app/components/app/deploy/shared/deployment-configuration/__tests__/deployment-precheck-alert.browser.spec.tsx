@@ -3,27 +3,30 @@ import type {
   WorkflowAsToolDependency,
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render as renderBrowser } from 'vitest-browser-react'
+import deployments from '@/i18n/locales/en-US/deployments.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { DeploymentPrecheckAlert } from '../deployment-precheck-alert'
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'deployments.studio.precheck.description': 'It contains node types that are not yet supported:',
-    'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
-    'deployments.studio.precheck.supportMessage':
-      'Support for these node types is coming in a future release.',
-    'deployments.studio.precheck.title': "This version can't be deployed to this environment",
-  })
-})
+vi.unmock('react-i18next')
 
 async function render(ui: React.ReactElement) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  return renderBrowser(<Wrapper>{ui}</Wrapper>)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { deployments } },
+    keySeparator: false,
+  })
+  return renderBrowser(
+    <Wrapper>
+      <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
+    </Wrapper>,
+  )
 }
 
 function workflowReference(name: string, suffix: string): WorkflowReference {

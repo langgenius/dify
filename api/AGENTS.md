@@ -45,6 +45,8 @@ changes, and CI checks the PR against its target revision.
 
 ## Typing Best Practises
 
+- Use `StrEnum` instead of `Literal["a", "b", ...]` for multiple string alternatives.
+- Single-value `Literal["tag"]` is allowed for tagged unions.
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 

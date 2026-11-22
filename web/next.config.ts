@@ -18,7 +18,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
     rules: {
-      ...codeInspectorPlugin({ bundler: 'turbopack' }),
+      ...codeInspectorPlugin({
+        bundler: 'turbopack',
+        behavior: { locate: true, defaultAction: 'locate' },
+      }),
       '*.openapi': { loaders: [openapiLoader], as: '*.js' },
       '*.openapi-source': { loaders: [openapiLoader], as: '*.js' },
       '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
@@ -32,7 +35,6 @@ const nextConfig: NextConfig = {
     })
     return config
   },
-  productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
@@ -44,15 +46,10 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: true,
       },
-      {
-        // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
-        source: '/education-apply',
-        destination: '/education/apply',
-        permanent: true,
-      },
     ]
   },
-  output: 'standalone',
+  // The Cloudflare Workers build (vinext POC) emits its own Worker bundle instead of a Node server.
+  output: process.env.VINEXT_PLATFORM === 'cloudflare' ? undefined : 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },

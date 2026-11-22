@@ -58,6 +58,12 @@ class _TenantContactPort:
     def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
         raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_id}")
 
+    def get_contacts_by_account_ids(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
+        """Reject Account identity reads outside these Contact capability scenarios."""
+        raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_ids}")
+
     def get_contacts_by_ids(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[Contact]:
         self.tenant_calls.append(tenant_id)
         requested_ids = set(contact_ids)

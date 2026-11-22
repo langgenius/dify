@@ -462,7 +462,7 @@ def test_plugin_model_assembly_reuses_single_runtime_across_views() -> None:
     mock_runtime_factory.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
     mock_provider_factory_cls.assert_called_once_with(runtime=runtime)
     mock_provider_manager_cls.assert_called_once_with(model_runtime=runtime)
-    mock_model_manager_cls.assert_called_once_with(provider_manager=provider_manager)
+    mock_model_manager_cls.assert_called_once_with(provider_manager=provider_manager, moderation=None)
 
 
 def test_create_plugin_model_runtime_injects_plugin_service() -> None:

@@ -4,7 +4,7 @@ import contextlib
 import json
 import logging
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol, Self
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -36,9 +36,8 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -64,6 +63,7 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
+    from core.hosting_configuration import HostingProvider
     from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 logger = logging.getLogger(__name__)
@@ -656,7 +656,10 @@ class ProviderManager:
 
         # Initialize trial provider records if not exist
         provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
+            tenant_id,
+            provider_name_to_provider_records_dict,
+            hosting_providers=ext_hosting_provider.hosting_configuration.provider_map,
+            session_maker=session_factory.get_session_maker(),
         )
 
         # append providers with langgenius/openai/openai
@@ -861,16 +864,18 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
-
-        if not default_model:
-            return None
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
+            if not default_model:
+                return None
+            provider_name = default_model.provider_name
+            model_name = default_model.model_name
 
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
+        provider_schema = model_provider_factory.get_provider_schema(provider=provider_name)
 
         return DefaultModelEntity(
-            model=default_model.model_name,
+            model=model_name,
             model_type=model_type,
             provider=DefaultModelProviderEntity(
                 provider=provider_schema.provider,
@@ -916,24 +921,23 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        with session_factory.create_session() as session, session.begin():
+            default_model = session.scalar(stmt)
 
-        # create or update TenantDefaultModel record
-        if default_model:
-            # update default model
-            default_model.provider_name = provider
-            default_model.model_name = model
-            db.session.commit()
-        else:
-            # create default model
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type,
-                provider_name=provider,
-                model_name=model,
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            # create or update TenantDefaultModel record
+            if default_model:
+                # update default model
+                default_model.provider_name = provider
+                default_model.model_name = model
+            else:
+                # create default model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=provider,
+                    model_name=model,
+                )
+                session.add(default_model)
 
         return default_model
 
@@ -1176,19 +1180,31 @@ class ProviderManager:
 
     @staticmethod
     def _init_trial_provider_records(
-        tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
+        tenant_id: str,
+        provider_name_to_provider_records_dict: dict[str, list[Provider]],
+        *,
+        hosting_providers: Mapping[str, HostingProvider],
+        session_maker: sessionmaker[Session],
     ) -> dict[str, list[Provider]]:
         """
         Initialize trial provider records if not exists.
 
-        :param tenant_id: workspace id
-        :param provider_name_to_provider_records_dict: provider name to provider records dict
-        :return:
-        """
-        # Get hosting configuration
-        hosting_configuration = ext_hosting_provider.hosting_configuration
+        Each missing trial or paid record is inserted in its own short-lived session and transaction
+        from ``session_maker``.
+        When a concurrent insert wins the unique constraint, the existing record is loaded with its
+        credential and marked valid in a second short-lived session. No caller session is touched, so
+        pending work in the caller's session is neither committed nor rolled back.
 
-        for provider_name, configuration in hosting_configuration.provider_map.items():
+        :param tenant_id: workspace id
+        :param provider_name_to_provider_records_dict: valid provider records keyed by prefixed
+            provider name, as returned by ``_get_all_providers``; missing keys must default to a list
+        :param hosting_providers: hosting configuration keyed by prefixed provider name; only enabled
+            providers get trial or paid records
+        :param session_maker: factory for the short-lived sessions that own every write here
+        :return: the same dict with created or revived records appended; appended records are detached
+            and have their credential relationship loaded (or no credential id)
+        """
+        for provider_name, configuration in hosting_providers.items():
             if not configuration.enabled:
                 continue
 
@@ -1220,28 +1236,27 @@ class ProviderManager:
                                 quota_used=0,
                                 is_valid=True,
                             )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
+                            # A conflicting insert rolls back only this session, never the caller's.
+                            with session_maker.begin() as session:
+                                session.add(new_provider_record)
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
+                            stmt = (
+                                select(Provider)
+                                .where(
+                                    Provider.tenant_id == tenant_id,
+                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                                    Provider.provider_type == ProviderType.SYSTEM.value,
+                                    Provider.quota_type == quota.quota_type,
+                                )
+                                .options(selectinload(Provider.credential))
                             )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
-
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            # Load the credential after the commit above, which expires loaded attributes.
-                            db.session.refresh(existed_provider_record, ["credential"])
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
+                            with session_maker.begin() as session:
+                                existed_provider_record = session.scalar(stmt)
+                                if existed_provider_record and not existed_provider_record.is_valid:
+                                    existed_provider_record.is_valid = True
+                            if existed_provider_record:
+                                provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 
@@ -1539,20 +1554,20 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
+            credit_pool_type = (
+                ProviderQuotaType.TRIAL
+                if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX
+                else ProviderQuotaType.PAID
+            )
             with session_factory.create_session() as session:
-                trail_pool = CreditPoolService.get_pool(
+                credit_pool = CreditPoolService.get_pool(
                     tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.TRIAL,
-                    session=session,
-                )
-                paid_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.PAID,
+                    pool_type=credit_pool_type,
                     session=session,
                 )
         else:
-            trail_pool = None
-            paid_pool = None
+            credit_pool_type = None
+            credit_pool = None
 
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
@@ -1575,23 +1590,13 @@ class ProviderManager:
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
                 match provider_quota.quota_type:
-                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                    case quota_type if quota_type == credit_pool_type and credit_pool is not None:
                         quota_configuration = QuotaConfiguration(
                             quota_type=provider_quota.quota_type,
                             quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=trail_pool.quota_used,
-                            quota_limit=trail_pool.quota_limit,
-                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case ProviderQuotaType.PAID if paid_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=paid_pool.quota_used,
-                            quota_limit=paid_pool.quota_limit,
-                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            quota_used=credit_pool.quota_used,
+                            quota_limit=credit_pool.quota_limit,
+                            is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
                             restrict_models=provider_quota.restrict_models,
                         )
 
@@ -1611,7 +1616,7 @@ class ProviderManager:
         if len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
 
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+        current_quota_type = credit_pool_type or self._choice_current_using_quota_type(quota_configurations)
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:

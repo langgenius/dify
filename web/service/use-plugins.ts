@@ -44,7 +44,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -577,7 +577,7 @@ const useRecommendedMarketplacePlugins = ({
           },
         },
       )
-      return response.data.plugins.map((plugin) => getFormattedPlugin(plugin))
+      return response.data.plugins.map((plugin) => toPluginCard(plugin))
     },
     enabled,
     staleTime: 60 * 1000,
@@ -825,21 +825,23 @@ export const useInstallPackageFromMarketPlace = (
   })
 }
 
+export async function startMarketplacePluginUpgrade(
+  queryClient: QueryClient,
+  body: ParserMarketplaceUpgrade,
+) {
+  const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
+  upsertStartedPluginTask(queryClient, response)
+  return response
+}
+
 export const useUpdatePackageFromMarketPlace = (
   options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
     ...options,
-    mutationFn: (body: ParserMarketplaceUpgrade) => {
-      return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
-        body,
-      })
-    },
-    onSuccess: (data, variables, context, mutation) => {
-      upsertStartedPluginTask(queryClient, data)
-      options?.onSuccess?.(data, variables, context, mutation)
-    },
+    mutationFn: (body: ParserMarketplaceUpgrade) =>
+      startMarketplacePluginUpgrade(queryClient, body),
   })
 }
 

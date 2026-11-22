@@ -98,7 +98,18 @@ jobs:
         run: uv lock --project api --check
 
       - name: Install dependencies
-        run: uv sync --project api --dev
+        run: uv sync --project api --dev --group evaluation
+
+      # unstructured downloads its spaCy model on first use. Install it up front, as
+      # api/Dockerfile does, so a network hiccup cannot fail whichever test touches it first.
+      - name: Pre-install spaCy model
+        run: |
+          for attempt in 1 2 3; do
+            uv run --project api python -c "from unstructured.nlp.tokenize import sent_tokenize; sent_tokenize('Warm up.')" && exit 0
+            echo "spaCy model install attempt ${attempt} failed; retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
 
       - name: Download shared plan
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -107,7 +118,7 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          uv run --project api python api/dev/pytest_sharding.py \
+          uv run --project api --group evaluation python api/dev/pytest_sharding.py \
             --plan unit-test-plan.json \
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
@@ -117,7 +128,7 @@ jobs:
             api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
-          uv run --project api pytest \
+          uv run --project api --group evaluation pytest \
             -p no:benchmark \
             --timeout "${PYTEST_TIMEOUT:-20}" \
             -n auto \
@@ -210,10 +221,13 @@ jobs:
           retention-days: 7
 
       - name: Generate coverage report
+        id: controller-coverage
+        if: ${{ !cancelled() && hashFiles(env.COVERAGE_FILE) != '' }}
         run: uv run --project api coverage xml -o coverage.xml
 
       # Codecov combines all backend uploads under the same commit and api flag.
       - name: Report coverage
+        if: ${{ !cancelled() && steps.controller-coverage.outcome == 'success' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
@@ -270,15 +284,29 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
+            --durations=50 \
+            --junitxml=test-results/integration.xml \
             api/tests/e2e_tests/middleware/workflow \
             api/tests/e2e_tests/middleware/tools \
             api/tests/e2e_tests/containers
 
+      - name: Upload integration test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: api-test-results-integration-${{ matrix.python-version }}
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Generate coverage report
+        id: integration-coverage
+        if: ${{ !cancelled() && hashFiles(env.COVERAGE_FILE) != '' }}
         run: uv run --project api coverage xml -o coverage.xml
 
       # Codecov combines all backend uploads under the same commit and api flag.
       - name: Report coverage
+        if: ${{ !cancelled() && steps.integration-coverage.outcome == 'success' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml

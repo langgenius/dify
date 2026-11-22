@@ -5,7 +5,7 @@ export const captureDownloads = () => {
   const blobs = new Map<string, Blob>()
   const downloads: { filename: string; blob: Blob }[] = []
   vi.spyOn(URL, 'createObjectURL').mockImplementation((value) => {
-    if (!(value instanceof Blob)) throw new Error('Expected a downloadable Blob')
+    if (!(value instanceof Blob)) throw new TypeError('Expected a downloadable Blob')
     const url = `blob:test-download-${blobs.size}`
     blobs.set(url, value)
     return url
