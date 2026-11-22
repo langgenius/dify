@@ -100,6 +100,38 @@ describe('Browser spec policy', () => {
     ])
   })
 
+  it('reads the type-safe import() form of vi.mock and vi.doMock', () => {
+    const result = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "vi.mock(import('@/service/console'), async (importOriginal) => importOriginal())",
+        "vi.doMock(import('@/service/base'))",
+        "vi.mock(import('../owner'))",
+      ].join('\n'),
+    )
+
+    expect(result.violations.map(({ kind, line, specifier }) => [kind, line, specifier])).toEqual([
+      ['service-mock', 1, '@/service/console'],
+      ['service-mock', 2, '@/service/base'],
+      ['missing-boundary-comment', 3, '../owner'],
+    ])
+  })
+
+  it('rejects it.fails only in specs that use the fake API', () => {
+    const fails = ["it.fails('known bug', async () => {})", "test.fails('known bug', () => {})"]
+    const withFake = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      ["import { setupFakeApi } from '@/test/fake-api'", ...fails].join('\n'),
+    )
+    const withoutFake = analyzeBrowserSpec('app/example.browser.spec.tsx', fails.join('\n'))
+
+    expect(withFake.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['expected-failure-with-fake-api', 2],
+      ['expected-failure-with-fake-api', 3],
+    ])
+    expect(withoutFake.violations).toEqual([])
+  })
+
   it('rejects raw fetch and XMLHttpRequest stubs, but not other globals', () => {
     const result = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',

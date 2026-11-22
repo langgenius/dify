@@ -194,12 +194,19 @@ function matchRoute(pattern: string, path: string) {
 
 // The browser client rewrites some arrays to repeated keys for the Python backend;
 // oRPC's OpenAPI decoder expects the indexed form, so restore it before decoding.
-function restoreIndexedArrays(request: Request) {
+function restoreIndexedArrays(request: Request, report: (problem: string) => void) {
   const url = new URL(request.url)
   const routePath = url.pathname.slice(prefixPath('console').length)
   const rule = repeatedQueryArrayRules.find(({ path }) => path.test(routePath))
   if (!rule) return request
   for (const field of rule.fields) {
+    // The Python API reads these fields with `getlist(field)`, which ignores `field[0]=…` keys.
+    const indexed = [...url.searchParams.keys()].find((key) => key.startsWith(`${field}[`))
+    if (indexed) {
+      report(
+        `${request.method} ${url.pathname}: query \`${indexed}\` is ignored by the Python API, which reads repeated \`${field}\` keys`,
+      )
+    }
     const values = url.searchParams.getAll(field)
     if (!values.length) continue
     url.searchParams.delete(field)
@@ -450,7 +457,7 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
           this.statusText = response.statusText
           this.#responseHeaders = response.headers
           this.responseText = text
-          this.response = this.responseType === 'json' ? (text ? JSON.parse(text) : null) : text
+          this.response = this.responseType === 'json' ? parseJsonOrNull(text) : text
           this.readyState = 4
           this.#emit(this as never, 'readystatechange', new Event('readystatechange'))
           this.#emit(this as never, 'load', new ProgressEvent('load'))
@@ -475,6 +482,32 @@ function splitRequestCustomMethods(request: Request) {
   return new Request(url, request)
 }
 
+// Like native XHR with `responseType = 'json'`: a body that is not JSON yields `null`.
+function parseJsonOrNull(text: string) {
+  try {
+    return text ? JSON.parse(text) : null
+  } catch {
+    return null
+  }
+}
+
+function abortReason(signal: AbortSignal) {
+  return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError')
+}
+
+// Native fetch rejects with the signal's reason when aborted before or while awaiting a response.
+function abortable(request: Request, dispatch: Dispatch) {
+  const { signal } = request
+  if (signal.aborted) return Promise.reject(abortReason(signal))
+  return new Promise<Response>((resolve, reject) => {
+    const onAbort = () => reject(abortReason(signal))
+    signal.addEventListener('abort', onAbort, { once: true })
+    dispatch(request)
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', onAbort))
+  })
+}
+
 async function readBody(request: Request): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined
   const type = request.headers.get('content-type') ?? ''
@@ -483,7 +516,6 @@ async function readBody(request: Request): Promise<unknown> {
     return copy.formData()
   const text = await copy.text()
   if (!text) return undefined
-  if (type.includes('json')) return JSON.parse(text)
   try {
     return JSON.parse(text)
   } catch {
@@ -579,7 +611,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       const context: RequestContext = {}
       const { matched, response } = await (
         await getConsoleHandler()
-      ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone())), {
+      ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone(), report)), {
         prefix: prefixPath('console'),
         context,
       })
@@ -616,7 +648,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
 
   vi.stubGlobal(
     'fetch',
-    vi.fn<typeof fetch>((input, init) => dispatch(new Request(input, init))),
+    vi.fn<typeof fetch>((input, init) => abortable(new Request(input, init), dispatch)),
   )
   vi.stubGlobal('XMLHttpRequest', createFakeXMLHttpRequest(dispatch))
 

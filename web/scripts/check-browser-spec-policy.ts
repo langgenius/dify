@@ -26,7 +26,12 @@ const MOCK_ALLOWLIST: MockAllowance[] = []
 const LINE_ALLOWLIST: LineAllowance[] = []
 
 export type PolicyViolation = {
-  kind: 'missing-boundary-comment' | 'oversized-spec' | 'service-mock' | 'raw-network-stub'
+  kind:
+    | 'missing-boundary-comment'
+    | 'oversized-spec'
+    | 'service-mock'
+    | 'raw-network-stub'
+    | 'expected-failure-with-fake-api'
   path: string
   line?: number
   specifier?: string
@@ -102,6 +107,28 @@ function rawNetworkStub(node: ts.Node) {
     return node.left.name.text
 }
 
+// `it.fails` also inverts the fake API's teardown failures, hiding contract violations.
+function usesFakeApi(sourceFile: ts.SourceFile) {
+  return sourceFile.statements.some(
+    (statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteralLike(statement.moduleSpecifier) &&
+      /^@\/test\/fake-api$|\/source-server$|\/source-browser-env$/.test(
+        statement.moduleSpecifier.text,
+      ),
+  )
+}
+
+function isExpectedFailure(node: ts.CallExpression) {
+  const callee = node.expression
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    callee.name.text === 'fails' &&
+    ts.isIdentifier(callee.expression) &&
+    (callee.expression.text === 'it' || callee.expression.text === 'test')
+  )
+}
+
 function countLines(source: string) {
   if (!source) return 0
   const normalized = source.replaceAll('\r\n', '\n')
@@ -125,8 +152,16 @@ function mockSpecifier(call: ts.CallExpression) {
     return
 
   const [argument] = call.arguments
-  if (!argument || !ts.isStringLiteralLike(argument)) return
-  return argument.text
+  if (!argument) return
+  if (ts.isStringLiteralLike(argument)) return argument.text
+  // The type-safe form `vi.mock(import('@/service/console'), …)`.
+  if (
+    ts.isCallExpression(argument) &&
+    argument.expression.kind === ts.SyntaxKind.ImportKeyword &&
+    argument.arguments[0] &&
+    ts.isStringLiteralLike(argument.arguments[0])
+  )
+    return argument.arguments[0].text
 }
 
 export function analyzeBrowserSpec(
@@ -156,6 +191,7 @@ export function analyzeBrowserSpec(
     ts.ScriptKind.TSX,
   )
   const occurrences = new Map<string, number>()
+  const fakeApi = usesFakeApi(sourceFile)
 
   function visit(node: ts.Node) {
     const stubbed = rawNetworkStub(node)
@@ -165,6 +201,15 @@ export function analyzeBrowserSpec(
         path,
         line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
         message: `stubs ${stubbed} directly; serve requests with installFakeApi/setupFakeApi from @/test/fake-api, or guardUnexpectedFetch when none are expected`,
+      })
+    }
+    if (fakeApi && ts.isCallExpression(node) && isExpectedFailure(node)) {
+      violations.push({
+        kind: 'expected-failure-with-fake-api',
+        path,
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+        message:
+          'it.fails would also hide fake API contract failures; keep the test normal and assert only the known bug',
       })
     }
     if (ts.isCallExpression(node)) {

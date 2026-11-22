@@ -81,15 +81,17 @@ it('plays, pauses and finishes real audio through the keyboard controls', async 
   expect(audio.ended).toBe(true)
 })
 
-it.fails('keeps the available waveform and playback control pointer-reachable', async () => {
-  // TODO(https://github.com/langgenius/dify/issues/45655): the hidden overlay wins hit testing.
+it('keeps the available waveform and playback control pointer-reachable', async () => {
   const { url } = fixture()
   const screen = await render(<AudioPlayer src={url} />)
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   await expect.poll(() => audio.duration).toBeGreaterThan(0)
   const canvas = screen.getByTestId('waveform-canvas').element()
   const { left, top, width, height } = canvas.getBoundingClientRect()
-  expect(document.elementFromPoint(left + width / 2, top + height / 2)).toBe(canvas)
+  // TODO(https://github.com/langgenius/dify/issues/45655): the hidden overlay wins hit testing.
+  // Only this check asserts the known bug, so the rest of the test and the fake API contract still
+  // fail normally; once fixed, expect the hit target `toBe(canvas)` instead.
+  expect(document.elementFromPoint(left + width / 2, top + height / 2)).not.toBe(canvas)
 })
 
 it('decodes the first alternative source into a painted waveform', async () => {

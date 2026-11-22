@@ -113,6 +113,18 @@ describe('installFakeApi', () => {
     fake()
   })
 
+  it('fails the test when a repeated-key array arrives as indexed keys the Python API ignores', async () => {
+    const teardown = installFakeApi({
+      console: {
+        apps: { get: () => ({ data: [], has_more: false, limit: 20, page: 1, total: 0 }) },
+      },
+    })
+
+    await fetch('http://localhost:5001/console/api/apps?page=1&tag_ids[0]=t1&tag_ids[1]=t2')
+
+    expect(teardown).toThrow(/query `tag_ids\[0\]` is ignored by the Python API/)
+  })
+
   it('serves marketplace contract calls (typed only: that contract has no runtime schemas)', async () => {
     const fake = installFakeApi({
       marketplace: { pluginVersions: () => ({ data: { versions: [] } }) },
@@ -148,6 +160,53 @@ describe('installFakeApi', () => {
       'data: {"event":"message","answer":"app-1"}\n\ndata: {"event":"message_end"}\n\n',
     )
     teardown()
+  })
+
+  it('rejects a fetch aborted before or while its response is pending, like native fetch', async () => {
+    const fake = installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+    const url = 'http://localhost:5001/console/api/workspaces/current/network-access-groups'
+    const before = new AbortController()
+    before.abort()
+    await expect(fetch(url, { signal: before.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    })
+
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    const during = new AbortController()
+    const response = fetch(url, { signal: during.signal })
+    await request.arrived
+    during.abort()
+    request.release()
+    await expect(response).rejects.toMatchObject({ name: 'AbortError' })
+    fake()
+  })
+
+  it('completes an XMLHttpRequest whose error body is not JSON, with a null JSON response', async () => {
+    const fake = installFakeApi({
+      routes: [
+        route(
+          'POST',
+          'console',
+          '/files/upload',
+          () => new Response('Payload Too Large', { status: 413 }),
+        ),
+      ],
+    })
+
+    const result = await new Promise<{ status: number; response: unknown }>((resolve) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', 'http://localhost:5001/console/api/files/upload')
+      xhr.responseType = 'json'
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4) resolve({ status: xhr.status, response: xhr.response })
+      }
+      xhr.send(new FormData())
+    })
+
+    expect(result).toEqual({ status: 413, response: null })
+    fake()
   })
 
   it('answers XMLHttpRequest uploads with the uploaded form data', async () => {

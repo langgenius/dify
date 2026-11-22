@@ -122,6 +122,7 @@ Browser specs serve API data from the fake API in `web/test/fake-api.ts`, never 
 - Use `hold(spy)` to keep the next request pending: await `arrived` to know it was sent, then `resolve(value)`, `reject(error)`, or `release()` to answer with the handler's regular implementation. Settling before the request arrives is safe. Use `fake.use({ … })` to replace or add handlers mid-test.
 - Endpoints without a contract, such as static files on the page origin, use `routes: [route(method, base, path, handler)]`. For specs that must not reach the network at all, register `onTestFinished(guardUnexpectedFetch())` from `web/test/unexpected-fetch.ts`.
 - Shared fixtures use UUIDs for IDs that appear in request paths (`web/test/console/ids.ts`), because the contract validates them.
+- Do not mark a spec that uses the fake API with `it.fails`: Vitest also inverts the fake's contract failures. For a known product bug, keep the test normal, invert only the assertion that shows the bug, and link the issue in a `TODO` next to it.
 
 ## Async, Time, and Isolation
 
