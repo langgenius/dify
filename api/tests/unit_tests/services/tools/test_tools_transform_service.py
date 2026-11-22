@@ -22,6 +22,8 @@ from models.tools import ApiToolProvider, MCPToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
+type JsonValue = str | int | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
 """Test cases for MCP tool transformation functionality."""
 
 
@@ -816,6 +818,7 @@ class TestToolsTransformServiceCases:
         def test_builtin_provider_returns_console_url(self, config_overrides: Callable[..., None]) -> None:
             config_overrides(CONSOLE_API_URL="https://app.dify.ai")
             url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
+            assert isinstance(url, str)
 
             assert "/builtin/google/icon" in url
             assert isinstance(url, str)
