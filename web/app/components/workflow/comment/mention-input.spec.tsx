@@ -97,6 +97,38 @@ describe('MentionInput', () => {
     })
   })
 
+  it('sends the people still mentioned in the text, including ones kept from an edit', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(
+      <MentionInput
+        value="@Alice please look"
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        isEditing
+      />,
+      mentionUsers,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Alice please look', ['user-2']))
+  })
+
+  it('does not send a mention removed from the text', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<ControlledMentionInput onSubmit={onSubmit} />, mentionUsers)
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@Ali')
+    await user.click(await screen.findByText('alice@example.com'))
+    await user.clear(textarea)
+    await user.type(textarea, 'never mind')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('never mind', []))
+  })
+
   it('lets Tab leave the input when no mention matches and Shift+Tab leave without inserting', async () => {
     const user = userEvent.setup()
     render(

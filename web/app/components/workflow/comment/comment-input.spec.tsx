@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -90,15 +90,8 @@ describe('CommentInput', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('submits the real mention and keeps the text read-only until the comment is created', async () => {
-    let finishSubmit!: () => void
-    const onSubmit = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finishSubmit = resolve
-        }),
-    )
-
+  it('submits the text with the people it mentions', async () => {
+    const onSubmit = vi.fn()
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     const user = userEvent.setup()
@@ -108,13 +101,16 @@ describe('CommentInput', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
     expect(onSubmit).toHaveBeenCalledWith('@Bob Hello', ['user-2'])
+  })
+
+  it('keeps its text read-only while the comment is created', () => {
+    render(
+      <CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} submitting />,
+    )
+
     const textbox = screen.getByRole('textbox')
-    expect(textbox).toHaveValue('@Bob Hello')
     expect(textbox).toHaveAttribute('readonly')
     expect(textbox).toHaveAttribute('aria-busy', 'true')
-
-    await act(async () => finishSubmit())
-    expect(textbox).not.toHaveAttribute('readonly')
   })
 
   it('keeps the text to send again when creating the comment fails', async () => {

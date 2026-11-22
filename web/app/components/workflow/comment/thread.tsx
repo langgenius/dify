@@ -39,7 +39,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
-import { useStore } from '../store'
 import { CommentComposerFrame } from './comment-composer'
 import { MentionInput } from './mention-input'
 import { toCommentCollaborator } from './participants'
@@ -51,6 +50,7 @@ import {
   CommentThreadList,
   CommentThreadPopup,
 } from './thread-view'
+import { useCommentHover } from './use-comment-hover'
 
 const EMPTY_IDS: readonly string[] = []
 
@@ -63,6 +63,8 @@ type CommentThreadProps = {
   onNext?: () => void
   /** The comment and reply ids whose edit is being saved. */
   savingIds?: readonly string[]
+  /** The comment and reply ids being deleted. */
+  deletingIds?: readonly string[]
   onCommentEdit?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyEdit?: (
@@ -90,11 +92,10 @@ function ThreadMessage({ author, createdAt, content, mentionNames }: ThreadMessa
 
   return (
     <CommentMessage
-      author={toCommentCollaborator({
-        id: author?.id ?? '',
-        name: author?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-        avatar_url: author?.avatar_url ?? null,
-      })}
+      author={toCommentCollaborator(
+        author,
+        t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+      )}
       timeLabel={formatTimeFromNow(createdAt * 1000)}
       content={content}
       mentionNames={mentionNames}
@@ -117,19 +118,12 @@ export function CommentThread({
   ...sessionProps
 }: CommentThreadProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
-  const setCommentPreviewHovering = useStore((state) => state.setCommentPreviewHovering)
+  const hover = useCommentHover()
   // The comment a delete confirmation belongs to. It stays open only while that
   // comment is the one shown, so deleting it and moving on closes the dialog.
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
-  const [deletePending, setDeletePending] = useState(false)
+  const deletePending = !!sessionProps.deletingIds?.includes(comment.id)
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(
-    () => () => {
-      setCommentPreviewHovering(false)
-    },
-    [setCommentPreviewHovering],
-  )
 
   const deleteLabel = t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })
   const resolveLabel = t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })
@@ -139,8 +133,7 @@ export function CommentThread({
   return (
     <CommentThreadPopup
       initialFocus={sessionProps.onReply ? replyInputRef : undefined}
-      onMouseEnter={() => setCommentPreviewHovering(true)}
-      onMouseLeave={() => setCommentPreviewHovering(false)}
+      {...hover}
       title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
       closeLabel={t(($) => $['comments.aria.closeComment'], { ns: 'workflowComments' })}
       actions={
@@ -252,14 +245,8 @@ export function CommentThread({
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={deletePending}
-              onClick={async () => {
-                if (!deletingCommentId || !onDelete) return
-                setDeletePending(true)
-                try {
-                  await onDelete(deletingCommentId)
-                } finally {
-                  setDeletePending(false)
-                }
+              onClick={() => {
+                if (deletingCommentId) onDelete?.(deletingCommentId)
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
@@ -277,6 +264,7 @@ type CommentThreadSessionProps = Pick<
   | 'loading'
   | 'onCommentEdit'
   | 'savingIds'
+  | 'deletingIds'
   | 'onReply'
   | 'onReplyEdit'
   | 'onReplyDelete'
@@ -293,6 +281,7 @@ function CommentThreadSession({
   replyInputRef,
   onCommentEdit,
   savingIds = EMPTY_IDS,
+  deletingIds = EMPTY_IDS,
   onReply,
   onReplyEdit,
   onReplyDelete,
@@ -444,6 +433,7 @@ function CommentThreadSession({
               })}
               onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
               saving={savingIds.includes(reply.id)}
+              deleting={deletingIds.includes(reply.id)}
               onEditEnd={focusReply}
               deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
               deleteConfirmLabel={t(($) => $['comments.confirm.deleteReplyTitle'], {
@@ -463,11 +453,10 @@ function CommentThreadSession({
       </CommentThreadList>
       {onReply && (
         <CommentReplyBar
-          author={toCommentCollaborator({
-            id: currentUserId,
-            name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
-            avatar_url: userProfile?.avatar_url ?? null,
-          })}
+          author={toCommentCollaborator(
+            userProfile,
+            t(($) => $.you, { ns: 'common' }),
+          )}
         >
           <MentionInput
             ref={attachReplyInput}
@@ -496,6 +485,8 @@ type CommentThreadEntryProps = {
   onSave?: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   /** An edit of this message is being saved; its field stays locked until it is. */
   saving?: boolean
+  /** This message is being deleted; its confirmation stays open until it is. */
+  deleting?: boolean
   /** Called after an edit is saved or cancelled. */
   onEditEnd: () => void
   deleteLabel?: string
@@ -516,6 +507,7 @@ function CommentThreadEntry({
   editPlaceholder,
   onSave,
   saving = false,
+  deleting = false,
   onEditEnd,
   deleteLabel,
   deleteConfirmLabel,
@@ -524,7 +516,6 @@ function CommentThreadEntry({
   const { t } = useTranslation(['common', 'workflowComments'])
   const [draft, setDraft] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const cancelDeleteRef = useRef<HTMLButtonElement>(null)
@@ -623,14 +614,7 @@ function CommentThreadEntry({
                     tone="destructive"
                     className="flex-1"
                     loading={deleting}
-                    onClick={async () => {
-                      setDeleting(true)
-                      try {
-                        await onDelete()
-                      } finally {
-                        setDeleting(false)
-                      }
-                    }}
+                    onClick={() => onDelete()}
                   >
                     {t(($) => $['operation.delete'], { ns: 'common' })}
                   </Button>
@@ -645,12 +629,10 @@ function CommentThreadEntry({
           <CollaboratorAvatar
             size="sm"
             className="shrink-0"
-            collaborator={toCommentCollaborator({
-              id: account?.id ?? '',
-              name:
-                account?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-              avatar_url: account?.avatar_url ?? null,
-            })}
+            collaborator={toCommentCollaborator(
+              account,
+              t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+            )}
           />
           <div className="min-w-0 flex-1">
             <CommentComposerFrame>

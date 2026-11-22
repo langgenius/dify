@@ -23,9 +23,10 @@ import {
 import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { CollaboratorAvatarStack } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
 import { prefetchCommentThread } from '@/app/components/workflow/comment/comment-prefetch'
 import { isWritingComments } from '@/app/components/workflow/comment/comment-writes'
+import { getCommentParticipants } from '@/app/components/workflow/comment/participants'
 import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
 import {
   editorAppIdAtom,
@@ -176,7 +177,7 @@ const CommentsPanel = () => {
             >
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">
-                  <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
+                  <CollaboratorAvatarStack collaborators={getCommentParticipants(c)} />
                   <div className="ms-2 flex items-center">
                     {c.resolved ? (
                       <span

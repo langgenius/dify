@@ -10,11 +10,14 @@ import { getKeyboardMovement } from '../utils/keyboard-movement'
 import { CommentComposerFrame } from './comment-composer'
 import { CommentMarker } from './comment-marker'
 import { MentionInput } from './mention-input'
+import { toCommentCollaborator } from './participants'
 
 type CommentInputProps = {
   position: { x: number; y: number }
   onSubmit: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   onCancel: () => void
+  /** The comment is being created; its text stays, read-only, until it is. */
+  submitting?: boolean
   autoFocus?: boolean
   disabled?: boolean
   onPositionChange?: (position: {
@@ -26,9 +29,16 @@ type CommentInputProps = {
 }
 
 export const CommentInput: FC<CommentInputProps> = memo(
-  ({ position, onSubmit, onCancel, autoFocus = true, disabled = false, onPositionChange }) => {
+  ({
+    position,
+    onSubmit,
+    onCancel,
+    submitting = false,
+    autoFocus = true,
+    disabled = false,
+    onPositionChange,
+  }) => {
     const [content, setContent] = useState('')
-    const [submitting, setSubmitting] = useState(false)
     const [keyboardMoving, setKeyboardMoving] = useState(false)
     const moveDescriptionId = useId()
     const { t } = useTranslation(['workflow', 'workflowComments'])
@@ -64,20 +74,6 @@ export const CommentInput: FC<CommentInputProps> = memo(
       active: false,
       endHandler: undefined,
     })
-
-    // The text stays, read-only, while the comment is created: on success the composer
-    // closes into the new marker, and on failure the text is still there to send again.
-    const handleMentionSubmit = useCallback(
-      async (content: string, mentionedUserIds: string[]) => {
-        setSubmitting(true)
-        try {
-          await onSubmit(content, mentionedUserIds)
-        } finally {
-          setSubmitting(false)
-        }
-      },
-      [onSubmit],
-    )
 
     const handleDragPointerMove = useCallback(
       (event: PointerEvent) => {
@@ -193,12 +189,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
             })
           }}
         >
-          <CommentMarker
-            selected
-            participants={[
-              { id: userProfile.id, name: userProfile.name, avatarUrl: userProfile.avatar_url },
-            ]}
-          />
+          <CommentMarker selected participants={[toCommentCollaborator(userProfile)]} />
         </IconButton>
         <span id={moveDescriptionId} className="sr-only" aria-live="polite">
           {t(($) => $['keyboard.moveDraftHelp'], { ns: 'workflow' })}{' '}
@@ -211,7 +202,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
           <MentionInput
             value={content}
             onChange={setContent}
-            onSubmit={handleMentionSubmit}
+            onSubmit={onSubmit}
             placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
             autoFocus={autoFocus}
             disabled={disabled}

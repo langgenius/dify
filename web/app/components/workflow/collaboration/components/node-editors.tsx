@@ -19,7 +19,7 @@ export function NodeEditorAvatars({ editors, maxVisible = 3 }: NodeEditorAvatars
   if (!editors.length) return null
 
   const hasOverflow = editors.length > maxVisible
-  const visibleEditors = editors.slice(0, hasOverflow ? maxVisible - 1 : maxVisible)
+  const visibleEditors = editors.slice(0, hasOverflow ? Math.max(1, maxVisible - 1) : maxVisible)
   const overflowEditors = editors.slice(visibleEditors.length)
   const editingLabel = (name: string) =>
     t(($) => $['collaboration.userEditing'], { ns: 'workflow', name })

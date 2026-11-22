@@ -46,11 +46,7 @@ const OnlineUsers = () => {
     onlineUsers.some((user) => user.avatar)
       ? appId
       : undefined
-  const {
-    data: avatarUrls,
-    isFetching: isFetchingAvatars,
-    refetch: refetchAvatars,
-  } = useQuery(
+  const { data: avatarUrls, refetch: refetchAvatars } = useQuery(
     queryOptions({
       queryKey: [
         'workflow-collaboration-avatars',
@@ -223,7 +219,7 @@ const OnlineUsers = () => {
       >
         {onlineUsers.map((user) => {
           const isCurrentUser = user.user_id === currentUserId
-          const avatarUrl = isConnected && !isFetchingAvatars ? avatarUrls?.[user.sid] : undefined
+          const avatarUrl = isConnected ? avatarUrls?.[user.sid] : undefined
           return (
             <button
               type="button"

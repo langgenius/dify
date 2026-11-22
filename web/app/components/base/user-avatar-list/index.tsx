@@ -1,9 +1,18 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
-import { AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit'
 import { memo } from 'react'
-import { CollaboratorAvatar } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
+import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type User = {
   id: string
@@ -21,6 +30,10 @@ type UserAvatarListProps = {
 
 export const UserAvatarList: FC<UserAvatarListProps> = memo(
   ({ users, maxVisible = 3, size = 'sm', className = '', showCount = true }) => {
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const uniqueUsers = uniqBy(users, (user) => user.id)
     if (!uniqueUsers.length) return null
 
@@ -31,16 +44,23 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
 
     return (
       <AvatarGroup size={size} className={className}>
-        {visibleUsers.map((user, index) => (
-          <CollaboratorAvatar
-            key={user.id}
-            collaborator={{ id: user.id, name: user.name, avatarUrl: user.avatar_url }}
-            role="img"
-            aria-hidden={undefined}
-            aria-label={user.name}
-            style={{ zIndex: visibleUsers.length - index }}
-          />
-        ))}
+        {visibleUsers.map((user, index) => {
+          const isCurrentUser = user.id === currentUserId
+          const userColor = isCurrentUser ? undefined : getUserColor(user.id)
+          return (
+            <Avatar
+              key={user.id}
+              role="img"
+              aria-label={user.name}
+              style={{ zIndex: visibleUsers.length - index }}
+            >
+              <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
+                {getAvatarInitial(user.name)}
+              </AvatarFallback>
+              <AvatarImage src={user.avatar_url || undefined} alt="" />
+            </Avatar>
+          )
+        })}
         {shouldShowCount && remainingCount > 0 && (
           <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>
         )}

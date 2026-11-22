@@ -2,7 +2,7 @@ import type {
   WorkflowCommentBasic,
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { Mutation, QueryClient } from '@tanstack/react-query'
+import type { Mutation, MutationKey, QueryClient } from '@tanstack/react-query'
 import type { ThreadReply } from './pending-reply'
 import {
   createPopoverHandle,
@@ -46,6 +46,24 @@ const commentsApi = consoleQuery.apps.byAppId.workflow.comments
 const replySendKey = commentsApi.byCommentId.replies.post.mutationKey()
 const editCommentKey = commentsApi.byCommentId.put.mutationKey()
 const editReplyKey = commentsApi.byCommentId.replies.byReplyId.put.mutationKey()
+const deleteCommentKey = commentsApi.byCommentId.delete.mutationKey()
+const deleteReplyKey = commentsApi.byCommentId.replies.byReplyId.delete.mutationKey()
+
+// The comments and replies that running writes of these kinds change, by id. Read from the
+// mutations, so a thread shown again still knows a write it started is running.
+const pendingWriteIdsOf = (mutationKeys: MutationKey[]) => ({
+  filters: {
+    status: 'pending' as const,
+    predicate: (mutation: Mutation) =>
+      mutationKeys.some((mutationKey) => matchMutation({ mutationKey }, mutation)),
+  },
+  select: (mutation: Mutation) => {
+    const { params } = mutation.state.variables as {
+      params: { comment_id: string; reply_id?: string }
+    }
+    return params.reply_id ?? params.comment_id
+  },
+})
 const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
 type CommentParams = { app_id: string; comment_id: string }
@@ -134,7 +152,7 @@ export function WorkflowCommentLayer() {
       id: profile.id,
       name: profile.name,
       email: profile.email,
-      avatar_url: profile.avatar_url || profile.avatar || null,
+      avatar_url: profile.avatar_url ?? null,
     }),
   })
 
@@ -312,16 +330,21 @@ export function WorkflowCommentLayer() {
     }
   }, [appId, queryClient, workflowStore])
 
+  // Stable across list changes, so moving one marker does not re-render the others: the
+  // comment's text is read from the cache when it moves.
   const moveCommentTo = useCallback(
     (commentId: string, position: { x: number; y: number }) => {
-      const comment = comments.find((item) => item.id === commentId)
-      if (!appId || !comment) return
+      if (!appId) return
+      const comment = queryClient
+        .getQueryData(listKeyOf(appId))
+        ?.data.find((item) => item.id === commentId)
+      if (!comment) return
       moveComment({
         params: { app_id: appId, comment_id: commentId },
         body: { content: comment.content, position_x: position.x, position_y: position.y },
       })
     },
-    [appId, comments, moveComment],
+    [appId, moveComment, queryClient],
   )
 
   // The comment the thread shows: the selected one, kept after deselection (or deletion)
@@ -358,6 +381,7 @@ export function WorkflowCommentLayer() {
         <CommentInput
           position={{ x: pendingComment.elementX, y: pendingComment.elementY }}
           onSubmit={submitComment}
+          submitting={createComment.isPending}
           onCancel={() => workflowStore.getState().setPendingComment(null)}
           onPositionChange={moveDraft}
         />
@@ -611,23 +635,10 @@ function ShownThread({
     }),
   )
   const resolveComment = useMutation(commentsApi.byCommentId.resolve.post.mutationOptions())
-  // Edits being saved, by the comment or reply they change; read from the mutations, so the
-  // thread still locks them after it is shown again. A marker move writes the comment the
-  // same way, so it holds the comment's edit for its short request too.
-  const savingIds = useMutationState({
-    filters: {
-      status: 'pending',
-      predicate: (mutation) =>
-        matchMutation({ mutationKey: editCommentKey }, mutation) ||
-        matchMutation({ mutationKey: editReplyKey }, mutation),
-    },
-    select: (mutation) => {
-      const { params } = mutation.state.variables as {
-        params: { comment_id: string; reply_id?: string }
-      }
-      return params.reply_id ?? params.comment_id
-    },
-  })
+  // A marker move writes the comment the same way as an edit, so it holds the comment's edit
+  // for its short request too.
+  const savingIds = useMutationState(pendingWriteIdsOf([editCommentKey, editReplyKey]))
+  const deletingIds = useMutationState(pendingWriteIdsOf([deleteCommentKey, deleteReplyKey]))
 
   return (
     <CommentThread
@@ -657,6 +668,7 @@ function ShownThread({
       onPrev={onPrev}
       onNext={onNext}
       savingIds={savingIds}
+      deletingIds={deletingIds}
       onReply={(content, ids) => {
         const trimmed = content.trim()
         if (trimmed)
