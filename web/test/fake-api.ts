@@ -327,11 +327,17 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
     plugins: [new SmartCoercionPlugin({ schemaConverters: [new ZodToJsonSchemaConverter()] })],
     clientInterceptors: [
       async ({ next, input, procedure, context, ...options }) => {
+        const requestContext = context as RequestContext
+        requestContext.decoded = true
+        // Coercion is for text in the URL and headers; the Python API validates JSON bodies as sent.
+        const sent = requestContext.jsonBody
+          ? { ...(input as object), body: requestContext.jsonBody.value }
+          : input
         try {
           return await next({
             ...options,
             context,
-            input: restoreHeaderCase(procedure, input),
+            input: restoreHeaderCase(procedure, sent),
             procedure,
           })
         } catch (error) {
@@ -342,10 +348,17 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
       },
     ],
     interceptors: [
-      async ({ next, request }) => {
+      async ({ next, request, context }) => {
         try {
           return await next()
         } catch (error) {
+          // Decoding fails before any procedure runs; a handler's own 400 always gets past it.
+          if (!(context as RequestContext).decoded) {
+            report(
+              `${request.method} ${request.url.pathname}: request could not be decoded: ${error instanceof Error ? error.message : String(error)}`,
+            )
+            throw error
+          }
           if (!(error instanceof ORPCError)) throw error
           if (error.cause instanceof ValidationError) {
             report(
@@ -375,7 +388,13 @@ function errorResponse(error: unknown) {
 }
 
 type Dispatch = (request: Request) => Promise<Response>
-type RequestContext = { networkFailed?: boolean }
+type RequestContext = {
+  networkFailed?: boolean
+  /** Set once oRPC has decoded the request and is calling the procedure. */
+  decoded?: boolean
+  /** The JSON body exactly as sent, so schema coercion never changes its types. */
+  jsonBody?: { value: unknown }
+}
 
 function createFakeXMLHttpRequest(dispatch: Dispatch) {
   type Listener = (event: Event) => void
@@ -508,6 +527,18 @@ function abortable(request: Request, dispatch: Dispatch) {
   })
 }
 
+async function readJsonBody(request: Request): Promise<RequestContext['jsonBody']> {
+  if (!(request.headers.get('content-type') ?? '').includes('json')) return undefined
+  const text = await request.clone().text()
+  if (!text) return undefined
+  try {
+    return { value: JSON.parse(text) }
+  } catch {
+    // oRPC reports the undecodable body; leave its decoding untouched.
+    return undefined
+  }
+}
+
 async function readBody(request: Request): Promise<unknown> {
   if (request.method === 'GET' || request.method === 'HEAD') return undefined
   const type = request.headers.get('content-type') ?? ''
@@ -607,8 +638,14 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       report(`unexpected network request: ${request.method} ${url.href}`)
       throw new TypeError('Failed to fetch')
     }
+    const tilde = url.pathname.split('/').find((segment) => segment.startsWith('~'))
+    if (tilde) {
+      report(
+        `${request.method} ${url.pathname}: segment \`${tilde}\` is not a contract path; custom methods are sent as \`:${tilde.slice(1)}\``,
+      )
+    }
     if (base === 'console' && leavesOf('console').length) {
-      const context: RequestContext = {}
+      const context: RequestContext = { jsonBody: await readJsonBody(request) }
       const { matched, response } = await (
         await getConsoleHandler()
       ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone(), report)), {
@@ -619,7 +656,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       if (matched) return response!
     }
     if (base === 'marketplace' && leavesOf('marketplace').length) {
-      const context: RequestContext = {}
+      const context: RequestContext = { jsonBody: await readJsonBody(request) }
       const { matched, response } = await getMarketplaceHandler().handle(
         splitRequestCustomMethods(request.clone()),
         {

@@ -125,6 +125,90 @@ describe('installFakeApi', () => {
     expect(teardown).toThrow(/query `tag_ids\[0\]` is ignored by the Python API/)
   })
 
+  it('keeps JSON body types as sent, so a string boolean fails the contract like the Python API', async () => {
+    const teardown = installFakeApi({
+      console: {
+        apps: {
+          byAppId: {
+            workflows: {
+              draft: { post: () => ({ hash: 'h', result: 'success', updated_at: 1 }) },
+            },
+          },
+        },
+      },
+    })
+
+    const response = await fetch(
+      'http://localhost:5001/console/api/apps/019a0000-0000-7000-8000-000000000001/workflows/draft',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ graph: {}, features: {}, force: 'true' }),
+      },
+    )
+
+    expect(response.status).toBe(400)
+    expect(teardown).toThrow(/Input validation failed[\s\S]*force/)
+  })
+
+  it('fails the test when a request body cannot be decoded, while handler 400s stay allowed', async () => {
+    const teardown = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              post: () => {
+                throw apiError({ status: 400, message: 'Invalid CIDR' })
+              },
+            },
+          },
+        },
+      },
+    })
+    const url = 'http://localhost:5001/console/api/workspaces/current/network-access-groups'
+    const send = (body: string) =>
+      fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body })
+
+    expect(
+      (await send(JSON.stringify({ name: 'Office', allowed_cidrs: ['10.0.0.0/8'] }))).status,
+    ).toBe(400)
+    expect(teardown).not.toThrow()
+
+    const broken = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              post: () => ({ group: createNetworkAccessGroupFixture() }),
+            },
+          },
+        },
+      },
+    })
+    expect((await send('{"name": "Office"')).status).toBe(400)
+    expect(broken).toThrow(
+      /POST \/console\/api\/workspaces\/current\/network-access-groups: request could not be decoded/,
+    )
+  })
+
+  it('fails the test when a custom-method path is sent in the split form the fake uses internally', async () => {
+    const teardown = installFakeApi({
+      console: {
+        enterprise: {
+          appDeploy: {
+            deploymentService: { precheckWorkflowDeployment: () => ({ unsupported_nodes: [] }) },
+          },
+        },
+      },
+    })
+
+    await fetch(
+      'http://localhost:5001/console/api/enterprise/app-deploy/apps/app-1/workflows/workflow-1/~precheck',
+    )
+
+    expect(teardown).toThrow(/~precheck/)
+  })
+
   it('serves marketplace contract calls (typed only: that contract has no runtime schemas)', async () => {
     const fake = installFakeApi({
       marketplace: { pluginVersions: () => ({ data: { versions: [] } }) },

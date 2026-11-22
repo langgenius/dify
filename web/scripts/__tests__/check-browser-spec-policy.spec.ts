@@ -118,7 +118,12 @@ describe('Browser spec policy', () => {
   })
 
   it('rejects it.fails only in specs that use the fake API', () => {
-    const fails = ["it.fails('known bug', async () => {})", "test.fails('known bug', () => {})"]
+    const fails = [
+      "it.fails('known bug', async () => {})",
+      "test.fails('known bug', () => {})",
+      "it.fails.each([1, 2])('known bug %s', async () => {})",
+      "test.concurrent.fails('known bug', async () => {})",
+    ]
     const withFake = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',
       ["import { setupFakeApi } from '@/test/fake-api'", ...fails].join('\n'),
@@ -128,6 +133,8 @@ describe('Browser spec policy', () => {
     expect(withFake.violations.map(({ kind, line }) => [kind, line])).toEqual([
       ['expected-failure-with-fake-api', 2],
       ['expected-failure-with-fake-api', 3],
+      ['expected-failure-with-fake-api', 4],
+      ['expected-failure-with-fake-api', 5],
     ])
     expect(withoutFake.violations).toEqual([])
   })

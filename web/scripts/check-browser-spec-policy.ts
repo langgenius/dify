@@ -119,14 +119,17 @@ function usesFakeApi(sourceFile: ts.SourceFile) {
   )
 }
 
+// Matches `it.fails(…)` and chained forms such as `it.fails.each([…])(…)` or `test.concurrent.fails(…)`.
 function isExpectedFailure(node: ts.CallExpression) {
-  const callee = node.expression
-  return (
-    ts.isPropertyAccessExpression(callee) &&
-    callee.name.text === 'fails' &&
-    ts.isIdentifier(callee.expression) &&
-    (callee.expression.text === 'it' || callee.expression.text === 'test')
-  )
+  // Report a chain once, at the call that registers the test.
+  if (ts.isCallExpression(node.parent) && node.parent.expression === node) return false
+  let current: ts.Expression = node.expression
+  let fails = false
+  while (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
+    if (ts.isPropertyAccessExpression(current) && current.name.text === 'fails') fails = true
+    current = current.expression
+  }
+  return fails && ts.isIdentifier(current) && (current.text === 'it' || current.text === 'test')
 }
 
 function countLines(source: string) {
