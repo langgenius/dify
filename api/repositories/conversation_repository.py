@@ -16,7 +16,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
-from models.account import Account, TenantAccountJoin
+from models.account import Account
 from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation, MessageFeedback
 from models.web import PinnedConversation
@@ -234,7 +234,7 @@ class ConversationRepository:
     def search_console_log_identities(
         self, context: RequestContext, app_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Find identities with visible app logs, matching labels by substring or IDs exactly."""
+        """Find visible log actors by label or ID, including former workspace members."""
         try:
             identity_id = str(UUID(keyword))
         except ValueError:
@@ -274,9 +274,7 @@ class ConversationRepository:
             ).all()
             accounts = session.execute(
                 select(Account.id, Account.name)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
                 .where(
-                    TenantAccountJoin.tenant_id == app.tenant_id,
                     account_match,
                     visible_logs.where(
                         Conversation.from_source == ConversationFromSource.CONSOLE,

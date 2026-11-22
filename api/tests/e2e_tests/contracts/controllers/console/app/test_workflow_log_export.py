@@ -15,7 +15,7 @@ import pytest
 from botocore.exceptions import ClientError
 from flask import Flask
 from flask.testing import FlaskClient
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
 
@@ -299,17 +299,27 @@ def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportCl
 
 def test_workflow_list_accepts_multiple_identities_without_requiring_export_entitlement(
     export_client: _ExportClient,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    former = make_account(account_id=str(uuid4()), name="Former Operator", email="former@example.test")
+    with sqlite_session_factory.begin() as session:
+        session.add(former)
+        session.get_one(WorkflowRun, export_client.run_id).created_by = former.id
+        log = session.scalars(
+            select(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id == export_client.run_id)
+        ).one()
+        log.created_by = former.id
+
     export_client.paid.return_value = False
     logs_path = f"/apps/{export_client.app_id}/workflow-app-logs"
-    query = {"keyword": export_client.account_id}
+    query = {"keyword": "former ope"}
 
     identities = export_client.client.get(
         f"{logs_path}/identity-options", query_string=query, headers=export_client.headers
     )
     assert identities.status_code == 200
     assert [(item["id"], item["source"]) for item in identities.get_json()["data"]] == [
-        (export_client.account_id, "account"),
+        (former.id, "account"),
     ]
     assert (
         export_client.client.get(
@@ -322,7 +332,7 @@ def test_workflow_list_accepts_multiple_identities_without_requiring_export_enti
         logs_path,
         query_string=[
             ("account_ids", str(uuid4())),
-            ("account_ids", export_client.account_id),
+            ("account_ids", former.id),
             ("end_user_ids", str(uuid4())),
         ],
         headers=export_client.headers,

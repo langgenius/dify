@@ -16,7 +16,6 @@ from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
-from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentScope, AgentSource, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
@@ -647,6 +646,13 @@ class TestAgentObservabilityQueriesCases:
         account = make_account(account_id="fb08850e-415d-4dd0-9daf-47ef2d146791", name="Operator-001")
         account_user = make_end_user(end_user_id=account.id, session_id="account-001")
         foreign_account = make_account(account_id="foreign-account", name="Foreign-001", email="foreign@example.com")
+        foreign_app = _agent_observability_service_app(app_id="foreign-app")
+        foreign_app.tenant_id = "other-tenant"
+        foreign_conversation = _agent_observability_service_conversation(
+            conversation_id="foreign-conversation", app_id=foreign_app.id
+        )
+        foreign_conversation.from_end_user_id = None
+        foreign_conversation.from_account_id = foreign_account.id
         foreign_user = make_end_user(end_user_id="foreign-user", tenant_id="other-tenant", session_id="foreign-001")
         unrelated_user = make_end_user(end_user_id="unrelated-user", session_id="unrelated-001")
 
@@ -660,12 +666,10 @@ class TestAgentObservabilityQueriesCases:
         debug_message.invoke_from = InvokeFrom.DEBUGGER
 
         executions = []
-        for user in (web_user, workflow_user, account_user, foreign_user, foreign_account):
+        for user in (web_user, workflow_user, account_user, foreign_user):
             execution = _agent_observability_service_node_execution(execution_id=f"execution-{user.id}")
             execution.created_by = user.id
-            execution.created_by_role = (
-                CreatorUserRole.ACCOUNT if user is account_user or user is foreign_account else CreatorUserRole.END_USER
-            )
+            execution.created_by_role = CreatorUserRole.ACCOUNT if user is account_user else CreatorUserRole.END_USER
             executions.append(execution)
         sqlite_session.add_all(
             [
@@ -675,9 +679,13 @@ class TestAgentObservabilityQueriesCases:
                 workflow_user,
                 debug_user,
                 account,
-                TenantAccountJoin(tenant_id=app.tenant_id, account_id=account.id, role=TenantAccountRole.NORMAL),
                 account_user,
                 foreign_account,
+                foreign_app,
+                foreign_conversation,
+                _agent_observability_service_message(
+                    message_id="foreign-message", conversation_id=foreign_conversation.id, app_id=foreign_app.id
+                ),
                 foreign_user,
                 unrelated_user,
                 web_conversation,

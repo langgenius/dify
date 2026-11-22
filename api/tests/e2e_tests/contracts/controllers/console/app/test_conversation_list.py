@@ -423,6 +423,9 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
     )
     partial_log = _conversation(harness)
     account_log = _conversation(harness, invoke_from="explore")
+    other_app_log = _conversation(harness, app_id=str(uuid4()), invoke_from="explore")
+    former_account = make_account(account_id=str(uuid4()), name="Support Agent", email="former@example.test")
+    other = make_account(account_id=str(uuid4()), name="Support Agent", email="other@example.test")
     with harness.factory.begin() as session:
         for index, (conversation, user_id) in enumerate(zip(conversations, user_ids, strict=True)):
             session.add(
@@ -447,22 +450,25 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         stored_partial = session.get_one(Conversation, partial_log.id)
         stored_partial.from_end_user_id = partial_user_id
         stored_partial.from_account_id = None
-        session.get_one(Conversation, account_log.id).from_source = ConversationFromSource.CONSOLE
-        session.get_one(Account, harness.account.id).name = "Support Agent"
-        other = make_account(account_id=str(uuid4()), name="Support Admin", email="admin@example.test")
-        session.add(other)
+        for log, actor in ((account_log, former_account), (other_app_log, other)):
+            stored = session.get_one(Conversation, log.id)
+            stored.from_source = ConversationFromSource.CONSOLE
+            stored.from_end_user_id = None
+            stored.from_account_id = actor.id
+        session.add_all([former_account, other])
         session.add(TenantAccountJoin(tenant_id=harness.tenant.id, account_id=other.id))
 
     end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
     partial_user = {"id": partial_user_id, "label": "other-customer-42", "source": "end-user"}
-    account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
+    account = {"id": former_account.id, "label": "Support Agent", "source": "account"}
     cases: tuple[tuple[str, list[dict[str, str]]], ...] = (
         (" customer-42 ", [end_user, partial_user]),
         ("42", [partial_user, end_user]),
         ("MER-4", [partial_user, end_user]),
         (user_ids[0], [end_user]),
         ("port ag", [account]),
-        (harness.account.id, [account]),
+        (former_account.id, [account]),
+        (other.id, []),
         ("%", []),
     )
     for keyword, expected in cases:

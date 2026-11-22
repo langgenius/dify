@@ -178,7 +178,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
     def search_log_export_identities(
         self, *, scope: WorkflowLogExportScope, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Find identities with a live run in the app by label substring or exact internal ID."""
+        """Find actors with a live run in the app by label or ID, including former workspace members."""
         pattern = f"%{escape_like_pattern(keyword)}%"
         identity_id = self._safe_parse_uuid(keyword)
         exact_end_user = EndUser.session_id == keyword
@@ -215,9 +215,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
             ).all()
             accounts = session.execute(
                 select(Account.id, Account.name)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
                 .where(
-                    TenantAccountJoin.tenant_id == scope.tenant_id,
                     account_match,
                     visible_logs.where(
                         WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,

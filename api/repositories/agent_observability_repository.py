@@ -26,7 +26,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from machinery.context import RequestContext
-from models.account import Account, TenantAccountJoin
+from models.account import Account
 from models.agent import Agent, AgentScope, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
 from models.model import App, Conversation, EndUser, Message, MessageFeedback
@@ -458,9 +458,7 @@ class AgentObservabilityQueries:
         ).all()
         accounts = self._session.execute(
             select(Account.id, Account.name)
-            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
             .where(
-                TenantAccountJoin.tenant_id == app.tenant_id,
                 account_match,
                 or_(
                     webapp_logs.where(Conversation.from_account_id == Account.id).correlate(Account).exists(),
