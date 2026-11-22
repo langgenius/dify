@@ -7,19 +7,12 @@ import { useTranslation } from 'react-i18next'
 
 type ActionsProps = {
   onApplyTemplate: () => void
-  showMoreOperations: boolean
   openEditModal: () => void
   handleExportDSL: (includeSecret?: boolean) => void
-  handleDelete: () => void
+  onDelete?: () => void
 }
 
-const Actions = ({
-  onApplyTemplate,
-  showMoreOperations,
-  openEditModal,
-  handleExportDSL,
-  handleDelete,
-}: ActionsProps) => {
+const Actions = ({ onApplyTemplate, openEditModal, handleExportDSL, onDelete }: ActionsProps) => {
   const { t } = useTranslation(['common', 'datasetPipeline'])
 
   return (
@@ -36,7 +29,7 @@ const Actions = ({
           </Button>
         }
       />
-      {showMoreOperations && (
+      {onDelete && (
         <Menu>
           <MenuTrigger
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -64,12 +57,7 @@ const Actions = ({
               {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
             </MenuItem>
             <MenuSeparator />
-            <MenuItem
-              variant="destructive"
-              onClick={() => {
-                handleDelete()
-              }}
-            >
+            <MenuItem variant="destructive" onClick={onDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </MenuItem>
           </MenuContent>

@@ -201,6 +201,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
       appName: app.name,
       includeSecret: true,
       feedback: 'dialog',
+      signal: expect.any(AbortSignal),
     }),
   )
   expect(dialog).toBeInTheDocument()

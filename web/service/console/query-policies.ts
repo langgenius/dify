@@ -999,7 +999,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   mutationOptions: {
                     onSettled: (_data, error, _variables, _result, context) => {
                       if (error) return
-                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                      void invalidateAccessPolicyQueries(consoleQuery, context.client)
                     },
                   },
                 },
