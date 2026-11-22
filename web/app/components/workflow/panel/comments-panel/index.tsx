@@ -54,10 +54,12 @@ const CommentsPanel = () => {
     ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
-      refetchOnMount: () =>
+      staleTime: () =>
         queryClient.isMutating({
           mutationKey: consoleQuery.apps.byAppId.workflow.comments.key({ type: 'mutation' }),
-        }) === 0,
+        }) > 0
+          ? Infinity
+          : 0,
     }),
     select: (list) => list.data,
   })

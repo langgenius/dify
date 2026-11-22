@@ -316,8 +316,10 @@ function CommentThreadSession({
   const [replyContent, setReplyContent] = useState('')
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
-  // Whether the reader is at the newest message, as of their last scroll.
+  // Whether the reader is at the newest message: they leave it only by scrolling up, so a
+  // scroll this list makes toward a new reply keeps following.
   const atNewestRef = useRef(true)
+  const lastScrollTopRef = useRef(0)
   // This session's own reply box; the shared ref also lets the popup focus it on open.
   const ownReplyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const attachReplyInput = useCallback(
@@ -345,7 +347,9 @@ function CommentThreadSession({
   )
 
   const replies = comment.replies || []
-  const newestSentHere = !!replies.at(-1)?.send_state
+  // Replies sent from here keep their send's key, so a new one adds to this count.
+  const sentHereCount = replies.filter((reply) => reply.client_key).length
+  const previousSentHereCountRef = useRef(sentHereCount)
 
   useEffect(() => {
     const container = messageListRef.current
@@ -357,7 +361,10 @@ function CommentThreadSession({
     const previousReplyCount = previousReplyCountRef.current
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
-    else if (replies.length > previousReplyCount && (newestSentHere || atNewestRef.current))
+    else if (
+      replies.length > previousReplyCount &&
+      (sentHereCount > previousSentHereCountRef.current || atNewestRef.current)
+    )
       container.scrollTo({
         top: container.scrollHeight,
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -366,7 +373,8 @@ function CommentThreadSession({
       })
 
     previousReplyCountRef.current = replies.length
-  }, [loading, newestSentHere, replies.length])
+    previousSentHereCountRef.current = sentHereCount
+  }, [loading, replies.length, sentHereCount])
 
   // The reply shows in the thread at once, so the box clears for the next one. A reply
   // that fails to send stays in the thread with its own retry.
@@ -383,7 +391,10 @@ function CommentThreadSession({
         aria-busy={loading || undefined}
         onScroll={(event) => {
           const list = event.currentTarget
-          atNewestRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 24
+          if (list.scrollHeight - list.scrollTop - list.clientHeight < 24)
+            atNewestRef.current = true
+          else if (list.scrollTop < lastScrollTopRef.current) atNewestRef.current = false
+          lastScrollTopRef.current = list.scrollTop
         }}
       >
         <CommentThreadEntry

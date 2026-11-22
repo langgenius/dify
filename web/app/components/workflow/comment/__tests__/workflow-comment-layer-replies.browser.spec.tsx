@@ -299,10 +299,40 @@ describe('replies', () => {
     await sendReply(screen, 'My own reply')
     await expect.element(thread(screen).getByText('My own reply')).toBeInViewport()
 
-    // At the newest message, the next collaborator reply comes into view.
+    // At the newest message, collaborator replies come into view, even one arriving while the
+    // list is still scrolling to the one before.
     saveReplyOnServer('first', 'Another collaborator reply')
     collaboration.handler?.()
-    await expect.element(thread(screen).getByText('Another collaborator reply')).toBeInViewport()
+    await expect.element(thread(screen).getByText('Another collaborator reply')).toBeInTheDocument()
+    saveReplyOnServer('first', 'And one more')
+    collaboration.handler?.()
+    await expect.element(thread(screen).getByText('And one more')).toBeInViewport()
+  })
+
+  it('keeps the reader’s place when a collaborator replies below a reply that failed to send', async () => {
+    for (let index = 0; index < 12; index++)
+      saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
+    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    const screen = await renderLayer()
+    await openThread(screen)
+    await sendReply(screen, 'Not sent')
+    await expect
+      .element(thread(screen).getByText('workflowComments.comments.status.notSent'))
+      .toBeVisible()
+
+    const oldest = thread(screen).getByText('Reply number 0')
+    await userEvent.wheel(thread(screen).getByText('Reply number 11'), {
+      direction: 'up',
+      times: 10,
+    })
+    await expect.element(oldest).toBeInViewport()
+    const list = scrollingParent(oldest.element())
+    const readingAt = list.scrollTop
+    saveReplyOnServer('first', 'From a collaborator')
+    collaboration.handler?.()
+    await expect.element(thread(screen).getByText('From a collaborator')).toBeInTheDocument()
+    await nextFrames(2)
+    expect(list.scrollTop).toBe(readingAt)
   })
 })
 
@@ -329,7 +359,7 @@ describe('thread actions', () => {
     expect(collaboration.emit).not.toHaveBeenCalled()
   })
 
-  it('keeps a resolve shown when its thread is opened again before it is saved', async () => {
+  it('keeps a resolve shown when its thread is shown again before it is saved', async () => {
     const resolve = deferred<{ id: string; resolved: boolean }>()
     api.resolve.mockReturnValueOnce(resolve.promise)
     const screen = await renderLayer()
@@ -339,9 +369,20 @@ describe('thread actions', () => {
     await resolveButton().click()
     await expect.element(resolveButton()).toBeDisabled()
 
+    // Closed and opened again.
     await userEvent.keyboard('{Escape}')
     await expect.element(thread(screen)).not.toBeInTheDocument()
     await openThread(screen)
+    await expect.element(resolveButton()).toBeDisabled()
+    // Moved to the next comment and back.
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+      .click()
+    await expect.element(thread(screen)).toMatchTextContent(/Second thread/)
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.previousComment' })
+      .click()
+    await expect.element(thread(screen)).toMatchTextContent(/First thread/)
 
     await expect.element(resolveButton()).toBeDisabled()
     server.current.list[0]!.resolved = true
