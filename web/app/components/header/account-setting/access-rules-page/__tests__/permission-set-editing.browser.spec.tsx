@@ -1,6 +1,8 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import type { consoleClient } from '@/service/console'
+import { userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import {
   permissionFor,
@@ -13,6 +15,7 @@ import {
 const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.workspaces.current.rbac.workspace.apps.accessPolicy.get>(),
   create: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.post>(),
+  remove: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.byPolicyId.delete>(),
   permissions: vi.fn<typeof consoleClient.workspaces.current.rbac.myPermissions.get>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -25,6 +28,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.rbac.workspace.datasets.accessPolicy.get': api.list,
       'workspaces.current.rbac.workspace.agents.accessPolicy.get': api.list,
       'workspaces.current.rbac.accessPolicies.post': api.create,
+      'workspaces.current.rbac.accessPolicies.byPolicyId.delete': api.remove,
       'workspaces.current.rbac.myPermissions.get': api.permissions,
     }),
   }
@@ -37,6 +41,7 @@ beforeEach(() => {
     rules = [...rules, { policy, accounts: [], roles: [] }]
     return policy
   })
+  api.remove.mockReset()
   api.permissions.mockReset().mockResolvedValue({
     workspace: { permission_keys: [] },
     app: { default_permission_keys: [], overrides: [] },
@@ -160,4 +165,75 @@ it('closes the open mutation dialog after a real permission refetch revokes mana
     .element(screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }))
     .not.toBeInTheDocument()
   expect(api.create).not.toHaveBeenCalled()
+})
+
+it('protects the actual delete, supports retry, and returns focus before the list refresh', async () => {
+  rules = [ruleFor('app')]
+  const first = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
+  const retry = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
+  const refresh = createDeferred<ReturnType<typeof rulePage>>()
+  api.remove.mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise)
+  const { screen } = await setup('app')
+  const menu = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  await menu.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  const cancel = dialog.getByRole('button', { name: 'common.operation.cancel' })
+  const confirm = dialog.getByRole('button', { name: 'common.operation.delete' })
+  await expect.element(cancel).toHaveFocus()
+  await expect.element(confirm).toBeEnabled()
+
+  // Two activations before React paints loading must still send a single DELETE.
+  const button = confirm.element() as HTMLButtonElement
+  button.focus()
+  button.click()
+  button.click()
+  await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).toBeVisible()
+  await expect.element(cancel).toBeDisabled()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { policy_id: 'app-rule' } })
+
+  first.reject(new Error('Could not delete this permission set'))
+  await expect
+    .element(dialog.getByRole('alert'))
+    .toHaveTextContent('Could not delete this permission set')
+  await expect.element(cancel).toBeEnabled()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
+
+  api.list.mockReturnValue(refresh.promise)
+  retry.resolve({ result: 'success' })
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByText(rules[0]!.policy.name)).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: /^permission.accessRule.appTitle/ }))
+    .toHaveFocus()
+  expect(api.remove).toHaveBeenCalledTimes(2)
+  refresh.resolve(rulePage([]))
+})
+
+it('keeps Escape and menu focus return available during an ordinary list refresh', async () => {
+  rules = [ruleFor('app')]
+  const { screen, queryClient } = await setup('app')
+  const menu = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  await menu.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await expect.element(dialog).toBeVisible()
+  const refresh = createDeferred<ReturnType<typeof rulePage>>()
+  api.list.mockReturnValueOnce(refresh.promise)
+  const fetching = queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.rbac.workspace.apps.accessPolicy.get.key(),
+  })
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.delete' }))
+    .toBeEnabled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(menu).toHaveFocus()
+  expect(api.remove).not.toHaveBeenCalled()
+  refresh.resolve(rulePage(rules))
+  await fetching
 })
