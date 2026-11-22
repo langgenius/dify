@@ -79,7 +79,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                             session.add(document)
                             session.commit()
                         redis_client.delete(retry_indexing_cache_key)
-                        return
+                        continue
 
                 logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
                 document = session.scalar(
