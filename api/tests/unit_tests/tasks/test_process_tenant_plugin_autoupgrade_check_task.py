@@ -166,7 +166,6 @@ class TestStrategySetting:
         upgrade_mock.assert_called_once()
         assert calls[0][2].endswith(":1.0.5@cafe1234")
 
-
     def test_fix_only_skips_patch_downgrade(self) -> None:
         upgrade_mock, _ = _run_task(
             plugins=[_make_plugin("acme/foo", "1.0.5")],
@@ -174,7 +173,6 @@ class TestStrategySetting:
             strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
         )
         upgrade_mock.assert_not_called()
-
 
     def test_fix_only_skips_minor_bump(self) -> None:
         upgrade_mock, _ = _run_task(
