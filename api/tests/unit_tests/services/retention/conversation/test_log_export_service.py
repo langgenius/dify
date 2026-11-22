@@ -182,7 +182,7 @@ def test_prepare_export_records_only_claimed_work(
     log_export_redis.get.return_value = task.model_dump_json()
     log_export_redis.register_script.return_value = transition
     if outcome == "failed":
-        log_export_storage.save_file.side_effect = OSError("upload failed")
+        log_export_storage.save_from_path.side_effect = OSError("upload failed")
 
     if outcome == "failed":
         with pytest.raises(OSError, match="upload failed"):
@@ -192,15 +192,15 @@ def test_prepare_export_records_only_claimed_work(
 
     if outcome == "claim_lost":
         assert transitions == [("pending", "processing")]
-        log_export_storage.save_file.assert_not_called()
+        log_export_storage.save_from_path.assert_not_called()
     else:
         storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
         assert transitions == [("pending", "processing"), ("processing", outcome)]
-        assert log_export_storage.save_file.call_args.args[0] == storage_key
+        assert log_export_storage.save_from_path.call_args.args[0] == storage_key
         assert current.status == outcome
         assert current.storage_key == (storage_key if outcome == "ready" else None)
         export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        log_export_storage.save_file.assert_called_once()
+        log_export_storage.save_from_path.assert_called_once()
 
 
 def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(

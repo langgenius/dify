@@ -63,12 +63,12 @@ class AwsS3Storage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
     @override
-    def save_file(self, filename: str, source: Path) -> None:
+    def save_from_path(self, key: str, source: Path) -> None:
         """Upload a completed local file with one multipart transfer at a time."""
         self.client.upload_file(
             str(source),
             self.bucket_name,
-            filename,
+            key,
             Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
         )
 

@@ -66,6 +66,11 @@ from services.installed_app_access_service import InstalledAppNotFoundError, Ins
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
 _LOG_EXPORT_BATCH_SIZE = 500
+_CONSOLE_APP_MODES_BY_KIND: dict[ConsoleConversationKind, frozenset[AppMode]] = {
+    "completion": frozenset({AppMode.COMPLETION}),
+    "chat": frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}),
+}
+_CONSOLE_LOG_APP_MODES = _CONSOLE_APP_MODES_BY_KIND["completion"] | _CONSOLE_APP_MODES_BY_KIND["chat"]
 
 
 class ConversationRepository:
@@ -171,17 +176,17 @@ class ConversationRepository:
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationScope:
-        return self._get_console_scope(context, app_id, kind=kind)
+        return self._get_console_scope(context, app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind])
 
     def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
         """Resolve the owned conversation app's mode and the caller's time zone for log export."""
-        return self._get_console_scope(context, app_id, kind=None)
+        return self._get_console_scope(context, app_id, allowed_modes=_CONSOLE_LOG_APP_MODES)
 
     def _get_console_scope(
-        self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind | None
+        self, context: RequestContext, app_id: str, *, allowed_modes: frozenset[AppMode]
     ) -> ConsoleConversationScope:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(session=session, context=context, app_id=app_id, allowed_modes=allowed_modes)
             account = session.get(Account, context.account_id)
             if account is None:
                 raise NoPermissionError("The admitted account no longer exists.")
@@ -235,7 +240,9 @@ class ConversationRepository:
             identity_id = None
 
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=None)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_LOG_APP_MODES
+            )
             visible_logs, _ = self._filter_console_conversations(
                 select(Conversation.id),
                 app_id=app.id,
@@ -595,7 +602,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationDetailSource:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             conversation = self._get_console_conversation(
                 session=session, app_id=app.id, conversation_id=conversation_id
             )
@@ -641,7 +650,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> None:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             self._get_console_conversation(session=session, app_id=app.id, conversation_id=conversation_id)
             session.execute(
                 update(Conversation)
@@ -813,7 +824,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             # Console log queries see all users; deletion still requires the
             # current account's Console conversation, as in the original API.
             conversation = self._get_conversation(
@@ -928,14 +941,9 @@ class ConversationRepository:
 
     @staticmethod
     def _get_console_app(
-        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind | None
+        *, session: Session, context: RequestContext, app_id: str, allowed_modes: frozenset[AppMode]
     ) -> App:
         app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
-        allowed_modes = {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
-        if kind == "completion":
-            allowed_modes = {AppMode.COMPLETION}
-        elif kind is None:
-            allowed_modes.add(AppMode.COMPLETION)
         if app is None:
             raise ConsoleAppNotFoundError("App not found.")
         if app.mode not in allowed_modes:

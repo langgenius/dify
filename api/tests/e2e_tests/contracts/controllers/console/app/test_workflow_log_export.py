@@ -178,11 +178,11 @@ def export_client(
     files: dict[str, str] = {}
     storage = log_export_storage
 
-    def save_file(key: str, path: Path) -> None:
+    def save_from_path(key: str, path: Path) -> None:
         """Read the completed file while it is available for upload."""
         files[key] = path.read_text(encoding="utf-8-sig")
 
-    storage.save_file.side_effect = save_file
+    storage.save_from_path.side_effect = save_from_path
     logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory))
     app.extensions["application_services"] = _Services(
         workflow_app_logs=logs,
@@ -380,7 +380,7 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     )
     assert row["account_id"] == export_client.account_id
     assert json.loads(row["app_response"]) == {"result": "ready"}
-    export_client.storage.save_file.assert_called_once()
+    export_client.storage.save_from_path.assert_called_once()
     ready = export_client.get_status(task_id)
     assert (ready.status_code, ready.json) == (200, {"task_id": task_id, "status": "ready"})
     assert ready.headers["Cache-Control"] == "no-store"
@@ -396,7 +396,7 @@ def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _
     key = export_client.redis.setex.call_args_list[0].args[0]
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
     assert task.status is LogExportStatus.FAILED
-    export_client.storage.save_file.assert_not_called()
+    export_client.storage.save_from_path.assert_not_called()
     assert export_client.get_status(task.task_id).json == {"task_id": task.task_id, "status": "failed"}
 
 

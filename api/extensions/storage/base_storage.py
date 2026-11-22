@@ -12,9 +12,9 @@ class BaseStorage(ABC):
     def save(self, filename: str, data: bytes):
         raise NotImplementedError
 
-    def save_file(self, filename: str, source: Path) -> None:
+    def save_from_path(self, key: str, source: Path) -> None:
         """Read a completed local file for backends that implement byte-oriented writes."""
-        self.save(filename, source.read_bytes())
+        self.save(key, source.read_bytes())
 
     @abstractmethod
     def load_once(self, filename: str) -> bytes:

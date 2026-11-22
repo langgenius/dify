@@ -1,4 +1,4 @@
-"""Check that queued Conversation exports remain compatible with the shared worker."""
+"""Check that Conversation exports are delivered through the shared task."""
 
 from unittest.mock import MagicMock, patch
 
@@ -13,7 +13,7 @@ from tasks import log_export_tasks
 from tests.helpers.unit.tasks.task_options import task_options
 
 
-def test_conversation_log_export_keeps_its_original_message(log_export_publish: MagicMock) -> None:
+def test_conversation_log_export_uses_shared_task(log_export_publish: MagicMock) -> None:
     task = ConversationLogExportTask.pending(
         tenant_id="tenant",
         app_id="app",
@@ -29,9 +29,11 @@ def test_conversation_log_export_keeps_its_original_message(log_export_publish: 
     dispatch_log_export(task, export_kind=LogExportKind.CONVERSATION)
 
     args = {"tenant_id": task.tenant_id, "app_id": task.app_id, "task_id": task.task_id}
-    assert worker.name == "tasks.conversation_log_export_tasks.prepare_conversation_log_export_task"
+    message = {**args, "export_kind": "conversation"}
+    assert worker.name == "tasks.log_export_tasks.prepare_log_export_task"
     assert task_options(worker)["queue"] == "retention"
-    log_export_publish.assert_called_once_with(kwargs=args, task_id=task.task_id, expires=task.expires_at)
+    log_export_publish.assert_called_once_with(kwargs=message, task_id=task.task_id, expires=task.expires_at)
+
     with app.app_context(), patch.object(application_services().conversation_log_exports, "prepare_task") as prepare:
-        worker.run(**args)
+        worker.run(**message)
         prepare.assert_called_once_with(**args)

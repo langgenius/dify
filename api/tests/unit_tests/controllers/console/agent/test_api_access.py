@@ -369,8 +369,8 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
         with path.open(encoding="utf-8-sig", newline="") as csv_file:
             uploaded[key] = list(DictReader(csv_file))
 
-    save_file = log_export_storage.save_file
-    save_file.side_effect = upload
+    save_from_path = log_export_storage.save_from_path
+    save_from_path.side_effect = upload
     agent_id, app_id = harness.create_agent()
     foreign_id, _ = harness.create_agent(tenant_id=str(uuid4()))
     end_user_id, conversation_id, message_id = (str(uuid4()) for _ in range(3))
@@ -495,7 +495,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert row["account_id"] == ""
     assert rows[account_message_id]["account_id"] == harness.account_id
     assert rows[account_message_id]["end_user_id"] == ""
-    save_file.assert_called_once()
+    save_from_path.assert_called_once()
     status = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
     assert (status.status_code, status.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "ready"})
     assert status.headers["Cache-Control"] == "no-store"
