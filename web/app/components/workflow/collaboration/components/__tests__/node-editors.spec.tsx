@@ -1,7 +1,12 @@
+import type { ReactElement } from 'react'
 import type { Collaborator } from '../collaborator-avatar'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { NodeEditorAvatars, NodePanelEditingFrame } from '../node-editors'
+
+// Avatars keep one URL per picture in the query cache.
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const editor = (id: string, name: string, color: string): Collaborator => ({
   id,

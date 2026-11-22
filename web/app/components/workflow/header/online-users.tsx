@@ -132,7 +132,7 @@ const OnlineUsers = () => {
     id: user.sid,
     name: user.username || fallbackUsername,
     avatarUrl,
-    color: user.user_id === currentUserId ? undefined : getUserColor(user.user_id),
+    color: getUserColor(user.user_id),
   })
   const pillCollaborators = visibleUsers.map((user) =>
     toCollaborator(user, isConnected ? avatarUrls?.[user.sid] : undefined),

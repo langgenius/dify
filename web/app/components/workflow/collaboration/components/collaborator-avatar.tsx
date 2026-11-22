@@ -6,12 +6,12 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@langgenius/dify-ui/avatar'
-import { useState } from 'react'
+import { useAvatarSrc } from '@/hooks/use-avatar-src'
 import { getAvatarInitial } from '@/utils/avatar'
 
 /**
- * A person shown in collaboration UI. `color` is their collaborator color;
- * leave it out for the current user, whose avatar keeps the default fill.
+ * A person shown in collaboration UI. `color` is their collaborator color, the same for them
+ * wherever and to whoever they are shown.
  */
 export type Collaborator = {
   id: string
@@ -24,18 +24,8 @@ type CollaboratorAvatarProps = Omit<AvatarProps, 'children'> & {
   collaborator: Collaborator
 }
 
-const withoutQuery = (url: string) => url.split('?')[0]
-
 export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvatarProps) {
-  // Avatar URLs are signed per response, so the same picture comes back under a new query
-  // string after every refetch. Keep showing the URL that already loaded while it is the
-  // same file; a URL that never loaded is replaced, so a fresh signature can retry it.
-  const [loadedSrc, setLoadedSrc] = useState<string>()
-  const incomingSrc = collaborator.avatarUrl || undefined
-  const src =
-    incomingSrc && loadedSrc && withoutQuery(incomingSrc) === withoutQuery(loadedSrc)
-      ? loadedSrc
-      : incomingSrc
+  const { src, onLoadingStatusChange } = useAvatarSrc(collaborator.avatarUrl)
 
   return (
     <Avatar aria-hidden="true" {...props}>
@@ -44,13 +34,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>
-      <AvatarImage
-        src={src}
-        alt=""
-        onLoadingStatusChange={(status) => {
-          if (status === 'loaded') setLoadedSrc(src)
-        }}
-      />
+      <AvatarImage src={src} alt="" onLoadingStatusChange={onLoadingStatusChange} />
     </Avatar>
   )
 }

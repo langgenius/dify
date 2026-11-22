@@ -10,7 +10,7 @@ import {
   PopoverPortal,
   PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
-import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import {
   forwardRef,
@@ -27,7 +27,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { CommentComposerActions } from './comment-composer'
@@ -66,10 +65,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     forwardedRef,
   ) => {
     const { t } = useTranslation(['common', 'workflowComments', 'workflowAgent'])
-    const { data: currentUserId } = useSuspenseQuery({
-      ...userProfileQueryOptions(),
-      select: (data) => data.profile.id,
-    })
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
     const lineProbeRef = useRef<HTMLDivElement>(null)
@@ -483,7 +478,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                     <CollaboratorAvatar
                       size="sm"
                       className="shrink-0"
-                      collaborator={toCommentCollaborator(user, currentUserId)}
+                      collaborator={toCommentCollaborator(user)}
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate system-xs-medium text-text-primary">{user.name}</div>

@@ -1,9 +1,14 @@
+import type { ReactElement } from 'react'
 import type { Collaborator } from '../collaborator-avatar'
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { COLLABORATOR_COLORS, getUserColor } from '../../utils/user-color'
 import { CollaboratorAvatarStack } from '../collaborator-avatar'
 import { CollaboratorCursor } from '../collaborator-cursor'
 import { CollaboratorPill } from '../collaborator-pill'
+
+// Avatars keep one URL per picture in the query cache.
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: createConsoleQueryWrapper().wrapper })
 
 const people: Collaborator[] = [
   { id: 'ann', name: 'Ann', color: '#155AEF' },

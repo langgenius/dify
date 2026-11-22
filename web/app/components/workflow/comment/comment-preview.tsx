@@ -2,12 +2,11 @@
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatarStack } from '../collaboration/components/collaborator-avatar'
@@ -36,14 +35,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   )
   const setCommentPreviewHovering = useStore((s) => s.setCommentPreviewHovering)
   const authorName = comment.created_by_account?.name ?? ''
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
-  const participants = useMemo(
-    () => getCommentParticipants(comment, currentUserId),
-    [comment, currentUserId],
-  )
+  const participants = useMemo(() => getCommentParticipants(comment), [comment])
   // The hover flag is shared by every preview, so a preview only clears it on unmount if
   // it is the one being hovered.
   const hoveringRef = useRef(false)

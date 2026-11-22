@@ -7,11 +7,10 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@langgenius/dify-ui/avatar'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit'
 import { memo } from 'react'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useAvatarSrc } from '@/hooks/use-avatar-src'
 import { getAvatarInitial } from '@/utils/avatar'
 
 type User = {
@@ -30,10 +29,6 @@ type UserAvatarListProps = {
 
 export const UserAvatarList: FC<UserAvatarListProps> = memo(
   ({ users, maxVisible = 3, size = 'sm', className = '', showCount = true }) => {
-    const { data: currentUserId } = useSuspenseQuery({
-      ...userProfileQueryOptions(),
-      select: (data) => data.profile.id,
-    })
     const uniqueUsers = uniqBy(users, (user) => user.id)
     if (!uniqueUsers.length) return null
 
@@ -44,23 +39,9 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
 
     return (
       <AvatarGroup size={size} className={className}>
-        {visibleUsers.map((user, index) => {
-          const isCurrentUser = user.id === currentUserId
-          const userColor = isCurrentUser ? undefined : getUserColor(user.id)
-          return (
-            <Avatar
-              key={user.id}
-              role="img"
-              aria-label={user.name}
-              style={{ zIndex: visibleUsers.length - index }}
-            >
-              <AvatarFallback style={userColor ? { backgroundColor: userColor } : undefined}>
-                {getAvatarInitial(user.name)}
-              </AvatarFallback>
-              <AvatarImage src={user.avatar_url || undefined} alt="" />
-            </Avatar>
-          )
-        })}
+        {visibleUsers.map((user, index) => (
+          <UserAvatar key={user.id} user={user} zIndex={visibleUsers.length - index} />
+        ))}
         {shouldShowCount && remainingCount > 0 && (
           <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>
         )}
@@ -70,3 +51,15 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
 )
 
 UserAvatarList.displayName = 'UserAvatarList'
+
+function UserAvatar({ user, zIndex }: { user: User; zIndex: number }) {
+  const { src, onLoadingStatusChange } = useAvatarSrc(user.avatar_url)
+  return (
+    <Avatar role="img" aria-label={user.name} style={{ zIndex }}>
+      <AvatarFallback style={{ backgroundColor: getUserColor(user.id) }}>
+        {getAvatarInitial(user.name)}
+      </AvatarFallback>
+      <AvatarImage src={src} alt="" onLoadingStatusChange={onLoadingStatusChange} />
+    </Avatar>
+  )
+}

@@ -71,6 +71,14 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       }
     }, [previewOpen, previewMounted])
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
+    // Where the marker was dropped, in canvas coordinates, for the comment it was dropped as. The
+    // new position reaches the comment a few frames later, so the marker stays where it was
+    // dropped until its comment changes: to that position, or back if the move fails.
+    const [drop, setDrop] = useState<{
+      position: { x: number; y: number }
+      comment: WorkflowCommentBasic
+    } | null>(null)
+    if (drop && drop.comment !== comment) setDrop(null)
     const [isDragging, setIsDragging] = useState(false)
     const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
     const dragEndedRef = useRef(false)
@@ -79,8 +87,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       if (!position) return
       keyboardPositionRef.current = null
       setDragPosition(null)
-      onPositionUpdate?.(comment.id, position)
-    }, [comment.id, onPositionUpdate])
+      if (!onPositionUpdate) return
+      setDrop({ position, comment })
+      onPositionUpdate(comment.id, position)
+    }, [comment, onPositionUpdate])
     const dragStateRef = useRef<{
       offsetX: number
       offsetY: number
@@ -110,7 +120,9 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       flowToScreenPosition,
     ])
 
-    const effectiveScreenPosition = dragPosition ?? screenPosition
+    const effectiveScreenPosition =
+      dragPosition ??
+      (drop && drop.comment === comment ? flowToScreenPosition(drop.position) : screenPosition)
     const canvasPosition = useMemo(
       () => ({
         x: effectiveScreenPosition.x - containerLeft,
@@ -211,6 +223,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               x: finalScreenPosition.x,
               y: finalScreenPosition.y,
             })
+            setDrop({ position: flowPosition, comment })
             onPositionUpdate(comment.id, flowPosition)
           }
         } else if (event.currentTarget.dataset.role === 'comment-preview' && !isActive) {
@@ -218,7 +231,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         }
       },
       [
-        comment.id,
+        comment,
         dragPosition,
         finishDrag,
         isActive,
@@ -285,10 +298,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       setShowPreview(false)
     }, [])
 
-    const participants = useMemo(
-      () => getCommentParticipants(comment, currentUserId),
-      [comment, currentUserId],
-    )
+    const participants = useMemo(() => getCommentParticipants(comment), [comment])
 
     const pointerEventHandlers = useMemo(
       () => ({

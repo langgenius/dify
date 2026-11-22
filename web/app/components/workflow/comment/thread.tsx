@@ -87,21 +87,14 @@ type ThreadMessageProps = {
 function ThreadMessage({ author, createdAt, content, mentionNames }: ThreadMessageProps) {
   const { t } = useTranslation(['workflowComments'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
 
   return (
     <CommentMessage
-      author={toCommentCollaborator(
-        {
-          id: author?.id ?? '',
-          name: author?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-          avatar_url: author?.avatar_url ?? null,
-        },
-        currentUserId,
-      )}
+      author={toCommentCollaborator({
+        id: author?.id ?? '',
+        name: author?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+        avatar_url: author?.avatar_url ?? null,
+      })}
       timeLabel={formatTimeFromNow(createdAt * 1000)}
       content={content}
       mentionNames={mentionNames}
@@ -470,14 +463,11 @@ function CommentThreadSession({
       </CommentThreadList>
       {onReply && (
         <CommentReplyBar
-          author={toCommentCollaborator(
-            {
-              id: currentUserId,
-              name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
-              avatar_url: userProfile?.avatar_url ?? null,
-            },
-            currentUserId,
-          )}
+          author={toCommentCollaborator({
+            id: currentUserId,
+            name: userProfile?.name || t(($) => $.you, { ns: 'common' }),
+            avatar_url: userProfile?.avatar_url ?? null,
+          })}
         >
           <MentionInput
             ref={attachReplyInput}
@@ -532,10 +522,6 @@ function CommentThreadEntry({
   onDelete,
 }: CommentThreadEntryProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
-  })
   const [draft, setDraft] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -644,16 +630,12 @@ function CommentThreadEntry({
           <CollaboratorAvatar
             size="sm"
             className="shrink-0"
-            collaborator={toCommentCollaborator(
-              {
-                id: account?.id ?? '',
-                name:
-                  account?.name ||
-                  t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
-                avatar_url: account?.avatar_url ?? null,
-              },
-              currentUserId,
-            )}
+            collaborator={toCommentCollaborator({
+              id: account?.id ?? '',
+              name:
+                account?.name || t(($) => $['comments.fallback.user'], { ns: 'workflowComments' }),
+              avatar_url: account?.avatar_url ?? null,
+            })}
           />
           <div className="min-w-0 flex-1">
             <CommentComposerFrame>
