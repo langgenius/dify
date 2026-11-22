@@ -1822,11 +1822,6 @@
       "count": 2
     }
   },
-  "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/marketplace/hooks.ts": {
     "typescript/no-deprecated": {
       "count": 2
