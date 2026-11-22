@@ -271,17 +271,19 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const compositionEndedAtRef = useRef<number | null>(null)
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
-        // A key during IME composition (Chinese, Japanese, Korean input) confirms or edits the
-        // composition, so Enter there must not send. Safari delivers the confirming Enter after
-        // compositionend, with isComposing already false, so a key that comes a moment after
-        // the composition ended still counts as part of it.
+        // A key during IME composition (Chinese, Japanese, Korean input) confirms or cancels
+        // the composition, so it must not send, close or dismiss anything: it stops here.
+        // Safari delivers the confirming key after compositionend, with isComposing already
+        // false, so a key that comes a moment after the composition ended still counts.
         const compositionEndedAt = compositionEndedAtRef.current
         if (
           e.nativeEvent.isComposing ||
           (compositionEndedAt !== null &&
             Math.abs(e.nativeEvent.timeStamp - compositionEndedAt) < 50)
-        )
+        ) {
+          e.stopPropagation()
           return
+        }
 
         if (isMentionMenuOpen) {
           if (e.key === 'ArrowDown') {

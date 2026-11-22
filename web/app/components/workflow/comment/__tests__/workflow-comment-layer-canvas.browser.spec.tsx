@@ -143,6 +143,26 @@ describe('markers and the composer', () => {
     await expect.poll(() => markers(screen).elements().length).toBe(3)
   })
 
+  it('keeps a new comment’s draft when Escape ends an input method composition, in Safari’s event order', async () => {
+    const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
+    screen.store
+      .getState()
+      .setPendingComment({ pageX: 600, pageY: 400, elementX: 600, elementY: 400 })
+    const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
+    await composer.fill('草稿')
+    const box = composer.element()
+
+    // Safari reports the composition as ended before the key that cancels it.
+    box.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    box.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '' }))
+    box.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+
+    await expect.element(composer).toHaveValue('草稿')
+  })
+
   it('keeps a new comment’s text to send again when creating it fails', async () => {
     api.create.mockRejectedValueOnce(new Error('Network error'))
     const screen = await renderLayer()
