@@ -72,9 +72,6 @@ export default function ResourceAccessTokenPage() {
     try {
       await deletion.mutateAsync({ params })
       if (!deleteDialog.isOpen) return
-      const result = queryClient.getQueryData(tokenOptions.queryKey)
-      if (result)
-        setPage((current) => Math.min(current, Math.max(1, Math.ceil(result.total / PAGE_SIZE))))
       if (deleteFocusRef.current) deleteFocusRef.current.succeeded = true
       deleteDialog.close()
     } catch {
@@ -85,6 +82,9 @@ export default function ResourceAccessTokenPage() {
   }
   const rows = tokensQuery.data?.data
   const total = tokensQuery.data?.total ?? 0
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const lastPage = Math.max(1, totalPages)
+  if (tokensQuery.isSuccess && !tokensQuery.isPlaceholderData && page > lastPage) setPage(lastPage)
   const hasLoadError = tokensQuery.isError && !tokensQuery.data
   const isEmptyList =
     !tokensQuery.isPending &&
@@ -158,7 +158,7 @@ export default function ResourceAccessTokenPage() {
           <Pagination
             className="min-w-0 flex-1 px-0 py-0"
             page={page}
-            totalPages={Math.ceil(total / PAGE_SIZE)}
+            totalPages={totalPages}
             onPageChange={setPage}
             labels={{
               previous: t(($) => $['resourceAccessToken.previous'], { ns: 'accountSettings' }),

@@ -147,11 +147,14 @@ it('returns to the preceding page when deletion removes the last page', async ()
     name: `Previous token ${index + 1}`,
   }))
   let removed = false
+  const refreshed = createDeferred<ResourceAccessTokenListResponse>()
   listTokens.mockImplementation(async ({ query }: { query: { page: number } }) => {
     const total = removed ? 20 : 21
-    return query.page === 1
-      ? { ...listResponse(firstPage, total), has_more: !removed }
-      : { ...listResponse(removed ? [] : [first], total), page: 2 }
+    if (query.page === 1) {
+      if (removed) return refreshed.promise
+      return { ...listResponse(firstPage, total), has_more: true }
+    }
+    return { ...listResponse(removed ? [] : [first], total), page: 2 }
   })
   deleteToken.mockImplementation(async () => {
     removed = true
@@ -165,7 +168,14 @@ it('returns to the preceding page when deletion removes the last page', async ()
   const dialog = screen.getByRole('alertdialog')
   await dialog.getByRole('button', { name: deleteLabel }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(screen.getByRole('row', { name: /Previous token 1 / })).toBeInTheDocument()
+  const remaining = screen.getByRole('row', { name: /Previous token 1 / })
+  await expect.element(remaining).toBeInTheDocument()
+  const nextPage = screen.getByRole('button', { name: 'accountSettings.resourceAccessToken.next' })
+  // Page one may still report the old count while its new response is in flight.
+  await nextPage.click()
+  await expect.element(remaining).toBeInTheDocument()
+  refreshed.resolve(listResponse(firstPage))
+  await expect.element(nextPage).toBeDisabled()
 })
 
 it('prevents deleting a retained row while a different search is loading', async () => {
