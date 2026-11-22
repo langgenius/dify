@@ -102,11 +102,14 @@ class AwsS3Storage(BaseStorage):
 
     @override
     def exists(self, filename):
+        """Return whether the key exists, propagating storage failures."""
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except ClientError:
-            return False
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
 
     @override
     def delete(self, filename: str):

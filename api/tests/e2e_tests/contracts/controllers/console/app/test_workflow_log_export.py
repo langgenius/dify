@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+from botocore.exceptions import ClientError
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine
@@ -70,6 +71,10 @@ class _ExportClient:
     files: dict[str, str]
     run_id: str
 
+    def task_key(self, task_id: str) -> str:
+        """Locate the task state for this Workflow app."""
+        return f"workflow_log_export:{{{self.tenant_id}}}:{self.app_id}:{task_id}"
+
     def get_status(self, task_id: str) -> TestResponse:
         """Poll the identified task under the admitted app."""
         return self.client.get(f"{self.path}/{task_id}", headers=self.headers)
@@ -119,7 +124,7 @@ def export_client(
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account.id,
     )
-    run.created_at = datetime(2026, 1, 2, 4)
+    run.created_at = datetime(2026, 1, 1, 23, 59, 59)
     log = WorkflowAppLog(
         tenant_id=tenant.id,
         app_id=target.id,
@@ -129,7 +134,7 @@ def export_client(
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account.id,
     )
-    log.created_at = run.created_at
+    log.created_at = datetime(2026, 1, 2, 0, 0, 1)
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [
@@ -160,20 +165,7 @@ def export_client(
                 loaded.set_tenant_id_with_session(tenant.id, session=session)
             return loaded
 
-    cache: dict[str, str] = {}
     redis = log_export_redis
-    redis.setex.side_effect = lambda key, _ttl, value: cache.__setitem__(key, value)
-    redis.get.side_effect = cache.get
-
-    def transition(*, keys: list[str], args: list[str]) -> int:
-        """Emulate the adapter's compare-and-set on the stored task."""
-        key = keys[0]
-        if key not in cache or json.loads(cache[key])["status"] != args[0]:
-            return 0
-        cache[key] = args[1]
-        return 1
-
-    redis.register_script.return_value = transition
     publish = log_export_publish
     files: dict[str, str] = {}
     storage = log_export_storage
@@ -245,9 +237,9 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
     task_id = response.get_json()["task_id"]
     assert str(UUID(task_id)) == task_id
     assert response.json == {"task_id": task_id, "status": "pending"}
-    key, ttl, raw = export_client.redis.setex.call_args_list[0].args
+    key = export_client.task_key(task_id)
+    ttl, raw = export_client.redis.client.ttl(key), export_client.redis.get(key)
     task = WorkflowLogExportTask.model_validate_json(raw)
-    assert key == f"workflow_log_export:{export_client.tenant_id}:{export_client.app_id}:{task_id}"
     assert (task.task_id, task.tenant_id, task.app_id, task.requested_by) == (
         task_id,
         export_client.tenant_id,
@@ -259,11 +251,14 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
     )
     assert task.expires_at - task.created_at == timedelta(days=1)
     assert 0 < ttl <= 86400
-    export_client.redis.setex.assert_called_with(
-        f"workflow_log_export_latest:{export_client.tenant_id}:{export_client.app_id}:{export_client.account_id}",
-        ttl,
-        task_id,
+    latest_key = (
+        f"workflow_log_export_latest:{{{export_client.tenant_id}}}:{export_client.app_id}:{export_client.account_id}"
     )
+    assert export_client.redis.get(latest_key) == task_id
+    assert export_client.redis.client.ttl(latest_key) == ttl
+    export_client.redis.reject_submission = True
+    blocked = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert (blocked.status_code, blocked.get_json()["code"]) == (429, "log_export_limit_reached")
     export_client.publish.assert_called_once_with(
         kwargs={
             "tenant_id": export_client.tenant_id,
@@ -286,7 +281,7 @@ def test_create_workflow_log_export_rejects_invalid_filters(
     response = export_client.client.post(export_client.path, headers=export_client.headers, json=payload)
 
     assert response.status_code == expected_status
-    export_client.redis.setex.assert_not_called()
+    assert not export_client.redis.cache
 
 
 def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportClient) -> None:
@@ -298,7 +293,7 @@ def test_workflow_log_export_requires_cloud_entitlement(export_client: _ExportCl
     assert export_client.get_status(str(uuid4())).status_code == 403
     assert export_client.get_latest().status_code == 403
     assert export_client.get_file(str(uuid4())).status_code == 403
-    export_client.redis.setex.assert_not_called()
+    assert not export_client.redis.cache
     export_client.redis.get.assert_not_called()
 
 
@@ -340,7 +335,12 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     response = export_client.client.post(
         export_client.path,
         headers=export_client.headers,
-        json={"status": "succeeded", "account_ids": [export_client.account_id]},
+        json={
+            "status": "succeeded",
+            "account_ids": [export_client.account_id],
+            "keyword": export_client.run_id,
+            "created_at__after": "2026-01-02T00:00:00Z",
+        },
     )
     assert response.status_code == 202
     task_id = response.get_json()["task_id"]
@@ -351,11 +351,12 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
         prepare_log_export_task.run(**arguments)
         prepare_log_export_task.run(**arguments)
 
-    key = export_client.redis.setex.call_args_list[0].args[0]
+    key = export_client.task_key(task_id)
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
     assert task.status is LogExportStatus.READY
     assert (
-        task.storage_key == f"workflow-log-exports/{export_client.tenant_id}/{export_client.app_id}/{task.task_id}.csv"
+        task.storage_key
+        == f"workflow-log-exports/{export_client.tenant_id}/{export_client.app_id}/{task.task_id}/1.csv"
     )
     reader = csv.DictReader(StringIO(export_client.files[task.storage_key].removeprefix("\ufeff")))
     assert reader.fieldnames == [
@@ -379,6 +380,7 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
         "schedule",
     )
     assert row["account_id"] == export_client.account_id
+    assert row["created_at"] == "2026-01-02T00:00:01+00:00"
     assert json.loads(row["app_response"]) == {"result": "ready"}
     export_client.storage.save_from_path.assert_called_once()
     ready = export_client.get_status(task_id)
@@ -393,7 +395,7 @@ def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _
     response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
 
     assert response.status_code == 500
-    key = export_client.redis.setex.call_args_list[0].args[0]
+    key = export_client.task_key(export_client.publish.call_args.kwargs["task_id"])
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
     assert task.status is LogExportStatus.FAILED
     export_client.storage.save_from_path.assert_not_called()
@@ -407,8 +409,6 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
     assert missing.status_code == 404
     assert missing.get_json()["code"] == "workflow_log_export_task_not_found"
 
-    previous = export_client.client.post(export_client.path, headers=export_client.headers, json={})
-    assert previous.status_code == 202
     end_user_id = str(uuid4())
     submitted = export_client.client.post(
         export_client.path,
@@ -457,9 +457,10 @@ def test_workflow_export_status_and_latest_respect_their_scope(
 ) -> None:
     response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
     assert response.status_code == 202
-    key, ttl, raw = export_client.redis.setex.call_args_list[0].args
+    key = export_client.task_key(response.get_json()["task_id"])
+    ttl, raw = export_client.redis.client.ttl(key), export_client.redis.get(key)
     task = WorkflowLogExportTask.model_validate_json(raw).model_copy(update=changes)
-    export_client.redis.setex(key, ttl, task.model_dump_json())
+    export_client.redis.client.setex(key, ttl, task.model_dump_json())
 
     assert export_client.get_status(task.task_id).status_code == task_status
     assert export_client.get_latest().json == {"task": None}
@@ -472,7 +473,7 @@ def ready_export(export_client: _ExportClient) -> WorkflowLogExportTask:
     assert submitted.status_code == 202
     with export_client.client.application.app_context():
         prepare_log_export_task.run(**export_client.publish.call_args.kwargs["kwargs"])
-    task_key = export_client.redis.setex.call_args_list[0].args[0]
+    task_key = export_client.task_key(submitted.get_json()["task_id"])
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(task_key))
     assert task.status is LogExportStatus.READY
     return task
@@ -484,9 +485,10 @@ def test_workflow_export_download_signs_cloud_s3_file(
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(STORAGE_TYPE=StorageType.S3)
-    key, ttl, _ = export_client.redis.setex.call_args_list[0].args
+    key = export_client.task_key(ready_export.task_id)
+    ttl = export_client.redis.client.ttl(key)
     task = ready_export.model_copy(update={"expires_at": utc_now() + timedelta(minutes=2)})
-    export_client.redis.setex(key, ttl, task.model_dump_json())
+    export_client.redis.client.setex(key, ttl, task.model_dump_json())
     export_client.storage.exists.side_effect = export_client.files.__contains__
     url = "https://storage.example.test/workflow-logs.csv?signature=signed"
     export_client.storage.generate_presigned_url.return_value = url
@@ -567,4 +569,18 @@ def test_workflow_export_download_reports_missing_file(
     response = export_client.get_file(ready_export.task_id)
 
     assert (response.status_code, response.get_json()["code"]) == (404, "workflow_log_export_file_not_found")
+    export_client.storage.generate_presigned_url.assert_not_called()
+
+
+def test_workflow_export_download_propagates_s3_failure(
+    export_client: _ExportClient,
+    ready_export: WorkflowLogExportTask,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(STORAGE_TYPE=StorageType.S3)
+    export_client.storage.exists.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "HeadObject")
+
+    response = export_client.get_file(ready_export.task_id)
+
+    assert response.status_code == 500
     export_client.storage.generate_presigned_url.assert_not_called()

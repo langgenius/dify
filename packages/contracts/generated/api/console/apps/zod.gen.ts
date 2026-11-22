@@ -670,6 +670,18 @@ export const zUnprocessableEntityError = zErrorResponse.and(
 )
 
 /**
+ * LogExportLimitReachedError
+ *
+ * There is already an export for this requester and app, or the workspace export limit was reached.
+ */
+export const zLogExportLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_limit_reached'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * ConversationLogExportTaskNotFoundError
  *
  * Conversation log export task not found.
@@ -4830,6 +4842,8 @@ export const zAppJsonObjectFormResponse = z.object({
 
 export const zConversationAnnotationStatus = z.enum(['all', 'annotated', 'not_annotated'])
 
+export const zConversationSort = z.enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+
 /**
  * ConversationLogExportFiltersResponse
  *
@@ -4841,6 +4855,7 @@ export const zConversationLogExportFiltersResponse = z.object({
   end: z.iso.datetime().nullable(),
   end_user_ids: z.array(z.string()),
   keyword: z.string().nullable(),
+  sort_by: zConversationSort,
   start: z.iso.datetime().nullable(),
 })
 

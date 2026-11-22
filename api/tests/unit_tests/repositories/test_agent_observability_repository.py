@@ -502,16 +502,16 @@ class TestAgentObservabilityQueriesCases:
         assert queries.count_export_logs(
             app=app, agent_id="agent-1", params=AgentLogQueryParams()
         ) == AgentLogExportCounts(log_count=3, row_count=4)
+        for source in ("webapp:", "webapp:invalid", "workflow:"):
+            with pytest.raises(ValueError, match="Invalid structured log source ID"):
+                queries.count_export_logs(
+                    app=app, agent_id="agent-1", params=AgentLogQueryParams(sources=("all", source))
+                )
         assert queries.count_export_logs(
             app=app,
             agent_id="agent-1",
             params=AgentLogQueryParams(
-                sources=(
-                    "webapp:app-1",
-                    "console",
-                    "workflow:workflow-app-1",
-                    "workflow:workflow-app-1:workflow-1:v1:node-1",
-                ),
+                sources=("webapp", "console", "workflow", "workflow"),
                 end_user_ids=("end-user-1",),
                 start=timestamp,
             ),
@@ -524,7 +524,7 @@ class TestAgentObservabilityQueriesCases:
     def test_write_agent_log_csv_matches_preview_across_sources_and_batches(
         sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(observability_repository_module, "_LOG_EXPORT_BATCH_SIZE", 1)
+        monkeypatch.setattr(observability_repository_module, "_LOG_EXPORT_BATCH_SIZE", 2)
         timestamp = datetime(2026, 7, 23, 7, 0, 19)
         app = _agent_observability_service_app(mode=AppMode.AGENT)
         workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
@@ -542,6 +542,7 @@ class TestAgentObservabilityQueriesCases:
         debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
         debug_message.invoke_from = InvokeFrom.DEBUGGER
         execution = _agent_observability_service_node_execution()
+        execution.created_at = datetime(2026, 7, 23, 7, 0, 18)
         execution.inputs = json.dumps(
             {
                 "agent_backend_request": {
@@ -551,6 +552,7 @@ class TestAgentObservabilityQueriesCases:
         )
         execution.outputs = '{"output":"Workflow answer"}'
         account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
+        account_execution.created_at = datetime(2026, 7, 23, 7, 0, 20)
         account_execution.created_by_role = CreatorUserRole.ACCOUNT
         account_execution.created_by = "account-1"
         old_feedback = _feedback(rating=FeedbackRating.DISLIKE)
@@ -582,12 +584,7 @@ class TestAgentObservabilityQueriesCases:
             request_id="request-1", trace_id=None, account_id="account-1", active_workspace_id="tenant-1"
         )
         filters = AgentLogExportQuery(
-            sources=(
-                "webapp:app-1",
-                "console",
-                "workflow:workflow-app-1",
-                "workflow:workflow-app-1:workflow-1:v1:node-1",
-            ),
+            sources=("webapp", "console", "workflow"),
             end_user_ids=("end-user-1",),
             account_ids=("account-1",),
             start="2026-07-23 07:00",
@@ -616,7 +613,7 @@ class TestAgentObservabilityQueriesCases:
         ]
         rows = {row["message_id"]: row for row in reader}
 
-        assert rows.keys() == {message.id, execution.id, account_execution.id}
+        assert list(rows) == [execution.id, message.id, account_execution.id]
         assert rows[message.id]["source"] == "WebApp"
         assert rows[execution.id]["source"] == rows[account_execution.id]["source"] == "Workflow"
         assert all(row["agent_id"] == agent.id and row["app_type"] == "New Agent" for row in rows.values())

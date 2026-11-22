@@ -12,7 +12,6 @@ from uuid import uuid4
 import pytest
 from flask import Blueprint, Flask
 from flask.testing import FlaskClient
-from redis import Redis
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.test import TestResponse
@@ -45,7 +44,6 @@ from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from extensions.ext_application_services import build_application_services
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
-from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now, utc_now
 from libs.external_api import ExternalApi
@@ -63,7 +61,7 @@ from services.retention.agent.log_export_service import AgentLogExportTask
 from services.retention.log_export_task import LogExportStatus
 from tasks.log_export_tasks import prepare_log_export_task
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.log_export_fixtures import LogExportStorageIo
+from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_conversation, make_end_user, make_message
 
 
@@ -74,6 +72,7 @@ class Harness:
     account_id: str
     tenant_id: str
     headers: dict[str, str]
+    redis: LogExportRedisIo
 
     def create_agent(
         self, *, published: bool = False, tenant_id: str | None = None, name: str = "Agent"
@@ -126,29 +125,26 @@ class Harness:
 
 
 @pytest.fixture
-def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[Harness]:
-    with (
-        Redis() as redis_client,
-        config_overrides_context(
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
-            RBAC_ENABLED=False,
-            LOGIN_DISABLED=False,
-            INIT_PASSWORD="",
-            SECRET_KEY="agent-access-test-secret-at-least-32-bytes",
-            CONSOLE_API_URL="https://console.example.test",
-            SERVICE_API_URL="https://api.example.test/v1",
-        ),
+def harness(
+    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], log_export_redis: LogExportRedisIo
+) -> Iterator[Harness]:
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        RBAC_ENABLED=False,
+        LOGIN_DISABLED=False,
+        INIT_PASSWORD="",
+        SECRET_KEY="agent-access-test-secret-at-least-32-bytes",
+        CONSOLE_API_URL="https://console.example.test",
+        SERVICE_API_URL="https://api.example.test/v1",
     ):
         app = Flask(__name__)
         app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
         db.init_app(app)
-        redis = RedisClientWrapper()
-        redis.initialize(redis_client)
         services = build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
             initialization_password="",
-            redis=redis,
+            redis=log_export_redis.client,
         )
         app.extensions["application_services"] = services
         bind_account_loader(app, services.accounts.identity.load_user)
@@ -206,7 +202,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             HEADER_NAME_CSRF_TOKEN: csrf,
         }
         try:
-            yield Harness(client, sqlite_session_factory, account_id, tenant_id, headers)
+            yield Harness(client, sqlite_session_factory, account_id, tenant_id, headers, log_export_redis)
         finally:
             _is_setup_completed.reset_success()
             with app.app_context():
@@ -341,27 +337,9 @@ def test_log_export_preview_is_scoped_and_requires_export_entitlement(
 
 def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     harness: Harness,
-    monkeypatch: pytest.MonkeyPatch,
     log_export_publish: MagicMock,
     log_export_storage: LogExportStorageIo,
 ) -> None:
-    saved: dict[str, tuple[int, str]] = {}
-
-    def setex(_redis: RedisClientWrapper, key: str, expires_in: int, value: str) -> bool:
-        saved[key] = (expires_in, value)
-        return True
-
-    def transition(*, keys: list[str], args: list[str]) -> int:
-        (key,) = keys
-        ttl, raw = saved[key]
-        if AgentLogExportTask.model_validate_json(raw).status != args[0]:
-            return 0
-        saved[key] = (ttl, args[1])
-        return 1
-
-    monkeypatch.setattr(RedisClientWrapper, "setex", setex)
-    monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: saved[key][1] if key in saved else None)
-    monkeypatch.setattr(RedisClientWrapper, "register_script", lambda _redis, _script: transition)
     publish = log_export_publish
     uploaded: dict[str, list[dict[str, str]]] = {}
 
@@ -450,9 +428,8 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert response.status_code == HTTPStatus.ACCEPTED
     task_id = response.get_json()["task_id"]
     assert response.json == {"task_id": task_id, "status": "pending"}
-    task_key = f"agent_log_export:{harness.tenant_id}:{agent_id}:{task_id}"
-    task_ttl, task_json = saved[task_key]
-    task = AgentLogExportTask.model_validate_json(task_json)
+    task_key = f"agent_log_export:{{{harness.tenant_id}}}:{agent_id}:{task_id}"
+    task = AgentLogExportTask.model_validate_json(harness.redis.get(task_key))
     assert task.app_id == agent_id
     assert task.tenant_id == harness.tenant_id
     assert task.requested_by == harness.account_id
@@ -462,27 +439,41 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert task.filters.start == datetime(2026, 7, 23, 7, tzinfo=UTC)
     assert task.filters.end == datetime(2026, 7, 23, 8, tzinfo=UTC)
     assert task.expires_at - task.created_at == timedelta(days=1)
-    assert saved[f"agent_log_export_latest:{harness.tenant_id}:{agent_id}:{harness.account_id}"] == (task_ttl, task_id)
+    assert (
+        harness.redis.get(f"agent_log_export_latest:{{{harness.tenant_id}}}:{agent_id}:{harness.account_id}") == task_id
+    )
     arguments = {"tenant_id": harness.tenant_id, "app_id": agent_id, "task_id": task_id, "export_kind": "agent"}
     publish.assert_called_once_with(kwargs=arguments, task_id=task_id, expires=task.expires_at)
     pending = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
     assert (pending.status_code, pending.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "pending"})
 
+    for source in ("webapp:", "webapp:not-an-app-id", "workflow:"):
+        assert (
+            harness.client.get(f"{base}/preview", headers=harness.headers, query_string={"sources": source}).status_code
+            == HTTPStatus.BAD_REQUEST
+        )
+        assert (
+            harness.client.post(base, headers=harness.headers, json={"sources": [source]}).status_code
+            == HTTPStatus.BAD_REQUEST
+        )
     for body in ({"sources": ["unknown-source"]}, {"start": "2026-07-23 16:00", "end": "2026-07-23 15:00"}):
         response = harness.client.post(base, headers=harness.headers, json=body)
         assert response.status_code == HTTPStatus.BAD_REQUEST
     response = harness.client.post(f"/console/api/agent/{foreign_id}/log-exports", headers=harness.headers, json={})
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert len(saved) == 2
+    harness.redis.reject_submission = True
+    blocked = harness.client.post(base, headers=harness.headers, json={})
+    assert (blocked.status_code, blocked.get_json()["code"]) == (429, "log_export_limit_reached")
+    publish.assert_called_once()
 
     published_arguments = publish.call_args.kwargs["kwargs"]
     with harness.client.application.app_context():
         prepare_log_export_task.run(**published_arguments)
         prepare_log_export_task.run(**published_arguments)
 
-    ready = AgentLogExportTask.model_validate_json(saved[task_key][1])
+    ready = AgentLogExportTask.model_validate_json(harness.redis.get(task_key))
     assert ready.status is LogExportStatus.READY
-    assert ready.storage_key == f"agent-log-exports/{harness.tenant_id}/{agent_id}/{task_id}.csv"
+    assert ready.storage_key == f"agent-log-exports/{harness.tenant_id}/{agent_id}/{task_id}/1.csv"
     rows = {row["message_id"]: row for row in uploaded[ready.storage_key]}
     assert rows.keys() == {message_id, account_message_id}
     row = rows[message_id]
@@ -501,9 +492,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert status.headers["Cache-Control"] == "no-store"
 
 
-def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_filters(
-    harness: Harness, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_filters(harness: Harness) -> None:
     agent_id, _ = harness.create_agent()
     other_agent_id, _ = harness.create_agent(name="Other agent")
     foreign_agent_id, _ = harness.create_agent(tenant_id=str(uuid4()))
@@ -518,13 +507,11 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
         ),
     ).model_copy(update={"status": LogExportStatus.PROCESSING})
     other_task = task.model_copy(update={"task_id": str(uuid4()), "requested_by": other_requester})
-    task_prefix = f"agent_log_export:{harness.tenant_id}:{agent_id}:"
-    latest_prefix = f"agent_log_export_latest:{harness.tenant_id}:{agent_id}:"
-    cache = {
-        task_prefix + other_task.task_id: other_task.model_dump_json(),
-        latest_prefix + other_requester: other_task.task_id,
-    }
-    monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: cache.get(key))
+    task_prefix = f"agent_log_export:{{{harness.tenant_id}}}:{agent_id}:"
+    latest_prefix = f"agent_log_export_latest:{{{harness.tenant_id}}}:{agent_id}:"
+    cache = harness.redis.cache
+    cache[task_prefix + other_task.task_id] = other_task.model_dump_json()
+    cache[latest_prefix + other_requester] = other_task.task_id
     path = f"/console/api/agent/{agent_id}/log-exports"
 
     latest = harness.client.get(f"{path}/latest", headers=harness.headers)
@@ -579,9 +566,9 @@ def test_agent_log_export_file_downloads_from_a_browser_session(
         requested_by=harness.account_id,
         filters=AgentLogExportFilters(sources=(), end_user_ids=(), start=None, end=None),
     )
-    task_key = f"agent_log_export:{harness.tenant_id}:{agent_id}:{task.task_id}"
-    cache = {task_key: task.model_dump_json()}
-    monkeypatch.setattr(RedisClientWrapper, "get", lambda _redis, key: cache.get(key))
+    task_key = f"agent_log_export:{{{harness.tenant_id}}}:{agent_id}:{task.task_id}"
+    cache = harness.redis.cache
+    cache[task_key] = task.model_dump_json()
     monkeypatch.setattr(roster_controller, "is_cloud_edition_billing_paid_plan", lambda _tenant_id: True)
     storage = log_export_storage
     storage.exists.return_value = True

@@ -648,6 +648,11 @@ export type UnprocessableEntityError = ErrorResponse & {
   status: 422
 }
 
+export type LogExportLimitReachedError = ErrorResponse & {
+  code: 'log_export_limit_reached'
+  status: 429
+}
+
 export type ConversationLogExportLatestResponse = {
   task: ConversationLogExportLatestTaskResponse | null
 }
@@ -3339,6 +3344,7 @@ export type ConversationLogExportFiltersResponse = {
   end: string | null
   end_user_ids: Array<string>
   keyword: string | null
+  sort_by: ConversationSort
   start: string | null
 }
 
@@ -4088,6 +4094,8 @@ export type StringListSource = {
 }
 
 export type ConversationAnnotationStatus = 'all' | 'annotated' | 'not_annotated'
+
+export type ConversationSort = '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -6804,6 +6812,7 @@ export type PostAppsByAppIdConversationLogExportsErrors = {
   403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   422: UnprocessableEntityError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6862,6 +6871,7 @@ export type GetAppsByAppIdConversationLogExportsPreviewData = {
 export type GetAppsByAppIdConversationLogExportsPreviewErrors = {
   403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
+  422: UnprocessableEntityError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8184,6 +8194,7 @@ export type PostAppsByAppIdWorkflowLogExportsErrors = {
   403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   422: UnprocessableEntityError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
   default: ErrorResponse
 }
 

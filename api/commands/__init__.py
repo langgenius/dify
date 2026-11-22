@@ -41,7 +41,7 @@ from .retention import (
     cleanup_orphaned_draft_variables,
     clear_free_plan_tenant_expired_logs,
     delete_archived_workflow_runs,
-    export_app_messages,
+    export_app_logs,
     restore_workflow_runs,
 )
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
@@ -74,7 +74,7 @@ __all__ = [
     "create_tenant",
     "data_migrate",
     "delete_archived_workflow_runs",
-    "export_app_messages",
+    "export_app_logs",
     "export_migration_data",
     "export_migration_data_template",
     "extract_plugins",

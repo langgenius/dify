@@ -4,6 +4,7 @@ from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 
 from extensions.storage.aws_s3_storage import AwsS3Storage
 
@@ -16,6 +17,21 @@ def s3_storage(config_overrides: Callable[..., None]) -> tuple[AwsS3Storage, Mag
     with patch("extensions.storage.aws_s3_storage.boto3.client", return_value=client):
         storage = AwsS3Storage()
     return storage, client
+
+
+@pytest.mark.parametrize("code", ["404", "NoSuchKey"])
+def test_exists_returns_false_for_missing_keys(s3_storage: tuple[AwsS3Storage, MagicMock], code: str) -> None:
+    storage, client = s3_storage
+    client.head_object.side_effect = ClientError({"Error": {"Code": code}}, "HeadObject")
+    assert not storage.exists("logs/export.csv")
+
+
+@pytest.mark.parametrize("code", ["AccessDenied", "SlowDown", "503", "NoSuchBucket"])
+def test_exists_propagates_s3_failures(s3_storage: tuple[AwsS3Storage, MagicMock], code: str) -> None:
+    storage, client = s3_storage
+    client.head_object.side_effect = ClientError({"Error": {"Code": code}}, "HeadObject")
+    with pytest.raises(ClientError):
+        storage.exists("logs/export.csv")
 
 
 def test_generate_presigned_url(s3_storage: tuple[AwsS3Storage, MagicMock]) -> None:

@@ -52,6 +52,7 @@ from services.agent.observability_contracts import (
     AgentLogQuery,
     AgentObservabilityNotFoundError,
     AgentStatisticsQuery,
+    normalize_agent_log_export_source,
 )
 from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
 
@@ -137,7 +138,10 @@ class AgentObservabilityQueries:
         if lowered == "webapp":
             return AgentSourceFilter(kind="webapp")
         if lowered.startswith("webapp:"):
-            return AgentSourceFilter(kind="webapp", app_id=normalized.split(":", 1)[1] or None)
+            app_id = normalized.split(":", 1)[1]
+            if not app_id or ":" in app_id:
+                raise ValueError(f"Unsupported source: {source}")
+            return AgentSourceFilter(kind="webapp", app_id=app_id)
         if lowered == "workflow":
             return AgentSourceFilter(kind="workflow")
         if lowered.startswith("workflow:"):
@@ -267,15 +271,19 @@ class AgentObservabilityQueries:
         return AgentLogExportCounts(log_count=int(counts[0]), row_count=int(counts[1]))
 
     def matching_export_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> Subquery | None:
-        """Select distinct source, log and row IDs within the admitted Agent and filters.
+        """Select distinct source, log, row IDs and timestamps within the admitted Agent and filters.
 
         Return None when no selected source addresses this Agent. The caller owns the read session.
         """
-        source_filters = self.resolve_source_filters(params.sources)
+        sources = tuple(normalize_agent_log_export_source(source) for source in params.sources)
+        source_filters = self.resolve_source_filters(sources)
         workflow_app = aliased(App)
         matches = [
             self._select_webapp_log_rows(app=app, params=params, source_filter=source_filter).with_only_columns(
-                sa.literal("webapp").label("source"), Conversation.id.label("log_id"), Message.id.label("row_id")
+                sa.literal("webapp").label("source"),
+                Conversation.id.label("log_id"),
+                Message.id.label("row_id"),
+                Message.created_at.label("created_at"),
             )
             for source_filter in source_filters
             if source_filter.kind in {"all", "webapp"} and source_filter.app_id in {None, app.id}
@@ -287,6 +295,7 @@ class AgentObservabilityQueries:
                 sa.literal("workflow").label("source"),
                 WorkflowNodeExecutionModel.id.label("log_id"),
                 WorkflowNodeExecutionModel.id.label("row_id"),
+                WorkflowNodeExecutionModel.created_at.label("created_at"),
             )
             for source_filter in source_filters
             if source_filter.kind in {"all", "workflow"}
@@ -1746,7 +1755,7 @@ class SQLAlchemyAgentObservabilityRepository:
     def iter_export_rows(
         self, *, tenant_id: str, agent_id: str, filters: AgentLogExportFilters
     ) -> Generator[AgentLogExportRow]:
-        """Stage matching IDs once and yield detached log rows in bounded read batches.
+        """Stage matching IDs in timestamp order and yield detached log rows in bounded read batches.
 
         Stop if the Agent's runtime App changes. Rows removed before a batch read are omitted.
         """
@@ -1759,7 +1768,11 @@ class SQLAlchemyAgentObservabilityRepository:
                 if selected is None:
                     return
                 # Only IDs are streamed to disk during the initial scan.
-                statement = select(selected.c.source, selected.c.row_id).execution_options(yield_per=1000)
+                statement = (
+                    select(selected.c.source, selected.c.row_id)
+                    .order_by(selected.c.created_at, selected.c.source, selected.c.row_id)
+                    .execution_options(yield_per=1000)
+                )
                 with session.execute(statement) as result:
                     id_file.writelines(f"{source}\t{row_id}\n" for source, row_id in result)
             id_file.seek(0)
@@ -1771,9 +1784,18 @@ class SQLAlchemyAgentObservabilityRepository:
                     if app.id != app_id:
                         raise AgentObservabilityNotFoundError
                     queries = AgentObservabilityQueries(session)
-                    rows = queries.read_export_webapp_rows(app=app, row_ids=webapp_ids)
-                    rows.extend(queries.read_export_workflow_rows(app=app, agent_id=agent_id, row_ids=workflow_ids))
-                yield from rows
+                    rows_by_source = {
+                        "webapp": {
+                            row.message_id: row for row in queries.read_export_webapp_rows(app=app, row_ids=webapp_ids)
+                        },
+                        "workflow": {
+                            row.message_id: row
+                            for row in queries.read_export_workflow_rows(
+                                app=app, agent_id=agent_id, row_ids=workflow_ids
+                            )
+                        },
+                    }
+                yield from (row for source, row_id in batch if (row := rows_by_source[source].get(row_id)) is not None)
 
     def search_log_identities(
         self, context: RequestContext, agent_id: str, *, keyword: str

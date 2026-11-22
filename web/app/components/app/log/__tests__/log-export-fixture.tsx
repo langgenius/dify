@@ -67,6 +67,7 @@ export async function openExport(
           end_user_ids: [endUserId],
           account_ids: [],
           annotation_status: 'annotated',
+          sort_by: '-updated_at',
           keyword: 'invoice',
         },
       }
@@ -122,6 +123,7 @@ export async function openExport(
             end_user_ids: filters.end_user_ids ?? [],
             account_ids: filters.account_ids ?? [],
             annotation_status: filters.annotation_status ?? 'all',
+            sort_by: filters.sort_by ?? '-updated_at',
             keyword: filters.keyword ?? null,
           },
         }

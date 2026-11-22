@@ -473,6 +473,11 @@ export type PaidPlanRequiredError = ErrorResponse & {
   status: 403
 }
 
+export type LogExportLimitReachedError = ErrorResponse & {
+  code: 'log_export_limit_reached'
+  status: 429
+}
+
 export type AgentLogExportLatestResponse = {
   task: AgentLogExportLatestTaskResponse | null
 }
@@ -3963,6 +3968,7 @@ export type PostAgentByAgentIdLogExportsErrors = {
   400: ErrorResponse
   403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
+  429: LogExportLimitReachedError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -29,6 +29,7 @@ from controllers.console.app.error import (
     ConversationLogExportFileNotFoundHTTPError,
     ConversationLogExportTaskNotFoundHTTPError,
     ConversationLogExportTaskNotReadyHTTPError,
+    LogExportLimitReachedHTTPError,
 )
 from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.flask_admission import console_account_admission
@@ -65,6 +66,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationScope,
     ConsoleLogIdentitySource,
     ConversationAnnotationStatus,
+    ConversationSort,
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
@@ -74,6 +76,7 @@ from services.retention.conversation.log_export_service import (
 )
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportLimitReachedError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
@@ -183,6 +186,7 @@ class ConversationLogExportFiltersResponse(ResponseModel):
     start: datetime | None
     end: datetime | None
     annotation_status: ConversationAnnotationStatus
+    sort_by: ConversationSort
     end_user_ids: tuple[str, ...]
     account_ids: tuple[str, ...]
 
@@ -443,7 +447,7 @@ class ChatConversationIdentityOptionsApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/preview")
 class ConversationLogExportPreviewApi(Resource):
-    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError, _ConversationLogValidationError)
     @console_ns.doc("preview_conversation_log_export")
     @console_ns.doc(description="Count the conversations and rows that match the application's Logs filters")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogExportPreviewQuery)})
@@ -470,6 +474,7 @@ class ConversationLogExportApi(Resource):
         AppNotFoundError,
         ForbiddenError,
         InvalidArgumentError,
+        LogExportLimitReachedHTTPError,
         PaidPlanRequiredError,
         UnauthorizedError,
         _ConversationLogValidationError,
@@ -498,6 +503,8 @@ class ConversationLogExportApi(Resource):
             )
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc
+        except LogExportLimitReachedError as exc:
+            raise LogExportLimitReachedHTTPError() from exc
         return dump_response(ConversationLogExportTaskResponse, task), HTTPStatus.ACCEPTED
 
 

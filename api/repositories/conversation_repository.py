@@ -71,6 +71,7 @@ _CONSOLE_APP_MODES_BY_KIND: dict[ConsoleConversationKind, frozenset[AppMode]] = 
     "chat": frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}),
 }
 _CONSOLE_LOG_APP_MODES = _CONSOLE_APP_MODES_BY_KIND["completion"] | _CONSOLE_APP_MODES_BY_KIND["chat"]
+_CONVERSATION_EXPORT_APP_MODES = _CONSOLE_LOG_APP_MODES - {AppMode.AGENT}
 
 
 class ConversationRepository:
@@ -180,7 +181,7 @@ class ConversationRepository:
 
     def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
         """Resolve the owned conversation app's mode and the caller's time zone for log export."""
-        return self._get_console_scope(context, app_id, allowed_modes=_CONSOLE_LOG_APP_MODES)
+        return self._get_console_scope(context, app_id, allowed_modes=_CONVERSATION_EXPORT_APP_MODES)
 
     def _get_console_scope(
         self, context: RequestContext, app_id: str, *, allowed_modes: frozenset[AppMode]

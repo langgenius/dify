@@ -32,6 +32,7 @@ import {
   zInvalidComposerConfigError,
   zInvalidRosterAgentPackageError,
   zInvalidTracingConfigError,
+  zLogExportLimitReachedError,
   zMaxKeysExceededError,
   zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
@@ -2222,6 +2223,7 @@ export const get32 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
   })
 
 export const preview4 = {
@@ -2325,6 +2327,7 @@ export const post24 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
+    log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
     unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
   })
@@ -3653,6 +3656,7 @@ export const post43 = oc
   .errors({
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
+    log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
     unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
   })

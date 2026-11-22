@@ -67,7 +67,7 @@ class WorkflowAppLogPage:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowLogExportRow:
-    """Detached data for one run. Missing input, output, or actor fields are blank in the CSV."""
+    """Detached data for one run, timestamped by its matching log entry."""
 
     run_id: str
     created_at: datetime

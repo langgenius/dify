@@ -2,8 +2,10 @@
 
 import logging
 from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from enum import StrEnum
+from threading import Event, Thread
 from typing import Protocol, Self, TextIO
 from uuid import uuid4
 
@@ -14,6 +16,7 @@ from machinery.context import RequestContext
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
+_LOG_EXPORT_LEASE_RENEW_SECONDS = 30
 logger = logging.getLogger(__name__)
 
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], int]
@@ -46,6 +49,14 @@ class LogExportFileNotFoundError(Exception):
     """The completed export's CSV could not be opened."""
 
 
+class LogExportLimitReachedError(Exception):
+    """The requester already has an active export or the workspace is at capacity."""
+
+
+class LogExportLeaseBusyError(Exception):
+    """An active execution holds the lease, or the current execution lost it."""
+
+
 class LogExportTask[FiltersT](BaseModel):
     """Persist the admitted owner, normalized filters and state of a temporary export."""
 
@@ -60,6 +71,7 @@ class LogExportTask[FiltersT](BaseModel):
     expires_at: datetime
     status: LogExportStatus = LogExportStatus.PENDING
     storage_key: str | None = None
+    attempt: int = 0
 
     @classmethod
     def pending(cls, *, tenant_id: str, app_id: str, requested_by: str, filters: FiltersT) -> Self:
@@ -91,7 +103,7 @@ def open_ready_log_export_csv[FiltersT](
 
 class LogExportTaskStore[FiltersT](Protocol):
     def save(self, task: LogExportTask[FiltersT]) -> None:
-        """Persist a new task and remember it as its requester's latest for the app."""
+        """Atomically reserve capacity and save the requester's latest pending task."""
         ...
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
@@ -102,8 +114,16 @@ class LogExportTaskStore[FiltersT](Protocol):
         """Return the requester's latest live task for this app, or None if unavailable."""
         ...
 
-    def transition(self, task: LogExportTask[FiltersT], *, from_status: LogExportStatus) -> bool:
-        """Replace a live task only from the expected status, keeping its original expiration."""
+    def claim(self, task: LogExportTask[FiltersT]) -> LogExportTask[FiltersT] | None:
+        """Claim a pending or abandoned attempt, or raise when its execution lease is still live."""
+        ...
+
+    def renew(self, task: LogExportTask[FiltersT]) -> bool:
+        """Extend only this execution's lease while the underlying task remains live."""
+        ...
+
+    def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
+        """Publish a terminal state and release capacity only while the given state or attempt is owned."""
         ...
 
 
@@ -120,8 +140,8 @@ def save_and_dispatch_log_export_task[FiltersT](
     dispatch: Callable[[LogExportTask[FiltersT]], None],
 ) -> None:
     """Persist an admitted pending task before publishing it. Record a failure if it remains pending."""
+    tasks.save(task)
     try:
-        tasks.save(task)
         dispatch(task)
     except Exception:
         _mark_failed(task, tasks)
@@ -136,34 +156,70 @@ def prepare_log_export_task[FiltersT](
     store_csv: StoreLogExportFile,
     write_csv: WriteLogExportCsv[FiltersT],
 ) -> None:
-    """Claim a live pending task scoped by the store and mark it ready only after uploading the CSV.
-
-    Leave absent and already claimed tasks alone. Record preparation failures before propagating them.
-    """
-    if task is None or task.status is not LogExportStatus.PENDING:
+    """Prepare a leased attempt, publishing its own CSV only while it still owns the task."""
+    if task is None or task.status not in (LogExportStatus.PENDING, LogExportStatus.PROCESSING):
         return
-    processing = task.model_copy(update={"status": LogExportStatus.PROCESSING})
-    if not tasks.transition(processing, from_status=LogExportStatus.PENDING):
+    processing = tasks.claim(task)
+    if processing is None:
         return
 
     context = RequestContext(
         request_id=task.task_id, trace_id=None, account_id=task.requested_by, active_workspace_id=task.tenant_id
     )
-    storage_key = f"{storage_prefix}/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
-    try:
-        store_csv(storage_key, lambda output: write_csv(context, task.app_id, filters=task.filters, output=output))
-        ready = processing.model_copy(update={"status": LogExportStatus.READY, "storage_key": storage_key})
-        tasks.transition(ready, from_status=LogExportStatus.PROCESSING)
-    except Exception:
-        _mark_failed(processing, tasks)
-        raise
+    # A stale attempt can only upload to its own key.
+    storage_key = f"{storage_prefix}/{task.tenant_id}/{task.app_id}/{task.task_id}/{processing.attempt}.csv"
+
+    def write_owned_csv(output: TextIO) -> int:
+        """Generate the CSV and confirm ownership immediately before upload."""
+        count = write_csv(context, task.app_id, filters=task.filters, output=output)
+        if not tasks.renew(processing):
+            raise LogExportLeaseBusyError("The log export lease expired before upload.")
+        return count
+
+    with _renew_export_lease(processing, tasks):
+        try:
+            store_csv(storage_key, write_owned_csv)
+        except LogExportLeaseBusyError:
+            raise
+        except Exception as exc:
+            if not _mark_failed(processing, tasks):
+                raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
+            raise
+        if not tasks.finish(processing, status=LogExportStatus.READY, storage_key=storage_key):
+            raise LogExportLeaseBusyError("The log export lease expired before publication.")
 
 
-def _mark_failed[FiltersT](task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]) -> None:
-    """Record failure from the last owned state while preserving the original exception."""
+@contextmanager
+def _renew_export_lease[FiltersT](
+    task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]
+) -> Generator[None]:
+    """Refresh the attempt's lease during queries and uploads and stop refreshing on exit."""
+    stopped = Event()
+
+    def renew() -> None:
+        while not stopped.wait(_LOG_EXPORT_LEASE_RENEW_SECONDS):
+            try:
+                if not tasks.renew(task):
+                    return
+            except Exception:
+                logger.exception("Failed to renew log export lease: task=%s attempt=%s", task.task_id, task.attempt)
+                return
+
+    heartbeat = Thread(target=renew, name="log-export-lease", daemon=True)
+    heartbeat.start()
     try:
-        tasks.transition(task.model_copy(update={"status": LogExportStatus.FAILED}), from_status=task.status)
+        yield
+    finally:
+        stopped.set()
+        heartbeat.join(timeout=5)
+
+
+def _mark_failed[FiltersT](task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]) -> bool:
+    """Record failure if still owned, preserving the exception that led to this update."""
+    try:
+        return tasks.finish(task, status=LogExportStatus.FAILED)
     except Exception:
         logger.exception(
             "Failed to record log export failure: tenant=%s app=%s task=%s", task.tenant_id, task.app_id, task.task_id
         )
+        return False

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
+from uuid import UUID
 
 from machinery.context import RequestContext
 from services.entities.conversation_entities import ConsoleLogIdentity
@@ -12,6 +13,24 @@ from services.entities.conversation_entities import ConsoleLogIdentity
 
 class AgentObservabilityNotFoundError(Exception):
     """The requested Agent or its runtime App is unavailable in the admitted workspace."""
+
+
+def normalize_agent_log_export_source(source: str) -> str:
+    """Validate a structured app or workflow selector and normalize its UUIDs before it reaches SQL."""
+    kind, separator, identifier = source.strip().partition(":")
+    kind = kind.lower()
+    if not separator or kind not in {"webapp", "workflow"}:
+        return source.strip()
+    parts = identifier.split(":")
+    if not all(parts) or (len(parts) != 1 and (kind == "webapp" or len(parts) < 4)):
+        raise ValueError("Invalid structured log source ID.")
+    try:
+        parts[0] = str(UUID(parts[0]))
+        if len(parts) > 1:
+            parts[1] = str(UUID(parts[1]))
+    except ValueError as exc:
+        raise ValueError("Invalid structured log source ID.") from exc
+    return ":".join((kind, *parts))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

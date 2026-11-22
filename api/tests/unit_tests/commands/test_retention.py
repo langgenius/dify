@@ -69,7 +69,7 @@ def log_export_cli() -> DifyApp:
 
 
 @pytest.mark.parametrize("destination", ["local", "storage"])
-def test_export_app_messages_writes_console_csv_with_the_requested_filters(
+def test_export_app_logs_writes_console_csv_with_the_requested_filters(
     log_export_cli: DifyApp,
     sqlite_session_factory: sessionmaker[Session],
     tmp_path: Path,
@@ -110,7 +110,7 @@ def test_export_app_messages_writes_console_csv_with_the_requested_filters(
             )
 
     args = [
-        "export-app-messages",
+        "export-app-logs",
         "--app-id",
         app.id,
         "--start-from",
@@ -142,7 +142,7 @@ def test_export_app_messages_writes_console_csv_with_the_requested_filters(
     assert {"agent_id", "conversation_id"}.isdisjoint(row)
 
 
-def test_export_app_messages_writes_workflow_logs(
+def test_export_app_logs_writes_workflow_logs(
     log_export_cli: DifyApp, sqlite_session_factory: sessionmaker[Session], tmp_path: Path
 ) -> None:
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
@@ -178,7 +178,7 @@ def test_export_app_messages_writes_workflow_logs(
     with log_export_cli.app_context():
         result = log_export_cli.test_cli_runner().invoke(
             args=[
-                "export-app-messages",
+                "export-app-logs",
                 "--app-id",
                 app.id,
                 "--filename",
@@ -205,7 +205,7 @@ def test_export_app_messages_writes_workflow_logs(
 
 
 @pytest.mark.parametrize("target_option", ["--agent-id", "--app-id"])
-def test_export_app_messages_writes_new_agent_logs(
+def test_export_app_logs_writes_new_agent_logs(
     log_export_cli: DifyApp, sqlite_session_factory: sessionmaker[Session], tmp_path: Path, target_option: str
 ) -> None:
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.AGENT)
@@ -244,7 +244,7 @@ def test_export_app_messages_writes_new_agent_logs(
     with log_export_cli.app_context():
         result = log_export_cli.test_cli_runner().invoke(
             args=[
-                "export-app-messages",
+                "export-app-logs",
                 target_option,
                 agent.id if target_option == "--agent-id" else app.id,
                 "--filename",
@@ -270,15 +270,13 @@ def test_export_app_messages_writes_new_agent_logs(
     )
 
 
-def test_export_app_messages_keeps_existing_file_when_the_app_is_missing(
-    log_export_cli: DifyApp, tmp_path: Path
-) -> None:
+def test_export_app_logs_keeps_existing_file_when_the_app_is_missing(log_export_cli: DifyApp, tmp_path: Path) -> None:
     existing = tmp_path / "logs.csv"
     existing.write_text("completed export", encoding="utf-8")
     with log_export_cli.app_context():
         result = log_export_cli.test_cli_runner().invoke(
             args=[
-                "export-app-messages",
+                "export-app-logs",
                 "--app-id",
                 str(uuid4()),
                 "--end-before",

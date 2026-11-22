@@ -3,11 +3,9 @@ import uuid
 from collections.abc import Iterator
 from datetime import datetime
 from enum import Enum
-from itertools import batched
-from tempfile import TemporaryFile
 from typing import override
 
-from sqlalchemy import Select, and_, case, func, literal, or_, select
+from sqlalchemy import Select, and_, case, func, literal, or_, select, tuple_
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, aliased, sessionmaker
 from sqlalchemy.orm.util import AliasedClass
@@ -75,13 +73,8 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
     def iter_log_export_rows(
         self, *, scope: WorkflowLogExportScope, filters: WorkflowLogExportFilters
     ) -> Iterator[WorkflowLogExportRow]:
-        """Scan candidate log IDs once, then yield one CSV row per matching run in log order."""
+        """Yield one row per matching run in log order, closing the read session before yielding each page."""
         end_before = naive_utc_now()
-        candidate_logs = (
-            self._filter_export_logs(select(WorkflowAppLog.id), scope=scope, filters=filters)
-            .where(WorkflowAppLog.created_at < end_before)
-            .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
-        )
         matching_log = (
             self._matching_export_logs(scope=scope, filters=filters)
             .where(WorkflowAppLog.created_at < end_before)
@@ -91,8 +84,9 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
         )
         statement = (
             select(
+                WorkflowAppLog.created_at,
+                WorkflowAppLog.id,
                 WorkflowRun.id,
-                WorkflowRun.created_at,
                 WorkflowRun.inputs,
                 WorkflowRun.outputs,
                 WorkflowRun.status,
@@ -129,48 +123,56 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 WorkflowRun.tenant_id == scope.tenant_id,
                 WorkflowRun.app_id == scope.app_id,
                 WorkflowRun.created_at < end_before,
+                WorkflowAppLog.created_at < end_before,
                 WorkflowAppLog.id == matching_log,
             )
             .order_by(WorkflowAppLog.created_at, WorkflowAppLog.id)
         )
+        statement = self._filter_export_logs(statement, scope=scope, filters=filters)
         statement = self._filter_runs(statement, WorkflowRun, keyword=filters.keyword, status=filters.status)
-        # Stage only IDs on disk so the initial scan finishes before CSV rows are produced.
-        with TemporaryFile(mode="w+t", encoding="utf-8") as id_file:
-            with (
-                self._session_factory() as session,
-                session.execute(candidate_logs.execution_options(yield_per=1000)) as result,
-            ):
-                id_file.writelines(f"{log_id}\n" for log_id in result.scalars())
-            id_file.seek(0)
-            candidate_ids = (line.rstrip("\n") for line in id_file)
-            for log_ids in batched(candidate_ids, _LOG_EXPORT_BATCH_SIZE, strict=False):
-                with self._session_factory() as session:
-                    batch = session.execute(statement.where(WorkflowAppLog.id.in_(log_ids))).tuples().all()
-                for (
-                    run_id,
-                    created_at,
-                    inputs,
-                    outputs,
-                    status,
-                    trigger,
-                    created_from,
-                    user_id,
-                    account_id,
-                    name,
-                ) in batch:
-                    yield WorkflowLogExportRow(
-                        run_id=run_id,
-                        created_at=created_at,
-                        inputs=inputs,
-                        outputs=outputs,
-                        status=status,
-                        trigger_by=created_from
-                        if trigger is None or trigger == WorkflowRunTriggeredFrom.APP_RUN
-                        else trigger,
-                        end_user_id=user_id,
-                        account_id=account_id,
-                        account_name=name,
+        cursor: tuple[datetime, str] | None = None
+        has_more = True
+        while has_more:
+            page = statement.limit(_LOG_EXPORT_BATCH_SIZE)
+            if cursor is not None:
+                page = page.where(
+                    tuple_(WorkflowAppLog.created_at, WorkflowAppLog.id)
+                    > tuple_(
+                        literal(cursor[0], type_=WorkflowAppLog.created_at.type),
+                        literal(cursor[1], type_=WorkflowAppLog.id.type),
                     )
+                )
+            with self._session_factory() as session:
+                batch = session.execute(page).tuples().all()
+            for (
+                created_at,
+                _log_id,
+                run_id,
+                inputs,
+                outputs,
+                status,
+                trigger,
+                created_from,
+                user_id,
+                account_id,
+                name,
+            ) in batch:
+                yield WorkflowLogExportRow(
+                    run_id=run_id,
+                    created_at=created_at,
+                    inputs=inputs,
+                    outputs=outputs,
+                    status=status,
+                    trigger_by=created_from
+                    if trigger is None or trigger == WorkflowRunTriggeredFrom.APP_RUN
+                    else trigger,
+                    end_user_id=user_id,
+                    account_id=account_id,
+                    account_name=name,
+                )
+            has_more = len(batch) == _LOG_EXPORT_BATCH_SIZE
+            if has_more:
+                cursor = (batch[-1][0], batch[-1][1])
 
     @override
     def search_log_export_identities(
@@ -461,7 +463,7 @@ class WorkflowAppLogQueryRepository(WorkflowAppLogQuery):
                 .exists(),
             ]
             if keyword_uuid := self._safe_parse_uuid(keyword):
-                keyword_conditions.append(workflow_run.id == keyword_uuid)
+                keyword_conditions.append(workflow_run.id == str(keyword_uuid))
             statement = statement.where(or_(*keyword_conditions))
         if status is not None:
             statement = statement.where(workflow_run.status == status)

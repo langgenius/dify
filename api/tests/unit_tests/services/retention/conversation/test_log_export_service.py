@@ -33,7 +33,7 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportTask,
 )
-from services.retention.log_export_task import LogExportKind
+from services.retention.log_export_task import LogExportKind, LogExportLeaseBusyError
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
@@ -142,7 +142,7 @@ def test_chat_csv_header_includes_conversation_and_message_ids_on_an_empty_expor
     assert {"agent_id", "run_id", "status", "trigger_by", "source"}.isdisjoint(header)
 
 
-@pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])
+@pytest.mark.parametrize("outcome", ["busy", "failed", "ready"])
 def test_prepare_export_records_only_claimed_work(
     outcome: str,
     sqlite_session_factory: sessionmaker[Session],
@@ -163,24 +163,16 @@ def test_prepare_export_records_only_claimed_work(
             keyword=None, start=None, end=None, annotation_status="all", sort_by="-updated_at"
         ),
     )
-    current = task
-    transitions: list[tuple[str, str]] = []
-
-    def transition(*, keys: list[str], args: list[str]) -> int:
-        """Apply the expected-state update at the Redis boundary."""
-        nonlocal current
-        assert keys == [f"conversation_log_export:{task.tenant_id}:{task.app_id}:{task.task_id}"]
-        previous_status, raw = args
-        candidate = ConversationLogExportTask.model_validate_json(raw)
-        transitions.append((previous_status, candidate.status))
-        if outcome == "claim_lost" or current.status != previous_status:
-            return 0
-        current = candidate
-        log_export_redis.get.return_value = raw
-        return 1
-
-    log_export_redis.get.return_value = task.model_dump_json()
-    log_export_redis.register_script.return_value = transition
+    store = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+    )
+    store.save(task)
+    if outcome == "busy":
+        assert store.claim(task) is not None
+        with pytest.raises(LogExportLeaseBusyError):
+            export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        log_export_storage.save_from_path.assert_not_called()
+        return
     if outcome == "failed":
         log_export_storage.save_from_path.side_effect = OSError("upload failed")
 
@@ -190,17 +182,14 @@ def test_prepare_export_records_only_claimed_work(
     else:
         export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
 
-    if outcome == "claim_lost":
-        assert transitions == [("pending", "processing")]
-        log_export_storage.save_from_path.assert_not_called()
-    else:
-        storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
-        assert transitions == [("pending", "processing"), ("processing", outcome)]
-        assert log_export_storage.save_from_path.call_args.args[0] == storage_key
-        assert current.status == outcome
-        assert current.storage_key == (storage_key if outcome == "ready" else None)
-        export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        log_export_storage.save_from_path.assert_called_once()
+    storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}/1.csv"
+    assert log_export_storage.save_from_path.call_args.args[0] == storage_key
+    current = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert current is not None
+    assert current.status == outcome
+    assert current.storage_key == (storage_key if outcome == "ready" else None)
+    export.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    log_export_storage.save_from_path.assert_called_once()
 
 
 def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(

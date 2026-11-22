@@ -512,6 +512,18 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
 )
 
 /**
+ * LogExportLimitReachedError
+ *
+ * There is already an export for this requester and app, or the workspace export limit was reached.
+ */
+export const zLogExportLimitReachedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_limit_reached'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * AgentLogExportTaskNotFoundError
  *
  * Agent log export task not found.

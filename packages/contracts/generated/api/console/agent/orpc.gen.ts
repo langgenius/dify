@@ -26,6 +26,7 @@ import {
   zInspectorUnavailableError,
   zInvalidComposerConfigError,
   zInvalidTracingConfigError,
+  zLogExportLimitReachedError,
   zMaxKeysExceededError,
   zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
@@ -1299,6 +1300,7 @@ export const post16 = oc
   .errors({
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
+    log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   })
 

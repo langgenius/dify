@@ -1290,6 +1290,7 @@ Create a pending CSV export task for the Agent
 | 400 | Invalid log filters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-exports/latest
@@ -3460,6 +3461,7 @@ Create a pending CSV export task for one conversation app
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-log-exports/latest
@@ -3507,6 +3509,7 @@ Count the conversations and rows that match the application's Logs filters
 | 200 | Export preview | **application/json**: [ConversationLogExportPreviewResponse](#conversationlogexportpreviewresponse)<br> |
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-log-exports/{task_id}
@@ -4538,6 +4541,7 @@ Create a pending CSV export task for published runs in a Workflow app
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Unprocessable Entity | **application/json**: [UnprocessableEntityError](#unprocessableentityerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [LogExportLimitReachedError](#logexportlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-log-exports/identity-options
@@ -25466,6 +25470,7 @@ Submitted filters for the export, with any date bounds in UTC.
 | end | string |  | Yes |
 | end_user_ids | [ string ] |  | Yes |
 | keyword | string |  | Yes |
+| sort_by | [ConversationSort](#conversationsort) |  | Yes |
 | start | string |  | Yes |
 
 #### ConversationLogExportLatestResponse
@@ -25588,6 +25593,12 @@ The conversation was not found for this user and app.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
+
+#### ConversationSort
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationSort | string |  |  |
 
 #### ConversationVariableItemPayload
 
@@ -32758,6 +32769,14 @@ Paginated response body for organization candidate search.
 | ---- | ---- | ----------- | -------- |
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
+
+#### LogExportLimitReachedError
+
+There is already an export for this requester and app, or the workspace export limit was reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportLimitReachedError |  | There is already an export for this requester and app, or the workspace export limit was reached. |  |
 
 #### LogExportStatus
 

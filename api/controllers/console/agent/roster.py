@@ -43,6 +43,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.error import LogExportLimitReachedHTTPError
 from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
@@ -106,6 +107,7 @@ from services.agent.observability_contracts import (
     AgentLogExportQuery,
     AgentLogQuery,
     AgentObservabilityNotFoundError,
+    normalize_agent_log_export_source,
 )
 from services.agent.observability_contracts import AgentStatisticsQuery as AgentObservabilityStatisticsQuery
 from services.agent.roster_service import AgentRosterService
@@ -127,6 +129,7 @@ from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportLimitReachedError,
     LogExportStatus,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
@@ -294,13 +297,7 @@ class AgentLogExportPreviewQuery(BaseModel):
     @classmethod
     def validate_source_ids(cls, sources: list[str]) -> list[str]:
         """Reject malformed structured source identifiers before querying UUID columns."""
-        selections = [source.strip() for source in sources if source.strip()]
-        for source in selections:
-            kind, *parts = source.split(":", 3)
-            if kind.lower() == "workflow":
-                for identifier in parts[:2]:
-                    UUID(identifier)
-        return selections
+        return [normalize_agent_log_export_source(source) for source in sources if source.strip()]
 
     def to_query(self) -> AgentLogExportQuery:
         """Pass validated filters and account-local date bounds to Agent log export."""
@@ -1089,19 +1086,23 @@ class AgentLogExportPreviewApi(Resource):
     def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Return filtered export counts for the admitted Agent, workspace role, and plan."""
         _require_agent_log_export_access(context)
-        query = AgentLogExportPreviewQuery.model_validate(
-            {
-                "sources": _query_values("sources"),
-                "end_user_ids": _query_values("end_user_ids"),
-                "account_ids": _query_values("account_ids"),
-                "start": request.args.get("start"),
-                "end": request.args.get("end"),
-            }
-        )
         try:
+            query = AgentLogExportPreviewQuery.model_validate(
+                {
+                    "sources": _query_values("sources"),
+                    "end_user_ids": _query_values("end_user_ids"),
+                    "account_ids": _query_values("account_ids"),
+                    "start": request.args.get("start"),
+                    "end": request.args.get("end"),
+                }
+            )
             counts = application_services().agent_observability.count_export_logs(
                 context, str(agent_id), query.to_query()
             )
+        except ValidationError as exc:
+            raise InvalidArgumentError(
+                exc.json(include_url=False, include_input=False, include_context=False)
+            ) from None
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
         except ValueError as exc:
@@ -1111,7 +1112,9 @@ class AgentLogExportPreviewApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/log-exports")
 class AgentLogExportApi(Resource):
-    @error_responses(AgentNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError)
+    @error_responses(
+        AgentNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, LogExportLimitReachedHTTPError
+    )
     @console_ns.doc("create_agent_log_export", description="Create a pending CSV export task for the Agent")
     @console_ns.expect(console_ns.models[AgentLogExportCreatePayload.__name__])
     @console_ns.response(
@@ -1131,6 +1134,8 @@ class AgentLogExportApi(Resource):
             ) from None
         except AgentObservabilityNotFoundError as exc:
             raise AgentNotFoundError from exc
+        except LogExportLimitReachedError as exc:
+            raise LogExportLimitReachedHTTPError() from exc
         except ValueError as exc:
             raise InvalidArgumentError(str(exc)) from exc
         return dump_response(AgentLogExportTaskResponse, task), HTTPStatus.ACCEPTED

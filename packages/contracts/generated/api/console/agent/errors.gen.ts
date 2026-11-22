@@ -218,6 +218,14 @@ const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zLogExportLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('log_export_limit_reached'),
+      status: z.literal(429),
+    }),
+  ))()
+
 const zAgentLogExportTaskNotFoundError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -604,6 +612,7 @@ export const get22Errors = {
 export const post16Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
+  log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 

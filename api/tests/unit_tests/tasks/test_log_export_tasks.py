@@ -32,6 +32,8 @@ def test_conversation_log_export_uses_shared_task(log_export_publish: MagicMock)
     message = {**args, "export_kind": "conversation"}
     assert worker.name == "tasks.log_export_tasks.prepare_log_export_task"
     assert task_options(worker)["queue"] == "retention"
+    assert worker.acks_late
+    assert worker.reject_on_worker_lost
     log_export_publish.assert_called_once_with(kwargs=message, task_id=task.task_id, expires=task.expires_at)
 
     with app.app_context(), patch.object(application_services().conversation_log_exports, "prepare_task") as prepare:

@@ -3,17 +3,83 @@
 from typing import TYPE_CHECKING
 
 from libs.datetime_utils import utc_now
-from services.retention.log_export_task import LogExportStatus, LogExportTask
+from services.retention.log_export_task import (
+    LogExportLeaseBusyError,
+    LogExportLimitReachedError,
+    LogExportStatus,
+    LogExportTask,
+)
 
 if TYPE_CHECKING:
     from extensions.ext_redis import RedisClientWrapper
 
-_TRANSITION_LOG_EXPORT_TASK = """
-local current = redis.call("GET", KEYS[1])
-if not current or cjson.decode(current).status ~= ARGV[1] then
+_MAX_ACTIVE_EXPORTS_PER_WORKSPACE = 3
+_MAX_EXPORT_ATTEMPTS = 3
+_LEASE_SECONDS = 120
+
+_SAVE_LOG_EXPORT_TASK = """
+local clock = redis.call("TIME")
+local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+local ttl = tonumber(ARGV[2])
+local expires = now + ttl
+redis.call("ZREMRANGEBYSCORE", KEYS[3], "-inf", now)
+if redis.call("ZSCORE", KEYS[3], ARGV[1]) or redis.call("ZCARD", KEYS[3]) >= tonumber(ARGV[5]) then
     return 0
 end
-return redis.call("SET", KEYS[1], ARGV[2], "XX", "KEEPTTL") and 1 or 0
+redis.call("SET", KEYS[1], ARGV[3], "PXAT", expires)
+redis.call("SET", KEYS[2], ARGV[4], "PXAT", expires)
+redis.call("ZADD", KEYS[3], expires, ARGV[1])
+if redis.call("PTTL", KEYS[3]) < ttl then
+    redis.call("PEXPIREAT", KEYS[3], expires)
+end
+return 1
+"""
+
+_CLAIM_LOG_EXPORT_TASK = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then
+    return 0
+end
+local current = cjson.decode(raw)
+local attempt = tonumber(ARGV[2])
+if current.status ~= ARGV[1] or (current.attempt or 0) ~= attempt then
+    return 0
+end
+if redis.call("EXISTS", KEYS[2]) == 1 then
+    return -1
+end
+if attempt >= tonumber(ARGV[4]) then
+    redis.call("ZREM", KEYS[3], ARGV[6])
+else
+    redis.call("SET", KEYS[2], attempt + 1, "EX", ARGV[5])
+end
+redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
+return 1
+"""
+
+_RENEW_LOG_EXPORT_TASK = """
+if redis.call("GET", KEYS[2]) ~= ARGV[1] or redis.call("EXISTS", KEYS[1]) == 0 then
+    return 0
+end
+return redis.call("EXPIRE", KEYS[2], ARGV[2])
+"""
+
+_FINISH_LOG_EXPORT_TASK = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then
+    return 0
+end
+local current = cjson.decode(raw)
+if current.status ~= ARGV[1] or (current.attempt or 0) ~= tonumber(ARGV[2]) then
+    return 0
+end
+if current.status == "processing" and redis.call("GET", KEYS[2]) ~= ARGV[2] then
+    return 0
+end
+redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
+redis.call("DEL", KEYS[2])
+redis.call("ZREM", KEYS[3], ARGV[4])
+return 1
 """
 
 
@@ -29,20 +95,40 @@ class RedisLogExportTasks[FiltersT]:
         self._key_prefix = key_prefix
 
     def _key(self, *, tenant_id: str, app_id: str, task_id: str) -> str:
-        """Scope a task key to its owning workspace and app."""
-        return f"{self._key_prefix}:{tenant_id}:{app_id}:{task_id}"
+        """Keep task and capacity keys for one workspace in the same Redis Cluster slot."""
+        return f"{self._key_prefix}:{{{tenant_id}}}:{app_id}:{task_id}"
 
     def _latest_key(self, *, tenant_id: str, app_id: str, requested_by: str) -> str:
         """Locate the latest task ID for one requester in the app."""
-        return f"{self._key_prefix}_latest:{tenant_id}:{app_id}:{requested_by}"
+        return f"{self._key_prefix}_latest:{{{tenant_id}}}:{app_id}:{requested_by}"
+
+    @staticmethod
+    def _active_key(tenant_id: str) -> str:
+        """Share the workspace's active slots across all log export families."""
+        return f"log_export_active:{{{tenant_id}}}"
+
+    def _execution_keys(self, task: LogExportTask[FiltersT]) -> tuple[str, str, str]:
+        """Locate task state, the current execution lease, and workspace capacity."""
+        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        return key, f"{key}:lease", self._active_key(task.tenant_id)
 
     def save(self, task: LogExportTask[FiltersT]) -> None:
-        """Save a task before exposing it as the latest, with the same TTL for both keys."""
+        """Reserve an app/requester slot and one workspace slot before publishing the pending task."""
         key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
-        self._redis.setex(key, ttl_seconds, task.model_dump_json())
+        ttl_ms = max(1, int((task.expires_at - utc_now()).total_seconds() * 1000))
         latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
-        self._redis.setex(latest_key, ttl_seconds, task.task_id)
+        save = self._redis.register_script(_SAVE_LOG_EXPORT_TASK)
+        if not save(
+            keys=[key, latest_key, self._active_key(task.tenant_id)],
+            args=[
+                f"{task.app_id}:{task.requested_by}",
+                ttl_ms,
+                task.model_dump_json(),
+                task.task_id,
+                _MAX_ACTIVE_EXPORTS_PER_WORKSPACE,
+            ],
+        ):
+            raise LogExportLimitReachedError()
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
         """Load the matching live task for the workspace and app."""
@@ -63,8 +149,43 @@ class RedisLogExportTasks[FiltersT]:
         task = self.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
         return task if task is not None and task.requested_by == requested_by else None
 
-    def transition(self, task: LogExportTask[FiltersT], *, from_status: LogExportStatus) -> bool:
-        """Update only a task in the expected state, preserving its remaining TTL."""
-        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        transition = self._redis.register_script(_TRANSITION_LOG_EXPORT_TASK)
-        return bool(transition(keys=[key], args=[from_status.value, task.model_dump_json()]))
+    def claim(self, task: LogExportTask[FiltersT]) -> LogExportTask[FiltersT] | None:
+        """Claim one execution for an active task, or fail it after three interrupted attempts."""
+        if task.status not in (LogExportStatus.PENDING, LogExportStatus.PROCESSING):
+            return None
+        if task.attempt >= _MAX_EXPORT_ATTEMPTS:
+            updated = task.model_copy(update={"status": LogExportStatus.FAILED})
+        else:
+            updated = task.model_copy(update={"status": LogExportStatus.PROCESSING, "attempt": task.attempt + 1})
+        claim = self._redis.register_script(_CLAIM_LOG_EXPORT_TASK)
+        result = claim(
+            keys=self._execution_keys(task),
+            args=[
+                task.status.value,
+                task.attempt,
+                updated.model_dump_json(),
+                _MAX_EXPORT_ATTEMPTS,
+                _LEASE_SECONDS,
+                f"{task.app_id}:{task.requested_by}",
+            ],
+        )
+        if result == -1:
+            raise LogExportLeaseBusyError("Another worker owns the log export lease.")
+        return updated if result and updated.status == LogExportStatus.PROCESSING else None
+
+    def renew(self, task: LogExportTask[FiltersT]) -> bool:
+        """Extend a live lease only while the stored attempt number matches."""
+        task_key, lease_key, _ = self._execution_keys(task)
+        renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
+        return bool(renew(keys=[task_key, lease_key], args=[task.attempt, _LEASE_SECONDS]))
+
+    def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
+        """Persist a terminal state and free capacity if this attempt still owns the task."""
+        updated = task.model_copy(update={"status": status, "storage_key": storage_key})
+        finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
+        return bool(
+            finish(
+                keys=self._execution_keys(task),
+                args=[task.status.value, task.attempt, updated.model_dump_json(), f"{task.app_id}:{task.requested_by}"],
+            )
+        )

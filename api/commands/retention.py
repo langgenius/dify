@@ -1629,7 +1629,7 @@ def _log_export_progress(start_at: float) -> Generator[Callable[[str, int], None
         reporter.join()
 
 
-@click.command("export-app-messages", help="Export app or Agent logs using the Console CSV format.")
+@click.command("export-app-logs", help="Export app or Agent logs using the Console CSV format.")
 @click.option("--app-id", type=click.UUID, help="App ID, including Workflow apps. Use --app-id or --agent-id.")
 @click.option("--agent-id", type=click.UUID, help="New Agent ID. Use --app-id or --agent-id.")
 @click.option(
@@ -1660,7 +1660,7 @@ def _log_export_progress(start_at: float) -> Generator[Callable[[str, int], None
     help="CSV destination. A .csv suffix is added if needed.",
 )
 @click.option("--use-cloud-storage", is_flag=True, help="Use --filename as a relative key in the configured storage.")
-def export_app_messages(
+def export_app_logs(
     app_id: uuid.UUID | None,
     agent_id: uuid.UUID | None,
     start_from: datetime.datetime | None,

@@ -21,6 +21,7 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppNotFoundError,
+    LogExportLimitReachedHTTPError,
     WorkflowLogExportFileNotFoundHTTPError,
     WorkflowLogExportTaskNotFoundHTTPError,
     WorkflowLogExportTaskNotReadyHTTPError,
@@ -48,6 +49,7 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportLimitReachedError,
     LogExportStatus,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
@@ -417,7 +419,12 @@ class WorkflowAppLogIdentityOptionsApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports")
 class WorkflowLogExportApi(Resource):
     @error_responses(
-        AppNotFoundError, ForbiddenError, PaidPlanRequiredError, InvalidArgumentError, _WorkflowLogValidationError
+        AppNotFoundError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+        InvalidArgumentError,
+        LogExportLimitReachedHTTPError,
+        _WorkflowLogValidationError,
     )
     @console_ns.doc("create_workflow_log_export")
     @console_ns.doc(description="Create a pending CSV export task for published runs in a Workflow app")
@@ -436,11 +443,14 @@ class WorkflowLogExportApi(Resource):
             raise _WorkflowLogValidationError(
                 exc.json(include_url=False, include_input=False, include_context=False)
             ) from None
-        task = application_services().workflow_log_exports.create_task(
-            scope=scope,
-            requested_by=request_context.account_id,
-            filters=payload.to_filters(),
-        )
+        try:
+            task = application_services().workflow_log_exports.create_task(
+                scope=scope,
+                requested_by=request_context.account_id,
+                filters=payload.to_filters(),
+            )
+        except LogExportLimitReachedError as exc:
+            raise LogExportLimitReachedHTTPError() from exc
         return dump_response(WorkflowLogExportTaskResponse, task), HTTPStatus.ACCEPTED
 
 

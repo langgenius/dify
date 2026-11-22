@@ -242,6 +242,14 @@ const zUnprocessableEntityError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zLogExportLimitReachedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('log_export_limit_reached'),
+      status: z.literal(429),
+    }),
+  ))()
+
 const zConversationLogExportTaskNotFoundError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -876,6 +884,7 @@ export const get32Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
 }
 
 export const get33Errors = {
@@ -909,6 +918,7 @@ export const get34Errors = {
 export const post24Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
+  log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
 }
@@ -1141,6 +1151,7 @@ export const get61Errors = {
 export const post43Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
+  log_export_limit_reached: { status: 429, data: zLogExportLimitReachedError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   unprocessable_entity: { status: 422, data: zUnprocessableEntityError },
 }
