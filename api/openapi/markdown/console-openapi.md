@@ -1454,9 +1454,7 @@ Download a completed Agent log CSV from object storage or the Console API
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| account_ids | query | Include logs from these workspace accounts | No | [ string (uuid) ] |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
-| end_user_ids | query | Include logs from these end users | No | [ string (uuid) ] |
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -21937,6 +21935,8 @@ The Agent log export is not ready for download.
 | workflow_version | string |  | No |
 
 #### AgentLogsQuery
+
+Add identity filters to the Agent log list query.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

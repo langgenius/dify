@@ -4192,9 +4192,7 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
     conversation_id: string
   }
   query?: {
-    account_ids?: Array<string>
     end?: string
-    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number

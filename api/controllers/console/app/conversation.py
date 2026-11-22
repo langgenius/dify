@@ -545,14 +545,20 @@ class ConversationLogExportTaskApi(Resource):
         HTTPStatus.OK, "Export task status", console_ns.models[ConversationLogExportStatusResponse.__name__]
     )
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
-    def get(self, request_context: RequestContext, app_id: UUID, task_id: UUID) -> dict[str, object]:
+    def get(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live export task for an admitted app."""
         scope = _resolve_log_export_scope(request_context, app_id)
         try:
             task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
         except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
-        return dump_response(ConversationLogExportStatusResponse, task)
+        return (
+            dump_response(ConversationLogExportStatusResponse, task),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")

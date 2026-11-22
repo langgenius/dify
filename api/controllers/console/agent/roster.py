@@ -1,5 +1,6 @@
+from dataclasses import replace
 from http import HTTPStatus
-from typing import Literal
+from typing import Literal, override
 from uuid import UUID
 
 from flask import Response, abort, request
@@ -208,7 +209,9 @@ class AgentAppPublishedReferenceResponse(BaseModel):
     app_icon_background: str | None = None
 
 
-class AgentLogsQuery(BaseModel):
+class AgentLogMessagesQuery(BaseModel):
+    """Read the messages of a log with the common Agent log query filters."""
+
     page: int = Field(default=1, ge=1, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Page size")
     keyword: str | None = Field(default=None, description="Search query, answer, or conversation name")
@@ -225,8 +228,6 @@ class AgentLogsQuery(BaseModel):
             "or workflow:<app_id>. Exact workflow:<app_id>:<workflow_id>:<version>:<node_id> IDs remain supported."
         ),
     )
-    end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
-    account_ids: list[UUID] = Field(default_factory=list, description="Include logs from these workspace accounts")
     sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
     sort_order: str = Field(default="desc", description="Sort order: asc or desc")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
@@ -263,6 +264,36 @@ class AgentLogsQuery(BaseModel):
         if normalized not in {"asc", "desc"}:
             raise ValueError("sort_order must be asc or desc")
         return normalized
+
+    def to_query(self) -> AgentLogQuery:
+        """Convert validated pagination, sorting and filters to the observability input."""
+        return AgentLogQuery(
+            page=self.page,
+            limit=self.limit,
+            keyword=self.keyword,
+            statuses=tuple(self.statuses),
+            sources=tuple(self.sources),
+            sort_by=self.sort_by,
+            sort_order=self.sort_order,
+            start=self.start,
+            end=self.end,
+        )
+
+
+class AgentLogsQuery(AgentLogMessagesQuery):
+    """Add identity filters to the Agent log list query."""
+
+    end_user_ids: list[UUID] = Field(default_factory=list, description="Include logs from these end users")
+    account_ids: list[UUID] = Field(default_factory=list, description="Include logs from these workspace accounts")
+
+    @override
+    def to_query(self) -> AgentLogQuery:
+        """Include the selected identities in the observability input for the log list."""
+        return replace(
+            super().to_query(),
+            end_user_ids=tuple(str(end_user_id) for end_user_id in self.end_user_ids),
+            account_ids=tuple(str(account_id) for account_id in self.account_ids),
+        )
 
 
 class AgentStatisticsQuery(BaseModel):
@@ -1004,27 +1035,15 @@ class AgentInviteOptionsApi(Resource):
         )
 
 
-def _agent_log_query() -> AgentLogQuery:
-    """Parse repeated and indexed log query parameters, including singular aliases."""
+def _agent_log_query(model: type[AgentLogMessagesQuery]) -> AgentLogQuery:
+    """Parse repeated and indexed query parameters admitted by the list or detail schema."""
     query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
     query_data["sources"] = _query_values("sources", "source")
     query_data["statuses"] = _query_values("statuses", "status")
-    query_data["end_user_ids"] = _query_values("end_user_ids")
-    query_data["account_ids"] = _query_values("account_ids")
-    query = AgentLogsQuery.model_validate(query_data)
-    return AgentLogQuery(
-        page=query.page,
-        limit=query.limit,
-        keyword=query.keyword,
-        statuses=tuple(query.statuses),
-        sources=tuple(query.sources),
-        end_user_ids=tuple(str(end_user_id) for end_user_id in query.end_user_ids),
-        account_ids=tuple(str(account_id) for account_id in query.account_ids),
-        sort_by=query.sort_by,
-        sort_order=query.sort_order,
-        start=query.start,
-        end=query.end,
-    )
+    if issubclass(model, AgentLogsQuery):
+        query_data["end_user_ids"] = _query_values("end_user_ids")
+        query_data["account_ids"] = _query_values("account_ids")
+    return model.model_validate(query_data).to_query()
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs")
@@ -1035,7 +1054,7 @@ class AgentLogsApi(Resource):
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
     def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
         """Return the admitted Agent's conversation logs."""
-        query = _agent_log_query()
+        query = _agent_log_query(AgentLogsQuery)
         try:
             payload = application_services().agent_observability.list_logs(context, str(agent_id), query)
         except AgentObservabilityNotFoundError as exc:
@@ -1223,12 +1242,12 @@ class AgentLogExportFileApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
 class AgentLogMessagesApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
+    @console_ns.doc(params=query_params_from_model(AgentLogMessagesQuery))
     @console_ns.response(HTTPStatus.OK, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
     def get(self, context: RequestContext, agent_id: UUID, conversation_id: UUID) -> dict[str, object]:
         """Return the admitted Agent's messages for a conversation."""
-        query = _agent_log_query()
+        query = _agent_log_query(AgentLogMessagesQuery)
         try:
             payload = application_services().agent_observability.list_log_messages(
                 context, str(agent_id), str(conversation_id), query

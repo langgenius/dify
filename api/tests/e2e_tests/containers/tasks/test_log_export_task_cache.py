@@ -11,7 +11,44 @@ from services.retention.log_export_task import (
     LogExportStatus,
     LogExportTask,
 )
-from services.retention.log_export_task_cache import RedisLogExportTasks
+from services.retention.log_export_task_cache import _CLAIM_LOG_EXPORT_TASK, _SAVE_LOG_EXPORT_TASK, RedisLogExportTasks
+
+
+def test_replayed_save_preserves_the_admitted_task(application_redis: RedisClientWrapper) -> None:
+    """A retry after a lost response acknowledges the same task."""
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    keys = [
+        f"conversation_log_export:{{tenant}}:app:{task.task_id}",
+        "conversation_log_export_latest:{tenant}:app:admin",
+        "log_export_active:{tenant}",
+    ]
+    args = ["app:admin", 60_000, task.model_dump_json(), task.task_id, 3]
+    save = application_redis.register_script(_SAVE_LOG_EXPORT_TASK)
+
+    assert save(keys=keys, args=args) == 1
+    assert save(keys=keys, args=args) == 1
+
+
+def test_replayed_claim_recognizes_only_its_own_token(application_redis: RedisClientWrapper) -> None:
+    """Only the command that acquired the lease can replay its claim."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    store.save(task)
+    task_key = f"conversation_log_export:{{tenant}}:app:{task.task_id}"
+    keys = [task_key, f"{task_key}:lease", "log_export_active:{tenant}"]
+    processing = task.model_copy(update={"status": LogExportStatus.PROCESSING, "attempt": 1})
+    args = [task.status.value, task.attempt, processing.model_dump_json(), 3, 120, "app:admin", "first-token"]
+    claim = application_redis.register_script(_CLAIM_LOG_EXPORT_TASK)
+
+    assert claim(keys=keys, args=args) == 1
+    assert claim(keys=keys, args=args) == 1
+    assert claim(keys=keys, args=[*args[:-1], "other-token"]) == -1
+    assert store.get(tenant_id="tenant", app_id="app", task_id=task.task_id) == processing
+
+    application_redis.expire(keys[1], 0)
+    assert claim(keys=keys, args=args) == -1
 
 
 def test_export_admission_is_atomic_and_shared_across_app_types(application_redis: RedisClientWrapper) -> None:

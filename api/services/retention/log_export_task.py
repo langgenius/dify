@@ -9,7 +9,7 @@ from threading import Event, Thread
 from typing import Protocol, Self, TextIO
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from libs.datetime_utils import utc_now
 from machinery.context import RequestContext
@@ -58,7 +58,7 @@ class LogExportLeaseBusyError(Exception):
 
 
 class LogExportTask[FiltersT](BaseModel):
-    """Persist the admitted owner, normalized filters and state of a temporary export."""
+    """Persist an admitted export's state and carry its lease token only in the owning worker."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -72,6 +72,7 @@ class LogExportTask[FiltersT](BaseModel):
     status: LogExportStatus = LogExportStatus.PENDING
     storage_key: str | None = None
     attempt: int = 0
+    claim_token: str | None = Field(default=None, exclude=True, repr=False)
 
     @classmethod
     def pending(cls, *, tenant_id: str, app_id: str, requested_by: str, filters: FiltersT) -> Self:
@@ -103,7 +104,7 @@ def open_ready_log_export_csv[FiltersT](
 
 class LogExportTaskStore[FiltersT](Protocol):
     def save(self, task: LogExportTask[FiltersT]) -> None:
-        """Atomically reserve capacity and save the requester's latest pending task."""
+        """Atomically reserve capacity and save the pending task, accepting a replay for the same ID."""
         ...
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
@@ -115,7 +116,7 @@ class LogExportTaskStore[FiltersT](Protocol):
         ...
 
     def claim(self, task: LogExportTask[FiltersT]) -> LogExportTask[FiltersT] | None:
-        """Claim a pending or abandoned attempt, or raise when its execution lease is still live."""
+        """Return an owned attempt, retry if another claim changed it, or return None for a terminal task."""
         ...
 
     def renew(self, task: LogExportTask[FiltersT]) -> bool:
@@ -193,7 +194,7 @@ def prepare_log_export_task[FiltersT](
 def _renew_export_lease[FiltersT](
     task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]
 ) -> Generator[None]:
-    """Refresh the attempt's lease during queries and uploads and stop refreshing on exit."""
+    """Retry failed heartbeat calls while exporting and stop when the worker loses the lease or exits."""
     stopped = Event()
 
     def renew() -> None:
@@ -203,7 +204,6 @@ def _renew_export_lease[FiltersT](
                     return
             except Exception:
                 logger.exception("Failed to renew log export lease: task=%s attempt=%s", task.task_id, task.attempt)
-                return
 
     heartbeat = Thread(target=renew, name="log-export-lease", daemon=True)
     heartbeat.start()

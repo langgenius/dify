@@ -693,6 +693,7 @@ def test_get_conversation_log_export_status(
     response = harness.get_export_status(task.task_id)
 
     assert response.status_code == 200
+    assert response.cache_control.no_store
     assert response.get_json() == {"task_id": task.task_id, "status": status.value}
     harness.redis.get.assert_called_once_with(key)
     harness.dispatch.assert_called_once()
@@ -1071,10 +1072,13 @@ def test_invalid_query_returns_422(harness: _Harness, kind: _Kind, query: dict[s
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("kind", ["chat", "completion"])
+@pytest.mark.parametrize("kind", ["chat", "completion", "export-preview"])
 @pytest.mark.parametrize("query", [{"start": "bad"}, {"start": "2024-01-16 00:00", "end": "2024-01-15 00:00"}])
-def test_invalid_date_range_is_precise_400(harness: _Harness, kind: _Kind, query: dict[str, str | int]) -> None:
+def test_invalid_date_range_is_precise_400(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind, query: dict[str, str | int]
+) -> None:
     harness.mode(AppMode.COMPLETION if kind == "completion" else AppMode.CHAT)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     response = harness.get(kind, query=query)
     assert response.status_code == 400
     assert response.get_json()["code"] == "invalid_param"

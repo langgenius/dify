@@ -1,6 +1,7 @@
 """Persist temporary export tasks and each requester's latest task in Redis."""
 
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from libs.datetime_utils import utc_now
 from services.retention.log_export_task import (
@@ -18,6 +19,10 @@ _MAX_EXPORT_ATTEMPTS = 3
 _LEASE_SECONDS = 120
 
 _SAVE_LOG_EXPORT_TASK = """
+-- The task key identifies a previously admitted submission after a lost Redis response.
+if redis.call("EXISTS", KEYS[1]) == 1 then
+    return 1
+end
 local clock = redis.call("TIME")
 local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
 local ttl = tonumber(ARGV[2])
@@ -41,20 +46,25 @@ if not raw then
     return 0
 end
 local current = cjson.decode(raw)
-local attempt = tonumber(ARGV[2])
-if current.status ~= ARGV[1] or (current.attempt or 0) ~= attempt then
+if current.status ~= "pending" and current.status ~= "processing" then
     return 0
 end
-if redis.call("EXISTS", KEYS[2]) == 1 then
+local owner = redis.call("GET", KEYS[2])
+if owner then
+    return owner == ARGV[7] and 1 or -1
+end
+local attempt = tonumber(ARGV[2])
+if current.status ~= ARGV[1] or (current.attempt or 0) ~= attempt then
     return -1
 end
-if attempt >= tonumber(ARGV[4]) then
-    redis.call("ZREM", KEYS[3], ARGV[6])
+local can_claim = attempt < tonumber(ARGV[4])
+if can_claim then
+    redis.call("SET", KEYS[2], ARGV[7], "EX", ARGV[5])
 else
-    redis.call("SET", KEYS[2], attempt + 1, "EX", ARGV[5])
+    redis.call("ZREM", KEYS[3], ARGV[6])
 end
 redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
-return 1
+return can_claim and 1 or 0
 """
 
 _RENEW_LOG_EXPORT_TASK = """
@@ -73,7 +83,7 @@ local current = cjson.decode(raw)
 if current.status ~= ARGV[1] or (current.attempt or 0) ~= tonumber(ARGV[2]) then
     return 0
 end
-if current.status == "processing" and redis.call("GET", KEYS[2]) ~= ARGV[2] then
+if current.status == "processing" and redis.call("GET", KEYS[2]) ~= ARGV[5] then
     return 0
 end
 redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
@@ -113,7 +123,7 @@ class RedisLogExportTasks[FiltersT]:
         return key, f"{key}:lease", self._active_key(task.tenant_id)
 
     def save(self, task: LogExportTask[FiltersT]) -> None:
-        """Reserve an app/requester slot and one workspace slot before publishing the pending task."""
+        """Reserve capacity for a pending task once, raising if a new submission exceeds the limit."""
         key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
         ttl_ms = max(1, int((task.expires_at - utc_now()).total_seconds() * 1000))
         latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
@@ -150,13 +160,17 @@ class RedisLogExportTasks[FiltersT]:
         return task if task is not None and task.requested_by == requested_by else None
 
     def claim(self, task: LogExportTask[FiltersT]) -> LogExportTask[FiltersT] | None:
-        """Claim one execution for an active task, or fail it after three interrupted attempts."""
+        """Claim one active attempt with a token that survives command retries or fail an exhausted task."""
         if task.status not in (LogExportStatus.PENDING, LogExportStatus.PROCESSING):
             return None
+        # Generate the lease token once per claim, outside the Redis client's retries.
+        token = uuid4().hex
         if task.attempt >= _MAX_EXPORT_ATTEMPTS:
             updated = task.model_copy(update={"status": LogExportStatus.FAILED})
         else:
-            updated = task.model_copy(update={"status": LogExportStatus.PROCESSING, "attempt": task.attempt + 1})
+            updated = task.model_copy(
+                update={"status": LogExportStatus.PROCESSING, "attempt": task.attempt + 1, "claim_token": token}
+            )
         claim = self._redis.register_script(_CLAIM_LOG_EXPORT_TASK)
         result = claim(
             keys=self._execution_keys(task),
@@ -167,25 +181,34 @@ class RedisLogExportTasks[FiltersT]:
                 _MAX_EXPORT_ATTEMPTS,
                 _LEASE_SECONDS,
                 f"{task.app_id}:{task.requested_by}",
+                token,
             ],
         )
         if result == -1:
-            raise LogExportLeaseBusyError("Another worker owns the log export lease.")
-        return updated if result and updated.status == LogExportStatus.PROCESSING else None
+            raise LogExportLeaseBusyError("The log export claim is busy or has changed.")
+        return updated if result else None
 
     def renew(self, task: LogExportTask[FiltersT]) -> bool:
-        """Extend a live lease only while the stored attempt number matches."""
+        """Extend a live lease only while the worker still owns its token."""
+        if task.claim_token is None:
+            return False
         task_key, lease_key, _ = self._execution_keys(task)
         renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
-        return bool(renew(keys=[task_key, lease_key], args=[task.attempt, _LEASE_SECONDS]))
+        return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
-        """Persist a terminal state and free capacity if this attempt still owns the task."""
+        """Finish the expected pending state or the processing attempt that owns the lease token."""
         updated = task.model_copy(update={"status": status, "storage_key": storage_key})
         finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
         return bool(
             finish(
                 keys=self._execution_keys(task),
-                args=[task.status.value, task.attempt, updated.model_dump_json(), f"{task.app_id}:{task.requested_by}"],
+                args=[
+                    task.status.value,
+                    task.attempt,
+                    updated.model_dump_json(),
+                    f"{task.app_id}:{task.requested_by}",
+                    task.claim_token or "",
+                ],
             )
         )
