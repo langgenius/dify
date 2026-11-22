@@ -350,7 +350,7 @@ def test_missing_schedule_or_membership_returns_precise_error(
         repository.get_for_execution(plan.id)
 
 
-def test_tick_limit_stops_after_current_batch_and_duplicate_trigger_rows_do_not_duplicate_claims(
+def test_tick_limit_is_a_hard_ceiling_and_duplicate_trigger_rows_do_not_duplicate_claims(
     sqlite_session_factory: sessionmaker[Session],
     repository: TriggerScheduleRepository,
 ) -> None:
@@ -378,16 +378,16 @@ def test_tick_limit_stops_after_current_batch_and_duplicate_trigger_rows_do_not_
                 SimpleQueue(connection.channel(), "schedule_executor") as queue,
             ):
                 queue.clear()
-                assert _service(sqlite_session_factory, repository, _Dispatch(), limit=1).poll() == 2
-                messages = [queue.get(block=False) for _ in range(2)]
-                assert len({message.payload[0][0] for message in messages}) == 2
+                assert _service(sqlite_session_factory, repository, _Dispatch(), limit=1).poll() == 1
+                messages = [queue.get(block=False) for _ in range(1)]
+                assert len(messages) == 1
                 for message in messages:
                     message.ack()
                 assert queue.qsize() == 0
         finally:
             previous.set_current()
     with repository.claim_due(now=_NOW, limit=10) as claimed:
-        assert len(claimed.schedules) == 1
+        assert len(claimed.schedules) == 2
 
 
 def test_owner_membership_without_account_does_not_fall_back_to_admin(
