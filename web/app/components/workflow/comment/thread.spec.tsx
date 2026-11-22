@@ -82,7 +82,7 @@ describe('CommentThread', () => {
     expect(onResolve).toHaveBeenCalledOnce()
   })
 
-  it('shows a sending reply dimmed and a failed one with retry and delete', async () => {
+  it('marks a sending reply busy and shows a failed one with retry and delete', async () => {
     const user = userEvent.setup()
     const onReplyRetry = vi.fn()
     const onReplyDiscard = vi.fn()

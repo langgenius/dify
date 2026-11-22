@@ -672,22 +672,21 @@ type UnsentReplyEntryProps = {
 }
 
 /**
- * A reply the server does not have yet. While sending it is dimmed; if sending failed it
- * says so and offers to send it again or drop it.
+ * A reply the server does not have yet. While sending it looks like any other reply, marked
+ * busy for assistive technology; if sending failed it says so and offers to send it again or
+ * drop it.
  */
 function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentReplyEntryProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
   const failed = reply.send_state === 'failed'
   return (
     <CommentThreadItem aria-busy={!failed || undefined}>
-      <div className={cn(!failed && 'opacity-60')}>
-        <ThreadMessage
-          author={reply.created_by_account}
-          createdAt={reply.created_at ?? 0}
-          content={reply.content}
-          mentionNames={mentionNames}
-        />
-      </div>
+      <ThreadMessage
+        author={reply.created_by_account}
+        createdAt={reply.created_at ?? 0}
+        content={reply.content}
+        mentionNames={mentionNames}
+      />
       {failed && (
         <div className="mt-1 flex items-center gap-2 ps-9 system-xs-regular">
           <span className="text-text-destructive">
