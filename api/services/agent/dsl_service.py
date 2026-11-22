@@ -49,6 +49,7 @@ from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
     AgentNodeBindingDict,
+    AgentNodeGraphDict,
     AgentPackage,
     AgentPackageMetadata,
     AgentPackageWorkspaceSkill,
@@ -136,7 +137,7 @@ class AgentDslService:
         self,
         *,
         workflow: Workflow,
-        graph: Mapping[str, Any],
+        graph: AgentNodeGraphDict,
         resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
         """Replace persisted bindings with portable packages, optionally collecting their assets."""

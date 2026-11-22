@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Literal, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator, with_config
 
 from core.plugin.entities.plugin import PluginDependency
 from models.agent import Agent
@@ -19,6 +19,7 @@ AGENT_PACKAGE_REF_KEY = "package_ref"
 AGENT_NODE_JOB_DSL_KEY = "agent_job"
 
 
+@with_config(ConfigDict(extra="allow"))
 class AgentNodeBindingDict(TypedDict, total=False):
     """The ``agent_binding`` payload a workflow graph carries for one Dify Agent node.
 
@@ -32,6 +33,7 @@ class AgentNodeBindingDict(TypedDict, total=False):
     package_ref: str
 
 
+@with_config(ConfigDict(extra="allow"))
 class AgentNodeDataDict(TypedDict, total=False):
     """The ``data`` payload one Dify Agent node carries inside a workflow graph.
 
@@ -48,6 +50,7 @@ class AgentNodeDataDict(TypedDict, total=False):
     agent_job: dict[str, object]
 
 
+@with_config(ConfigDict(extra="allow"))
 class AgentNodeGraphNodeDict(TypedDict):
     """One workflow graph node whose ``data`` may carry an :class:`AgentNodeBindingDict`."""
 
@@ -55,11 +58,21 @@ class AgentNodeGraphNodeDict(TypedDict):
     data: AgentNodeDataDict
 
 
+@with_config(ConfigDict(extra="allow"))
 class AgentNodeGraphDict(TypedDict):
     """The workflow graph envelope the portable-package helpers read Agent nodes from."""
 
     nodes: list[AgentNodeGraphNodeDict]
     edges: list[dict[str, object]]
+
+
+_AGENT_NODE_GRAPH_ADAPTER = TypeAdapter(AgentNodeGraphDict)
+
+
+def parse_agent_node_graph(value: object) -> AgentNodeGraphDict:
+    """Validate the graph envelope while preserving fields owned by other node types."""
+
+    return _AGENT_NODE_GRAPH_ADAPTER.validate_python(value)
 
 
 class AgentPackageMetadata(BaseModel):

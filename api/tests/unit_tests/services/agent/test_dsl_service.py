@@ -40,6 +40,7 @@ from services.agent.dsl_entities import (
     AgentPackage,
     AgentPackageMetadata,
     make_portable_agent_package,
+    parse_agent_node_graph,
 )
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from tests.helpers.unit.model_factories import make_upload_file
@@ -361,10 +362,35 @@ def test_export_agent_app_uses_draft_or_active_snapshot(sqlite_session: Session,
     assert packages[package_ref].soul.config_note == ("draft" if use_draft else "snapshot")
 
 
+def test_parse_agent_node_graph_preserves_other_graph_fields() -> None:
+    graph = json.loads(
+        json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "agent-1",
+                        "data": {
+                            "type": BuiltinNodeTypes.AGENT,
+                            "version": AGENT_NODE_VERSION,
+                            "agent_node_kind": AGENT_NODE_KIND,
+                            "agent_parameters": {"prompt": "preserve this"},
+                        },
+                        "position": {"x": 1, "y": 2},
+                    }
+                ],
+                "edges": [],
+                "viewport": {"x": 1, "y": 2, "zoom": 1},
+            }
+        )
+    )
+
+    assert parse_agent_node_graph(graph) == graph
+
+
 def test_export_workflow_packages_deduplicates_shared_agent(sqlite_session: Session) -> None:
-    graph: dict[str, object] = {
+    graph: AgentNodeGraphDict = {
         "nodes": [_agent_node("node-1"), _agent_node("node-2")],
-        "edges": list[object](),
+        "edges": [],
     }
     bindings = [
         WorkflowAgentNodeBinding(

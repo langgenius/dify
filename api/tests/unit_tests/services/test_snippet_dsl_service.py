@@ -872,15 +872,17 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
     workflow_dict = {
         "graph": {
             "nodes": [
-                {"data": {}},
+                {"id": "empty-node", "data": {}},
                 {
+                    "id": "tool-node",
                     "data": {
                         "type": BuiltinNodeTypes.TOOL,
                         "credential_id": "secret",
                         "tool_configurations": {"provider_type": "builtin", "provider": "langgenius/google"},
-                    }
+                    },
                 },
                 {
+                    "id": "agent-node",
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "agent_parameters": {
@@ -894,9 +896,10 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
                                 ]
                             }
                         },
-                    }
+                    },
                 },
-            ]
+            ],
+            "edges": [],
         },
         "environment_variables": [{"name": "SECRET"}],
         "conversation_variables": [{"name": "memory"}],
@@ -926,12 +929,14 @@ def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(
         "graph": {
             "nodes": [
                 {
+                    "id": "retrieval-node",
                     "data": {
                         "type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
                         "dataset_ids": ["dataset-1", "dataset-2"],
-                    }
+                    },
                 }
-            ]
+            ],
+            "edges": [],
         },
     }
     workflow = _workflow(graph=workflow_dict["graph"])
