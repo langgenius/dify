@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { toast } from '@/app/notifications'
@@ -34,9 +34,7 @@ export default function ResourceAccessTokenPage() {
     adjacentTargets: HTMLElement[]
     succeeded: boolean
   }>(null)
-  const deleteDialogId = useId()
-  const mutationKey = [...deleteToken.mutationKey(), deleteDialogId]
-  const deleteFilter = { mutationKey, exact: true }
+  const deleteInFlightRef = useRef(false)
   const tokenOptions = consoleQuery.resourceAccessTokens.get.queryOptions({
     placeholderData: keepPreviousData,
     input: {
@@ -52,34 +50,14 @@ export default function ResourceAccessTokenPage() {
     searchText.trim() !== debouncedSearchText || tokensQuery.isPlaceholderData
   const deleteErrorMessage = (error: unknown) =>
     getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })
-  const deletion = useMutation({
-    ...deleteToken.mutationOptions({
+  const deletion = useMutation(
+    deleteToken.mutationOptions({
       context: { silent: true },
-      networkMode: 'always',
       onError: (error) => {
         if (!deleteDialog.isOpen) toast.error(deleteErrorMessage(error))
       },
-      onSuccess: (_result, { params }) => {
-        const { queryKey } = tokenOptions
-        void queryClient.cancelQueries({ queryKey, exact: true })
-        const updatedPage = queryClient.setQueryData(queryKey, (current) => {
-          if (!current?.data.some((row) => row.token_id === params.token_id)) return current
-          return {
-            ...current,
-            data: current.data.filter((row) => row.token_id !== params.token_id),
-            total: Math.max(0, current.total - 1),
-          }
-        })
-        if (updatedPage)
-          setPage((current) =>
-            Math.min(current, Math.max(1, Math.ceil(updatedPage.total / PAGE_SIZE))),
-          )
-        if (deleteFocusRef.current) deleteFocusRef.current.succeeded = true
-        deleteDialog.close()
-      },
     }),
-    mutationKey,
-  })
+  )
   const canDelete = (params: DeleteTokenParams) =>
     !isSwitchingTokenList &&
     (queryClient
@@ -88,6 +66,23 @@ export default function ResourceAccessTokenPage() {
         (row) => row.token_id === params.token_id && row.relation_id === params.relation_id,
       ) ??
       false)
+  const confirmDelete = async (params: DeleteTokenParams) => {
+    if (!deleteDialog.isOpen || !canDelete(params) || deleteInFlightRef.current) return
+    deleteInFlightRef.current = true
+    try {
+      await deletion.mutateAsync({ params })
+      if (!deleteDialog.isOpen) return
+      const result = queryClient.getQueryData(tokenOptions.queryKey)
+      if (result)
+        setPage((current) => Math.min(current, Math.max(1, Math.ceil(result.total / PAGE_SIZE))))
+      if (deleteFocusRef.current) deleteFocusRef.current.succeeded = true
+      deleteDialog.close()
+    } catch {
+      // The mutation reports failure in the dialog or through its fallback toast.
+    } finally {
+      deleteInFlightRef.current = false
+    }
+  }
   const rows = tokensQuery.data?.data
   const total = tokensQuery.data?.total ?? 0
   const hasLoadError = tokensQuery.isError && !tokensQuery.data
@@ -189,10 +184,7 @@ export default function ResourceAccessTokenPage() {
               ),
               succeeded: false,
             }
-          } else if (
-            details.reason !== 'imperative-action' &&
-            queryClient.isMutating(deleteFilter)
-          ) {
+          } else if (details.reason !== 'imperative-action' && deleteInFlightRef.current) {
             details.cancel()
           }
         }}
@@ -211,15 +203,7 @@ export default function ResourceAccessTokenPage() {
                   createButtonRef.current
                 )
               }}
-              onConfirm={() => {
-                if (
-                  !deleteDialog.isOpen ||
-                  !canDelete(payload) ||
-                  queryClient.isMutating(deleteFilter)
-                )
-                  return
-                deletion.mutate({ params: payload })
-              }}
+              onConfirm={() => void confirmDelete(payload)}
             />
           )
         }
