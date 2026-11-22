@@ -1,3 +1,4 @@
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import {
   markers,
@@ -9,6 +10,7 @@ import {
 } from './comment-layer-browser-env'
 import {
   api,
+  avatar,
   deferred,
   listItem,
   resetFakeServer,
@@ -79,6 +81,45 @@ describe('markers and the composer', () => {
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)
     await expect.element(thread(screen).getByText('Written meanwhile')).toBeVisible()
+  })
+
+  it('leaves a dragged marker where it was dropped, without going back on the way', async () => {
+    api.update.mockImplementation(
+      async ({ params, body }: { params: { comment_id: string }; body: WorkflowCommentBasic }) => {
+        const saved = server.current.list.find((item) => item.id === params.comment_id)!
+        Object.assign(saved, { position_x: body.position_x, position_y: body.position_y })
+        return {}
+      },
+    )
+    const screen = await renderLayer()
+    const marker = markers(screen).first()
+    await expect.element(marker).toBeVisible()
+    const start = marker.element().getBoundingClientRect().x
+
+    // Every position the marker takes from the drag on.
+    const positions: number[] = []
+    const watch = new MutationObserver(() => {
+      positions.push(marker.element().getBoundingClientRect().x)
+    })
+    watch.observe(marker.element(), { attributes: true, attributeFilter: ['style'] })
+    // Pointing at the marker opens its hover card over it; the drag starts on the card.
+    await marker.hover()
+    await userEvent.dragAndDrop(
+      screen.getByText('First thread'),
+      page.elementLocator(document.getElementById('workflow-container')!),
+      {
+        sourcePosition: { x: 10, y: 10 },
+        targetPosition: { x: 600, y: 300 },
+        steps: 6,
+      } as Parameters<typeof userEvent.dragAndDrop>[2],
+    )
+    await expect.poll(() => api.update.mock.calls.length).toBe(1)
+    await expect.poll(() => marker.element().getBoundingClientRect().x).toBeGreaterThan(start + 200)
+    watch.disconnect()
+
+    const moved = positions.findIndex((x) => x > start + 200)
+    expect(moved).toBeGreaterThanOrEqual(0)
+    expect(positions.slice(moved).every((x) => x > start + 200)).toBe(true)
   })
 
   it('keeps a new comment’s text until it is created, then shows its marker', async () => {
@@ -221,5 +262,32 @@ describe('keyboard and hover', () => {
 
     await expect.element(thread(screen)).not.toBeInTheDocument()
     await expect.poll(() => markers(screen).elements().length).toBe(0)
+  })
+})
+
+describe('avatars', () => {
+  it('shows an avatar already shown on the canvas at once in a thread that opens', async () => {
+    avatar.file = '/logo/logo-embedded-chat-avatar.png'
+    saveReplyOnServer('first', 'With a picture', 'reply-picture')
+    // The current user is the author; their profile signs the picture differently again.
+    const screen = await renderLayer({ avatarUrl: `${avatar.file}?signature=profile` })
+    const markerPicture = () => markers(screen).first().element().querySelector('img')
+    await expect
+      .poll(() => markerPicture()?.complete && markerPicture()!.naturalWidth > 0)
+      .toBe(true)
+
+    // The thread's own read signs the picture anew; its avatars must not fall back meanwhile.
+    let fellBack = false
+    const watch = new MutationObserver(() => {
+      const dialog = document.querySelector('[role="dialog"]')
+      if (dialog && [...dialog.querySelectorAll('span')].some((el) => el.textContent === 'A'))
+        fellBack = true
+    })
+    watch.observe(document.body, { subtree: true, childList: true, characterData: true })
+    await openThread(screen)
+    await expect.element(thread(screen).getByText('With a picture')).toBeVisible()
+    watch.disconnect()
+
+    expect(fellBack).toBe(false)
   })
 })

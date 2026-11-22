@@ -30,6 +30,21 @@ type Server = { list: WorkflowCommentBasic[]; details: Record<string, WorkflowCo
 export const server: { current: Server } = { current: { list: [], details: {} } }
 
 export const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
+// When set, every response signs the author's avatar anew, as the backend does: the same
+// picture under a new query string each time.
+export const avatar = { file: undefined as undefined | string, signatures: 0 }
+// A response is a copy of the server's data, as over the network.
+const signed = <T>(data: T): T => {
+  const file = avatar.file
+  return JSON.parse(
+    JSON.stringify(data, (key, value) =>
+      file && key === 'created_by_account' && value?.id === author.id
+        ? { ...value, avatar_url: `${file}?signature=${++avatar.signatures}` }
+        : value,
+    ),
+  ) as T
+}
+
 export const listItem = (
   id: string,
   content: string,
@@ -71,7 +86,7 @@ export const saveReplyOnServer = (commentId: string, content: string, id = `repl
 
 export const consoleResponses = {
   'apps.byAppId.workflow.comments.get': async () => {
-    const data = server.current.list.map((item) => ({ ...item }))
+    const data = signed(server.current.list)
     await api.listGate
     return { data }
   },
@@ -83,7 +98,7 @@ export const consoleResponses = {
   }) => {
     api.detail(params.comment_id)
     if (api.detailFails) throw new Error('Network error')
-    const detail = structuredClone(server.current.details[params.comment_id])
+    const detail = signed(server.current.details[params.comment_id])
     await api.detailGate
     return detail
   },
@@ -109,6 +124,7 @@ export function resetFakeServer() {
   api.detailFails = false
   api.listGate = undefined
   api.detailGate = undefined
+  avatar.file = undefined
   collaboration.handler = undefined
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))
 }

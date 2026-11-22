@@ -11,8 +11,9 @@ import 'reactflow/dist/style.css'
 
 export async function renderLayer({
   hideResolved = false,
+  avatarUrl = null as string | null,
   queryClient = createConsoleQueryWrapper({
-    accountProfile: { id: author.id, name: author.name, avatar_url: null },
+    accountProfile: { id: author.id, name: author.name, avatar_url: avatarUrl },
   }).queryClient,
 } = {}) {
   await page.viewport(1200, 800)

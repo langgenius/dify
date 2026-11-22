@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import {
   matchMutation,
+  matchQuery,
   skipToken,
   useMutation,
   useMutationState,
@@ -281,17 +282,34 @@ export function WorkflowCommentLayer() {
   )
   useEffect(() => {
     if (!appId) return
-    return workflowStore.subscribe((state, previous) => {
-      const { activeCommentId: shownId, showResolvedComments: showResolved } = state
-      if (!shownId || shownId === previous.activeCommentId) return
-      const list = queryClient.getQueryData(listKeyOf(appId))?.data ?? []
-      const shown = showResolved ? list : list.filter((comment) => !comment.resolved)
+    const listKey = listKeyOf(appId)
+    const prefetchNeighbors = () => {
+      const { activeCommentId: shownId, showResolvedComments } = workflowStore.getState()
+      if (!shownId) return
+      const list = queryClient.getQueryData(listKey)?.data ?? []
+      const shown = showResolvedComments ? list : list.filter((comment) => !comment.resolved)
       const index = shown.findIndex((comment) => comment.id === shownId)
       if (index === -1) return
       for (const neighbor of [shown[index - 1], shown[index + 1]]) {
         if (neighbor) prefetchCommentThread(queryClient, { app_id: appId, comment_id: neighbor.id })
       }
+    }
+    // The neighbors change when another thread opens, and when the list changes around it.
+    const stopSelection = workflowStore.subscribe((state, previous) => {
+      if (state.activeCommentId !== previous.activeCommentId) prefetchNeighbors()
     })
+    const stopList = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === 'updated' &&
+        event.action.type === 'success' &&
+        matchQuery({ queryKey: listKey, exact: true }, event.query)
+      )
+        prefetchNeighbors()
+    })
+    return () => {
+      stopSelection()
+      stopList()
+    }
   }, [appId, queryClient, workflowStore])
 
   const moveCommentTo = useCallback(

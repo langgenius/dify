@@ -5,8 +5,10 @@ import {
   api,
   collaboration,
   deferred,
+  listItem,
   resetFakeServer,
   saveReplyOnServer,
+  server,
 } from './comment-layer-fake-server'
 
 // Where a thread's message list sits as replies arrive: a reader of earlier messages keeps
@@ -240,6 +242,20 @@ describe('opening a thread with its replies', () => {
 
     await expect.element(thread(screen)).toMatchTextContent(/Second thread/)
     await expect.element(thread(screen).getByText('Read ahead as a neighbor')).toBeVisible()
+  })
+
+  it('reads the new neighbor ahead when a collaborator’s change moves it next to the open thread', async () => {
+    server.current.list.push(listItem('third', 'Third thread', 400, 400))
+    server.current.details.third = { ...server.current.list[2]!, replies: [], mentions: [] }
+    const screen = await renderLayer({ hideResolved: true })
+    await openThread(screen)
+    await threadIsRead(screen, 'second')
+    expect(api.detail).not.toHaveBeenCalledWith('third')
+
+    server.current.list[1]!.resolved = true
+    collaboration.handler?.()
+
+    await threadIsRead(screen, 'third')
   })
 
   it('reads a hovered thread once, however often its marker is hovered', async () => {
