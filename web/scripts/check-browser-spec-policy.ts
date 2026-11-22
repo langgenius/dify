@@ -119,15 +119,20 @@ function usesFakeApi(sourceFile: ts.SourceFile) {
   )
 }
 
-// Matches `it.fails(…)` and chained forms such as `it.fails.each([…])(…)` or `test.concurrent.fails(…)`.
+// Matches `it.fails(…)` and chained forms such as `it.fails.each([…])(…)`, the tagged-template
+// `it.fails.each\`table\`(…)`, or `test.concurrent.fails(…)`.
 function isExpectedFailure(node: ts.CallExpression) {
   // Report a chain once, at the call that registers the test.
   if (ts.isCallExpression(node.parent) && node.parent.expression === node) return false
   let current: ts.Expression = node.expression
   let fails = false
-  while (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
+  while (
+    ts.isPropertyAccessExpression(current) ||
+    ts.isCallExpression(current) ||
+    ts.isTaggedTemplateExpression(current)
+  ) {
     if (ts.isPropertyAccessExpression(current) && current.name.text === 'fails') fails = true
-    current = current.expression
+    current = ts.isTaggedTemplateExpression(current) ? current.tag : current.expression
   }
   return fails && ts.isIdentifier(current) && (current.text === 'it' || current.text === 'test')
 }

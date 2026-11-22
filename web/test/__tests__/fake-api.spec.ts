@@ -713,6 +713,101 @@ describe('teardown with released and late requests', () => {
   })
 })
 
+describe('response bodies and cancellation', () => {
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  it('errors a streaming body when the request is aborted after the headers arrive', async () => {
+    const fake = installFakeApi({
+      routes: [
+        route('GET', 'console', '/events', () =>
+          sseResponse(
+            (async function* () {
+              yield { event: 'start' }
+              await new Promise(() => {})
+            })(),
+          ),
+        ),
+      ],
+    })
+    const controller = new AbortController()
+    const response = await fetch('http://localhost:5001/console/api/events', {
+      signal: controller.signal,
+    })
+    const reader = response.body!.getReader()
+    await reader.read()
+    const next = reader.read()
+    controller.abort()
+
+    await expect(next).rejects.toMatchObject({ name: 'AbortError' })
+    await fake()
+  })
+
+  it('keeps serving requests made after a slow body finishes while teardown waits', async () => {
+    const fake = installFakeApi({
+      routes: [
+        route('GET', 'console', '/slow', () => {
+          const encoder = new TextEncoder()
+          return new Response(
+            new ReadableStream({
+              async start(controller) {
+                controller.enqueue(encoder.encode('{"ok":'))
+                await wait(50)
+                controller.enqueue(encoder.encode('true}'))
+                controller.close()
+              },
+            }),
+            { headers: { 'content-type': 'application/json' } },
+          )
+        }),
+      ],
+    })
+    const response = await fetch('http://localhost:5001/console/api/slow')
+    void response
+      .json()
+      .then(() => fetch('http://localhost:5001/console/api/after-body'))
+      .catch(() => undefined)
+
+    await expect(fake()).rejects.toThrow(/unhandled console request: GET \/after-body/)
+  })
+
+  it('treats an aborted XMLHttpRequest as cancelled, not still pending', async () => {
+    const fake = installFakeApi({
+      routes: [route('POST', 'console', '/files/upload', () => new Promise<never>(() => {}))],
+    })
+    const xhr = new XMLHttpRequest()
+    const aborted = new Promise((resolve) => (xhr.onabort = resolve))
+    xhr.open('POST', 'http://localhost:5001/console/api/files/upload')
+    xhr.send(new FormData())
+    await expect.poll(() => fake.route('POST', 'console', '/files/upload')).toHaveBeenCalled()
+    xhr.abort()
+    await aborted
+
+    await expect(fake()).resolves.toBeUndefined()
+  })
+
+  it('resolves same-origin relative API prefixes like the app clients do', async () => {
+    vi.resetModules()
+    vi.doMock('@/config', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@/config')>()),
+      API_PREFIX: '/console/api',
+      PUBLIC_API_PREFIX: '/api',
+    }))
+    try {
+      const sameOrigin = await import('../fake-api')
+      const fake = sameOrigin.installFakeApi({
+        routes: [sameOrigin.route('GET', 'console', '/ping', () => ({ ok: true }))],
+      })
+      const response = await fetch(new URL('/console/api/ping', window.location.origin))
+
+      expect(await response.json()).toEqual({ ok: true })
+      await fake()
+    } finally {
+      vi.doUnmock('@/config')
+      vi.resetModules()
+    }
+  })
+})
+
 describe('REST route bodies', () => {
   const upload = () =>
     installFakeApi({

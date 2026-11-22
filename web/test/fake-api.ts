@@ -157,9 +157,11 @@ export function sseResponse(events: Iterable<unknown> | AsyncIterable<unknown>) 
 }
 
 const prefixes: Record<ApiBase, URL> = {
-  console: new URL(API_PREFIX),
-  public: new URL(PUBLIC_API_PREFIX),
-  marketplace: new URL(MARKETPLACE_API_PREFIX),
+  // Same-origin deployments configure relative prefixes such as `/console/api`; resolve them
+  // against the page like the app's clients do.
+  console: new URL(API_PREFIX, window.location.origin),
+  public: new URL(PUBLIC_API_PREFIX, window.location.origin),
+  marketplace: new URL(MARKETPLACE_API_PREFIX, window.location.origin),
   // Relative endpoints on the page's own origin, such as the device-flow `/openapi/v1/...` calls.
   origin: new URL('/', window.location.origin),
 }
@@ -400,7 +402,13 @@ type Dispatch = (request: Request) => Promise<Response>
 /** A request the fake is still answering; teardown waits for it before checking for problems. */
 type Flight = {
   label: string
+  /** Resolves once the request failed, or its response body ended or was cancelled. */
   done: Promise<void>
+  finished: boolean
+  /** The handler answered; the body may still be streaming. */
+  responded: boolean
+  /** The client started reading the body, so teardown waits for it to end. */
+  bodyReading: boolean
   /** The response a test is holding open with `hold()` or `pendingResponse()`, if any. */
   heldBy?: Promise<unknown>
   /** The client cancelled it, so it already failed with an `AbortError` and needs no response. */
@@ -440,7 +448,6 @@ function noteHeld(flight: Flight | undefined, result: unknown) {
 }
 // Captured before any test fakes timers, so teardown can always wait in real time.
 const realSetTimeout = globalThis.setTimeout
-const realClearTimeout = globalThis.clearTimeout
 const realNow = Date.now.bind(Date)
 const PENDING_REQUEST_GRACE_MS = 2_000
 type RequestContext = {
@@ -480,6 +487,7 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
     #headers = new Headers()
     #responseHeaders = new Headers()
     #aborted = false
+    #controller = new AbortController()
 
     #emit(target: EventTarget & Record<string, unknown>, type: string, event: Event) {
       const handler = target[`on${type}`]
@@ -507,6 +515,8 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
 
     abort() {
       this.#aborted = true
+      // The same signal reaches the tracked request, so teardown treats it as cancelled.
+      this.#controller.abort()
       this.readyState = 4
       this.#emit(this as never, 'abort', new Event('abort'))
     }
@@ -516,11 +526,18 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
         method: this.#method,
         headers: this.#headers,
         body: this.#method === 'GET' || this.#method === 'HEAD' ? undefined : body,
+        signal: this.#controller.signal,
       })
       void dispatch(request).then(
         async (response) => {
           if (this.#aborted) return
-          const text = await response.text()
+          let text: string
+          try {
+            text = await response.text()
+          } catch {
+            return
+          }
+          if (this.#aborted) return
           const size = new Blob([text]).size
           const progress = new ProgressEvent('progress', {
             lengthComputable: true,
@@ -564,6 +581,68 @@ function parseJsonOrNull(text: string) {
   } catch {
     return null
   }
+}
+
+// Re-stream a response body so the request stays tracked until the body ends or is cancelled,
+// and so aborting the request errors a body still being read, as native fetch does.
+function observeBody(response: Response, signal: AbortSignal, flight: Flight, end: () => void) {
+  if (!response.body) {
+    end()
+    return response
+  }
+  const reader = response.body.getReader()
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  let ended = false
+  const finish = () => {
+    ended = true
+    end()
+  }
+  const onAbort = () => {
+    // A body that already ended has nothing left to cancel.
+    if (ended) return
+    try {
+      controller.error(abortReason(signal))
+    } catch {}
+    void reader.cancel(abortReason(signal)).catch(() => undefined)
+    finish()
+  }
+  const body = new ReadableStream<Uint8Array>(
+    {
+      start(streamController) {
+        controller = streamController
+      },
+      async pull(streamController) {
+        flight.bodyReading = true
+        try {
+          const { done, value } = await reader.read()
+          if (done) {
+            streamController.close()
+            finish()
+          } else {
+            streamController.enqueue(value)
+          }
+        } catch (error) {
+          try {
+            streamController.error(error)
+          } catch {}
+          finish()
+        }
+      },
+      cancel(reason) {
+        finish()
+        return reader.cancel(reason)
+      },
+    },
+    // Pull only when the client reads, so an unread body does not count as being read.
+    { highWaterMark: 0 },
+  )
+  if (signal.aborted) onAbort()
+  else signal.addEventListener('abort', onAbort, { once: true })
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  })
 }
 
 function abortReason(signal: AbortSignal) {
@@ -767,20 +846,35 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
 
   const flights = new Set<Flight>()
   const tracked: Dispatch = (request) => {
+    let resolveDone!: () => void
     const flight: Flight = {
       label: `${request.method} ${new URL(request.url).pathname}`,
-      done: Promise.resolve(),
+      done: new Promise<void>((resolve) => {
+        resolveDone = resolve
+      }),
+      finished: false,
+      responded: false,
+      bodyReading: false,
     }
-    const response = dispatch(request, flight)
-    flight.done = response.then(
-      () => undefined,
-      () => undefined,
-    )
+    const end = () => {
+      if (flight.finished) return
+      flight.finished = true
+      flights.delete(flight)
+      resolveDone()
+    }
     flights.add(flight)
-    void flight.done.then(() => flights.delete(flight))
     if (request.signal.aborted) flight.aborted = true
     else request.signal.addEventListener('abort', () => (flight.aborted = true), { once: true })
-    return response
+    return dispatch(request, flight).then(
+      (response) => {
+        flight.responded = true
+        return observeBody(response, request.signal, flight, end)
+      },
+      (error: unknown) => {
+        end()
+        throw error
+      },
+    )
   }
 
   const fakeFetch = vi.fn<typeof fetch>((input, init) =>
@@ -801,18 +895,27 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
     try {
       // Responses still being produced are validated after the test body ends; wait for them,
       // including requests they trigger, except ones the test holds open or the client aborted.
-      const settling = (flight: Flight) => !isHeld(flight) && !flight.aborted
+      // Still owed a response, or a body the client is reading; unread bodies do not block.
+      const settling = (flight: Flight) =>
+        !flight.finished &&
+        !flight.aborted &&
+        !isHeld(flight) &&
+        (!flight.responded || flight.bodyReading)
+      const sleep = (ms: number) => new Promise<void>((resolve) => realSetTimeout(resolve, ms))
       const deadline = realNow() + PENDING_REQUEST_GRACE_MS
       let waiting = [...flights].filter(settling)
-      while (waiting.length && realNow() < deadline) {
-        let timer: ReturnType<typeof setTimeout> | undefined
-        await Promise.race([
-          Promise.all(waiting.map((flight) => flight.done)),
-          new Promise<void>((resolve) => {
-            timer = realSetTimeout(resolve, deadline - realNow())
-          }),
-        ])
-        realClearTimeout(timer)
+      // Re-check after each wave: finishing one response can start the next request.
+      for (let quiet = 0; quiet < 2 && realNow() < deadline;) {
+        if (waiting.length) {
+          quiet = 0
+          await Promise.race([
+            Promise.all(waiting.map((flight) => flight.done)),
+            sleep(Math.min(25, deadline - realNow())),
+          ])
+        } else {
+          quiet += 1
+          await sleep(0)
+        }
         waiting = [...flights].filter(settling)
       }
       for (const flight of waiting) {

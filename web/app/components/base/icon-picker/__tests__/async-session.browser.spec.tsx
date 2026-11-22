@@ -2,7 +2,8 @@ import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { setupFakeApi } from '@/test/fake-api'
+import { route, setupFakeApi } from '@/test/fake-api'
+import { basePath } from '@/utils/var'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
@@ -88,7 +89,17 @@ function deferNextCanvasBlob() {
   }
 }
 
+// Reopening the picker refetches the static emojibase catalog from the app origin.
+const emojiCatalog = `${basePath}/emoji/emojibase-17.0.0/en`
 const fake = setupFakeApi(() => ({
+  routes: [
+    route('GET', 'origin', `${emojiCatalog}/data.json`, () => []),
+    route('GET', 'origin', `${emojiCatalog}/messages.json`, () => ({
+      groups: [],
+      subgroups: [],
+      skinTones: [],
+    })),
+  ],
   console: {
     files: {
       upload: {
