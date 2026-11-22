@@ -1,6 +1,6 @@
 import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
-import { apiError, pendingResponse } from '@/test/fake-api'
+import { apiError, hold, pendingResponse } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { firecrawlDatasourcePlugin, source } from './source-fixtures'
@@ -130,13 +130,7 @@ describe('Sources: preview-lifecycle', () => {
   it('cancels a website preview job that returns after its edit session ends', async () => {
     pluginResponses.data = [firecrawlDatasourcePlugin]
     serveWebsitePreview()
-    let resolveStaleJob: (value: { job_id: string }) => void = () => {}
-    fake.console.knowledgeFs.sourceProviderPreview.jobs.post.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveStaleJob = resolve
-        }),
-    )
+    const staleJob = hold(fake.console.knowledgeFs.sourceProviderPreview.jobs.post)
     sourceResponses.data = {
       pages: [
         {
@@ -162,8 +156,11 @@ describe('Sources: preview-lifecycle', () => {
       .click()
     await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
     await page.getByRole('button', { name: 'knowledgeSpace.preview' }).click()
+    // Close only once the preview request has reached the API, so its late answer is the one
+    // the closed session must cancel.
+    await staleJob.arrived
     await page.getByRole('button', { name: 'common.operation.cancel' }).click()
-    resolveStaleJob({ job_id: 'stale-job' })
+    staleJob.resolve({ job_id: 'stale-job' })
 
     await vi.waitFor(() =>
       expect(

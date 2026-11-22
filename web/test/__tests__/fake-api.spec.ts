@@ -808,6 +808,45 @@ describe('response bodies and cancellation', () => {
   })
 })
 
+describe('request shapes the Python API rejects', () => {
+  const groupsUrl = 'http://localhost:5001/console/api/workspaces/current/network-access-groups'
+  const groupsApi = () =>
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: () => groupList,
+              post: () => ({ group: createNetworkAccessGroupFixture() }),
+            },
+          },
+        },
+      },
+    })
+
+  it('fails the test when a JSON endpoint receives a form body', async () => {
+    const fake = groupsApi()
+    const response = await fetch(groupsUrl, {
+      method: 'POST',
+      body: new URLSearchParams({ name: 'Office', allowed_cidrs: '10.0.0.0/8' }),
+    })
+
+    expect(response.status).toBe(415)
+    await expect(fake()).rejects.toThrow(
+      /workspaces\.current\.networkAccessGroups\.post: sent a application\/x-www-form-urlencoded body, but the API reads this body as JSON/,
+    )
+  })
+
+  it('fails the test on a trailing slash the API routes do not declare', async () => {
+    const fake = groupsApi()
+    await fetch(`${groupsUrl}/`)
+
+    await expect(fake()).rejects.toThrow(
+      /GET \/console\/api\/workspaces\/current\/network-access-groups\/: trailing slash/,
+    )
+  })
+})
+
 describe('REST route bodies', () => {
   const upload = () =>
     installFakeApi({

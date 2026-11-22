@@ -327,6 +327,35 @@ async function buildConsoleRouter(leaves: Array<[string[], AnyHandler]>) {
   return implementLeaves(contracts, leaves)
 }
 
+const isFormBody = (contentType: string | undefined) =>
+  Boolean(
+    contentType &&
+    (contentType.includes('multipart/form-data') ||
+      contentType.includes('application/x-www-form-urlencoded')),
+  )
+
+// The API reads form bodies only for uploads: the generated contracts give those bodies a
+// `Blob | File` field, and the oRPC client sends `FormData` only for bodies that contain one.
+function acceptsFormBody(procedure: unknown) {
+  type Schema = {
+    shape?: Record<string, Schema>
+    unwrap?: () => Schema
+    safeParse?: (value: unknown) => { success: boolean }
+  }
+  const unwrap = (schema: Schema | undefined) => {
+    let current = schema
+    while (current && !current.shape && current.unwrap) current = current.unwrap()
+    return current
+  }
+  const input = unwrap((procedure as { '~orpc': { inputSchema?: Schema } })['~orpc'].inputSchema)
+  const body = unwrap(input?.shape?.body)
+  if (!body) return false
+  const file = new Blob()
+  const acceptsFile = (schema: Schema | undefined) =>
+    Boolean(schema?.safeParse?.(file).success || schema?.safeParse?.([file]).success)
+  return body.shape ? Object.values(body.shape).some(acceptsFile) : acceptsFile(body)
+}
+
 function createContractHandler(router: Record<string, unknown>, report: (problem: string) => void) {
   return new OpenAPIHandler(router as never, {
     // Query strings and path params arrive as text; the Python API coerces them by schema.
@@ -335,6 +364,15 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
       async ({ next, input, procedure, context, ...options }) => {
         const requestContext = context as RequestContext
         requestContext.decoded = true
+        if (isFormBody(requestContext.contentType) && !acceptsFormBody(procedure)) {
+          report(
+            `${options.path.join('.')}: sent a ${requestContext.contentType?.split(';')[0]} body, but the API reads this body as JSON`,
+          )
+          throw new ORPCError('UNSUPPORTED_MEDIA_TYPE', {
+            status: 415,
+            message: 'The API reads this request body as JSON',
+          })
+        }
         // Coercion is for text in the URL and headers; the Python API validates JSON bodies as sent.
         const sent = requestContext.jsonBody
           ? { ...(input as object), body: requestContext.jsonBody.value }
@@ -456,6 +494,8 @@ type RequestContext = {
   decoded?: boolean
   /** The JSON body exactly as sent, so schema coercion never changes its types. */
   jsonBody?: { value: unknown }
+  /** The request's `Content-Type`, checked against what the procedure's body accepts. */
+  contentType?: string
   flight?: Flight
 }
 
@@ -788,6 +828,14 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       report(`unexpected network request: ${request.method} ${url.href}`)
       throw new TypeError('Failed to fetch')
     }
+    // oRPC and the route matcher ignore a trailing slash, but Flask returns 404 for routes
+    // declared without one, and no contract path declares one.
+    const apiPath = url.pathname.slice(prefixPath(base).length)
+    if (base !== 'origin' && apiPath.length > 1 && apiPath.endsWith('/')) {
+      report(
+        `${request.method} ${url.pathname}: trailing slash; the API declares this route without one`,
+      )
+    }
     const tilde = url.pathname.split('/').find((segment) => segment.startsWith('~'))
     if (tilde) {
       report(
@@ -795,7 +843,11 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       )
     }
     if (base === 'console' && leavesOf('console').length) {
-      const context: RequestContext = { jsonBody: await readJsonBody(request), flight }
+      const context: RequestContext = {
+        jsonBody: await readJsonBody(request),
+        contentType: request.headers.get('content-type') ?? undefined,
+        flight,
+      }
       const { matched, response } = await (
         await getConsoleHandler()
       ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone(), report)), {
@@ -806,7 +858,11 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       if (matched) return response!
     }
     if (base === 'marketplace' && leavesOf('marketplace').length) {
-      const context: RequestContext = { jsonBody: await readJsonBody(request), flight }
+      const context: RequestContext = {
+        jsonBody: await readJsonBody(request),
+        contentType: request.headers.get('content-type') ?? undefined,
+        flight,
+      }
       const { matched, response } = await getMarketplaceHandler().handle(
         splitRequestCustomMethods(request.clone()),
         {

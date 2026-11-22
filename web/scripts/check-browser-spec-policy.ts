@@ -64,8 +64,20 @@ export function isOwnedMockSpecifier(specifier: string) {
 }
 
 // API data must come from the contract-validated fake API (`@/test/fake-api`), not mocked clients.
-export function isServiceMockSpecifier(specifier: string) {
-  return /^@\/service(?:\/|$)/.test(specifier)
+// The web-relative module a specifier names, resolved against the spec's own (web-relative)
+// path: `@/service/console` and `../../service/console` from `app/x/y/` both name `service/console`.
+function resolveWebModule(specifier: string, specPath: string) {
+  const target = specifier.startsWith('@/')
+    ? specifier.slice(2)
+    : specifier.startsWith('.')
+      ? posix.normalize(posix.join(posix.dirname(specPath.replaceAll('\\', '/')), specifier))
+      : undefined
+  return target?.replace(/\.[cm]?[jt]sx?$/, '')
+}
+
+export function isServiceMockSpecifier(specifier: string, specPath = '') {
+  const module = resolveWebModule(specifier, specPath)
+  return module === 'service' || Boolean(module?.startsWith('service/'))
 }
 
 const networkGlobals = new Set(['fetch', 'XMLHttpRequest'])
@@ -111,22 +123,14 @@ function rawNetworkStub(node: ts.Node) {
 // Resolve each import against the spec (web-relative `path`), so `@/test/fake-api`, `../fake-api`
 // and the new-rag source helpers that install the fake are all recognized.
 function usesFakeApi(sourceFile: ts.SourceFile, path: string) {
-  const specDirectory = posix.dirname(path.replaceAll('\\', '/'))
   return sourceFile.statements.some((statement) => {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier))
       return false
-    const specifier = statement.moduleSpecifier.text
-    const target = specifier.startsWith('@/')
-      ? specifier.slice(2)
-      : specifier.startsWith('.')
-        ? posix.normalize(posix.join(specDirectory, specifier))
-        : undefined
-    if (!target) return false
-    const module = target.replace(/\.[cm]?[jt]sx?$/, '')
+    const module = resolveWebModule(statement.moduleSpecifier.text, path)
     return (
       module === 'test/fake-api' ||
-      module.endsWith('/source-server') ||
-      module.endsWith('/source-browser-env')
+      Boolean(module?.endsWith('/source-server')) ||
+      Boolean(module?.endsWith('/source-browser-env'))
     )
   })
 }
@@ -254,7 +258,7 @@ export function analyzeBrowserSpec(
     }
     if (ts.isCallExpression(node)) {
       const specifier = mockSpecifier(node)
-      if (specifier && isServiceMockSpecifier(specifier)) {
+      if (specifier && isServiceMockSpecifier(specifier, path)) {
         violations.push({
           kind: 'service-mock',
           path,

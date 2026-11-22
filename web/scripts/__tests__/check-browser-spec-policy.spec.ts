@@ -89,6 +89,36 @@ describe('Browser spec policy', () => {
     },
   )
 
+  it('resolves relative mock paths before deciding whether they name the service layer', () => {
+    expect(
+      isServiceMockSpecifier('../../service/console', 'app/components/example.browser.spec.tsx'),
+    ).toBe(true)
+    expect(
+      isServiceMockSpecifier(
+        '../../../service/base.ts',
+        'app/components/x/example.browser.spec.tsx',
+      ),
+    ).toBe(true)
+    expect(
+      isServiceMockSpecifier('../service-fixture', 'app/components/example.browser.spec.tsx'),
+    ).toBe(false)
+    expect(isServiceMockSpecifier('./service', 'app/components/example.browser.spec.tsx')).toBe(
+      false,
+    )
+
+    const result = analyzeBrowserSpec(
+      'app/components/example.browser.spec.tsx',
+      ['// boundary: control the API', "vi.mock('../../service/console', () => ({}))"].join('\n'),
+    )
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        kind: 'service-mock',
+        line: 2,
+        specifier: '../../service/console',
+      }),
+    ])
+  })
+
   it('rejects service mocks even with a boundary reason', () => {
     const result = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',
