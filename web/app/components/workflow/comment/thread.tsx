@@ -526,6 +526,7 @@ function CommentThreadEntry({
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const editorRef = useRef<HTMLTextAreaElement>(null)
   const cancelDeleteRef = useRef<HTMLButtonElement>(null)
   const editing = draft !== null
 
@@ -547,10 +548,13 @@ function CommentThreadEntry({
 
   return (
     <CommentThreadItem>
-      {isOwn && !editing && (
+      {isOwn && (
+        // The menu stays mounted while editing, so choosing Edit can finish closing it into
+        // the edit field; only its button is hidden.
         <Menu>
           <MenuTrigger
             ref={menuTriggerRef}
+            hidden={editing}
             data-confirming={confirmingDelete || undefined}
             className="absolute inset-e-2 top-2 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-confirming:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
             aria-label={actionsLabel}
@@ -560,7 +564,18 @@ function CommentThreadEntry({
           <MenuContent
             align="end"
             className="w-36 backdrop-blur-[10px]"
-            finalFocus={confirmingDelete ? false : undefined}
+            // Choosing Edit closes the menu into the edit field, with the caret at the end of
+            // its text; otherwise focus returns to the actions button.
+            finalFocus={
+              confirmingDelete
+                ? false
+                : () => {
+                    const editor = editorRef.current
+                    if (!editor) return true
+                    editor.setSelectionRange(editor.value.length, editor.value.length)
+                    return editor
+                  }
+            }
           >
             <MenuItem className="px-3" disabled={!onSave} onClick={() => setDraft(content)}>
               {editLabel}
@@ -640,7 +655,7 @@ function CommentThreadEntry({
           <div className="min-w-0 flex-1">
             <CommentComposerFrame>
               <MentionInput
-                ref={focusAtEnd}
+                ref={editorRef}
                 value={draft}
                 onChange={setDraft}
                 onSubmit={handleSave}
@@ -714,15 +729,4 @@ function UnsentReplyEntry({ reply, mentionNames, onRetry, onDiscard }: UnsentRep
       )}
     </CommentThreadItem>
   )
-}
-
-// An edit field opens focused with its text ready to extend. The menu that started the
-// edit returns focus in a microtask as it closes; queueing after it lets the field win.
-function focusAtEnd(textarea: HTMLTextAreaElement | null) {
-  if (!textarea) return
-  queueMicrotask(() => {
-    if (!textarea.isConnected) return
-    textarea.focus()
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
-  })
 }

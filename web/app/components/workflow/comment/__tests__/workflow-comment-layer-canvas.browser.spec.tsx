@@ -237,6 +237,23 @@ describe('keyboard and hover', () => {
     await expect.element(preview).not.toBeInTheDocument()
   })
 
+  it('puts focus in a reply’s edit field, at the end of its text, when Edit is chosen', async () => {
+    saveReplyOnServer('first', 'A reply to edit', 'reply-edit')
+    const screen = await renderLayer()
+    await openThread(screen)
+
+    await thread(screen).getByLabelText('workflowComments.comments.aria.replyActions').click()
+    await screen
+      .getByRole('menuitem', { name: 'workflowComments.comments.actions.editReply' })
+      .click()
+
+    const editor = screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
+    await expect.element(editor).toHaveFocus()
+    const field = editor.element() as HTMLTextAreaElement
+    expect(field.selectionStart).toBe('A reply to edit'.length)
+    expect(field.selectionEnd).toBe('A reply to edit'.length)
+  })
+
   it('opens from the keyboard and gives focus back to its marker, which still moves with the arrow keys', async () => {
     api.update.mockResolvedValue({})
     const screen = await renderLayer()
