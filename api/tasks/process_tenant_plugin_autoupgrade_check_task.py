@@ -362,7 +362,7 @@ def _process_tenant_plugin_autoupgrade_check(
                             latest_version_tuple[0] == current_version_tuple[0]
                             and latest_version_tuple[1] == current_version_tuple[1]
                         ):
-                            return latest_version_tuple[2] != current_version_tuple[2]
+                            return latest_version_tuple[2] > current_version_tuple[2]
                         return False
 
                     version_checker = {
