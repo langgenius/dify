@@ -1800,3 +1800,15 @@ forbidden_modules =
     tasks
     werkzeug
 allow_indirect_imports = True
+
+[importlinter:contract:run-job-boundary]
+name = Run jobs do not import controllers, repositories, extensions or configs
+type = forbidden
+source_modules =
+    services.run_job
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    repositories
+allow_indirect_imports = True
