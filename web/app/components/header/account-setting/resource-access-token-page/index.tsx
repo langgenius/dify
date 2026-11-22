@@ -1,18 +1,24 @@
 'use client'
 
-import type { DialogState } from './types'
+import type { DeleteTokenParams, DialogState } from './types'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { DeleteTokenDialogContent } from './delete-token-dialog'
 import ResourceAccessTokenDialog from './token-dialog'
 import ResourceAccessTokenTable from './token-table'
 
 const PAGE_SIZE = 20
+const deleteToken = consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
 
 export default function ResourceAccessTokenPage() {
   const { t } = useTranslation(['common', 'accountSettings'])
@@ -20,18 +26,68 @@ export default function ResourceAccessTokenPage() {
   const [searchText, setSearchText] = useState('')
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
-  const tokensQuery = useQuery(
-    consoleQuery.resourceAccessTokens.get.queryOptions({
-      placeholderData: keepPreviousData,
-      input: {
-        query: {
-          keyword: debouncedSearchText || undefined,
-          limit: PAGE_SIZE,
-          page,
-        },
+  const queryClient = useQueryClient()
+  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteTokenParams>())
+  const deleteFocusRef = useRef<{
+    opener: Element | undefined
+    adjacentTargets: HTMLElement[]
+    succeeded: boolean
+  }>(null)
+  const deleteDialogId = useId()
+  const mutationKey = [...deleteToken.mutationKey(), deleteDialogId]
+  const deleteFilter = { mutationKey, exact: true }
+  const tokenOptions = consoleQuery.resourceAccessTokens.get.queryOptions({
+    placeholderData: keepPreviousData,
+    input: {
+      query: {
+        keyword: debouncedSearchText || undefined,
+        limit: PAGE_SIZE,
+        page,
+      },
+    },
+  })
+  const tokensQuery = useQuery(tokenOptions)
+  const isSwitchingTokenList =
+    searchText.trim() !== debouncedSearchText || tokensQuery.isPlaceholderData
+  const deleteErrorMessage = (error: unknown) =>
+    getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })
+  const deletion = useMutation({
+    ...deleteToken.mutationOptions({
+      context: { silent: true },
+      networkMode: 'always',
+      onError: (error) => {
+        if (!deleteDialog.isOpen) toast.error(deleteErrorMessage(error))
+      },
+      onSuccess: (_result, { params }) => {
+        const { queryKey } = tokenOptions
+        void queryClient.cancelQueries({ queryKey, exact: true })
+        const updatedPage = queryClient.setQueryData(queryKey, (current) => {
+          if (!current?.data.some((row) => row.token_id === params.token_id)) return current
+          return {
+            ...current,
+            data: current.data.filter((row) => row.token_id !== params.token_id),
+            total: Math.max(0, current.total - 1),
+          }
+        })
+        if (updatedPage)
+          setPage((current) =>
+            Math.min(current, Math.max(1, Math.ceil(updatedPage.total / PAGE_SIZE))),
+          )
+        if (deleteFocusRef.current) deleteFocusRef.current.succeeded = true
+        deleteDialog.close()
       },
     }),
-  )
+    mutationKey,
+  })
+  const canDelete = (params: DeleteTokenParams) =>
+    !isSwitchingTokenList &&
+    (queryClient
+      .getQueryData(tokenOptions.queryKey)
+      ?.data.some(
+        (row) => row.token_id === params.token_id && row.relation_id === params.relation_id,
+      ) ??
+      false)
   const rows = tokensQuery.data?.data
   const total = tokensQuery.data?.total ?? 0
   const hasLoadError = tokensQuery.isError && !tokensQuery.data
@@ -56,7 +112,11 @@ export default function ResourceAccessTokenPage() {
             setPage(1)
           }}
         />
-        <Button variant="primary" onClick={() => setDialogState({ mode: 'create' })}>
+        <Button
+          ref={createButtonRef}
+          variant="primary"
+          onClick={() => setDialogState({ mode: 'create' })}
+        >
           <span aria-hidden className="i-ri-add-line size-4" />
           {t(($) => $['resourceAccessToken.createButton'], { ns: 'accountSettings' })}
         </Button>
@@ -88,6 +148,8 @@ export default function ResourceAccessTokenPage() {
       ) : (
         <ResourceAccessTokenTable
           rows={rows}
+          deleteDialog={deleteDialog}
+          deletionDisabled={isSwitchingTokenList}
           isPending={tokensQuery.isPending}
           onEdit={(row) => setDialogState({ mode: 'edit', row })}
         />
@@ -113,6 +175,55 @@ export default function ResourceAccessTokenPage() {
           />
         </div>
       )}
+
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (open) {
+            deletion.reset()
+            const opener = details.trigger
+            deleteFocusRef.current = {
+              opener,
+              adjacentTargets: getAdjacentFocusTargets(opener?.closest('tr'), (row) =>
+                row.querySelector<HTMLElement>('[data-token-edit]'),
+              ),
+              succeeded: false,
+            }
+          } else if (
+            details.reason !== 'imperative-action' &&
+            queryClient.isMutating(deleteFilter)
+          ) {
+            details.cancel()
+          }
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <DeleteTokenDialogContent
+              isPending={deletion.isPending}
+              canDelete={canDelete(payload)}
+              error={deletion.isError ? deleteErrorMessage(deletion.error) : undefined}
+              finalFocus={() => {
+                const focus = deleteFocusRef.current
+                if (!focus || (!focus.succeeded && focus.opener?.isConnected)) return true
+                return (
+                  focus.adjacentTargets.find((element) => element.isConnected) ??
+                  createButtonRef.current
+                )
+              }}
+              onConfirm={() => {
+                if (
+                  !deleteDialog.isOpen ||
+                  !canDelete(payload) ||
+                  queryClient.isMutating(deleteFilter)
+                )
+                  return
+                deletion.mutate({ params: payload })
+              }}
+            />
+          )
+        }
+      </AlertDialog>
 
       {dialogState && (
         <ResourceAccessTokenDialog

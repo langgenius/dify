@@ -1,7 +1,8 @@
 'use client'
 
 import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
-import type { TokenTableRow } from './types'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import type { DeleteTokenParams, TokenTableRow } from './types'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -33,10 +34,14 @@ export default function ResourceAccessTokenTable({
   rows,
   isPending,
   onEdit,
+  deleteDialog,
+  deletionDisabled,
 }: {
   rows: ResourceAccessTokenRowResponse[] | undefined
   isPending: boolean
   onEdit: (row: TokenTableRow) => void
+  deleteDialog: AlertDialogHandle<DeleteTokenParams>
+  deletionDisabled: boolean
 }) {
   const { t } = useTranslation(['accountSettings'])
   const tokenRows = useMemo(() => getTokenRows(rows ?? []), [rows])
@@ -85,7 +90,13 @@ export default function ResourceAccessTokenTable({
           )}
           {!isPending &&
             tokenRows.map((row) => (
-              <ResourceAccessTokenRow key={row.tokenId} row={row} onEdit={onEdit} />
+              <ResourceAccessTokenRow
+                key={row.tokenId}
+                row={row}
+                onEdit={onEdit}
+                deleteDialog={deleteDialog}
+                deletionDisabled={deletionDisabled}
+              />
             ))}
           {!isPending && tokenRows.length === 0 && (
             <tr>
