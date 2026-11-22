@@ -1,6 +1,6 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import type { consoleClient } from '@/service/console'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
@@ -15,6 +15,7 @@ import {
 const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.workspaces.current.rbac.workspace.apps.accessPolicy.get>(),
   create: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.post>(),
+  notifyError: vi.fn(),
   remove: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.byPolicyId.delete>(),
   permissions: vi.fn<typeof consoleClient.workspaces.current.rbac.myPermissions.get>(),
 }))
@@ -33,6 +34,11 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
+// boundary: Observe notifications that outlive the settings section without mounting the app toaster.
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: api.notifyError } }
+})
 let rules: ReturnType<typeof ruleFor>[]
 beforeEach(() => {
   api.list.mockReset().mockImplementation(async () => rulePage(rules))
@@ -41,6 +47,7 @@ beforeEach(() => {
     rules = [...rules, { policy, accounts: [], roles: [] }]
     return policy
   })
+  api.notifyError.mockReset()
   api.remove.mockReset()
   api.permissions.mockReset().mockResolvedValue({
     workspace: { permission_keys: [] },
@@ -200,6 +207,7 @@ it('protects the actual delete, supports retry, and returns focus before the lis
     .element(dialog.getByRole('alert'))
     .toHaveTextContent('Could not delete this permission set')
   await expect.element(cancel).toBeEnabled()
+  expect(api.notifyError).not.toHaveBeenCalled()
   await userEvent.keyboard('{Enter}')
   await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
 
@@ -236,4 +244,45 @@ it('keeps Escape and menu focus return available during an ordinary list refresh
   expect(api.remove).not.toHaveBeenCalled()
   refresh.resolve(rulePage(rules))
   await fetching
+})
+
+it('reports a deletion failure if the settings section closes during the request', async () => {
+  rules = [ruleFor('app')]
+  const request = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
+  api.remove.mockReturnValueOnce(request.promise)
+  const { screen } = await setup('app')
+  await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'common.operation.delete' }).click()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await screen.unmount()
+  request.reject(new Error('Permission set deletion failed'))
+  await expect.poll(() => api.notifyError.mock.calls).toEqual([['Permission set deletion failed']])
+})
+
+it('returns focus to the section heading in view after deleting a low row', async () => {
+  await page.viewport(1100, 245)
+  rules = Array.from({ length: 8 }, (_, index) => {
+    const rule = ruleFor('app', `Permission set ${index + 1}`)
+    rule.policy.id = `app-rule-${index + 1}`
+    return rule
+  })
+  const removed = rules.at(-1)!
+  api.remove.mockImplementation(async () => {
+    rules = rules.filter((rule) => rule !== removed)
+    return { result: 'success' }
+  })
+  const { screen } = await setup('app')
+  const heading = screen.getByRole('button', { name: /^permission.accessRule.appTitle/ })
+  await screen.getByRole('button', { name: 'common.operation.moreActions' }).last().click()
+  await expect.element(heading).not.toBeInViewport()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'common.operation.delete' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(heading).toHaveFocus()
+  await expect.element(heading).toBeInViewport()
 })

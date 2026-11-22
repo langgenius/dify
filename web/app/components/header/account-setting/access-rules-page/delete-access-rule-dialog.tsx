@@ -15,6 +15,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -36,10 +37,15 @@ export function DeleteAccessRuleDialog({
   const dialogId = useId()
   const mutationKey = [...deletePolicy.mutationKey(), dialogId]
   const filter = { mutationKey, exact: true }
+  const deletionErrorMessage = (error: unknown) =>
+    getErrorMessage(error) ?? t(($) => $['api.actionFailed'])
   const deletion = useMutation({
     ...deletePolicy.mutationOptions({
       context: { silent: true },
       networkMode: 'always',
+      onError: (error) => {
+        if (!handle.isOpen) toast.error(deletionErrorMessage(error))
+      },
       onSuccess: (_result, { params }) => {
         onDeleted(params.policy_id)
         handle.close()
@@ -61,7 +67,12 @@ export function DeleteAccessRuleDialog({
         rule && (
           <AlertDialogContent
             backdropProps={{ forceRender: true }}
-            finalFocus={() => (canDeleteRule(rule.id) ? true : fallbackFocusRef.current)}
+            finalFocus={() => {
+              if (canDeleteRule(rule.id)) return true
+              const fallback = fallbackFocusRef.current
+              fallback?.scrollIntoView({ block: 'nearest' })
+              return fallback
+            }}
           >
             <AlertDialogHeader>
               <AlertDialogTitle>
@@ -74,7 +85,7 @@ export function DeleteAccessRuleDialog({
             {deletion.isError && (
               <AlertDialogBody>
                 <p role="alert" className="text-text-destructive">
-                  {getErrorMessage(deletion.error) ?? t(($) => $['api.actionFailed'])}
+                  {deletionErrorMessage(deletion.error)}
                 </p>
               </AlertDialogBody>
             )}
