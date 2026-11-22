@@ -122,27 +122,6 @@ describe('markers and the composer', () => {
     expect(positions.slice(moved).every((x) => x > start + 200)).toBe(true)
   })
 
-  it('still opens a marker’s thread from the keyboard after its card was dragged', async () => {
-    api.update.mockResolvedValue({})
-    const screen = await renderLayer()
-    await markers(screen).first().hover()
-    await userEvent.dragAndDrop(
-      screen.getByText('First thread'),
-      page.elementLocator(document.getElementById('workflow-container')!),
-      {
-        sourcePosition: { x: 10, y: 10 },
-        targetPosition: { x: 300, y: 300 },
-      },
-    )
-    await expect.poll(() => api.update.mock.calls.length).toBe(1)
-    await expect.element(thread(screen)).not.toBeInTheDocument()
-
-    markers(screen).first().element().focus()
-    await userEvent.keyboard('{Enter}')
-
-    await expect.element(thread(screen)).toBeVisible()
-  })
-
   it('keeps a new comment’s text until it is created, then shows its marker', async () => {
     const create = deferred<{ id: string; created_at: number }>()
     api.create.mockReturnValueOnce(create.promise)
@@ -208,17 +187,6 @@ describe('markers and the composer', () => {
 })
 
 describe('keyboard and hover', () => {
-  it('opens a marker’s preview once the pointer rests on it, not as it arrives', async () => {
-    const screen = await renderLayer()
-    await expect.element(markers(screen).first()).toBeVisible()
-
-    await markers(screen).first().hover()
-    // A pointer that has only just arrived may be passing over.
-    expect(screen.getByText('First thread').query()).toBeNull()
-
-    await expect.element(screen.getByText('First thread')).toBeVisible()
-  })
-
   it('previews a comment while hovered and on keyboard focus, and Escape dismisses it until the pointer leaves', async () => {
     const screen = await renderLayer()
     const preview = screen.getByText('First thread')

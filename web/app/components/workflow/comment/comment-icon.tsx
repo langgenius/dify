@@ -16,9 +16,6 @@ import CommentPreview from './comment-preview'
 import { getCommentMarkerId } from './marker-id'
 import { getCommentParticipants } from './participants'
 
-// How long a mouse rests on a marker, or focus stays on it, before its preview opens.
-const PREVIEW_OPEN_DELAY = 300
-
 type CommentIconProps = {
   comment: WorkflowCommentBasic
   /** The canvas's comment thread popover; the marker is one of its triggers. */
@@ -139,22 +136,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       return isDragging ? 'cursor-grabbing' : 'cursor-pointer'
     }, [isActive, isAuthor, isDragging])
 
-    // Hover intent, as in Base UI's preview card: a mouse resting on the marker opens its
-    // preview, one passing over it does not, and a brief exit, such as onto the card or a
-    // wobble, does not close it. Keyboard focus waits the same; touch opens the thread itself.
-    const intentTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-    const cancelIntent = useCallback(() => clearTimeout(intentTimerRef.current), [])
-    const scheduleIntent = useCallback((change: () => void, delay: number) => {
-      clearTimeout(intentTimerRef.current)
-      intentTimerRef.current = setTimeout(change, delay)
-    }, [])
-    useEffect(() => cancelIntent, [cancelIntent])
-
     const handlePointerDown = useCallback(
       (event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0) return
         dragEndedRef.current = false
-        cancelIntent()
 
         event.stopPropagation()
         event.preventDefault()
@@ -180,7 +165,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         if (event.currentTarget.setPointerCapture)
           event.currentTarget.setPointerCapture(event.pointerId)
       },
-      [cancelIntent, isAuthor, screenPosition],
+      [isAuthor, screenPosition],
     )
 
     const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
@@ -272,7 +257,6 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const dismissedRef = useRef(false)
     const stopDismissalRef = useRef<() => void>(undefined)
     const dismissPreview = useCallback(() => {
-      clearTimeout(intentTimerRef.current)
       dismissedRef.current = true
       setShowPreview(false)
       stopDismissalRef.current?.()
@@ -300,19 +284,6 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       onPreview?.(comment.id)
     }, [comment.id, isActive, isDragging, onPreview])
 
-    const handlePointerEnter = useCallback(
-      (event: ReactPointerEvent<HTMLElement>) => {
-        if (event.pointerType === 'mouse') scheduleIntent(openPreview, PREVIEW_OPEN_DELAY)
-      },
-      [openPreview, scheduleIntent],
-    )
-    const handlePointerLeave = useCallback(
-      (event: ReactPointerEvent<HTMLElement>) => {
-        if (event.pointerType === 'mouse') scheduleIntent(() => setShowPreview(false), 150)
-      },
-      [scheduleIntent],
-    )
-
     // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
     useEffect(() => {
       if (!previewOpen) return
@@ -322,6 +293,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }, [dismissPreview, previewOpen])
+
+    const handleMouseLeave = useCallback(() => {
+      setShowPreview(false)
+    }, [])
 
     const participants = useMemo(() => getCommentParticipants(comment), [comment])
 
@@ -351,8 +326,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
                 participants={participants}
                 selected={isActive}
                 className={cursorClass}
-                onPointerEnter={handlePointerEnter}
-                onPointerLeave={handlePointerLeave}
+                onMouseEnter={openPreview}
+                onMouseLeave={handleMouseLeave}
               />
             </IconButton>
           }
@@ -373,11 +348,9 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           }}
           // Keyboard focus previews the comment like hovering does.
           onFocus={(event) => {
-            if (event.currentTarget.matches(':focus-visible'))
-              scheduleIntent(openPreview, PREVIEW_OPEN_DELAY)
+            if (event.currentTarget.matches(':focus-visible')) openPreview()
           }}
           onBlur={() => {
-            cancelIntent()
             finishKeyboardMove()
             stopDismissalRef.current?.()
             setShowPreview(false)
@@ -421,8 +394,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}
-            onPointerEnter={handlePointerEnter}
-            onPointerLeave={handlePointerLeave}
+            onMouseEnter={openPreview}
+            onMouseLeave={handleMouseLeave}
           >
             <CommentPreview
               comment={comment}
