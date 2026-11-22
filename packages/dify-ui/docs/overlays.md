@@ -80,8 +80,6 @@ identifies its registered Trigger.
   `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
   reserves inline-end space when it contains the button. Without it, the header keeps its normal
   gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
-  A dialog that submits a form cancels user-initiated closes while the submission is pending and
-  closes itself when it succeeds; a failure keeps the dialog open with the draft intact.
   Outside-press dismissal is the default and follows what an accidental close would cost. The Root
   sets `disablePointerDismissal` only when that close throws away work the user would have to
   redo, not merely because the content contains a field; a quick choice or a short value typed
@@ -108,6 +106,15 @@ identifies its registered Trigger.
 
 Use a real `<button type="button">` for button-like triggers. If a Base UI trigger intentionally
 renders a non-button element, set `nativeButton={false}`.
+
+## Closing dialogs during requests
+
+A request's progress, outcome, and retry need a place the user can see. Briefly prevent dismissal
+only when closing would lose that path or expose an action that conflicts with the pending request.
+When the dialog owns the outcome, close it on success and preserve the draft or target on failure
+so the user can retry. When the page can show the outcome, or the work may take a long time, let the
+page own the progress, outcome, and retry so the dialog can close. During a request, disable only
+actions that would conflict with the work in progress.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Infotip contract]: ../src/infotip/README.md
