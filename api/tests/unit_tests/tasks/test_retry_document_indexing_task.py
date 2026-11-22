@@ -2,9 +2,9 @@ from unittest.mock import ANY, MagicMock, call, patch
 from uuid import uuid4
 
 import pytest
-from configs import dify_config
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import DeploymentEdition
