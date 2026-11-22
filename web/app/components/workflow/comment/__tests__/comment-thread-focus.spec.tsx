@@ -281,7 +281,6 @@ describe('Comment thread focus', () => {
         <CommentThreadFixture
           comment={comment}
           onReply={() => {}}
-          canGoNext
           onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
         />
       )
@@ -309,7 +308,6 @@ describe('Comment thread focus', () => {
         <CommentThreadFixture
           comment={comment}
           onReply={() => new Promise<void>((resolve) => (finishReply = resolve))}
-          canGoNext
           onNext={() => setComment((current) => ({ ...current, id: 'comment-2' }))}
         />
       )

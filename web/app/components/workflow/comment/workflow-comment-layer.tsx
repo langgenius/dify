@@ -42,6 +42,8 @@ import { useRevealComment } from './use-reveal-comment'
 
 const commentsApi = consoleQuery.apps.byAppId.workflow.comments
 const replySendKey = commentsApi.byCommentId.replies.post.mutationKey()
+const editCommentKey = commentsApi.byCommentId.put.mutationKey()
+const editReplyKey = commentsApi.byCommentId.replies.byReplyId.put.mutationKey()
 const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
 type CommentParams = { app_id: string; comment_id: string }
@@ -566,6 +568,23 @@ function ShownThread({
     }),
   )
   const resolveComment = useMutation(commentsApi.byCommentId.resolve.post.mutationOptions())
+  // Edits being saved, by the comment or reply they change; read from the mutations, so the
+  // thread still locks them after it is shown again. A marker move writes the comment the
+  // same way, so it holds the comment's edit for its short request too.
+  const savingIds = useMutationState({
+    filters: {
+      status: 'pending',
+      predicate: (mutation) =>
+        matchMutation({ mutationKey: editCommentKey }, mutation) ||
+        matchMutation({ mutationKey: editReplyKey }, mutation),
+    },
+    select: (mutation) => {
+      const { params } = mutation.state.variables as {
+        params: { comment_id: string; reply_id?: string }
+      }
+      return params.reply_id ?? params.comment_id
+    },
+  })
 
   return (
     <CommentThread
@@ -594,8 +613,7 @@ function ShownThread({
       }}
       onPrev={onPrev}
       onNext={onNext}
-      canGoPrev={!!onPrev}
-      canGoNext={!!onNext}
+      savingIds={savingIds}
       onReply={(content, ids) => {
         const trimmed = content.trim()
         if (trimmed)

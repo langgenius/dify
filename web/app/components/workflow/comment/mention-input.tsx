@@ -86,7 +86,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
         select: (response) => response.users,
       }),
     )
-    const mentionUsers = useMemo(() => mentionableUsers ?? EMPTY_USERS, [mentionableUsers])
+    const mentionUsers = mentionableUsers ?? EMPTY_USERS
 
     const [showMentionDropdown, setShowMentionDropdown] = useState(false)
     const [mentionQuery, setMentionQuery] = useState('')
@@ -97,15 +97,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
     const [isMultiline, setIsMultiline] = useState(false)
 
-    const mentionNameList = useMemo(() => {
-      const names = mentionUsers
-        .map((user) => user.name?.trim())
-        .filter((name): name is string => Boolean(name))
-
-      const uniqueNames = Array.from(new Set(names))
-      uniqueNames.sort((a, b) => b.length - a.length)
-      return uniqueNames
-    }, [mentionUsers])
+    const mentionNameList = useMemo(
+      () => mentionUsers.map((user) => user.name ?? ''),
+      [mentionUsers],
+    )
 
     const highlightedValue = useMemo(
       () => highlightMentions(value, mentionNameList),

@@ -31,7 +31,7 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
     }),
   )
   const mentionNames = useMemo(
-    () => (mentionUsers ?? []).map((user) => user.name).filter(Boolean),
+    () => (mentionUsers ?? []).map((user) => user.name ?? ''),
     [mentionUsers],
   )
   const setCommentPreviewHovering = useStore((s) => s.setCommentPreviewHovering)

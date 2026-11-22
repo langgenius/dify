@@ -52,6 +52,8 @@ import {
   CommentThreadPopup,
 } from './thread-view'
 
+const EMPTY_IDS: readonly string[] = []
+
 type CommentThreadProps = {
   comment: Omit<WorkflowCommentDetail, 'replies'> & { replies: ThreadReply[] }
   loading?: boolean
@@ -59,8 +61,8 @@ type CommentThreadProps = {
   onResolve?: () => void
   onPrev?: () => void
   onNext?: () => void
-  canGoPrev?: boolean
-  canGoNext?: boolean
+  /** The comment and reply ids whose edit is being saved. */
+  savingIds?: readonly string[]
   onCommentEdit?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReply?: (content: string, mentionedUserIds?: string[]) => Promise<void> | void
   onReplyEdit?: (
@@ -119,8 +121,6 @@ export function CommentThread({
   onResolve,
   onPrev,
   onNext,
-  canGoPrev,
-  canGoNext,
   ...sessionProps
 }: CommentThreadProps) {
   const { t } = useTranslation(['common', 'workflowComments'])
@@ -199,7 +199,7 @@ export function CommentThread({
                     size="lg"
                     aria-label={previousLabel}
                     focusableWhenDisabled
-                    disabled={!canGoPrev}
+                    disabled={!onPrev}
                     onClick={onPrev}
                   >
                     <span aria-hidden className="i-ri-arrow-up-s-line size-4" />
@@ -213,7 +213,7 @@ export function CommentThread({
                     size="lg"
                     aria-label={nextLabel}
                     focusableWhenDisabled
-                    disabled={!canGoNext}
+                    disabled={!onNext}
                     onClick={onNext}
                   >
                     <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
@@ -283,6 +283,7 @@ type CommentThreadSessionProps = Pick<
   | 'comment'
   | 'loading'
   | 'onCommentEdit'
+  | 'savingIds'
   | 'onReply'
   | 'onReplyEdit'
   | 'onReplyDelete'
@@ -298,6 +299,7 @@ function CommentThreadSession({
   loading = false,
   replyInputRef,
   onCommentEdit,
+  savingIds = EMPTY_IDS,
   onReply,
   onReplyEdit,
   onReplyDelete,
@@ -336,10 +338,7 @@ function CommentThreadSession({
     }),
   )
   const mentionNames = useMemo(
-    () =>
-      Array.from(
-        new Set((mentionUsers ?? []).map((user) => user.name?.trim()).filter(Boolean)),
-      ) as string[],
+    () => (mentionUsers ?? []).map((user) => user.name ?? ''),
     [mentionUsers],
   )
 
@@ -413,6 +412,7 @@ function CommentThreadSession({
             ns: 'workflowComments',
           })}
           onSave={onCommentEdit}
+          saving={savingIds.includes(comment.id)}
           onEditEnd={focusReply}
         />
         {replies.map((reply) =>
@@ -450,6 +450,7 @@ function CommentThreadSession({
                 ns: 'workflowComments',
               })}
               onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
+              saving={savingIds.includes(reply.id)}
               onEditEnd={focusReply}
               deleteLabel={t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
               deleteConfirmLabel={t(($) => $['comments.confirm.deleteReplyTitle'], {
@@ -503,6 +504,8 @@ type CommentThreadEntryProps = {
   editLabel: string
   editPlaceholder: string
   onSave?: (content: string, mentionedUserIds: string[]) => Promise<void> | void
+  /** An edit of this message is being saved; its field stays locked until it is. */
+  saving?: boolean
   /** Called after an edit is saved or cancelled. */
   onEditEnd: () => void
   deleteLabel?: string
@@ -522,6 +525,7 @@ function CommentThreadEntry({
   editLabel,
   editPlaceholder,
   onSave,
+  saving = false,
   onEditEnd,
   deleteLabel,
   deleteConfirmLabel,
@@ -537,7 +541,6 @@ function CommentThreadEntry({
   const [deleting, setDeleting] = useState(false)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const cancelDeleteRef = useRef<HTMLButtonElement>(null)
-  const [savingDraft, setSavingDraft] = useState(false)
   const editing = draft !== null
 
   const endEdit = () => {
@@ -547,15 +550,12 @@ function CommentThreadEntry({
 
   const handleSave = async (value: string, mentionedUserIds: string[]) => {
     const trimmed = value.trim()
-    if (!onSave || !trimmed) return
-    setSavingDraft(true)
+    if (!onSave || !trimmed || saving) return
     try {
       await onSave(trimmed, mentionedUserIds)
       endEdit()
     } catch (error) {
       console.error('Failed to save comment edit', error)
-    } finally {
-      setSavingDraft(false)
     }
   }
 
@@ -664,7 +664,7 @@ function CommentThreadEntry({
                 onSubmit={handleSave}
                 onCancel={endEdit}
                 placeholder={editPlaceholder}
-                loading={savingDraft}
+                loading={saving}
                 isEditing
               />
             </CommentComposerFrame>

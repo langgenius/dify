@@ -216,6 +216,37 @@ describe('replies', () => {
     await expect.element(editor).toHaveValue('Half-written edit')
   })
 
+  it('keeps a reply’s edit locked while it saves, even after the thread is shown again', async () => {
+    saveReplyOnServer('first', 'Original reply', 'reply-original')
+    const save = deferred<object>()
+    api.updateReply.mockReturnValueOnce(save.promise)
+    const screen = await renderLayer()
+    await openThread(screen)
+    const editReply = async () => {
+      await thread(screen).getByLabelText('workflowComments.comments.aria.replyActions').click()
+      await screen.getByText('workflowComments.comments.actions.editReply').click()
+      return screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
+    }
+    const editor = await editReply()
+    await editor.fill('Edited reply')
+    await thread(screen).getByRole('button', { name: 'common.operation.save' }).click()
+    await expect.element(editor).toHaveAttribute('readonly')
+
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.nextComment' })
+      .click()
+    await thread(screen)
+      .getByRole('button', { name: 'workflowComments.comments.aria.previousComment' })
+      .click()
+    await expect.element(thread(screen)).toMatchTextContent(/First thread/)
+    const again = await editReply()
+    await expect.element(again).toHaveAttribute('readonly')
+
+    save.resolve({})
+    await expect.element(again).not.toHaveAttribute('readonly')
+    expect(api.updateReply).toHaveBeenCalledTimes(1)
+  })
+
   it('drops a sent reply that is deleted elsewhere', async () => {
     api.reply.mockImplementationOnce(async () => saveReplyOnServer('first', 'Gone soon'))
     const screen = await renderLayer()

@@ -171,8 +171,6 @@ describe('CommentThread', () => {
         onResolve={onResolve}
         onPrev={onPrev}
         onNext={onNext}
-        canGoPrev
-        canGoNext
       />,
     )
 
@@ -274,14 +272,11 @@ describe('CommentThread', () => {
     )
   })
 
-  it('locks the edit field while its save is pending', async () => {
+  it('locks the edit field while its edit is being saved', async () => {
     const user = userEvent.setup()
-    let finishSave = () => {}
+    const comment = createComment()
     render(
-      <CommentThreadFixture
-        comment={createComment()}
-        onCommentEdit={() => new Promise<void>((resolve) => (finishSave = resolve))}
-      />,
+      <CommentThreadFixture comment={comment} onCommentEdit={vi.fn()} savingIds={[comment.id]} />,
     )
 
     await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
@@ -289,17 +284,12 @@ describe('CommentThread', () => {
     const editor = await screen.findByPlaceholderText(
       'workflowComments.comments.placeholder.editComment',
     )
-    await user.type(editor, ' more')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(editor).toHaveAttribute('readonly')
     // Mentions cannot change the draft either while it saves.
     const mentionButtons = screen.getAllByRole('button', {
       name: 'workflowAgent.nodes.agent.task.mention',
     })
     expect(mentionButtons[0]).toBeDisabled()
-
-    finishSave()
-    await waitFor(() => expect(editor).not.toBeInTheDocument())
   })
 
   it('supports editing the root comment when the current user owns the thread', async () => {

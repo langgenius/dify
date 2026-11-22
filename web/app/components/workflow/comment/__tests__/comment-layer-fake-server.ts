@@ -12,6 +12,7 @@ export const api = {
   remove: vi.fn(),
   resolve: vi.fn(),
   reply: vi.fn(),
+  updateReply: vi.fn(),
   detailFails: false,
   // While set, a list read answers with the list as it was when asked, once the gate opens.
   listGate: undefined as undefined | Promise<unknown>,
@@ -84,6 +85,8 @@ export const consoleResponses = {
   'apps.byAppId.workflow.comments.byCommentId.delete': (input: unknown) => api.remove(input),
   'apps.byAppId.workflow.comments.byCommentId.resolve.post': (input: unknown) => api.resolve(input),
   'apps.byAppId.workflow.comments.byCommentId.replies.post': (input: unknown) => api.reply(input),
+  'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put': (input: unknown) =>
+    api.updateReply(input),
 }
 
 export const fakeCollaborationManager = {
