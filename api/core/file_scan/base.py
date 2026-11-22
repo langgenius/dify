@@ -78,13 +78,30 @@ class FileScanner(ABC):
 
         ``external_id`` resumes a scan a previous attempt already submitted (asynchronous scanners).
         """
+        return self._run(target, external_id=external_id, wait_for_result=True)
+
+    def scan_once(self, target: ScanTarget, *, external_id: str | None = None) -> ScanVerdict:
+        """Make one request for this file and return a pending verdict when work remains.
+
+        Synchronous scanners use their normal single request. Asynchronous scanners must avoid
+        polling loops so request-bound callers can persist the external ID and resume later.
+        """
+        return self._run(target, external_id=external_id, wait_for_result=False)
+
+    def _run(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool) -> ScanVerdict:
         try:
-            return self._scan(target, external_id=external_id)
+            if wait_for_result:
+                return self._scan(target, external_id=external_id)
+            return self._scan_once(target, external_id=external_id)
         except ScannerError as error:
             return ScanVerdict.unavailable(error.problem, message=str(error), external_id=error.external_id)
         except Exception as error:
             logger.exception("File scanner %s failed unexpectedly", self.provider_type)
             return ScanVerdict.unavailable(ScanProblem.INVALID_RESPONSE, message=type(error).__name__)
+
+    def _scan_once(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+        """Single-request path for synchronous scanners; asynchronous scanners can override it."""
+        return self._scan(target, external_id=external_id)
 
     def check(self) -> None:
         """Verify the provider works. Raises ``ScannerError`` with a readable message otherwise.
