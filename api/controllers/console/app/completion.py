@@ -17,6 +17,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
+    AgentPreviewUnavailableError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -58,6 +59,7 @@ from services.agent.roster_service import AgentRosterService
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +240,7 @@ class CompletionMessageStopApi(Resource):
 class ChatMessageApi(Resource):
     @error_responses(
         AgentNotFoundError,
+        AgentPreviewUnavailableError,
         AppUnavailableError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
@@ -271,6 +274,7 @@ class ChatMessageApi(Resource):
 class AgentChatMessageApi(Resource):
     @error_responses(
         AgentNotFoundError,
+        AgentPreviewUnavailableError,
         AppUnavailableError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
@@ -438,6 +442,8 @@ def _create_chat_message(
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
         draft_type = AgentConfigDraftType(args_model.draft_type)
+        if draft_type == AgentConfigDraftType.DRAFT and not FeatureService.is_agent_preview_enabled():
+            raise AgentPreviewUnavailableError()
         # Preview follows the normal chat contract: an omitted/empty conversation ID starts a new
         # conversation. Build chat keeps its stable mapping so build drafts and finalization stay continuous.
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(

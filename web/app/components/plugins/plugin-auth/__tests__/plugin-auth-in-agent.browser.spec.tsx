@@ -91,7 +91,8 @@ it.fails('keeps focus on the agent credential trigger after selecting a named ke
   await expect.element(popup).not.toBeInTheDocument()
   const selected = page.getByRole('button', { name: 'Team API key', exact: true })
   await expect.element(selected).toBeVisible()
-  await expect.element(selected).toHaveFocus()
+  // Bound the known failure so the expected failure does not wait for the test timeout.
+  await expect.element(selected, { timeout: 1_000 }).toHaveFocus()
 })
 
 it('replaces a removed credential without keeping the removed label', async () => {

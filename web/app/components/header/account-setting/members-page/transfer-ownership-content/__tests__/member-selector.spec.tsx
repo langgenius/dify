@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import MemberSelector from '../member-selector'
+import { MemberSelector } from '../member-selector'
 
 const { mockMembersHook } = vi.hoisted(() => ({
   mockMembersHook: vi.fn(),

@@ -3180,6 +3180,27 @@ export const zWorkflowDraftVariableListResponse = z.object({
 })
 
 /**
+ * TriggerNodeLimitDetails
+ */
+export const zTriggerNodeLimitDetails = z.object({
+  count: z.int(),
+  limit: z.int(),
+})
+
+/**
+ * TriggerNodeLimitExceededError
+ *
+ * The workflow has more trigger nodes than the workspace plan allows.
+ */
+export const zTriggerNodeLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_node_limit_exceeded'),
+    details: zTriggerNodeLimitDetails.optional(),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppAnnotationReplyDisabledResponse
  */
 export const zAppAnnotationReplyDisabledResponse = z.object({
@@ -4365,12 +4386,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -6818,6 +6841,18 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  * Workflow runs count retrieved successfully
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
+    app_id: z.uuid(),
+  },
+)
+
+/**
+ * Workspaces retired
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  z.void()
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
   zHumanInputFormPreviewPayload

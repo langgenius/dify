@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Final, Protocol, TypeIs, override
+from typing import Final, NoReturn, Protocol, TypeIs, override
 from unittest.mock import Mock
 
 import pytest
@@ -20,7 +20,7 @@ from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, TriggerNodeLimitExceededError
 from controllers.console.app.workflow import (
     ConvertToWorkflowApi,
     EvaluationPublishedWorkflowApi,
@@ -48,6 +48,7 @@ from models.workflow import EnvironmentVariableMappingDict, Workflow, WorkflowTy
 from repositories.workflow_collaboration_repository import WorkflowOnlineUsersHash
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
+from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
@@ -296,6 +297,38 @@ class TestWorkflowCases:
         assert persisted_app is not None
         assert persisted_app.name == "Workflow App"
         assert persisted_app.workflow_id is None
+
+    @staticmethod
+    def test_publish_workflow_reports_the_trigger_node_limit(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+
+        class OverLimitWorkflowService:
+            def publish_workflow(self, **_kwargs: object) -> NoReturn:
+                raise TriggerNodeLimitExceededServiceError(count=3, limit=2)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", OverLimitWorkflowService)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_model,
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.data == {
+            "code": "trigger_node_limit_exceeded",
+            "message": TriggerNodeLimitExceededError.description,
+            "status": 403,
+            "details": {"count": 3, "limit": 2},
+        }
 
     @staticmethod
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
@@ -1529,7 +1562,7 @@ def test_evaluation_workflow_mutations_reject_community(
     monkeypatch: pytest.MonkeyPatch,
     resource_class: type[_CommunityMutationResource],
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.SystemFeatureService.is_evaluation_enabled", lambda: False)
+    monkeypatch.setattr("controllers.console.wraps.FeatureService.is_evaluation_supported", lambda: False)
 
     with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
         resource_class().post()

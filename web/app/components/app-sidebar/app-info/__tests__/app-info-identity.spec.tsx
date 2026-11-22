@@ -55,6 +55,7 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     const view = renderWithConsoleQuery(<AppDetailSection />, {
       queryClient,
       systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
+      features: {},
     })
 
     await user.click(screen.getByRole('button', { name: /moreActionsFor/ }))

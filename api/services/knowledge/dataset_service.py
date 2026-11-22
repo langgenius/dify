@@ -1403,8 +1403,7 @@ class DatasetService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return {"document_ids": [], "count": 0}
 
-        features = FeatureService.get_features(dataset_ref.tenant_id, exclude_vector_space=True)
-        if features.billing.subscription.plan == CloudPlan.SANDBOX:
+        if FeatureService.get_workspace_plan(dataset_ref.tenant_id) == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
                 "count": 0,
