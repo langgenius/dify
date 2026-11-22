@@ -1,7 +1,8 @@
 'use client'
 
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { DeleteTokenParams, DialogState } from './types'
-import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -28,7 +29,7 @@ export default function ResourceAccessTokenPage() {
   const [dialogState, setDialogState] = useState<DialogState | null>(null)
   const queryClient = useQueryClient()
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteTokenParams>())
+  const deleteDialogActionsRef = useRef<AlertDialogActions>(null)
   const deleteFocusRef = useRef<{
     opener: Element | undefined
     adjacentTargets: HTMLElement[]
@@ -54,7 +55,7 @@ export default function ResourceAccessTokenPage() {
     deleteToken.mutationOptions({
       context: { silent: true },
       onError: (error) => {
-        if (!deleteDialog.isOpen) toast.error(deleteErrorMessage(error))
+        if (!deleteDialogActionsRef.current) toast.error(deleteErrorMessage(error))
       },
     }),
   )
@@ -67,13 +68,13 @@ export default function ResourceAccessTokenPage() {
       ) ??
       false)
   const confirmDelete = async (params: DeleteTokenParams) => {
-    if (!deleteDialog.isOpen || !canDelete(params) || deleteInFlightRef.current) return
+    if (!deleteDialogActionsRef.current || !canDelete(params) || deleteInFlightRef.current) return
     deleteInFlightRef.current = true
     try {
       await deletion.mutateAsync({ params })
-      if (!deleteDialog.isOpen) return
+      if (!deleteDialogActionsRef.current) return
       if (deleteFocusRef.current) deleteFocusRef.current.succeeded = true
-      deleteDialog.close()
+      deleteDialogActionsRef.current.close()
     } catch {
       // The mutation reports failure in the dialog or through its fallback toast.
     } finally {
@@ -140,15 +141,55 @@ export default function ResourceAccessTokenPage() {
             </div>
           </div>
         </div>
-      ) : (
-        <ResourceAccessTokenTable
-          rows={rows}
-          deleteDialog={deleteDialog}
-          deletionDisabled={isSwitchingTokenList}
-          isPending={tokensQuery.isPending}
-          onEdit={(row) => setDialogState({ mode: 'edit', row })}
-        />
-      )}
+      ) : null}
+
+      <AlertDialog<DeleteTokenParams>
+        actionsRef={deleteDialogActionsRef}
+        onOpenChange={(open, details) => {
+          if (open) {
+            deletion.reset()
+            const opener = details.trigger
+            deleteFocusRef.current = {
+              opener,
+              adjacentTargets: getAdjacentFocusTargets(opener?.closest('tr'), (row) =>
+                row.querySelector<HTMLElement>('[data-token-edit]'),
+              ),
+              succeeded: false,
+            }
+          } else if (details.reason !== 'imperative-action' && deleteInFlightRef.current) {
+            details.cancel()
+          }
+        }}
+      >
+        {({ payload }) => (
+          <>
+            {!hasLoadError && !isEmptyList && (
+              <ResourceAccessTokenTable
+                rows={rows}
+                deletionDisabled={isSwitchingTokenList}
+                isPending={tokensQuery.isPending}
+                onEdit={(row) => setDialogState({ mode: 'edit', row })}
+              />
+            )}
+            {payload && (
+              <DeleteTokenDialogContent
+                isPending={deletion.isPending}
+                canDelete={canDelete(payload)}
+                error={deletion.isError ? deleteErrorMessage(deletion.error) : undefined}
+                finalFocus={() => {
+                  const focus = deleteFocusRef.current
+                  if (!focus || (!focus.succeeded && focus.opener?.isConnected)) return true
+                  return (
+                    focus.adjacentTargets.find((element) => element.isConnected) ??
+                    createButtonRef.current
+                  )
+                }}
+                onConfirm={() => void confirmDelete(payload)}
+              />
+            )}
+          </>
+        )}
+      </AlertDialog>
 
       {!hasLoadError && !isEmptyList && (
         <div className="flex items-center gap-4 system-xs-regular text-text-tertiary">
@@ -170,44 +211,6 @@ export default function ResourceAccessTokenPage() {
           />
         </div>
       )}
-
-      <AlertDialog
-        handle={deleteDialog}
-        onOpenChange={(open, details) => {
-          if (open) {
-            deletion.reset()
-            const opener = details.trigger
-            deleteFocusRef.current = {
-              opener,
-              adjacentTargets: getAdjacentFocusTargets(opener?.closest('tr'), (row) =>
-                row.querySelector<HTMLElement>('[data-token-edit]'),
-              ),
-              succeeded: false,
-            }
-          } else if (details.reason !== 'imperative-action' && deleteInFlightRef.current) {
-            details.cancel()
-          }
-        }}
-      >
-        {({ payload }) =>
-          payload && (
-            <DeleteTokenDialogContent
-              isPending={deletion.isPending}
-              canDelete={canDelete(payload)}
-              error={deletion.isError ? deleteErrorMessage(deletion.error) : undefined}
-              finalFocus={() => {
-                const focus = deleteFocusRef.current
-                if (!focus || (!focus.succeeded && focus.opener?.isConnected)) return true
-                return (
-                  focus.adjacentTargets.find((element) => element.isConnected) ??
-                  createButtonRef.current
-                )
-              }}
-              onConfirm={() => void confirmDelete(payload)}
-            />
-          )
-        }
-      </AlertDialog>
 
       {dialogState && (
         <ResourceAccessTokenDialog

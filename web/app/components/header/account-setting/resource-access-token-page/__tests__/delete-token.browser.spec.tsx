@@ -7,6 +7,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createDeferred } from '@/test/deferred'
+import MenuDialog from '../../menu-dialog'
 import ResourceAccessTokenPage from '../index'
 
 const { listTokens, deleteToken } = vi.hoisted(() => ({
@@ -48,13 +49,16 @@ const listResponse = (data: ResourceAccessTokenRowResponse[], total = data.lengt
   }) satisfies ResourceAccessTokenListResponse
 const deleteLabel = 'common.operation.delete'
 const cancelLabel = 'common.operation.cancel'
+const closeSettings = vi.fn()
 
 async function renderPage() {
   const client = createAccountProfileQueryClient()
   onTestFinished(() => client.clear())
   return render(
     <QueryClientProvider client={client}>
-      <ResourceAccessTokenPage />
+      <MenuDialog title="Account settings" onClose={closeSettings}>
+        <ResourceAccessTokenPage />
+      </MenuDialog>
     </QueryClientProvider>,
   )
 }
@@ -75,6 +79,7 @@ async function setup() {
 beforeEach(() => {
   listTokens.mockReset()
   deleteToken.mockReset()
+  closeSettings.mockClear()
 })
 
 it('returns focus to the opener on cancel and to the next row on successful deletion', async () => {
@@ -88,6 +93,7 @@ it('returns focus to the opener on cancel and to the next row on successful dele
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(opener).toHaveFocus()
+  expect(closeSettings).not.toHaveBeenCalled()
   await userEvent.keyboard('{Enter}')
 
   const confirm = dialog.getByRole('button', { name: deleteLabel })
@@ -114,6 +120,38 @@ it('returns focus to the opener on cancel and to the next row on successful dele
     )
     .toHaveFocus()
   refresh.resolve(listResponse([next]))
+})
+
+it('opens row resource details and submits the selected row through the shared dialog', async () => {
+  const resourceName = 'Second support app'
+  listTokens.mockResolvedValueOnce(listResponse([first, { ...next, resource_name: resourceName }]))
+  deleteToken.mockResolvedValueOnce(undefined)
+  const screen = await renderPage()
+  const secondRow = screen.getByRole('row', { name: /Next token/ })
+  const detailsTrigger = secondRow.getByRole('button', {
+    name: 'Next token · accountSettings.resourceAccessToken.accessibleResources',
+  })
+
+  await detailsTrigger.click()
+  const resourceDetails = screen.getByText(resourceName)
+  await expect.element(resourceDetails).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(resourceDetails).not.toBeInTheDocument()
+  await expect.element(detailsTrigger).toHaveFocus()
+  expect(closeSettings).not.toHaveBeenCalled()
+
+  await secondRow.getByRole('button', { name: deleteLabel }).click()
+  const alertDialog = screen.getByRole('alertdialog', {
+    name: 'accountSettings.resourceAccessToken.deleteTitle',
+  })
+  listTokens.mockResolvedValue(listResponse([first]))
+  await alertDialog.getByRole('button', { name: deleteLabel }).click()
+
+  await expect.element(alertDialog).not.toBeInTheDocument()
+  await expect.element(secondRow).not.toBeInTheDocument()
+  expect(deleteToken).toHaveBeenCalledExactlyOnceWith({
+    params: { token_id: next.token_id, relation_id: next.relation_id },
+  })
 })
 
 it('fails without queueing offline, allows retry, and focuses Create when the last token disappears', async () => {

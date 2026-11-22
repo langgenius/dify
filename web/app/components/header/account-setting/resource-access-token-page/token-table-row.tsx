@@ -1,12 +1,12 @@
 'use client'
 
 import type { ResourceAccessTokenRowResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import type { TFunction } from 'i18next'
-import type { DeleteTokenParams, TokenTableRow } from './types'
+import type { TokenTableRow } from './types'
 import { AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 
@@ -46,20 +46,24 @@ const getResourceSummary = (
 export default function ResourceAccessTokenRow({
   row,
   onEdit,
-  deleteDialog,
   deletionDisabled,
 }: {
   row: TokenTableRow
   onEdit: (row: TokenTableRow) => void
-  deleteDialog: AlertDialogHandle<DeleteTokenParams>
   deletionDisabled: boolean
 }) {
   const { t } = useTranslation(['common', 'accountSettings', 'time'])
   const { formatTime } = useTimestamp()
-  const editRow = row.relations[0]
+  const relationId = row.relations[0]?.relation_id
+  // The Root's render function subscribes to the active trigger's payload by identity.
+  const deleteParams = useMemo(
+    () =>
+      relationId === undefined ? undefined : { token_id: row.tokenId, relation_id: relationId },
+    [row.tokenId, relationId],
+  )
   const resourceSummary = getResourceSummary(row.relations, t)
 
-  if (!editRow) return null
+  if (!deleteParams) return null
 
   return (
     <tr className="border-b border-divider-subtle system-md-regular last:border-b-0">
@@ -138,9 +142,8 @@ export default function ResourceAccessTokenRow({
             <span aria-hidden className="i-ri-edit-line size-4" />
           </IconButton>
           <AlertDialogTrigger
-            handle={deleteDialog}
             disabled={deletionDisabled}
-            payload={{ token_id: editRow.token_id, relation_id: editRow.relation_id }}
+            payload={deleteParams}
             render={
               <IconButton
                 size="sm"
