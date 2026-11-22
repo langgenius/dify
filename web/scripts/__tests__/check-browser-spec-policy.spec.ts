@@ -141,6 +141,43 @@ describe('Browser spec policy', () => {
     expect(withoutFake.violations).toEqual([])
   })
 
+  it('rejects the fails option and relative fake API imports, but not fails: false', () => {
+    const relative = analyzeBrowserSpec(
+      'test/__tests__/example.browser.spec.tsx',
+      [
+        "import { installFakeApi } from '../fake-api'",
+        "it('known bug', { fails: true }, async () => {})",
+        "describe('known bugs', { fails: true }, () => {})",
+        "it.each([1])('known bug %s', { fails: true }, async () => {})",
+        "it('passing', { fails: false }, async () => {})",
+        "it.fails('known bug', async () => {})",
+      ].join('\n'),
+    )
+    const sourceHelper = analyzeBrowserSpec(
+      'features/new-rag/sources/__tests__/example.browser.spec.tsx',
+      [
+        "import { resetSourceServer } from './source-server'",
+        "it.fails('known bug', () => {})",
+      ].join('\n'),
+    )
+    const unrelated = analyzeBrowserSpec(
+      'app/example.browser.spec.tsx',
+      [
+        "import { api } from './fake-api-fixtures'",
+        "it('known bug', { fails: true }, () => {})",
+      ].join('\n'),
+    )
+
+    expect(relative.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['expected-failure-with-fake-api', 2],
+      ['expected-failure-with-fake-api', 3],
+      ['expected-failure-with-fake-api', 4],
+      ['expected-failure-with-fake-api', 6],
+    ])
+    expect(sourceHelper.violations.map(({ line }) => line)).toEqual([2])
+    expect(unrelated.violations).toEqual([])
+  })
+
   it('rejects raw fetch and XMLHttpRequest stubs, but not other globals', () => {
     const result = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',

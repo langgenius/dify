@@ -1,6 +1,6 @@
 import type { Dirent } from 'node:fs'
 import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
@@ -108,24 +108,56 @@ function rawNetworkStub(node: ts.Node) {
 }
 
 // `it.fails` also inverts the fake API's teardown failures, hiding contract violations.
-function usesFakeApi(sourceFile: ts.SourceFile) {
-  return sourceFile.statements.some(
-    (statement) =>
-      ts.isImportDeclaration(statement) &&
-      ts.isStringLiteralLike(statement.moduleSpecifier) &&
-      /^@\/test\/fake-api$|\/source-server$|\/source-browser-env$/.test(
-        statement.moduleSpecifier.text,
+// Resolve each import against the spec (web-relative `path`), so `@/test/fake-api`, `../fake-api`
+// and the new-rag source helpers that install the fake are all recognized.
+function usesFakeApi(sourceFile: ts.SourceFile, path: string) {
+  const specDirectory = posix.dirname(path.replaceAll('\\', '/'))
+  return sourceFile.statements.some((statement) => {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier))
+      return false
+    const specifier = statement.moduleSpecifier.text
+    const target = specifier.startsWith('@/')
+      ? specifier.slice(2)
+      : specifier.startsWith('.')
+        ? posix.normalize(posix.join(specDirectory, specifier))
+        : undefined
+    if (!target) return false
+    const module = target.replace(/\.[cm]?[jt]sx?$/, '')
+    return (
+      module === 'test/fake-api' ||
+      module.endsWith('/source-server') ||
+      module.endsWith('/source-browser-env')
+    )
+  })
+}
+
+const testRegistrars = new Set(['it', 'test', 'describe'])
+
+// `{ fails: true }` passed as test options, as in `it('…', { fails: true }, fn)`.
+function hasFailsOption(node: ts.CallExpression) {
+  return node.arguments.some(
+    (argument) =>
+      ts.isObjectLiteralExpression(argument) &&
+      argument.properties.some(
+        (property) =>
+          (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
+          ts.isIdentifier(property.name) &&
+          property.name.text === 'fails' &&
+          !(
+            ts.isPropertyAssignment(property) &&
+            property.initializer.kind === ts.SyntaxKind.FalseKeyword
+          ),
       ),
   )
 }
 
-// Matches `it.fails(…)` and chained forms such as `it.fails.each([…])(…)`, the tagged-template
-// `it.fails.each\`table\`(…)`, or `test.concurrent.fails(…)`.
+// Matches `it.fails(…)`, chained forms such as `it.fails.each([…])(…)`, the tagged-template
+// `it.fails.each\`table\`(…)` and `test.concurrent.fails(…)`, and the `{ fails: true }` option.
 function isExpectedFailure(node: ts.CallExpression) {
   // Report a chain once, at the call that registers the test.
   if (ts.isCallExpression(node.parent) && node.parent.expression === node) return false
   let current: ts.Expression = node.expression
-  let fails = false
+  let fails = hasFailsOption(node)
   while (
     ts.isPropertyAccessExpression(current) ||
     ts.isCallExpression(current) ||
@@ -134,7 +166,7 @@ function isExpectedFailure(node: ts.CallExpression) {
     if (ts.isPropertyAccessExpression(current) && current.name.text === 'fails') fails = true
     current = ts.isTaggedTemplateExpression(current) ? current.tag : current.expression
   }
-  return fails && ts.isIdentifier(current) && (current.text === 'it' || current.text === 'test')
+  return fails && ts.isIdentifier(current) && testRegistrars.has(current.text)
 }
 
 function countLines(source: string) {
@@ -199,7 +231,7 @@ export function analyzeBrowserSpec(
     ts.ScriptKind.TSX,
   )
   const occurrences = new Map<string, number>()
-  const fakeApi = usesFakeApi(sourceFile)
+  const fakeApi = usesFakeApi(sourceFile, path)
 
   function visit(node: ts.Node) {
     const stubbed = rawNetworkStub(node)
