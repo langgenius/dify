@@ -31,10 +31,10 @@ it('stacks named avatars in their colors and folds the rest into +N', () => {
   expect(screen.getByText('+2')).toBeInTheDocument()
 })
 
-it('keeps the default fill for a collaborator without a color', () => {
+it('colors a collaborator by their id unless a color is given', () => {
   render(<CollaboratorAvatarStack collaborators={[people[2]!]} />)
 
-  expect(screen.getByText('M')).not.toHaveAttribute('style')
+  expect(screen.getByText('M')).toHaveStyle({ backgroundColor: getUserColor('me') })
 })
 
 it('shows +N in the pill only when people are folded away, and lets callers wrap avatars', () => {

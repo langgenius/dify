@@ -8,10 +8,12 @@ import {
 } from '@langgenius/dify-ui/avatar'
 import { useAvatarSrc } from '@/hooks/use-avatar-src'
 import { getAvatarInitial } from '@/utils/avatar'
+import { getUserColor } from '../utils/user-color'
 
 /**
- * A person shown in collaboration UI. `color` is their collaborator color, the same for them
- * wherever and to whoever they are shown.
+ * A person shown in collaboration UI. Their collaborator color is the one for their `id`, the
+ * same wherever and to whoever they are shown; pass `color` only when `id` is not their user
+ * id, such as a session id.
  */
 export type Collaborator = {
   id: string
@@ -30,7 +32,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
   return (
     <Avatar aria-hidden="true" {...props}>
       <AvatarFallback
-        style={collaborator.color ? { backgroundColor: collaborator.color } : undefined}
+        style={{ backgroundColor: collaborator.color ?? getUserColor(collaborator.id) }}
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>

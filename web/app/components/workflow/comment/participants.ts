@@ -4,7 +4,6 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { Collaborator } from '../collaboration/components/collaborator-avatar'
 import { uniqBy } from 'es-toolkit'
-import { getUserColor } from '../collaboration/utils/user-color'
 
 export const toCommentCollaborator = (
   account: Pick<WorkflowCommentAccount, 'id' | 'name' | 'avatar_url'>,
@@ -12,7 +11,6 @@ export const toCommentCollaborator = (
   id: account.id,
   name: account.name,
   avatarUrl: account.avatar_url,
-  color: getUserColor(account.id),
 })
 
 /** The comment author first, then the other participants, each once. */

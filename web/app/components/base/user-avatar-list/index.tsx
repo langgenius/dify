@@ -1,17 +1,9 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarGroupCount,
-  AvatarImage,
-} from '@langgenius/dify-ui/avatar'
+import { AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
 import { uniqBy } from 'es-toolkit'
 import { memo } from 'react'
-import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { useAvatarSrc } from '@/hooks/use-avatar-src'
-import { getAvatarInitial } from '@/utils/avatar'
+import { CollaboratorAvatar } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
 
 type User = {
   id: string
@@ -40,7 +32,14 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
     return (
       <AvatarGroup size={size} className={className}>
         {visibleUsers.map((user, index) => (
-          <UserAvatar key={user.id} user={user} zIndex={visibleUsers.length - index} />
+          <CollaboratorAvatar
+            key={user.id}
+            collaborator={{ id: user.id, name: user.name, avatarUrl: user.avatar_url }}
+            role="img"
+            aria-hidden={undefined}
+            aria-label={user.name}
+            style={{ zIndex: visibleUsers.length - index }}
+          />
         ))}
         {shouldShowCount && remainingCount > 0 && (
           <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>
@@ -51,15 +50,3 @@ export const UserAvatarList: FC<UserAvatarListProps> = memo(
 )
 
 UserAvatarList.displayName = 'UserAvatarList'
-
-function UserAvatar({ user, zIndex }: { user: User; zIndex: number }) {
-  const { src, onLoadingStatusChange } = useAvatarSrc(user.avatar_url)
-  return (
-    <Avatar role="img" aria-label={user.name} style={{ zIndex }}>
-      <AvatarFallback style={{ backgroundColor: getUserColor(user.id) }}>
-        {getAvatarInitial(user.name)}
-      </AvatarFallback>
-      <AvatarImage src={src} alt="" onLoadingStatusChange={onLoadingStatusChange} />
-    </Avatar>
-  )
-}

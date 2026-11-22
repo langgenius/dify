@@ -1,4 +1,3 @@
-import { getUserColor } from '../../collaboration/utils/user-color'
 import { getCommentParticipants, toCommentCollaborator } from '../participants'
 
 const ann = { id: 'ann', name: 'Ann', email: 'ann@example.com', avatar_url: null }
@@ -10,13 +9,8 @@ const bob = {
 }
 
 describe('comment participants', () => {
-  it('gives everyone the color of their id, so each person looks the same to every viewer', () => {
-    expect(toCommentCollaborator(ann)).toEqual({
-      id: 'ann',
-      name: 'Ann',
-      avatarUrl: null,
-      color: getUserColor('ann'),
-    })
+  it('shows a comment account as a collaborator, colored by their id like anyone else', () => {
+    expect(toCommentCollaborator(ann)).toEqual({ id: 'ann', name: 'Ann', avatarUrl: null })
   })
 
   it('lists the author first, then each other participant once', () => {
