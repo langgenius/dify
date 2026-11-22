@@ -90,7 +90,7 @@ const Base: FC<Props> = ({
             : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover',
         )}
       >
-        <div className="flex h-7 items-center justify-between pt-1 pr-2 pl-3">
+        <div className="flex h-7 items-center justify-between ps-3 pe-2 pt-1">
           <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
           <div
             className="flex items-center"
@@ -101,7 +101,7 @@ const Base: FC<Props> = ({
           >
             {headerRight}
             {!!(showCodeGenerator && codeLanguages) && (
-              <div className="ml-1">
+              <div className="ms-1">
                 <CodeGeneratorButton
                   onGenerated={onGenerated}
                   codeLanguages={codeLanguages}
@@ -112,7 +112,7 @@ const Base: FC<Props> = ({
             )}
             <IconButton
               aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-              className="ml-1"
+              className="ms-1"
               onClick={handleCopy}
             >
               {!isCopied ? (
@@ -124,7 +124,7 @@ const Base: FC<Props> = ({
                 <span aria-hidden="true" className="i-custom-vender-line-files-copy-check size-4" />
               )}
             </IconButton>
-            <div className="ml-1">
+            <div className="ms-1">
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>
           </div>
@@ -136,7 +136,7 @@ const Base: FC<Props> = ({
           onHeightChange={setEditorContentHeight}
           hideResize={isExpand}
         >
-          <div className="h-full pb-2 pl-2">{children}</div>
+          <div className="h-full ps-2 pb-2">{children}</div>
         </PromptEditorHeightResizeWrap>
         {showFileList && fileList.length > 0 && <FileListInLog fileList={fileList} />}
         {footer}

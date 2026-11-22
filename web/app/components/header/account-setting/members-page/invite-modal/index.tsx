@@ -294,6 +294,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
     <>
       <Dialog
         actionsRef={actionsRef}
+        disablePointerDismissal
         onOpenChange={(nextOpen, details) => {
           if (!nextOpen && isBusy && details.reason !== 'imperative-action') details.cancel()
         }}

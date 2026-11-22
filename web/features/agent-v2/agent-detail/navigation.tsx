@@ -15,17 +15,19 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import { getAgentSectionAccess } from '@/features/agent-v2/acl'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 import { AgentDetailSidebarActions } from './sidebar-actions'
 
@@ -178,8 +180,11 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
-  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
-    useEvaluationAccess()
+  const { data: evaluationEntry } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  )
+  const isEvaluationVisible = evaluationEntry?.visible ?? false
+  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
 
   if (!agentId) return null
 

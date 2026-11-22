@@ -198,7 +198,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
       className="flex h-full flex-col"
     >
       {/* Header */}
-      <div className="relative flex p-6 pr-14 pb-3">
+      <div className="relative flex p-6 pe-14 pb-3">
         <DialogTitle
           // oxlint-disable-next-line shadcn/no-restyle -- Title shares the editor's header row with its actions.
           className="grow"
@@ -210,7 +210,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
             <IconButton
               size="lg"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden className="i-ri-close-line h-4.5 w-4.5" />
             </IconButton>
@@ -258,7 +258,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
             <Button variant="secondary" onClick={handleResetDefaults}>
               {t(($) => $['nodes.llm.jsonSchema.resetDefaults'], { ns: 'workflowModels' })}
             </Button>
-            <Separator orientation="vertical" className="mr-0 ml-1 h-4" />
+            <Separator orientation="vertical" className="ms-1 me-0 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <DialogClose render={<Button variant="secondary" />}>

@@ -45,7 +45,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
               size="medium"
               className={cn(
                 'h-8 rounded-lg bg-components-input-bg-normal px-2 py-1 text-text-tertiary select-none hover:bg-state-base-hover-alt focus-visible:ring-inset',
-                selectedTagsLength && 'pr-8 text-text-secondary',
+                selectedTagsLength && 'pe-8 text-text-secondary',
                 'data-popup-open:bg-state-base-hover',
               )}
             >
@@ -53,7 +53,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
                 {!selectedTagsLength && t(($) => $['tag.tags'], { ns: 'common' })}
                 {!!selectedTagsLength && selectedTagLabels.slice(0, 2).join(',')}
                 {selectedTagsLength > 2 && (
-                  <span className="ml-1 system-xs-medium text-text-tertiary">
+                  <span className="ms-1 system-xs-medium text-text-tertiary">
                     +{selectedTagsLength - 2}
                   </span>
                 )}
@@ -72,7 +72,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
               ns: 'pluginTags',
               tags: selectedTagLabels.join(', '),
             })}
-            className="absolute right-1 focus-visible:ring-inset"
+            className="absolute inset-e-1 focus-visible:ring-inset"
             onClick={() => {
               shouldRestoreFocusRef.current = true
               onChange([])
@@ -106,7 +106,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
                 key={option.name}
                 className="flex h-7 cursor-pointer items-center rounded-lg px-2 py-1.5 select-none hover:bg-state-base-hover"
               >
-                <Checkbox className="mr-1" value={option.name} />
+                <Checkbox className="me-1" value={option.name} />
                 <div className="px-1 system-sm-medium text-text-secondary">{option.label}</div>
               </label>
             ))}

@@ -144,7 +144,7 @@ export function ReasoningConfigForm({
     const tooltipText = tooltip?.[language] || tooltip?.en_US
     const tooltipContent = tooltipText && (
       <Infotip>
-        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ml-0.5" />
+        <InfotipTrigger aria-labelledby={`${fieldLabelId}-${variable}`} className="ms-0.5" />
         <InfotipContent aria-labelledby={`${fieldLabelId}-${variable}`} className="w-50">
           {tooltipText}
         </InfotipContent>
@@ -187,7 +187,7 @@ export function ReasoningConfigForm({
             >
               {fieldTitle}
             </span>
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ms-1 text-red-500">*</span>}
             {tooltipContent}
             <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
             <span className="system-xs-regular text-text-tertiary">
@@ -339,7 +339,7 @@ export function ReasoningConfigForm({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t(($) => $.howToGet, { ns: 'tools' })}
-            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-3" />
+            <span aria-hidden className="ms-1 i-ri-arrow-right-up-line size-3" />
           </a>
         )}
       </div>
