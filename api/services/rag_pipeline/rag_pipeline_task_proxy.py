@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Sequence
-from functools import cached_property
 
 from celery import Celery, signature
 from celery.canvas import Signature
@@ -45,7 +44,6 @@ class RagPipelineTaskProxy:
 
     def _task_signature(self, task: str, queue: str) -> Signature:
         """Build the signature publishing ``task`` to ``queue``.
-
         Preconditions:
             ``task`` names one of the rag pipeline tasks and ``queue`` is the pipeline
             queue that task is configured to consume.
@@ -56,11 +54,9 @@ class RagPipelineTaskProxy:
         if self._celery_app is None:
             return signature(task, queue=queue)
         return self._celery_app.signature(task, queue=queue)
-
     @cached_property
     def features(self):
         return FeatureService.get_features(self._dataset_tenant_id, exclude_vector_space=True)
-
     def _upload_invoke_entities(self) -> str:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
         # Convert list to proper JSON string
@@ -138,7 +134,7 @@ class RagPipelineTaskProxy:
 
         # Cloud queues isolate tenants and prioritize paid plans.
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(self._dataset_tenant_id) == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant isolation for sandbox plan
                 self._send_to_default_tenant_queue(upload_file_id)
             else:

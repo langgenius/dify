@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from sqlite3 import Connection as SQLiteConnection
@@ -163,6 +164,51 @@ def _im_params(recipient_id: RecipientId, message_type: IMMessageType) -> Delive
             message_type=message_type,
         ),
     )
+
+
+def test_setting_locator_preserves_future_target_fields(delivery_engine: Engine) -> None:
+    recipient = _create_recipient(delivery_engine)
+    with Session(delivery_engine) as session, session.begin():
+        repository = SQLAlchemyDeliveryRepository(session)
+        delivery = repository.create_delivery(
+            tenant_id=_TENANT, form_id=_FORM, params=_im_params(recipient.id, IMMessageType.CARD)
+        )
+        future = {
+            **delivery.target_snapshot.model_dump(mode="json"),
+            "future_optional": None,
+            "future_target": {"nested": {"optional": None, "label": "retained"}},
+        }
+        session.execute(
+            sa.text("UPDATE hitlv2_deliveries SET target_snapshot = :payload WHERE id = :id"),
+            {"payload": json.dumps(future), "id": delivery.id},
+        )
+
+        repository.set_im_message_locator(
+            tenant_id=_TENANT,
+            form_id=_FORM,
+            delivery_id=delivery.id,
+            message_locator=MessageLocator("exact-opaque-locator"),
+        )
+
+        stored = session.scalars(
+            sa.select(sa.cast(HumanInputDelivery.target_snapshot, sa.Text)).where(HumanInputDelivery.id == delivery.id)
+        ).one()
+        assert json.loads(stored) == {**future, "message_locator": "exact-opaque-locator"}
+
+
+@pytest.mark.parametrize(
+    ("snapshot_type", "known"),
+    [
+        (EmailTargetSnapshot, {"email_address": "a@example.com"}),
+        (InitiatorSnapshot, {"protected_form_token": "encrypted"}),
+    ],
+)
+def test_other_target_snapshot_roundtrip_preserves_extensions(
+    snapshot_type: type[EmailTargetSnapshot | InitiatorSnapshot], known: dict[str, str]
+) -> None:
+    future: dict[str, JsonValue] = {**known, "future_optional": None, "future_target": {"nested": {"optional": None}}}
+    snapshot = snapshot_type.model_validate_json(json.dumps(future))
+    assert snapshot.model_dump(mode="json") == {**future, "type": snapshot.type}
 
 
 @pytest.mark.parametrize("message_type", [IMMessageType.CARD, IMMessageType.LINK])

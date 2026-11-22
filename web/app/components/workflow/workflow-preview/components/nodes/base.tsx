@@ -66,10 +66,10 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
                 handleId="source"
               />
             )}
-          <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" />
+          <BlockIcon className="me-2 shrink-0" type={data.type} size="md" />
           <div
             title={data.title}
-            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
+            className="me-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>{data.title}</div>
             {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
@@ -79,7 +79,7 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
                   aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
                     ns: 'workflow',
                   })}
-                  className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning"
+                  className="ms-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning"
                 >
                   {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
                 </PopoverTrigger>
@@ -100,7 +100,7 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
           children &&
           cloneElement(children, { id, data })}
         {(data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && children && (
-          <div className="h-[calc(100%-42px)] w-full grow pr-1 pb-1 pl-1">
+          <div className="h-[calc(100%-42px)] w-full grow ps-1 pe-1 pb-1">
             {cloneElement(children, { id, data })}
           </div>
         )}

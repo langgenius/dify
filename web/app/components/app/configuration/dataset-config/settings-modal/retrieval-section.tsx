@@ -232,7 +232,7 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
   if (!visible) return null
 
   return (
-    <div className="absolute right-7.5 bottom-19 left-7.5 z-10">
+    <div className="absolute inset-s-7.5 inset-e-7.5 bottom-19 z-10">
       <Alert type="warning">
         <AlertTitle>{message}</AlertTitle>
         <AlertClose

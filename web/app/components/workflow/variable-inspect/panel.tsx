@@ -171,7 +171,7 @@ const Panel: FC = () => {
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
+        <div className="flex shrink-0 items-center justify-between ps-4 pe-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
@@ -192,7 +192,7 @@ const Panel: FC = () => {
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
+        <div className="flex shrink-0 items-center justify-between ps-4 pe-2 pt-2">
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
           </div>
@@ -215,16 +215,16 @@ const Panel: FC = () => {
       {/* left */}
       {bottomPanelWidth < 488 && showLeftPanel && (
         <div
-          className="absolute top-0 left-0 size-full"
+          className="absolute inset-s-0 top-0 size-full"
           onClick={() => setShowLeftPanel(false)}
         ></div>
       )}
       <div
         className={cn(
-          'w-60 shrink-0 border-r border-divider-burn',
+          'w-60 shrink-0 border-e border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
-              ? 'absolute top-0 left-0 z-10 h-full w-54.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
+              ? 'absolute inset-s-0 top-0 z-10 h-full w-54.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
               : 'hidden'
             : 'block',
         )}

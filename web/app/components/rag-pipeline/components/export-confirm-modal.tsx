@@ -50,10 +50,10 @@ const PipelineExportConfirmContent = ({
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <th className="h-7 w-55 border-r border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
+                <th className="h-7 w-55 border-e border-b border-divider-regular ps-3 text-start font-[weight:inherit]">
                   {t(($) => $['env.export.name'], { ns: 'workflow' })}
                 </th>
-                <th className="h-7 border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
+                <th className="h-7 border-b border-divider-regular ps-3 text-start font-[weight:inherit]">
                   {t(($) => $['env.export.value'], { ns: 'workflow' })}
                 </th>
               </tr>
@@ -63,7 +63,7 @@ const PipelineExportConfirmContent = ({
                 <tr key={env.name}>
                   <td
                     className={cn(
-                      'h-7 border-r border-divider-regular pl-3 system-xs-medium',
+                      'h-7 border-e border-divider-regular ps-3 system-xs-medium',
                       index + 1 !== envList.length && 'border-b border-divider-regular',
                     )}
                   >
@@ -84,7 +84,7 @@ const PipelineExportConfirmContent = ({
                   </td>
                   <td
                     className={cn(
-                      'h-7 pl-3',
+                      'h-7 ps-3',
                       index + 1 !== envList.length && 'border-b border-divider-regular',
                     )}
                   >
@@ -108,7 +108,7 @@ const PipelineExportConfirmContent = ({
           />
           <span
             className={cn(
-              'rounded-sm text-left system-sm-medium text-text-primary outline-hidden',
+              'rounded-sm text-start system-sm-medium text-text-primary outline-hidden',
               isExporting && 'cursor-not-allowed opacity-50',
             )}
           >

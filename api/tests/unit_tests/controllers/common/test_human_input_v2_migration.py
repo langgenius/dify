@@ -329,7 +329,7 @@ def test_preflight_types_malformed_recipients_without_discarding_valid_recipient
 @pytest.mark.parametrize("input_type", ["text_input", "paragraph"])
 @pytest.mark.parametrize("default_type", ["constant", "variable"])
 def test_historical_paragraph_alias_preserves_both_default_sources(input_type: str, default_type: str) -> None:
-    from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
+    from core.workflow.nodes.human_input_v2.migration import MemberContactSnapshot, convert_legacy_human_input_node_data
 
     default = {"type": default_type, "selector": ["start", "reason"], "value": "  Previous value  "}
     transport = migration_boundary.LegacyHITLv1NodeData.model_validate(
@@ -340,7 +340,7 @@ def test_historical_paragraph_alias_preserves_both_default_sources(input_type: s
         }
     )
     preflight = migration_boundary.preflight_legacy_human_input_node_data(transport)
-    converted = convert_legacy_human_input_node_data(preflight.node_data, MemberEmailSnapshot())
+    converted = convert_legacy_human_input_node_data(preflight.node_data, MemberContactSnapshot())
     assert converted.node_data is not None
     assert converted.node_data.model_dump(mode="json")["inputs"] == [
         {"type": "paragraph", "output_variable_name": "reason", "default": default}

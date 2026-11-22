@@ -50,7 +50,7 @@ const FileListInLog = ({
         {expanded && (
           <button
             type="button"
-            className="grow cursor-pointer border-none bg-transparent px-0 py-1 text-left system-xs-semibold-uppercase text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="grow cursor-pointer border-none bg-transparent px-0 py-1 text-start system-xs-semibold-uppercase text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => setExpanded(!expanded)}
           >
             {t(($) => $['runDetail.fileListLabel'], { ns: 'appLog' })}
@@ -95,7 +95,7 @@ const FileListInLog = ({
         <button
           type="button"
           aria-label={t(($) => $['runDetail.fileListDetail'], { ns: 'appLog' })}
-          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-start focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={() => setExpanded(!expanded)}
         >
           {!expanded && (

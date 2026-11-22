@@ -27,6 +27,11 @@ export type EmailDomainSuspendedError = ErrorResponse & {
   status: 400
 }
 
+export type WorkspaceMemberLimitReachedError = ErrorResponse & {
+  code: 'workspace_member_limit_reached'
+  status: 400
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -68,7 +73,11 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  400:
+    | AccountInFreezeError
+    | EmailDomainSuspendedError
+    | WorkspaceMemberLimitReachedError
+    | ErrorResponse
   403: AlreadyActivateError | InvitationAccountMismatchError | ErrorResponse
   default: ErrorResponse
 }

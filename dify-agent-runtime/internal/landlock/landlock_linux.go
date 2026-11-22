@@ -6,22 +6,25 @@ import (
 	"os"
 
 	golandlock "github.com/landlock-lsm/go-landlock/landlock"
+	ll "github.com/landlock-lsm/go-landlock/landlock/syscall"
 )
 
-// Restrict applies Landlock V2 filesystem restrictions for the current process.
-// Keep this strict: go-landlock v0.9.0 BestEffort downgrades WithRefer rules to
-// v0 (no isolation) on ABI < 2. A V1 fallback would still break cross-directory
-// rename/link. Return setup errors so the runner fails closed before script exec.
-func Restrict(cfg *Config) error {
-	rules := buildRules(cfg)
+// Overridden in tests.
+var getABIVersion = ll.LandlockGetABIVersion
 
-	if err := golandlock.V2.RestrictPaths(rules...); err != nil {
-		return err
+// Restrict applies Landlock filesystem restrictions for the current process.
+// ABI v1 kernels get a V1 ruleset: REFER cannot be granted there, so all
+// cross-directory rename/link fail with EXDEV. BestEffort is not an option
+// because go-landlock v0.9.0 downgrades WithRefer rules to no isolation.
+// Any other setup failure is returned so the runner fails closed.
+func Restrict(cfg *Config) error {
+	if abi, err := getABIVersion(); err == nil && abi == 1 {
+		return golandlock.V1.RestrictPaths(buildRules(cfg, false)...)
 	}
-	return nil
+	return golandlock.V2.RestrictPaths(buildRules(cfg, true)...)
 }
 
-func buildRules(cfg *Config) []golandlock.Rule {
+func buildRules(cfg *Config, refer bool) []golandlock.Rule {
 	// Collect RO paths that exist on this system.
 	roPaths := filterExisting(cfg.ROPaths)
 	if cfg.JobDir != "" {
@@ -39,9 +42,11 @@ func buildRules(cfg *Config) []golandlock.Rule {
 	// Device files with RW access.
 	rwDevFiles := filterExisting(cfg.RWDevPaths)
 
-	rules := []golandlock.Rule{
-		golandlock.RWDirs(rwDirs...).WithRefer(),
+	homeRule := golandlock.RWDirs(rwDirs...)
+	if refer {
+		homeRule = homeRule.WithRefer()
 	}
+	rules := []golandlock.Rule{homeRule}
 	if len(extraRWDirs) > 0 {
 		// Shared writable paths must not gain REFER, including across the
 		// boundary with Home/Cwd, so keep them in a separate rule.

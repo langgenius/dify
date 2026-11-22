@@ -76,7 +76,7 @@ export function DocumentReindexAction() {
     <>
       <Button
         aria-describedby={disabledReasonId}
-        className="gap-1 pl-3"
+        className="gap-1 ps-3"
         disabled={inProgress ? !canCancel : disabled}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
         onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
