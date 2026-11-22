@@ -93,7 +93,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     try:
                         # clean old data
                         index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
-    
+
                         segments = session.scalars(
                             select(DocumentSegment).where(DocumentSegment.document_id == document_id)
                         ).all()
@@ -107,13 +107,13 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 delete_child_chunks=True,
                                 session=session,
                             )
-    
+
                         segment_ids = [segment.id for segment in segments]
                         if segment_ids:
                             segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                             session.execute(segment_delete_stmt)
                         session.commit()
-    
+
                         document.indexing_status = IndexingStatus.PARSING
                         document.processing_started_at = naive_utc_now()
                         session.add(document)
@@ -121,45 +121,47 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                         runtime_mode = dataset.runtime_mode
                         # Persist preparation before handing off to the selected execution service.
                         session.commit()
-    
+
                         if runtime_mode == "rag_pipeline":
-                        with session_factory.create_session() as rag_session:
-                            rag_pipeline_service = RagPipelineService(rag_session)
-                            rag_pipeline_service.retry_error_document(
-                                dataset,
-                                document,
-                                user,
-                                generator=PipelineGenerator(
-                                    execution_driver=WorkflowRunAgg.run,
-                                    documents=SQLAlchemyDocumentRepository(
-                                        session_factory=session_factory.get_session_maker()
+                            with session_factory.create_session() as rag_session:
+                                rag_pipeline_service = RagPipelineService(rag_session)
+                                rag_pipeline_service.retry_error_document(
+                                    dataset,
+                                    document,
+                                    user,
+                                    generator=PipelineGenerator(
+                                        execution_driver=WorkflowRunAgg.run,
+                                        documents=SQLAlchemyDocumentRepository(
+                                            session_factory=session_factory.get_session_maker()
+                                        ),
+                                        datasource_providers=build_data_source_credentials(
+                                            database_client=get_session_maker()
+                                        ).providers,
+                                        file_admission=reject_dataset_upload_file,
                                     ),
-                                    datasource_providers=build_data_source_credentials(
-                                        database_client=get_session_maker()
-                                    ).providers,
-                                    file_admission=reject_dataset_upload_file,
-                                ),
+                                )
+                        else:
+                            indexing_service = build_document_indexing_service(
+                                session_factory=session_factory.get_session_maker(), enforce_vector_space_admission=True
                             )
-                    else:
-                        indexing_service = build_document_indexing_service(
-                            session_factory=session_factory.get_session_maker(), enforce_vector_space_admission=True
+                            indexing_service.run([document_ref])
+                        redis_client.delete(retry_indexing_cache_key)
+                    except Exception as ex:
+                        session.rollback()
+                        document = session.scalar(
+                            select(Document)
+                            .where(Document.id == document_id, Document.dataset_id == dataset_id)
+                            .limit(1)
                         )
-                        indexing_service.run([document_ref])
-                    redis_client.delete(retry_indexing_cache_key)
-                except Exception as ex:
-                    session.rollback()
-                    document = session.scalar(
-                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                    )
-                    if document:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = str(ex)
-                        document.stopped_at = naive_utc_now()
-                        session.add(document)
-                        session.commit()
-                    logger.info(click.style(str(ex), fg="yellow"))
-                    redis_client.delete(retry_indexing_cache_key)
-                    logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)
+                        if document:
+                            document.indexing_status = IndexingStatus.ERROR
+                            document.error = str(ex)
+                            document.stopped_at = naive_utc_now()
+                            session.add(document)
+                            session.commit()
+                        logger.info(click.style(str(ex), fg="yellow"))
+                        redis_client.delete(retry_indexing_cache_key)
+                        logger.exception("retry_document_indexing_task failed, document_id: %s", document_id)
             end_at = time.perf_counter()
             logger.info(click.style(f"Retry dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
         except Exception as e:
