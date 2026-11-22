@@ -76,11 +76,11 @@ type Spies<T, Contract> = T extends AnyFunction
     : never
 
 /**
- * Teardown to register with `onTestFinished`, which also exposes the handlers as spies:
+ * Async teardown to register with `onTestFinished`, which also exposes the handlers as spies:
  * `fake.console.<contract path>` and `fake.route(method, base, path)` record every request input,
  * and `fake.use(...)` overrides or adds handlers mid-test.
  */
-export type FakeApiHandle<T extends FakeApi> = (() => void) & {
+export type FakeApiHandle<T extends FakeApi> = (() => Promise<void>) & {
   console: Spies<NonNullable<T['console']>, FakeConsoleHandlers>
   marketplace: Spies<NonNullable<T['marketplace']>, FakeMarketplaceHandlers>
   route: (method: RouteMethod, base: ApiBase, path: string) => Mock<FakeRoute['handler']>
@@ -306,7 +306,11 @@ function implementLeaves(
     const hasInput = Boolean((procedure as AnyContractProcedure)['~orpc'].inputSchema)
     node[path.at(-1)!] = implement(
       withSplitCustomMethods(procedure as AnyContractProcedure),
-    ).handler(({ input }: { input: unknown }) => handler(hasInput ? input : sentParts(input)))
+    ).handler(({ input, context }: { input: unknown; context: unknown }) => {
+      const result = handler(hasInput ? input : sentParts(input))
+      noteHeld((context as RequestContext).flight, result)
+      return result
+    })
   }
   return router
 }
@@ -388,12 +392,35 @@ function errorResponse(error: unknown) {
 }
 
 type Dispatch = (request: Request) => Promise<Response>
+
+/** A request the fake is still answering; teardown waits for it before checking for problems. */
+type Flight = {
+  label: string
+  done: Promise<void>
+  /** The response a test is holding open with `hold()` or `pendingResponse()`, if any. */
+  heldBy?: Promise<unknown>
+  /** The client cancelled it, so it already failed with an `AbortError` and needs no response. */
+  aborted?: boolean
+}
+
+// Responses created by `hold()`, and whether the test has settled them yet.
+const heldResponses = new WeakMap<Promise<unknown>, { settled: boolean }>()
+const isHeld = (flight: Flight) =>
+  flight.heldBy !== undefined && heldResponses.get(flight.heldBy)?.settled === false
+function noteHeld(flight: Flight | undefined, result: unknown) {
+  if (flight && result instanceof Promise && heldResponses.has(result)) flight.heldBy = result
+}
+// Captured before any test fakes timers, so teardown can always wait in real time.
+const realSetTimeout = globalThis.setTimeout
+const realClearTimeout = globalThis.clearTimeout
+const PENDING_REQUEST_GRACE_MS = 2_000
 type RequestContext = {
   networkFailed?: boolean
   /** Set once oRPC has decoded the request and is calling the procedure. */
   decoded?: boolean
   /** The JSON body exactly as sent, so schema coercion never changes its types. */
   jsonBody?: { value: unknown }
+  flight?: Flight
 }
 
 function createFakeXMLHttpRequest(dispatch: Dispatch) {
@@ -539,18 +566,27 @@ async function readJsonBody(request: Request): Promise<RequestContext['jsonBody'
   }
 }
 
-async function readBody(request: Request): Promise<unknown> {
-  if (request.method === 'GET' || request.method === 'HEAD') return undefined
+type DecodedBody = { ok: true; value: unknown } | { ok: false; problem: string }
+
+// Decode by Content-Type, as the backend does: JSON and forms must parse; anything else is text.
+async function readBody(request: Request): Promise<DecodedBody> {
+  if (request.method === 'GET' || request.method === 'HEAD') return { ok: true, value: undefined }
   const type = request.headers.get('content-type') ?? ''
   const copy = request.clone()
-  if (type.includes('multipart/form-data') || type.includes('application/x-www-form-urlencoded'))
-    return copy.formData()
+  if (type.includes('multipart/form-data') || type.includes('application/x-www-form-urlencoded')) {
+    try {
+      return { ok: true, value: await copy.formData() }
+    } catch (error) {
+      return { ok: false, problem: `form body: ${error instanceof Error ? error.message : error}` }
+    }
+  }
   const text = await copy.text()
-  if (!text) return undefined
+  if (!text) return { ok: true, value: undefined }
+  if (!type.includes('json')) return { ok: true, value: text }
   try {
-    return JSON.parse(text)
-  } catch {
-    return text
+    return { ok: true, value: JSON.parse(text) }
+  } catch (error) {
+    return { ok: false, problem: `JSON body: ${error instanceof Error ? error.message : error}` }
   }
 }
 
@@ -629,7 +665,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
   addRoutes(api.routes)
 
   const nativeFetch = globalThis.fetch
-  const dispatch: Dispatch = async (request) => {
+  const dispatch = async (request: Request, flight: Flight): Promise<Response> => {
     const url = new URL(request.url)
     // `data:` and `blob:` URLs are local resources (image previews, downloads), never the network.
     if (url.protocol === 'data:' || url.protocol === 'blob:') return nativeFetch(request)
@@ -645,7 +681,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       )
     }
     if (base === 'console' && leavesOf('console').length) {
-      const context: RequestContext = { jsonBody: await readJsonBody(request) }
+      const context: RequestContext = { jsonBody: await readJsonBody(request), flight }
       const { matched, response } = await (
         await getConsoleHandler()
       ).handle(splitRequestCustomMethods(restoreIndexedArrays(request.clone(), report)), {
@@ -656,7 +692,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       if (matched) return response!
     }
     if (base === 'marketplace' && leavesOf('marketplace').length) {
-      const context: RequestContext = { jsonBody: await readJsonBody(request) }
+      const context: RequestContext = { jsonBody: await readJsonBody(request), flight }
       const { matched, response } = await getMarketplaceHandler().handle(
         splitRequestCustomMethods(request.clone()),
         {
@@ -672,8 +708,15 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       if (candidate.base !== base || candidate.method !== request.method) continue
       const params = matchRoute(candidate.path, path)
       if (!params) continue
+      const body = await readBody(request)
+      if (!body.ok) {
+        report(`${request.method} ${url.pathname}: request could not be decoded: ${body.problem}`)
+        return Response.json({ code: 'bad_request', message: body.problem }, { status: 400 })
+      }
       try {
-        const result = await candidate.spy({ request, url, params, body: await readBody(request) })
+        const pending = candidate.spy({ request, url, params, body: body.value })
+        noteHeld(flight, pending)
+        const result = await pending
         return result instanceof Response ? result : Response.json(result ?? null)
       } catch (error) {
         return errorResponse(error)
@@ -683,14 +726,52 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
     return Response.json({ code: 'not_implemented', message: 'Not implemented' }, { status: 501 })
   }
 
+  const flights = new Set<Flight>()
+  const tracked: Dispatch = (request) => {
+    const flight: Flight = {
+      label: `${request.method} ${new URL(request.url).pathname}`,
+      done: Promise.resolve(),
+    }
+    const response = dispatch(request, flight)
+    flight.done = response.then(
+      () => undefined,
+      () => undefined,
+    )
+    flights.add(flight)
+    void flight.done.then(() => flights.delete(flight))
+    if (request.signal.aborted) flight.aborted = true
+    else request.signal.addEventListener('abort', () => (flight.aborted = true), { once: true })
+    return response
+  }
+
   vi.stubGlobal(
     'fetch',
-    vi.fn<typeof fetch>((input, init) => abortable(new Request(input, init), dispatch)),
+    vi.fn<typeof fetch>((input, init) => abortable(new Request(input, init), tracked)),
   )
-  vi.stubGlobal('XMLHttpRequest', createFakeXMLHttpRequest(dispatch))
+  vi.stubGlobal('XMLHttpRequest', createFakeXMLHttpRequest(tracked))
 
-  const teardown = () => {
+  const teardown = async () => {
     vi.unstubAllGlobals()
+    // Responses still being produced are validated after the test body ends; wait for them,
+    // except the ones the test deliberately holds open with `hold()`.
+    const settling = (flight: Flight) => !isHeld(flight) && !flight.aborted
+    const waiting = [...flights].filter(settling)
+    if (waiting.length) {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      await Promise.race([
+        Promise.all(waiting.map((flight) => flight.done)),
+        new Promise<void>((resolve) => {
+          timer = realSetTimeout(resolve, PENDING_REQUEST_GRACE_MS)
+        }),
+      ])
+      realClearTimeout(timer)
+      for (const flight of waiting) {
+        if (flights.has(flight) && settling(flight))
+          report(
+            `${flight.label}: still pending when the test finished; settle it, or hold it with hold() or pendingResponse()`,
+          )
+      }
+    }
     if (problems.length) throw new Error(`Fake API problems:\n${problems.join('\n')}`)
   }
   return Object.assign(teardown, {
@@ -731,9 +812,9 @@ export function setupFakeApi<const T extends FakeApi>(api: T | (() => T)) {
   beforeEach(() => {
     const handle = installFakeApi(typeof api === 'function' ? api() : api)
     current = handle
-    onTestFinished(() => {
+    onTestFinished(async () => {
       current = undefined
-      handle()
+      await handle()
     })
   })
   const active = () => {
@@ -751,6 +832,16 @@ export function setupFakeApi<const T extends FakeApi>(api: T | (() => T)) {
     use: (overrides) => active().use(overrides),
   }
   return handle
+}
+
+/**
+ * A response that never arrives, for loading states a test leaves pending. Return it directly from
+ * a handler (not from an `async` one, which would wrap it); teardown treats it as deliberately held.
+ */
+export function pendingResponse(): Promise<never> {
+  const response = new Promise<never>(() => {})
+  heldResponses.set(response, { settled: false })
+  return response
 }
 
 type SpyInput<F> = F extends (input: infer I, ...args: never[]) => unknown ? I : never
@@ -779,17 +870,21 @@ export function hold<F extends AnyFunction>(spy: Mock<F>): HeldRequest<F> {
   const arrived = new Promise<SpyInput<F>>((resolve) => {
     arrive = resolve
   })
+  const state = { settled: false }
   const finish = (result: Outcome) => {
     if (outcome) throw new Error('Fake API: a held request can only be settled once')
     outcome = result
+    state.settled = true
     settle?.(result)
   }
   spy.mockImplementationOnce(((input: SpyInput<F>) => {
     arrive(input)
-    return new Promise((resolve, reject) => {
+    const response = new Promise((resolve, reject) => {
       settle = (result) => (result.ok ? resolve(result.value) : reject(result.error))
       if (outcome) settle(outcome)
     })
+    heldResponses.set(response, state)
+    return response
   }) as never)
   return {
     arrived,

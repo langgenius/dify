@@ -1,6 +1,6 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, pendingResponse, setupFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
   lastSearchParams,
@@ -27,7 +27,7 @@ const fake = setupFakeApi(() => ({
       },
       byDatasetId: {
         knowledgeFsUpgrades: {
-          byJobId: { get: () => new Promise(() => {}) },
+          byJobId: { get: () => pendingResponse() },
         },
       },
       apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },

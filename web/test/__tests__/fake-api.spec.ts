@@ -7,6 +7,7 @@ import {
   hold,
   installFakeApi,
   networkError,
+  pendingResponse,
   route,
   setupFakeApi,
   sseResponse,
@@ -28,7 +29,7 @@ describe('installFakeApi', () => {
 
     expect(result.groups.map((group) => group.name)).toEqual(['Internal Network'])
     expect(fake.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledOnce()
-    fake()
+    await fake()
   })
 
   it('types spies from the contract, so a sync default can later answer with a deferred', async () => {
@@ -40,7 +41,7 @@ describe('installFakeApi', () => {
 
     expect((await consoleClient.workspaces.current.networkAccessGroups.get({})).groups).toEqual([])
     expect(spy).toHaveBeenCalledWith({})
-    fake()
+    await fake()
   })
 
   it('overrides and adds handlers mid-test with use()', async () => {
@@ -67,7 +68,7 @@ describe('installFakeApi', () => {
       client_ip: '203.0.113.42',
     })
     expect(fake.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledTimes(2)
-    fake()
+    await fake()
   })
 
   it('decodes request bodies and returns thrown errors with their status', async () => {
@@ -95,7 +96,7 @@ describe('installFakeApi', () => {
         body: expect.objectContaining({ name: 'Office', allowed_cidrs: ['192.0.2.0/24'] }),
       }),
     )
-    fake()
+    await fake()
   })
 
   it('accepts the repeated-key arrays the browser client sends to the Python API', async () => {
@@ -110,7 +111,7 @@ describe('installFakeApi', () => {
     expect(fake.console.apps.get).toHaveBeenCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ tag_ids: ['t1', 't2'] }) }),
     )
-    fake()
+    await fake()
   })
 
   it('fails the test when a repeated-key array arrives as indexed keys the Python API ignores', async () => {
@@ -122,7 +123,7 @@ describe('installFakeApi', () => {
 
     await fetch('http://localhost:5001/console/api/apps?page=1&tag_ids[0]=t1&tag_ids[1]=t2')
 
-    expect(teardown).toThrow(/query `tag_ids\[0\]` is ignored by the Python API/)
+    await expect(teardown()).rejects.toThrow(/query `tag_ids\[0\]` is ignored by the Python API/)
   })
 
   it('keeps JSON body types as sent, so a string boolean fails the contract like the Python API', async () => {
@@ -148,7 +149,7 @@ describe('installFakeApi', () => {
     )
 
     expect(response.status).toBe(400)
-    expect(teardown).toThrow(/Input validation failed[\s\S]*force/)
+    await expect(teardown()).rejects.toThrow(/Input validation failed[\s\S]*force/)
   })
 
   it('fails the test when a request body cannot be decoded, while handler 400s stay allowed', async () => {
@@ -172,7 +173,7 @@ describe('installFakeApi', () => {
     expect(
       (await send(JSON.stringify({ name: 'Office', allowed_cidrs: ['10.0.0.0/8'] }))).status,
     ).toBe(400)
-    expect(teardown).not.toThrow()
+    await expect(teardown()).resolves.toBeUndefined()
 
     const broken = installFakeApi({
       console: {
@@ -186,7 +187,7 @@ describe('installFakeApi', () => {
       },
     })
     expect((await send('{"name": "Office"')).status).toBe(400)
-    expect(broken).toThrow(
+    await expect(broken()).rejects.toThrow(
       /POST \/console\/api\/workspaces\/current\/network-access-groups: request could not be decoded/,
     )
   })
@@ -206,7 +207,7 @@ describe('installFakeApi', () => {
       'http://localhost:5001/console/api/enterprise/app-deploy/apps/app-1/workflows/workflow-1/~precheck',
     )
 
-    expect(teardown).toThrow(/~precheck/)
+    await expect(teardown()).rejects.toThrow(/~precheck/)
   })
 
   it('serves marketplace contract calls (typed only: that contract has no runtime schemas)', async () => {
@@ -222,7 +223,7 @@ describe('installFakeApi', () => {
     expect(fake.marketplace.pluginVersions).toHaveBeenCalledWith(
       expect.objectContaining({ params: { organization: 'langgenius', pluginName: 'plugin' } }),
     )
-    fake()
+    await fake()
   })
 
   it('serves REST routes and streams server-sent events', async () => {
@@ -243,7 +244,7 @@ describe('installFakeApi', () => {
     expect(await response.text()).toBe(
       'data: {"event":"message","answer":"app-1"}\n\ndata: {"event":"message_end"}\n\n',
     )
-    teardown()
+    await teardown()
   })
 
   it('rejects a fetch aborted before or while its response is pending, like native fetch', async () => {
@@ -264,7 +265,7 @@ describe('installFakeApi', () => {
     during.abort()
     request.release()
     await expect(response).rejects.toMatchObject({ name: 'AbortError' })
-    fake()
+    await fake()
   })
 
   it('completes an XMLHttpRequest whose error body is not JSON, with a null JSON response', async () => {
@@ -290,7 +291,7 @@ describe('installFakeApi', () => {
     })
 
     expect(result).toEqual({ status: 413, response: null })
-    fake()
+    await fake()
   })
 
   it('answers XMLHttpRequest uploads with the uploaded form data', async () => {
@@ -319,7 +320,7 @@ describe('installFakeApi', () => {
     const [{ request }] = fake.route('POST', 'console', '/files/upload').mock.calls[0]!
     expect(((await request.formData()).get('file') as File).name).toBe('report.pdf')
     expect(onprogress).toHaveBeenCalled()
-    fake()
+    await fake()
   })
 
   it('sends handler errors in the backend shape, including their details', async () => {
@@ -351,7 +352,7 @@ describe('installFakeApi', () => {
       message: 'Invalid CIDR',
       data: expect.objectContaining({ details: { issues: ['allowed_cidrs'] } }),
     })
-    teardown()
+    await teardown()
   })
 
   it('serves contracts from the enterprise segment', async () => {
@@ -377,7 +378,7 @@ describe('installFakeApi', () => {
       .catch(() => undefined)
 
     expect(fake.console.enterprise.webAppAuth.searchForWhilteListCandidates).toHaveBeenCalledOnce()
-    fake()
+    await fake()
   })
 
   it('routes relative requests on the page origin', async () => {
@@ -389,7 +390,7 @@ describe('installFakeApi', () => {
     const response = await fetch('/openapi/v1/oauth/device/lookup?user_code=ABCD')
 
     expect(await response.json()).toEqual({ status: 'pending' })
-    teardown()
+    await teardown()
   })
 
   it('fails requests at the network level when a handler throws networkError()', async () => {
@@ -418,7 +419,7 @@ describe('installFakeApi', () => {
     await expect(fetch('http://localhost:5001/console/api/legacy')).rejects.toThrow(
       'Failed to fetch',
     )
-    teardown()
+    await teardown()
   })
 
   it('gives routes the parsed body and returns typed spies for handlers added with use()', async () => {
@@ -439,7 +440,7 @@ describe('installFakeApi', () => {
       expect.objectContaining({ body: { token: 'abc' } }),
     )
     expect(added.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledOnce()
-    fake()
+    await fake()
   })
 
   it('fails the test when a handler returns data outside the contract', async () => {
@@ -457,7 +458,7 @@ describe('installFakeApi', () => {
     })
 
     await expect(consoleClient.workspaces.current.networkAccessGroups.get({})).rejects.toThrow()
-    expect(teardown).toThrow(/Output validation failed/)
+    await expect(teardown()).rejects.toThrow(/Output validation failed/)
   })
 
   it('fails the test on requests no handler answers', async () => {
@@ -467,7 +468,7 @@ describe('installFakeApi', () => {
       consoleClient.workspaces.current.networkAccessGroups.currentIp.get({}),
     ).rejects.toThrow()
     await expect(fetch('https://example.com/telemetry')).rejects.toThrow()
-    expect(teardown).toThrow(
+    await expect(teardown()).rejects.toThrow(
       /unhandled console request: GET \/workspaces\/current\/network-access-groups\/current-ip[\s\S]*unexpected network request: GET https:\/\/example\.com\/telemetry/,
     )
   })
@@ -491,7 +492,7 @@ describe('installFakeApi', () => {
     expect(
       fake.console.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment,
     ).toHaveBeenCalledWith({ params })
-    fake()
+    await fake()
   })
 
   it('records exactly the request parts the client sent', async () => {
@@ -511,7 +512,7 @@ describe('installFakeApi', () => {
     await consoleClient.workspaces.current.networkAccessGroups.post({ body })
 
     expect(fake.console.workspaces.current.networkAccessGroups.post).toHaveBeenCalledWith({ body })
-    fake()
+    await fake()
   })
 })
 
@@ -537,7 +538,7 @@ describe('hold', () => {
     expect(
       (await consoleClient.workspaces.current.networkAccessGroups.get({})).groups,
     ).toHaveLength(1)
-    fake()
+    await fake()
   })
 
   it('applies an outcome settled before the request arrives, without an unhandled rejection', async () => {
@@ -549,7 +550,102 @@ describe('hold', () => {
       'Unavailable',
     )
     expect(() => request.resolve(groupList)).toThrow(/settled once/)
-    fake()
+    await fake()
+  })
+})
+
+describe('teardown', () => {
+  const groupsApi = () =>
+    installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+
+  it('waits for a response settled at the end of the test and reports its contract violation', async () => {
+    const fake = groupsApi()
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    await request.arrived
+    request.resolve({ ...groupList, groups: 'not-a-list' } as never)
+
+    await expect(fake()).rejects.toThrow(/Output validation failed/)
+  })
+
+  it('accepts a request the test deliberately leaves held', async () => {
+    const fake = groupsApi()
+    const request = hold(fake.console.workspaces.current.networkAccessGroups.get)
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    await request.arrived
+
+    await expect(fake()).resolves.toBeUndefined()
+  })
+
+  it('accepts loading states served by pendingResponse() and requests the client aborted', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: { current: { networkAccessGroups: { get: () => pendingResponse() } } },
+        apps: { get: () => new Promise<never>(() => {}) },
+      },
+    })
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    const controller = new AbortController()
+    const aborted = fetch('http://localhost:5001/console/api/apps', { signal: controller.signal })
+    await expect.poll(() => fake.console.apps.get).toHaveBeenCalled()
+    controller.abort()
+    await expect(aborted).rejects.toMatchObject({ name: 'AbortError' })
+
+    await expect(fake()).resolves.toBeUndefined()
+  })
+
+  it('reports a response that is still pending without being held', async () => {
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: { networkAccessGroups: { get: () => new Promise<never>(() => {}) } },
+        },
+      },
+    })
+    void consoleClient.workspaces.current.networkAccessGroups.get({}).catch(() => undefined)
+    await expect
+      .poll(() => fake.console.workspaces.current.networkAccessGroups.get)
+      .toHaveBeenCalled()
+
+    await expect(fake()).rejects.toThrow(
+      /GET \/console\/api\/workspaces\/current\/network-access-groups: still pending/,
+    )
+  })
+})
+
+describe('REST route bodies', () => {
+  const upload = () =>
+    installFakeApi({
+      routes: [route('POST', 'console', '/forgot-password/validity', ({ body }) => ({ body }))],
+    })
+  const url = 'http://localhost:5001/console/api/forgot-password/validity'
+
+  it('fails the test when a body declared as JSON cannot be parsed', async () => {
+    const fake = upload()
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"email": "a@example.com"',
+    })
+
+    expect(response.status).toBe(400)
+    await expect(fake()).rejects.toThrow(
+      /POST \/console\/api\/forgot-password\/validity: request could not be decoded: JSON body/,
+    )
+  })
+
+  it('passes text bodies through as sent, without guessing JSON', async () => {
+    const fake = upload()
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: '{"email": "a@example.com"}',
+    })
+
+    expect(await response.json()).toEqual({ body: '{"email": "a@example.com"}' })
+    await fake()
   })
 })
 
@@ -568,7 +664,7 @@ describe('hold release', () => {
     request.release()
 
     expect((await response).groups).toEqual([])
-    fake()
+    await fake()
   })
 })
 

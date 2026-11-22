@@ -7,7 +7,7 @@ import type {
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Source } from '../source-models'
 import { onTestFinished, vi } from 'vite-plus/test'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi, pendingResponse } from '@/test/fake-api'
 import { sourceApiResponse } from './source-api-fixture'
 import { source, sourceConnectionResponse, workflow } from './source-fixtures'
 
@@ -58,7 +58,6 @@ export const navigation = {
     ),
 }
 export const settingsState = { configurationState: 'active' as 'active' | 'setup-required' }
-const forever = () => new Promise<never>(() => {})
 async function track<T>(read: () => Promise<T> | T) {
   server.inflight += 1
   try {
@@ -73,7 +72,7 @@ function paged<Item, Output>(
   toApi: (item: Item) => Output,
 ) {
   return (input: { query?: { cursor?: string } }) => {
-    if (responses.pending) return forever()
+    if (responses.pending) return pendingResponse()
     return track(async () => {
       const cursor = input.query?.cursor
       const reads = server.reads.get(resource) ?? 0
@@ -190,7 +189,7 @@ function installSourceApi() {
           datasourcePlugins: {
             get: () =>
               pluginResponses.pending
-                ? forever()
+                ? pendingResponse()
                 : track(async () => {
                     if (pluginResponses.failed)
                       throw apiError({

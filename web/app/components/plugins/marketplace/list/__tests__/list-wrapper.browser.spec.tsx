@@ -6,7 +6,7 @@ import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
 import common from '@/i18n/locales/en-US/common.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, pendingResponse, setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
@@ -140,7 +140,7 @@ describe('ListWrapper', () => {
   })
 
   it('announces loading without result links on a cold start', async () => {
-    fake.use({ marketplace: { searchAdvanced: () => new Promise(() => {}) } })
+    fake.use({ marketplace: { searchAdvanced: () => pendingResponse() } })
     const screen = await renderListWrapper()
     await expect.element(screen.getByRole('progressbar')).toBeVisible()
     await expect.element(screen.getByRole('link')).not.toBeInTheDocument()

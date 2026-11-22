@@ -1,5 +1,5 @@
 import { page } from 'vite-plus/test/browser'
-import { installFakeApi } from '@/test/fake-api'
+import { installFakeApi, pendingResponse } from '@/test/fake-api'
 import { datasetsPage, members, setup, spacesPage } from './new-knowledge-list-test-env'
 
 function installListApi() {
@@ -19,7 +19,7 @@ function installListApi() {
         },
         byDatasetId: {
           knowledgeFsUpgrades: {
-            byJobId: { get: () => new Promise(() => {}) },
+            byJobId: { get: () => pendingResponse() },
           },
         },
         apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },

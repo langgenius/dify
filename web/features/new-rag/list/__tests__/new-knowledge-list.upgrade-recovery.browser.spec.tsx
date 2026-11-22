@@ -1,9 +1,8 @@
 import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DatasetListResponse } from './new-knowledge-list-test-env'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, pendingResponse, setupFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
   legacyDataset,
@@ -47,7 +46,7 @@ const fake = setupFakeApi(() => ({
       },
       byDatasetId: {
         knowledgeFsUpgrades: {
-          byJobId: { get: () => new Promise(() => {}) },
+          byJobId: { get: () => pendingResponse() },
         },
       },
       apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
@@ -112,8 +111,7 @@ describe('NewKnowledgeList upgrade recovery', () => {
 
     it('keeps the empty workspace loading while upgrade datasets are restored', async () => {
       fake.console.datasets.knowledgeFsUpgradeJobs.get.mockResolvedValue({ data: [job()] })
-      const datasets = createDeferred<DatasetListResponse>()
-      fake.console.datasets.get.mockReturnValue(datasets.promise)
+      fake.console.datasets.get.mockReturnValue(pendingResponse())
       await setup()
 
       await vi.waitFor(() => expect(fake.console.datasets.get).toHaveBeenCalled())

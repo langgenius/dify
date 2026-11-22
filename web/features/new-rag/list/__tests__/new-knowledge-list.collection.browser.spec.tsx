@@ -1,5 +1,5 @@
 import { page, userEvent } from 'vite-plus/test/browser'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, pendingResponse, setupFakeApi } from '@/test/fake-api'
 import {
   datasetsPage,
   knowledgeList,
@@ -26,7 +26,7 @@ const fake = setupFakeApi(() => ({
       },
       byDatasetId: {
         knowledgeFsUpgrades: {
-          byJobId: { get: () => new Promise(() => {}) },
+          byJobId: { get: () => pendingResponse() },
         },
       },
       apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
@@ -52,7 +52,7 @@ describe('NewKnowledgeList collection', () => {
 
   describe('collection', () => {
     it('shows a loading state until the first page resolves', async () => {
-      fake.console.knowledgeFs.spaces.get.mockReturnValue(new Promise(() => {}))
+      fake.console.knowledgeFs.spaces.get.mockReturnValue(pendingResponse())
       await setup()
 
       await expect.element(page.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()

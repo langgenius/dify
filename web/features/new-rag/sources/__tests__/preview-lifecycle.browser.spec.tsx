@@ -1,6 +1,6 @@
 import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
-import { apiError } from '@/test/fake-api'
+import { apiError, pendingResponse } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { firecrawlDatasourcePlugin, source } from './source-fixtures'
@@ -28,7 +28,7 @@ describe('Sources: preview-lifecycle', () => {
     pluginResponses.data = [firecrawlDatasourcePlugin]
     serveWebsitePreview()
     fake.console.knowledgeFs.sourceProviderPreview.jobs.byJobId.get.mockReturnValueOnce(
-      new Promise(() => {}),
+      pendingResponse(),
     )
     sourceResponses.data = {
       pages: [
