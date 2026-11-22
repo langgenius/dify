@@ -16,7 +16,6 @@ from controllers.openapi import jobs
 from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._contract import op_of
 from controllers.openapi._errors import OpenApiErrorCode
-from controllers.openapi._models import JobWaitQuery
 from controllers.openapi.auth.spec import Effect, spec_of
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 from controllers.openapi.jobs import STOP_JOB_OP, WAIT_JOB_OP
@@ -34,6 +33,7 @@ from services.run_job import (
     JobOwner,
     JobRecord,
     JobStatus,
+    JobWaitQuery,
     RunJobService,
     RunResult,
 )

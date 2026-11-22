@@ -12,12 +12,12 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
 from controllers.openapi._errors import JobNotFound, require_uuid
 from controllers.openapi._files import end_read_transaction
-from controllers.openapi._models import Hint, JobState, JobWaitQuery
+from controllers.openapi._models import Hint, JobState
 from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.context import Context
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi, form_hints
 from extensions.ext_application_services import application_services
-from services.run_job import WAIT_DEFAULT_SECONDS, JobNotFoundError, JobOwner, JobStatus, JobView
+from services.run_job import WAIT_DEFAULT_SECONDS, JobNotFoundError, JobOwner, JobStatus, JobView, JobWaitQuery
 
 WAIT_JOB_OP: Final = "wait.job"
 STOP_JOB_OP: Final = "stop.job"
@@ -124,18 +124,9 @@ def job_state(view: JobView, *, app_id: str) -> JobState:
     Precondition: view belongs to the caller.
     Postcondition: the state carries the hints for its status.
     """
-    record = view.record
-    return JobState(
-        id=record.id,
-        status=view.status,
-        run_id=record.run_id,
-        message_id=record.message_id,
-        conversation_id=record.conversation_id,
-        answer=view.answer,
-        outputs=dict(view.outputs) if view.outputs is not None else None,
-        error=view.error,
-        hints=HINTS_BY_STATUS[view.status](view, app_id=app_id),
-    )
+    state = JobState.of(view)
+    state.hints = HINTS_BY_STATUS[view.status](view, app_id=app_id)
+    return state
 
 
 def job_state_from(call: Callable[[], JobView], *, app_id: str) -> JobState:

@@ -38,7 +38,7 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.knowledge.entities.knowledge_entities import RetrievalModel
-from services.run_job import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, JobStatus
+from services.run_job import JobResult, JobStartFields
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -414,54 +414,20 @@ class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
     model_config = ConfigDict(extra="forbid")
 
 
-IDEMPOTENCY_KEY_MAX_LENGTH: Final = 128
-
-
-class _StartFields(BaseModel):
-    wait_seconds: int = Field(
-        default=WAIT_DEFAULT_SECONDS,
-        ge=0,
-        le=WAIT_MAX_SECONDS,
-        description="How long to wait for the result before answering; 0 answers at once",
-    )
-    idempotency_key: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=IDEMPOTENCY_KEY_MAX_LENGTH,
-        description="A repeated start with the same key returns the first job",
-    )
-
-
-class WorkflowStartPayload(WorkflowRunPayload, _StartFields):
+class WorkflowStartPayload(WorkflowRunPayload, JobStartFields):
     model_config = ConfigDict(extra="forbid")
 
 
-class AdvancedChatStartPayload(AdvancedChatRunPayload, _StartFields):
+class AdvancedChatStartPayload(AdvancedChatRunPayload, JobStartFields):
     model_config = ConfigDict(extra="forbid")
 
 
-class ChatStartPayload(ChatRunPayload, _StartFields):
+class ChatStartPayload(ChatRunPayload, JobStartFields):
     model_config = ConfigDict(extra="forbid")
 
 
-class JobWaitQuery(BaseModel):
-    wait_seconds: int = Field(
-        default=WAIT_DEFAULT_SECONDS,
-        ge=0,
-        le=WAIT_MAX_SECONDS,
-        description="How long to wait for a final state; 0 answers at once",
-    )
-
-
-class JobState(Hinted):
-    id: str
-    status: JobStatus
-    run_id: str | None = None
-    message_id: str | None = None
-    conversation_id: str | None = None
-    answer: str | None = None
-    outputs: dict[str, Any] | None = None
-    error: str | None = None
+class JobState(JobResult, Hinted):
+    pass
 
 
 class CompletionRunPayload(RunPayloadBase):
@@ -470,7 +436,7 @@ class CompletionRunPayload(RunPayloadBase):
     query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
 
 
-class CompletionStartPayload(CompletionRunPayload, _StartFields):
+class CompletionStartPayload(CompletionRunPayload, JobStartFields):
     model_config = ConfigDict(extra="forbid")
 
 

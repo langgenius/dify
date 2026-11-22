@@ -95,7 +95,6 @@ from controllers.openapi._models import (
     Hint,
     HumanInputFormDefinitionResponse,
     JobState,
-    JobWaitQuery,
     KnowledgeBaseListQuery,
     KnowledgeBaseListResponse,
     KnowledgeBaseRow,
@@ -214,6 +213,7 @@ from fields.workflow_run_fields import (
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ErrorSpec, ExternalApi
 from services.entities.dsl_entities import CheckDependenciesResult, Import
+from services.run_job import JobWaitQuery
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)

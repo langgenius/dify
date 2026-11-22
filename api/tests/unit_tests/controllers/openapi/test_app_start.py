@@ -17,7 +17,6 @@ from controllers.openapi import app_start, jobs
 from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import (
-    IDEMPOTENCY_KEY_MAX_LENGTH,
     AdvancedChatStartPayload,
     ChatStartPayload,
     CompletionStartPayload,
@@ -34,6 +33,7 @@ from models import App
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job import (
+    IDEMPOTENCY_KEY_MAX_LENGTH,
     READER_THREAD_NAME,
     WAIT_DEFAULT_SECONDS,
     WAIT_MAX_SECONDS,
