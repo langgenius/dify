@@ -54,6 +54,15 @@ import { useCommentHover } from './use-comment-hover'
 
 const EMPTY_IDS: readonly string[] = []
 
+// The people the comment (`replyId` null) or one of its replies mentions, by the name they
+// were mentioned with.
+const mentionedUsersOf = (mentions: WorkflowCommentDetail['mentions'], replyId: string | null) =>
+  mentions.flatMap((mention) =>
+    (mention.reply_id ?? null) === replyId && mention.mentioned_user_account?.name
+      ? [{ id: mention.mentioned_user_id, name: mention.mentioned_user_account.name }]
+      : [],
+  )
+
 type CommentThreadProps = {
   comment: Omit<WorkflowCommentDetail, 'replies'> & { replies: ThreadReply[] }
   loading?: boolean
@@ -394,9 +403,7 @@ function CommentThreadSession({
             ns: 'workflowComments',
           })}
           onSave={onCommentEdit}
-          mentionedUserIds={comment.mentions
-            .filter((mention) => !mention.reply_id)
-            .map((mention) => mention.mentioned_user_id)}
+          mentionedUsers={mentionedUsersOf(comment.mentions, null)}
           saving={savingIds.includes(comment.id)}
           onEditEnd={focusReply}
         />
@@ -435,9 +442,7 @@ function CommentThreadSession({
                 ns: 'workflowComments',
               })}
               onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
-              mentionedUserIds={comment.mentions
-                .filter((mention) => mention.reply_id === reply.id)
-                .map((mention) => mention.mentioned_user_id)}
+              mentionedUsers={mentionedUsersOf(comment.mentions, reply.id)}
               saving={savingIds.includes(reply.id)}
               deleting={deletingIds.includes(reply.id)}
               onEditEnd={focusReply}
@@ -490,7 +495,7 @@ type CommentThreadEntryProps = {
   editPlaceholder: string
   onSave?: (content: string, mentionedUserIds: string[]) => Promise<void> | void
   /** The people this message mentions, kept by an edit while their @name stays. */
-  mentionedUserIds?: readonly string[]
+  mentionedUsers?: readonly { id: string; name: string }[]
   /** An edit of this message is being saved; its field stays locked until it is. */
   saving?: boolean
   /** This message is being deleted; its confirmation stays open until it is. */
@@ -514,7 +519,7 @@ function CommentThreadEntry({
   editLabel,
   editPlaceholder,
   onSave,
-  mentionedUserIds,
+  mentionedUsers,
   saving = false,
   deleting = false,
   onEditEnd,
@@ -651,7 +656,7 @@ function CommentThreadEntry({
                 onChange={setDraft}
                 onSubmit={handleSave}
                 onCancel={endEdit}
-                mentionedUserIds={mentionedUserIds}
+                mentionedUsers={mentionedUsers}
                 placeholder={editPlaceholder}
                 loading={saving}
                 isEditing

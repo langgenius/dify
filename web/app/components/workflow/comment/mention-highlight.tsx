@@ -19,8 +19,8 @@ export function findMentions(content: string, mentionNames: string[]): Mention[]
     const name = startsWord
       ? names.find((candidate) => {
           if (!content.startsWith(candidate, at + 1)) return false
-          const next = content[at + 1 + candidate.length]
-          return next === undefined || !/[\p{L}\p{N}_]/u.test(next)
+          const next = content.codePointAt(at + 1 + candidate.length)
+          return next === undefined || !/[\p{L}\p{N}_]/u.test(String.fromCodePoint(next))
         })
       : undefined
     if (name) {

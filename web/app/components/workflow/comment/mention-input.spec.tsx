@@ -106,7 +106,10 @@ describe('MentionInput', () => {
         onChange={vi.fn()}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
-        mentionedUserIds={['user-2', 'user-3']}
+        mentionedUsers={[
+          { id: 'user-2', name: 'Alice' },
+          { id: 'user-3', name: 'Bob' },
+        ]}
         isEditing
       />,
       mentionUsers,
@@ -130,6 +133,77 @@ describe('MentionInput', () => {
     await user.keyboard('{Enter}')
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Bob hi', ['user-4']))
+  })
+
+  it('keeps an edited message’s mentions before the people it can mention have loaded', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    mockFetchMentionableUsers.mockReturnValue(new Promise(() => {}))
+    render(
+      <MentionInput
+        value="@Bob hi"
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        mentionedUsers={[{ id: 'user-3', name: 'Bob' }]}
+        isEditing
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Bob hi', ['user-3']))
+  })
+
+  it('means the person picked last when a name is picked again', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<ControlledMentionInput onSubmit={onSubmit} />, [
+      ...mentionUsers,
+      { id: 'user-4', name: 'Bob', email: 'another-bob@example.com', avatar_url: null },
+    ])
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@Bo')
+    await user.click(await screen.findByText('bob@example.com'))
+    await user.clear(textarea)
+    await user.type(textarea, '@Bo')
+    await user.click(await screen.findByText('another-bob@example.com'))
+    await user.type(textarea, 'hi')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Bob hi', ['user-4']))
+  })
+
+  it('keeps a picked name when the text after it matches a longer name', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<ControlledMentionInput onSubmit={onSubmit} />, [
+      ...mentionUsers,
+      { id: 'user-5', name: 'Bob Smith', email: 'bob-smith@example.com', avatar_url: null },
+    ])
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@Bo')
+    await user.click(await screen.findByText('bob@example.com'))
+    await user.type(textarea, 'Smith please review')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith('@Bob Smith please review', ['user-3']),
+    )
+  })
+
+  it('does not mention a name typed without picking it', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<ControlledMentionInput onSubmit={onSubmit} />, mentionUsers)
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.click(textarea)
+    await user.paste('@Bob hi')
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Bob hi', []))
   })
 
   it('does not send a mention removed from the text', async () => {

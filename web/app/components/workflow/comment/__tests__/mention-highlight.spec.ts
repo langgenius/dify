@@ -16,6 +16,10 @@ describe('findMentions', () => {
     expect(names('@Bobby please review', ['Bob'])).toEqual([])
   })
 
+  it('does not end a name inside a character outside the basic plane', () => {
+    expect(names('@Bob𠮷 hi', ['Bob'])).toEqual([])
+  })
+
   it('takes the longest name that fits where names share a prefix', () => {
     expect(names('@Bob Smith here', ['Bob', 'Bob Smith'])).toEqual(['Bob Smith'])
   })

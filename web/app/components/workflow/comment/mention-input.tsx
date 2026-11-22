@@ -33,6 +33,8 @@ import { CommentComposerActions } from './comment-composer'
 import { findMentions, highlightMentions } from './mention-highlight'
 import { toCommentCollaborator } from './participants'
 
+type MentionedUser = { id: string; name: string }
+
 type MentionInputProps = {
   value: string
   onChange: (value: string) => void
@@ -44,7 +46,7 @@ type MentionInputProps = {
   className?: string
   isEditing?: boolean
   /** The people an edited message already mentions. */
-  mentionedUserIds?: readonly string[]
+  mentionedUsers?: readonly MentionedUser[]
   autoFocus?: boolean
 }
 
@@ -62,7 +64,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       loading = false,
       className,
       isEditing = false,
-      mentionedUserIds: initialMentionedUserIds,
+      mentionedUsers,
       autoFocus = false,
     },
     forwardedRef,
@@ -94,21 +96,16 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
     const [isMultiline, setIsMultiline] = useState(false)
 
-    // The people this text may mention: the ones picked from the list, and when editing, the
-    // ones it already mentions. Picks tell people with the same name apart; the text decides
-    // which of them are still mentioned when it is sent.
-    const [mentionCandidateIds, setMentionCandidateIds] = useState<readonly string[]>(
-      () => initialMentionedUserIds ?? [],
+    // Who each @name in this text means: the person picked for it from the list, or when
+    // editing, the person the message already mentions by it; a later pick of the same name
+    // replaces an earlier one. An @name is a mention only while it is in the text, and only
+    // these names are highlighted and sent.
+    const [mentionedByName, setMentionedByName] = useState<ReadonlyMap<string, string>>(
+      () => new Map(mentionedUsers?.map((user) => [user.name.trim(), user.id])),
     )
-    const mentionNameList = useMemo(
-      () => mentionUsers.map((user) => user.name ?? ''),
-      [mentionUsers],
-    )
+    const mentionedNames = [...mentionedByName.keys()]
 
-    const highlightedValue = useMemo(
-      () => highlightMentions(value, mentionNameList),
-      [value, mentionNameList],
-    )
+    const highlightedValue = highlightMentions(value, mentionedNames)
 
     const syncHighlightScroll = useCallback(() => {
       const textarea = textareaRef.current
@@ -239,7 +236,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
         onChange(newContent)
         setShowMentionDropdown(false)
-        setMentionCandidateIds((ids) => (ids.includes(user.id) ? ids : [...ids, user.id]))
+        if (user.name)
+          setMentionedByName((byName) => new Map(byName).set(user.name!.trim(), user.id))
 
         setTimeout(() => {
           const extraSpace = needsSpaceBefore ? 1 : 0
@@ -263,22 +261,20 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
         if (value.trim()) {
           try {
-            // A candidate is sent only while its @name is still in the text, so a mention
-            // deleted or changed in the text is not sent.
-            const mentionedNames = new Set(
-              findMentions(value, mentionNameList).map((mention) => mention.name),
-            )
-            const mentionedUserIds = mentionCandidateIds.filter((id) => {
-              const name = mentionUsers.find((user) => user.id === id)?.name?.trim()
-              return !!name && mentionedNames.has(name)
-            })
+            const mentionedUserIds = [
+              ...new Set(
+                findMentions(value, [...mentionedByName.keys()]).map((mention) =>
+                  mentionedByName.get(mention.name)!,
+                ),
+              ),
+            ]
             await onSubmit(value.trim(), mentionedUserIds)
           } catch (error) {
             console.error('Failed to submit', error)
           }
         }
       },
-      [loading, value, mentionNameList, mentionCandidateIds, mentionUsers, onSubmit],
+      [loading, value, mentionedByName, onSubmit],
     )
 
     const compositionEndedAtRef = useRef<number | null>(null)
@@ -350,7 +346,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     )
 
     const resetMentionState = useCallback(() => {
-      setMentionCandidateIds([])
       setShowMentionDropdown(false)
       setMentionQuery('')
       setMentionPosition(0)
