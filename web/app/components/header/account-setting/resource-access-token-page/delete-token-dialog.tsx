@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentProps } from 'react'
+import type { AlertDialogContentProps } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialogBody,
   AlertDialogCancelButton,
@@ -23,7 +23,7 @@ export function DeleteTokenDialogContent({
   isPending: boolean
   canDelete: boolean
   error: string | undefined
-  finalFocus: ComponentProps<typeof AlertDialogContent>['finalFocus']
+  finalFocus: AlertDialogContentProps['finalFocus']
   onConfirm: () => void
 }) {
   const { t } = useTranslation(['common', 'accountSettings'])
