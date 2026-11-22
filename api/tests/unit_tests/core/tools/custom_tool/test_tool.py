@@ -432,8 +432,8 @@ class TestCustomToolCases:
     @pytest.mark.parametrize("content_type", ["application/json; charset=utf-8", "Application/JSON"])
     def test_do_http_request_serializes_json_body_when_content_type_has_parameters(
         monkeypatch: pytest.MonkeyPatch, content_type: str
-    ):
-        openapi = {
+    ) -> None:
+        openapi: dict[str, Any] = {
             "parameters": [],
             "requestBody": {
                 "content": {
@@ -447,9 +447,9 @@ class TestCustomToolCases:
             },
         }
         tool = _build_tool(openapi=openapi)
-        captured = {}
+        captured: dict[str, Any] = {}
 
-        def _fake_post(url, **kwargs):
+        def _fake_post(url: str, **kwargs: object) -> Response:
             captured["kwargs"] = kwargs
             return httpx.Response(200, text="ok")
 
