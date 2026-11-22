@@ -63,13 +63,27 @@ class MetaDefenderScanner(FileScanner):
         return {"apikey": self.credentials["api_key"]}
 
     @override
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         data_id = external_id or self._upload(target)
         if isinstance(data_id, ScanVerdict):
             return data_id
+        if not wait_for_result:
+            if external_id is not None:
+                verdict = self._result(data_id)
+                if verdict is not None:
+                    return verdict
+            raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id)
         deadline = self._clock() + self._wait_seconds
         while True:
-            verdict = self._result(data_id)
+            remaining = deadline - self._clock()
+            if remaining <= 0:
+                raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id)
+            try:
+                verdict = self._result(data_id, timeout=min(POLL_REQUEST_TIMEOUT_SECONDS, remaining))
+            except ScannerError as error:
+                if error.problem is ScanProblem.TIMEOUT and self._clock() >= deadline:
+                    raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id) from error
+                raise
             if verdict is not None:
                 return verdict
             if self._clock() + POLL_INTERVAL_SECONDS > deadline:
@@ -97,12 +111,12 @@ class MetaDefenderScanner(FileScanner):
             raise ScannerError(ScanProblem.INVALID_RESPONSE, "data_id is missing")
         return data_id
 
-    def _result(self, data_id: str) -> ScanVerdict | None:
+    def _result(self, data_id: str, *, timeout: float = POLL_REQUEST_TIMEOUT_SECONDS) -> ScanVerdict | None:
         """Return the verdict, or ``None`` while MetaDefender is still scanning."""
         response = http_request(
             "GET",
             f"{BASE_URL}/file/{quote(data_id, safe='')}",
-            timeout=POLL_REQUEST_TIMEOUT_SECONDS,
+            timeout=timeout,
             headers=self._headers(),
         )
         try:

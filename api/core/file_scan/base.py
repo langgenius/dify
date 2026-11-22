@@ -70,16 +70,28 @@ class FileScanner(ABC):
         """Raise ``ScannerConfigError`` when required settings are missing or malformed."""
 
     @abstractmethod
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         """Scan one file. May raise ``ScannerError``."""
 
-    def scan(self, target: ScanTarget, *, external_id: str | None = None) -> ScanVerdict:
+    def scan(
+        self,
+        target: ScanTarget,
+        *,
+        external_id: str | None = None,
+        wait_for_result: bool = True,
+    ) -> ScanVerdict:
         """Scan one file and always return a verdict.
 
         ``external_id`` resumes a scan a previous attempt already submitted (asynchronous scanners).
+        ``wait_for_result`` decides whether asynchronous scanners should poll until completion.
         """
         try:
-            return self._scan(target, external_id=external_id)
+            try:
+                return self._scan(target, external_id=external_id, wait_for_result=wait_for_result)
+            except TypeError as error:
+                if "unexpected keyword argument 'wait_for_result'" in str(error):
+                    return self._scan(target, external_id=external_id)
+                raise
         except ScannerError as error:
             return ScanVerdict.unavailable(error.problem, message=str(error), external_id=error.external_id)
         except Exception as error:

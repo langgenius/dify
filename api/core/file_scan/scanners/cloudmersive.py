@@ -47,7 +47,7 @@ class CloudmersiveScanner(FileScanner):
             raise ScannerConfigError("endpoint must be an https URL")
 
     @override
-    def _scan(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
+    def _scan(self, target: ScanTarget, *, external_id: str | None, wait_for_result: bool = True) -> ScanVerdict:
         endpoint = str(self.config.get("endpoint") or DEFAULT_ENDPOINT).rstrip("/")
         headers = {"Apikey": self.credentials["api_key"]}
         headers.update(dict.fromkeys(_ALLOW_HEADERS, "true"))

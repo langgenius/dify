@@ -239,13 +239,15 @@ class FileScanService:
     ) -> ScanVerdict:
         """Ask the scanner, repeating only for transient failures and scans that are still running."""
         attempts = dify_config.FILE_SCAN_MAX_ATTEMPTS if wait_for_result else 1
-        verdict = scanner.scan(target, external_id=external_id)
+        verdict = scanner.scan(target, external_id=external_id, wait_for_result=wait_for_result)
         for attempt in range(1, attempts):
             if not verdict.retryable:
                 break
             if verdict.problem is not ScanProblem.PENDING:
                 self._sleep(RETRY_BACKOFF_SECONDS * attempt)
-            verdict = scanner.scan(target, external_id=verdict.external_id or external_id)
+            verdict = scanner.scan(
+                target, external_id=verdict.external_id or external_id, wait_for_result=wait_for_result
+            )
         return verdict
 
     def _decide(
