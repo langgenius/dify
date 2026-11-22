@@ -122,7 +122,17 @@ class AsyncWorkflowService:
                 log_id,
             )
             raise
-        self._logs.mark_queued(
-            tenant_id=trigger_data.tenant_id, app_id=trigger_data.app_id, log_id=log_id, task_id=task_id
-        )
+        try:
+            self._logs.mark_queued(
+                tenant_id=trigger_data.tenant_id, app_id=trigger_data.app_id, log_id=log_id, task_id=task_id
+            )
+        except Exception:
+            logger.exception(
+                "Workflow task was published but its queued status could not be recorded: "
+                "tenant_id=%s app_id=%s trigger_log_id=%s task_id=%s",
+                trigger_data.tenant_id,
+                trigger_data.app_id,
+                log_id,
+                task_id,
+            )
         return AsyncTriggerResponse(workflow_trigger_log_id=log_id, task_id=task_id, status="queued", queue=queue)
