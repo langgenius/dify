@@ -2,11 +2,12 @@ import logging
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import CloudPlan, DeploymentEdition
@@ -15,13 +16,15 @@ from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
     WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
 )
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
@@ -1261,6 +1264,57 @@ class TestWorkflowCollaborationService:
             },
             room="wf-1",
         )
+
+    def test_online_user_avatars_are_scoped_to_active_room_and_upload_owner(
+        self, real_service: ServiceFixture, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        service, repository, socketio = real_service
+        avatar_id = str(uuid4())
+        with sqlite_session_factory.begin() as session:
+            session.add(make_upload_file(file_id=avatar_id, created_by="owner", extension="png", mime_type="image/png"))
+        avatar_service = AccountAvatarService(
+            files=SQLAlchemyAccountAvatarFileGateway(session_factory=sqlite_session_factory)
+        )
+        seed_session(repository, "viewer")
+        seed_sessions(
+            repository,
+            [
+                {"sid": "owner", "user_id": "owner", "username": "Owner", "avatar": avatar_id, "connected_at": 1},
+                {"sid": "unowned", "user_id": "other", "username": "Other", "avatar": avatar_id, "connected_at": 1},
+                {"sid": "invalid", "user_id": "invalid", "username": "Invalid", "avatar": "invalid", "connected_at": 1},
+                {
+                    "sid": "offline",
+                    "user_id": "owner",
+                    "username": "Owner",
+                    "avatar": avatar_id,
+                    "connected_at": 1,
+                },
+            ],
+        )
+        repository.set_session_info(
+            "other-room",
+            {
+                "sid": "outside",
+                "user_id": "outside",
+                "username": "Outside",
+                "avatar": "https://example.com/other-avatar.png",
+                "connected_at": 1,
+            },
+        )
+        socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
+
+        with patch(
+            "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
+            return_value="https://example.com/signed-avatar.png",
+        ) as sign_avatar:
+            assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
+            assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
+                "outside": "https://example.com/other-avatar.png"
+            }
+            assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
+                "owner": "https://example.com/signed-avatar.png"
+            }
+            sign_avatar.assert_called_once_with(upload_file_id=avatar_id)
 
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service

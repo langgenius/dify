@@ -812,7 +812,7 @@ describe('IpPoliciesPage', () => {
       { systemFeatures: { deployment_edition: 'CLOUD' } },
     )
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Loading' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'No IP policies in this workspace yet' }),
     ).not.toBeInTheDocument()

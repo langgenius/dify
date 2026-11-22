@@ -44,7 +44,7 @@ COPY . .
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
-RUN pnpm build && pnpm build:vinext
+RUN pnpm build
 
 
 # production stage
@@ -60,7 +60,6 @@ ENV PORT=3000
 # Next.js standalone binds to HOSTNAME. Docker defaults it to the container ID, and
 # net.Server.listen() takes an ID like 30889528e495 as a numeric backlog, not a host.
 ENV HOSTNAME=0.0.0.0
-ENV EXPERIMENTAL_ENABLE_VINEXT=false
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # set timezone
@@ -81,7 +80,6 @@ WORKDIR /app
 COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
 COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
 COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
-COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
 
 COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
 

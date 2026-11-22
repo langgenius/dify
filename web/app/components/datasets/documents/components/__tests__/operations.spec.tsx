@@ -92,6 +92,7 @@ describe('Operations', () => {
   }
 
   const defaultProps = {
+    onRename: vi.fn(),
     embeddingAvailable: true,
     datasetId: 'dataset-1',
     detail: defaultDetail,

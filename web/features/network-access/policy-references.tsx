@@ -34,7 +34,7 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
             }
             target="_blank"
             rel="noreferrer"
-            className="flex min-h-7 max-w-full items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="flex min-h-7 max-w-full items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 ps-1 pe-1.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <AppIcon size="xs" decorative icon={app} className="size-5 shrink-0 rounded-sm" />
             <span className="min-w-0 system-sm-medium wrap-anywhere text-text-primary">

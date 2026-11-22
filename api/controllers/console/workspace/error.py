@@ -3,6 +3,12 @@ from http import HTTPStatus
 from libs.exception import BaseHTTPException
 
 
+class PendingInvitationNotFoundError(BaseHTTPException):
+    error_code = "pending_invitation_not_found"
+    code = HTTPStatus.NOT_FOUND
+    description = "No live invitation exists for this email in the workspace."
+
+
 class TriggerOAuthContextInvalidError(BaseHTTPException):
     error_code = "trigger_oauth_context_invalid"
     code = HTTPStatus.FORBIDDEN

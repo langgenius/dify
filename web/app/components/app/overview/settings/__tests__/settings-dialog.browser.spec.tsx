@@ -18,9 +18,6 @@ import { SettingsDialog } from '../index'
 
 const saveSite = vi.fn()
 
-// boundary: the settings owner only needs a stable route parameter contract in Browser Mode.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-
 vi.unmock('react-i18next')
 
 const settingsTitle = 'Branding'

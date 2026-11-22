@@ -80,6 +80,7 @@ from models.agent_config_entities import (
     AgentSoulPromptConfig,
     validate_config_skill_name,
 )
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from models.provider_ids import ModelProviderID
@@ -95,7 +96,6 @@ from models.skill import (
     SkillVersionManifestFile,
 )
 from models.tools import ToolFile
-from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
 from services.file_service import FileService
 

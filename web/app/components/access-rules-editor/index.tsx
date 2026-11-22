@@ -271,7 +271,7 @@ function AccessRulesEditor({
                   ACCESS_RULE_TABLE_GRID,
                 )}
               >
-                <th scope="col" className="font-inherit flex items-center gap-3 text-left">
+                <th scope="col" className="font-inherit flex items-center gap-3 text-start">
                   <Checkbox
                     aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
                     checked={areAllAccountsSelected}
@@ -286,10 +286,10 @@ function AccessRulesEditor({
                   />
                   <span>{t(($) => $['accessRule.collaborator'], { ns: 'permission' })}</span>
                 </th>
-                <th scope="col" className="font-inherit text-left">
+                <th scope="col" className="font-inherit text-start">
                   {t(($) => $['accessRule.accessPermission'], { ns: 'permission' })}
                 </th>
-                <th scope="col" className="font-inherit text-left">
+                <th scope="col" className="font-inherit text-start">
                   {t(($) => $['accessRule.actions'], { ns: 'permission' })}
                 </th>
               </tr>
