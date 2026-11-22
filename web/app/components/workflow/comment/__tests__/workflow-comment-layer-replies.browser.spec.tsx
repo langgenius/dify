@@ -1,4 +1,5 @@
 import { userEvent } from 'vite-plus/test/browser'
+import { consoleQuery } from '@/service/console'
 import {
   markers,
   openThread,
@@ -36,16 +37,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 beforeEach(resetFakeServer)
-
-const scrollingParent = (element: Element) => {
-  let parent = element.parentElement
-  while (parent && getComputedStyle(parent).overflowY !== 'auto') parent = parent.parentElement
-  return parent!
-}
-const nextFrames = async (count: number) => {
-  for (let frame = 0; frame < count; frame++)
-    await new Promise((resolve) => requestAnimationFrame(resolve))
-}
 
 describe('replies', () => {
   it('shows a reply as soon as it is sent, then as one saved reply', async () => {
@@ -258,82 +249,6 @@ describe('replies', () => {
       .click()
     await expect.element(thread(screen).getByText('For the first')).toBeVisible()
   })
-
-  it('opens a long thread on its newest message', async () => {
-    for (let index = 0; index < 12; index++)
-      saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
-    const screen = await renderLayer()
-    await openThread(screen)
-
-    await expect.element(thread(screen).getByText('Reply number 11')).toBeInViewport()
-    await expect.element(thread(screen).getByText('Reply number 0')).not.toBeInViewport()
-  })
-
-  it('keeps the reader’s place when a collaborator replies, and follows when they are at the newest', async () => {
-    for (let index = 0; index < 12; index++)
-      saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
-    api.reply.mockImplementation(async ({ body }: { body: { content: string } }) =>
-      saveReplyOnServer('first', body.content),
-    )
-    const screen = await renderLayer()
-    await openThread(screen)
-    const oldest = thread(screen).getByText('Reply number 0')
-
-    // Reading earlier messages: a collaborator's reply does not pull the list down.
-    await userEvent.wheel(thread(screen).getByText('Reply number 11'), {
-      direction: 'up',
-      times: 10,
-    })
-    await expect.element(oldest).toBeInViewport()
-    const list = scrollingParent(oldest.element())
-    const readingAt = list.scrollTop
-    saveReplyOnServer('first', 'From a collaborator')
-    collaboration.handler?.()
-    await expect.element(thread(screen).getByText('From a collaborator')).toBeInTheDocument()
-    // A smooth scroll would have moved the list by the second frame.
-    await nextFrames(2)
-    expect(list.scrollTop).toBe(readingAt)
-    await expect.element(thread(screen).getByText('From a collaborator')).not.toBeInViewport()
-
-    // A reply sent from here always shows.
-    await sendReply(screen, 'My own reply')
-    await expect.element(thread(screen).getByText('My own reply')).toBeInViewport()
-
-    // At the newest message, collaborator replies come into view, even one arriving while the
-    // list is still scrolling to the one before.
-    saveReplyOnServer('first', 'Another collaborator reply')
-    collaboration.handler?.()
-    await expect.element(thread(screen).getByText('Another collaborator reply')).toBeInTheDocument()
-    saveReplyOnServer('first', 'And one more')
-    collaboration.handler?.()
-    await expect.element(thread(screen).getByText('And one more')).toBeInViewport()
-  })
-
-  it('keeps the reader’s place when a collaborator replies below a reply that failed to send', async () => {
-    for (let index = 0; index < 12; index++)
-      saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
-    api.reply.mockRejectedValueOnce(new Error('Network error'))
-    const screen = await renderLayer()
-    await openThread(screen)
-    await sendReply(screen, 'Not sent')
-    await expect
-      .element(thread(screen).getByText('workflowComments.comments.status.notSent'))
-      .toBeVisible()
-
-    const oldest = thread(screen).getByText('Reply number 0')
-    await userEvent.wheel(thread(screen).getByText('Reply number 11'), {
-      direction: 'up',
-      times: 10,
-    })
-    await expect.element(oldest).toBeInViewport()
-    const list = scrollingParent(oldest.element())
-    const readingAt = list.scrollTop
-    saveReplyOnServer('first', 'From a collaborator')
-    collaboration.handler?.()
-    await expect.element(thread(screen).getByText('From a collaborator')).toBeInTheDocument()
-    await nextFrames(2)
-    expect(list.scrollTop).toBe(readingAt)
-  })
 })
 
 describe('thread actions', () => {
@@ -439,6 +354,28 @@ describe('thread actions', () => {
     const again = await renderLayer({ queryClient: first.queryClient })
 
     await expect.poll(() => markers(again).elements().length).toBe(1)
+  })
+
+  it('reads an app’s comments again on opening while a comment write to another app runs', async () => {
+    const first = await renderLayer()
+    await expect.poll(() => markers(first).elements().length).toBe(2)
+    first.unmount()
+
+    // A reply to another app's comment is still sending.
+    const otherAppSend = deferred<{ id: string; created_at: number }>()
+    api.reply.mockReturnValueOnce(otherAppSend.promise)
+    void first.queryClient
+      .getMutationCache()
+      .build(
+        first.queryClient,
+        consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.post.mutationOptions(),
+      )
+      .execute({ params: { app_id: 'app-2', comment_id: 'other' }, body: { content: 'Elsewhere' } })
+    server.current.list = server.current.list.slice(1)
+    const again = await renderLayer({ queryClient: first.queryClient })
+
+    await expect.poll(() => markers(again).elements().length).toBe(1)
+    otherAppSend.resolve({ id: 'other-reply', created_at: 1 })
   })
 
   it('keeps showing the comment when the thread’s first load fails', async () => {

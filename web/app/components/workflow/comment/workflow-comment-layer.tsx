@@ -33,6 +33,7 @@ import { useStore, useWorkflowStore } from '../store'
 import { ControlMode } from '../types'
 import { CommentIcon } from './comment-icon'
 import { CommentInput } from './comment-input'
+import { appIdOfWrite, commentWriteKey, isWritingComments } from './comment-writes'
 import { getCommentMarkerId } from './marker-id'
 import { CommentPlacementPreview } from './placement-preview'
 import { CommentThread } from './thread'
@@ -40,7 +41,6 @@ import { commentThreadPlacement } from './thread-placement'
 import { useRevealComment } from './use-reveal-comment'
 
 const commentsApi = consoleQuery.apps.byAppId.workflow.comments
-const commentWriteKey = commentsApi.key({ type: 'mutation' })
 const replySendKey = commentsApi.byCommentId.replies.post.mutationKey()
 const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
@@ -135,21 +135,19 @@ export function WorkflowCommentLayer() {
   })
 
   // Comments are read again on mount or when a thread switches to them, except while a write
-  // from here is running: that read could land on its optimistic state, and the reconcile
-  // after it reads them anyway.
+  // from here is running for the app; the reconcile after it reads them.
   const { data: comments = EMPTY_COMMENTS } = useQuery({
     ...commentsApi.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
-      staleTime: () =>
-        queryClient.isMutating({ mutationKey: commentWriteKey }) > 0 ? Infinity : 0,
+      staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
     }),
     select: (list) => list.data,
   })
 
   // Every comment write, from the thread, the markers or the comments panel, is told to
-  // collaborators once it succeeds, and the comments reconcile with the server once no
-  // write is still running, so a refetch never lands on another write's optimistic state.
+  // collaborators once it succeeds, and an app's comments reconcile with the server once no
+  // write to them is still running, so a refetch never lands on a write's optimistic state.
   const unreconciledRef = useRef(new Set<string>())
   useEffect(() => {
     const mutationCache = queryClient.getMutationCache()
@@ -162,15 +160,16 @@ export function WorkflowCommentLayer() {
         return
       const { type } = event.action
       if (type !== 'success' && type !== 'error') return
-      const appIdOfWrite = (event.mutation.state.variables as { params?: { app_id?: string } })
-        ?.params?.app_id
-      if (!appIdOfWrite) return
-      if (type === 'success') collaborationManager.emitCommentsUpdate(appIdOfWrite)
-      unreconciled.add(appIdOfWrite)
+      const writtenAppId = appIdOfWrite(event.mutation.state.variables)
+      if (!writtenAppId) return
+      if (type === 'success') collaborationManager.emitCommentsUpdate(writtenAppId)
+      unreconciled.add(writtenAppId)
       queueMicrotask(() => {
-        if (queryClient.isMutating({ mutationKey: commentWriteKey }) > 0) return
-        for (const id of unreconciled) void refetchComments(queryClient, id)
-        unreconciled.clear()
+        for (const id of unreconciled) {
+          if (isWritingComments(queryClient, id)) continue
+          unreconciled.delete(id)
+          void refetchComments(queryClient, id)
+        }
       })
     })
   }, [queryClient])
@@ -180,8 +179,7 @@ export function WorkflowCommentLayer() {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
     return collaborationManager.onCommentsUpdate(() => {
-      if (queryClient.isMutating({ mutationKey: commentWriteKey }) > 0)
-        unreconciledRef.current.add(appId)
+      if (isWritingComments(queryClient, appId)) unreconciledRef.current.add(appId)
       else void refetchComments(queryClient, appId)
     })
   }, [appId, isCollaborationEnabled, queryClient])
@@ -413,8 +411,7 @@ function ShownThread({
     commentsApi.byCommentId.get.queryOptions({
       input: { params },
       placeholderData: { ...listItem, replies: [], mentions: [] },
-      staleTime: () =>
-        queryClient.isMutating({ mutationKey: commentWriteKey }) > 0 ? Infinity : 0,
+      staleTime: () => (isWritingComments(queryClient, params.app_id) ? Infinity : 0),
     }),
   )
 

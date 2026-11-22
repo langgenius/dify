@@ -24,6 +24,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { isWritingComments } from '@/app/components/workflow/comment/comment-writes'
 import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
 import {
   editorAppIdAtom,
@@ -49,17 +50,13 @@ const CommentsPanel = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const queryClient = useQueryClient()
-  // Not read again on mount while a comment write is running; the canvas reconciles after it.
+  // Not read again on mount while a comment write to the app is running; the canvas reconciles
+  // after it.
   const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
     ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
-      staleTime: () =>
-        queryClient.isMutating({
-          mutationKey: consoleQuery.apps.byAppId.workflow.comments.key({ type: 'mutation' }),
-        }) > 0
-          ? Infinity
-          : 0,
+      staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
     }),
     select: (list) => list.data,
   })

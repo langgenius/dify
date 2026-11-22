@@ -347,34 +347,37 @@ function CommentThreadSession({
   )
 
   const replies = comment.replies || []
-  // Replies sent from here keep their send's key, so a new one adds to this count.
-  const sentHereCount = replies.filter((reply) => reply.client_key).length
-  const previousSentHereCountRef = useRef(sentHereCount)
+  // A send from here, new or sent again, is the newest one still sending.
+  const sendingKey = replies.filter((reply) => reply.send_state === 'pending').at(-1)?.client_key
+  const previousSendingKeyRef = useRef(sendingKey)
 
   useEffect(() => {
     const container = messageListRef.current
     // Opening, including a first load of the thread, lands on the newest message at once.
-    // A reply arriving later scrolls into view when it was sent from here or the reader was
-    // already at the newest message; someone reading earlier messages keeps their place.
+    // Later, a reply sent from here scrolls into view, and so does one from someone else when
+    // the reader is at the newest message; someone reading earlier messages keeps their place.
     if (!container || loading) return
 
     const previousReplyCount = previousReplyCountRef.current
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
     else if (
-      replies.length > previousReplyCount &&
-      (sentHereCount > previousSentHereCountRef.current || atNewestRef.current)
-    )
+      (sendingKey && sendingKey !== previousSendingKeyRef.current) ||
+      (replies.length > previousReplyCount && atNewestRef.current)
+    ) {
+      // Heading to the newest message, so the next reply follows too.
+      atNewestRef.current = true
       container.scrollTo({
         top: container.scrollHeight,
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
           ? 'instant'
           : 'smooth',
       })
+    }
 
     previousReplyCountRef.current = replies.length
-    previousSentHereCountRef.current = sentHereCount
-  }, [loading, replies.length, sentHereCount])
+    previousSendingKeyRef.current = sendingKey
+  }, [loading, replies.length, sendingKey])
 
   // The reply shows in the thread at once, so the box clears for the next one. A reply
   // that fails to send stays in the thread with its own retry.
