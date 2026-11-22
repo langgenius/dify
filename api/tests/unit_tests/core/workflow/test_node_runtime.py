@@ -1486,6 +1486,7 @@ class _ModelInstanceStub(ModelInstance):
     invoke_llm: Mock
 
     @property
+    @override
     def moderation(self) -> None:
         return None
 
