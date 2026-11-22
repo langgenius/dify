@@ -134,10 +134,13 @@ export function WorkflowCommentLayer() {
     }),
   })
 
+  // Comments are read again on mount, except while a write from here is running: that read
+  // could land on its optimistic state, and the reconcile after it reads them anyway.
   const { data: comments = EMPTY_COMMENTS } = useQuery({
     ...commentsApi.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
+      refetchOnMount: () => queryClient.isMutating({ mutationKey: commentWriteKey }) === 0,
     }),
     select: (list) => list.data,
   })
@@ -408,6 +411,7 @@ function ShownThread({
     commentsApi.byCommentId.get.queryOptions({
       input: { params },
       placeholderData: { ...listItem, replies: [], mentions: [] },
+      refetchOnMount: () => queryClient.isMutating({ mutationKey: commentWriteKey }) === 0,
     }),
   )
 

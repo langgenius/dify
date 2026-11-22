@@ -13,7 +13,13 @@ import {
 } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,10 +48,16 @@ const CommentsPanel = () => {
   const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
   const appId = useAtomValue(editorAppIdAtom)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const queryClient = useQueryClient()
+  // Not read again on mount while a comment write is running; the canvas reconciles after it.
   const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
     ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
+      refetchOnMount: () =>
+        queryClient.isMutating({
+          mutationKey: consoleQuery.apps.byAppId.workflow.comments.key({ type: 'mutation' }),
+        }) === 0,
     }),
     select: (list) => list.data,
   })

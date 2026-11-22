@@ -53,7 +53,7 @@ import {
 } from './thread-view'
 
 type CommentThreadProps = {
-  comment: WorkflowCommentDetail
+  comment: Omit<WorkflowCommentDetail, 'replies'> & { replies: ThreadReply[] }
   loading?: boolean
   replyUpdating?: boolean
   onDelete?: (commentId: string) => Promise<void> | void
@@ -316,6 +316,8 @@ function CommentThreadSession({
   const [replyContent, setReplyContent] = useState('')
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
+  // Whether the reader is at the newest message, as of their last scroll.
+  const atNewestRef = useRef(true)
   // This session's own reply box; the shared ref also lets the popup focus it on open.
   const ownReplyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const attachReplyInput = useCallback(
@@ -343,17 +345,19 @@ function CommentThreadSession({
   )
 
   const replies = comment.replies || []
+  const newestSentHere = !!replies.at(-1)?.send_state
 
   useEffect(() => {
     const container = messageListRef.current
-    // Opening, including a first load of the thread, lands on the newest message at once;
-    // a reply arriving later scrolls into view.
+    // Opening, including a first load of the thread, lands on the newest message at once.
+    // A reply arriving later scrolls into view when it was sent from here or the reader was
+    // already at the newest message; someone reading earlier messages keeps their place.
     if (!container || loading) return
 
     const previousReplyCount = previousReplyCountRef.current
     if (previousReplyCount === undefined)
       container.scrollTo({ top: container.scrollHeight, behavior: 'instant' })
-    else if (replies.length > previousReplyCount)
+    else if (replies.length > previousReplyCount && (newestSentHere || atNewestRef.current))
       container.scrollTo({
         top: container.scrollHeight,
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -362,7 +366,7 @@ function CommentThreadSession({
       })
 
     previousReplyCountRef.current = replies.length
-  }, [loading, replies.length])
+  }, [loading, newestSentHere, replies.length])
 
   // The reply shows in the thread at once, so the box clears for the next one. A reply
   // that fails to send stays in the thread with its own retry.
@@ -374,7 +378,14 @@ function CommentThreadSession({
 
   return (
     <>
-      <CommentThreadList ref={messageListRef} aria-busy={loading || undefined}>
+      <CommentThreadList
+        ref={messageListRef}
+        aria-busy={loading || undefined}
+        onScroll={(event) => {
+          const list = event.currentTarget
+          atNewestRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 24
+        }}
+      >
         <CommentThreadEntry
           account={comment.created_by_account}
           createdAt={comment.created_at ?? comment.updated_at ?? 0}
@@ -389,7 +400,7 @@ function CommentThreadSession({
           onSave={onCommentEdit}
           onEditEnd={focusReply}
         />
-        {replies.map((reply: ThreadReply) =>
+        {replies.map((reply) =>
           reply.send_state ? (
             <UnsentReplyEntry
               key={getReplyKey(reply)}
