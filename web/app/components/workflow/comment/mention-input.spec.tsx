@@ -97,7 +97,7 @@ describe('MentionInput', () => {
     })
   })
 
-  it('sends the people still mentioned in the text, including ones kept from an edit', async () => {
+  it('keeps an edited message’s mentions while their @name stays in the text', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     render(
@@ -106,12 +106,30 @@ describe('MentionInput', () => {
         onChange={vi.fn()}
         onSubmit={onSubmit}
         onCancel={vi.fn()}
+        mentionedUserIds={['user-2', 'user-3']}
         isEditing
       />,
       mentionUsers,
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Alice please look', ['user-2']))
+  })
+
+  it('mentions only the person picked when two people share a name', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<ControlledMentionInput onSubmit={onSubmit} />, [
+      ...mentionUsers,
+      { id: 'user-4', name: 'Bob', email: 'another-bob@example.com', avatar_url: null },
+    ])
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@Bo')
+    await user.click(await screen.findByText('another-bob@example.com'))
+    await user.type(textarea, 'hi')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('@Bob hi', ['user-4']))
   })
 
   it('does not send a mention removed from the text', async () => {

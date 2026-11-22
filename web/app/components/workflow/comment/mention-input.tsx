@@ -43,6 +43,8 @@ type MentionInputProps = {
   loading?: boolean
   className?: string
   isEditing?: boolean
+  /** The people an edited message already mentions. */
+  mentionedUserIds?: readonly string[]
   autoFocus?: boolean
 }
 
@@ -60,6 +62,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       loading = false,
       className,
       isEditing = false,
+      mentionedUserIds: initialMentionedUserIds,
       autoFocus = false,
     },
     forwardedRef,
@@ -91,6 +94,12 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
     const [isMultiline, setIsMultiline] = useState(false)
 
+    // The people this text may mention: the ones picked from the list, and when editing, the
+    // ones it already mentions. Picks tell people with the same name apart; the text decides
+    // which of them are still mentioned when it is sent.
+    const [mentionCandidateIds, setMentionCandidateIds] = useState<readonly string[]>(
+      () => initialMentionedUserIds ?? [],
+    )
     const mentionNameList = useMemo(
       () => mentionUsers.map((user) => user.name ?? ''),
       [mentionUsers],
@@ -230,6 +239,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
         onChange(newContent)
         setShowMentionDropdown(false)
+        setMentionCandidateIds((ids) => (ids.includes(user.id) ? ids : [...ids, user.id]))
 
         setTimeout(() => {
           const extraSpace = needsSpaceBefore ? 1 : 0
@@ -253,21 +263,22 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
         if (value.trim()) {
           try {
-            // The people mentioned are the ones whose @name is in the text as sent, so a
-            // mention deleted from the text is not sent, and one kept from an edit is.
+            // A candidate is sent only while its @name is still in the text, so a mention
+            // deleted or changed in the text is not sent.
             const mentionedNames = new Set(
               findMentions(value, mentionNameList).map((mention) => mention.name),
             )
-            const mentionedUserIds = mentionUsers
-              .filter((user) => user.name && mentionedNames.has(user.name.trim()))
-              .map((user) => user.id)
+            const mentionedUserIds = mentionCandidateIds.filter((id) => {
+              const name = mentionUsers.find((user) => user.id === id)?.name?.trim()
+              return !!name && mentionedNames.has(name)
+            })
             await onSubmit(value.trim(), mentionedUserIds)
           } catch (error) {
             console.error('Failed to submit', error)
           }
         }
       },
-      [loading, value, mentionNameList, mentionUsers, onSubmit],
+      [loading, value, mentionNameList, mentionCandidateIds, mentionUsers, onSubmit],
     )
 
     const compositionEndedAtRef = useRef<number | null>(null)
@@ -339,6 +350,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     )
 
     const resetMentionState = useCallback(() => {
+      setMentionCandidateIds([])
       setShowMentionDropdown(false)
       setMentionQuery('')
       setMentionPosition(0)

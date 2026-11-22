@@ -3,42 +3,34 @@ import type { ReactNode } from 'react'
 type Mention = { start: number; end: number; name: string }
 
 /**
- * The `@name` mentions of known users in comment text, in order. A mention must start the text
- * or follow whitespace; when names share a prefix the longest one wins.
+ * The `@name` mentions of known users in comment text, in order. A mention starts the text or
+ * follows whitespace, and its name does not run on into more letters or digits; where names
+ * share a prefix, the longest that fits wins.
  */
 export function findMentions(content: string, mentionNames: string[]): Mention[] {
   const names = Array.from(new Set(mentionNames.map((name) => name.trim()).filter(Boolean)))
   names.sort((a, b) => b.length - a.length)
   const mentions: Mention[] = []
-  let cursor = 0
+  if (!names.length) return mentions
 
-  while (names.length && cursor < content.length) {
-    let nextMatchStart = -1
-    let matchedName = ''
-
-    for (const name of names) {
-      const searchStart = content.indexOf(`@${name}`, cursor)
-      if (searchStart === -1) continue
-
-      const previousChar = searchStart > 0 ? content[searchStart - 1] : ''
-      if (searchStart > 0 && !/\s/.test(previousChar!)) continue
-
-      if (
-        nextMatchStart === -1 ||
-        searchStart < nextMatchStart ||
-        (searchStart === nextMatchStart && name.length > matchedName.length)
-      ) {
-        nextMatchStart = searchStart
-        matchedName = name
-      }
+  let at = content.indexOf('@')
+  while (at !== -1) {
+    const startsWord = at === 0 || /\s/.test(content[at - 1]!)
+    const name = startsWord
+      ? names.find((candidate) => {
+          if (!content.startsWith(candidate, at + 1)) return false
+          const next = content[at + 1 + candidate.length]
+          return next === undefined || !/[\p{L}\p{N}_]/u.test(next)
+        })
+      : undefined
+    if (name) {
+      const end = at + 1 + name.length
+      mentions.push({ start: at, end, name })
+      at = content.indexOf('@', end)
+    } else {
+      at = content.indexOf('@', at + 1)
     }
-
-    if (nextMatchStart === -1) break
-    const end = nextMatchStart + matchedName.length + 1
-    mentions.push({ start: nextMatchStart, end, name: matchedName })
-    cursor = end
   }
-
   return mentions
 }
 

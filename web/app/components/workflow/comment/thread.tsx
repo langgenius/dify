@@ -394,6 +394,9 @@ function CommentThreadSession({
             ns: 'workflowComments',
           })}
           onSave={onCommentEdit}
+          mentionedUserIds={comment.mentions
+            .filter((mention) => !mention.reply_id)
+            .map((mention) => mention.mentioned_user_id)}
           saving={savingIds.includes(comment.id)}
           onEditEnd={focusReply}
         />
@@ -432,6 +435,9 @@ function CommentThreadSession({
                 ns: 'workflowComments',
               })}
               onSave={onReplyEdit && ((content, ids) => onReplyEdit(reply.id, content, ids))}
+              mentionedUserIds={comment.mentions
+                .filter((mention) => mention.reply_id === reply.id)
+                .map((mention) => mention.mentioned_user_id)}
               saving={savingIds.includes(reply.id)}
               deleting={deletingIds.includes(reply.id)}
               onEditEnd={focusReply}
@@ -483,6 +489,8 @@ type CommentThreadEntryProps = {
   editLabel: string
   editPlaceholder: string
   onSave?: (content: string, mentionedUserIds: string[]) => Promise<void> | void
+  /** The people this message mentions, kept by an edit while their @name stays. */
+  mentionedUserIds?: readonly string[]
   /** An edit of this message is being saved; its field stays locked until it is. */
   saving?: boolean
   /** This message is being deleted; its confirmation stays open until it is. */
@@ -506,6 +514,7 @@ function CommentThreadEntry({
   editLabel,
   editPlaceholder,
   onSave,
+  mentionedUserIds,
   saving = false,
   deleting = false,
   onEditEnd,
@@ -642,6 +651,7 @@ function CommentThreadEntry({
                 onChange={setDraft}
                 onSubmit={handleSave}
                 onCancel={endEdit}
+                mentionedUserIds={mentionedUserIds}
                 placeholder={editPlaceholder}
                 loading={saving}
                 isEditing
