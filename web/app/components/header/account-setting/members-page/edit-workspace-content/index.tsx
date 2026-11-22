@@ -22,7 +22,7 @@ import { getErrorMessage } from '@/utils/error-message'
 type IEditWorkspaceContentProps = {
   inputRef: Ref<HTMLInputElement>
 }
-const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
+export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
   const { t } = useTranslation(['common', 'accountSettings'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -121,4 +121,3 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
     </form>
   )
 }
-export default EditWorkspaceContent

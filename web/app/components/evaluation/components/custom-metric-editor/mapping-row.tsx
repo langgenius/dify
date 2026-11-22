@@ -41,23 +41,6 @@ const MappingRow = ({ inputVariable, source, value, onUpdate }: MappingRowProps)
 
   return (
     <div className="flex items-center">
-      <div className="flex h-8 w-[200px] items-center rounded-md px-2">
-        <div className="flex min-w-0 items-center gap-0.5 px-1">
-          <span
-            aria-hidden="true"
-            className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-text-accent"
-          />
-          <div className="truncate system-xs-medium text-text-secondary">{inputVariable.id}</div>
-          <div className="shrink-0 system-xs-regular text-text-tertiary">
-            {inputVariable.valueType}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex h-8 w-9 items-center justify-center px-3 system-xs-medium text-text-tertiary">
-        <span aria-hidden="true">→</span>
-      </div>
-
       {source.type === 'agent' ? (
         <AgentVariablePicker
           className="grow"
@@ -78,6 +61,23 @@ const MappingRow = ({ inputVariable, source, value, onUpdate }: MappingRowProps)
           onChange={onUpdate}
         />
       )}
+
+      <div className="flex h-8 w-9 items-center justify-center px-3 system-xs-medium text-text-tertiary">
+        <span aria-hidden="true">→</span>
+      </div>
+
+      <div className="flex h-8 w-[200px] shrink-0 items-center rounded-md px-2">
+        <div className="flex min-w-0 items-center gap-0.5 px-1">
+          <span
+            aria-hidden="true"
+            className="i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 shrink-0 text-text-accent"
+          />
+          <div className="truncate system-xs-medium text-text-secondary">{inputVariable.id}</div>
+          <div className="shrink-0 system-xs-regular text-text-tertiary">
+            {inputVariable.valueType}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

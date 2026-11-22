@@ -19,13 +19,8 @@ const api = vi.hoisted(() => ({
   upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
   upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
   datasets: vi.fn<typeof consoleClient.datasets.get>(),
-  push: vi.fn(),
 }))
 
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: api.push }),
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')

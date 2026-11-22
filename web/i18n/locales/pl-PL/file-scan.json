@@ -2,7 +2,6 @@
   "dialog.addTitle": "Dodaj skaner",
   "dialog.apiKey": "Klucz API",
   "dialog.apiSecret": "Sekret API",
-  "dialog.clamavHint": "ClamAV działa w ramach tego wdrożenia. Jego adres ustawia administrator wdrożenia.",
   "dialog.dataNotice": "Zawartość plików jest wysyłana do tej usługi.",
   "dialog.editTitle": "Edytuj skaner",
   "dialog.endpoint": "Punkt końcowy (opcjonalnie)",

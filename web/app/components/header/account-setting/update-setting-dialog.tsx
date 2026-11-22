@@ -68,6 +68,7 @@ export function UpdateSettingDialog({ category }: Props) {
   return (
     <Dialog
       actionsRef={actionsRef}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && isSavePending && details.reason !== 'imperative-action') details.cancel()
       }}

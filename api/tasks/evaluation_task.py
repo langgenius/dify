@@ -50,7 +50,12 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig, JudgmentResult
 from core.evaluation.evaluation_manager import EvaluationManager
-from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.exceptions import (
+    EvaluationErrorCode,
+    EvaluationWorkflowVersionNotFoundError,
+    new_public_evaluation_error,
+    safe_evaluation_error_text,
+)
 from core.evaluation.judgment.processor import JudgmentProcessor
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
@@ -118,10 +123,10 @@ def _evaluate_with_customized_workflow(
 ) -> list[EvaluationItemResult]:
     """Run a published evaluator workflow for one tenant and map its outputs to metrics.
 
-    Requires a configured evaluator app and published version. A missing pinned
-    version fails the run before row execution; row failures become indexed error
-    results. Cancellation is checked before and after every row, and each result
-    retains its input position.
+    Precondition: the evaluator App and a published version are configured for
+    this tenant. A missing pinned version raises before row execution.
+    Postcondition: row failures contain only public diagnostics, results retain
+    input positions, and cancellation is checked before and after each row.
     """
     from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from core.app.entities.app_invoke_entities import InvokeFrom
@@ -187,9 +192,15 @@ def _evaluate_with_customized_workflow(
             if not metrics:
                 raise ValueError("Evaluation workflow returned none of the configured metric outputs")
             eval_results.append(EvaluationItemResult(index=idx, metrics=metrics))
-        except Exception as exc:
-            logger.exception("Customized evaluator failed for item %d with workflow %s", idx, workflow_id)
-            eval_results.append(EvaluationItemResult(index=idx, error=f"Customized evaluation failed: {exc}"))
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
+            logger.exception(
+                "Customized evaluator failed for item %d with workflow %s (error_id=%s)",
+                idx,
+                workflow_id,
+                failure.error_id,
+            )
+            eval_results.append(EvaluationItemResult(index=idx, error=failure.text))
         if cancellation_check is not None:
             cancellation_check()
 
@@ -206,9 +217,10 @@ def _evaluate_with_customized_workflow(
 def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
     """Execute a run with bounded retries and durable row checkpoints.
 
-    Dataset-row evaluation errors remain terminal item results. Unexpected
-    orchestration or infrastructure failures retry the task with exponential
-    backoff, resuming from the persisted checkpoints.
+    Precondition: the task payload identifies an existing evaluation run.
+    Postcondition: dataset-row errors remain terminal item results. Unexpected
+    infrastructure failures retry with exponential backoff; terminal run errors
+    contain only public diagnostics, while detailed exceptions remain in logs.
     """
     run_data = EvaluationRunData.model_validate(run_data_dict)
     lease = EvaluationRunLease(run_id=run_data.evaluation_run_id, token=str(uuid.uuid4()))
@@ -223,38 +235,43 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
                 run_data.evaluation_run_id,
                 lease.token,
             )
-        except EvaluationWorkflowVersionNotFoundError as exc:
+        except EvaluationWorkflowVersionNotFoundError:
+            failure = new_public_evaluation_error(EvaluationErrorCode.INVALID_CONFIG)
             logger.exception(
-                "Evaluation run %s cannot continue because a pinned workflow version is missing",
+                "Evaluation run %s cannot continue because a pinned workflow version is missing (error_id=%s)",
                 run_data.evaluation_run_id,
+                failure.error_id,
             )
-            _mark_run_failed(session, lease, str(exc))
-        except ValueError as exc:
-            logger.exception("Evaluation run %s failed validation", run_data.evaluation_run_id)
-            _mark_run_failed(session, lease, str(exc))
+            _mark_run_failed(session, lease, failure.text)
+        except ValueError:
+            failure = new_public_evaluation_error(EvaluationErrorCode.INVALID_CONFIG)
+            logger.exception(
+                "Evaluation run %s failed validation (error_id=%s)", run_data.evaluation_run_id, failure.error_id
+            )
+            _mark_run_failed(session, lease, failure.text)
         except Exception as exc:
             retry_number = task.request.retries + 1
             max_retries = dify_config.EVALUATION_RUN_MAX_RETRIES
             if task.request.retries >= max_retries:
+                failure = new_public_evaluation_error(EvaluationErrorCode.RUN_FAILED)
                 logger.exception(
-                    "Evaluation run %s exhausted its retry budget after %d attempts",
+                    "Evaluation run %s exhausted its retry budget after %d attempts (error_id=%s)",
                     run_data.evaluation_run_id,
                     task.request.retries + 1,
+                    failure.error_id,
                 )
-                _mark_run_failed(
-                    session,
-                    lease,
-                    f"Evaluation failed after {task.request.retries + 1} attempts: {exc}",
-                )
+                _mark_run_failed(session, lease, failure.text)
                 return
 
             countdown = dify_config.EVALUATION_RUN_RETRY_DELAY * (2**task.request.retries)
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_RETRYING)
             logger.warning(
-                "Evaluation run %s failed; scheduling retry %d/%d in %d seconds",
+                "Evaluation run %s failed; scheduling retry %d/%d in %d seconds (error_id=%s)",
                 run_data.evaluation_run_id,
                 retry_number,
                 max_retries,
                 countdown,
+                failure.error_id,
                 exc_info=True,
             )
             retry_signal = task.retry(exc=exc, countdown=countdown, throw=False)
@@ -262,7 +279,7 @@ def run_evaluation(task: Task, run_data_dict: dict[str, Any]) -> None:
                 retry_scheduled = _mark_run_pending_for_retry(
                     session,
                     lease,
-                    str(exc),
+                    failure.text,
                     retry_number,
                     max_retries,
                 )
@@ -667,7 +684,12 @@ def _execute_agent_target(
     account_id: str,
     lease: EvaluationRunLease,
 ) -> tuple[AgentEvaluationItem | None, str | None]:
-    """Create or reconnect one isolated Agent V2 backend run."""
+    """Create or reconnect one isolated Agent V2 backend run.
+
+    Precondition: the run owns an Agent target snapshot and an active lease.
+    Postcondition: completed target checkpoints retain only public errors;
+    successful rows return an item, while target failures return a safe error.
+    """
     snapshot_id = run_data.target_agent_config_snapshot_id
     if not snapshot_id:
         raise ValueError("Agent evaluation target snapshot is missing.")
@@ -829,10 +851,24 @@ def _execute_agent_target(
         target_error = None
     elif isinstance(terminal, AgentBackendRunFailedInternalEvent):
         agent_item = None
-        target_error = f"Agent execution failed: {terminal.error}"
+        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
+        logger.warning(
+            "Agent target run %s failed for evaluation row %d (error_id=%s)",
+            backend_run_id,
+            dataset_item.index,
+            failure.error_id,
+        )
+        target_error = failure.text
     else:
         agent_item = None
-        target_error = f"Agent execution was cancelled: {terminal.message or terminal.reason or 'cancelled'}"
+        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
+        logger.info(
+            "Agent target run %s was cancelled for evaluation row %d (error_id=%s)",
+            backend_run_id,
+            dataset_item.index,
+            failure.error_id,
+        )
+        target_error = failure.text
 
     retired_binding_id = _persist_agent_target_checkpoint(
         session=session,
@@ -881,6 +917,11 @@ def _persist_agent_target_checkpoint(
     agent_item: AgentEvaluationItem | None,
     target_error: str | None,
 ) -> str | None:
+    """Checkpoint an Agent target without persisting raw backend error text.
+
+    Precondition: the lease still owns the row and the backend run is known.
+    Postcondition: the target checkpoint is durable with a public error or none.
+    """
     _assert_execution_lease(session, lease)
     run_item = session.scalar(
         select(EvaluationRunItem).where(
@@ -897,7 +938,7 @@ def _persist_agent_target_checkpoint(
     run_item.expected_output = dataset_item.serialize_expected_output()
     run_item.actual_output = agent_item.output if agent_item is not None else None
     run_item.target_result_json = agent_item.model_dump_json() if agent_item is not None else None
-    run_item.error = target_error
+    run_item.error = safe_evaluation_error_text(target_error)
     retired_binding_id = (
         AgentWorkspaceService.retire_binding(
             session=session,
@@ -951,13 +992,19 @@ def _evaluate_agent_row(
     task_position: int,
     lease: EvaluationRunLease,
 ) -> None:
+    """Score one Agent row and persist a result with public diagnostics.
+
+    Precondition: run data contains exactly one dataset item under the lease.
+    Postcondition: all failures remain row-local and no raw exception is saved.
+    """
     dataset_item = run_data.input_list[0]
     node_info = _agent_target_node_info(run_data)
     if target_error is not None or agent_item is None:
         result = EvaluationItemResult(
             index=dataset_item.index,
             actual_output=agent_item.output if agent_item is not None else None,
-            error=f"Target execution failed: {target_error or 'Agent target result is missing.'}",
+            error=safe_evaluation_error_text(target_error)
+            or new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED).text,
         )
         results_by_index = {dataset_item.index: result}
     else:
@@ -996,15 +1043,20 @@ def _evaluate_agent_row(
             for metric in result.metrics:
                 metric.node_info = node_info
             _merge_result(results_by_index, dataset_item.index, result)
-        except Exception as exc:
-            logger.exception("Failed Agent V2 metrics for evaluation row %s", dataset_item.index)
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+            logger.exception(
+                "Failed Agent V2 metrics for evaluation row %s (error_id=%s)",
+                dataset_item.index,
+                failure.error_id,
+            )
             _merge_result(
                 results_by_index,
                 dataset_item.index,
                 EvaluationItemResult(
                     index=dataset_item.index,
                     actual_output=agent_item.output,
-                    error=f"Agent evaluation failed: {exc}",
+                    error=failure.text,
                 ),
             )
 
@@ -1028,12 +1080,17 @@ def _evaluate_agent_row(
             _merge_customized_results(results_by_index, customized_results, [dataset_item])
         except EvaluationWorkflowVersionNotFoundError:
             raise
-        except Exception as exc:
-            logger.exception("Failed customized Agent metrics for evaluation row %s", dataset_item.index)
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
+            logger.exception(
+                "Failed customized Agent metrics for evaluation row %s (error_id=%s)",
+                dataset_item.index,
+                failure.error_id,
+            )
             _merge_result(
                 results_by_index,
                 dataset_item.index,
-                EvaluationItemResult(index=dataset_item.index, error=f"Customized evaluation failed: {exc}"),
+                EvaluationItemResult(index=dataset_item.index, error=failure.text),
             )
 
     results = [results_by_index[dataset_item.index]]
@@ -1172,7 +1229,12 @@ def _persist_target_checkpoint(
     workflow_run_id: str,
     target_error: str | None = None,
 ) -> None:
-    """Persist enough target state to avoid replaying a completed workflow on retry."""
+    """Persist target state without exposing raw workflow errors.
+
+    Precondition: the run is owned by ``lease`` and has a workflow run ID.
+    Postcondition: a completed target checkpoint can be resumed, and its error
+    is either absent or approved public text.
+    """
     _assert_execution_lease(session, lease)
     run_item = session.scalar(
         select(EvaluationRunItem).where(
@@ -1193,7 +1255,7 @@ def _persist_target_checkpoint(
     run_item.workflow_run_id = workflow_run_id
     run_item.inputs = json.dumps(item_input.inputs, ensure_ascii=False)
     run_item.expected_output = item_input.serialize_expected_output()
-    run_item.error = target_error
+    run_item.error = safe_evaluation_error_text(target_error)
     _touch_execution_lease(session, lease)
     session.commit()
 
@@ -1262,6 +1324,11 @@ def _load_completed_checkpoint_results(
 
 
 def _checkpoint_to_result(checkpoint: EvaluationRunItem) -> EvaluationItemResult:
+    """Rebuild a result from a completed checkpoint, masking legacy errors.
+
+    Precondition: ``checkpoint`` belongs to the requested evaluation run.
+    Postcondition: returned error text is safe for subsequent XLSX generation.
+    """
     return EvaluationItemResult(
         index=checkpoint.item_index,
         actual_output=checkpoint.actual_output,
@@ -1269,7 +1336,7 @@ def _checkpoint_to_result(checkpoint: EvaluationRunItem) -> EvaluationItemResult
         metadata=checkpoint.metadata_dict,
         judgment=JudgmentResult.model_validate(checkpoint.judgment_dict),
         overall_score=checkpoint.overall_score,
-        error=checkpoint.error,
+        error=safe_evaluation_error_text(checkpoint.error),
     )
 
 
@@ -1284,7 +1351,12 @@ def _execute_evaluation_runner(
     task_positions: Sequence[int] | None = None,
     report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
-    """Evaluate configured node/metric pairs and persist one result per row."""
+    """Evaluate configured node/metric pairs and persist one result per row.
+
+    Precondition: input rows align with target node results and task positions.
+    Postcondition: row-level failures carry public diagnostics; their original
+    exceptions remain in server logs and do not enter persisted results.
+    """
     results_by_index: dict[int, EvaluationItemResult] = {}
     resolved_task_positions = (
         list(task_positions) if task_positions is not None else list(range(len(run_data.input_list)))
@@ -1333,15 +1405,21 @@ def _execute_evaluation_runner(
                     context_list=context_list,
                 )
                 _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
-            except Exception as exc:
-                logger.exception("Failed metric %s on node %s", default_metric.metric, node_info.node_id)
+            except Exception:
+                failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+                logger.exception(
+                    "Failed metric %s on node %s (error_id=%s)",
+                    default_metric.metric,
+                    node_info.node_id,
+                    failure.error_id,
+                )
                 for dataset_index in dataset_indices:
                     _merge_result(
                         results_by_index,
                         dataset_index,
                         EvaluationItemResult(
                             index=dataset_index,
-                            error=f"Metric '{default_metric.metric}' failed on node '{node_info.title}': {exc}",
+                            error=failure.text,
                         ),
                     )
             completed_steps += 1
@@ -1376,13 +1454,18 @@ def _execute_evaluation_runner(
                 _merge_customized_results(results_by_index, customized_results, customized_input_items)
         except EvaluationWorkflowVersionNotFoundError:
             raise
-        except Exception as exc:
-            logger.exception("Failed customized metrics for run %s", run_data.evaluation_run_id)
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
+            logger.exception(
+                "Failed customized metrics for run %s (error_id=%s)",
+                run_data.evaluation_run_id,
+                failure.error_id,
+            )
             for item in customized_input_items:
                 _merge_result(
                     results_by_index,
                     item.index,
-                    EvaluationItemResult(index=item.index, error=f"Customized evaluation failed: {exc}"),
+                    EvaluationItemResult(index=item.index, error=failure.text),
                 )
         completed_steps += 1
         if report_progress:
@@ -1460,7 +1543,11 @@ def _evaluate_retrieval_results(
     lease: EvaluationRunLease,
     report_progress: bool = True,
 ) -> list[EvaluationItemResult]:
-    """Score retrieval outputs and checkpoint each supplied dataset row."""
+    """Score retrieval outputs and checkpoint each supplied dataset row.
+
+    Precondition: retrieval results and errors align with input rows.
+    Postcondition: every row is saved with metrics or public failure text.
+    """
 
     results_by_index: dict[int, EvaluationItemResult] = {}
     runner = RetrievalEvaluationRunner(evaluation_instance)
@@ -1487,15 +1574,21 @@ def _evaluate_retrieval_results(
                 node_info=node_info,
             )
             _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
-        except Exception as exc:
-            logger.exception("Failed retrieval metric %s for run %s", default_metric.metric, run_data.evaluation_run_id)
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
+            logger.exception(
+                "Failed retrieval metric %s for run %s (error_id=%s)",
+                default_metric.metric,
+                run_data.evaluation_run_id,
+                failure.error_id,
+            )
             for dataset_index in dataset_indices:
                 _merge_result(
                     results_by_index,
                     dataset_index,
                     EvaluationItemResult(
                         index=dataset_index,
-                        error=f"Retrieval metric '{default_metric.metric}' failed: {exc}",
+                        error=failure.text,
                     ),
                 )
         if report_progress:
@@ -1509,10 +1602,8 @@ def _evaluate_retrieval_results(
         input_list=run_data.input_list,
         results_by_index=results_by_index,
         missing_errors={
-            item.index: (
-                f"Retrieval failed: {retrieval_errors[position]}"
-                if retrieval_errors[position]
-                else "No evaluation metrics were generated for this row."
+            item.index: safe_evaluation_error_text(
+                retrieval_errors[position] or new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED).text
             )
             for position, item in enumerate(run_data.input_list)
         },
@@ -1597,11 +1688,16 @@ def _build_missing_result_errors(
     node_run_result_mapping_list: Sequence[dict[str, NodeRunResult]],
     target_errors: Sequence[str | None] | None = None,
 ) -> dict[int, str]:
+    """Build safe fallback errors for input rows without metric results.
+
+    Precondition: target results and optional errors align with input rows.
+    Postcondition: returned values contain only approved public text.
+    """
     errors: dict[int, str] = {}
     for position, (item, node_results) in enumerate(zip(input_list, node_run_result_mapping_list, strict=False)):
         target_error = target_errors[position] if target_errors and position < len(target_errors) else None
         errors[item.index] = (
-            f"Target execution failed: {target_error}"
+            safe_evaluation_error_text(target_error)
             if target_error
             else (
                 "No evaluation metrics were generated for this row."
@@ -1666,7 +1762,11 @@ def _persist_results(
     input_list: Sequence[EvaluationDatasetInput],
     workflow_run_id_map: dict[int, str] | None = None,
 ) -> None:
-    """Upsert results in small batches and expose cooperative progress."""
+    """Upsert results in small batches and expose cooperative progress.
+
+    Precondition: each result index belongs to ``input_list`` and the lease is active.
+    Postcondition: checkpoints contain approved public errors, never raw exceptions.
+    """
     result_map = {result.index: result for result in results}
     workflow_run_ids = workflow_run_id_map or {}
 
@@ -1699,7 +1799,7 @@ def _persist_results(
             else None,
             "judgment": json.dumps(result.judgment.model_dump(mode="json"), ensure_ascii=False),
             "metadata_json": json.dumps(result.metadata, ensure_ascii=False) if result.metadata else None,
-            "error": result.error,
+            "error": safe_evaluation_error_text(result.error),
             "overall_score": result.overall_score,
         }
         if run_item is None:
@@ -1815,7 +1915,11 @@ def _create_runner(
 
 
 def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) -> None:
-    """Fail the run only while this invocation still owns it."""
+    """Fail the run only while this invocation still owns it.
+
+    Precondition: ``lease`` identifies the running invocation; ``error`` may be untrusted.
+    Postcondition: a matching run is failed with a public error; other owners are unchanged.
+    """
     try:
         session.rollback()
         run_identity = session.execute(
@@ -1834,7 +1938,7 @@ def _mark_run_failed(session: Session, lease: EvaluationRunLease, error: str) ->
                 status=EvaluationRunStatus.FAILED,
                 execution_token=None,
                 heartbeat_at=None,
-                error=error[:2000],
+                error=safe_evaluation_error_text(error),
                 completed_at=naive_utc_now(),
             )
         )
@@ -1860,7 +1964,11 @@ def _mark_run_pending_for_retry(
     retry_number: int,
     max_retries: int,
 ) -> bool:
-    """Release the running lease while retaining row checkpoints for the next attempt."""
+    """Release an owned run for retry while retaining row checkpoints.
+
+    Precondition: ``error`` is a public diagnostic and ``lease`` identifies the running owner.
+    Postcondition: a matching run is pending with a safe error; an ownership mismatch leaves it unchanged.
+    """
     session.rollback()
     result = session.execute(
         update(EvaluationRun)
@@ -1874,11 +1982,14 @@ def _mark_run_pending_for_retry(
             execution_token=None,
             heartbeat_at=None,
             completed_at=None,
-            error=f"Retry {retry_number}/{max_retries} scheduled after: {error}"[:2000],
+            error=safe_evaluation_error_text(error),
         )
     )
     session.commit()
-    return _affected_rows(result) == 1
+    released = _affected_rows(result) == 1
+    if released:
+        logger.info("Evaluation run %s scheduled for retry %d/%d", lease.run_id, retry_number, max_retries)
+    return released
 
 
 def _compute_metrics_summary(
@@ -1934,10 +2045,10 @@ def _generate_result_xlsx(
 ) -> bytes:
     """Render dataset rows and results as XLSX bytes.
 
-    Structured metric values must be JSON-serializable, as they are in saved
-    checkpoints. They become literal JSON text; numeric scores remain numeric.
-    Each node ID and metric name has its own column, even when titles repeat.
-    Unsupported values raise during serialization or cell construction.
+    Precondition: structured metric values are JSON-serializable, as they are
+    in saved checkpoints. Unsupported values raise during serialization.
+    Postcondition: metric identities keep distinct columns; strings are literal
+    cells, numeric scores remain numeric, and legacy/raw errors are masked.
     """
     wb = Workbook()
     ws = wb.active
@@ -2042,7 +2153,7 @@ def _generate_result_xlsx(
             write_cell(row_idx, col, judgment_value)
             col += 1
 
-        write_cell(row_idx, col, row_result.error if row_result else "")
+        write_cell(row_idx, col, safe_evaluation_error_text(row_result.error) if row_result else "")
 
     output = io.BytesIO()
     wb.save(output)
@@ -2066,16 +2177,20 @@ def _metric_identity(metric: EvaluationMetric) -> _MetricIdentity:
 def _metric_columns(results: Sequence[EvaluationItemResult]) -> dict[_MetricIdentity, str]:
     """Assign unique display labels to result identities in first-seen order.
 
-    The first title seen for an identity is retained. Unambiguous labels keep
-    their existing format; duplicate labels gain the node ID and, if needed,
-    a numeric suffix. Neither user labels nor generated labels can overwrite
-    another metric in the summary or XLSX, and input results remain unchanged.
+    Preconditions: results contain validated metrics with optional node info.
+    Postconditions: each node/metric identity has one unique label; ordinary
+    labels retain the first title seen, customized evaluator labels use the
+    ``Custom Evaluator : `` prefix, and results are unchanged. Duplicate labels
+    gain the node ID and, if needed, a suffix.
     """
     labels: dict[_MetricIdentity, str] = {}
     for result in results:
         for metric in result.metrics:
             node = metric.node_info
-            label = f"{node.title or node.node_id} : {metric.name}" if node is not None else metric.name
+            if node is not None and node.type == "customized":
+                label = f"Custom Evaluator : {metric.name}"
+            else:
+                label = f"{node.title or node.node_id} : {metric.name}" if node is not None else metric.name
             labels.setdefault(_metric_identity(metric), label)
 
     label_counts = Counter(labels.values())
