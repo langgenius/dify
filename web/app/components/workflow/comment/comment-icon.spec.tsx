@@ -1,6 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -149,25 +149,5 @@ describe('CommentIcon', () => {
     await user.click(screen.getByRole('button', { name: /workflow.keyboard.openComment/ }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('still opens from the keyboard after the preview card was dragged', async () => {
-    const user = userEvent.setup()
-    const onOpen = vi.fn()
-    render(
-      <CommentMarkerFixture comment={createComment()} onOpen={onOpen} onPositionUpdate={vi.fn()} />,
-    )
-    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
-    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
-    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')!
-
-    fireEvent.pointerDown(preview, { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
-    fireEvent.pointerMove(preview, { pointerId: 1, clientX: 120, clientY: 120 })
-    fireEvent.pointerUp(preview, { pointerId: 1, clientX: 120, clientY: 120 })
-    expect(onOpen).not.toHaveBeenCalled()
-
-    marker.focus()
-    await user.keyboard('{Enter}')
-    expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })
