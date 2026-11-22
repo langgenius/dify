@@ -16,7 +16,7 @@ from typing import Any, Final, Protocol, runtime_checkable
 from pydantic import BaseModel, ValidationError
 
 from controllers.openapi._models import Hint, Hinted, PageQuery
-from services.run_job.frames import decode_data_frame, encode_data_frame
+from libs.stream import decode_data_frame, encode_data_frame
 
 logger = logging.getLogger(__name__)
 

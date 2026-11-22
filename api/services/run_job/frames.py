@@ -9,7 +9,6 @@ the framing or for the flattened ids, so only the contract test guards them.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -24,11 +23,11 @@ from core.app.entities.task_entities import (
     WorkflowFinishStreamResponse,
 )
 from graphon.enums import WorkflowExecutionStatus
+from libs.stream import DATA_PREFIX, decode_data_frame
 from services.run_job.contracts import JobIds
 
 logger = logging.getLogger(__name__)
 
-DATA_PREFIX: Final = "data: "
 _EVENT_KEY: Final = "event"
 _PAUSE_OR_FINISH: Final = frozenset({StreamEvent.WORKFLOW_PAUSED, StreamEvent.WORKFLOW_FINISHED})
 
@@ -71,24 +70,6 @@ class _ErrorFrame(_StreamIds):
 
     event: Literal[StreamEvent.ERROR]
     message: str
-
-
-def decode_data_frame(frame: str) -> dict[str, Any] | None:
-    """Postcondition: the JSON object of a `data:` frame; None for any other frame or a payload that is not one."""
-    if not frame.startswith(DATA_PREFIX):
-        return None
-    try:
-        payload = json.loads(frame[len(DATA_PREFIX) :])
-    except ValueError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    return payload
-
-
-def encode_data_frame(payload: Mapping[str, Any]) -> str:
-    """Postcondition: a `data:` frame that decode_data_frame reads back as payload."""
-    return f"{DATA_PREFIX}{json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def read_frame(frame: str) -> RunFrame | Misfit | None:
