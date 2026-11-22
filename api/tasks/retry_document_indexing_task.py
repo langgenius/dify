@@ -54,6 +54,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
             user.set_current_tenant_with_session(tenant, session=session)
 
             for document_id in document_ids:
+                quota_rejected = False
                 retry_indexing_cache_key = f"document_{document_id}_is_retried"
                 # check document limit
                 if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -79,48 +80,49 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                             session.add(document)
                             session.commit()
                         redis_client.delete(retry_indexing_cache_key)
-                        continue
+                        quota_rejected = True
 
-                logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
-                document = session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                )
-                if not document:
-                    logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
-                    return
-                try:
-                    # clean old data
-                    index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
-
-                    segments = session.scalars(
-                        select(DocumentSegment).where(DocumentSegment.document_id == document_id)
-                    ).all()
-                    if segments:
-                        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
-                        # delete from vector index
-                        index_processor.clean(
-                            dataset,
-                            index_node_ids,
-                            with_keywords=True,
-                            delete_child_chunks=True,
-                            session=session,
-                        )
-
-                    segment_ids = [segment.id for segment in segments]
-                    if segment_ids:
-                        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
-                        session.execute(segment_delete_stmt)
-                    session.commit()
-
-                    document.indexing_status = IndexingStatus.PARSING
-                    document.processing_started_at = naive_utc_now()
-                    session.add(document)
-                    document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
-                    runtime_mode = dataset.runtime_mode
-                    # Persist preparation before handing off to the selected execution service.
-                    session.commit()
-
-                    if runtime_mode == "rag_pipeline":
+                if not quota_rejected:
+                    logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
+                    document = session.scalar(
+                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
+                    )
+                    if not document:
+                        logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
+                        return
+                    try:
+                        # clean old data
+                        index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+    
+                        segments = session.scalars(
+                            select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                        ).all()
+                        if segments:
+                            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
+                            # delete from vector index
+                            index_processor.clean(
+                                dataset,
+                                index_node_ids,
+                                with_keywords=True,
+                                delete_child_chunks=True,
+                                session=session,
+                            )
+    
+                        segment_ids = [segment.id for segment in segments]
+                        if segment_ids:
+                            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
+                            session.execute(segment_delete_stmt)
+                        session.commit()
+    
+                        document.indexing_status = IndexingStatus.PARSING
+                        document.processing_started_at = naive_utc_now()
+                        session.add(document)
+                        document_ref = DatasetRef(document.tenant_id, document.dataset_id).document(document.id)
+                        runtime_mode = dataset.runtime_mode
+                        # Persist preparation before handing off to the selected execution service.
+                        session.commit()
+    
+                        if runtime_mode == "rag_pipeline":
                         with session_factory.create_session() as rag_session:
                             rag_pipeline_service = RagPipelineService(rag_session)
                             rag_pipeline_service.retry_error_document(
