@@ -32,6 +32,10 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_conv
 type _Kind = Literal["chat", "completion"]
 
 
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
+
+
 @dataclass(frozen=True)
 class _Services:
     conversation_commands: ConversationCommandService
@@ -173,7 +177,9 @@ def harness(
 
     app.extensions["application_services"] = _Services(
         ConversationCommandService(
-            conversations=ConversationRepository(session_factory=factory), enqueue_delete_cleanup=enqueue_cleanup
+            conversations=ConversationRepository(session_factory=factory),
+            enqueue_delete_cleanup=enqueue_cleanup,
+            collect_agent_workspaces=_unexpected_agent_workspace_collection,
         )
     )
     api = ExternalApi(app)

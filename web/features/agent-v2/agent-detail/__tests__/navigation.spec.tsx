@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   deleteAgent: vi.fn(),
   exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
+  evaluation: { evaluation_enabled: true, evaluation_upgrade_available: false },
   queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
   replace: vi.fn(),
 }))
@@ -34,6 +35,11 @@ vi.mock('@/next/navigation', () => ({
     back: vi.fn(),
     replace: mocks.replace,
   }),
+}))
+
+vi.mock('@/app/components/app-sidebar/nav-link', () => ({
+  default: ({ disabled, href, name }: { disabled?: boolean; href: string; name: string }) =>
+    disabled ? <button disabled>{name}</button> : <a href={href}>{name}</a>,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -69,6 +75,7 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
 function renderAgentDetailSection(expand = true) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
+    features: mocks.evaluation,
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -86,6 +93,7 @@ describe('AgentDetailSection', () => {
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
+    mocks.evaluation = { evaluation_enabled: true, evaluation_upgrade_available: false }
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -220,6 +228,51 @@ describe('AgentDetailSection', () => {
     expect(
       screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('links published Agents with test-and-run access to evaluation', () => {
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
+  })
+
+  it('disables evaluation until the Agent has a published snapshot', () => {
+    mocks.queryData = createAgent({ access_ready: false })
+    renderAgentDetailSection()
+
+    expect(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides evaluation without test-and-run permission', () => {
+    mocks.queryData = createAgent({ permission_keys: [AgentPermission.Preview] })
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
+  })
+
+  it('disables evaluation when the workspace can upgrade into it instead of redirecting', async () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
+
+    renderAgentDetailSection()
+
+    expect(
+      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toBeDisabled()
+  })
+
+  it('hides evaluation when the workspace cannot use or upgrade into it', () => {
+    mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: false }
+
+    renderAgentDetailSection()
+
+    expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 })
 

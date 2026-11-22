@@ -109,7 +109,7 @@ const RecallSettings: FC<Props> = ({
           </div>
 
           <div className="my-2 flex flex-col items-center py-1">
-            <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
+            <div className="me-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t(($) => $.rerankSettings, { ns: 'dataset' })}
             </div>
             <Separator decorative variant="gradient" className="m-0 h-px!" />

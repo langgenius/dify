@@ -28,7 +28,7 @@ const ResultText: FC<ResultTextProps> = ({
   return (
     <div className="bg-background-section-burn">
       {isRunning && !outputs && (
-        <div className="pt-4 pl-6.5">
+        <div className="ps-6.5 pt-4">
           <LoadingAnim type="text" />
         </div>
       )}
@@ -43,13 +43,13 @@ const ResultText: FC<ResultTextProps> = ({
             aria-hidden
             className="i-custom-vender-line-editor-image-indent-left size-6 text-gray-400"
           />
-          <div className="mr-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
+          <div className="me-2">{t(($) => $['resultEmpty.title'], { ns: 'runLog' })}</div>
           <div>
             {t(($) => $['resultEmpty.tipLeft'], { ns: 'runLog' })}
             <button
               type="button"
               onClick={onClick}
-              className="inline cursor-pointer border-none bg-transparent p-0 text-left text-primary-600"
+              className="inline cursor-pointer border-none bg-transparent p-0 text-start text-primary-600"
             >
               {t(($) => $['resultEmpty.link'], { ns: 'runLog' })}
             </button>

@@ -112,7 +112,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
             <button
               type="button"
               aria-label={zoomOutLabel}
-              className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute inset-e-24 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={zoomOut}
             >
               <span aria-hidden className="i-ri-zoom-out-line size-4 text-gray-500" />
@@ -127,7 +127,7 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
             <button
               type="button"
               aria-label={zoomInLabel}
-              className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
+              className="absolute inset-e-16 top-6 flex size-8 cursor-pointer items-center justify-center rounded-lg"
               onClick={zoomIn}
             >
               <span aria-hidden className="i-ri-zoom-in-line size-4 text-gray-500" />

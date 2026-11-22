@@ -2,7 +2,6 @@
   "dialog.addTitle": "Tambah pemindai",
   "dialog.apiKey": "Kunci API",
   "dialog.apiSecret": "Rahasia API",
-  "dialog.clamavHint": "ClamAV berjalan di dalam deployment ini. Alamatnya diatur oleh administrator deployment.",
   "dialog.dataNotice": "Isi file dikirim ke layanan ini.",
   "dialog.editTitle": "Edit pemindai",
   "dialog.endpoint": "Endpoint (opsional)",

@@ -83,6 +83,25 @@ it('uses the caller selection contract instead of activating a credential', asyn
   expect(onItemClick).toHaveBeenCalledExactlyOnceWith(credential, customModel)
   expect(requests.activate).not.toHaveBeenCalled()
 })
+it('allows dismissing the delete confirmation while credential activation is pending', async () => {
+  const pending = createDeferred<{ result: string }>()
+  requests.activate.mockReturnValueOnce(pending.promise)
+  const user = userEvent.setup()
+  renderMenu()
+  await openMenu(user)
+  await user.click(screen.getByRole('button', { name: 'Key 1' }))
+  expect(requests.activate).toHaveBeenCalledTimes(1)
+  await openMenu(user)
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  const dialog = within(screen.getByRole('alertdialog'))
+  const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
+  expect(confirm).toBeDisabled()
+  expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(requests.remove).not.toHaveBeenCalled()
+  await act(async () => pending.resolve({ result: 'success' }))
+})
 it('opens an empty API-key form directly from the trigger', async () => {
   const user = userEvent.setup()
   renderMenu({ triggerOnlyOpenModal: true })
@@ -151,7 +170,7 @@ it('allows manage-only users to edit the chosen credential', async () => {
   expect(await screen.findByRole('textbox', { name: /authorizationName/ })).toHaveValue('Key 1')
   expect(await screen.findByLabelText(/API key/)).toHaveValue('saved-secret')
 })
-it('cancels deletion, then confirms it with a pending request guard', async () => {
+it('allows cancel before deleting, holds the confirmation during the request, and retries after failure', async () => {
   const user = userEvent.setup()
   const pending = createDeferred<{ result: string }>()
   requests.remove.mockReturnValueOnce(pending.promise)
@@ -171,12 +190,28 @@ it('cancels deletion, then confirms it with a pending request guard', async () =
     name: 'common.operation.confirm',
   })
   await user.dblClick(confirm)
-  expect(confirm).toBeDisabled()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(confirm).toHaveFocus()
+  expect(confirm).toHaveAttribute('aria-disabled', 'true')
+  await user.keyboard('{Enter}')
+  await user.click(
+    within(screen.getByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.cancel',
+    }),
+  )
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   expect(requests.remove).toHaveBeenCalledExactlyOnceWith({
     params: { provider: 'openai' },
     body: { credential_id: 'cred-1' },
   })
-  await act(async () => pending.resolve({ result: 'success' }))
+  await act(async () => pending.reject(new Error('Delete failed')))
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+  expect(confirm).toHaveFocus()
+  await user.keyboard('{Enter}')
+  expect(requests.remove).toHaveBeenCalledTimes(2)
+  expect(requests.remove.mock.calls[1]).toEqual(requests.remove.mock.calls[0])
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
 })
 it.each([

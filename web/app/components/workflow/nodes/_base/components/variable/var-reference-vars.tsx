@@ -216,12 +216,12 @@ const Item: FC<ItemProps> = ({
     <div
       ref={itemRef}
       className={cn(
-        isObj || isStructureOutput ? 'pr-1' : 'pr-4.5',
+        isObj || isStructureOutput ? 'pe-1' : 'pe-4.5',
         (isHovering || isSelected) &&
           (isObj || isStructureOutput
             ? 'bg-components-panel-on-panel-item-bg-hover'
             : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md ps-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         className,
       )}
       data-selected={isSelected ? 'true' : 'false'}
@@ -246,7 +246,7 @@ const Item: FC<ItemProps> = ({
         {!isEnv && !isChatVar && !isRagVariable && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {varName}
           </div>
@@ -254,7 +254,7 @@ const Item: FC<ItemProps> = ({
         {isEnv && (
           <div
             title={itemData.variable}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('env.', '')}
           </div>
@@ -262,7 +262,7 @@ const Item: FC<ItemProps> = ({
         {isChatVar && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.replace('conversation.', '')}
           </div>
@@ -270,20 +270,20 @@ const Item: FC<ItemProps> = ({
         {isRagVariable && (
           <div
             title={itemData.des}
-            className="ml-1 w-0 grow truncate system-sm-medium text-text-secondary"
+            className="ms-1 w-0 grow truncate system-sm-medium text-text-secondary"
           >
             {itemData.variable.split('.').slice(-1)[0]}
           </div>
         )}
       </div>
-      <div className="ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
+      <div className="ms-1 shrink-0 text-xs font-normal text-text-tertiary capitalize">
         {preferSchemaType && itemData.schemaType ? itemData.schemaType : itemData.type}
       </div>
       {(isObj || isStructureOutput) && (
         <span
           aria-hidden
           className={cn(
-            'ml-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
+            'ms-0.5 i-custom-vender-line-arrows-chevron-right size-3 text-text-quaternary',
             isHovering && 'text-text-tertiary',
           )}
         />
@@ -341,7 +341,10 @@ type Props = Readonly<{
 }> &
   (
     | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
-    | { hideSearch?: false; keyboardTarget?: never }
+    | {
+        hideSearch?: false
+        keyboardTarget?: HTMLElement | RefObject<HTMLElement | null> | null
+      }
   )
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -432,9 +435,10 @@ const VarReferenceVars: FC<Props> = ({
 
   const handleKeyboardEvent = useCallback(
     (event: Pick<KeyboardEvent, 'key' | 'preventDefault' | 'stopPropagation'>) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && onClose) {
         event.preventDefault()
-        onClose?.()
+        event.stopPropagation()
+        onClose()
         return
       }
 
@@ -469,7 +473,7 @@ const VarReferenceVars: FC<Props> = ({
   )
 
   useEffect(() => {
-    if (!hideSearch || !keyboardTarget) return
+    if (!keyboardTarget) return
     const target = 'current' in keyboardTarget ? keyboardTarget.current : keyboardTarget
     if (!target) return
 
@@ -493,7 +497,7 @@ const VarReferenceVars: FC<Props> = ({
     const ownerDocument = target.ownerDocument
     ownerDocument.addEventListener('keydown', handleTargetKeyDown, true)
     return () => ownerDocument.removeEventListener('keydown', handleTargetKeyDown, true)
-  }, [handleKeyboardEvent, hideSearch, keyboardTarget])
+  }, [handleKeyboardEvent, keyboardTarget])
 
   return (
     <>
@@ -543,7 +547,7 @@ const VarReferenceVars: FC<Props> = ({
             )}
           </InputGroup>
           <div
-            className="relative -left-1 h-[0.5px] bg-black/5"
+            className="relative -inset-s-1 h-[0.5px] bg-black/5"
             style={{
               width: 'calc(100% + 8px)',
             }}
@@ -603,7 +607,7 @@ const VarReferenceVars: FC<Props> = ({
           ))}
         </div>
       ) : (
-        <div className="mt-2 pl-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
+        <div className="mt-2 ps-3 text-xs leading-4.5 font-medium text-gray-500 uppercase">
           {t(($) => $['common.noVar'], { ns: 'workflow' })}
         </div>
       )}

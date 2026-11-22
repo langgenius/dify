@@ -268,17 +268,21 @@ def test_signature_accepts_timezone_aware_received_at() -> None:
         _intent(blocks=(), actions=()),
         _intent(blocks=(MarkdownFragment(text=""),)),
         _intent(
-            blocks=(SelectInput(output_variable_name="decision", options=("Approve", ""), default_value="Approve"),)
-        ),
-        _intent(
             blocks=(
-                SelectInput(output_variable_name="decision", options=("Approve", "Approve"), default_value="Approve"),
+                SelectInput(output_variable_name="decision", options=("Approve", ""), resolved_default_value="Approve"),
             )
         ),
         _intent(
             blocks=(
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                SelectInput(
+                    output_variable_name="decision", options=("Approve", "Approve"), resolved_default_value="Approve"
+                ),
+            )
+        ),
+        _intent(
+            blocks=(
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
             )
         ),
         _intent(actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.GHOST),)),
@@ -289,7 +293,7 @@ def test_card_assessment_rejects_every_lossy_shape(intent: ResolvedForm) -> None
 
 
 def test_headerless_resolved_paragraph_renders_without_default() -> None:
-    intent = _intent(blocks=(ParagraphInput(output_variable_name="comment", default_value=None),))
+    intent = _intent(blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value=None),))
     card = adapter_module._MSFeishuLarkCardCodec().encode(intent, CorrelationToken("opaque-correlation-token"))
     assert "header" not in card
     body = card["body"]

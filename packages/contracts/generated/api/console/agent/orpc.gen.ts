@@ -472,12 +472,16 @@ export const checkout = {
   post: post6,
 }
 
+/**
+ * Discard the caller's draft and report success even if it was already absent
+ */
 export const delete2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAgentByAgentIdBuildDraft',
     path: '/agent/{agent_id}/build-draft',
+    summary: "Discard the caller's draft and report success even if it was already absent",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAgentByAgentIdBuildDraftPath }))
@@ -487,12 +491,16 @@ export const delete2 = oc
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   })
 
+/**
+ * Return the admitted account's existing Build draft, or 404 when none exists
+ */
 export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdBuildDraft',
     path: '/agent/{agent_id}/build-draft',
+    summary: "Return the admitted account's existing Build draft, or 404 when none exists",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdBuildDraftPath }))
@@ -1053,12 +1061,17 @@ export const copy = {
   post: post12,
 }
 
+/**
+ * Reset the admitted account's Build conversation and return the new empty conversation
+ */
 export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdDebugConversationRefresh',
     path: '/agent/{agent_id}/debug-conversation/refresh',
+    summary:
+      "Reset the admitted account's Build conversation and return the new empty conversation",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
@@ -1124,12 +1137,16 @@ export const feedbacks = {
   post: post15,
 }
 
+/**
+ * Return the admitted Agent's available log sources
+ */
 export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogSources',
     path: '/agent/{agent_id}/log-sources',
+    summary: "Return the admitted Agent's available log sources",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
@@ -1140,12 +1157,16 @@ export const logSources = {
   get: get19,
 }
 
+/**
+ * Return the admitted Agent's messages for a conversation
+ */
 export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogsByConversationIdMessages',
     path: '/agent/{agent_id}/logs/{conversation_id}/messages',
+    summary: "Return the admitted Agent's messages for a conversation",
     tags: ['console'],
   })
   .input(
@@ -1165,12 +1186,16 @@ export const byConversationId = {
   messages,
 }
 
+/**
+ * Return the admitted Agent's conversation logs
+ */
 export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdLogs',
     path: '/agent/{agent_id}/logs',
+    summary: "Return the admitted Agent's conversation logs",
     tags: ['console'],
   })
   .input(
@@ -1370,12 +1395,16 @@ export const sandbox = {
   files: files3,
 }
 
+/**
+ * Return Agent monitoring data using the admitted account's timezone
+ */
 export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdStatisticsSummary',
     path: '/agent/{agent_id}/statistics/summary',
+    summary: "Return Agent monitoring data using the admitted account's timezone",
     tags: ['console'],
   })
   .input(

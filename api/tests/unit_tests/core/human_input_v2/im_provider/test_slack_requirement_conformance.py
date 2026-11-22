@@ -529,7 +529,7 @@ def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: Mocke
     intent = _card_intent(
         blocks=(
             MarkdownFragment(text="Before input"),
-            ParagraphInput(output_variable_name="comment", default_value="Sanitized preserved default"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Sanitized preserved default"),
             MarkdownFragment(text="After input"),
         )
     )
@@ -571,7 +571,8 @@ def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: Mocke
         _card_intent(title="x" * 151),
         _card_intent(
             blocks=tuple(
-                ParagraphInput(output_variable_name=f"input_{index}", default_value=None) for index in range(49)
+                ParagraphInput(output_variable_name=f"input_{index}", resolved_default_value=None)
+                for index in range(49)
             )
         ),
         _card_intent(
@@ -582,8 +583,8 @@ def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: Mocke
         ),
         _card_intent(
             blocks=(
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
             )
         ),
         _card_intent(actions=(UserAction(id="x" * 256, title="Action", button_style=ButtonStyle.DEFAULT),)),
@@ -598,10 +599,10 @@ def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: Mocke
                 ),
             )
         ),
-        _card_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, default_value=None),)),
-        _card_intent(blocks=(ParagraphInput(output_variable_name="input", default_value="x" * 3_001),)),
-        _card_intent(blocks=(SelectInput(output_variable_name="input", options=(), default_value=None),)),
-        _card_intent(blocks=(SelectInput(output_variable_name="input", options=("",), default_value=None),)),
+        _card_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, resolved_default_value=None),)),
+        _card_intent(blocks=(ParagraphInput(output_variable_name="input", resolved_default_value="x" * 3_001),)),
+        _card_intent(blocks=(SelectInput(output_variable_name="input", options=(), resolved_default_value=None),)),
+        _card_intent(blocks=(SelectInput(output_variable_name="input", options=("",), resolved_default_value=None),)),
     ],
     ids=(
         "empty-card",
@@ -648,7 +649,7 @@ def test_card_render_preserves_optional_sections_and_default_action_style(mocker
     )
     adapter = _adapter(mocker, client)
     paragraph_intent = _card_intent(
-        blocks=(ParagraphInput(output_variable_name="comment", default_value=None),),
+        blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value=None),),
         actions=(),
         title="",
     )

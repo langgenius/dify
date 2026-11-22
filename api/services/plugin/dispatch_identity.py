@@ -29,12 +29,22 @@ def plugin_dispatch_headers(plugin_id: str, identifier: str | None) -> dict[str,
 
 
 def prepare_dispatch_identity(path: str, headers: dict[str, str], identifier: str | None) -> None:
+    """Bind matching identities for tenant and direct dispatch without installation lookup.
+
+    Legacy tenant routes may omit an identifier. Direct routes require an exact
+    identifier and plugin ID before any request can send server-owned credentials.
+    Non-dispatch requests remain unchanged.
+    """
     parts = path.split("/")
-    if len(parts) < 4 or parts[0] != "plugin" or parts[2] != "dispatch":
+    tenant_dispatch = len(parts) >= 4 and parts[0] == "plugin" and parts[2] == "dispatch"
+    direct_dispatch = parts[:3] == ["v2", "invoke", "dispatch"]
+    if not tenant_dispatch and not direct_dispatch:
         return
 
     identifier = headers.get(PLUGIN_IDENTIFIER_HEADER) or identifier
     if identifier is None:
+        if direct_dispatch:
+            raise ValueError("A plugin unique identifier is required for direct dispatch")
         # Legacy calls leave installation resolution to the daemon.
         return
 
