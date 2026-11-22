@@ -1,3 +1,4 @@
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -11,6 +12,7 @@ import 'reactflow/dist/style.css'
 
 export async function renderLayer({
   hideResolved = false,
+  direction = 'ltr' as 'ltr' | 'rtl',
   avatarUrl = null as string | null,
   queryClient = createConsoleQueryWrapper({
     accountProfile: { id: author.id, name: author.name, avatar_url: avatarUrl },
@@ -19,14 +21,17 @@ export async function renderLayer({
   await page.viewport(1200, 800)
   seedMentionableUsers(queryClient, [])
   const screen = await render(
-    <div
-      id="workflow-container"
-      className="isolate"
-      style={{ position: 'relative', width: 1100, height: 700 }}
-    >
-      <WorkflowCommentLayer />
-      <ReactFlow nodes={[]} />
-    </div>,
+    <DirectionProvider direction={direction}>
+      <div
+        id="workflow-container"
+        dir={direction}
+        className="isolate"
+        style={{ position: 'relative', width: 1100, height: 700 }}
+      >
+        <WorkflowCommentLayer />
+        <ReactFlow nodes={[]} />
+      </div>
+    </DirectionProvider>,
     {
       queryClient,
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },

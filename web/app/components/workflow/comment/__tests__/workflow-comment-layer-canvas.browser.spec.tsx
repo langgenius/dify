@@ -240,6 +240,20 @@ describe('panning the canvas', () => {
       .toMatchObject({ body: { position_x: 600, position_y: 300, content: 'Placed here' } })
   })
 
+  it('keeps a new comment’s input clear of the side panel on the side it sits in right-to-left layouts', async () => {
+    const screen = await renderLayer({ direction: 'rtl' })
+    await expect.element(markers(screen).first()).toBeVisible()
+    // In right-to-left layouts the side panel sits at the canvas's left edge.
+    screen.store.getState().setRightPanelWidth(400)
+    screen.store.getState().setPendingComment({ x: 1000, y: 300 })
+    const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
+    await expect.element(composer).toBeVisible()
+
+    await expect
+      .poll(() => composer.element().getBoundingClientRect().left)
+      .toBeGreaterThanOrEqual(canvas().left + 400)
+  })
+
   it('keeps an open thread in view and in use once its marker is panned out of view', async () => {
     const screen = await renderLayer()
     await openThread(screen)

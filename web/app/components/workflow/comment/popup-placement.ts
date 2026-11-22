@@ -1,5 +1,6 @@
 import type { PopoverPositionerProps } from '@langgenius/dify-ui/popover'
-import { useStore as useFlowStore } from 'reactflow'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
+import { useStore as useReactFlowStore } from 'reactflow'
 import { useStore } from '../store'
 
 /**
@@ -21,14 +22,23 @@ export const commentPopupPlacement = {
  */
 export function useCommentPopupPositioner() {
   const rightPanelWidth = useStore((state) => state.rightPanelWidth ?? 0)
-  const canvas = useFlowStore((state) => state.domNode)
+  const direction = useDirection()
+  // The tool bar sits at the start of the canvas and the panel at its end.
+  const start = 56
+  const end = rightPanelWidth + 8
+  const canvas = useReactFlowStore((state) => state.domNode)
   return {
     ...commentPopupPlacement,
     sticky: true,
     collisionBoundary: canvas ?? 'clipping-ancestors',
     // Clear of what floats over the canvas: the header, the tool bar, the zoom and
     // history bar, and the right panel.
-    collisionPadding: { top: 56, left: 56, bottom: 48, right: rightPanelWidth + 8 },
+    collisionPadding: {
+      top: 56,
+      bottom: 48,
+      left: direction === 'rtl' ? end : start,
+      right: direction === 'rtl' ? start : end,
+    },
     className:
       'data-open:data-anchor-hidden:visible data-open:data-anchor-hidden:pointer-events-auto',
   } satisfies PopoverPositionerProps
