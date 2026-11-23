@@ -23,6 +23,7 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_configuration import ProviderConfiguration
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
@@ -142,9 +143,19 @@ def reserve_model_quota_for_model(
     request_id: str | None = None,
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
+    provider_configuration: ProviderConfiguration | None = None,
 ) -> ModelQuotaReservation:
-    """Reserve system-hosted model quota before invoking the provider."""
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    """Reserve system-hosted model quota before invoking the provider.
+
+    A supplied configuration must belong to the same tenant and canonical provider.
+    Use the invocation's configuration to keep quota and credentials on the same route,
+    even if the live balance has changed since model assembly. Billing decides whether
+    a hosted credit reservation succeeds against the current balance.
+    """
+    if provider_configuration is None:
+        provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    elif provider_configuration.tenant_id != tenant_id or provider_configuration.provider.provider != provider:
+        raise ValueError("Quota configuration does not match the model invocation.")
     effective_app_type = normalize_credit_usage_app_type(app_type)
     effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(

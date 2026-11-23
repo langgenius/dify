@@ -1,7 +1,20 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
-from typing import IO, Any, Literal, Optional, ParamSpec, Protocol, TypeVar, cast, overload, override
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Concatenate,
+    Literal,
+    Optional,
+    ParamSpec,
+    Protocol,
+    TypeVar,
+    cast,
+    overload,
+    override,
+)
 from uuid import UUID
 
 from configs import dify_config
@@ -17,7 +30,7 @@ from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.errors.error import InsufficientHostedCreditsError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
@@ -36,6 +49,9 @@ from graphon.model_runtime.model_providers.base.speech2text_model import Speech2
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
+
+if TYPE_CHECKING:
+    from core.app.llm.quota import ModelQuotaReservation
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -570,7 +586,7 @@ class ModelInstance:
 
 
 class QuotaManagedModelInstance(ModelInstance):
-    """A system-hosted model instance that owns quota settlement per invocation."""
+    """Own hosted quota settlement or select workspace credentials before starting inference."""
 
     def reserve_quota(
         self,
@@ -578,7 +594,8 @@ class QuotaManagedModelInstance(ModelInstance):
         request_id: str | None = None,
         app_type: CreditUsageAppTypeInput = None,
         created_by: CreditUsageCreatedByInput = None,
-    ):
+    ) -> "ModelQuotaReservation":
+        """Reserve against the configuration that supplied this instance's hosted credentials."""
         from core.app.llm.quota import reserve_model_quota_for_model
 
         if app_type is None:
@@ -594,6 +611,7 @@ class QuotaManagedModelInstance(ModelInstance):
             request_id=request_id,
             app_type=app_type,
             created_by=created_by,
+            provider_configuration=self.provider_model_bundle.configuration,
         )
 
     @staticmethod
@@ -640,6 +658,52 @@ class QuotaManagedModelInstance(ModelInstance):
             reservation_kwargs["created_by"] = created_by
         return self.reserve_quota(**reservation_kwargs)
 
+    def _reserve_or_select_custom(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "tuple[ModelInstance, ModelQuotaReservation | None]":
+        """Select the invocation instance before inference; only Custom fallback has no reservation.
+
+        Only an explicit Cloud Billing denial allows fallback. Missing Custom configuration or
+        credentials preserve the original quota error; the hosted configuration stays unchanged.
+        """
+        try:
+            return self, self._reserve_quota_for_request(request_metadata)
+        except InsufficientHostedCreditsError:
+            custom = self._get_custom_fallback(request_metadata)
+            if custom is None:
+                raise
+            return custom, None
+
+    def _get_custom_fallback(self, request_metadata: Mapping[str, object] | None) -> ModelInstance | None:
+        """Resolve the same tenant, provider and model under Custom, or return None if unavailable.
+
+        The caller must already have a definitive reservation denial. Credential policy errors
+        propagate and no model invocation or preference update occurs here.
+        """
+        configuration = self.provider_model_bundle.configuration
+        custom = configuration.custom_configuration
+        if not (custom.provider or custom.models):
+            return None
+
+        custom_provider_configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
+        model_type = self.model_type_instance.model_type
+        if custom_provider_configuration.get_provider_model(model_type, self.model_name, only_active=True) is None:
+            return None
+        credentials = custom_provider_configuration.get_current_credentials(model_type, self.model_name)
+        if not credentials:
+            return None
+
+        bundle = ProviderModelBundle(
+            configuration=custom_provider_configuration, model_type_instance=self.model_type_instance
+        )
+        logger.info(
+            "Using custom credentials after hosted credit reservation denial: tenant_id=%s provider=%s model=%s",
+            configuration.tenant_id,
+            self.provider,
+            self.model_name,
+        )
+        return ModelInstance(bundle, self.model_name, credentials, request_metadata, moderation=self._moderation)
+
     @staticmethod
     def release_quota_safely(reservation) -> None:
         try:
@@ -647,16 +711,21 @@ class QuotaManagedModelInstance(ModelInstance):
         except Exception:
             logger.exception("Failed to release model quota reservation")
 
-    def _invoke_with_quota(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    def _invoke_with_quota(
+        self, function: Callable[Concatenate[ModelInstance, P], R], /, *args: P.args, **kwargs: P.kwargs
+    ) -> R:
+        """Invoke a base-class non-streaming capability once, settling only hosted invocations."""
         request_metadata = kwargs.get("request_metadata")
         effective_request_metadata = self._resolve_request_metadata(
             request_metadata if isinstance(request_metadata, Mapping) else None
         )
         if effective_request_metadata is not None:
             kwargs["request_metadata"] = effective_request_metadata
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
+        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
+        if reservation is None:
+            return function(instance, *args, **kwargs)
         try:
-            response = function(*args, **kwargs)
+            response = function(instance, *args, **kwargs)
             reservation.commit()
             return response
         finally:
@@ -692,9 +761,11 @@ class QuotaManagedModelInstance(ModelInstance):
             )
 
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
+        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
         try:
-            response = super()._invoke_llm(
+            # The original public invocation owns moderation for either credential route.
+            response = ModelInstance._invoke_llm(
+                instance,
                 prompt_messages=normalized_prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -705,10 +776,12 @@ class QuotaManagedModelInstance(ModelInstance):
             )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
-            reservation.commit(response.usage)
+            if reservation is not None:
+                reservation.commit(response.usage)
             return response
         finally:
-            self.release_quota_safely(reservation)
+            if reservation is not None:
+                self.release_quota_safely(reservation)
 
     def _invoke_llm_stream(
         self,
@@ -721,10 +794,11 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
+        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
         usage: LLMUsage | None = None
         try:
-            response = super()._invoke_llm(
+            response = ModelInstance._invoke_llm(
+                instance,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -735,6 +809,10 @@ class QuotaManagedModelInstance(ModelInstance):
             )
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
+
+            if reservation is None:
+                yield from response
+                return
 
             if reservation.commit_before_delivery:
                 for chunk in response:
@@ -755,7 +833,8 @@ class QuotaManagedModelInstance(ModelInstance):
             reservation.commit(usage)
             yield from buffered_chunks
         finally:
-            self.release_quota_safely(reservation)
+            if reservation is not None:
+                self.release_quota_safely(reservation)
 
     @override
     def invoke_text_embedding(
@@ -766,7 +845,7 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
-            super().invoke_text_embedding,
+            ModelInstance.invoke_text_embedding,
             texts=texts,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -781,7 +860,7 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
-            super().invoke_multimodal_embedding,
+            ModelInstance.invoke_multimodal_embedding,
             multimodel_documents=multimodel_documents,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -798,7 +877,7 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
-            super().invoke_rerank,
+            ModelInstance.invoke_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -817,7 +896,7 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
-            super().invoke_multimodal_rerank,
+            ModelInstance.invoke_multimodal_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -827,11 +906,11 @@ class QuotaManagedModelInstance(ModelInstance):
 
     @override
     def invoke_moderation(self, text: str, *, request_metadata: Mapping[str, object] | None = None) -> bool:
-        return self._invoke_with_quota(super().invoke_moderation, text=text, request_metadata=request_metadata)
+        return self._invoke_with_quota(ModelInstance.invoke_moderation, text=text, request_metadata=request_metadata)
 
     @override
     def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
-        return self._invoke_with_quota(super().invoke_speech2text, file=file, request_metadata=request_metadata)
+        return self._invoke_with_quota(ModelInstance.invoke_speech2text, file=file, request_metadata=request_metadata)
 
     @override
     def invoke_tts(
@@ -851,18 +930,24 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
+        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
         try:
-            response = super().invoke_tts(
+            response = ModelInstance.invoke_tts(
+                instance,
                 content_text=content_text,
                 voice=voice,
                 request_metadata=effective_request_metadata,
             )
+            if reservation is None:
+                yield from response
+                return
+
             for chunk in response:
                 reservation.commit()
                 yield chunk
         finally:
-            self.release_quota_safely(reservation)
+            if reservation is not None:
+                self.release_quota_safely(reservation)
 
 
 class ModelManager:
