@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from enums import QuotaType
+from services.quota_service import QuotaCharge
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from services.async_workflow_service import AsyncWorkflowService
 from services.workflow.entities import ScheduleTriggerData, TriggerActor, TriggerData, TriggerWorkflowSnapshot
@@ -74,8 +75,9 @@ class _Queues:
         return "celery-task-1"
 
 
-class _Charge:
+class _Charge(QuotaCharge):
     def __init__(self) -> None:
+        super().__init__(success=True, charge_id="charge-1", _quota_type=QuotaType.WORKFLOW)
         self.committed = False
         self.refunded = False
 
@@ -91,7 +93,7 @@ def test_published_workflow_is_acknowledged_when_queued_status_write_fails() -> 
     queues = _Queues()
     charge = _Charge()
 
-    def reserve_quota(quota_type: QuotaType, tenant_id: str) -> _Charge:
+    def reserve_quota(quota_type: QuotaType, tenant_id: str) -> QuotaCharge:
         assert quota_type == QuotaType.WORKFLOW
         assert tenant_id == "tenant-1"
         return charge
