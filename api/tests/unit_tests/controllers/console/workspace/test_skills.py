@@ -1497,9 +1497,9 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
     assert payload["code"] == "invalid_request"
 
 
-
 def test_agent_skill_bindings_rejects_json_null_without_clearing_bindings(
-    app: Flask, request_context: RequestContext) -> None:
+    app: Flask, request_context: RequestContext
+) -> None:
     api = WorkspaceAgentSkillBindingsApi()
     method = unwrap(api.put)
     service, replace_agent_bindings = _recording_service("replace_agent_bindings")
@@ -1513,9 +1513,6 @@ def test_agent_skill_bindings_rejects_json_null_without_clearing_bindings(
 
     assert error.value.code == 422
     assert replace_agent_bindings.calls == []
-
-
-
 
 
 def test_skill_import_documents_required_multipart_file() -> None:
