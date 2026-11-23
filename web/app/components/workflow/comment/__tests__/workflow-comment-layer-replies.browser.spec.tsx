@@ -1,5 +1,7 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
+import { TEST_APP_ID } from '@/test/console/ids'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import {
   markers,
   openThread,
@@ -12,6 +14,7 @@ import {
   api,
   author,
   collaboration,
+  commentLayerApi,
   deferred,
   resetFakeServer,
   saveReplyOnServer,
@@ -29,13 +32,9 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { consoleResponses } = await import('./comment-layer-fake-server')
-  return { ...actual, consoleQuery: withConsoleResponses(actual.consoleQuery, consoleResponses) }
-})
 
+const OTHER_APP_ID = '019a0000-0000-7000-8000-0000000000a2'
+setupFakeApi(commentLayerApi)
 beforeEach(resetFakeServer)
 
 describe('replies', () => {
@@ -76,7 +75,7 @@ describe('replies', () => {
   })
 
   it('keeps a failed reply to send again, once however often retry is pressed, or to drop', async () => {
-    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    api.reply.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await openThread(screen)
 
@@ -89,10 +88,10 @@ describe('replies', () => {
     await expect
       .element(thread(screen).getByText('workflowComments.comments.status.notSent'))
       .not.toBeInTheDocument()
-    expect(api.reply).toHaveBeenCalledTimes(2)
+    await expect.poll(() => api.reply.mock.results.length).toBe(2)
     expect(thread(screen).getByText('Try again').elements()).toHaveLength(1)
 
-    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    api.reply.mockRejectedValueOnce(networkError())
     await sendReply(screen, 'Drop me')
     await thread(screen).getByRole('button', { name: 'common.operation.delete' }).click()
     await expect.element(thread(screen).getByText('Drop me')).not.toBeInTheDocument()
@@ -101,7 +100,7 @@ describe('replies', () => {
   it('shows a reply the server saved although its response was lost beside its failed row', async () => {
     api.reply.mockImplementationOnce(async () => {
       saveReplyOnServer('first', 'Saved anyway')
-      throw new Error('Network error')
+      throw networkError()
     })
     const screen = await renderLayer()
     await openThread(screen)
@@ -119,7 +118,7 @@ describe('replies', () => {
 
   it('keeps a new reply’s failure when an older reply has the same text', async () => {
     saveReplyOnServer('first', 'OK', 'reply-old')
-    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    api.reply.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await openThread(screen)
     await expect.element(thread(screen).getByText('OK')).toBeVisible()
@@ -150,7 +149,7 @@ describe('replies', () => {
   it('keeps each send’s own outcome when the same text is sent twice', async () => {
     api.reply
       .mockImplementationOnce(async () => saveReplyOnServer('first', 'OK', 'reply-ok'))
-      .mockRejectedValueOnce(new Error('Network error'))
+      .mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await openThread(screen)
 
@@ -169,7 +168,7 @@ describe('replies', () => {
     api.reply.mockReturnValueOnce(send.promise)
     api.update.mockImplementation(async ({ body }: { body: { content: string } }) => {
       server.current.list[0]!.content = body.content
-      return {}
+      return { id: server.current.list[0]!.id, updated_at: 200 }
     })
     const screen = await renderLayer()
     await openThread(screen)
@@ -242,7 +241,7 @@ describe('replies', () => {
     const again = await editReply()
     await expect.element(again).toHaveAttribute('readonly')
 
-    save.resolve({})
+    save.resolve({ id: 'reply-original', updated_at: 200 })
     await expect.element(again).not.toHaveAttribute('readonly')
     expect(api.updateReply).toHaveBeenCalledTimes(1)
   })
@@ -253,6 +252,10 @@ describe('replies', () => {
     await openThread(screen)
     await sendReply(screen, 'Gone soon')
     await expect.element(thread(screen).getByText('Gone soon')).toBeVisible()
+    // The reply is sent once the server has answered.
+    await expect
+      .poll(() => thread(screen).getByText('Gone soon').element().closest('[aria-busy="true"]'))
+      .toBeNull()
 
     server.current.details.first!.replies = []
     collaboration.handler?.()
@@ -317,7 +320,7 @@ describe('thread actions', () => {
     collaboration.handler?.()
     await expect.element(resolveButton).toBeDisabled()
 
-    resolve.reject(new Error('Network error'))
+    resolve.reject(networkError())
     await expect.element(resolveButton).toBeEnabled()
     expect(collaboration.emit).not.toHaveBeenCalled()
   })
@@ -368,7 +371,7 @@ describe('thread actions', () => {
     await expect.element(thread(screen)).not.toBeInTheDocument()
     expect(markers(screen).elements()).toHaveLength(1)
 
-    resolve.reject(new Error('Network error'))
+    resolve.reject(networkError())
     await expect.poll(() => markers(screen).elements().length).toBe(2)
     expect(collaboration.emit).not.toHaveBeenCalled()
   })
@@ -389,13 +392,12 @@ describe('thread actions', () => {
 
     await expect.element(thread(screen)).not.toBeInTheDocument()
     expect(markers(screen).elements()).toHaveLength(1)
-    expect(collaboration.emit).toHaveBeenCalledWith('app-1')
+    expect(collaboration.emit).toHaveBeenCalledWith(TEST_APP_ID)
   })
 
   it('just closes a deleted thread instead of opening another', async () => {
     api.remove.mockImplementationOnce(async ({ params }: { params: { comment_id: string } }) => {
       server.current.list = server.current.list.filter((item) => item.id !== params.comment_id)
-      return { result: 'success' }
     })
     const screen = await renderLayer()
     await openThread(screen)
@@ -409,7 +411,7 @@ describe('thread actions', () => {
       .click()
 
     await expect.element(thread(screen)).not.toBeInTheDocument()
-    expect(markers(screen).elements()).toHaveLength(1)
+    await expect.poll(() => markers(screen).elements()).toHaveLength(1)
   })
 
   it('shows what collaborators changed while the editor was closed when it opens again', async () => {
@@ -437,7 +439,10 @@ describe('thread actions', () => {
         first.queryClient,
         consoleQuery.apps.byAppId.workflow.comments.byCommentId.replies.post.mutationOptions(),
       )
-      .execute({ params: { app_id: 'app-2', comment_id: 'other' }, body: { content: 'Elsewhere' } })
+      .execute({
+        params: { app_id: OTHER_APP_ID, comment_id: 'other' },
+        body: { content: 'Elsewhere' },
+      })
     server.current.list = server.current.list.slice(1)
     const again = await renderLayer({ queryClient: first.queryClient })
 

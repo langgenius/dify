@@ -15,6 +15,7 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { ThemeProvider } from '@/features/theme/provider'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { TEST_AGENT_ID, TEST_APP_ID, TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
@@ -407,10 +408,10 @@ describe('real commands', () => {
 
 describe('resource search', () => {
   it.each([
-    ['app', '/app/app-1/configuration'],
-    ['knowledge', '/datasets/dataset-1/documents'],
+    ['app', `/app/${TEST_APP_ID}/configuration`],
+    ['knowledge', `/datasets/${TEST_DATASET_ID}/documents`],
     ['skill', '/skills/skill-1'],
-    ['agent', '/agents/agent-1/configure'],
+    ['agent', `/agents/${TEST_AGENT_ID}/configure`],
   ])('maps the %s response to its actual destination', async (kind, destination) => {
     api.apps.mockResolvedValue(page([app()]))
     api.datasets.mockResolvedValue(page([createDatasetFixture({ name: 'Research knowledge' })]))
@@ -445,7 +446,7 @@ describe('resource search', () => {
     const { user } = setup()
     await user.type(await openSearch(), '@kb external')
     await user.click(await screen.findByRole('option', { name: /External knowledge/ }))
-    expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/dataset-1/hitTesting')
+    expect(api.push).toHaveBeenCalledExactlyOnceWith(`/datasets/${TEST_DATASET_ID}/hitTesting`)
   })
 
   it('shows only the apps themselves when the search is scoped to apps', async () => {
@@ -455,7 +456,7 @@ describe('resource search', () => {
     const appOption = await screen.findByRole('option', { name: /Research app/ })
     expect(screen.getAllByRole('option')).toEqual([appOption])
     await user.click(appOption)
-    expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/workflow')
+    expect(api.push).toHaveBeenCalledExactlyOnceWith(`/app/${TEST_APP_ID}/workflow`)
   })
 
   it('navigates the highlighted resource with the keyboard', async () => {
@@ -464,7 +465,7 @@ describe('resource search', () => {
     await user.type(await openSearch(), 'unique')
     await screen.findByRole('option', { name: /Unique keyboard result/ })
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
+    expect(api.push).toHaveBeenCalledExactlyOnceWith(`/app/${TEST_APP_ID}/configuration`)
   })
 
   it.each([{ datasetOperator: true }, { enableSkill: false }])(
@@ -574,7 +575,7 @@ describe('resource search', () => {
 
 describe('workflow node integration', () => {
   it('keeps local results aligned with the search term and selects the real graph node', async () => {
-    api.pathname = '/app/app-1/workflow'
+    api.pathname = `/app/${TEST_APP_ID}/workflow`
     const { result } = renderWorkflowFlowHook(
       () => {
         useWorkflowSearch()
@@ -684,7 +685,7 @@ describe('pending and failed searches', () => {
       .find((element) => !screen.getByRole('status').contains(element))
     expect(notice?.compareDocumentPosition(result)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     await user.click(result)
-    expect(api.push).toHaveBeenCalledExactlyOnceWith('/app/app-1/configuration')
+    expect(api.push).toHaveBeenCalledExactlyOnceWith(`/app/${TEST_APP_ID}/configuration`)
   })
 })
 

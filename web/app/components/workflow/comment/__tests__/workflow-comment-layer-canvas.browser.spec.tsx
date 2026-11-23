@@ -1,5 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import { ControlMode } from '../../types'
 import {
   markers,
@@ -12,6 +13,7 @@ import {
 import {
   api,
   avatar,
+  commentLayerApi,
   deferred,
   listItem,
   resetFakeServer,
@@ -29,13 +31,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { consoleResponses } = await import('./comment-layer-fake-server')
-  return { ...actual, consoleQuery: withConsoleResponses(actual.consoleQuery, consoleResponses) }
-})
 
+setupFakeApi(commentLayerApi)
 beforeEach(resetFakeServer)
 
 describe('markers and the composer', () => {
@@ -78,7 +75,7 @@ describe('markers and the composer', () => {
     await userEvent.keyboard('{Tab}')
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x + 5)
 
-    move.reject(new Error('Network error'))
+    move.reject(networkError())
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)
     await expect.element(thread(screen).getByText('Written meanwhile')).toBeVisible()
@@ -89,7 +86,7 @@ describe('markers and the composer', () => {
       async ({ params, body }: { params: { comment_id: string }; body: WorkflowCommentBasic }) => {
         const saved = server.current.list.find((item) => item.id === params.comment_id)!
         Object.assign(saved, { position_x: body.position_x, position_y: body.position_y })
-        return {}
+        return { id: params.comment_id, updated_at: 200 }
       },
     )
     const screen = await renderLayer()
@@ -161,7 +158,7 @@ describe('markers and the composer', () => {
   })
 
   it('keeps a new comment’s text to send again when creating it fails', async () => {
-    api.create.mockRejectedValueOnce(new Error('Network error'))
+    api.create.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
     screen.store.getState().setPendingComment({ x: 600, y: 400 })
@@ -331,8 +328,8 @@ describe('keyboard and hover', () => {
   })
 
   it('opens from the keyboard and gives focus back to its marker, which still moves with the arrow keys', async () => {
-    api.update.mockResolvedValue({})
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()
@@ -347,6 +344,7 @@ describe('keyboard and hover', () => {
 
   it('keeps focus on Next as it moves the thread, and gives focus to the comment shown last on close', async () => {
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()
@@ -366,6 +364,7 @@ describe('keyboard and hover', () => {
 
   it('closes from the keyboard after comment markers were hidden', async () => {
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()

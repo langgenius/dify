@@ -1,6 +1,6 @@
 import type { Dirent } from 'node:fs'
 import { readdirSync, readFileSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, posix, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 
@@ -26,7 +26,12 @@ const MOCK_ALLOWLIST: MockAllowance[] = []
 const LINE_ALLOWLIST: LineAllowance[] = []
 
 export type PolicyViolation = {
-  kind: 'missing-boundary-comment' | 'oversized-spec'
+  kind:
+    | 'missing-boundary-comment'
+    | 'oversized-spec'
+    | 'service-mock'
+    | 'raw-network-stub'
+    | 'expected-failure-with-fake-api'
   path: string
   line?: number
   specifier?: string
@@ -58,6 +63,116 @@ export function isOwnedMockSpecifier(specifier: string) {
   )
 }
 
+// API data must come from the contract-validated fake API (`@/test/fake-api`), not mocked clients.
+// The web-relative module a specifier names, resolved against the spec's own (web-relative)
+// path: `@/service/console` and `../../service/console` from `app/x/y/` both name `service/console`.
+function resolveWebModule(specifier: string, specPath: string) {
+  const target = specifier.startsWith('@/')
+    ? specifier.slice(2)
+    : specifier.startsWith('.')
+      ? posix.normalize(posix.join(posix.dirname(specPath.replaceAll('\\', '/')), specifier))
+      : undefined
+  return target?.replace(/\.[cm]?[jt]sx?$/, '')
+}
+
+export function isServiceMockSpecifier(specifier: string, specPath = '') {
+  const module = resolveWebModule(specifier, specPath)
+  return module === 'service' || Boolean(module?.startsWith('service/'))
+}
+
+const networkGlobals = new Set(['fetch', 'XMLHttpRequest'])
+
+function isGlobalObject(node: ts.Expression) {
+  return ts.isIdentifier(node) && (node.text === 'globalThis' || node.text === 'window')
+}
+
+// `vi.stubGlobal('fetch', …)`, `vi.spyOn(globalThis, 'fetch')` or `globalThis.fetch = …`.
+function rawNetworkStub(node: ts.Node) {
+  if (ts.isCallExpression(node)) {
+    const callee = node.expression
+    if (
+      !ts.isPropertyAccessExpression(callee) ||
+      !ts.isIdentifier(callee.expression) ||
+      callee.expression.text !== 'vi'
+    )
+      return
+    const [first, second] = node.arguments
+    if (callee.name.text === 'stubGlobal' && first && ts.isStringLiteralLike(first))
+      return networkGlobals.has(first.text) ? first.text : undefined
+    if (
+      callee.name.text === 'spyOn' &&
+      first &&
+      isGlobalObject(first) &&
+      second &&
+      ts.isStringLiteralLike(second)
+    )
+      return networkGlobals.has(second.text) ? second.text : undefined
+    return
+  }
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    ts.isPropertyAccessExpression(node.left) &&
+    isGlobalObject(node.left.expression) &&
+    networkGlobals.has(node.left.name.text)
+  )
+    return node.left.name.text
+}
+
+// `it.fails` also inverts the fake API's teardown failures, hiding contract violations.
+// Resolve each import against the spec (web-relative `path`), so `@/test/fake-api`, `../fake-api`
+// and the new-rag source helpers that install the fake are all recognized.
+function usesFakeApi(sourceFile: ts.SourceFile, path: string) {
+  return sourceFile.statements.some((statement) => {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteralLike(statement.moduleSpecifier))
+      return false
+    const module = resolveWebModule(statement.moduleSpecifier.text, path)
+    return (
+      module === 'test/fake-api' ||
+      Boolean(module?.endsWith('/source-server')) ||
+      Boolean(module?.endsWith('/source-browser-env'))
+    )
+  })
+}
+
+const testRegistrars = new Set(['it', 'test', 'describe'])
+
+// `{ fails: true }` passed as test options, as in `it('…', { fails: true }, fn)`.
+function hasFailsOption(node: ts.CallExpression) {
+  return node.arguments.some(
+    (argument) =>
+      ts.isObjectLiteralExpression(argument) &&
+      argument.properties.some(
+        (property) =>
+          (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
+          ts.isIdentifier(property.name) &&
+          property.name.text === 'fails' &&
+          !(
+            ts.isPropertyAssignment(property) &&
+            property.initializer.kind === ts.SyntaxKind.FalseKeyword
+          ),
+      ),
+  )
+}
+
+// Matches `it.fails(…)`, chained forms such as `it.fails.each([…])(…)`, the tagged-template
+// `it.fails.each\`table\`(…)` and `test.concurrent.fails(…)`, and the `{ fails: true }` option.
+function isExpectedFailure(node: ts.CallExpression) {
+  // Report a chain once, at the call that registers the test.
+  if (ts.isCallExpression(node.parent) && node.parent.expression === node) return false
+  let current: ts.Expression = node.expression
+  let fails = hasFailsOption(node)
+  while (
+    ts.isPropertyAccessExpression(current) ||
+    ts.isCallExpression(current) ||
+    ts.isTaggedTemplateExpression(current)
+  ) {
+    if (ts.isPropertyAccessExpression(current) && current.name.text === 'fails') fails = true
+    current = ts.isTaggedTemplateExpression(current) ? current.tag : current.expression
+  }
+  return fails && ts.isIdentifier(current) && testRegistrars.has(current.text)
+}
+
 function countLines(source: string) {
   if (!source) return 0
   const normalized = source.replaceAll('\r\n', '\n')
@@ -81,8 +196,16 @@ function mockSpecifier(call: ts.CallExpression) {
     return
 
   const [argument] = call.arguments
-  if (!argument || !ts.isStringLiteralLike(argument)) return
-  return argument.text
+  if (!argument) return
+  if (ts.isStringLiteralLike(argument)) return argument.text
+  // The type-safe form `vi.mock(import('@/service/console'), …)`.
+  if (
+    ts.isCallExpression(argument) &&
+    argument.expression.kind === ts.SyntaxKind.ImportKeyword &&
+    argument.arguments[0] &&
+    ts.isStringLiteralLike(argument.arguments[0])
+  )
+    return argument.arguments[0].text
 }
 
 export function analyzeBrowserSpec(
@@ -112,10 +235,38 @@ export function analyzeBrowserSpec(
     ts.ScriptKind.TSX,
   )
   const occurrences = new Map<string, number>()
+  const fakeApi = usesFakeApi(sourceFile, path)
 
   function visit(node: ts.Node) {
+    const stubbed = rawNetworkStub(node)
+    if (stubbed) {
+      violations.push({
+        kind: 'raw-network-stub',
+        path,
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+        message: `stubs ${stubbed} directly; serve requests with installFakeApi/setupFakeApi from @/test/fake-api, or guardUnexpectedFetch when none are expected`,
+      })
+    }
+    if (fakeApi && ts.isCallExpression(node) && isExpectedFailure(node)) {
+      violations.push({
+        kind: 'expected-failure-with-fake-api',
+        path,
+        line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+        message:
+          'it.fails would also hide fake API contract failures; keep the test normal and assert only the known bug',
+      })
+    }
     if (ts.isCallExpression(node)) {
       const specifier = mockSpecifier(node)
+      if (specifier && isServiceMockSpecifier(specifier, path)) {
+        violations.push({
+          kind: 'service-mock',
+          path,
+          line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+          specifier,
+          message: `mocks ${specifier}; serve API data with installFakeApi/setupFakeApi from @/test/fake-api instead`,
+        })
+      }
       if (specifier && isOwnedMockSpecifier(specifier)) {
         const occurrence = (occurrences.get(specifier) ?? 0) + 1
         occurrences.set(specifier, occurrence)
