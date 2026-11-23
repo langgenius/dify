@@ -131,6 +131,28 @@ def test_collect_selected_contexts_accepts_text_arrays_without_stringifying_othe
     assert _collect_selected_contexts(node_results, ["sys", "user_id"]) == []
 
 
+def test_collect_selected_contexts_preserves_retrieval_summary_before_content() -> None:
+    """Selected retrieval chunks contain the same ordered text as the LLM context."""
+    node_results = {
+        "retrieval": NodeRunResult(
+            outputs={
+                "result": [
+                    {"summary": "short summary", "content": "source text"},
+                    {"summary": "summary only", "content": ""},
+                    {"content": "second source"},
+                    {"summary": "not a retrieval chunk"},
+                ]
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["retrieval", "result"]) == [
+        "short summary\nsource text",
+        "summary only",
+        "second source",
+    ]
+
+
 def test_workflow_faithfulness_receives_selected_llm_text_as_context(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

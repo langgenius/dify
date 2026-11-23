@@ -1638,8 +1638,8 @@ def _collect_selected_contexts(node_results: dict[str, NodeRunResult], selector:
     """Read the selected source output as evidence for an LLM metric.
 
     Precondition: a valid selector starts with a source node and output name.
-    Postcondition: only non-empty text or retrieval chunk content is returned,
-    in source order; missing or unsupported values yield no evidence.
+    Postcondition: only non-empty text or retrieval chunk summary and content
+    is returned, in source order; missing or unsupported values yield no evidence.
     """
     if len(selector) < 2:
         return []
@@ -1658,8 +1658,11 @@ def _collect_selected_contexts(node_results: dict[str, NodeRunResult], selector:
         for item in value:
             if isinstance(item, str) and item.strip():
                 contexts.append(item)
-            elif isinstance(item, Mapping) and item.get("content"):
-                contexts.append(str(item["content"]))
+            elif isinstance(item, Mapping) and "content" in item:
+                # Graphon's LLM node renders each chunk's summary before its content.
+                parts = [str(part) for part in (item.get("summary"), item["content"]) if part and str(part).strip()]
+                if parts:
+                    contexts.append("\n".join(parts))
         return contexts
     return []
 
