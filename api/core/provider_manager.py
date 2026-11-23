@@ -4,7 +4,7 @@ import contextlib
 import json
 import logging
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol, Self
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Protocol, Self
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -38,7 +38,6 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -64,6 +63,7 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
+    from core.hosting_configuration import HostingProvider
     from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 logger = logging.getLogger(__name__)
@@ -656,7 +656,10 @@ class ProviderManager:
 
         # Initialize trial provider records if not exist
         provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
+            tenant_id,
+            provider_name_to_provider_records_dict,
+            hosting_providers=ext_hosting_provider.hosting_configuration.provider_map,
+            session_maker=session_factory.get_session_maker(),
         )
 
         # append providers with langgenius/openai/openai
@@ -1177,19 +1180,31 @@ class ProviderManager:
 
     @staticmethod
     def _init_trial_provider_records(
-        tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
+        tenant_id: str,
+        provider_name_to_provider_records_dict: dict[str, list[Provider]],
+        *,
+        hosting_providers: Mapping[str, HostingProvider],
+        session_maker: sessionmaker[Session],
     ) -> dict[str, list[Provider]]:
         """
         Initialize trial provider records if not exists.
 
-        :param tenant_id: workspace id
-        :param provider_name_to_provider_records_dict: provider name to provider records dict
-        :return:
-        """
-        # Get hosting configuration
-        hosting_configuration = ext_hosting_provider.hosting_configuration
+        Each missing trial or paid record is inserted in its own short-lived session and transaction
+        from ``session_maker``.
+        When a concurrent insert wins the unique constraint, the existing record is loaded with its
+        credential and marked valid in a second short-lived session. No caller session is touched, so
+        pending work in the caller's session is neither committed nor rolled back.
 
-        for provider_name, configuration in hosting_configuration.provider_map.items():
+        :param tenant_id: workspace id
+        :param provider_name_to_provider_records_dict: valid provider records keyed by prefixed
+            provider name, as returned by ``_get_all_providers``; missing keys must default to a list
+        :param hosting_providers: hosting configuration keyed by prefixed provider name; only enabled
+            providers get trial or paid records
+        :param session_maker: factory for the short-lived sessions that own every write here
+        :return: the same dict with created or revived records appended; appended records are detached
+            and have their credential relationship loaded (or no credential id)
+        """
+        for provider_name, configuration in hosting_providers.items():
             if not configuration.enabled:
                 continue
 
@@ -1221,28 +1236,27 @@ class ProviderManager:
                                 quota_used=0,
                                 is_valid=True,
                             )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
+                            # A conflicting insert rolls back only this session, never the caller's.
+                            with session_maker.begin() as session:
+                                session.add(new_provider_record)
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
+                            stmt = (
+                                select(Provider)
+                                .where(
+                                    Provider.tenant_id == tenant_id,
+                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                                    Provider.provider_type == ProviderType.SYSTEM.value,
+                                    Provider.quota_type == quota.quota_type,
+                                )
+                                .options(selectinload(Provider.credential))
                             )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
-
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            # Load the credential after the commit above, which expires loaded attributes.
-                            db.session.refresh(existed_provider_record, ["credential"])
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
+                            with session_maker.begin() as session:
+                                existed_provider_record = session.scalar(stmt)
+                                if existed_provider_record and not existed_provider_record.is_valid:
+                                    existed_provider_record.is_valid = True
+                            if existed_provider_record:
+                                provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
 

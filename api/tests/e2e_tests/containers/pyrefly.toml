@@ -42,7 +42,6 @@ project-excludes = [
   "services/test_dataset_service_retrieval.py",
   "services/test_delete_archived_workflow_run.py",
   "services/test_document_service_rename_document.py",
-  "services/test_end_user_service.py",
   "services/test_feature_service.py",
   "services/test_file_service.py",
   "services/test_human_input_delivery_test.py",

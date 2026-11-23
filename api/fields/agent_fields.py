@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator
 
+from fields.app_fields import Tag
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from models.agent import (
@@ -106,6 +107,7 @@ class AgentRosterResponse(ResponseModel):
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
+    tags: list[Tag] = Field(default_factory=list, description="Workspace Agent tags, independent of Studio App tags")
     is_in_current_workflow: bool = False
     in_current_workflow_count: int = 0
     existing_node_ids: list[str] = Field(default_factory=list)

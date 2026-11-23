@@ -1,7 +1,7 @@
 'use client'
 
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -106,17 +106,20 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
           )}
         >
           <span className="px-1 system-sm-regular text-text-tertiary">{label}</span>
-          {selectedCreators.slice(0, 3).map((creator, index) => (
-            <Avatar
-              key={creator.id}
-              size="xs"
-              aria-hidden="true"
-              className={cn('border border-components-panel-bg', index > 0 && '-ms-1')}
-            >
-              <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
-              <AvatarImage src={creator.avatar_url || undefined} alt="" />
-            </Avatar>
-          ))}
+          {selectedCreators.length > 0 && (
+            <AvatarGroup size="xs">
+              {selectedCreators.slice(0, 3).map((creator, index, visible) => (
+                <Avatar
+                  key={creator.id}
+                  aria-hidden="true"
+                  style={{ zIndex: visible.length - index }}
+                >
+                  <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                  <AvatarImage src={creator.avatar_url || undefined} alt="" />
+                </Avatar>
+              ))}
+            </AvatarGroup>
+          )}
           {value.length > 0 ? (
             <span className="px-1 text-xs font-medium text-text-tertiary">+{value.length}</span>
           ) : (

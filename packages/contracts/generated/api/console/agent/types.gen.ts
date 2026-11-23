@@ -1011,6 +1011,7 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
+  tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
@@ -2835,6 +2836,7 @@ export type GetAgentInviteOptionsData = {
     keyword?: string
     limit?: number
     page?: number
+    tag_ids?: Array<string>
   }
   url: '/agent/invite-options'
 }
