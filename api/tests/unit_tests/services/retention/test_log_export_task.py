@@ -125,3 +125,50 @@ def test_failure_recording_error_preserves_permanent_renewal_error(
 
     assert failure.value is renewal_error
     log_export_storage.save_from_path.assert_not_called()
+
+
+def test_storage_failure_retries_when_recording_failed_hits_transient_redis_error(
+    log_export_redis: LogExportRedisIo, log_export_storage: LogExportStorageIo
+) -> None:
+    """Surface the retryable state write error after an upload failure."""
+    tasks = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="owner", filters="all")
+    tasks.save(task)
+    log_export_storage.save_from_path.side_effect = OSError("CSV upload failed")
+    finish_error = ConnectionError("Redis temporarily unavailable")
+    log_export_redis.finish_error = finish_error
+
+    with pytest.raises(LogExportLeaseBusyError) as retry:
+        log_export_task.prepare_log_export_task(
+            task, tasks=tasks, storage_prefix="exports", store_csv=store_log_export_csv, write_csv=_write_csv
+        )
+
+    log_export_storage.save_from_path.assert_called_once()
+    assert retry.value.__cause__ is finish_error
+    current = tasks.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert current is not None
+    assert current.status is LogExportStatus.PROCESSING
+    assert current.storage_key is None
+
+
+def test_dispatch_failure_preserves_publish_error_when_recording_failed_also_raises(
+    log_export_redis: LogExportRedisIo, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Keep the broker error visible when Redis also fails during dispatch cleanup."""
+    tasks = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="owner", filters="all")
+    dispatch_error = RuntimeError("Broker unavailable")
+    log_export_redis.finish_error = ConnectionError("Redis temporarily unavailable")
+
+    def dispatch(_task: LogExportTask[str]) -> None:
+        raise dispatch_error
+
+    with pytest.raises(RuntimeError) as failure:
+        log_export_task.save_and_dispatch_log_export_task(task, tasks=tasks, dispatch=dispatch)
+
+    assert failure.value is dispatch_error
+    assert "Redis temporarily unavailable" in caplog.text

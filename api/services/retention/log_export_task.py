@@ -140,12 +140,20 @@ def save_and_dispatch_log_export_task[FiltersT](
     tasks: LogExportTaskStore[FiltersT],
     dispatch: Callable[[LogExportTask[FiltersT]], None],
 ) -> None:
-    """Persist an admitted pending task before publishing it. Record a failure if it remains pending."""
+    """Save the pending task before dispatch and preserve any dispatch error after trying to record it."""
     tasks.save(task)
     try:
         dispatch(task)
     except Exception:
-        _mark_failed(task, tasks)
+        try:
+            tasks.finish(task, status=LogExportStatus.FAILED)
+        except Exception:
+            logger.exception(
+                "Failed to record log export dispatch failure: tenant=%s app=%s task=%s",
+                task.tenant_id,
+                task.app_id,
+                task.task_id,
+            )
         raise
 
 
@@ -157,7 +165,7 @@ def prepare_log_export_task[FiltersT](
     store_csv: StoreLogExportFile,
     write_csv: WriteLogExportCsv[FiltersT],
 ) -> None:
-    """Prepare a leased attempt, publishing its own CSV only while it still owns the task."""
+    """Publish an attempt's CSV while it owns the lease and propagate transient state write errors."""
     if task is None or task.status not in (LogExportStatus.PENDING, LogExportStatus.PROCESSING):
         return
     processing = tasks.claim(task)
@@ -183,8 +191,20 @@ def prepare_log_export_task[FiltersT](
         except LogExportLeaseBusyError:
             raise
         except Exception as exc:
-            if _mark_failed(processing, tasks) is False:
-                raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
+            try:
+                failure_recorded = tasks.finish(processing, status=LogExportStatus.FAILED)
+            except LogExportLeaseBusyError:
+                raise
+            except Exception:
+                logger.exception(
+                    "Failed to record log export failure: tenant=%s app=%s task=%s",
+                    task.tenant_id,
+                    task.app_id,
+                    task.task_id,
+                )
+            else:
+                if not failure_recorded:
+                    raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
             raise
         if not tasks.finish(processing, status=LogExportStatus.READY, storage_key=storage_key):
             raise LogExportLeaseBusyError("The log export lease expired before publication.")
@@ -214,14 +234,3 @@ def _renew_export_lease[FiltersT](
     finally:
         stopped.set()
         heartbeat.join(timeout=5)
-
-
-def _mark_failed[FiltersT](task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]) -> bool | None:
-    """Record failure if owned, return False on loss, or log the write error and return None."""
-    try:
-        return tasks.finish(task, status=LogExportStatus.FAILED)
-    except Exception:
-        logger.exception(
-            "Failed to record log export failure: tenant=%s app=%s task=%s", task.tenant_id, task.app_id, task.task_id
-        )
-        return None
