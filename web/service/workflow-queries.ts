@@ -61,7 +61,7 @@ export function workflowRunHistoryQueryOptions(resource: EditorResource) {
   }
 }
 
-export type WorkflowVersionEnvironment = {
+type WorkflowVersionEnvironment = {
   id: string
   name: string
 }
