@@ -35,6 +35,7 @@ export function WorkflowAgentSelectorContent({
   const appId = useAtomValue(editorAppIdAtom)
   const [source, setSource] = useState<AgentSource>('all')
   const [search, setSearch] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
   const keyword = useDebounce(search.trim(), { wait: 300 })
   const agentsQuery = useQuery({
     ...consoleQuery.agent.inviteOptions.get.queryOptions({
@@ -52,7 +53,7 @@ export function WorkflowAgentSelectorContent({
     placeholderData: keepPreviousData,
   })
   const difyAgents = source === 'external' ? [] : (agentsQuery.data?.data ?? [])
-  const isLoading = source !== 'external' && agentsQuery.isPending
+  const isLoading = !hasSearched && source !== 'external' && agentsQuery.isPending
   const hasDifyError = source !== 'external' && agentsQuery.isError
   const isKeywordCurrent = search.trim() === keyword
   const isDifyEmpty =
@@ -79,7 +80,10 @@ export function WorkflowAgentSelectorContent({
       <div className="p-2">
         <SearchInput
           value={search}
-          onValueChange={setSearch}
+          onValueChange={(value) => {
+            setHasSearched(true)
+            setSearch(value)
+          }}
           aria-label={t(($) => $['roster.searchLabel'])}
           placeholder={t(($) => $['roster.nodeSelector.searchAgentsPlaceholder'])}
         />
@@ -156,6 +160,7 @@ export function WorkflowAgentSelectorContent({
                 {source !== 'dify' && onSelectExternal && (
                   <ExternalAgentOptions
                     keyword={keyword}
+                    showInitialLoading={!hasSearched}
                     showEmpty={isKeywordCurrent && (source === 'external' || isDifyEmpty)}
                     onSelect={async (agent) => {
                       const selected = await onSelectExternal(agent)

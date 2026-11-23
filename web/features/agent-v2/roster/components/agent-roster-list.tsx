@@ -23,7 +23,6 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
@@ -33,6 +32,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { AgentRosterSkeleton } from './agent-roster-skeleton'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -62,51 +62,11 @@ type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
   adjacentFocusTargets: HTMLElement[]
 }
 
-const skeletonCardIds = Array.from(
-  { length: 6 },
-  (_, index) => `agent-roster-skeleton-card-${index}`,
-)
 const AGENT_ROSTER_GRID_CLASS_NAME = cn('gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)
 const emptyPlaceholderCardIds = Array.from(
   { length: 16 },
   (_, index) => `agent-roster-placeholder-card-${index}`,
 )
-
-function AgentRosterSkeleton() {
-  const { t } = useTranslation(['common'])
-
-  return (
-    <>
-      <span role="status" className="sr-only col-span-full">
-        {t(($) => $.loading)}
-      </span>
-      {skeletonCardIds.map((id) => (
-        <div
-          key={id}
-          className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
-        >
-          <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
-            <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
-              <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
-              <SkeletonRectangle className="my-0 h-2 w-20 max-w-full rounded-md opacity-12" />
-            </div>
-          </div>
-          <div className="px-4 py-1">
-            <div className="flex min-h-8 flex-col gap-2 py-0.5">
-              <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
-              <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
-            </div>
-          </div>
-          <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
-            <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
-            <SkeletonRectangle className="my-0 ms-2.5 h-3 w-28 rounded-md opacity-10" />
-          </div>
-        </div>
-      ))}
-    </>
-  )
-}
 
 function AgentRosterPlaceholderState({
   onRetry,
@@ -476,11 +436,7 @@ export function AgentRosterList({
         tabIndex={-1}
         className="min-w-0 px-2 pt-2 pb-8 outline-hidden sm:px-8"
       >
-        {state.status === 'pending' && (
-          <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
-            <AgentRosterSkeleton />
-          </div>
-        )}
+        {state.status === 'pending' && <AgentRosterSkeleton />}
         {state.status === 'error' && (
           <AgentRosterPlaceholderState
             onRetry={state.onRetry}
