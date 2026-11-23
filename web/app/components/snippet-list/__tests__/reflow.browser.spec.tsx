@@ -2,38 +2,12 @@ import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetList from '..'
 
 type ListSnippets = typeof consoleClient.workspaces.current.customizedSnippets.get
-
-const api = vi.hoisted(() => ({ list: vi.fn<ListSnippets>() }))
-
-// boundary: generated operation responses supply snippet pagination, member and tag data.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.customizedSnippets.get': api.list,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': async () => ({
-        accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
-      }),
-      'tags.get': async () => [],
-    }),
-  }
-})
-
-// boundary: Studio list navigation stops at the unavailable Next App Router.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 const snippet: Awaited<ReturnType<ListSnippets>>['data'][number] = {
   created_at: 1704067200,
@@ -61,7 +35,40 @@ const expectWithinHorizontalBounds = (element: Element, container: Element) => {
 }
 
 const renderSnippetList = async () => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            customizedSnippets: {
+              get: (input) => ({
+                data: input?.query?.keyword ? [] : [snippet],
+                has_more: false,
+                limit: 30,
+                page: 1,
+                total: input?.query?.keyword ? 0 : 1,
+              }),
+            },
+            members: {
+              get: () => ({
+                accounts: [
+                  {
+                    avatar_url: null,
+                    email: 'alice@example.com',
+                    id: 'creator-1',
+                    name: 'Alice',
+                    role: 'owner',
+                    status: 'active',
+                  },
+                ],
+              }),
+            },
+          },
+        },
+        tags: { get: () => [] },
+      },
+    }),
+  )
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     accountProfile: { id: 'creator-1' },
     workspacePermissionKeys: ['snippets.create_and_modify'],
@@ -80,21 +87,11 @@ const renderSnippetList = async () => {
         </main>
       </UrlState>
     </ConsoleProvider>,
+    { wrapper: createTestNavigation({ url: '/snippets' }).NavigationProvider },
   )
 }
 
 describe('Snippet list reflow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    api.list.mockImplementation(async (input: Parameters<ListSnippets>[0]) => ({
-      data: input?.query?.keyword ? [] : [snippet],
-      has_more: false,
-      limit: 30,
-      page: 1,
-      total: input?.query?.keyword ? 0 : 1,
-    }))
-  })
-
   afterEach(async () => {
     await page.viewport(1280, 720)
   })

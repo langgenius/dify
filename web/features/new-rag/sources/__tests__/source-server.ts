@@ -1,8 +1,13 @@
-import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsInitialSourcePreviewJobResponse,
+  KnowledgeFsProductPermission,
+  KnowledgeFsSourceResponse,
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Source } from '../source-models'
-import { vi } from 'vite-plus/test'
-import { withConsoleClientResponses, withConsoleResponses } from '@/test/console/service-responses'
+import { onTestFinished, vi } from 'vite-plus/test'
+import { apiError, installFakeApi, pendingResponse } from '@/test/fake-api'
 import { sourceApiResponse } from './source-api-fixture'
 import { source, sourceConnectionResponse, workflow } from './source-fixtures'
 
@@ -30,19 +35,8 @@ export const pluginResponses = {
   pending: false,
   failed: false,
 }
-export const clientMock = {
-  deleteSource: vi.fn(),
-  deletePreviewJob: vi.fn(),
-  getPreviewJob: vi.fn(),
-  patchSource: vi.fn(),
-  previewConnectedSource: vi.fn(),
-  startPreviewJob: vi.fn(),
-  retrySourceWorkflow: vi.fn(),
-  syncSource: vi.fn(),
-}
 export const server = {
   inflight: 0,
-  inputs: new Map<string, unknown[]>(),
   reads: new Map<string, number>(),
 }
 export const permissionState = {
@@ -51,20 +45,9 @@ export const permissionState = {
   ] as KnowledgeFsProductPermission[],
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
 }
-export const navigationMock = { awaitInitialSource: null as string | null }
-export const routerMock = { push: vi.fn(), replace: vi.fn() }
-export const navigation = {
-  usePathname: () => '/datasets/new/space-1/sources',
-  useRouter: () => routerMock,
-  useSearchParams: () =>
-    new URLSearchParams(
-      navigationMock.awaitInitialSource
-        ? { awaitInitialSource: navigationMock.awaitInitialSource }
-        : {},
-    ),
-}
+/** Route inputs for the next `renderSources` call. */
+export const routeState = { awaitInitialSource: null as string | null }
 export const settingsState = { configurationState: 'active' as 'active' | 'setup-required' }
-const forever = () => new Promise<never>(() => {})
 async function track<T>(read: () => Promise<T> | T) {
   server.inflight += 1
   try {
@@ -73,21 +56,25 @@ async function track<T>(read: () => Promise<T> | T) {
     server.inflight -= 1
   }
 }
-function paged<Item>(
+function paged<Item, Output>(
   resource: string,
   responses: ReturnType<typeof paginatedResponses<Item>>,
-  toApi: (item: Item) => unknown,
+  toApi: (item: Item) => Output,
 ) {
   return (input: { query?: { cursor?: string } }) => {
-    server.inputs.set(resource, [...(server.inputs.get(resource) ?? []), input])
-    if (responses.pending) return forever()
+    if (responses.pending) return pendingResponse()
     return track(async () => {
       const cursor = input.query?.cursor
       const reads = server.reads.get(resource) ?? 0
       server.reads.set(resource, reads + 1)
       if (cursor) {
         await responses.next()
-        if (responses.nextPageError) throw new Error(`${resource} next page unavailable`)
+        if (responses.nextPageError)
+          throw apiError({
+            status: 503,
+            code: 'SERVICE_UNAVAILABLE',
+            message: `${resource} next page unavailable`,
+          })
       } else {
         if (reads) await responses.refresh()
         if (responses.error) throw responses.error
@@ -100,67 +87,122 @@ function paged<Item>(
     })
   }
 }
-export function withSourceResponses(actual: typeof import('@/service/console')) {
+function settingsResponse() {
+  const active = settingsState.configurationState === 'active'
   return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.sourceProviderPreview.jobs.byJobId.delete': clientMock.deletePreviewJob,
-      'knowledgeFs.sourceProviderPreview.jobs.byJobId.get': clientMock.getPreviewJob,
-      'knowledgeFs.sourceProviderPreview.jobs.post': clientMock.startPreviewJob,
-      'knowledgeFs.sourceProviderPreview.post': clientMock.previewConnectedSource,
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete': clientMock.deleteSource,
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch': async (input: never) =>
-        sourceApiResponse(await clientMock.patchSource(input)),
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post': clientMock.syncSource,
-      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post':
-        clientMock.retrySourceWorkflow,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipelines.datasourcePlugins.get': () =>
-        pluginResponses.pending
-          ? forever()
-          : track(async () => {
-              if (pluginResponses.failed) throw new Error('plugins unavailable')
-              return pluginResponses.data ?? []
-            }),
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => {
-        const active = settingsState.configurationState === 'active'
-        return {
-          active_profile_available: active,
-          active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
-          capabilities: {
-            deep: active,
-            index: active,
-            ingest: active,
-            query: active,
-            research: active,
-            source_sync: active,
-          },
-          configuration_state: settingsState.configurationState,
-          embedding: null,
-          retrieval: null,
-          issues: [],
-          revision: 1,
-        }
-      },
-      'knowledgeFs.spaces.byControlSpaceId.sourceConnections.get': paged(
-        'connections',
-        connectionResponses,
-        (x) => x,
-      ),
-      'knowledgeFs.spaces.byControlSpaceId.sources.get': paged(
-        'sources',
-        sourceResponses,
-        sourceApiResponse,
-      ),
-    }),
+    active_profile_available: active,
+    active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+    capabilities: {
+      deep: active,
+      index: active,
+      ingest: active,
+      query: active,
+      research: active,
+      source_sync: active,
+    },
+    configuration_state: settingsState.configurationState,
+    embedding: null,
+    retrieval: null,
+    issues: [],
+    revision: 1,
   }
 }
+
+// The fixture mappers are loosely typed; the fake API validates responses against the contract.
+export const sourceResponse = (item: Source) => sourceApiResponse(item) as KnowledgeFsSourceResponse
+export const workflowResponse = (state?: string) =>
+  workflow(state) as PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse
+
+const websitePreviewJob = (
+  pages = [{ source_url: 'https://docs.example.com/guide', title: 'Guide' }],
+): KnowledgeFsInitialSourcePreviewJobResponse => ({
+  job_id: 'preview-job-1',
+  result: { kind: 'website_crawl', pages },
+  status: 'completed',
+})
+
+/** Serve the sources surface through the fake console API; reads stay tracked for `settle()`. */
+function installSourceApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        sourceProviderPreview: {
+          post: async () => ({
+            kind: 'online_document',
+            documents: [],
+          }),
+          jobs: {
+            post: async () => ({
+              job_id: 'preview-job-1',
+            }),
+            byJobId: {
+              get: async () => websitePreviewJob(),
+              delete: async ({ params }) => ({
+                job_id: params.job_id,
+                status: 'canceled',
+              }),
+            },
+          },
+        },
+        spaces: {
+          byControlSpaceId: {
+            settings: { get: settingsResponse },
+            sourceConnections: { get: paged('connections', connectionResponses, (x) => x) },
+            sources: {
+              get: paged('sources', sourceResponses, sourceResponse),
+              bySourceId: {
+                delete: async ({ params }) => ({
+                  status_url: '/deletion',
+                  job: {
+                    checkpoint: 'requested',
+                    created_at: '2026-07-20T10:00:00Z',
+                    id: 'delete-1',
+                    knowledge_space_id: 'space-1',
+                    run_state: 'queued',
+                    target_id: params.source_id,
+                    target_type: 'source',
+                    updated_at: '2026-07-20T10:00:00Z',
+                  },
+                }),
+                patch: async () => sourceResponse(source({})),
+                sync: { post: async () => workflowResponse() },
+              },
+            },
+            sourceWorkflows: {
+              byRunId: { retry: { post: async () => workflowResponse() } },
+            },
+          },
+        },
+      },
+      rag: {
+        pipelines: {
+          datasourcePlugins: {
+            get: () =>
+              pluginResponses.pending
+                ? pendingResponse()
+                : track(async () => {
+                    if (pluginResponses.failed)
+                      throw apiError({
+                        status: 503,
+                        code: 'SERVICE_UNAVAILABLE',
+                        message: 'plugins unavailable',
+                      })
+                    return pluginResponses.data ?? []
+                  }),
+          },
+        },
+      },
+    },
+  })
+}
+export type SourceApi = ReturnType<typeof installSourceApi>
+let sourceApi: SourceApi
+
+/** Reset the tracked server state and install a fresh fake API, whose handler spies it returns. */
 export function resetSourceServer() {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.clearAllMocks()
   server.inflight = 0
-  server.inputs.clear()
   server.reads.clear()
   for (const responses of [sourceResponses, connectionResponses]) {
     responses.refresh.mockReset()
@@ -173,28 +215,19 @@ export function resetSourceServer() {
   pluginResponses.data = []
   pluginResponses.pending = false
   pluginResponses.failed = false
-  navigationMock.awaitInitialSource = null
-  clientMock.deleteSource.mockReset().mockResolvedValue({ status: 'accepted' })
-  clientMock.deletePreviewJob.mockReset().mockResolvedValue({ status: 'canceled' })
-  clientMock.patchSource.mockReset().mockResolvedValue(source({}))
-  clientMock.retrySourceWorkflow.mockReset().mockResolvedValue(workflow())
-  clientMock.syncSource.mockReset().mockResolvedValue(workflow())
-  clientMock.previewConnectedSource.mockReset()
-  clientMock.startPreviewJob.mockReset()
-  clientMock.getPreviewJob.mockReset()
+  routeState.awaitInitialSource = null
   permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
   permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
   settingsState.configurationState = 'active'
+  sourceApi = installSourceApi()
+  onTestFinished(sourceApi)
+  return sourceApi
 }
-export function serveWebsitePreview(
-  pages = [{ source_url: 'https://docs.example.com/guide', title: 'Guide' }],
-) {
+export function serveWebsitePreview(pages?: Parameters<typeof websitePreviewJob>[0]) {
   connectionResponses.data = { pages: [{ data: [sourceConnectionResponse], next_cursor: null }] }
-  clientMock.startPreviewJob.mockResolvedValue({ job_id: 'preview-job-1' })
-  clientMock.getPreviewJob.mockResolvedValue({
-    result: { pages },
-    status: 'completed',
-  })
+  sourceApi.console.knowledgeFs.sourceProviderPreview.jobs.byJobId.get.mockResolvedValue(
+    websitePreviewJob(pages),
+  )
 }
 
 export function serveNotionConnection() {
