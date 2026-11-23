@@ -1,6 +1,7 @@
 const avatarInitialSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 
 const ACCOUNT_AVATAR_NONCE_PREFIX = 'account-avatar-v2:'
+const MAX_AVATAR_SIGNING_WINDOW_SECONDS = 60
 const DEFAULT_QUERY_STALE_TIME_MS = 5 * 60 * 1000
 const AVATAR_REFRESH_MARGIN_MS = 5 * 1000
 
@@ -13,7 +14,7 @@ type QueryWithData<T> = {
   }
 }
 
-export const getAvatarExpiresAt = (url: AvatarUrl): number | undefined => {
+export const getAvatarSignatureTimes = (url: AvatarUrl) => {
   if (!url) return undefined
 
   try {
@@ -23,21 +24,42 @@ export const getAvatarExpiresAt = (url: AvatarUrl): number | undefined => {
     const query = parsedUrl.searchParams
     if (!query.get('nonce')?.startsWith(ACCOUNT_AVATAR_NONCE_PREFIX)) return undefined
 
+    const timestamp = Number(query.get('timestamp'))
     const expiresAt = Number(query.get('expires_at'))
-    return Number.isSafeInteger(expiresAt) && expiresAt > 0 ? expiresAt * 1000 : undefined
+    if (
+      !Number.isSafeInteger(timestamp) ||
+      timestamp <= 0 ||
+      !Number.isSafeInteger(expiresAt) ||
+      expiresAt <= timestamp
+    )
+      return undefined
+
+    const lifetime = expiresAt - timestamp
+    // Match the server's signing window, which also shortens for small configured lifetimes.
+    const signingWindow = Math.min(
+      MAX_AVATAR_SIGNING_WINDOW_SECONDS,
+      Math.max(1, Math.floor(lifetime / 2)),
+    )
+    return { timestamp, expiresAt, signingWindow }
   } catch {
     return undefined
   }
 }
 
-const getSoonestAvatarExpiry = (urls: Iterable<AvatarUrl>): number | undefined => {
-  let soonest: number | undefined
+const getAvatarFreshness = (urls: Iterable<AvatarUrl>): number | undefined => {
+  let freshness: number | undefined
   for (const url of urls) {
-    const expiresAt = getAvatarExpiresAt(url)
-    if (expiresAt !== undefined && (soonest === undefined || expiresAt < soonest))
-      soonest = expiresAt
+    const signature = getAvatarSignatureTimes(url)
+    if (signature) {
+      const { timestamp, expiresAt, signingWindow } = signature
+      const ms = Math.max(
+        0,
+        (expiresAt - timestamp - signingWindow) * 1000 - AVATAR_REFRESH_MARGIN_MS,
+      )
+      freshness = freshness === undefined ? ms : Math.min(freshness, ms)
+    }
   }
-  return soonest
+  return freshness
 }
 
 export function getAvatarInitial(name: string | null | undefined): string {
@@ -51,19 +73,18 @@ export const avatarUrlStaleTime =
   (query: QueryWithData<T>): number => {
     if (!query.state.data) return DEFAULT_QUERY_STALE_TIME_MS
 
-    const expiresAt = getSoonestAvatarExpiry(getUrls(query.state.data))
-    if (expiresAt === undefined) return DEFAULT_QUERY_STALE_TIME_MS
-
-    return Math.max(
-      0,
-      Math.min(
-        DEFAULT_QUERY_STALE_TIME_MS,
-        expiresAt - AVATAR_REFRESH_MARGIN_MS - query.state.dataUpdatedAt,
-      ),
-    )
+    const freshness = getAvatarFreshness(getUrls(query.state.data))
+    return Math.min(DEFAULT_QUERY_STALE_TIME_MS, freshness ?? DEFAULT_QUERY_STALE_TIME_MS)
   }
 
-export const shouldRefreshAvatarUrls = (urls: Iterable<AvatarUrl>, now = Date.now()): boolean => {
-  const expiresAt = getSoonestAvatarExpiry(urls)
-  return expiresAt !== undefined && expiresAt - AVATAR_REFRESH_MARGIN_MS <= now
+export const shouldRefreshAvatarUrls = (
+  urls: Iterable<AvatarUrl>,
+  dataUpdatedAt: number | undefined,
+  now = Date.now(),
+): boolean => {
+  const freshness = getAvatarFreshness(urls)
+  return (
+    freshness !== undefined &&
+    (dataUpdatedAt === undefined || now < dataUpdatedAt || now - dataUpdatedAt >= freshness)
+  )
 }

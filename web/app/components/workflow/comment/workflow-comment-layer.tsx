@@ -77,16 +77,25 @@ const updateDetail = (
   client: QueryClient,
   params: CommentParams,
   update: (detail: WorkflowCommentDetail) => WorkflowCommentDetail,
-) => client.setQueryData(detailKeyOf(params), (detail) => (detail ? update(detail) : detail))
+) => {
+  const queryKey = detailKeyOf(params)
+  return client.setQueryData(queryKey, (detail) => (detail ? update(detail) : detail), {
+    updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt,
+  })
+}
 
 const updateList = (
   client: QueryClient,
   appId: string,
   update: (comments: WorkflowCommentBasic[]) => WorkflowCommentBasic[],
-) =>
-  client.setQueryData(listKeyOf(appId), (list) =>
-    list ? { ...list, data: update(list.data) } : list,
+) => {
+  const queryKey = listKeyOf(appId)
+  return client.setQueryData(
+    queryKey,
+    (list) => (list ? { ...list, data: update(list.data) } : list),
+    { updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt },
   )
+}
 
 // An optimistic write first stops fetches already running for the comment, so their older
 // results cannot land on top of it.
@@ -163,7 +172,7 @@ export function WorkflowCommentLayer() {
       input: appId ? { params: { app_id: appId } } : skipToken,
       enabled: isCollaborationEnabled,
       staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
-      refetchOnWindowFocus: ({ state: { data } }) =>
+      refetchOnWindowFocus: ({ state: { data, dataUpdatedAt } }) =>
         appId && data && !isWritingComments(queryClient, appId)
           ? shouldRefreshAvatarUrls(
               data.data.flatMap((comment) => [
@@ -171,6 +180,7 @@ export function WorkflowCommentLayer() {
                 comment.resolved_by_account?.avatar_url,
                 ...comment.participants.map((participant) => participant.avatar_url),
               ]),
+              dataUpdatedAt,
             )
           : false,
     }),
@@ -487,14 +497,17 @@ function ShownThread({
       input: { params },
       placeholderData: { ...listItem, replies: [], mentions: [] },
       staleTime: () => (isWritingComments(queryClient, params.app_id) ? Infinity : 0),
-      refetchOnWindowFocus: ({ state: { data } }) =>
+      refetchOnWindowFocus: ({ state: { data, dataUpdatedAt } }) =>
         data && !isWritingComments(queryClient, params.app_id)
-          ? shouldRefreshAvatarUrls([
-              data.created_by_account?.avatar_url,
-              data.resolved_by_account?.avatar_url,
-              ...data.mentions.map((mention) => mention.mentioned_user_account?.avatar_url),
-              ...data.replies.map((reply) => reply.created_by_account?.avatar_url),
-            ])
+          ? shouldRefreshAvatarUrls(
+              [
+                data.created_by_account?.avatar_url,
+                data.resolved_by_account?.avatar_url,
+                ...data.mentions.map((mention) => mention.mentioned_user_account?.avatar_url),
+                ...data.replies.map((reply) => reply.created_by_account?.avatar_url),
+              ],
+              dataUpdatedAt,
+            )
           : false,
     }),
   )
@@ -527,16 +540,26 @@ function ShownThread({
           created_by_account: author,
         }
         const { params } = variables
-        queryClient.setQueryData(detailKeyOf(params), (detail) => {
-          if (detail)
-            return detail.replies.some((item) => item.id === reply.id)
-              ? detail
-              : { ...detail, replies: [...detail.replies, saved] }
-          const comment = queryClient
-            .getQueryData(listKeyOf(params.app_id))
-            ?.data.find((item) => item.id === params.comment_id)
-          return comment && { ...comment, replies: [saved], mentions: [] }
-        })
+        const detailKey = detailKeyOf(params)
+        const listKey = listKeyOf(params.app_id)
+        const detailState = queryClient.getQueryState(detailKey)
+        const updatedAt = detailState?.data
+          ? detailState.dataUpdatedAt
+          : queryClient.getQueryState(listKey)?.dataUpdatedAt
+        queryClient.setQueryData(
+          detailKey,
+          (detail) => {
+            if (detail)
+              return detail.replies.some((item) => item.id === reply.id)
+                ? detail
+                : { ...detail, replies: [...detail.replies, saved] }
+            const comment = queryClient
+              .getQueryData(listKey)
+              ?.data.find((item) => item.id === params.comment_id)
+            return comment && { ...comment, replies: [saved], mentions: [] }
+          },
+          { updatedAt },
+        )
       },
     }),
   )

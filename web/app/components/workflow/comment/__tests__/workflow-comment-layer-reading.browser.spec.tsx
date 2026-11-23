@@ -44,11 +44,13 @@ const nextFrames = async (count: number) => {
 }
 
 describe('reading a thread', () => {
-  it('refreshes expiring avatars on the canvas and in the open thread when focus returns', async () => {
-    const avatarUrl = (expiresAt: number) =>
-      `/files/avatar/file-preview?nonce=account-avatar-v2%3Aauthor&sign=sig&expires_at=${expiresAt}`
-    const oldAvatar = avatarUrl(2)
-    const renewedAvatar = avatarUrl(Math.floor(Date.now() / 1000) + 300)
+  it('refreshes expiring canvas and thread avatars on focus with a slow browser clock', async () => {
+    const avatarUrl = (timestamp: number) =>
+      `/files/avatar/file-preview?timestamp=${timestamp}&nonce=account-avatar-v2%3Aauthor&sign=sig&expires_at=${timestamp + 300}`
+    const receivedAt = Date.now() - 235_000
+    const serverOffset = 120_000
+    const oldAvatar = avatarUrl(Math.floor((receivedAt + serverOffset) / 1000) - 59)
+    const renewedAvatar = avatarUrl(Math.floor((Date.now() + serverOffset) / 1000))
     const setCommentAvatar = (avatar_url: string) => {
       const comment = {
         ...listItem('first', 'First thread', 120),
@@ -72,6 +74,8 @@ describe('reading a thread', () => {
     ]
     await expect.poll(cachedAvatars).toEqual([oldAvatar, oldAvatar])
 
+    screen.queryClient.setQueryData(listKey, (list) => list, { updatedAt: receivedAt })
+    screen.queryClient.setQueryData(detailKey, (detail) => detail, { updatedAt: receivedAt })
     onTestFinished(() => focusManager.setFocused(undefined))
     focusManager.setFocused(false)
     setCommentAvatar(renewedAvatar)

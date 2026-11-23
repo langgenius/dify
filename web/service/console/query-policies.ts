@@ -3504,14 +3504,17 @@ function setCommentResolved(
   params: { app_id: string; comment_id: string },
   fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
 ) {
+  const detailKey = query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+    input: { params },
+  })
+  const listKey = query.apps.byAppId.workflow.comments.get.queryKey({
+    input: { params: { app_id: params.app_id } },
+  })
+  client.setQueryData(detailKey, (detail) => (detail ? { ...detail, ...fields } : detail), {
+    updatedAt: client.getQueryState(detailKey)?.dataUpdatedAt,
+  })
   client.setQueryData(
-    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
-    (detail) => (detail ? { ...detail, ...fields } : detail),
-  )
-  client.setQueryData(
-    query.apps.byAppId.workflow.comments.get.queryKey({
-      input: { params: { app_id: params.app_id } },
-    }),
+    listKey,
     (list) =>
       list
         ? {
@@ -3523,6 +3526,7 @@ function setCommentResolved(
             ),
           }
         : list,
+    { updatedAt: client.getQueryState(listKey)?.dataUpdatedAt },
   )
 }
 

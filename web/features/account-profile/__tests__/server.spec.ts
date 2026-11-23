@@ -65,6 +65,7 @@ describe('serverUserProfileQueryOptions', () => {
       meta: {
         currentVersion: '1.2.3',
         currentEnv: 'DEVELOPMENT',
+        serverPrefetched: true,
       },
     })
     const [request, init] = fetchMock.mock.calls[0]!

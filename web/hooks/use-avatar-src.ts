@@ -1,7 +1,7 @@
 import type { AvatarImageProps } from '@langgenius/dify-ui/avatar'
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { getAvatarExpiresAt } from '@/utils/avatar'
+import { getAvatarSignatureTimes } from '@/utils/avatar'
 
 type LoadingStatus = Parameters<NonNullable<AvatarImageProps['onLoadingStatusChange']>>[0]
 
@@ -15,14 +15,17 @@ const avatarSrcOptions = (file: string | undefined, received: string | undefined
     staleTime: Infinity,
   })
 
-function hasFreshReplacement(shared: string | undefined, received: string | undefined) {
+function hasNewerReplacement(shared: string | undefined, received: string | undefined) {
   if (shared === received) return false
-  const sharedExpiresAt = getAvatarExpiresAt(shared)
-  const receivedExpiresAt = getAvatarExpiresAt(received)
-  if (sharedExpiresAt === undefined || receivedExpiresAt === undefined) return false
-
-  const now = Date.now()
-  return sharedExpiresAt <= now && receivedExpiresAt > now
+  const sharedTimes = getAvatarSignatureTimes(shared)
+  const receivedTimes = getAvatarSignatureTimes(received)
+  return (
+    sharedTimes !== undefined &&
+    receivedTimes !== undefined &&
+    receivedTimes.timestamp > sharedTimes.timestamp &&
+    receivedTimes.expiresAt > sharedTimes.expiresAt &&
+    receivedTimes.timestamp + receivedTimes.signingWindow >= sharedTimes.expiresAt
+  )
 }
 
 /**
@@ -33,8 +36,8 @@ function hasFreshReplacement(shared: string | undefined, received: string | unde
  * Base UI marks it loaded before it paints. An avatar that cannot load the shared URL (its
  * signature expired and the browser let the picture go) shows the URL it received instead, and
  * a URL that loads becomes the shared one. Only a URL that loaded is ever shared, so avatars
- * never pass failing URLs back and forth. If the shared URL is already expired and the received
- * URL is still valid, prefer the received one without waiting for an image error.
+ * never pass failing URLs back and forth. Prefer a newer signed URL when its signing window
+ * reaches the shared URL's expiry.
  */
 export function useAvatarSrc(url: string | null | undefined) {
   const queryClient = useQueryClient()
@@ -43,7 +46,7 @@ export function useAvatarSrc(url: string | null | undefined) {
   const { data: shared } = useQuery(avatarSrcOptions(file, received))
   // URLs this avatar failed to load; it shows the first of the shared and received ones left.
   const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set())
-  const candidates = hasFreshReplacement(shared, received) ? [received, shared] : [shared, received]
+  const candidates = hasNewerReplacement(shared, received) ? [received, shared] : [shared, received]
   const src = candidates.find((candidate) => candidate && !failed.has(candidate))
 
   const onLoadingStatusChange = (status: LoadingStatus) => {

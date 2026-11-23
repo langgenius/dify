@@ -743,12 +743,13 @@ describe('consoleQuery account profile mutation defaults', () => {
 })
 
 describe('consoleQuery workspace member avatar freshness', () => {
-  it('treats members as stale before their cached avatar URL expires', async () => {
+  it('treats members as stale at the relative avatar deadline even with a slow browser clock', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient({ defaultOptions: { queries: { staleTime: 300_000 } } })
     const options = consoleQuery.workspaces.current.members.get.queryOptions({ input: {} })
-    const receivedAt = Date.UTC(2026, 10, 23, 2, 0, 59)
-    const issuedAt = receivedAt / 1000 - 59
+    const serverReceivedAt = Date.UTC(2026, 10, 23, 2, 0, 59)
+    const receivedAt = serverReceivedAt - 120_000
+    const issuedAt = serverReceivedAt / 1000 - 59
     const owner = '11111111-1111-1111-1111-111111111111'
     const upload = '22222222-2222-2222-2222-222222222222'
     const params = new URLSearchParams({
@@ -777,7 +778,7 @@ describe('consoleQuery workspace member avatar freshness', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(receivedAt + 200_000)
     expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(false)
 
-    now.mockReturnValue(receivedAt + 239_000)
+    now.mockReturnValue(receivedAt + 235_000)
     expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(true)
   })
 })
@@ -823,7 +824,7 @@ describe('consoleQuery workflow comment avatar freshness', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(receivedAt + 200_000)
     expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(false)
 
-    now.mockReturnValue(expiresAt * 1000 - 5_000)
+    now.mockReturnValue(receivedAt + 235_000)
     expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(true)
   })
 })

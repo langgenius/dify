@@ -1,7 +1,7 @@
 import { avatarUrlStaleTime, getAvatarInitial, shouldRefreshAvatarUrls } from './avatar'
 
-const avatarUrl = (expiresAt: number) =>
-  `/files/avatar/file-preview?timestamp=100&nonce=account-avatar-v2%3Aaccount-1&sign=sig&expires_at=${expiresAt}`
+const avatarUrl = (timestamp: number, expiresAt: number) =>
+  `/files/avatar/file-preview?timestamp=${timestamp}&nonce=account-avatar-v2%3Aaccount-1&sign=sig&expires_at=${expiresAt}`
 
 describe('getAvatarInitial', () => {
   it.each([
@@ -18,17 +18,17 @@ describe('getAvatarInitial', () => {
 })
 
 describe('account avatar expiry', () => {
-  it('caps query freshness at the soonest signed avatar expiry with a safety margin', () => {
+  it('uses the shortest avatar freshness, including the smaller window for a short lifetime', () => {
     const staleTime = avatarUrlStaleTime<{ avatars: string[] }>((data) => data.avatars)
 
     expect(
       staleTime({
         state: {
-          data: { avatars: [avatarUrl(500), avatarUrl(130)] },
+          data: { avatars: [avatarUrl(100, 500), avatarUrl(100, 130)] },
           dataUpdatedAt: 100_000,
         },
       }),
-    ).toBe(25_000)
+    ).toBe(10_000)
   })
 
   it('preserves normal freshness for external and legacy avatar URLs', () => {
@@ -49,8 +49,17 @@ describe('account avatar expiry', () => {
     ).toBe(300_000)
   })
 
-  it('refreshes only when a signed account avatar reaches its margin', () => {
-    expect(shouldRefreshAvatarUrls([avatarUrl(130)], 124_999)).toBe(false)
-    expect(shouldRefreshAvatarUrls([avatarUrl(130)], 125_000)).toBe(true)
-  })
+  it.each([-120_000, 120_000])(
+    'uses elapsed time with a browser clock offset of %d ms',
+    (clockOffset) => {
+      const timestamp = 1_800_000_000
+      const receivedAt = (timestamp + 59) * 1000 + clockOffset
+      const urls = [avatarUrl(timestamp, timestamp + 300)]
+      const staleTime = avatarUrlStaleTime<string[]>((data) => data)
+
+      expect(staleTime({ state: { data: urls, dataUpdatedAt: receivedAt } })).toBe(235_000)
+      expect(shouldRefreshAvatarUrls(urls, receivedAt, receivedAt + 234_999)).toBe(false)
+      expect(shouldRefreshAvatarUrls(urls, receivedAt, receivedAt + 235_000)).toBe(true)
+    },
+  )
 })

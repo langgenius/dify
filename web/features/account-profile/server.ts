@@ -28,6 +28,7 @@ export const serverUserProfileQueryOptions = () =>
         meta: {
           currentVersion: responseHeaders?.get('x-version') ?? null,
           currentEnv: responseHeaders?.get('x-env') ?? null,
+          serverPrefetched: true,
         },
       }
     },

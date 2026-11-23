@@ -3,6 +3,8 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useAvatarSrc } from '../use-avatar-src'
 
 const file = 'https://files.example.com/avatar.png'
+const signedAvatarUrl = (timestamp: number, expiresAt: number) =>
+  `/files/avatar-id/file-preview?nonce=account-avatar-v2%3Aaccount-id&timestamp=${timestamp}&expires_at=${expiresAt}&sign=${timestamp}`
 
 const renderAvatars = (...urls: string[]) => {
   const { wrapper } = createConsoleQueryWrapper()
@@ -16,18 +18,24 @@ describe('useAvatarSrc', () => {
     expect(result.current.map((avatar) => avatar.src)).toEqual([`${file}?sign=a`, `${file}?sign=a`])
   })
 
-  it('prefers a still-valid account avatar URL once the shared URL expires', () => {
-    const clock = vi.spyOn(Date, 'now').mockReturnValue(100_000)
+  it('keeps the shared URL until a replacement window reaches its expiry', () => {
+    const timestamp = 1_800_000_000
+    const shared = signedAvatarUrl(timestamp, timestamp + 300)
+    const early = signedAvatarUrl(timestamp + 180, timestamp + 480)
+    const replacement = signedAvatarUrl(timestamp + 240, timestamp + 540)
+    const { result } = renderAvatars(shared, early, replacement)
+
+    expect(result.current.map((avatar) => avatar.src)).toEqual([shared, shared, replacement])
+  })
+
+  it.each([-1, 1])('prefers a newer overlapping signature with %i-hour clock skew', (clockSkew) => {
+    const timestamp = 1_880_000_000
+    const clock = vi.spyOn(Date, 'now').mockReturnValue((timestamp + 95 + clockSkew * 3600) * 1000)
     onTestFinished(() => clock.mockRestore())
-    const accountAvatar = '/files/avatar-id/file-preview?nonce=account-avatar-v2%3Aaccount-id'
-    const shared = `${accountAvatar}&expires_at=120&sign=a`
-    const fresh = `${accountAvatar}&expires_at=180&sign=b`
-    const { result, rerender } = renderAvatars(shared, fresh)
+    const shared = signedAvatarUrl(timestamp, timestamp + 95)
+    const fresh = signedAvatarUrl(timestamp + 94, timestamp + 189)
+    const { result } = renderAvatars(shared, fresh)
 
-    expect(result.current.map((avatar) => avatar.src)).toEqual([shared, shared])
-
-    clock.mockReturnValue(120_000)
-    rerender()
     expect(result.current.map((avatar) => avatar.src)).toEqual([shared, fresh])
 
     act(() => result.current[1]!.onLoadingStatusChange('error'))
