@@ -90,9 +90,8 @@ it('keeps the last visible avatars when a room refresh fails', async () => {
   await expect.poll(() => getOnlineUserAvatars.mock.calls.length).toBe(callsBeforeOpen + 1)
   const callsBeforeRefresh = getOnlineUserAvatars.mock.calls.length
   getOnlineUserAvatars.mockRejectedValueOnce(new Error('avatar acknowledgement timed out'))
-  await vi.advanceTimersByTimeAsync(59_999)
-  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(callsBeforeRefresh)
-  await vi.advanceTimersByTimeAsync(1)
+  expect(vi.getTimerCount()).toBe(1)
+  await vi.advanceTimersToNextTimerAsync()
   expect(getOnlineUserAvatars).toHaveBeenCalledTimes(callsBeforeRefresh + 1)
   await expect(getOnlineUserAvatars.mock.results.at(-1)?.value).rejects.toThrow(
     'avatar acknowledgement timed out',
