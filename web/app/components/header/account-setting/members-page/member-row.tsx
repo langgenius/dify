@@ -1,11 +1,12 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { MouseEvent, Ref } from 'react'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { getAvatarInitial } from '@/utils/avatar'
 import { MemberMenu } from './member-menu'
@@ -63,7 +64,7 @@ export const MemberRow = ({
         <div className="flex min-w-0 items-center">
           <Avatar size="sm" className="me-2" aria-hidden="true">
             <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
-            <AvatarImage src={member.avatar_url || undefined} alt="" />
+            <AccountAvatarImage src={member.avatar_url || undefined} alt="" />
           </Avatar>
           <div className="min-w-0">
             <div className="system-sm-medium text-text-secondary">

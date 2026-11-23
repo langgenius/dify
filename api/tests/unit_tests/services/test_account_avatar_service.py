@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import pytest
@@ -10,12 +12,14 @@ from services.account_avatar_service import AccountAvatarService
 from services.account_errors import AvatarFileNotFoundError
 from tests.helpers.unit.model_factories import make_upload_file
 
+_ACCOUNT_ID = "11111111-1111-1111-1111-111111111111"
+
 
 def _context() -> RequestContext:
     return RequestContext(
         request_id="request-1",
         trace_id="trace-1",
-        account_id="account-1",
+        account_id=_ACCOUNT_ID,
         active_workspace_id="workspace-1",
     )
 
@@ -38,26 +42,22 @@ def test_resolve_passes_through_external_avatar_without_calling_gateway(
     get_owned_url.assert_not_called()
 
 
-def test_resolve_returns_owned_signed_url(
+def test_resolve_still_previews_unassigned_uploads_with_a_signed_url(
     files: SQLAlchemyAccountAvatarFileGateway,
     sqlite_session_factory: sessionmaker[Session],
-    mocker: MockerFixture,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(FILES_URL="https://files.example.com", CONSOLE_API_URL="https://console.example.com")
     file_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
-        session.add(make_upload_file(file_id=file_id, extension="png", mime_type="image/png"))
-    get_owned_url = mocker.spy(files, "get_owned_signed_url")
-    sign_url = mocker.patch(
-        "services.account_avatar_file_gateway.get_signed_avatar_url",
-        return_value="https://signed.example/avatar",
-    )
+        session.add(make_upload_file(file_id=file_id, created_by=_ACCOUNT_ID, extension="png", mime_type="image/png"))
     service = AccountAvatarService(files=files)
 
-    result = service.resolve(_context(), file_id)
+    result = urlsplit(service.resolve(_context(), file_id))
 
-    assert result == "https://signed.example/avatar"
-    sign_url.assert_called_once_with(upload_file_id=file_id, account_id="account-1")
-    get_owned_url.assert_called_once_with(account_id="account-1", upload_file_id=file_id)
+    assert result.netloc == "files.example.com"
+    assert result.path == f"/files/{file_id}/file-preview"
+    assert "sign=" in result.query
 
 
 @pytest.mark.parametrize("exists", [False, True])

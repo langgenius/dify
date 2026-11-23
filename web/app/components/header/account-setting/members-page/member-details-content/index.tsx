@@ -1,7 +1,7 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
@@ -123,7 +124,7 @@ export const MemberDetailsContent = memo(
           <div className="flex items-center gap-3">
             <Avatar size="2xl" aria-hidden="true">
               <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
-              <AvatarImage src={member.avatar_url || undefined} alt="" />
+              <AccountAvatarImage src={member.avatar_url || undefined} alt="" />
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="system-md-semibold wrap-break-word text-text-primary">

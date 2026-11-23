@@ -1,12 +1,6 @@
 import type { AvatarProps, AvatarSize } from '@langgenius/dify-ui/avatar'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarGroupCount,
-  AvatarImage,
-} from '@langgenius/dify-ui/avatar'
-import { useAvatarSrc } from '@/hooks/use-avatar-src'
+import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getUserColor } from '../utils/user-color'
 
@@ -27,8 +21,6 @@ type CollaboratorAvatarProps = Omit<AvatarProps, 'children'> & {
 }
 
 export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvatarProps) {
-  const { src, onLoadingStatusChange } = useAvatarSrc(collaborator.avatarUrl)
-
   return (
     <Avatar aria-hidden="true" {...props}>
       <AvatarFallback
@@ -36,7 +28,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>
-      <AvatarImage src={src} alt="" onLoadingStatusChange={onLoadingStatusChange} />
+      <AccountAvatarImage src={collaborator.avatarUrl || undefined} alt="" />
     </Avatar>
   )
 }

@@ -30,16 +30,15 @@ type Server = { list: WorkflowCommentBasic[]; details: Record<string, WorkflowCo
 export const server: { current: Server } = { current: { list: [], details: {} } }
 
 export const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
-// When set, every response signs the author's avatar anew, as the backend does: the same
-// picture under a new query string each time.
-export const avatar = { file: undefined as undefined | string, signatures: 0 }
+// When set, every response uses the same stable URL for the author's current avatar.
+export const avatar = { url: undefined as undefined | string }
 // A response is a copy of the server's data, as over the network.
-const signed = <T>(data: T): T => {
-  const file = avatar.file
+const responseCopy = <T>(data: T): T => {
+  const url = avatar.url
   return JSON.parse(
     JSON.stringify(data, (key, value) =>
-      file && key === 'created_by_account' && value?.id === author.id
-        ? { ...value, avatar_url: `${file}?signature=${++avatar.signatures}` }
+      url && key === 'created_by_account' && value?.id === author.id
+        ? { ...value, avatar_url: url }
         : value,
     ),
   ) as T
@@ -86,7 +85,7 @@ export const saveReplyOnServer = (commentId: string, content: string, id = `repl
 
 export const consoleResponses = {
   'apps.byAppId.workflow.comments.get': async () => {
-    const data = signed(server.current.list)
+    const data = responseCopy(server.current.list)
     await api.listGate
     return { data }
   },
@@ -98,7 +97,7 @@ export const consoleResponses = {
   }) => {
     api.detail(params.comment_id)
     if (api.detailFails) throw new Error('Network error')
-    const detail = signed(server.current.details[params.comment_id])
+    const detail = responseCopy(server.current.details[params.comment_id])
     await api.detailGate
     return detail
   },
@@ -124,7 +123,7 @@ export function resetFakeServer() {
   api.detailFails = false
   api.listGate = undefined
   api.detailGate = undefined
-  avatar.file = undefined
+  avatar.url = undefined
   collaboration.handler = undefined
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))
 }

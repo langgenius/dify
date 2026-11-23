@@ -387,16 +387,17 @@ describe('keyboard and hover', () => {
 
 describe('avatars', () => {
   it('shows an avatar already shown on the canvas at once in a thread that opens', async () => {
-    avatar.file = '/logo/logo-embedded-chat-avatar.png'
+    const avatarUrl = '/logo/logo-embedded-chat-avatar.png'
+    avatar.url = avatarUrl
     saveReplyOnServer('first', 'With a picture', 'reply-picture')
-    // The current user is the author; their profile signs the picture differently again.
-    const screen = await renderLayer({ avatarUrl: `${avatar.file}?signature=profile` })
+    // Profile, list and detail responses all identify the same avatar with the same stable URL.
+    const screen = await renderLayer({ avatarUrl })
     const markerPicture = () => markers(screen).first().element().querySelector('img')
     await expect
       .poll(() => markerPicture()?.complete && markerPicture()!.naturalWidth > 0)
       .toBe(true)
 
-    // The thread's own read signs the picture anew; its avatars must not fall back meanwhile.
+    // Opening the thread must reuse the loaded picture without showing the initials meanwhile.
     let fellBack = false
     const watch = new MutationObserver(() => {
       const dialog = document.querySelector('[role="dialog"]')

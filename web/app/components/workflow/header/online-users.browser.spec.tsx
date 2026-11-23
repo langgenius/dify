@@ -11,15 +11,15 @@ vi.mock('../collaboration/hooks/use-collaboration', () => ({
     isEnabled: true,
     cursors: {},
     onlineUsers: [
-      { user_id: 'bob', username: 'Bob', sid: 'sid-bob', avatar: 'bob-upload-id' },
+      { user_id: 'bob', username: 'Bob', sid: 'sid-bob', avatar: null },
       { user_id: 'carol', username: 'Carol', sid: 'sid-carol', avatar: null },
-      { user_id: 'dana', username: 'Dana', sid: 'sid-dana', avatar: 'dana-upload-id' },
+      { user_id: 'dana', username: 'Dana', sid: 'sid-dana', avatar: null },
       { user_id: 'eve', username: 'Eve', sid: 'sid-eve', avatar: null },
     ],
   }),
 }))
 
-it('shows a collaborator’s uploaded avatar and refreshes URLs when opening the member list', async () => {
+it('shows a current avatar even when the collaboration session has no avatar snapshot', async () => {
   onTestFinished(guardUnexpectedFetch())
   const avatarUrl = URL.createObjectURL(
     new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"/>'], {
@@ -48,4 +48,31 @@ it('shows a collaborator’s uploaded avatar and refreshes URLs when opening the
   await trigger.click()
   await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect.element(screen.getByRole('button', { name: 'Dana' }).getByAltText('')).toBeVisible()
+})
+
+it('refreshes current avatars once a minute while the room remains visible', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  // boundary: replace only the authorized room’s avatar response.
+  const getOnlineUserAvatars = vi
+    .spyOn(collaborationManager, 'getOnlineUserAvatars')
+    .mockResolvedValue({})
+  onTestFinished(() => getOnlineUserAvatars.mockRestore())
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+
+  await renderWorkflowBrowserComponent(
+    <TooltipProvider>
+      <OnlineUsers />
+    </TooltipProvider>,
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true } },
+  )
+  await vi.advanceTimersByTimeAsync(0)
+  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(1)
+
+  await vi.advanceTimersByTimeAsync(59_999)
+  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(1)
+  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(2)
 })

@@ -1208,14 +1208,13 @@ class TestWorkflowCases:
     ) -> None:
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
-        signed_avatar_url = "https://files.example.com/signed/avatar-1"
-        signed_avatars: list[tuple[str, str]] = []
+        current_avatar_urls = {
+            "u-1": "https://console.example.com/accounts/u-1/avatar-1",
+            "u-2": "https://console.example.com/accounts/u-2/avatar-2",
+        }
+        resolve_current_avatars = Mock(return_value=current_avatar_urls)
         queries: list[tuple[list[str], str, Session]] = []
         actors: list[tuple[str, str]] = []
-
-        def sign_avatar(*, avatar: str, account_id: str) -> str:
-            signed_avatars.append((avatar, account_id))
-            return signed_avatar_url
 
         class WorkflowQueries:
             def get_tenant_app_maintainers(
@@ -1231,7 +1230,13 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        monkeypatch.setattr(workflow_module, "build_account_avatar_url", sign_avatar)
+        monkeypatch.setattr(
+            workflow_module,
+            "application_services",
+            lambda: SimpleNamespace(
+                accounts=SimpleNamespace(avatar=SimpleNamespace(resolve_current_for_accounts=resolve_current_avatars))
+            ),
+        )
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
         redis_result = [
@@ -1307,12 +1312,12 @@ class TestWorkflowCases:
                         {
                             "user_id": "u-1",
                             "username": "Alice",
-                            "avatar": signed_avatar_url,
+                            "avatar": current_avatar_urls["u-1"],
                         },
                         {
                             "user_id": "u-2",
                             "username": "Bob",
-                            "avatar": None,
+                            "avatar": current_avatar_urls["u-2"],
                         },
                     ],
                 }
@@ -1321,7 +1326,7 @@ class TestWorkflowCases:
         assert pipeline_transactions == [False]
         assert redis_keys == [f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"]
         assert executions == [True]
-        assert signed_avatars == [("avatar-file-id", "u-1")]
+        resolve_current_avatars.assert_called_once_with(account_ids=("u-1", "u-2"))
         assert queries == [([app_id_1, app_id_2], "tenant-1", unbound_session)]
         assert actors == [("tenant-1", "account-1")]
 
@@ -1364,12 +1369,18 @@ class TestWorkflowCases:
         assert second_pipeline.hgetall.call_count == 1
 
     @staticmethod
-    def test_workflow_online_users_keeps_remaining_users_after_avatar_signing_failure(
+    def test_workflow_online_users_keeps_all_users_after_avatar_resolution_failure(
         app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         app_id = "11111111-1111-1111-1111-111111111111"
-        signer = Mock(side_effect=[RuntimeError("signing failed"), "https://files.example.com/signed/avatar-2"])
-        monkeypatch.setattr(workflow_module, "build_account_avatar_url", signer)
+        resolve_current_avatars = Mock(side_effect=RuntimeError("avatar lookup failed"))
+        monkeypatch.setattr(
+            workflow_module,
+            "application_services",
+            lambda: SimpleNamespace(
+                accounts=SimpleNamespace(avatar=SimpleNamespace(resolve_current_for_accounts=resolve_current_avatars))
+            ),
+        )
         monkeypatch.setattr(
             workflow_module,
             "WorkflowService",
@@ -1406,19 +1417,12 @@ class TestWorkflowCases:
                     "app_id": app_id,
                     "users": [
                         {"user_id": "user-1", "username": "Alice", "avatar": None},
-                        {
-                            "user_id": "user-2",
-                            "username": "Bob",
-                            "avatar": "https://files.example.com/signed/avatar-2",
-                        },
+                        {"user_id": "user-2", "username": "Bob", "avatar": None},
                     ],
                 }
             ]
         }
-        assert [call.kwargs for call in signer.call_args_list] == [
-            {"avatar": "avatar-file-id-1", "account_id": "user-1"},
-            {"avatar": "avatar-file-id-2", "account_id": "user-2"},
-        ]
+        resolve_current_avatars.assert_called_once_with(account_ids=("user-1", "user-2"))
         pipeline_factory.assert_called_once_with(transaction=False)
 
     @staticmethod

@@ -25,6 +25,7 @@ CSRF_WHITE_LIST = [
     re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
     re.compile(r"/console/api/workflow-run-archives/downloads/[a-f0-9]+/file"),
 ]
+_ACCOUNT_AVATAR_FILE_PATH = re.compile(r"/console/api/accounts/[a-f0-9-]+/avatars/[a-f0-9-]+")
 
 
 # server is behind a reverse proxy, so we need to check the url
@@ -198,6 +199,10 @@ def check_csrf_token(request: Request, user_id: str):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
     if is_admin_api_key_request(request):
+        return
+
+    # A read-only image request carries the Console cookie but cannot set the CSRF header.
+    if request.method in {"GET", "HEAD"} and _ACCOUNT_AVATAR_FILE_PATH.fullmatch(request.path):
         return
 
     def _unauthorized():

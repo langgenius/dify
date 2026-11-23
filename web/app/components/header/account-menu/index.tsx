@@ -2,7 +2,7 @@
 
 import type { ReactElement, ReactNode } from 'react'
 import type { ThemePreference } from '@/features/theme/theme'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Menu,
@@ -22,6 +22,7 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
   settingsQueryParamName,
@@ -153,7 +154,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
           </div>
           <Avatar size="lg" className="shrink-0" aria-hidden="true">
             <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
           </Avatar>
         </div>
       </MenuGroup>

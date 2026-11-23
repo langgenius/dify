@@ -22,6 +22,8 @@ import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
+const ONLINE_USER_AVATAR_REFRESH_INTERVAL_MS = 60_000
+
 const OnlineUsers = () => {
   const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments', 'workflow'])
   const appId = useAtomValue(editorAppIdAtom)
@@ -41,10 +43,7 @@ const OnlineUsers = () => {
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarAppId =
-    isConnected &&
-    isCollaborationEnabled &&
-    !upgradeDialog &&
-    onlineUsers.some((user) => user.avatar)
+    isConnected && isCollaborationEnabled && !upgradeDialog && onlineUsers.length > 0
       ? appId
       : undefined
   const { data: avatarUrls, refetch: refetchAvatars } = useQuery(
@@ -60,6 +59,8 @@ const OnlineUsers = () => {
       gcTime: 0,
       retry: false,
       staleTime: avatarUrlStaleTime<Record<string, string>>(Object.values),
+      refetchInterval: avatarAppId ? ONLINE_USER_AVATAR_REFRESH_INTERVAL_MS : false,
+      refetchIntervalInBackground: false,
     }),
   )
 

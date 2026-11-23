@@ -19,6 +19,7 @@ class MockRequest:
     cookies: dict[str, str]
     args: dict[str, str]
     path: str = "/console/api/test"
+    method: str = "GET"
 
 
 def test_extract_access_token() -> None:
@@ -87,6 +88,38 @@ def test_workflow_run_archive_download_file_bypasses_csrf() -> None:
     )
 
     token.check_csrf_token(request, "account-1")
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_current_account_avatar_read_bypasses_csrf(method: str) -> None:
+    request = cast(
+        Request,
+        MockRequest(
+            headers={},
+            cookies={},
+            args={},
+            method=method,
+            path="/console/api/accounts/11111111-1111-1111-1111-111111111111/avatars/22222222-2222-2222-2222-222222222222",
+        ),
+    )
+
+    token.check_csrf_token(request, "account-1")
+
+
+def test_current_account_avatar_post_requires_csrf() -> None:
+    request = cast(
+        Request,
+        MockRequest(
+            headers={},
+            cookies={},
+            args={},
+            method="POST",
+            path="/console/api/accounts/11111111-1111-1111-1111-111111111111/avatars/22222222-2222-2222-2222-222222222222",
+        ),
+    )
+
+    with pytest.raises(Unauthorized):
+        token.check_csrf_token(request, "account-1")
 
 
 def test_non_whitelisted_path_requires_csrf() -> None:

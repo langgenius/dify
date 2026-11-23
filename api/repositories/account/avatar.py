@@ -31,15 +31,24 @@ def _is_raster_avatar(*, allow_legacy: bool) -> ColumnElement[bool]:
     )
 
 
+def eligible_avatar_file_conditions(*, allow_legacy: bool) -> tuple[ColumnElement[bool], ...]:
+    """Match account-owned-role raster uploads, leaving account and file IDs to the caller."""
+    return (
+        UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
+        _is_raster_avatar(allow_legacy=allow_legacy),
+    )
+
+
 def owned_avatar_file_conditions(
     *, account_id: str, file_id: str, allow_legacy: bool
 ) -> tuple[ColumnElement[bool], ...]:
     """Match an account's own raster upload, accepting legacy metadata only when reading avatars."""
+    role_condition, raster_condition = eligible_avatar_file_conditions(allow_legacy=allow_legacy)
     return (
         UploadFile.id == file_id,
-        UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
+        role_condition,
         UploadFile.created_by == account_id,
-        _is_raster_avatar(allow_legacy=allow_legacy),
+        raster_condition,
     )
 
 

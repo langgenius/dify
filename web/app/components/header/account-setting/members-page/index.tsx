@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -30,6 +30,7 @@ import { useAtomValue } from 'jotai'
 import { Suspense, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -497,7 +498,10 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                         <AlertDialogBody className="flex flex-col gap-2">
                           <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 ps-3 pe-2">
                             <Avatar size="md">
-                              <AvatarImage src={payload.member.avatar_url || undefined} alt="" />
+                              <AccountAvatarImage
+                                src={payload.member.avatar_url || undefined}
+                                alt=""
+                              />
                               <AvatarFallback aria-hidden>
                                 {memberName[0]?.toLocaleUpperCase()}
                               </AvatarFallback>
