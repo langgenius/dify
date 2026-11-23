@@ -267,6 +267,10 @@ export const zExternalMonitoringResponse = z.object({
  */
 export const zExternalAgentAppReferenceResponse = z.object({
   app_id: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  icon_url: z.string().nullable(),
   mode: z.string(),
   name: z.string(),
   node_ids: z.array(z.string()),
