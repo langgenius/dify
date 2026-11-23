@@ -58,6 +58,7 @@
   "export.failed": "Esportazione non riuscita. Riprova.",
   "export.identitiesAll": "Tutti gli utenti e gli account",
   "export.last": "Ultima esportazione",
+  "export.limitReached": "Questo spazio di lavoro ha raggiunto il limite di esportazioni. Attendi che termini un’esportazione prima di riprovare.",
   "export.noIdentities": "Nessun risultato corrispondente.",
   "export.noMatches": "Nessun registro corrisponde a questi filtri.",
   "export.previewAgentDescription": "Ogni riga contiene una domanda e risposta della WebApp o un’esecuzione del nodo Agente nel workflow, con origine, ID, identità, data e ora, stato e feedback.",

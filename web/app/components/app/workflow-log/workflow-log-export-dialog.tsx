@@ -75,7 +75,7 @@ export function WorkflowLogExportDialog({
           statusLabel: latestStatus
             ? t(($) => $[`status.${latestStatus}`], { ns: 'appLog' })
             : undefined,
-          identities: logIdentityLabels(task.filters, identityOptions),
+          identities: logIdentityLabels(task.filters, [...(identities ?? []), ...identityOptions]),
         }
       }
       onExport={() => create({ params, body: query })}

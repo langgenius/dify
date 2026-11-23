@@ -58,6 +58,7 @@
   "export.failed": "Exportul a eșuat. Încearcă din nou.",
   "export.identitiesAll": "Toți utilizatorii și toate conturile",
   "export.last": "Ultimul export",
+  "export.limitReached": "Acest spațiu de lucru a atins limita de exporturi. Așteaptă să se termine un export înainte de a încerca din nou.",
   "export.noIdentities": "Niciun rezultat potrivit.",
   "export.noMatches": "Nicio înregistrare nu se potrivește acestor filtre.",
   "export.previewAgentDescription": "Fiecare rând conține o întrebare și un răspuns din WebApp sau o execuție a unui nod Agent din fluxul de lucru, cu sursă, ID-uri, identitate, marcaj temporal, stare și feedback.",

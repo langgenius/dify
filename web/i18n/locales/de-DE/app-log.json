@@ -58,6 +58,7 @@
   "export.failed": "Export fehlgeschlagen. Bitte erneut versuchen.",
   "export.identitiesAll": "Alle Nutzer und Konten",
   "export.last": "Letzter Export",
+  "export.limitReached": "Dieser Arbeitsbereich hat das Exportlimit erreicht. Warten Sie, bis ein Export abgeschlossen ist, und versuchen Sie es erneut.",
   "export.noIdentities": "Keine passenden Ergebnisse.",
   "export.noMatches": "Keine Protokolle entsprechen diesen Filtern.",
   "export.previewAgentDescription": "Jede Zeile enthält eine Frage mit Antwort aus der WebApp oder eine Ausführung eines Agent-Knotens im Workflow, einschließlich Quelle, IDs, Identität, Zeitstempel, Status und Feedback.",

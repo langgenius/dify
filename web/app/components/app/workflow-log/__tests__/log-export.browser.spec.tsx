@@ -188,6 +188,7 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   const download = last.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeVisible()
   await expect.element(last.getByText(/appLog.status.succeeded/)).toBeVisible()
+  await expect.element(last.getByText('customer-042, Mia Chen', { exact: true })).toBeVisible()
   const urls: string[] = []
   const followLink = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
     this: HTMLAnchorElement,

@@ -58,6 +58,7 @@
   "export.failed": "İxrac alınmadı. Yenidən cəhd edin.",
   "export.identitiesAll": "Bütün istifadəçilər və hesablar",
   "export.last": "Son ixrac",
+  "export.limitReached": "Bu iş sahəsi ixrac limitinə çatıb. Yenidən cəhd etməzdən əvvəl bir ixracın tamamlanmasını gözləyin.",
   "export.noIdentities": "Uyğun nəticə yoxdur.",
   "export.noMatches": "Bu filtrlərə uyğun jurnal yoxdur.",
   "export.previewAgentDescription": "Hər sətirdə bir WebApp sual-cavabı və ya Workflow daxilində bir Agent qovşağının icrası, həmçinin mənbə, identifikatorlar, istifadəçi kimliyi, vaxt, status və rəy olur.",

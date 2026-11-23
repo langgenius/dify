@@ -58,6 +58,7 @@
   "export.failed": "Xuất không thành công. Vui lòng thử lại.",
   "export.identitiesAll": "Tất cả người dùng và tài khoản",
   "export.last": "Lần xuất gần nhất",
+  "export.limitReached": "Không gian làm việc này đã đạt giới hạn xuất dữ liệu. Hãy đợi một tác vụ xuất hoàn tất rồi thử lại.",
   "export.noIdentities": "Không tìm thấy kết quả phù hợp.",
   "export.noMatches": "Không có nhật ký phù hợp với các bộ lọc này.",
   "export.previewAgentDescription": "Mỗi hàng chứa một câu hỏi và câu trả lời từ WebApp hoặc một lần thực thi nút Agent trong Workflow, cùng với nguồn, ID, danh tính, thời gian, trạng thái và phản hồi.",

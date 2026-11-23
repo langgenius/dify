@@ -58,6 +58,7 @@
   "export.failed": "Izvoz ni uspel. Poskusite znova.",
   "export.identitiesAll": "Vsi uporabniki in računi",
   "export.last": "Zadnji izvoz",
+  "export.limitReached": "Ta delovni prostor je dosegel omejitev izvozov. Pred ponovnim poskusom počakajte, da se eden od izvozov konča.",
   "export.noIdentities": "Ni ujemajočih se rezultatov.",
   "export.noMatches": "Noben dnevnik ne ustreza tem filtrom.",
   "export.previewAgentDescription": "Vsaka vrstica vsebuje vprašanje in odgovor iz WebApp ali eno izvedbo vozlišča agenta v delovnem toku, skupaj z virom, ID-ji, identiteto, časom, stanjem in povratnimi informacijami.",

@@ -58,6 +58,7 @@
   "export.failed": "Échec de l’export. Réessayez.",
   "export.identitiesAll": "Tous les utilisateurs et comptes",
   "export.last": "Dernière exportation",
+  "export.limitReached": "Cet espace de travail a atteint sa limite d’exportations. Attendez la fin d’une exportation avant de réessayer.",
   "export.noIdentities": "Aucun résultat correspondant.",
   "export.noMatches": "Aucun journal ne correspond à ces filtres.",
   "export.previewAgentDescription": "Chaque ligne contient une question et sa réponse dans la WebApp ou une exécution de nœud Agent dans le workflow, avec la source, les identifiants, l’identité, l’horodatage, le statut et le retour.",

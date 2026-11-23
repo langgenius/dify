@@ -1,12 +1,13 @@
 import type { DefaultError, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 export type LogExportPhase = 'checking' | 'exporting' | 'retry-status' | 'selecting'
 
 export const logExportRequest = { context: { silent: true } } as const
 
 export function useLogExport<
-  Latest extends { task?: { status: string } | null },
+  Latest extends { task?: { status: string; task_id: string } | null },
   Preview,
   Created,
   Input,
@@ -22,6 +23,7 @@ export function useLogExport<
   createOptions: UseMutationOptions<Created, DefaultError, Input>
 }) {
   const queryClient = useQueryClient()
+  const [taskIdAtSubmit, setTaskIdAtSubmit] = useState<string>()
   const latest = useQuery({
     ...latestOptions,
     enabled,
@@ -34,18 +36,24 @@ export function useLogExport<
         : false
     },
   })
-  const create = useMutation({
+  const { error, isPending, mutate, reset } = useMutation({
     ...createOptions,
-    onSuccess: async (...args) => {
-      await createOptions.onSuccess?.(...args)
-      await queryClient.invalidateQueries({ queryKey: latestOptions.queryKey })
+    onSettled: async (...args) => {
+      await createOptions.onSettled?.(...args)
+      await queryClient.invalidateQueries({ queryKey: latestOptions.queryKey, exact: true })
     },
   })
   const latestData = latest.isError ? undefined : latest.data
-  const status = latestData?.task?.status
-  const taskInProgress = status === 'pending' || status === 'processing'
+  const task = latestData?.task
+  const taskInProgress = task?.status === 'pending' || task?.status === 'processing'
+  // An export can finish before the client learns that its create response was lost.
+  const recoveredTask = task != null && (taskInProgress || task.task_id !== taskIdAtSubmit)
+  useEffect(() => {
+    if (error && recoveredTask) reset()
+  }, [error, recoveredTask, reset])
+
   const phase: LogExportPhase =
-    create.isPending || taskInProgress
+    isPending || taskInProgress
       ? 'exporting'
       : latest.isPending || latest.fetchStatus !== 'idle'
         ? 'checking'
@@ -63,12 +71,15 @@ export function useLogExport<
   return {
     latest: latestData,
     preview: preview.isError ? undefined : preview.data,
-    create: create.mutate,
-    reset: create.reset,
+    create: (input: Input) => {
+      setTaskIdAtSubmit(task?.task_id)
+      mutate(input)
+    },
+    reset,
     dialogState: {
       phase,
-      submitting: create.isPending,
-      createFailed: create.isError,
+      submitting: isPending,
+      createError: recoveredTask ? null : error,
       pendingPreview:
         preview.isPending || preview.isPlaceholderData || preview.fetchStatus !== 'idle',
       onRetryStatus: () => {

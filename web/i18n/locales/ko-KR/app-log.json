@@ -58,6 +58,7 @@
   "export.failed": "내보내지 못했습니다. 다시 시도해 주세요.",
   "export.identitiesAll": "모든 사용자 및 계정",
   "export.last": "마지막 내보내기",
+  "export.limitReached": "이 워크스페이스의 내보내기 한도에 도달했습니다. 내보내기 작업 하나가 완료된 후 다시 시도하세요.",
   "export.noIdentities": "일치하는 결과가 없습니다.",
   "export.noMatches": "필터에 맞는 로그가 없습니다.",
   "export.previewAgentDescription": "각 행에는 WebApp 질문과 답변 한 쌍 또는 Workflow Agent 노드 실행 한 건이 포함되며, 소스, ID, 사용자 식별 정보, 시간, 상태 및 피드백도 포함됩니다.",

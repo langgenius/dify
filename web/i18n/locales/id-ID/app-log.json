@@ -58,6 +58,7 @@
   "export.failed": "Ekspor gagal. Coba lagi.",
   "export.identitiesAll": "Semua pengguna dan akun",
   "export.last": "Ekspor terakhir",
+  "export.limitReached": "Ruang kerja ini telah mencapai batas ekspor. Tunggu hingga salah satu ekspor selesai sebelum mencoba lagi.",
   "export.noIdentities": "Tidak ada hasil yang cocok.",
   "export.noMatches": "Tidak ada log yang cocok dengan filter ini.",
   "export.previewAgentDescription": "Setiap baris memuat satu pertanyaan dan jawaban dari WebApp atau satu eksekusi node Agent di Workflow, beserta sumber, ID, identitas, waktu, status, dan umpan balik.",

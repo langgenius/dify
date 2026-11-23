@@ -58,6 +58,7 @@
   "export.failed": "Exporteren mislukt. Probeer het opnieuw.",
   "export.identitiesAll": "Alle gebruikers en accounts",
   "export.last": "Laatste export",
+  "export.limitReached": "Deze werkruimte heeft de exportlimiet bereikt. Wacht tot een export is voltooid en probeer het opnieuw.",
   "export.noIdentities": "Geen overeenkomende resultaten.",
   "export.noMatches": "Geen logboeken komen overeen met deze filters.",
   "export.previewAgentDescription": "Elke rij bevat één vraag en antwoord uit de WebApp of één uitvoering van een Agent-knooppunt in de workflow, met bron, ID’s, identiteit, tijdstip, status en feedback.",

@@ -18,6 +18,7 @@ vi.mock('react-i18next', async (importOriginal) => {
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
   function createMock(category: 'one' | 'other') {
     return createReactI18nextMock({
+      'export.limitReached': copy['export.limitReached'],
       'export.previewRowCount': copy[`export.previewRowCount_${category}`],
       'export.previewConversationCount': copy[`export.previewConversationCount_${category}`],
       'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
@@ -188,6 +189,46 @@ it('waits for both status and count refreshes when reopening with cached export 
   expect(requests).toEqual([])
 })
 
+it.each(['response-lost', 'active-export'] as const)(
+  'recovers an existing export after a %s submission failure',
+  async (createFailure) => {
+    const { trigger, dialog, lastExport, requests } = await openExport(false, 'chat', {
+      createFailure,
+    })
+    await trigger.click()
+    const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
+    await submit.click()
+
+    await expect
+      .element(lastExport.getByRole('status'))
+      .toHaveTextContent('appLog.archives.downloadHint.preparing')
+    await expect
+      .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
+      .toBeDisabled()
+    await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
+    await expect
+      .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
+      .toBeEnabled()
+    await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
+    expect(requests).toHaveLength(1)
+  },
+)
+
+it('shows the workspace limit error even when a previous export is ready', async () => {
+  const { trigger, dialog, lastExport } = await openExport(true, 'chat', {
+    createFailure: 'workspace-limit',
+  })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+
+  await expect
+    .element(dialog.getByRole('alert'))
+    .toHaveTextContent(appLogCopy['export.limitReached'])
+  await expect
+    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
+    .toBeEnabled()
+})
+
 it('shows the last export filters in its own row after the user leaves and returns', async () => {
   const { screen, trigger, dialog, lastExport, renderLogs, requests } = await openExport()
   await trigger.click()
@@ -286,7 +327,7 @@ it('keeps the export dialog height stable while recounting after an identity cha
 })
 
 it('shares the Chatflow list filters with export while keeping a separate export draft', async () => {
-  const { screen, dialog, listQueries, previews, requests } = await openExport(
+  const { screen, dialog, lastExport, listQueries, previews, requests } = await openExport(
     false,
     'advanced-chat',
   )
@@ -391,6 +432,9 @@ it('shares the Chatflow list filters with export while keeping a separate export
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await expect.element(submit).toBeEnabled()
   await submit.click()
+  await expect
+    .element(lastExport.getByText('user-1024, customer-42, Mia Chen', { exact: true }))
+    .toBeVisible()
   await expect
     .poll(() => requests)
     .toEqual([

@@ -58,6 +58,7 @@
   "export.failed": "エクスポートに失敗しました。再試行してください。",
   "export.identitiesAll": "すべてのユーザーとアカウント",
   "export.last": "前回のエクスポート",
+  "export.limitReached": "このワークスペースはエクスポートの上限に達しました。いずれかのエクスポートが完了してから、もう一度お試しください。",
   "export.noIdentities": "一致する結果がありません。",
   "export.noMatches": "条件に一致するログはありません。",
   "export.previewAgentDescription": "各行には、WebApp の質問と回答の 1 組、またはワークフローの Agent ノード実行 1 件が含まれます。ソース、ID、実行者の情報、日時、ステータス、フィードバックも含まれます。",

@@ -58,6 +58,7 @@
   "export.failed": "导出失败，请重试。",
   "export.identitiesAll": "全部用户和账户",
   "export.last": "上一次导出",
+  "export.limitReached": "此工作区的导出任务已达上限。请等待一个导出任务完成后再试。",
   "export.noIdentities": "没有匹配的结果。",
   "export.noMatches": "没有符合条件的日志。",
   "export.previewAgentDescription": "每组 WebApp 问答或每次 Workflow Agent 节点执行占一行，包含来源、相关 ID、身份、时间、状态及反馈。",

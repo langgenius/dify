@@ -100,7 +100,7 @@ export function ConversationLogExportDialog({
           end: task.filters.end,
           keyword: task.filters.keyword,
           statusLabel,
-          identities: logIdentityLabels(task.filters, identityOptions),
+          identities: logIdentityLabels(task.filters, [...(identities ?? []), ...identityOptions]),
         }
       }
       onExport={() => create({ params, body: query })}

@@ -58,6 +58,7 @@
   "export.failed": "Error al exportar. Inténtalo de nuevo.",
   "export.identitiesAll": "Todos los usuarios y cuentas",
   "export.last": "Última exportación",
+  "export.limitReached": "Este espacio de trabajo ha alcanzado su límite de exportaciones. Espera a que termine una exportación antes de volver a intentarlo.",
   "export.noIdentities": "No se encontraron coincidencias.",
   "export.noMatches": "No hay registros que coincidan con estos filtros.",
   "export.previewAgentDescription": "Cada fila contiene una pregunta y respuesta de la WebApp o una ejecución de un nodo de agente del flujo de trabajo, con origen, identificadores, identidad, fecha y hora, estado y comentarios.",

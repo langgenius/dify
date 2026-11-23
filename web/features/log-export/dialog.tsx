@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { ORPCError } from '@orpc/client'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -160,7 +161,7 @@ type LogExportDialogProps = {
   onOpenChange: (open: boolean) => void
   phase: LogExportPhase
   submitting: boolean
-  createFailed: boolean
+  createError: Error | null
   pendingPreview: boolean
   counts?: { rows: number; logs?: number; conversations?: number }
   previewDescription: string
@@ -178,7 +179,7 @@ export function LogExportDialog({
   onOpenChange,
   phase,
   submitting,
-  createFailed,
+  createError,
   pendingPreview,
   counts,
   previewDescription,
@@ -224,8 +225,10 @@ export function LogExportDialog({
   else summary = countSummary ?? t(($) => $['export.previewUnavailable'], { ns: 'appLog' })
 
   let error
-  if (createFailed) error = t(($) => $['export.failed'], { ns: 'appLog' })
-  else if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
+  if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
+  else if (createError instanceof ORPCError && createError.code === 'log_export_limit_reached')
+    error = t(($) => $['export.limitReached'], { ns: 'appLog' })
+  else if (createError) error = t(($) => $['export.failed'], { ns: 'appLog' })
   else if (noMatches && phase === 'selecting')
     error = t(($) => $['export.noMatches'], { ns: 'appLog' })
 

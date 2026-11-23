@@ -54,6 +54,7 @@ export async function openExport(
   responses?: {
     waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined
     waitForLatest?: () => Promise<void> | undefined
+    createFailure?: 'response-lost' | 'active-export' | 'workspace-limit'
   },
 ) {
   const appId = crypto.randomUUID()
@@ -76,6 +77,11 @@ export async function openExport(
       }
     : null
   let statusReads = 0
+  const limitReached = () =>
+    Response.json(
+      { code: 'log_export_limit_reached', message: 'The export limit was reached.', status: 429 },
+      { status: 429 },
+    )
   const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const request = input instanceof Request ? input : new Request(input)
     const url = new URL(request.url)
@@ -117,6 +123,7 @@ export async function openExport(
         expect(request.method).toBe('POST')
         const filters: ConversationLogExportCreatePayload = await request.json()
         requests.push(filters)
+        if (responses?.createFailure === 'workspace-limit') return limitReached()
         task = {
           task_id: requests.length === 1 ? taskId : crypto.randomUUID(),
           status: 'pending',
@@ -131,6 +138,8 @@ export async function openExport(
           },
         }
         statusReads = 0
+        if (responses?.createFailure === 'response-lost') throw new TypeError('Failed to fetch')
+        if (responses?.createFailure === 'active-export') return limitReached()
         return Response.json({ task_id: task.task_id, status: task.status }, { status: 202 })
       }
       case 'conversation-log-exports/latest':

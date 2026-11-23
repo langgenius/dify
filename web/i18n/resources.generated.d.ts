@@ -1419,6 +1419,7 @@ export default interface Resources {
     'export.failed': 'Export failed. Please try again.'
     'export.identitiesAll': 'All end users and accounts'
     'export.last': 'Last export'
+    'export.limitReached': 'This workspace has reached its export limit. Wait for an export to finish before trying again.'
     'export.noIdentities': 'No matches found.'
     'export.noMatches': 'No logs match these filters.'
     'export.previewAgentDescription': 'Each row contains one WebApp question and answer or one Workflow Agent node execution, with source, IDs, identity, timestamp, status, and feedback.'
