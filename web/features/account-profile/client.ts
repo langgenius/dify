@@ -3,6 +3,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { avatarUrlStaleTime } from '@/utils/avatar'
 
 export type UserProfileWithMeta = {
   profile: GetAccountProfileResponse
@@ -33,5 +34,6 @@ export const userProfileQueryOptions = () =>
         },
       }
     },
+    staleTime: avatarUrlStaleTime<UserProfileWithMeta>(({ profile }) => [profile.avatar_url]),
     retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
   })

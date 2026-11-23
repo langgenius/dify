@@ -742,6 +742,46 @@ describe('consoleQuery account profile mutation defaults', () => {
   })
 })
 
+describe('consoleQuery workspace member avatar freshness', () => {
+  it('treats members as stale before their cached avatar URL expires', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = createQueryClient({ defaultOptions: { queries: { staleTime: 300_000 } } })
+    const options = consoleQuery.workspaces.current.members.get.queryOptions({ input: {} })
+    const receivedAt = Date.UTC(2026, 10, 23, 2, 0, 59)
+    const issuedAt = receivedAt / 1000 - 59
+    const owner = '11111111-1111-1111-1111-111111111111'
+    const upload = '22222222-2222-2222-2222-222222222222'
+    const params = new URLSearchParams({
+      timestamp: String(issuedAt),
+      nonce: `account-avatar-v2:${owner}`,
+      sign: `${'A'.repeat(43)}=`,
+      expires_at: String(issuedAt + 300),
+    })
+    queryClient.setQueryData(
+      options.queryKey,
+      {
+        accounts: [
+          {
+            id: owner,
+            name: 'Test Member',
+            email: 'member@example.com',
+            role: 'normal',
+            status: 'active',
+            avatar_url: `https://files.example.com/files/${upload}/file-preview?${params}`,
+          },
+        ],
+      },
+      { updatedAt: receivedAt },
+    )
+
+    const now = vi.spyOn(Date, 'now').mockReturnValue(receivedAt + 200_000)
+    expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(false)
+
+    now.mockReturnValue(receivedAt + 239_000)
+    expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(true)
+  })
+})
+
 describe('consoleQuery app mutation defaults', () => {
   it('should merge the reset token into the exact app site without replacing other detail fields', async () => {
     const consoleQuery = await loadConsoleQuery()

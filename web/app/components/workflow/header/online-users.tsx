@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getAvatarInitial } from '@/utils/avatar'
+import { avatarUrlStaleTime, getAvatarInitial } from '@/utils/avatar'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
@@ -62,6 +62,7 @@ const OnlineUsers = () => {
         : skipToken,
       gcTime: 0,
       retry: false,
+      staleTime: avatarUrlStaleTime<Record<string, string>>(Object.values),
     }),
   )
 

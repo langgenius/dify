@@ -27,6 +27,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import { avatarUrlStaleTime } from '@/utils/avatar'
 import {
   legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
@@ -520,6 +521,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           members: {
+            get: {
+              queryOptions: {
+                staleTime: avatarUrlStaleTime<AccountWithRoleListResponse>((members) =>
+                  members.accounts.map((member) => member.avatar_url),
+                ),
+              },
+            },
             byMemberId: {
               delete: {
                 mutationOptions: {

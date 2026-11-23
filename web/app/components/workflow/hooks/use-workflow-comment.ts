@@ -14,6 +14,7 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
+import { shouldRefreshAvatarUrls } from '@/utils/avatar'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 
@@ -35,6 +36,20 @@ const toCommentDetailPreview = (comment: WorkflowCommentBasic): WorkflowCommentD
   replies: [],
   mentions: [],
 })
+
+const getCommentListAvatarUrls = (comments: WorkflowCommentBasic[]) =>
+  comments.flatMap((comment) => [
+    comment.created_by_account?.avatar_url,
+    comment.resolved_by_account?.avatar_url,
+    ...comment.participants.map((participant) => participant.avatar_url),
+  ])
+
+const getCommentDetailAvatarUrls = (comment: WorkflowCommentDetail) => [
+  comment.created_by_account?.avatar_url,
+  comment.resolved_by_account?.avatar_url,
+  ...comment.mentions.map((mention) => mention.mentioned_user_account?.avatar_url),
+  ...comment.replies.map((reply) => reply.created_by_account?.avatar_url),
+]
 
 export const useWorkflowComment = () => {
   const appId = useAtomValue(editorAppIdAtom)
@@ -78,6 +93,7 @@ export const useWorkflowComment = () => {
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
   const commentFocusToRestoreRef = useRef<string | null>(null)
+  const avatarRefreshInFlightRef = useRef(false)
 
   useLayoutEffect(() => {
     const commentId = commentFocusToRestoreRef.current
@@ -116,21 +132,63 @@ export const useWorkflowComment = () => {
     [appId, setActiveComment, setCommentDetailCache],
   )
 
-  const loadComments = useCallback(async () => {
-    if (!appId || !isCollaborationEnabled) return
+  const loadComments = useCallback(
+    async (showLoading = true) => {
+      if (!appId || !isCollaborationEnabled) return
 
-    setCommentsLoading(true)
+      if (showLoading) setCommentsLoading(true)
+      try {
+        const response = await consoleClient.apps.byAppId.workflow.comments.get({
+          params: { app_id: appId },
+        })
+        setComments(response.data)
+      } catch (error) {
+        console.error('Failed to fetch comments:', error)
+      } finally {
+        if (showLoading) setCommentsLoading(false)
+      }
+    },
+    [appId, isCollaborationEnabled, setComments, setCommentsLoading],
+  )
+
+  const refreshExpiredCommentAvatars = useCallback(async () => {
+    if (!appId || !isCollaborationEnabled || avatarRefreshInFlightRef.current) return
+
+    const shouldRefreshList =
+      !loading && shouldRefreshAvatarUrls(getCommentListAvatarUrls(comments))
+
+    const activeId = activeCommentIdRef.current
+    const activeDetail = activeId ? commentDetailCacheRef.current[activeId] : undefined
+    const shouldRefreshDetail =
+      !activeCommentLoading &&
+      activeId !== null &&
+      activeDetail !== undefined &&
+      shouldRefreshAvatarUrls(getCommentDetailAvatarUrls(activeDetail))
+
+    if (!shouldRefreshList && !shouldRefreshDetail) return
+
+    avatarRefreshInFlightRef.current = true
     try {
-      const response = await consoleClient.apps.byAppId.workflow.comments.get({
-        params: { app_id: appId },
-      })
-      setComments(response.data)
-    } catch (error) {
-      console.error('Failed to fetch comments:', error)
+      await Promise.all([
+        shouldRefreshList ? loadComments(false) : undefined,
+        shouldRefreshDetail && activeId
+          ? refreshActiveComment(activeId).catch((error) => {
+              console.warn('Failed to refresh expired workflow comment detail avatars', error)
+            })
+          : undefined,
+      ])
     } finally {
-      setCommentsLoading(false)
+      avatarRefreshInFlightRef.current = false
     }
-  }, [appId, isCollaborationEnabled, setComments, setCommentsLoading])
+  }, [
+    activeCommentLoading,
+    appId,
+    comments,
+    isCollaborationEnabled,
+    loadComments,
+    loading,
+    refreshActiveComment,
+  ])
 
   // Setup collaboration
   useEffect(() => {
@@ -641,6 +699,7 @@ export const useWorkflowComment = () => {
     handleCommentReplyDelete,
     handleCommentPositionUpdate,
     refreshActiveComment,
+    refreshExpiredCommentAvatars,
     handleCreateComment,
     loadComments,
   }

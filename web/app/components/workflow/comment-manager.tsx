@@ -4,7 +4,14 @@ import { useWorkflowStore } from './store'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()
-  const { handleCreateComment, handleCommentCancel } = useWorkflowComment()
+  const { handleCreateComment, handleCommentCancel, refreshExpiredCommentAvatars } =
+    useWorkflowComment()
+
+  useEventListener('focus', () => {
+    void refreshExpiredCommentAvatars().catch((error) => {
+      console.warn('Failed to refresh expired workflow comment avatars', error)
+    })
+  })
 
   useEventListener('click', (e) => {
     const { controlMode, mousePosition, pendingComment, isCommentPlacing } =

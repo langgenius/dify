@@ -39,6 +39,9 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
+const signedAvatarUrl =
+  '/files/avatar/file-preview?timestamp=1&nonce=account-avatar-v2%3Auser-1&sign=sig&expires_at=2'
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
@@ -168,6 +171,47 @@ describe('useWorkflowComment', () => {
 
     expect(store.getState().comments).toEqual([comment])
     expect(store.getState().commentsLoading).toBe(false)
+  })
+
+  it('refreshes expired list and active-detail avatars on demand without hiding the list', async () => {
+    const signedAuthor = {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+      avatar_url: signedAvatarUrl,
+    }
+    const comment = {
+      ...baseComment(),
+      created_by_account: signedAuthor,
+    }
+    const detail = {
+      ...baseCommentDetail(),
+      created_by_account: signedAuthor,
+    }
+    mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
+    mockFetchWorkflowComment.mockResolvedValue(detail)
+
+    const { result, store } = renderWorkflowHook(useCommentCanvas, {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        activeCommentId: comment.id,
+        activeCommentDetail: detail,
+        commentDetailCache: { [comment.id]: detail },
+      },
+    })
+
+    await waitFor(() => expect(mockFetchWorkflowComments).toHaveBeenCalledOnce())
+    const loadingStates: boolean[] = []
+    const unsubscribe = store.subscribe((state) => loadingStates.push(state.commentsLoading))
+
+    await act(async () => result.current.refreshExpiredCommentAvatars())
+    unsubscribe()
+
+    expect(mockFetchWorkflowComments).toHaveBeenCalledTimes(2)
+    expect(mockFetchWorkflowComment).toHaveBeenCalledWith({
+      params: { app_id: 'app-1', comment_id: comment.id },
+    })
+    expect(loadingStates).not.toContain(true)
   })
 
   it('does not load comment list when collaboration is disabled', async () => {
