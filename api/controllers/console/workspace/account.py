@@ -395,8 +395,7 @@ class CurrentAccountAvatarFileApi(Resource):
         ):
             raise CurrentAccountAvatarFileApi._not_found()
         response.content_length = file.size
-        response.cache_control.private = True
-        response.cache_control.no_cache = True
+        response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
         response.set_etag(file_id_str)
         response.make_conditional(request)
         return response

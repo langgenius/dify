@@ -2,11 +2,13 @@
 
 import type { AvatarImageProps } from '@langgenius/dify-ui/avatar'
 import { AvatarImage } from '@langgenius/dify-ui/avatar'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { API_PREFIX } from '@/config'
-import { refreshAccessTokenOrReLogin } from '@/service/refresh-token'
+import {
+  getSessionRefreshRevision,
+  subscribeToSessionRefresh,
+} from '@/service/session-refresh-events'
 
-const SESSION_REFRESH_TIMEOUT = 100_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 type LoadingStatus = Parameters<NonNullable<AvatarImageProps['onLoadingStatusChange']>>[0]
 
@@ -30,29 +32,28 @@ const isStableAccountAvatarURL = (src: string) => {
   }
 }
 
-const recoverExpiredAccountAvatarSession = async (src: string) => {
-  try {
-    // oxlint-disable-next-line no-restricted-properties -- Native image requests bypass Console transport; this probe distinguishes an expired session from a permanent image failure.
-    const response = await globalThis.fetch(src, {
-      method: 'HEAD',
-      credentials: 'include',
-      cache: 'no-store',
-      redirect: 'manual',
-      signal: AbortSignal.timeout(SESSION_REFRESH_TIMEOUT),
-    })
-    if (response.ok) return true
-    if (response.status !== 401) return false
-
-    await refreshAccessTokenOrReLogin(SESSION_REFRESH_TIMEOUT)
-    return true
-  } catch {
-    return false
-  }
-}
-
 function RecoverableAccountAvatarImage({ src, onLoadingStatusChange, ...props }: AvatarImageProps) {
   const attemptedRef = useRef(false)
+  const unsubscribeRef = useRef<(() => void) | null>(null)
+  const [initialRefreshRevision] = useState(getSessionRefreshRevision)
   const [retry, setRetry] = useState(0)
+
+  useEffect(
+    () => () => {
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
+    },
+    [],
+  )
+
+  const retryAfterRefresh = () => {
+    if (!attemptedRef.current) {
+      attemptedRef.current = true
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
+      setRetry(1)
+    }
+  }
 
   const handleLoadingStatusChange = (status: LoadingStatus) => {
     onLoadingStatusChange?.(status)
@@ -60,14 +61,17 @@ function RecoverableAccountAvatarImage({ src, onLoadingStatusChange, ...props }:
       status !== 'error' ||
       typeof src !== 'string' ||
       attemptedRef.current ||
+      unsubscribeRef.current ||
       !isStableAccountAvatarURL(src)
     )
       return
 
-    attemptedRef.current = true
-    void recoverExpiredAccountAvatarSession(src).then((recovered) => {
-      if (recovered) setRetry(1)
-    })
+    if (getSessionRefreshRevision() !== initialRefreshRevision) {
+      retryAfterRefresh()
+      return
+    }
+
+    unsubscribeRef.current = subscribeToSessionRefresh(retryAfterRefresh)
   }
 
   return (

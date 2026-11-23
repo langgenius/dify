@@ -1,19 +1,46 @@
+import type { AvatarImageProps } from '@langgenius/dify-ui/avatar'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
-import { act, render, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, waitFor } from '@testing-library/react'
+import { notifySessionRefreshed } from '@/service/session-refresh-events'
 import { AccountAvatarImage } from '..'
 
-const mocks = vi.hoisted(() => ({
-  refreshAccessTokenOrReLogin: vi.fn(),
-}))
+const sessionRefresh = vi.hoisted(() => {
+  let revision = 0
+  const listeners = new Set<() => void>()
+  const subscribe = vi.fn((listener: () => void) => {
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  })
+
+  return {
+    getRevision: () => revision,
+    subscribe,
+    notify: () => {
+      revision += 1
+      Array.from(listeners).forEach((listener) => listener())
+    },
+    listenerCount: () => listeners.size,
+    reset: () => {
+      revision = 0
+      listeners.clear()
+      subscribe.mockClear()
+    },
+  }
+})
 
 vi.mock('@/config', () => ({ API_PREFIX: '/console/api' }))
-vi.mock('@/service/refresh-token', () => ({
-  refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
+vi.mock('@/service/session-refresh-events', () => ({
+  getSessionRefreshRevision: sessionRefresh.getRevision,
+  subscribeToSessionRefresh: sessionRefresh.subscribe,
+  notifySessionRefreshed: sessionRefresh.notify,
 }))
 
 const accountId = '11111111-1111-1111-1111-111111111111'
 const fileId = '22222222-2222-2222-2222-222222222222'
 const stableAvatar = `/console/api/accounts/${accountId}/avatars/${fileId}`
+const nextStableAvatar = `/console/api/accounts/${accountId}/avatars/33333333-3333-3333-3333-333333333333`
 
 class ControlledImage {
   complete = false
@@ -31,7 +58,20 @@ class ControlledImage {
   }
 }
 
-const renderAvatar = (src: string) => {
+const requireImage = (images: ControlledImage[], index: number) => {
+  const image = images[index]
+  if (!image) throw new Error(`Expected controlled image at index ${index}`)
+  return image
+}
+
+const avatar = (src: string, props: Omit<AvatarImageProps, 'alt' | 'src'> = {}) => (
+  <Avatar>
+    <AvatarFallback>A</AvatarFallback>
+    <AccountAvatarImage src={src} alt="" {...props} />
+  </Avatar>
+)
+
+const renderAvatar = (src: string, props: Omit<AvatarImageProps, 'alt' | 'src'> = {}) => {
   const images: ControlledImage[] = []
   class MockImage extends ControlledImage {
     constructor() {
@@ -40,101 +80,113 @@ const renderAvatar = (src: string) => {
     }
   }
   vi.spyOn(window, 'Image').mockImplementation(MockImage as unknown as typeof window.Image)
-  render(
-    <Avatar>
-      <AvatarFallback>A</AvatarFallback>
-      <AccountAvatarImage src={src} alt="" />
-    </Avatar>,
-  )
-  return images
+  const result = render(avatar(src, props))
+  return {
+    ...result,
+    images,
+    rerenderAvatar: (nextSrc: string) => result.rerender(avatar(nextSrc, props)),
+  }
 }
 
 describe('AccountAvatarImage', () => {
   beforeEach(() => {
-    mocks.refreshAccessTokenOrReLogin.mockReset().mockResolvedValue(undefined)
-    vi.stubGlobal('fetch', vi.fn())
+    sessionRefresh.reset()
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
-  it('refreshes an expired Console session and retries the same stable avatar once', async () => {
-    const fetchMock = vi
-      .mocked(globalThis.fetch)
-      .mockResolvedValue(new Response(null, { status: 401 }))
-    const images = renderAvatar(stableAvatar)
-    expect(fetchMock).not.toHaveBeenCalled()
+  it('retries a failed stable avatar once after an observed session refresh', async () => {
+    const { images } = renderAvatar(stableAvatar)
+    expect(sessionRefresh.listenerCount()).toBe(0)
 
-    await act(async () => {
-      images[0]!.fail()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    await waitFor(() => expect(images).toHaveLength(2))
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(stableAvatar, {
-      method: 'HEAD',
-      credentials: 'include',
-      cache: 'no-store',
-      redirect: 'manual',
-      signal: expect.any(AbortSignal),
-    })
-    expect(mocks.refreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
-    expect(images[1]!.src).toBe(images[0]!.src)
-
-    act(() => images[1]!.fail())
-    await Promise.resolve()
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(mocks.refreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
-  })
-
-  it('retries without refreshing when another request already renewed the session', async () => {
-    const fetchMock = vi
-      .mocked(globalThis.fetch)
-      .mockResolvedValue(new Response(null, { status: 200 }))
-    const images = renderAvatar(stableAvatar)
-
-    await act(async () => {
-      images[0]!.fail()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    await waitFor(() => expect(images).toHaveLength(2))
-    expect(fetchMock).toHaveBeenCalledOnce()
-    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-    expect(images[1]!.src).toBe(images[0]!.src)
-  })
-
-  it.each([
-    ['a missing stable avatar', () => Promise.resolve(new Response(null, { status: 404 }))],
-    ['a failed probe', () => Promise.reject(new TypeError('network error'))],
-  ])('does not refresh or retry after %s', async (_name, probe) => {
-    const fetchMock = vi.mocked(globalThis.fetch).mockImplementation(probe)
-    const images = renderAvatar(stableAvatar)
-
-    act(() => images[0]!.fail())
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
-    await Promise.resolve()
-    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    act(() => requireImage(images, 0).fail())
+    expect(sessionRefresh.listenerCount()).toBe(1)
     expect(images).toHaveLength(1)
+
+    act(() => notifySessionRefreshed())
+
+    await waitFor(() => expect(images).toHaveLength(2))
+    expect(sessionRefresh.listenerCount()).toBe(0)
+    expect(requireImage(images, 1).src).toBe(requireImage(images, 0).src)
+
+    act(() => requireImage(images, 1).fail())
+    act(() => notifySessionRefreshed())
+    expect(sessionRefresh.listenerCount()).toBe(0)
+    expect(images).toHaveLength(2)
+  })
+
+  it('retries when the session refresh completes while the initial image is pending', async () => {
+    const { images } = renderAvatar(stableAvatar)
+    act(() => notifySessionRefreshed())
+    expect(sessionRefresh.listenerCount()).toBe(0)
+
+    act(() => requireImage(images, 0).fail())
+
+    await waitFor(() => expect(images).toHaveLength(2))
+    expect(requireImage(images, 1).src).toBe(requireImage(images, 0).src)
+    expect(sessionRefresh.listenerCount()).toBe(0)
+  })
+
+  it('does not count a refresh completed before the avatar mounted', async () => {
+    act(() => notifySessionRefreshed())
+    const { images } = renderAvatar(stableAvatar)
+
+    act(() => requireImage(images, 0).fail())
+    expect(images).toHaveLength(1)
+    expect(sessionRefresh.listenerCount()).toBe(1)
+
+    act(() => notifySessionRefreshed())
+    await waitFor(() => expect(images).toHaveLength(2))
   })
 
   it.each([
     ['an external avatar', 'https://images.example.com/user.png'],
     ['a stable-path lookalike', `${stableAvatar}/extra`],
     ['a stable URL with query parameters', `${stableAvatar}?signature=legacy`],
-  ])('does not probe %s after it fails to load', async (_name, src) => {
-    const fetchMock = vi.mocked(globalThis.fetch)
-    const images = renderAvatar(src)
+  ])('does not subscribe or retry a failed %s', (_name, src) => {
+    const { images } = renderAvatar(src)
 
-    act(() => images[0]!.fail())
-    await Promise.resolve()
+    act(() => requireImage(images, 0).fail())
+    act(() => notifySessionRefreshed())
 
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(sessionRefresh.listenerCount()).toBe(0)
+    expect(sessionRefresh.subscribe).not.toHaveBeenCalled()
+    expect(images).toHaveLength(1)
+  })
+
+  it('preserves loading-status and native image callbacks', () => {
+    const onLoadingStatusChange = vi.fn()
+    const { images } = renderAvatar(stableAvatar, { onLoadingStatusChange })
+
+    expect(onLoadingStatusChange).toHaveBeenCalledWith('loading')
+    act(() => requireImage(images, 0).fail())
+    expect(onLoadingStatusChange).toHaveBeenCalledWith('error')
+
+    const onError = vi.fn()
+    const { container } = render(
+      avatar('https://images.example.com/user.png', { keepMounted: true, onError }),
+    )
+    const image = container.querySelector('img')
+    if (!image) throw new Error('Expected a mounted avatar image')
+    fireEvent.error(image)
+    expect(onError).toHaveBeenCalledOnce()
+  })
+
+  it('cleans a pending refresh subscription when the source changes or unmounts', () => {
+    const { images, rerenderAvatar, unmount } = renderAvatar(stableAvatar)
+
+    act(() => requireImage(images, 0).fail())
+    expect(sessionRefresh.listenerCount()).toBe(1)
+
+    rerenderAvatar(nextStableAvatar)
+    expect(sessionRefresh.listenerCount()).toBe(0)
+
+    act(() => requireImage(images, 1).fail())
+    expect(sessionRefresh.listenerCount()).toBe(1)
+
+    unmount()
+    expect(sessionRefresh.listenerCount()).toBe(0)
   })
 })

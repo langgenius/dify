@@ -123,8 +123,7 @@ def test_avatar_reads_allow_a_workspace_less_account_without_csrf(harness: _Harn
     assert response.mimetype == "image/png"
     assert response.headers["ETag"] == f'"{_FILE_ID}"'
     assert response.headers["Content-Length"] == str(len(_IMAGE))
-    assert "private" in response.headers["Cache-Control"]
-    assert "no-cache" in response.headers["Cache-Control"]
+    assert response.headers["Cache-Control"] == "private, max-age=300, must-revalidate"
     if method == "GET":
         assert response.get_data() == _IMAGE
         assert harness.storage.reads == [_FILE_KEY]
@@ -141,19 +140,22 @@ def test_avatar_reads_require_an_authenticated_console_account(harness: _Harness
     assert not harness.storage.reads
 
 
-def test_matching_etag_returns_304_after_auth_without_reading_storage(harness: _Harness) -> None:
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_matching_etag_returns_304_after_auth_without_reading_storage(harness: _Harness, method: str) -> None:
     initial = harness.client.get(harness.url())
     assert initial.get_data() == _IMAGE
     etag = initial.headers["ETag"]
     harness.storage.reads.clear()
 
-    response = harness.client.get(harness.url(), headers={"If-None-Match": etag})
+    response = harness.client.open(harness.url(), method=method, headers={"If-None-Match": etag})
 
     assert response.status_code == 304
+    assert response.headers["ETag"] == etag
+    assert response.headers["Cache-Control"] == "private, max-age=300, must-revalidate"
     assert response.get_data() == b""
     assert not harness.storage.reads
 
-    anonymous = harness.app.test_client().get(harness.url(), headers={"If-None-Match": etag})
+    anonymous = harness.app.test_client().open(harness.url(), method=method, headers={"If-None-Match": etag})
     assert anonymous.status_code == 401
     assert not harness.storage.reads
 
