@@ -111,6 +111,26 @@ def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() ->
     assert _collect_selected_contexts(node_results, ["first", "result"]) == ["alpha"]
 
 
+def test_collect_selected_contexts_accepts_text_arrays_without_stringifying_other_values() -> None:
+    """Selected text arrays preserve evidence order; unrelated values stay unusable."""
+    node_results = {
+        "start": NodeRunResult(
+            outputs={
+                "texts": ["first", "", "   ", "second"],
+                "nested": {"texts": ["nested"]},
+                "files": [{"name": "document.txt"}],
+                "number": 42,
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["start", "texts"]) == ["first", "second"]
+    assert _collect_selected_contexts(node_results, ["start", "nested", "texts"]) == ["nested"]
+    assert _collect_selected_contexts(node_results, ["start", "files"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "number"]) == []
+    assert _collect_selected_contexts(node_results, ["sys", "user_id"]) == []
+
+
 def test_workflow_faithfulness_receives_selected_llm_text_as_context(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

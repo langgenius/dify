@@ -18,6 +18,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationItemResult,
     EvaluationMetric,
 )
+from core.evaluation.exceptions import safe_evaluation_error_text
 from core.evaluation.frameworks.ragas.ragas_evaluator import (
     RagasAgentComponents,
     RagasEvaluator,
@@ -184,6 +185,39 @@ def test_installed_ragas_faithfulness_uses_dify_structured_model(monkeypatch: py
     assert response_schemas == ["StatementGeneratorOutput", "NLIStatementOutput"]
     assert result.error is None
     assert [(metric.name, metric.value) for metric in result.metrics] == [("faithfulness", 1.0)]
+
+
+@pytest.mark.parametrize("context", [None, ["", "   "]])
+def test_missing_text_context_fails_only_context_dependent_metric(context: list[str] | None) -> None:
+    """An absent evidence value has a public error while other metrics still score."""
+    from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbeddingsWrapper
+    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+
+    class DeterministicEmbeddings(DifyEmbeddingsWrapper):
+        @override
+        def embed_text(self, text: str, **kwargs: object) -> list[float]:
+            return [1.0, 0.0]
+
+        @override
+        async def aembed_text(self, text: str, **kwargs: object) -> list[float]:
+            return self.embed_text(text)
+
+    result = RagasEvaluator(RagasConfig())._evaluate_with_ragas(
+        [
+            EvaluationItemInput(
+                index=0, inputs={"prompt": "question"}, output="same", expected_output="same", context=context
+            )
+        ],
+        ["faithfulness", "semantic_similarity"],
+        DifyModelWrapper("provider", "model", "tenant"),
+        DeterministicEmbeddings("tenant"),
+        EvaluationCategory.LLM,
+    )[0]
+
+    assert [(metric.name, metric.value) for metric in result.metrics] == [("semantic_similarity", 1.0)]
+    assert result.error is not None
+    assert result.error.startswith("EVAL_CONTEXT_MISSING:")
+    assert safe_evaluation_error_text(result.error) == result.error
 
 
 def test_installed_ragas_scores_remaining_collections_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -511,7 +545,7 @@ def test_modern_ragas_preserves_other_scores_when_one_metric_fails(monkeypatch: 
     evaluator = RagasEvaluator(RagasConfig())
     monkeypatch.setattr(evaluator, "_build_ragas_metrics", lambda *_args: [GoodMetric(), FailingMetric()])
     result = evaluator._evaluate_with_ragas(
-        [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")],
+        [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer", context=["evidence"])],
         ["faithfulness", "answer_relevancy"],
         DifyModelWrapper("provider", "model", "tenant"),
         object(),
