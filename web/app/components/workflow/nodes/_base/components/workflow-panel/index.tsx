@@ -13,7 +13,6 @@ import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ResizeHandle from '@/app/components/base/resize-handle'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
@@ -28,8 +27,13 @@ import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/sto
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import {
+  NodeEditorAvatars,
+  NodePanelEditingFrame,
+} from '@/app/components/workflow/collaboration/components/node-editors'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { getNodeEditors } from '@/app/components/workflow/collaboration/utils/node-editors'
 import {
   editorAppIdAtom,
   editorResourceAtom,
@@ -137,18 +141,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     }
   }, [id, isConnected, currentUserPresence])
 
-  const viewingUsers = useMemo(() => {
-    const presence = nodePanelPresence?.[id]
-    if (!presence) return []
-
-    return Object.values(presence)
-      .filter((viewer) => viewer.userId && viewer.userId !== currentUserPresence.userId)
-      .map((viewer) => ({
-        id: viewer.userId,
-        name: viewer.username,
-        avatar_url: viewer.avatar || null,
-      }))
-  }, [currentUserPresence.userId, id, nodePanelPresence])
+  const [latestEditor, ...otherEditors] = useMemo(
+    () => getNodeEditors(nodePanelPresence, id, currentUserPresence.userId),
+    [currentUserPresence.userId, id, nodePanelPresence],
+  )
 
   const showSingleRunPanel = useStore((s) => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -488,7 +484,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   if (logParams.showSpecialResultPanel) {
     return (
-      <div className={cn('relative mr-1 h-full')}>
+      <div className={cn('relative me-1 h-full')}>
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
@@ -546,7 +542,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     ) : null
 
     return (
-      <div className={cn('relative mr-1 h-full')}>
+      <div className={cn('relative me-1 h-full')}>
         {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The panel handles bubbling Escape after its child controls have handled it. */}
         <div
           ref={containerRef}
@@ -597,9 +593,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   return (
     <div
       className={cn(
-        'relative mr-1 h-full',
+        'relative me-1 h-full',
         messageLogItem &&
-          'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+          'absolute z-0 me-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {
@@ -617,7 +613,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         label={t(($) => $['panel.nodePanel'], { ns: 'workflow' })}
         controls={panelId}
         onResize={handleResize}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
+        className="absolute -inset-s-1 top-0 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </ResizeHandle>
@@ -630,7 +626,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         tabIndex={-1}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+        className="relative flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -638,19 +634,20 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           } as CSSProperties
         }
       >
+        <NodePanelEditingFrame editor={latestEditor} />
         <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
-              <BlockIcon className="mr-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
+              <BlockIcon className="me-1 shrink-0" type={data.type} toolIcon={toolIcon} size="md" />
             )}
             {isStartPlaceholderPanel ? (
               <StartPlaceholderPanelTitle />
             ) : (
               <TitleInput value={data.title || ''} onBlur={handleTitleBlur} />
             )}
-            {viewingUsers.length > 0 && (
-              <div className="ml-3 shrink-0">
-                <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
+            {otherEditors.length > 0 && (
+              <div className="ms-3 flex shrink-0">
+                <NodeEditorAvatars editors={otherEditors} />
               </div>
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
@@ -658,7 +655,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 <SingleRunButton
                   running={isSingleRunning}
                   disabledReason={singleRunDisabledReason}
-                  className="mr-1"
+                  className="me-1"
                   onClick={() => {
                     if (isSingleRunning) handleStop()
                     else handleSingleRun()
@@ -694,7 +691,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   onJumpToDataSourcePage={handleJumpToDataSourcePage}
                   isAuthorized={currentDataSource.is_authorized}
                 >
-                  <div className="flex items-center justify-between pr-3 pl-4">
+                  <div className="flex items-center justify-between ps-4 pe-3">
                     {panelTabs}
                     <AuthorizedInDataSourceNode
                       onJumpToDataSourcePage={handleJumpToDataSourcePage}
@@ -712,7 +709,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 </TriggerSubscription>
               )}
               {!currentDataSource && !currentTriggerPlugin && (
-                <div className="flex items-center justify-between pr-3 pl-4">{panelTabs}</div>
+                <div className="flex items-center justify-between ps-4 pe-3">{panelTabs}</div>
               )}
               <Split />
             </>

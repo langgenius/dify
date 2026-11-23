@@ -10,15 +10,11 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
-const boundary = vi.hoisted(() => ({
-  push: vi.fn(),
-  searchPlugins: vi.fn(),
-  searchTemplates: vi.fn(),
-}))
+const boundary = vi.hoisted(() => ({ push: vi.fn() }))
 
 vi.unmock('react-i18next')
 
@@ -26,47 +22,6 @@ vi.unmock('react-i18next')
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: boundary.push }),
 }))
-
-// boundary: autocomplete suggestions stop at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceQuery: {
-      ...actual.marketplaceQuery,
-      searchAdvanced: {
-        ...actual.marketplaceQuery.searchAdvanced,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
-          queryFn: () => boundary.searchPlugins(options.input),
-        }),
-      },
-      templateSearch: {
-        ...actual.marketplaceQuery.templateSearch,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
-          queryFn: () => boundary.searchTemplates(options.input),
-        }),
-      },
-    },
-  }
-})
-
-// boundary: installed-plugin reads stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-  }
-})
 
 // boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
@@ -132,13 +87,24 @@ async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLO
   return { onUrlUpdate, screen }
 }
 
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
+      },
+    },
+  },
+  marketplace: {
+    searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+    templateSearch: () => ({ data: { templates: [template], total: 1 } }),
+  },
+}))
+
 describe('Embedded Marketplace search', () => {
   beforeEach(async () => {
     await page.viewport(1000, 800)
-    onTestFinished(guardUnexpectedFetch())
     vi.clearAllMocks()
-    boundary.searchPlugins.mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-    boundary.searchTemplates.mockResolvedValue({ data: { templates: [template], total: 1 } })
   })
 
   it('opens both Cloud result dialogs, closes them, and leaves catalog filters untouched', async () => {
@@ -185,13 +151,17 @@ describe('Embedded Marketplace search', () => {
     'opens a %s %s on the official site without changing the catalog',
     async (edition, kind, label) => {
       const open = vi.spyOn(window, 'open').mockReturnValue(null)
-      boundary.searchPlugins.mockResolvedValue({
-        data: { plugins: kind === 'plugin' ? [plugin] : [], total: kind === 'plugin' ? 1 : 0 },
-      })
-      boundary.searchTemplates.mockResolvedValue({
-        data: {
-          templates: kind === 'template' ? [template] : [],
-          total: kind === 'template' ? 1 : 0,
+      fake.use({
+        marketplace: {
+          searchAdvanced: () => ({
+            data: { plugins: kind === 'plugin' ? [plugin] : [], total: kind === 'plugin' ? 1 : 0 },
+          }),
+          templateSearch: () => ({
+            data: {
+              templates: kind === 'template' ? [template] : [],
+              total: kind === 'template' ? 1 : 0,
+            },
+          }),
         },
       })
       const { onUrlUpdate, screen } = await renderSearch(edition)

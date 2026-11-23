@@ -78,9 +78,9 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
         {validModelConfigs.map((item, index) => (
           <MenuItem key={item.id} className="gap-0 px-3" onClick={() => onSelect(item)}>
             <span className="min-w-4.5 italic">#{index + 1}</span>
-            <ModelIcon modelName={item.model} provider={item.providerItem} className="ml-2" />
+            <ModelIcon modelName={item.model} provider={item.providerItem} className="ms-2" />
             <div
-              className="ml-1 truncate text-text-secondary"
+              className="ms-1 truncate text-text-secondary"
               title={renderI18nObject(item.modelItem.label, language)}
             >
               {renderI18nObject(item.modelItem.label, language)}

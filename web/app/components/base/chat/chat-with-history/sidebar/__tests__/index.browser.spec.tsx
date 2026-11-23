@@ -13,18 +13,10 @@ import { ConnectionsContext } from '@/app/components/share/connections/use-conne
 import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import { useWebAppStore } from '@/context/web-app-context'
 import share from '@/i18n/locales/en-US/share.json'
-import {
-  AppSourceType,
-  delConversation,
-  fetchChatList,
-  fetchConversations,
-  pinConversation,
-  renameConversation,
-  unpinConversation,
-} from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi, route } from '@/test/fake-api'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
 import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
@@ -33,16 +25,6 @@ import Header from '../../header'
 import { useChatWithHistory } from '../../hooks'
 import Sidebar from '../index'
 
-// boundary: share requests are the network boundary; the query and feature owners stay real.
-vi.mock('@/service/share', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/share')>()),
-  fetchChatList: vi.fn(),
-  fetchConversations: vi.fn(),
-  pinConversation: vi.fn(),
-  unpinConversation: vi.fn(),
-  renameConversation: vi.fn(),
-  delConversation: vi.fn(),
-}))
 // boundary: Browser Mode does not provide the application's Next.js router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -64,6 +46,14 @@ const conversations = [
   conversation('2', 'Second conversation'),
 ]
 const pinnedConversations = [conversation('p1', 'Pinned conversation')]
+// Answers the conversation list for the `pinned` query with the given rows.
+const conversationLists =
+  (pinned: ReturnType<typeof conversation>[], unpinned: ReturnType<typeof conversation>[]) =>
+  ({ url }: { url: URL }) => ({
+    data: url.searchParams.get('pinned') === 'true' ? pinned : unpinned,
+    has_more: false,
+    limit: 100,
+  })
 const customLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="blue"/></svg>')}`
 const workspaceLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20"><rect width="60" height="20" fill="red"/></svg>')}`
 const noBranding = { enabled: false, workspace_logo: '' }
@@ -92,31 +82,36 @@ const webSystemFeatures = {
   ...createSystemFeaturesFixture(),
   console_web_url: 'https://console.example.com/dify',
 } satisfies WebSystemFeatureResponse
-const webRequests: Request[] = []
 let hasTenant = false
 
+const success = () => ({ result: 'success' })
+let fake: ReturnType<typeof installFakeApi>
+const conversationsRoute = () => fake.route('GET', 'public', '/conversations')
+const pinRoute = () => fake.route('PATCH', 'public', '/conversations/:id/pin')
+const unpinRoute = () => fake.route('PATCH', 'public', '/conversations/:id/unpin')
+const renameRoute = () => fake.route('POST', 'public', '/conversations/:id/name')
+const deleteRoute = () => fake.route('DELETE', 'public', '/conversations/:id')
+
 beforeEach(async ({ onTestFinished }) => {
-  // boundary: account identity and Console discovery stay on the real Webapp HTTP service.
-  const unexpectedRequests: string[] = []
-  webRequests.length = 0
   hasTenant = false
-  vi.stubGlobal(
-    'fetch',
-    vi.fn<typeof fetch>(async (input, init) => {
-      const request = new Request(input, init)
-      webRequests.push(request)
-      const path = new URL(request.url).pathname
-      if (path === '/api/account/profile')
-        return Response.json({ ...profile, has_tenant: hasTenant })
-      if (path === '/api/system-features') return Response.json(webSystemFeatures)
-      unexpectedRequests.push(request.url)
-      throw new Error(`Unexpected request: ${request.url}`)
-    }),
-  )
-  onTestFinished(() => {
-    vi.unstubAllGlobals()
-    expect(unexpectedRequests).toEqual([])
+  fake = installFakeApi({
+    routes: [
+      route('GET', 'public', '/account/profile', () => ({ ...profile, has_tenant: hasTenant })),
+      route('GET', 'public', '/system-features', () => webSystemFeatures),
+      route('GET', 'public', '/messages', () => ({ data: [] })),
+      route(
+        'GET',
+        'public',
+        '/conversations',
+        conversationLists(pinnedConversations, conversations),
+      ),
+      route('PATCH', 'public', '/conversations/:id/pin', success),
+      route('PATCH', 'public', '/conversations/:id/unpin', success),
+      route('POST', 'public', '/conversations/:id/name', success),
+      route('DELETE', 'public', '/conversations/:id', success),
+    ],
   })
+  onTestFinished(fake)
   const oldUrl = window.location.href
   window.history.replaceState({}, '', '/')
   onTestFinished(() => {
@@ -126,16 +121,6 @@ beforeEach(async ({ onTestFinished }) => {
   localStorage.removeItem(CONVERSATION_ID_INFO)
   sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   localStorage.removeItem('webappSidebarCollapse')
-  vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
-    data: pinned ? pinnedConversations : conversations,
-    has_more: false,
-    limit: 100,
-  }))
-  vi.mocked(pinConversation).mockResolvedValue(undefined)
-  vi.mocked(unpinConversation).mockResolvedValue(undefined)
-  vi.mocked(renameConversation).mockResolvedValue(undefined)
-  vi.mocked(delConversation).mockResolvedValue(undefined)
   await page.viewport(900, 700)
 })
 afterEach(() => {
@@ -315,9 +300,7 @@ it('keeps the build link, connection warning and public Console discovery out of
   await expect.element(page.getByRole('button', { name: 'Test Account' })).toBeVisible()
   await expect.element(page.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
   await expect.element(page.getByText(unofficialAppWarning)).not.toBeInTheDocument()
-  expect(
-    webRequests.some((request) => new URL(request.url).pathname === '/api/system-features'),
-  ).toBe(false)
+  expect(fake.route('GET', 'public', '/system-features')).not.toHaveBeenCalled()
 })
 
 it.each([false, true])(
@@ -369,7 +352,8 @@ it('offers sign-in instead of the footer menu and blocks new chat while personal
     .element(page.getByRole('link', { name: 'app.endUser.myApps' }))
     .not.toBeInTheDocument()
   await expect.element(page.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
-  expect(webRequests).toEqual([])
+  expect(fake.route('GET', 'public', '/account/profile')).not.toHaveBeenCalled()
+  expect(fake.route('GET', 'public', '/system-features')).not.toHaveBeenCalled()
   await expect
     .element(page.getByRole('button', { name: 'common.operation.more' }))
     .not.toBeInTheDocument()
@@ -411,28 +395,35 @@ it('applies pin changes without changing the selected conversation', async () =>
   await expect
     .element(currentConversation().getByRole('button', { name: 'Pinned conversation' }))
     .toBeVisible()
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
-    data: pinned ? [...pinnedConversations, conversations[0]!] : [conversations[1]!],
-    has_more: false,
-    limit: 100,
-  }))
+  conversationsRoute().mockImplementation(
+    conversationLists([...pinnedConversations, conversations[0]!], [conversations[1]!]),
+  )
   await operate('First conversation', 'pin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  expect(pinConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', '1')
+  await expect
+    .poll(pinRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: '1' } }))
+  // Wait for the refreshed lists so the row is not moved while its operations are opened.
+  await expect
+    .poll(() => conversationHistory().element().textContent)
+    .toMatch(/pinnedTitle.*Pinned conversation.*First conversation.*unpinnedTitle.*Second/)
   await openOperations('First conversation')
   await expect
     .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.unpin' }))
     .toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
-    data: pinned ? [conversations[0]!] : [conversations[1]!, ...pinnedConversations],
-    has_more: false,
-    limit: 100,
-  }))
+  conversationsRoute().mockImplementation(
+    conversationLists([conversations[0]!], [conversations[1]!, ...pinnedConversations]),
+  )
   await operate('Pinned conversation', 'unpin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  expect(unpinConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', 'p1')
+  await expect
+    .poll(unpinRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: 'p1' } }))
+  await expect
+    .poll(() => conversationHistory().element().textContent)
+    .toMatch(/pinnedTitle.*First conversation.*unpinnedTitle.*Second.*Pinned conversation/)
   await openOperations('Pinned conversation')
   await expect
     .element(page.getByRole('menuitem', { name: 'explore.sidebar.action.pin' }))
@@ -493,8 +484,8 @@ it('keeps desktop collapse actions out of the mobile sidebar', async () => {
 })
 
 it('keeps the chosen conversation until deletion succeeds, then removes its dialog and row', async () => {
-  const pending = createDeferred<void>()
-  vi.mocked(delConversation).mockReturnValueOnce(pending.promise)
+  const pending = createDeferred<unknown>()
+  deleteRoute().mockReturnValueOnce(pending.promise)
   await renderSidebar({ currentConversationId: '2' }, noBranding, true)
   await expect
     .element(currentConversation().getByRole('button', { name: 'Second conversation' }))
@@ -502,17 +493,17 @@ it('keeps the chosen conversation until deletion succeeds, then removes its dial
   await operate('Second conversation', 'delete')
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await expect.element(dialog).toBeVisible()
-  expect(delConversation).not.toHaveBeenCalled()
+  expect(deleteRoute()).not.toHaveBeenCalled()
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
-  expect(delConversation).toHaveBeenCalledExactlyOnceWith(AppSourceType.webApp, 'app-1', '2')
+  await expect
+    .poll(deleteRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: '2' } }))
   await expect.element(dialog).toBeVisible()
   expect(selectedConversation()).toBe('2')
-  vi.mocked(fetchConversations).mockImplementation(async (_source, _app, _last, pinned) => ({
-    data: pinned ? pinnedConversations : [conversations[0]!],
-    has_more: false,
-    limit: 100,
-  }))
-  pending.resolve()
+  conversationsRoute().mockImplementation(
+    conversationLists(pinnedConversations, [conversations[0]!]),
+  )
+  pending.resolve({ result: 'success' })
   await expect.element(dialog).not.toBeInTheDocument()
   await expect
     .element(conversationHistory().getByRole('button', { name: 'Second conversation' }))
@@ -530,7 +521,7 @@ it('cancels deletion without changing the conversation', async () => {
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(delConversation).not.toHaveBeenCalled()
+  expect(deleteRoute()).not.toHaveBeenCalled()
   await expect
     .element(currentConversation().getByRole('button', { name: 'First conversation' }))
     .toBeVisible()
@@ -541,8 +532,8 @@ it('cancels deletion without changing the conversation', async () => {
 })
 
 it('submits the chosen conversation name and blocks native Enter and click resubmission until saved', async () => {
-  const pending = createDeferred<void>()
-  vi.mocked(renameConversation).mockReturnValueOnce(pending.promise)
+  const pending = createDeferred<unknown>()
+  renameRoute().mockReturnValueOnce(pending.promise)
   await renderSidebar({}, noBranding, true)
   await operate('Second conversation', 'rename')
   const input = page.getByRole('textbox', { name: 'common.chat.conversationName' })
@@ -550,11 +541,11 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await expect.element(input).toHaveFocus()
   await input.fill('New name')
   await userEvent.keyboard('{Enter}')
-  expect(renameConversation).toHaveBeenCalledExactlyOnceWith(
-    AppSourceType.webApp,
-    'app-1',
-    '2',
-    'New name',
+  await expect.poll(renameRoute).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      params: { id: '2' },
+      body: expect.objectContaining({ name: 'New name' }),
+    }),
   )
   const save = page.getByRole('button', { name: 'common.operation.save' })
   await expect.element(save).toHaveAttribute('aria-disabled', 'true')
@@ -564,8 +555,8 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await userEvent.keyboard(' ')
   await input.click()
   await userEvent.keyboard('{Enter}')
-  expect(renameConversation).toHaveBeenCalledTimes(1)
-  pending.resolve()
+  expect(renameRoute()).toHaveBeenCalledTimes(1)
+  pending.resolve({ result: 'success' })
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(page.getByRole('button', { name: 'New name' })).toBeVisible()
   await expect
@@ -590,7 +581,7 @@ it('discards a cancelled rename before opening another conversation', async () =
   await operate('Second conversation', 'rename')
   await expect.element(input).toHaveValue('Second conversation')
   await expect.element(input).toHaveFocus()
-  expect(renameConversation).not.toHaveBeenCalled()
+  expect(renameRoute()).not.toHaveBeenCalled()
 })
 
 it.each([

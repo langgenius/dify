@@ -399,6 +399,7 @@ const ChatInputArea = ({
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={footerNoticeLabelId}
+                  // oxlint-disable-next-line shadcn/no-restyle -- The footer notice keeps its 20px hover surface on the accent banner.
                   className="ms-auto size-5 rounded-md text-text-accent hover:bg-state-base-hover hover:text-text-accent"
                   iconVariant="information"
                 />

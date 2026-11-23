@@ -27,6 +27,32 @@ class TestBuiltinAgentKeys:
             assert "agent.manage" not in keys
             assert {"agent.acl.preview", "agent.acl.access_point_view"} <= set(keys)
 
+    @pytest.mark.parametrize(
+        ("role", "can_manage_tags"),
+        [
+            (TenantAccountRole.OWNER, True),
+            (TenantAccountRole.ADMIN, True),
+            (TenantAccountRole.EDITOR, True),
+            (TenantAccountRole.NORMAL, False),
+            (TenantAccountRole.DATASET_OPERATOR, False),
+        ],
+    )
+    def test_agent_tag_management_is_projected_only_for_authorized_workspace_roles(
+        self, role: TenantAccountRole, can_manage_tags: bool
+    ) -> None:
+        """Given a built-in role, expose tag management consistently without a resource grant."""
+        permissions = builtin.builtin_permissions(role)
+        member = builtin.builtin_member_roles("workspace", "account", role)
+        roles = builtin.builtin_workspace_roles(
+            rbac_contracts.ListOption(), include_owner=1, dataset_operator_enabled=True
+        )
+        listed = next(item for item in roles.data if item.id == role.value)
+
+        assert ("agent.tag.manage" in permissions.workspace.permission_keys) is can_manage_tags
+        assert ("agent.tag.manage" in member.roles[0].permission_keys) is can_manage_tags
+        assert ("agent.tag.manage" in listed.permission_keys) is can_manage_tags
+        assert "agent.tag.manage" not in permissions.agent.default_permission_keys
+
 
 """Built-in permission projections and membership writes use the shared repository."""
 

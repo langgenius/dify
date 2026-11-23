@@ -30,7 +30,7 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { RiCloseLine } from '@remixicon/react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,13 +51,11 @@ import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import {
-  deleteWorkflowTool,
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
-  removeCustomCollection,
   saveWorkflowToolProvider,
   updateBuiltInToolCredential,
   updateCustomCollection,
@@ -125,7 +123,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   >(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [deleteAction, setDeleteAction] = useState('')
 
   const getCustomProvider = useCallback(async () => {
     if (!canManageTools) return
@@ -154,13 +151,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
     setIsShowEditCustomCollectionModal(false)
   }
-  const doRemoveCustomToolCollection = async () => {
-    if (!canManageTools) return
-
-    await removeCustomCollection(collection?.name)
-    onRefreshData()
-    setIsShowEditCustomCollectionModal(false)
-  }
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
@@ -183,13 +173,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     setCustomCollection(payload)
     setIsDetailLoading(false)
   }, [collection.id])
-  const removeWorkflowToolProvider = async () => {
-    if (!canManageTools) return
-
-    await deleteWorkflowTool(collection.id)
-    onRefreshData()
-    setWorkflowToolDrawerOpen(false)
-  }
   const updateWorkflowToolProvider = async (
     data: WorkflowToolProviderRequest &
       Partial<{
@@ -207,19 +190,31 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     getWorkflowToolProvider()
     setWorkflowToolDrawerOpen(false)
   }
-  const onClickCustomToolDelete = () => {
-    setDeleteAction('customTool')
-    setShowConfirmDelete(true)
-  }
-  const onClickWorkflowToolDelete = () => {
-    setDeleteAction('workflowTool')
-    setShowConfirmDelete(true)
-  }
+  const { mutate: removeCustomTool, isPending: isDeletingCustomTool } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.api.delete.post.mutationOptions({
+      onSuccess: () => {
+        setIsShowEditCustomCollectionModal(false)
+        setShowConfirmDelete(false)
+        onRefreshData()
+      },
+    }),
+  )
+  const { mutate: removeWorkflowTool, isPending: isDeletingWorkflowTool } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.workflow.delete.post.mutationOptions({
+      onSuccess: () => {
+        setWorkflowToolDrawerOpen(false)
+        setShowConfirmDelete(false)
+        onRefreshData()
+      },
+    }),
+  )
+  const isDeleting = isDeletingCustomTool || isDeletingWorkflowTool
   const handleConfirmDelete = () => {
-    if (deleteAction === 'customTool') doRemoveCustomToolCollection()
-    else if (deleteAction === 'workflowTool') removeWorkflowToolProvider()
-
-    setShowConfirmDelete(false)
+    if (!canManageTools || isDeleting) return
+    if (collection.type === CollectionType.custom)
+      removeCustomTool({ body: { provider: collection.name } })
+    else if (collection.type === CollectionType.workflow)
+      removeWorkflowTool({ body: { workflow_tool_id: collection.id } })
   }
 
   // ToolList
@@ -523,20 +518,26 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     payload={customCollection}
                     onHide={() => setIsShowEditCustomCollectionModal(false)}
                     onEdit={doUpdateCustomToolCollection}
-                    onRemove={onClickCustomToolDelete}
+                    onRemove={() => setShowConfirmDelete(true)}
                   />
                 )}
                 {workflowToolDrawerOpen && canManageTools && (
                   <WorkflowToolDrawer
                     payload={customCollection as unknown as WorkflowToolDrawerPayload}
                     onHide={() => setWorkflowToolDrawerOpen(false)}
-                    onRemove={onClickWorkflowToolDelete}
+                    onRemove={() => setShowConfirmDelete(true)}
                     onSave={updateWorkflowToolProvider}
                   />
                 )}
                 <AlertDialog
                   open={showConfirmDelete}
-                  onOpenChange={(open) => !open && setShowConfirmDelete(false)}
+                  onOpenChange={(open, eventDetails) => {
+                    if (!open && isDeleting) {
+                      eventDetails.cancel()
+                      return
+                    }
+                    if (!open) setShowConfirmDelete(false)
+                  }}
                 >
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -548,10 +549,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancelButton>
+                      <AlertDialogCancelButton disabled={isDeleting}>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
-                      <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                      <AlertDialogConfirmButton loading={isDeleting} onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
                     </AlertDialogFooter>

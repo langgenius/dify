@@ -367,7 +367,7 @@ const AppUserAuth = ({
             </span>
           </FieldLabel>
           <Infotip>
-            <InfotipTrigger aria-labelledby={descriptionLabelId} className="size-4" />
+            <InfotipTrigger aria-labelledby={descriptionLabelId} />
             <InfotipContent>
               {t(($) => $['auth.appUser.connectionDescriptionHint'], { ns: 'plugin' })}
             </InfotipContent>

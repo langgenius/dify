@@ -1685,30 +1685,29 @@ class TestWorkflowServiceCases:
             ):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
-        def test_publish_workflow_trigger_limit_exceeded(
+        @pytest.mark.parametrize(
+            ("trigger_types", "exceeds_limit"),
+            [
+                (["trigger-webhook", "trigger-schedule"], False),
+                (["trigger-webhook", "trigger-schedule", "trigger-plugin"], True),
+            ],
+        )
+        def test_publish_workflow_enforces_sandbox_trigger_limit(
             self,
             workflow_service: WorkflowService,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
+            trigger_types: list[str],
+            exceeds_limit: bool,
         ):
+            """Cloud Sandbox may publish up to two trigger nodes; a third one is rejected."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            """
-            Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
-
-            Free/sandbox tier users have limits on the number of trigger nodes.
-            This prevents resource abuse while allowing users to test the feature.
-            The limit is enforced at publish time, not during draft editing.
-            """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
-            # Trigger nodes enable event-driven automation which consumes resources
             graph = {
                 "nodes": [
-                    {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
-                    {"id": "trigger-2", "data": {"type": "trigger-schedule"}},
-                    {"id": "trigger-3", "data": {"type": "trigger-plugin"}},
+                    {"id": f"trigger-{index}", "data": {"type": trigger_type}}
+                    for index, trigger_type in enumerate(trigger_types)
                 ],
                 "edges": [],
             }
@@ -1716,9 +1715,17 @@ class TestWorkflowServiceCases:
             sqlite_session.add(draft)
             sqlite_session.commit()
 
-            with patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX):
-                with pytest.raises(TriggerNodeLimitExceededError):
-                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            with (
+                patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+                patch("services.workflow_service.app_published_workflow_was_updated"),
+            ):
+                if exceeds_limit:
+                    with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                        workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert (exc_info.value.count, exc_info.value.limit) == (3, 2)
+                else:
+                    workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert workflow.version != Workflow.VERSION_DRAFT
 
         # ==================== Version Management Tests ====================
         # These tests verify listing and managing published workflow versions

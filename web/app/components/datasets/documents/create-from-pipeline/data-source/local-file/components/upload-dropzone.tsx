@@ -66,7 +66,7 @@ const UploadDropzone = ({
         )}
       >
         <div className="flex min-h-5 items-center justify-center text-sm/4 text-text-secondary">
-          <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
+          <span className="me-2 i-ri-upload-cloud-2-line size-5" />
           <span>
             {supportBatchUpload
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
@@ -75,7 +75,7 @@ const UploadDropzone = ({
               <button
                 id={browseLabelId}
                 type="button"
-                className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
+                className="font-inherit ms-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
                 onClick={onSelectFile}
               >
                 {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
@@ -99,7 +99,7 @@ const UploadDropzone = ({
                 batchCount: fileUploadConfig.batch_count_limit,
               })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+        {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
       </div>
     </>
   )
