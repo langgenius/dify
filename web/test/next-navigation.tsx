@@ -43,7 +43,7 @@ function createLayoutRouterValue(segments: string[]): LayoutRouterValue {
 
 type NavigateSpy = Mock<AppRouterInstance['push']>
 
-export type TestRouter = Omit<AppRouterInstance, 'push' | 'replace'> & {
+type TestRouter = Omit<AppRouterInstance, 'push' | 'replace'> & {
   push: NavigateSpy
   replace: NavigateSpy
   back: Mock<() => void>

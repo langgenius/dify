@@ -15,10 +15,11 @@ afterEach(() => {
 })
 
 it('freezes the observed thinking time and collapses completed reasoning even if done flips back', async () => {
-  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
-  vi.setSystemTime(1000)
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
   const screen = await renderChat(<ReasoningPanel content={{ llm: 'thinking' }} done={false} />)
   await expect.element(screen.getByText('thinking', { exact: true })).toBeVisible()
+  clock.mockReturnValue(1700)
   await vi.advanceTimersByTimeAsync(700)
   await expect.element(screen.getByText('(0.7s)')).toBeVisible()
   await screen.rerender(<ReasoningPanel content={{ llm: 'thinking' }} done />)
@@ -26,6 +27,7 @@ it('freezes the observed thinking time and collapses completed reasoning even if
   await expect.element(summary).toBeVisible()
   await expect.element(screen.getByText('thinking', { exact: true })).not.toBeVisible()
   await screen.rerender(<ReasoningPanel content={{ llm: 'thinking' }} done={false} />)
+  clock.mockReturnValue(2700)
   await vi.advanceTimersByTimeAsync(1000)
   await expect.element(screen.getByText('(0.7s)')).toBeVisible()
   await userEvent.tab()
@@ -38,10 +40,11 @@ it('freezes the observed thinking time and collapses completed reasoning even if
 })
 
 it('keeps historical reasoning collapsed without starting a timer', async () => {
-  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
-  vi.setSystemTime(1000)
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
   const screen = await renderChat(<ReasoningPanel content={{ llm: 'done thinking' }} done />)
-  await vi.advanceTimersByTimeAsync(1700)
+  clock.mockReturnValue(2700)
+  await vi.advanceTimersByTimeAsync(1000)
   await expect.element(screen.getByText('(0.0s)')).toBeVisible()
   await expect.element(screen.getByText('done thinking')).not.toBeVisible()
   await screen.getByText(/^Thought/).click()
