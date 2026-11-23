@@ -102,8 +102,6 @@ it('applies removal on close and leaves unchanged selections alone', async () =>
   await expect.element(search()).toBeVisible()
   await trigger().click()
   await expect.element(search()).not.toBeInTheDocument()
-  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
-  expect(fake.console.tagBindings.remove.post).not.toHaveBeenCalled()
   await trigger().click()
   await page.getByRole('option', { name: 'Frontend' }).click()
   await expect
@@ -114,6 +112,8 @@ it('applies removal on close and leaves unchanged selections alone', async () =>
   await expect
     .poll(() => fake.console.tagBindings.remove.post.mock.calls)
     .toEqual([[{ body: { tag_ids: ['tag-1'], target_id: 'target-1', type: 'app' } }]])
+  // Both closes share the apply path, so a spurious binding from either would have arrived by now.
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('shows the binding failure after closing the popup', async () => {

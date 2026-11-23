@@ -7,14 +7,13 @@ import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
-const route = vi.hoisted(() => ({ pathname: '/apps' }))
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({ usePathname: () => route.pathname }))
+let pathname = '/apps'
 beforeEach(() => {
-  route.pathname = '/apps'
+  pathname = '/apps'
 })
 const notice = (
   body: string,
@@ -38,13 +37,16 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
   })
+  const { NavigationProvider } = createTestNavigation({ url: pathname })
   const screen = await render(
-    <Providers>
-      <I18nextProvider i18n={i18n}>
-        <button type="button">Before notification</button>
-        <InSiteMessageNotification />
-      </I18nextProvider>
-    </Providers>,
+    <NavigationProvider>
+      <Providers>
+        <I18nextProvider i18n={i18n}>
+          <button type="button">Before notification</button>
+          <InSiteMessageNotification />
+        </I18nextProvider>
+      </Providers>
+    </NavigationProvider>,
   )
   return { screen, i18n }
 }
@@ -69,7 +71,7 @@ it('keeps cloud notifications unavailable in Community even when the service has
 })
 
 it('stays off the collaboration demo it links to without dismissing the notice', async () => {
-  route.pathname = '/collaboration-demo'
+  pathname = '/collaboration-demo'
   fake.console.notification.get.mockResolvedValue({
     should_show: true,
     notifications: [notice('Cloud update')],

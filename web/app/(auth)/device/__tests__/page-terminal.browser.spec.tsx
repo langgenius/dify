@@ -6,18 +6,7 @@ import {
 import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { renderDevicePage } from './device-page-fixture'
 
-const api = vi.hoisted(() => ({
-  replace: vi.fn(),
-  push: vi.fn(),
-  search: new URLSearchParams(),
-}))
 const lookup = vi.fn<(userCode: string | null) => DeviceLookupReply | Promise<DeviceLookupReply>>()
-// boundary: Next routing is supplied by the running application.
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => api.search,
-  useRouter: () => ({ push: api.push, replace: api.replace }),
-  usePathname: () => '/device',
-}))
 beforeEach(() => {
   onTestFinished(
     installFakeApi({
@@ -39,11 +28,7 @@ beforeEach(() => {
       ],
     }),
   )
-  api.search = new URLSearchParams()
   lookup.mockReset().mockResolvedValue({ valid: true, expires_in_remaining: 600, client_id: 'cli' })
-  api.replace.mockReset().mockImplementation(() => {
-    api.search = new URLSearchParams()
-  })
   setPostLoginRedirect(null)
 })
 afterEach(() => setPostLoginRedirect(null))
@@ -105,14 +90,14 @@ it.each([
 ])(
   'recovers from the dedicated SSO error $error using the consumed code',
   async ({ error, copy }) => {
-    api.search = new URLSearchParams({ sso_error: error, user_code: 'ABCD-3456' })
-    const { screen } = await renderDevicePage()
+    const query = new URLSearchParams({ sso_error: error, user_code: 'ABCD-3456' })
+    const { screen, navigation } = await renderDevicePage({ url: `/device?${query}` })
     await expect
       .element(screen.getByRole('heading', { name: 'deviceFlow.errorSso.title' }))
       .toBeVisible()
     await expect.element(screen.getByText(copy)).toBeVisible()
     await expect.element(screen.getByRole('textbox')).not.toBeInTheDocument()
-    expect(api.replace).toHaveBeenCalledWith('/device')
+    expect(navigation.router.replace).toHaveBeenCalledWith('/device')
     await screen.getByRole('button', { name: 'deviceFlow.errorSso.backToLoginOptions' }).click()
     await expect
       .element(screen.getByRole('link', { name: 'deviceFlow.chooser.signInAccount' }))

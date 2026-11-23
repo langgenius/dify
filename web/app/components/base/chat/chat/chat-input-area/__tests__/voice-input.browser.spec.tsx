@@ -3,16 +3,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { TEST_APP_ID } from '@/test/console/ids'
 import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ChatInputArea from '../index'
 
 // boundary: microphone capture and MP3 encoding are outside the composer's focus contract.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: vi.fn() }))
-// boundary: this component test has no running Next router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
-// boundary: observe the application notification emitted after transcription fails.
-vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const fake = setupFakeApi({
   console: {
@@ -28,6 +26,8 @@ const fake = setupFakeApi({
   },
 })
 
+afterEach(() => toast.dismiss())
+
 it('preserves the draft, reports transcription failure, and returns focus to the microphone', async () => {
   // Chromium supplies textarea layout, pointer focus, and focus loss when the stop button unmounts.
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -38,17 +38,21 @@ it('preserves the draft, reports transcription failure, and returns focus to the
     cancel: vi.fn().mockResolvedValue(undefined),
   }
   vi.mocked(startVoiceRecorder).mockResolvedValue(recorder)
+  const { NavigationProvider } = createTestNavigation()
   try {
     const screen = await render(
-      <QueryClientProvider client={queryClient}>
-        <div className="w-96">
-          <ChatInputArea
-            inputLabel="Message"
-            speechToTextConfig={{ enabled: true }}
-            speechToTextTarget={{ type: 'consoleApp', appId: TEST_APP_ID }}
-          />
-        </div>
-      </QueryClientProvider>,
+      <NavigationProvider>
+        <QueryClientProvider client={queryClient}>
+          <AppToaster timeout={0} />
+          <div className="w-96">
+            <ChatInputArea
+              inputLabel="Message"
+              speechToTextConfig={{ enabled: true }}
+              speechToTextTarget={{ type: 'consoleApp', appId: TEST_APP_ID }}
+            />
+          </div>
+        </QueryClientProvider>
+      </NavigationProvider>,
     )
     const input = screen.getByRole('textbox', { name: 'Message' })
     await input.fill('Keep this text')
@@ -56,7 +60,9 @@ it('preserves the draft, reports transcription failure, and returns focus to the
     await microphone.click()
     await screen.getByRole('button', { name: 'common.voiceInput.stop' }).click()
 
-    await expect.poll(() => toast.error).toHaveBeenCalledWith('common.api.actionFailed')
+    await expect
+      .element(screen.getByRole('dialog', { name: 'common.api.actionFailed' }))
+      .toBeVisible()
     expect(fake.console.apps.byAppId.audioToText.post).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: TEST_APP_ID },
       body: { file: expect.any(File) },

@@ -3,19 +3,17 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
-import { useKeyPress } from 'reactflow'
+import { ReactFlowProvider, useKeyPress } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
+import { WorkflowContext } from '../../../context'
+import { EditorResourceScope } from '../../../editor-resource/provider'
+import { HooksStoreContextProvider } from '../../../hooks-store/provider'
+import { createWorkflowStore } from '../../../store/workflow'
 import Recipients from '../components/recipients'
 import { contact, contactApi, organizationContact, resetContactApi } from './fixtures/contact-api'
-
-// The variable picker needs the full workflow editor context and has its own spec.
-// boundary: render only its real trigger so the footer's Tab order matches production.
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ trigger }: { trigger: React.ReactElement }) => trigger,
-}))
 
 function Harness({
   initial = [{ type: 'contact', contact_id: contact.id }],
@@ -47,8 +45,15 @@ async function renderRecipients(initial?: HumanInputV2Recipient[]) {
     installFakeApi({
       console: {
         features: { get: () => contactApi.features() },
+        spec: { schemaDefinitions: { get: () => [] } },
         workspaces: {
           current: {
+            tools: {
+              builtin: { get: () => [] },
+              api: { get: () => [] },
+              workflow: { get: () => [] },
+              mcp: { get: () => [] },
+            },
             summary: {
               get: () => ({
                 id: 'workspace-1',
@@ -79,7 +84,22 @@ async function renderRecipients(initial?: HumanInputV2Recipient[]) {
   await render(
     <Provider store={store}>
       <QueryClientProvider client={client}>
-        <Harness initial={initial} observe={observe} />
+        <ReactFlowProvider>
+          <WorkflowContext value={createWorkflowStore({})}>
+            <HooksStoreContextProvider>
+              <EditorResourceScope
+                resource={{
+                  kind: 'app',
+                  collaborationEnabled: false,
+                  appId: 'app-1',
+                  mode: 'workflow',
+                }}
+              >
+                <Harness initial={initial} observe={observe} />
+              </EditorResourceScope>
+            </HooksStoreContextProvider>
+          </WorkflowContext>
+        </ReactFlowProvider>
       </QueryClientProvider>
     </Provider>,
   )
@@ -123,11 +143,13 @@ it('preserves native contact-information activation against the canvas Space lis
   await userEvent.keyboard('{Enter}')
   await expect.element(dialog).toBeVisible()
   await userEvent.keyboard('{Delete}{Backspace}')
+  await expect.element(dialog).toBeVisible()
   expect(observe).not.toHaveBeenCalled()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(info).toHaveFocus()
   await userEvent.keyboard('{Delete}{Backspace}')
+  await expect.element(info).toHaveFocus()
   expect(observe).not.toHaveBeenCalled()
   await userEvent.keyboard(' ')
   await expect.element(dialog).toBeVisible()

@@ -11,19 +11,12 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { timezones } from '@/utils/timezone'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
-  usePathname: () => '/account/settings',
-  useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shanghai' } = {}) {
   await page.viewport(width, 800)
@@ -73,6 +66,7 @@ async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shangh
         </NuqsTestingAdapter>
       </I18nextProvider>
     </QueryClientTestProvider>,
+    { wrapper: createTestNavigation({ url: '/account/settings' }).NavigationProvider },
   )
   return { screen, queryClient, profile, profileApi: fake.console.account.profile }
 }

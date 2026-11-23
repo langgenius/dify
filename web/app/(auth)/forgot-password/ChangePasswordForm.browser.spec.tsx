@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ChangePasswordForm from './ChangePasswordForm'
 
 type TokenValidity = {
@@ -12,22 +13,19 @@ type TokenValidity = {
   token: string
 }
 
-const navigation = vi.hoisted(() => ({
-  search: 'token=url-token-t1',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
-
 const validPassword = 'ValidPass123!'
 
 async function renderForm() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  const { NavigationProvider } = createTestNavigation({
+    url: '/forgot-password?token=url-token-t1',
+  })
   return render(
-    <ConsoleProvider>
-      <ChangePasswordForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ChangePasswordForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -43,10 +41,6 @@ const fake = setupFakeApi(() => ({
   ],
 }))
 const verifyToken = () => fake.route('POST', 'console', '/forgot-password/validity')
-
-beforeEach(() => {
-  navigation.search = 'token=url-token-t1'
-})
 
 it('keeps the real token query pending before showing the password form', async () => {
   const verification = createDeferred<TokenValidity>()
