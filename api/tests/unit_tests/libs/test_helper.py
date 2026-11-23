@@ -1,6 +1,6 @@
 import json
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, call, create_autospec
@@ -191,7 +191,8 @@ class TestOptionalTimestampField:
         field = OptionalTimestampField()
         value = datetime(2024, 1, 2, 3, 4, 5)
 
-        assert field.format(value) == int(value.timestamp())
+        # Naive values are stored in UTC, so the host timezone must not shift them.
+        assert field.format(value) == int(value.replace(tzinfo=UTC).timestamp())
 
 
 class TestEscapeLikePattern:
