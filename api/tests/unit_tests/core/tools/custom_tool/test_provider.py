@@ -3,24 +3,17 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from core.tools.custom_tool import provider as provider_module
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderAuthType, ApiProviderSchemaType, ToolProviderType
 from models.tools import ApiToolProvider
-
-
-@dataclass(frozen=True)
-class _Database:
-    session: Session
 
 
 def _tool_bundle() -> ApiToolBundle:
@@ -93,9 +86,7 @@ def test_api_tool_provider_from_db_query_auth_and_none_auth(sqlite_session: Sess
     assert [c.name for c in none_controller.entity.credentials_schema] == ["auth_type"]
 
 
-def test_api_tool_provider_load_get_tools_and_get_tool(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_api_tool_provider_load_get_tools_and_get_tool(sqlite_session: Session) -> None:
     controller = ApiToolProviderController.from_db(_db_provider(), ApiProviderAuthType.NONE, session=sqlite_session)
     loaded = controller.load_bundled_tools(_db_provider().tools)
     assert len(loaded) == 1
@@ -109,13 +100,13 @@ def test_api_tool_provider_load_get_tools_and_get_tool(
     cached = controller.get_tools("tenant-1")
     assert len(cached) == 1
 
-    # Force DB fetch branch.
+    # Force DB fetch branch: providers are persisted with real SQLite sessions,
+    # and get_tools reads them through its own short-lived session.
     controller.tools = []
     tenant_id = str(uuid4())
     provider_with_tools = _persist_provider(sqlite_session, tenant_id=tenant_id)
     _persist_provider(sqlite_session, tenant_id=str(uuid4()))
     controller.tenant_id = tenant_id
-    monkeypatch.setattr(provider_module, "db", _Database(session=sqlite_session))
 
     tools = controller.get_tools(tenant_id)
     assert len(tools) == 1

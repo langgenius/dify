@@ -6,6 +6,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -21,7 +22,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
@@ -184,14 +184,14 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
 
         tools: list[ApiTool] = []
 
-        # get tenant api providers
-        db_providers = db.session.scalars(
-            select(ApiToolProvider).where(
-                ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
-            )
-        ).all()
+        # get tenant api providers through a short-lived, explicitly owned session
+        with session_factory.create_session() as session:
+            db_providers = session.scalars(
+                select(ApiToolProvider).where(
+                    ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
+                )
+            ).all()
 
-        if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:
                 for tool in db_provider.tools:
                     assistant_tool = self._parse_tool_bundle(tool)
