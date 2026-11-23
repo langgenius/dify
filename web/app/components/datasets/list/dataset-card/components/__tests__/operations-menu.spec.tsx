@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { consoleQuery } from '@/service/console'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -20,7 +21,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient)
   const discoveryOptions = consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
-    input: { params: { dataset_id: 'dataset-1' } },
+    input: { params: { dataset_id: TEST_DATASET_ID } },
   })
   queryClient.setQueryDefaults(discoveryOptions.queryKey, { staleTime: Infinity })
   queryClient.setQueryData(discoveryOptions.queryKey, {

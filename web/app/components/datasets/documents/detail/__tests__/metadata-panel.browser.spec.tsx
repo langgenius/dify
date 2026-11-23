@@ -9,8 +9,9 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import common from '@/i18n/locales/en-US/common.json'
 import datasetDocuments from '@/i18n/locales/en-US/dataset-documents.json'
 import datasetMessages from '@/i18n/locales/en-US/dataset.json'
-import { consoleQuery } from '@/service/console'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -23,49 +24,31 @@ vi.unmock('react-i18next')
 // one is a time field, whose date picker must shrink to keep its remove button inside the row.
 const fields = [
   ...Array.from({ length: 13 }, (_, i) => ({
-    id: `field-${i + 1}`,
+    id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
     name: `field_${i + 1}`,
     type: DataType.string,
     value: `A long metadata value for field ${i + 1} that wraps onto a second line`,
   })),
-  { id: 'field-14', name: 'recorded_at', type: DataType.time, value: 1759780800 },
+  {
+    id: '00000000-0000-4000-8000-000000000014',
+    name: 'recorded_at',
+    type: DataType.time,
+    value: 1759780800,
+  },
 ]
-const save = vi.fn()
+const DOCUMENT_ID = '9f1e3b5d-6c3d-4e4f-8a5b-3c4d5e6f7081'
 
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ datasetId: 'ds-1', documentId: 'doc-1' }),
-  usePathname: () => '/datasets/ds-1/documents/doc-1',
+  useParams: () => ({ datasetId: TEST_DATASET_ID, documentId: DOCUMENT_ID }),
+  usePathname: () => `/datasets/${TEST_DATASET_ID}/documents/${DOCUMENT_ID}`,
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// boundary: mutations and paginated HTTP reads stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.byDatasetId.documents.byDocumentId.segments.get': async () => ({
-        data: [],
-        total: 0,
-        total_pages: 0,
-        page: 1,
-        limit: 10,
-      }),
-      'datasets.byDatasetId.metadata.get': async () => ({
-        doc_metadata: fields,
-        built_in_field_enabled: false,
-      }),
-      'datasets.byDatasetId.documents.metadata.post': (input) => save(input),
-    }),
-  }
-})
-
 const documentDetail = zDocumentDetailResponse.parse({
-  id: 'doc-1',
+  id: DOCUMENT_ID,
   name: 'video-transcript.txt',
   display_status: 'available',
   enabled: true,
@@ -78,6 +61,29 @@ const documentDetail = zDocumentDetailResponse.parse({
   dataset_process_rule: null,
 })
 
+const fake = setupFakeApi(() => ({
+  console: {
+    datasets: {
+      byDatasetId: {
+        documents: {
+          byDocumentId: {
+            get: ({ query }) =>
+              query?.metadata === 'only'
+                ? { ...documentDetail, doc_metadata: fields }
+                : documentDetail,
+            segments: {
+              get: () => ({ data: [], total: 0, total_pages: 0, page: 1, limit: 10 }),
+            },
+          },
+          metadata: { post: () => {} },
+        },
+        metadata: { get: () => ({ doc_metadata: fields, built_in_field_enabled: false }) },
+      },
+    },
+    files: { upload: { get: () => createFileUploadConfigFixture() } },
+  },
+}))
+
 const renderDocumentDetail = async () => {
   const i18n = createInstance()
   await i18n.init({
@@ -85,25 +91,11 @@ const renderDocumentDetail = async () => {
     keySeparator: false,
     resources: { 'en-US': { common, dataset: datasetMessages, datasetDocuments } },
   })
-  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: [],
   })
-  const document = consoleQuery.datasets.byDatasetId.documents.byDocumentId.get
-  const params = { dataset_id: 'ds-1', document_id: 'doc-1' }
-  queryClient.setQueryData(
-    document.queryKey({ input: { params, query: { metadata: 'without' } } }),
-    documentDetail,
-  )
-  queryClient.setQueryData(document.queryKey({ input: { params, query: { metadata: 'only' } } }), {
-    id: 'doc-1',
-    doc_metadata: fields,
-  })
-  queryClient.setQueryData(
-    consoleQuery.files.upload.get.queryKey(),
-    createFileUploadConfigFixture(),
-  )
   const dataset = createDatasetFixture({
-    id: 'ds-1',
+    id: TEST_DATASET_ID,
     embedding_available: true,
     permission_keys: [DatasetACLPermission.Edit],
   })
@@ -114,7 +106,7 @@ const renderDocumentDetail = async () => {
         <DatasetDetailContext.Provider value={{ dataset }}>
           <EventEmitterContextProvider>
             <div className="isolate h-screen">
-              <DocumentDetail datasetId="ds-1" documentId="doc-1" />
+              <DocumentDetail datasetId={TEST_DATASET_ID} documentId={DOCUMENT_ID} />
             </div>
           </EventEmitterContextProvider>
         </DatasetDetailContext.Provider>
@@ -128,10 +120,6 @@ const clickRightEdge = async (control: Locator) => {
   const { width, height } = control.element().getBoundingClientRect()
   await userEvent.click(control, { position: { x: width - 1, y: height / 2 } })
 }
-
-beforeEach(() => {
-  save.mockReset().mockResolvedValue({ result: 'success' })
-})
 
 it('keeps edit controls clickable beside the metadata scrollbar and reaches the last field', async () => {
   await page.viewport(1280, 640)
@@ -147,10 +135,18 @@ it('keeps edit controls clickable beside the metadata scrollbar and reaches the 
 
   const saveButton = screen.getByRole('button', { name: 'Save' })
   await clickRightEdge(saveButton)
-  await expect.poll(() => save.mock.calls.length).toBe(1)
-  expect(save.mock.calls[0]?.[0]).toMatchObject({
+  const save = fake.console.datasets.byDatasetId.documents.metadata.post
+  await expect.poll(() => save).toHaveBeenCalledOnce()
+  expect(save.mock.calls[0]![0]).toMatchObject({
     body: {
-      operation_data: [{ document_id: 'doc-1', metadata_list: fields.slice(0, fields.length - 1) }],
+      operation_data: [
+        {
+          document_id: DOCUMENT_ID,
+          metadata_list: fields
+            .slice(0, fields.length - 1)
+            .map(({ id, name, value }) => ({ id, name, value })),
+        },
+      ],
     },
   })
   await expect.element(saveButton).not.toBeInTheDocument()

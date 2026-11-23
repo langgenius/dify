@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
-import { CommentThread } from './thread'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
+import { CommentThreadFixture } from './__tests__/comment-thread-fixture'
 
 const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
 const comment: WorkflowCommentDetail = {
@@ -45,7 +46,7 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
         className="isolate"
         style={{ position: 'relative', width: 1000, height: 650 }}
       >
-        <CommentThread
+        <CommentThreadFixture
           comment={detail}
           onClose={() => {}}
           onReply={() => {}}
@@ -60,16 +61,16 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
   )
 }
 
-it('returns to the selected reply on cancel and the composer after deleting that reply', async () => {
+it('confirms reply deletion in its menu: cancel returns to the menu button, delete to the composer', async () => {
   // Native Tab and CSS visibility expose regressions hidden by DOM-only tests.
   await page.viewport(1200, 800)
   const onDelete = vi.fn()
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   const screen = await render(<Fixture onDelete={onDelete} />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
   const replyInput = screen.getByRole('textbox')
   await expect.element(replyInput).toHaveFocus()
@@ -90,16 +91,21 @@ it('returns to the selected reply on cancel and the composer after deleting that
   })
   await expect.element(deleteItem).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  const confirmation = screen.getByRole('alertdialog', {
+  // The confirmation opens beside the menu button and starts on the safe choice.
+  const confirmation = screen.getByRole('dialog', {
     name: 'workflowComments.comments.confirm.deleteReplyTitle',
   })
-  await expect.element(confirmation).toBeVisible()
+  const cancel = confirmation.getByRole('button', { name: 'common.operation.cancel' })
+  await expect.element(cancel).toHaveFocus()
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
-  expect(onDelete).not.toHaveBeenCalled()
-  await confirmation.getByRole('button', { name: 'common.operation.cancel' }).click()
+  // The menu button stays visible while the menu hands over to the confirmation.
+  expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  await userEvent.keyboard('{Enter}')
   await expect.element(confirmation).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  expect(onDelete).not.toHaveBeenCalled()
+
   await trigger.click()
   await deleteItem.click()
   await confirmation.getByRole('button', { name: 'common.operation.delete' }).click()
@@ -107,4 +113,63 @@ it('returns to the selected reply on cancel and the composer after deleting that
   await expect.element(screen.getByText('A second reply')).not.toBeInTheDocument()
   await expect.element(screen.getByText('A reply')).toBeVisible()
   await expect.element(replyInput).toHaveFocus()
+})
+
+it('moves focus into the edit field when a reply is edited from its menu, and back on Escape', async () => {
+  await page.viewport(1200, 800)
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  seedMentionableUsers(queryClient, [])
+  const screen = await render(<Fixture onDelete={() => {}} />, {
+    queryClient,
+  })
+  await expect.element(screen.getByRole('textbox')).toHaveFocus()
+  // Focus the marker first, as a keyboard user who opened the thread from it would have.
+  screen.getByRole('button', { name: 'Marker' }).element().focus()
+  const trigger = screen
+    .getByRole('button', { name: 'workflowComments.comments.aria.replyActions' })
+    .last()
+  ;(trigger.element() as HTMLElement).focus()
+  await userEvent.keyboard('{Enter}')
+  const edit = screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.editReply' })
+  await expect.element(edit).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+
+  const editField = screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
+  await expect.element(editField).toHaveFocus()
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  await expect.element(editField).toHaveFocus()
+  expect((editField.element() as HTMLTextAreaElement).selectionStart).toBe('A second reply'.length)
+
+  await userEvent.keyboard('{Escape}')
+  await expect.element(editField).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
+})
+
+it('closes the mention list before the thread on Escape', async () => {
+  await page.viewport(1200, 800)
+  const onClose = vi.fn()
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  seedMentionableUsers(queryClient, [
+    { id: 'bob', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+  ])
+  const screen = await render(
+    <CommentThreadFixture comment={comment} onClose={onClose} onReply={() => {}} />,
+    {
+      queryClient,
+    },
+  )
+  const reply = screen.getByRole('textbox')
+  await expect.element(reply).toHaveFocus()
+  await userEvent.keyboard('@')
+  await expect.element(screen.getByRole('listbox')).toBeVisible()
+
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
+  expect(onClose).not.toHaveBeenCalled()
+  await userEvent.keyboard('{Escape}')
+  expect(onClose).toHaveBeenCalledTimes(1)
 })

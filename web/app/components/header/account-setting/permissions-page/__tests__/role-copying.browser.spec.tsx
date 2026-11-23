@@ -1,40 +1,43 @@
 import type { Role } from '@/models/access-control'
-import type { consoleClient } from '@/service/console'
+import { setupFakeApi } from '@/test/fake-api'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.get>(),
-  copy: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.copy.post>(),
-  members: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.members.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.roles.get': api.list,
-      'workspaces.current.rbac.roles.byRoleId.copy.post': api.copy,
-      'workspaces.current.rbac.roles.byRoleId.members.get': api.members,
-    }),
-  }
-})
 let roles: Role[]
-beforeEach(() => {
-  api.list.mockReset().mockImplementation(async () => rolePage(roles))
-  api.members.mockReset().mockResolvedValue({
-    data: ['Alice', 'Bob', 'Carol'].map((name) => ({
-      account_id: name.toLowerCase(),
-      account_name: name,
-    })),
-    pagination: { total_count: 3, per_page: 9999, current_page: 1, total_pages: 1 },
-  })
-  api.copy.mockReset().mockImplementation(async () => {
-    const saved = { ...customRole, id: 'copied-role', name: `${roles[0]!.name} copy` }
-    roles = [...roles, saved]
-    return saved
-  })
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        rbac: {
+          roles: {
+            get: async () => rolePage(roles),
+            byRoleId: {
+              copy: {
+                post: async () => {
+                  const saved = {
+                    ...customRole,
+                    id: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
+                    name: `${roles[0]!.name} copy`,
+                  }
+                  roles = [...roles, saved]
+                  return saved
+                },
+              },
+              members: {
+                get: async () => ({
+                  data: ['Alice', 'Bob', 'Carol'].map((name) => ({
+                    account_id: name.toLowerCase(),
+                    account_name: name,
+                  })),
+                  pagination: { total_count: 3, per_page: 9999, current_page: 1, total_pages: 1 },
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 it.each([
   { role: builtinRole, action: 'common.operation.skip', copyMembers: false },
   { role: { ...customRole, name: 'Support' }, action: 'common.operation.copy', copyMembers: true },
@@ -55,9 +58,13 @@ it.each([
     await dialog.getByRole('button', { name: action }).click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(screen.getByText(`${role.name} copy`, { exact: true })).toBeVisible()
-    expect(api.copy).toHaveBeenCalledExactlyOnceWith({
-      params: { role_id: role.id },
-      body: { copy_member: copyMembers },
-    })
+    expect(
+      fake.console.workspaces.current.rbac.roles.byRoleId.copy.post,
+    ).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        params: { role_id: role.id },
+        body: { copy_member: copyMembers },
+      }),
+    )
   },
 )
