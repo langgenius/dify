@@ -1,4 +1,3 @@
-import { focusManager } from '@tanstack/react-query'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { TEST_APP_ID } from '@/test/console/ids'
@@ -6,7 +5,6 @@ import { networkError, setupFakeApi } from '@/test/fake-api'
 import { markers, openThread, renderLayer, sendReply, thread } from './comment-layer-browser-env'
 import {
   api,
-  author,
   collaboration,
   commentLayerApi,
   deferred,
@@ -42,46 +40,6 @@ const nextFrames = async (count: number) => {
 }
 
 describe('reading a thread', () => {
-  it('refreshes expiring canvas and thread avatars on focus with a slow browser clock', async () => {
-    const avatarUrl = (timestamp: number) =>
-      `/files/avatar/file-preview?nonce=opaque&sign=sig&issued_before=${timestamp + 60}&expires_at=${timestamp + 300}`
-    const receivedAt = Date.now() - 235_000
-    const serverOffset = 120_000
-    const oldAvatar = avatarUrl(Math.floor((receivedAt + serverOffset) / 1000) - 59)
-    const renewedAvatar = avatarUrl(Math.floor((Date.now() + serverOffset) / 1000))
-    const setCommentAvatar = (avatar_url: string) => {
-      const comment = {
-        ...listItem('first', 'First thread', 120),
-        created_by_account: { ...author, avatar_url },
-      }
-      server.current.list = [comment]
-      server.current.details.first = { ...comment, replies: [], mentions: [] }
-    }
-    setCommentAvatar(oldAvatar)
-    const screen = await renderLayer()
-    await openThread(screen)
-
-    const comments = consoleQuery.apps.byAppId.workflow.comments
-    const listKey = comments.get.queryKey({ input: { params: { app_id: TEST_APP_ID } } })
-    const detailKey = comments.byCommentId.get.queryKey({
-      input: { params: { app_id: TEST_APP_ID, comment_id: 'first' } },
-    })
-    const cachedAvatars = () => [
-      screen.queryClient.getQueryData(listKey)?.data[0]?.created_by_account?.avatar_url,
-      screen.queryClient.getQueryData(detailKey)?.created_by_account?.avatar_url,
-    ]
-    await expect.poll(cachedAvatars).toEqual([oldAvatar, oldAvatar])
-
-    screen.queryClient.setQueryData(listKey, (list) => list, { updatedAt: receivedAt })
-    screen.queryClient.setQueryData(detailKey, (detail) => detail, { updatedAt: receivedAt })
-    onTestFinished(() => focusManager.setFocused(undefined))
-    focusManager.setFocused(false)
-    setCommentAvatar(renewedAvatar)
-    focusManager.setFocused(true)
-
-    await expect.poll(cachedAvatars).toEqual([renewedAvatar, renewedAvatar])
-  })
-
   it('opens a long thread on its newest message', async () => {
     for (let index = 0; index < 12; index++)
       saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)

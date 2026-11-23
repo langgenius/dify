@@ -12,7 +12,6 @@ from controllers.common.schema import query_params_from_model, register_schema_m
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
 from extensions.ext_application_services import application_services
-from libs.account_avatar import avatar_preview_cache_max_age
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,
@@ -125,14 +124,7 @@ class FilePreviewApi(Resource):
         except UploadFileDeliveryNotFoundError as error:
             raise NotFound(str(error) or None) from error
 
-        response = self._build_response(delivery=delivery, as_attachment=args.as_attachment)
-        if not args.as_attachment and response.mimetype and response.mimetype.startswith("image/"):
-            max_age = avatar_preview_cache_max_age(timestamp=args.timestamp, nonce=args.nonce)
-            if max_age is not None:
-                response.cache_control.private = True
-                response.cache_control.max_age = max_age
-                response.cache_control.must_revalidate = True
-        return response
+        return self._build_response(delivery=delivery, as_attachment=args.as_attachment)
 
     @staticmethod
     def _build_response(*, delivery: UploadFileDelivery, as_attachment: bool) -> Response:

@@ -13,6 +13,7 @@ from unittest.mock import ANY, MagicMock, Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
@@ -29,6 +30,7 @@ from controllers.console.app.workflow import (
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -1204,7 +1206,11 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_online_users_filters_inaccessible_workflow(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
     ) -> None:
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
@@ -1212,7 +1218,11 @@ class TestWorkflowCases:
             "u-1": "https://console.example.com/accounts/u-1/avatar-1",
             "u-2": "https://console.example.com/accounts/u-2/avatar-2",
         }
-        resolve_current_avatars = Mock(return_value=current_avatar_urls)
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            return_value=current_avatar_urls,
+        )
         queries: list[tuple[list[str], str, Session]] = []
         actors: list[tuple[str, str]] = []
 
@@ -1230,13 +1240,7 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        monkeypatch.setattr(
-            workflow_module,
-            "application_services",
-            lambda: SimpleNamespace(
-                accounts=SimpleNamespace(avatar=SimpleNamespace(resolve_current_for_accounts=resolve_current_avatars))
-            ),
-        )
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
         redis_result = [
@@ -1370,36 +1374,39 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_online_users_keeps_all_users_after_avatar_resolution_failure(
-        app: Flask, monkeypatch: pytest.MonkeyPatch
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
     ) -> None:
         app_id = "11111111-1111-1111-1111-111111111111"
-        resolve_current_avatars = Mock(side_effect=RuntimeError("avatar lookup failed"))
-        monkeypatch.setattr(
-            workflow_module,
-            "application_services",
-            lambda: SimpleNamespace(
-                accounts=SimpleNamespace(avatar=SimpleNamespace(resolve_current_for_accounts=resolve_current_avatars))
-            ),
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            side_effect=RuntimeError("avatar lookup failed"),
         )
-        monkeypatch.setattr(
-            workflow_module,
-            "WorkflowService",
-            lambda: SimpleNamespace(
-                get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)
-            ),
-        )
-        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
-        monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
 
-        pipeline = Mock()
-        pipeline.execute.return_value = [
+        class WorkflowQueries:
+            def get_tenant_app_maintainers(
+                self, app_ids: list[str], tenant_id: str, *, session: Session
+            ) -> dict[str, str | None]:
+                assert tenant_id == "tenant-1"
+                assert session is unbound_session
+                return dict.fromkeys(app_ids)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+        monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
+
+        pipeline_factory = mocker.patch.object(workflow_module.redis_client, "pipeline")
+        pipeline_factory.return_value.execute.return_value = [
             {
                 b"sid-1": json.dumps({"user_id": "user-1", "username": "Alice", "avatar": "avatar-file-id-1"}),
                 b"sid-2": json.dumps({"user_id": "user-2", "username": "Bob", "avatar": "avatar-file-id-2"}),
             }
         ]
-        pipeline_factory = Mock(return_value=pipeline)
-        monkeypatch.setattr(workflow_module.redis_client, "pipeline", pipeline_factory)
 
         api = workflow_module.WorkflowOnlineUsersApi()
         handler = inspect.unwrap(api.post)
@@ -1409,7 +1416,9 @@ class TestWorkflowCases:
             json={"app_ids": [app_id]},
         ):
             args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id]})
-            response = handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
+            actor = _account()
+            actor.id = "account-1"
+            response = handler(api, args, "tenant-1", actor)
 
         assert response == {
             "data": [

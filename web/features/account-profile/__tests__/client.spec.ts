@@ -1,5 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { dehydrate, hydrate, QueryClient, QueryObserver } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { createHttpError } from '@/service/http-error'
 import { userProfileQueryOptions } from '../client'
 
@@ -69,114 +69,6 @@ it('keeps response headers local to concurrent profile requests', async () => {
   } finally {
     first.clear()
     second.clear()
-  }
-})
-
-it('refreshes an expiring signed avatar on mount even when the profile is still fresh', async () => {
-  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
-  const options = userProfileQueryOptions()
-  const clock = vi.spyOn(Date, 'now').mockReturnValue(125_000)
-  onTestFinished(() => clock.mockRestore())
-  const file = '/files/avatar/file-preview?nonce=opaque'
-  const cachedAvatar = `${file}&issued_before=115&sign=cached&expires_at=130`
-  const refreshedAvatar = `${file}&issued_before=140&sign=refreshed&expires_at=155`
-  request.mockResolvedValueOnce(Response.json({ ...profile, avatar_url: refreshedAvatar }))
-  client.setQueryData(
-    options.queryKey,
-    {
-      profile: { ...profile, avatar_url: cachedAvatar },
-      meta: { currentVersion: null, currentEnv: null },
-    },
-    { updatedAt: 100_000 },
-  )
-
-  const observer = new QueryObserver(client, options)
-  expect(observer.getCurrentResult().isStale).toBe(false)
-  const unsubscribe = observer.subscribe(() => {})
-  try {
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult().data?.profile.avatar_url).toBe(refreshedAvatar),
-    )
-    expect(request).toHaveBeenCalledOnce()
-  } finally {
-    unsubscribe()
-    client.clear()
-  }
-})
-
-it('refreshes a hydrated signed avatar on its first client mount', async () => {
-  const options = userProfileQueryOptions()
-  const serverClient = new QueryClient()
-  const serverPrefetchedAt = 5_000_000
-  // The browser is two minutes slow, and hydration happens four minutes after the prefetch.
-  const clock = vi.spyOn(Date, 'now').mockReturnValue(serverPrefetchedAt + 120_000)
-  onTestFinished(() => clock.mockRestore())
-  const cachedAvatar =
-    '/files/avatar/file-preview?nonce=opaque&issued_before=5001&sign=cached&expires_at=5241'
-  const refreshedAvatar =
-    '/files/avatar/file-preview?nonce=opaque&issued_before=5300&sign=refreshed&expires_at=5540'
-  serverClient.setQueryData(
-    options.queryKey,
-    {
-      profile: { ...profile, avatar_url: cachedAvatar },
-      meta: { currentVersion: null, currentEnv: null, serverPrefetched: true },
-    },
-    { updatedAt: serverPrefetchedAt },
-  )
-
-  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
-  hydrate(client, dehydrate(serverClient))
-  request.mockResolvedValueOnce(Response.json({ ...profile, avatar_url: refreshedAvatar }))
-  const observer = new QueryObserver(client, options)
-  const unsubscribe = observer.subscribe(() => {})
-  try {
-    await vi.waitFor(() =>
-      expect(observer.getCurrentResult().data?.profile.avatar_url).toBe(refreshedAvatar),
-    )
-    expect(observer.getCurrentResult().data?.meta.serverPrefetched).toBeUndefined()
-    expect(request).toHaveBeenCalledOnce()
-  } finally {
-    unsubscribe()
-    client.clear()
-    serverClient.clear()
-  }
-})
-
-it('anchors avatar freshness to receipt time when the browser clock runs behind', async () => {
-  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
-  const options = userProfileQueryOptions()
-  const clock = vi.spyOn(Date, 'now').mockReturnValue(5_000_000)
-  onTestFinished(() => clock.mockRestore())
-  const file = '/files/avatar/file-preview?nonce=opaque'
-  const cachedAvatar = `${file}&issued_before=5121&sign=cached&expires_at=5361`
-  const refreshedAvatar = `${file}&issued_before=5356&sign=refreshed&expires_at=5596`
-  client.setQueryData(
-    options.queryKey,
-    {
-      profile: { ...profile, avatar_url: cachedAvatar },
-      meta: { currentVersion: null, currentEnv: null },
-    },
-    { updatedAt: 5_000_000 },
-  )
-
-  const freshObserver = new QueryObserver(client, options)
-  const unsubscribeFresh = freshObserver.subscribe(() => {})
-  expect(freshObserver.getCurrentResult().isFetching).toBe(false)
-  expect(request).not.toHaveBeenCalled()
-  unsubscribeFresh()
-
-  clock.mockReturnValue(5_235_000)
-  request.mockResolvedValueOnce(Response.json({ ...profile, avatar_url: refreshedAvatar }))
-  const expiringObserver = new QueryObserver(client, options)
-  const unsubscribeExpiring = expiringObserver.subscribe(() => {})
-  try {
-    await vi.waitFor(() =>
-      expect(expiringObserver.getCurrentResult().data?.profile.avatar_url).toBe(refreshedAvatar),
-    )
-    expect(request).toHaveBeenCalledOnce()
-  } finally {
-    unsubscribeExpiring()
-    client.clear()
   }
 })
 

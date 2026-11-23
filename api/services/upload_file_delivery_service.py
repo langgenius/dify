@@ -5,7 +5,6 @@ from typing import NamedTuple, Protocol
 
 from constants import IMAGE_EXTENSIONS
 from graphon.file import helpers as file_helpers
-from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX, account_avatar_owner, verify_avatar_preview_signature
 from services.errors.file import UnsupportedFileTypeError
 
 
@@ -23,8 +22,6 @@ class UploadFileDeliveryRecord(NamedTuple):
 
 class UploadFileDeliveryQuery(Protocol):
     def get_by_id(self, *, file_id: str) -> UploadFileDeliveryRecord | None: ...
-
-    def get_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDeliveryRecord | None: ...
 
     def get_current_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDeliveryRecord | None: ...
 
@@ -83,9 +80,7 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        is_avatar = nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX)
-        verify_signature = verify_avatar_preview_signature if is_avatar else file_helpers.verify_file_signature
-        if not verify_signature(
+        if not file_helpers.verify_file_signature(
             upload_file_id=file_id,
             timestamp=timestamp,
             nonce=nonce,
@@ -93,16 +88,7 @@ class UploadFileDeliveryService:
         ):
             raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
 
-        if is_avatar:
-            try:
-                account_id = account_avatar_owner(nonce)
-            except ValueError as error:
-                raise UploadFileDeliveryNotFoundError("File not found or signature is invalid") from error
-            file = self._files.get_account_avatar(file_id=file_id, account_id=account_id)
-            if file is None:
-                raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
-        else:
-            file = self._get_file(file_id=file_id)
+        file = self._get_file(file_id=file_id)
         return UploadFileDelivery(
             content=self._storage.load_stream(file.key),
             file=file,

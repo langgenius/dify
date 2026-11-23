@@ -220,25 +220,6 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
-def test_resolve_upload_file_url_keeps_fresh_generic_nonces(
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
-    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
-    nonces = iter((b"\x01" * 16, b"\x02" * 16))
-    monkeypatch.setattr("core.app.workflow.file_runtime.os.urandom", lambda _: next(nonces))
-    runtime = _build_runtime()
-
-    first = runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
-    second = runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
-
-    assert first != second
-    assert parse_qs(urlparse(first).query)["nonce"] == ["01" * 16]
-    assert parse_qs(urlparse(second).query)["nonce"] == ["02" * 16]
-    assert {"expires_at", "issued_before"}.isdisjoint(parse_qs(urlparse(first).query))
-
-
 def test_verify_preview_signature_validates_signature_and_expiration(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
@@ -328,7 +309,7 @@ def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(file_sess
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
 
 
-def test_upload_file_url_resolver_rejects_unauthorized_scoped_access(file_session: Session) -> None:
+def test_resolve_upload_file_url_rejects_unauthorized_scoped_access(file_session: Session) -> None:
     _persist_upload_file(file_session, tenant_id="other-tenant", created_by="other-user")
     scope = FileAccessScope(
         tenant_id="tenant-id",

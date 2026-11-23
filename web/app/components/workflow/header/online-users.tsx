@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { avatarUrlStaleTime } from '@/utils/avatar'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
 import { CollaboratorPill } from '../collaboration/components/collaborator-pill'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
@@ -60,7 +59,6 @@ const OnlineUsers = () => {
         : skipToken,
       gcTime: 0,
       retry: false,
-      staleTime: avatarUrlStaleTime<Record<string, string>>(Object.values),
       refetchInterval: avatarAppId ? ONLINE_USER_AVATAR_REFRESH_INTERVAL_MS : false,
       refetchIntervalInBackground: false,
     }),

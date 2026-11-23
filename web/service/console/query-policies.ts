@@ -3,10 +3,7 @@ import type {
   AgentAppPagination,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type {
-  AppDetailWithSite,
-  WorkflowCommentMentionUsersPayload,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   DatasetListResponse,
   DocumentWithSegmentsListResponse,
@@ -33,7 +30,6 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
-import { avatarUrlStaleTime } from '@/utils/avatar'
 import {
   legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
@@ -527,13 +523,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           members: {
-            get: {
-              queryOptions: {
-                staleTime: avatarUrlStaleTime<AccountWithRoleListResponse>((members) =>
-                  members.accounts.map((member) => member.avatar_url),
-                ),
-              },
-            },
             byMemberId: {
               delete: {
                 mutationOptions: {
@@ -1242,15 +1231,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               // open, live updates keep them current; a read on window focus could land on an
               // optimistic write.
               get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
-              mentionUsers: {
-                get: {
-                  queryOptions: {
-                    staleTime: avatarUrlStaleTime<WorkflowCommentMentionUsersPayload>((response) =>
-                      response.users.map((user) => user.avatar_url),
-                    ),
-                  },
-                },
-              },
               byCommentId: {
                 get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
                 resolve: {
@@ -3536,17 +3516,14 @@ function setCommentResolved(
   params: { app_id: string; comment_id: string },
   fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
 ) {
-  const detailKey = query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-    input: { params },
-  })
-  const listKey = query.apps.byAppId.workflow.comments.get.queryKey({
-    input: { params: { app_id: params.app_id } },
-  })
-  client.setQueryData(detailKey, (detail) => (detail ? { ...detail, ...fields } : detail), {
-    updatedAt: client.getQueryState(detailKey)?.dataUpdatedAt,
-  })
   client.setQueryData(
-    listKey,
+    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
+    (detail) => (detail ? { ...detail, ...fields } : detail),
+  )
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: params.app_id } },
+    }),
     (list) =>
       list
         ? {
@@ -3558,7 +3535,6 @@ function setCommentResolved(
             ),
           }
         : list,
-    { updatedAt: client.getQueryState(listKey)?.dataUpdatedAt },
   )
 }
 

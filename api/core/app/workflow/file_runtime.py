@@ -123,7 +123,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
         self._assert_upload_file_access(upload_file_id=upload_file_id)
         uri = f"/files/{upload_file_id}/file-preview"
-        query = self._sign_query(upload_file_id=upload_file_id)
+        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
         if as_attachment:
             query["as_attachment"] = "true"
         return f"{uri}?{urllib.parse.urlencode(query)}"
@@ -151,10 +151,9 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     ) -> bool:
         payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
         recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
-        if not hmac.compare_digest(sign.encode(), base64.urlsafe_b64encode(recalculated)):
+        if sign != base64.urlsafe_b64encode(recalculated).decode():
             return False
-        age = int(time.time()) - int(timestamp)
-        return age <= dify_config.FILES_ACCESS_TIMEOUT
+        return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
     @staticmethod
     def _base_url(*, for_external: bool) -> str:
@@ -166,13 +165,12 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode()
 
-    def _sign_query(self, *, upload_file_id: str) -> dict[str, str]:
-        timestamp = int(time.time())
+    def _sign_query(self, *, payload: str) -> dict[str, str]:
+        timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
-        payload = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-        sign = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
+        sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
         return {
-            "timestamp": str(timestamp),
+            "timestamp": timestamp,
             "nonce": nonce,
             "sign": base64.urlsafe_b64encode(sign).decode(),
         }
