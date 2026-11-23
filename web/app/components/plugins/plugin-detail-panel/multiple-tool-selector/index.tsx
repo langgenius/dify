@@ -162,7 +162,7 @@ const MultipleToolSelector = ({
           )}
           {tooltip ? (
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipTrigger aria-labelledby={titleId} />
               <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           ) : null}
@@ -173,7 +173,7 @@ const MultipleToolSelector = ({
               <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}</span>
             </div>
-            <Separator decorative orientation="vertical" className="mr-1 ml-3 h-3" />
+            <Separator decorative orientation="vertical" className="ms-3 me-1 h-3" />
           </>
         )}
         {!disabled && (

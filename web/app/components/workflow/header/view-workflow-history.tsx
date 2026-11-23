@@ -204,7 +204,7 @@ const ViewWorkflowHistory = () => {
                   type="button"
                   key={item?.index}
                   className={cn(
-                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left text-text-secondary hover:bg-state-base-hover',
+                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-start text-text-secondary hover:bg-state-base-hover',
                     item?.index === currentHistoryStateIndex && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -236,7 +236,7 @@ const ViewWorkflowHistory = () => {
                   type="button"
                   key={item?.index}
                   className={cn(
-                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left hover:bg-state-base-hover',
+                    'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-start hover:bg-state-base-hover',
                     item?.index === calculateChangeList.statesCount - 1 && 'bg-state-base-hover',
                   )}
                   onClick={() => {
@@ -268,7 +268,7 @@ const ViewWorkflowHistory = () => {
               <button
                 type="button"
                 className={cn(
-                  'my-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-left text-text-secondary',
+                  'my-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-start text-text-secondary',
                   'hover:bg-state-base-hover',
                 )}
                 onClick={() => {

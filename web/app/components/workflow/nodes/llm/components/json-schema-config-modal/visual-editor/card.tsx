@@ -16,7 +16,7 @@ const Card: FC<CardProps> = ({ name, type, required, description, readOnly }) =>
 
   return (
     <div className="flex flex-col py-0.5">
-      <div className={cn('flex items-center gap-x-1 pr-0.5 pl-1', readOnly ? 'min-h-6' : 'h-6')}>
+      <div className={cn('flex items-center gap-x-1 ps-1 pe-0.5', readOnly ? 'min-h-6' : 'h-6')}>
         <div
           className={cn(
             'border border-transparent px-1 py-px system-sm-semibold text-text-primary',

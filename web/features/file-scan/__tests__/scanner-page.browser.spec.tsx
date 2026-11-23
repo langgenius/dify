@@ -2,33 +2,14 @@ import type {
   FileScanProviderResponse,
   FileScanProviderTypeResponse,
 } from '@dify/contracts/api/console/file-scan/types.gen'
-import { ORPCError } from '@orpc/client'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { FileScanProvidersPage } from '../scanner-page'
 
-const api = vi.hoisted(() => ({
-  deleteProvider: vi.fn(),
-  listProviders: vi.fn(),
-  listProviderTypes: vi.fn(),
-  testProvider: vi.fn(),
-}))
-
-// boundary: the console API transport; generated keys, policies and Query observers stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'fileScan.providerTypes.get': api.listProviderTypes,
-      'fileScan.providers.byProviderId.delete': api.deleteProvider,
-      'fileScan.providers.byProviderId.test.post': api.testProvider,
-      'fileScan.providers.get': api.listProviders,
-    }),
-  }
-})
+// Provider ids are UUIDs in the contract.
+const scannerId = '00000000-0000-4000-8000-000000000001'
 
 const providerTypes: FileScanProviderTypeResponse[] = [
   { provider_type: 'cloudmersive', available: true, credential_fields: ['api_key'] },
@@ -37,7 +18,7 @@ const providerTypes: FileScanProviderTypeResponse[] = [
 
 function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanProviderResponse {
   return {
-    id: 'scanner-1',
+    id: scannerId,
     name: 'Office scanner',
     provider_type: 'cloudmersive',
     config: {},
@@ -51,6 +32,25 @@ function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanPro
   }
 }
 
+function installScannerApi(providers = [scanner()]) {
+  const fake = installFakeApi({
+    console: {
+      fileScan: {
+        providerTypes: { get: () => ({ data: providerTypes }) },
+        providers: {
+          get: () => ({ data: providers }),
+          byProviderId: {
+            delete: () => {},
+            test: { post: () => scanner() },
+          },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
+  return fake
+}
+
 async function renderPage({
   providers = [scanner()],
   role = 'owner',
@@ -58,8 +58,7 @@ async function renderPage({
   providers?: FileScanProviderResponse[]
   role?: 'normal' | 'owner'
 } = {}) {
-  api.listProviders.mockResolvedValue({ data: providers })
-  api.listProviderTypes.mockResolvedValue({ data: providerTypes })
+  const fake = installScannerApi(providers)
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({ currentWorkspace: { role } })
   await render(
     <ConsoleProvider>
@@ -73,20 +72,17 @@ async function renderPage({
       />
     </ConsoleProvider>,
   )
+  return fake.console.fileScan
 }
 
 const addButton = () => page.getByRole('button', { name: 'fileScan.scanner.add' })
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
 
 it('lists scanners with their state and shows why a failing one failed', async () => {
   await renderPage({
     providers: [
       scanner(),
       scanner({
-        id: 'scanner-2',
+        id: '00000000-0000-4000-8000-000000000002',
         name: 'Backup scanner',
         provider_type: 'scanii',
         status: 'error',
@@ -113,7 +109,7 @@ it('tells an empty workspace that no scanner is configured', async () => {
 })
 
 it('is read-only for members who cannot manage the workspace', async () => {
-  await renderPage({ role: 'normal' })
+  const fileScan = await renderPage({ role: 'normal' })
 
   await expect.element(page.getByText('fileScan.scanner.readOnly')).toBeVisible()
   await expect.element(page.getByText('Office scanner')).toBeVisible()
@@ -121,12 +117,13 @@ it('is read-only for members who cannot manage the workspace', async () => {
   await expect
     .element(page.getByRole('button', { name: /fileScan\.scanner\.test/ }))
     .not.toBeInTheDocument()
-  expect(api.listProviderTypes).not.toHaveBeenCalled()
+  expect(fileScan.providerTypes.get).not.toHaveBeenCalled()
 })
 
 it('offers a retry when the list cannot be loaded', async () => {
-  api.listProviders.mockRejectedValue(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
-  api.listProviderTypes.mockResolvedValue({ data: providerTypes })
+  installScannerApi().console.fileScan.providers.get.mockRejectedValueOnce(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
+  )
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
   })
@@ -137,43 +134,41 @@ it('offers a retry when the list cannot be loaded', async () => {
   )
 
   await expect.element(page.getByText('fileScan.scanner.loadFailed')).toBeVisible()
-  api.listProviders.mockResolvedValue({ data: [scanner()] })
   await page.getByRole('button', { name: 'common.operation.retry' }).click()
   await expect.element(page.getByText('Office scanner')).toBeInTheDocument()
 })
 
 it('tests a scanner and reports a failed check next to it', async () => {
-  api.testProvider.mockRejectedValue(
-    new ORPCError('BAD_REQUEST', { status: 400, message: 'Quota exhausted.' }),
+  const { providers } = await renderPage()
+  providers.byProviderId.test.post.mockRejectedValueOnce(
+    apiError({ status: 400, code: 'BAD_REQUEST', message: 'Quota exhausted.' }),
   )
-  await renderPage()
 
   await page.getByRole('button', { name: /fileScan\.scanner\.test/ }).click()
 
   await expect.element(page.getByRole('alert')).toBeVisible()
-  expect(api.testProvider).toHaveBeenCalledTimes(1)
-  expect(api.testProvider.mock.calls[0]?.[0]).toMatchObject({
-    params: { provider_id: 'scanner-1' },
-  })
+  expect(providers.byProviderId.test.post).toHaveBeenCalledTimes(1)
+  expect(providers.byProviderId.test.post).toHaveBeenCalledWith(
+    expect.objectContaining({ params: { provider_id: scannerId } }),
+  )
 })
 
 it('deletes a scanner only after confirmation', async () => {
-  api.deleteProvider.mockResolvedValue({ result: 'success' })
-  await renderPage()
+  const { providers } = await renderPage()
 
   await page.getByRole('button', { name: /common\.operation\.delete/ }).click()
   await expect.element(page.getByText('fileScan.scanner.deleteDescription')).toBeVisible()
-  expect(api.deleteProvider).not.toHaveBeenCalled()
+  expect(providers.byProviderId.delete).not.toHaveBeenCalled()
 
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: 'common.operation.delete' })
     .click()
 
-  await expect.poll(() => api.deleteProvider.mock.calls.length).toBe(1)
-  expect(api.deleteProvider.mock.calls[0]?.[0]).toMatchObject({
-    params: { provider_id: 'scanner-1' },
-  })
+  await expect.poll(() => providers.byProviderId.delete.mock.calls.length).toBe(1)
+  expect(providers.byProviderId.delete).toHaveBeenCalledWith(
+    expect.objectContaining({ params: { provider_id: scannerId } }),
+  )
 })
 
 it('opens the dialog to add a scanner and to edit an existing one', async () => {

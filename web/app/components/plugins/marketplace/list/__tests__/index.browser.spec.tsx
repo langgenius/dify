@@ -8,40 +8,25 @@ import {
 } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture, createPluginEntity } from '@/test/fixtures/plugin'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import List from '../index'
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({
-        plugins: [
-          createPluginEntity({
-            id: 'installed-plugin-id',
-            plugin_id: 'dify/installed-plugin',
-            plugin_unique_identifier: 'dify/installed-plugin:1.0.0@test',
-          }),
-        ],
-      }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
-        manifest: (await import('@/test/fixtures/plugin')).createPluginDeclarationFixture(),
-      }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-    }),
-  }
-})
-
+// A contract-valid manifest for the marketplace package the installer reads.
+const manifest = {
+  author: 'Dify',
+  category: 'tool' as const,
+  created_at: '2026-06-01T00:00:00Z',
+  description: { en_US: 'Plugin description' },
+  icon: 'icon.svg',
+  label: { en_US: 'Plugin label' },
+  meta: { version: '1.0.0' },
+  name: 'plugin-entity',
+  plugins: {},
+  resource: { memory: 0 },
+  tags: [],
+  version: '1.0.0',
+}
 const collection: MarketplaceCollection = {
   name: 'featured',
   label: { en_US: 'Featured plugins' },
@@ -67,7 +52,44 @@ async function renderList(
   showInstallButton = false,
 ) {
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              list: {
+                installations: {
+                  ids: {
+                    post: () => ({
+                      plugins: [
+                        createPluginEntity({
+                          id: 'installed-plugin-id',
+                          plugin_id: 'dify/installed-plugin',
+                          plugin_unique_identifier: 'dify/installed-plugin:1.0.0@test',
+                        }),
+                      ],
+                    }),
+                  },
+                },
+              },
+              marketplace: {
+                pkg: {
+                  get: () => ({ manifest }),
+                },
+              },
+              tasks: { get: () => ({ tasks: [] }) },
+              permission: {
+                fetch: {
+                  get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
   })

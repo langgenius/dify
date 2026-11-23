@@ -208,7 +208,7 @@ const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction<['co
           key={action.label}
           className="flex h-10 items-center justify-center rounded-xl bg-components-input-bg-normal px-3"
         >
-          <span className={cn('mr-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
+          <span className={cn('me-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
           <span className="truncate system-sm-medium text-text-tertiary">{action.label}</span>
         </div>
       ))}

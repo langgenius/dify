@@ -18,6 +18,7 @@ import {
 import { DialogClose } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { PolicyReferencedApps } from '@/features/network-access/policy-references'
@@ -31,6 +32,7 @@ type DeletePolicyDialogProps = {
 
 export function DeletePolicyDialog({ dialog, groups, fallbackFocus }: DeletePolicyDialogProps) {
   const { t } = useTranslation(['common'])
+  const deleteSucceededRef = useRef(false)
   const deleteGroup = useMutation(
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions({
       networkMode: 'always',
@@ -49,7 +51,12 @@ export function DeletePolicyDialog({ dialog, groups, fallbackFocus }: DeletePoli
         params: { group_id: group.id },
         query: { expected_version: group.version },
       },
-      { onSuccess: () => dialog.close() },
+      {
+        onSuccess: () => {
+          deleteSucceededRef.current = true
+          dialog.close()
+        },
+      },
     )
   }
 
@@ -57,8 +64,8 @@ export function DeletePolicyDialog({ dialog, groups, fallbackFocus }: DeletePoli
     <AlertDialog
       handle={dialog}
       onOpenChange={(open, details) => {
-        if (!open && deleteGroup.isPending && details.reason !== 'imperative-action')
-          details.cancel()
+        if (open) deleteSucceededRef.current = false
+        else if (deleteGroup.isPending && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload }) => {
@@ -72,7 +79,12 @@ export function DeletePolicyDialog({ dialog, groups, fallbackFocus }: DeletePoli
           <AlertDialogContent
             backdropProps={{ forceRender: true }}
             className="w-120"
-            finalFocus={() => (opener.isConnected ? opener : fallbackFocus.current)}
+            finalFocus={() => {
+              // The list can still contain the deleted row when the dialog restores focus.
+              return deleteSucceededRef.current || !opener.isConnected
+                ? fallbackFocus.current
+                : opener
+            }}
           >
             <AlertDialogHeader>
               <div className="flex items-start gap-4">

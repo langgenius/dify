@@ -10,11 +10,8 @@ import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { postMarketplace } from '@/service/base'
 import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
-import {
-  getFormattedPlugin,
-  getMarketplaceCollectionsAndPlugins,
-  getMarketplacePluginsByCollectionId,
-} from './utils'
+import { toPluginCard } from './plugin-card-adapter'
+import { getMarketplaceCollectionsAndPlugins, getMarketplacePluginsByCollectionId } from './utils'
 
 /**
  * @deprecated Use useMarketplaceCollectionsAndPlugins from query.ts instead
@@ -129,7 +126,7 @@ export const useMarketplacePlugins = (enabled = true) => {
         const resPlugins = res.data.bundles || res.data.plugins || []
 
         return {
-          plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
+          plugins: resPlugins.map((plugin) => toPluginCard(plugin)),
           total: res.data.total,
           page: pageParam,
           page_size,

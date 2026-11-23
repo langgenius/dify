@@ -25,7 +25,7 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
   return (
     <div
       className={cn(
-        'rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn pb-3',
+        'rounded-xl border-s-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn pb-3',
         noBodySpacing && 'pb-0',
         className,
       )}
