@@ -220,81 +220,6 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
-@pytest.mark.parametrize(("access_timeout", "window"), [(300, 60), (7, 3)])
-def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-    access_timeout: int,
-    window: int,
-) -> None:
-    config_overrides(
-        SECRET_KEY="unit-secret",
-        FILES_URL="https://files.example.com",
-        FILES_ACCESS_TIMEOUT=access_timeout,
-    )
-    timestamp = 120
-    now = timestamp
-    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: now)
-    runtime = _build_runtime()
-    account_id = "11111111-1111-1111-1111-111111111111"
-
-    first = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
-    now = timestamp + window - 1
-    same_bucket = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
-    now = timestamp + window
-    next_bucket = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
-
-    assert same_bucket == first
-    assert next_bucket != first
-    parsed = urlparse(first)
-    query = parse_qs(parsed.query)
-    next_query = parse_qs(urlparse(next_bucket).query)
-    assert parsed.netloc == "files.example.com"
-    assert parsed.path == "/files/upload-file-id/file-preview"
-    assert query["timestamp"] == [str(timestamp)]
-    assert query["nonce"] == [f"account-avatar-v2:{account_id}"]
-    assert query["issued_before"] == [str(timestamp + window)]
-    assert query["expires_at"] == [str(timestamp + access_timeout)]
-    assert next_query["timestamp"] == [query["issued_before"][0]]
-    assert next_query["nonce"] == query["nonce"]
-    assert next_query["issued_before"] == [str(timestamp + 2 * window)]
-    assert next_query["expires_at"] == [str(timestamp + window + access_timeout)]
-
-    def verify_first() -> bool:
-        return runtime.verify_preview_signature(
-            preview_kind="file",
-            file_id="upload-file-id",
-            timestamp=query["timestamp"][0],
-            nonce=query["nonce"][0],
-            sign=query["sign"][0],
-        )
-
-    assert verify_first()
-    assert not runtime.verify_preview_signature(
-        preview_kind="file",
-        file_id="upload-file-id",
-        timestamp=query["timestamp"][0],
-        nonce="account-avatar-v2:22222222-2222-2222-2222-222222222222",
-        sign=query["sign"][0],
-    )
-    assert not runtime.verify_preview_signature(
-        preview_kind="image",
-        file_id="upload-file-id",
-        timestamp=query["timestamp"][0],
-        nonce=query["nonce"][0],
-        sign=query["sign"][0],
-    )
-
-    now = timestamp - 5
-    assert verify_first()
-    now = timestamp - 6
-    assert not verify_first()
-    now = timestamp + access_timeout
-    assert verify_first()
-    now += 1
-    assert not verify_first()
-
-
 def test_resolve_upload_file_url_keeps_fresh_generic_nonces(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -403,7 +328,7 @@ def test_resolve_storage_key_uses_canonical_record_when_scope_is_bound(file_sess
     assert runtime._resolve_storage_key(file=file) == "canonical-storage-key"
 
 
-def test_upload_file_url_resolvers_reject_unauthorized_scoped_access(file_session: Session) -> None:
+def test_upload_file_url_resolver_rejects_unauthorized_scoped_access(file_session: Session) -> None:
     _persist_upload_file(file_session, tenant_id="other-tenant", created_by="other-user")
     scope = FileAccessScope(
         tenant_id="tenant-id",
@@ -415,10 +340,6 @@ def test_upload_file_url_resolvers_reject_unauthorized_scoped_access(file_sessio
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
         runtime.resolve_upload_file_url(upload_file_id="upload-file-id")
-    with pytest.raises(ValueError, match="Upload file upload-file-id not found"):
-        runtime.resolve_avatar_file_url(
-            upload_file_id="upload-file-id", account_id="11111111-1111-1111-1111-111111111111"
-        )
 
 
 @pytest.mark.parametrize(

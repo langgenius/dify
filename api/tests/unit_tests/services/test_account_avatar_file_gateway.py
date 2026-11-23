@@ -2,13 +2,17 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope
+from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
 from models.account import Tenant
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway, get_signed_avatar_url
 
 
 def _persist_upload_file(session: Session, *, file_id: str, account_id: str) -> None:
@@ -50,3 +54,23 @@ def test_gateway_signs_only_an_avatar_owned_by_the_account(
     assert owned_url == "https://signed.example/avatar"
     assert unowned_url is None
     signer.assert_called_once_with(upload_file_id=file_id, account_id="account-1")
+
+
+def test_avatar_signer_respects_the_active_file_scope(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    file_id = str(uuid4())
+    account_id = str(uuid4())
+    _persist_upload_file(sqlite_session, file_id=file_id, account_id=account_id)
+    monkeypatch.setattr(session_factory, "create_session", sqlite_session_factory)
+    scope = FileAccessScope(
+        tenant_id="another-tenant",
+        user_id=account_id,
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope), pytest.raises(ValueError, match="Upload file .* not found"):
+        get_signed_avatar_url(upload_file_id=file_id, account_id=account_id)

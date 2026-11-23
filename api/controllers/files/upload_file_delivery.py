@@ -11,8 +11,8 @@ from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
-from core.app.workflow.file_runtime import avatar_preview_cache_max_age
 from extensions.ext_application_services import application_services
+from libs.account_avatar import avatar_preview_cache_max_age
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,

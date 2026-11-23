@@ -5,7 +5,7 @@ from typing import NamedTuple, Protocol
 
 from constants import IMAGE_EXTENSIONS
 from graphon.file import helpers as file_helpers
-from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX, account_avatar_owner
+from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX, account_avatar_owner, verify_avatar_preview_signature
 from services.errors.file import UnsupportedFileTypeError
 
 
@@ -81,7 +81,9 @@ class UploadFileDeliveryService:
         nonce: str,
         sign: str,
     ) -> UploadFileDelivery:
-        if not file_helpers.verify_file_signature(
+        is_avatar = nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX)
+        verify_signature = verify_avatar_preview_signature if is_avatar else file_helpers.verify_file_signature
+        if not verify_signature(
             upload_file_id=file_id,
             timestamp=timestamp,
             nonce=nonce,
@@ -89,7 +91,7 @@ class UploadFileDeliveryService:
         ):
             raise UploadFileDeliveryNotFoundError("File not found or signature is invalid")
 
-        if nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX):
+        if is_avatar:
             try:
                 account_id = account_avatar_owner(nonce)
             except ValueError as error:

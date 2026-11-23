@@ -1364,6 +1364,64 @@ class TestWorkflowCases:
         assert second_pipeline.hgetall.call_count == 1
 
     @staticmethod
+    def test_workflow_online_users_keeps_remaining_users_after_avatar_signing_failure(
+        app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        app_id = "11111111-1111-1111-1111-111111111111"
+        signer = Mock(side_effect=[RuntimeError("signing failed"), "https://files.example.com/signed/avatar-2"])
+        monkeypatch.setattr(workflow_module, "build_account_avatar_url", signer)
+        monkeypatch.setattr(
+            workflow_module,
+            "WorkflowService",
+            lambda: SimpleNamespace(
+                get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)
+            ),
+        )
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+        monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
+
+        pipeline = Mock()
+        pipeline.execute.return_value = [
+            {
+                b"sid-1": json.dumps({"user_id": "user-1", "username": "Alice", "avatar": "avatar-file-id-1"}),
+                b"sid-2": json.dumps({"user_id": "user-2", "username": "Bob", "avatar": "avatar-file-id-2"}),
+            }
+        ]
+        pipeline_factory = Mock(return_value=pipeline)
+        monkeypatch.setattr(workflow_module.redis_client, "pipeline", pipeline_factory)
+
+        api = workflow_module.WorkflowOnlineUsersApi()
+        handler = inspect.unwrap(api.post)
+        with app.test_request_context(
+            "/apps/workflows/online-users",
+            method="POST",
+            json={"app_ids": [app_id]},
+        ):
+            args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id]})
+            response = handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
+
+        assert response == {
+            "data": [
+                {
+                    "app_id": app_id,
+                    "users": [
+                        {"user_id": "user-1", "username": "Alice", "avatar": None},
+                        {
+                            "user_id": "user-2",
+                            "username": "Bob",
+                            "avatar": "https://files.example.com/signed/avatar-2",
+                        },
+                    ],
+                }
+            ]
+        }
+        assert [call.kwargs for call in signer.call_args_list] == [
+            {"avatar": "avatar-file-id-1", "account_id": "user-1"},
+            {"avatar": "avatar-file-id-2", "account_id": "user-2"},
+        ]
+        pipeline_factory.assert_called_once_with(transaction=False)
+
+    @staticmethod
     def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         get_tenant_app_maintainers = Mock(return_value={})
         monkeypatch.setattr(

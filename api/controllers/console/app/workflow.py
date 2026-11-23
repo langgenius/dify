@@ -57,7 +57,6 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.file_runtime import build_account_avatar_url
 from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
@@ -92,6 +91,7 @@ from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
+from services.account_avatar_file_gateway import build_account_avatar_url
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import resolve_app_access_filter
 from services.app_generate_service import AppGenerateService
@@ -2142,7 +2142,7 @@ class WorkflowOnlineUsersApi(Resource):
                 if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
                     try:
                         avatar = build_account_avatar_url(avatar=avatar, account_id=user_id)
-                    except ValueError:
+                    except Exception:
                         logger.warning("Failed to sign workflow online user avatar for app %s", app_id, exc_info=True)
                         avatar = None
 

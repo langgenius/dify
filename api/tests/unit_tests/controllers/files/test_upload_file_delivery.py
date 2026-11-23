@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 import controllers.files.upload_file_delivery as module
-from core.app.workflow.file_runtime import get_signed_avatar_url
+from graphon.file.runtime import use_workflow_file_runtime
 from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX
 from models.enums import CreatorUserRole
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from services.account_avatar_file_gateway import get_signed_avatar_url
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,
@@ -227,7 +228,7 @@ class TestFilePreviewApi:
         request_time: int,
         max_age: int,
     ) -> None:
-        monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 160)
+        monkeypatch.setattr("libs.account_avatar.time.time", lambda: 160)
         upload = make_upload_file(
             file_id=str(_AVATAR_FILE_ID),
             created_by=_AVATAR_OWNER_ID,
@@ -237,12 +238,13 @@ class TestFilePreviewApi:
         )
         with sqlite_session_factory.begin() as session:
             session.add(upload)
-        signed_url = get_signed_avatar_url(upload_file_id=str(_AVATAR_FILE_ID), account_id=_AVATAR_OWNER_ID)
-        assert signed_url is not None
+        with use_workflow_file_runtime(None):
+            signed_url = get_signed_avatar_url(upload_file_id=str(_AVATAR_FILE_ID), account_id=_AVATAR_OWNER_ID)
+            assert signed_url is not None
 
-        monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: request_time)
-        with app.test_request_context(f"/?{urlsplit(signed_url).query}"):
-            response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
+            monkeypatch.setattr("libs.account_avatar.time.time", lambda: request_time)
+            with app.test_request_context(f"/?{urlsplit(signed_url).query}"):
+                response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
 
         assert response.headers["Cache-Control"] == f"private, max-age={max_age}, must-revalidate"
         assert preview_storage.reads == [("stream", "uploads/file-1")]
