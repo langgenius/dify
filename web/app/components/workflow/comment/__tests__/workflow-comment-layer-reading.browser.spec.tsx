@@ -1,9 +1,12 @@
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
+import { TEST_APP_ID } from '@/test/console/ids'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import { markers, openThread, renderLayer, sendReply, thread } from './comment-layer-browser-env'
 import {
   api,
   collaboration,
+  commentLayerApi,
   deferred,
   listItem,
   resetFakeServer,
@@ -22,13 +25,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { consoleResponses } = await import('./comment-layer-fake-server')
-  return { ...actual, consoleQuery: withConsoleResponses(actual.consoleQuery, consoleResponses) }
-})
 
+setupFakeApi(commentLayerApi)
 beforeEach(resetFakeServer)
 
 const scrollingParent = (element: Element) => {
@@ -95,7 +93,7 @@ describe('reading a thread', () => {
   it('keeps the reader’s place when a collaborator replies below a reply that failed to send', async () => {
     for (let index = 0; index < 12; index++)
       saveReplyOnServer('first', `Reply number ${index}`, `reply-${index}`)
-    api.reply.mockRejectedValueOnce(new Error('Network error'))
+    api.reply.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await openThread(screen)
     await sendReply(screen, 'Not sent')
@@ -176,7 +174,7 @@ describe('reading a thread', () => {
 
   it('brings a failed reply into view when it is sent again', async () => {
     const failures = ['Failure 1', 'Failure 2', 'Failure 3', 'Failure 4', 'Failure 5', 'Failure 6']
-    for (const _ of failures) api.reply.mockRejectedValueOnce(new Error('Network error'))
+    for (const _ of failures) api.reply.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await openThread(screen)
     for (const text of failures) await sendReply(screen, text)
@@ -207,14 +205,14 @@ describe('opening a thread with its replies', () => {
         () =>
           screen.queryClient.getQueryState(
             consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
-              input: { params: { app_id: 'app-1', comment_id: commentId } },
+              input: { params: { app_id: TEST_APP_ID, comment_id: commentId } },
             }),
           )?.status,
       )
       .toBe('success')
   // From here on a thread's own read never answers, so what it shows was read ahead.
   const holdThreadReads = () => {
-    api.detailGate = new Promise(() => {})
+    api.detailsPending = true
   }
 
   it('shows a thread’s replies at once when it opens after its marker was hovered', async () => {

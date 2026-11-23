@@ -27,6 +27,7 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithoutPricing,
@@ -176,7 +177,7 @@ const accountMenuAccessibleName = `${mainNavUserProfile.name} accountSettings.ac
 const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
   currentWorkspace: {
-    id: 'workspace-1',
+    id: TEST_WORKSPACE_ID,
     name: 'Solar Studio',
     plan: 'team',
     credits: 7500,
@@ -302,7 +303,7 @@ describe('MainNav', () => {
     mockPathname = '/apps'
     mockWorkspaces = [
       {
-        id: 'workspace-1',
+        id: TEST_WORKSPACE_ID,
         name: 'Solar Studio',
         plan: 'team',
         status: 'normal',

@@ -4,14 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    files: { upload: { post: { mutationOptions: () => ({ mutationFn: vi.fn() }) } } },
-  },
-}))
+beforeEach(() => onTestFinished(installFakeApi({})))
 
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
 

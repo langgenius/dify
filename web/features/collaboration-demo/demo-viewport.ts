@@ -33,7 +33,23 @@ export function getDemoViewport(width: number, height: number, direction: 'ltr' 
   }
 }
 
-export function useDemoViewport() {
+/** Frames the demo graph, its comment and thread in the canvas. */
+export function useFitDemoViewport() {
+  const { setViewport } = useReactFlow()
+  const direction = useDirection()
+  const width = useStore((state) => state.width)
+  const height = useStore((state) => state.height)
+
+  return () => {
+    if (width && height) setViewport(getDemoViewport(width, height, direction))
+  }
+}
+
+/**
+ * Frames the canvas once its nodes are measured and again whenever it resizes. The nodes stay
+ * out of the accessibility tree: the demo describes them in its own copy.
+ */
+export function DemoViewportFit() {
   const { setViewport } = useReactFlow()
   const direction = useDirection()
   const flowElement = useStore((state) => state.domNode)
@@ -46,12 +62,10 @@ export function useDemoViewport() {
   }, [direction, height, nodesInitialized, setViewport, width])
 
   useEffect(() => {
-    const decorative = flowElement?.querySelectorAll(
-      ':scope > .react-flow__renderer, :scope > .react-flow__attribution',
-    )
-    decorative?.forEach((element) => {
-      element.setAttribute('inert', '')
-      element.setAttribute('aria-hidden', 'true')
-    })
+    flowElement
+      ?.querySelector(':scope > .react-flow__renderer')
+      ?.setAttribute('aria-hidden', 'true')
   }, [flowElement])
+
+  return null
 }

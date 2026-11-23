@@ -46,8 +46,6 @@ type WorkflowPreviewProps = {
   viewport: Viewport
   className?: string
   miniMapToRight?: boolean
-  showControls?: boolean
-  interactive?: boolean
   children?: ReactNode
 }
 const WorkflowPreview = ({
@@ -56,8 +54,6 @@ const WorkflowPreview = ({
   viewport,
   className,
   miniMapToRight,
-  showControls = true,
-  interactive = true,
   children,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
@@ -74,26 +70,24 @@ const WorkflowPreview = ({
 
   return (
     <div id="workflow-container" className={cn('relative size-full', className)}>
-      {showControls && (
-        <>
-          <MiniMap
-            pannable
-            zoomable
-            style={{
-              width: 102,
-              height: 72,
-            }}
-            maskColor="var(--color-workflow-minimap-bg)"
-            className={cn(
-              'absolute! bottom-14! z-9 m-0! h-18! w-25.5! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!',
-              miniMapToRight ? 'inset-e-4!' : 'inset-s-4!',
-            )}
-          />
-          <div className="absolute inset-s-4 bottom-4 z-9 mt-1 flex items-center gap-2">
-            <ZoomInOut />
-          </div>
-        </>
-      )}
+      <>
+        <MiniMap
+          pannable
+          zoomable
+          style={{
+            width: 102,
+            height: 72,
+          }}
+          maskColor="var(--color-workflow-minimap-bg)"
+          className={cn(
+            'absolute! bottom-14! z-9 m-0! h-18! w-25.5! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!',
+            miniMapToRight ? 'inset-e-4!' : 'inset-s-4!',
+          )}
+        />
+        <div className="absolute inset-s-4 bottom-4 z-9 mt-1 flex items-center gap-2">
+          <ZoomInOut />
+        </div>
+      </>
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -111,13 +105,6 @@ const WorkflowPreview = ({
         nodesFocusable={false}
         edgesFocusable={false}
         panOnScroll={false}
-        panOnDrag={interactive}
-        zoomOnScroll={interactive}
-        zoomOnPinch={interactive}
-        zoomOnDoubleClick={interactive}
-        elementsSelectable={interactive}
-        panActivationKeyCode={interactive ? undefined : null}
-        zoomActivationKeyCode={interactive ? undefined : null}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
         minZoom={0.25}
