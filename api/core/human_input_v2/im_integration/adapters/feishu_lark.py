@@ -1281,6 +1281,7 @@ class _FeishuLarkMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        failure = MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
         try:
             elements: list[dict[str, str]] = []
             if subject:
@@ -1298,9 +1299,16 @@ class _FeishuLarkMessaging(IMMessaging):
             _log_safe_error(
                 "Feishu/Lark text message acceptance is unknown", extra={"im_provider": self._provider.value}
             )
-            return MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
-        if response.code != 0 or response.data is None:
-            return MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
+            return failure
+        if response.code != 0:
+            logger.error(
+                "Feishu/Lark text message acceptance failed at provider-response stage: provider_error_code=%d",
+                response.code,
+                extra={"im_provider": self._provider.value},
+            )
+            return failure
+        if response.data is None:
+            return failure
         return MessageAccepted(
             MessageLocator(
                 _FeishuLarkLocatorPayload(
@@ -1354,8 +1362,9 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
             )
             return failure
         if response.code != 0:
-            _log_safe_error(
-                "Feishu/Lark card acceptance failed at provider-response stage",
+            logger.error(
+                "Feishu/Lark card acceptance failed at provider-response stage: provider_error_code=%d",
+                response.code,
                 extra={"im_provider": self._provider.value},
             )
             return failure

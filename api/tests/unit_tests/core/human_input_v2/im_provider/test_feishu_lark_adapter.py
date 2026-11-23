@@ -1270,7 +1270,9 @@ def test_ambiguous_text_send_is_safe_and_never_replayed(
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_explicit_text_rejection_is_safe_and_attempted_once(
-    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+    monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(_tenant_response())
@@ -1281,6 +1283,8 @@ def test_explicit_text_rejection_is_safe_and_attempted_once(
 
     assert isinstance(result, MessageSendingError)
     assert "sanitized rejection" not in result.reason
+    assert "provider_error_code=230001" in caplog.text
+    assert "sanitized rejection" not in caplog.text
     assert len([call for call in gateway.calls if call[0] == "create_message"]) == 1
 
 
@@ -1427,10 +1431,11 @@ def test_card_send_logs_only_the_safe_acceptance_failure_stage(
 
     assert result == MessageSendingError(f"{provider.name.title()} card acceptance could not be confirmed.")
     assert len([call for call in gateway.calls if call[0] == "create_message"]) == 1
+    expected_message = f"Feishu/Lark card acceptance failed at {expected_stage} stage"
+    if expected_stage == "provider-response":
+        expected_message += ": provider_error_code=230001"
     assert any(
-        record.name == adapter_module.__name__
-        and record.getMessage() == f"Feishu/Lark card acceptance failed at {expected_stage} stage"
-        for record in caplog.records
+        record.name == adapter_module.__name__ and record.getMessage() == expected_message for record in caplog.records
     )
     assert "sensitive provider rejection" not in caplog.text
     assert "sensitive SDK exception" not in caplog.text
