@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
@@ -88,6 +88,7 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.app.llm.model_access import ModelRuntimeProfile
+from core.tools.entities.common_entities import I18nObject, I18nObjectDict
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -117,6 +118,9 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
 
 
 class _NoToolsBuilder:
+    def __init__(self, tool_labels: Mapping[str, I18nObjectDict] | None = None) -> None:
+        self.tool_labels = tool_labels or {}
+
     def build_layers(
         self,
         *,
@@ -128,7 +132,7 @@ class _NoToolsBuilder:
         knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...] = (),
     ) -> WorkflowAgentToolLayers:
         del tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces
-        return WorkflowAgentToolLayers()
+        return WorkflowAgentToolLayers(tool_labels=self.tool_labels)
 
 
 class _FakeQueueManager(AppQueueManager):
@@ -675,10 +679,11 @@ def _runner(
     store: _FakeSessionStore,
     *,
     text_delta_debounce_seconds: float = 0,
+    tool_labels: Mapping[str, I18nObjectDict] | None = None,
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            dify_tools_builder=_NoToolsBuilder(),
+            dify_tools_builder=_NoToolsBuilder(tool_labels),
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
@@ -969,7 +974,10 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
 
-    _run(_runner(client, store), qm)
+    _run(
+        _runner(client, store, tool_labels={"bash": I18nObject(en_US="Run Command", zh_Hans="运行命令").to_dict()}),
+        qm,
+    )
 
     chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
@@ -984,6 +992,8 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
+    assert rows[1].tool_labels["bash"]["en_US"] == "Run Command"
+    assert rows[1].tool_labels["bash"]["zh_Hans"] == "运行命令"
     assert len(rows) == 2
 
 
@@ -1045,6 +1055,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(
     rows = _thought_rows(sqlite_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
+    assert rows[0].tool_labels == {"shell_run": {"en_US": "shell_run", "zh_Hans": "shell_run"}}
     assert rows[0].tool_input == '{"script": "npx skills find browser"}'
     assert rows[0].observation == ""
     assert rows[1].tool == ""
@@ -1822,21 +1833,25 @@ def test_tool_activity_persists_parallel_same_name_calls_without_reusing_an_acti
 @pytest.mark.usefixtures("activity_message")
 def test_tool_activity_replay_is_idempotent_in_one_recorder_and_after_reconstruction(sqlite_session: Session) -> None:
     queue = _FakeQueueManager()
+    labels = {"search": I18nObject(en_US="Search", zh_Hans="搜索").to_dict()}
     recorder = app_runner_module._AgentProcessRecorder(
-        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue, tool_labels=labels
     )
+    labels["search"]["en_US"] = "Renamed"
     call = _activity_call("first")
     result = _activity_result("first")
     _deliver_activity_event(recorder, call)
     _deliver_activity_event(recorder, result)
     original = _thought_rows(sqlite_session)[0]
+    assert original.tool_labels["search"]["en_US"] == "Search"
+    assert original.tool_labels["search"]["zh_Hans"] == "搜索"
     event_count = len(queue.events)
     for replay_event in (call, result):
         _deliver_activity_event(recorder, replay_event)
     assert len(_thought_rows(sqlite_session)) == 1
     assert len(queue.events) == event_count
     reconstructed = app_runner_module._AgentProcessRecorder(
-        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue
+        dify_context=_dify_ctx(), message_id="msg-1", queue_manager=queue, tool_labels=labels
     )
     for replay_event in (call, result):
         _deliver_activity_event(reconstructed, replay_event)
@@ -1847,6 +1862,8 @@ def test_tool_activity_replay_is_idempotent_in_one_recorder_and_after_reconstruc
     rows = _thought_rows(sqlite_session)
     assert [row.position for row in rows] == [1, 2]
     assert rows[0].id == original.id
+    assert rows[0].tool_labels["search"]["en_US"] == "Search"
+    assert rows[1].tool_labels["search"]["en_US"] == "Renamed"
     assert [_stored_activity(row).tool_call_id for row in rows] == ["first", "new-call"]
 
 

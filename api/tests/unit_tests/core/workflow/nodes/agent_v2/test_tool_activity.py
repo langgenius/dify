@@ -22,12 +22,29 @@ from pydantic_ai.messages import (
 )
 
 from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendStreamInternalEvent
+from core.tools.entities.common_entities import I18nObject
 from core.workflow.nodes.agent_v2.tool_activity import (
     _TOOL_FIELD_LIMIT,
     WorkflowAgentToolActivityProjector,
 )
 
 _CREATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def test_prepared_label_is_frozen_without_changing_native_call_identity() -> None:
+    """The admitted declaration names the UI row; stream content cannot rename it."""
+    labels = {"search": I18nObject(en_US="Friendly search", zh_Hans="友好搜索").to_dict()}
+    projector = WorkflowAgentToolActivityProjector(
+        node_id="agent-node", node_execution_id="exec-1", node_title="Research agent", tool_labels=labels
+    )
+    labels["search"]["en_US"] = "Changed after prepare"
+    start = projector.handle(_tool_call("call-1", tool_name="search"))[0]
+    result = projector.handle(_tool_result("call-1", tool_name="search"))[0]
+    assert start.label == result.label == "Friendly search"
+    assert result.id == "run-1:call-1"
+    assert result.data.tool_name == "search"
+    unknown = projector.handle(_tool_call("call-2", tool_name="unknown_tool"))[0]
+    assert unknown.label == unknown.data.tool_name == "unknown_tool"
 
 
 @pytest.mark.parametrize(
