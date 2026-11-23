@@ -6,7 +6,7 @@ from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
-from services.account_avatar_file_gateway import build_account_avatar_url
+from services.account.avatar_url import build_account_avatar_url
 
 
 class SimpleAccountResponse(ResponseModel):

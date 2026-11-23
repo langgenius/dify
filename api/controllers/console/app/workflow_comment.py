@@ -19,7 +19,7 @@ from fields.member_fields import AccountWithRole
 from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
-from services.account_avatar_file_gateway import build_account_avatar_url
+from services.account.avatar_url import build_account_avatar_url
 from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
     InvalidWorkflowCommentContentError,

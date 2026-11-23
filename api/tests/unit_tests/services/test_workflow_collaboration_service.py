@@ -12,11 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
+from graphon.file import helpers as file_helpers
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
@@ -1301,7 +1302,9 @@ class TestWorkflowCollaborationService:
                 ]
             )
         avatar_service = AccountAvatarService(
-            files=SQLAlchemyAccountAvatarFileGateway(session_factory=sqlite_session_factory)
+            avatars=SQLAlchemyAccountRepository(session_factory=sqlite_session_factory),
+            sign_file_url=file_helpers.get_signed_file_url,
+            console_api_url="https://console.example.com",
         )
         seed_session(repository, "viewer")
         seed_sessions(
@@ -1350,18 +1353,17 @@ class TestWorkflowCollaborationService:
         )
         socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
 
-        with config_overrides_context(CONSOLE_API_URL="https://console.example.com"):
-            assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
-            assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
-                "outside": "https://example.com/other-avatar.png"
-            }
-            assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
-                "owner": f"https://console.example.com/console/api/accounts/{owner_id}/avatars/{owner_avatar_id}",
-                "assigned-later": (
-                    "https://console.example.com/console/api/accounts/"
-                    f"{assigned_later_id}/avatars/{assigned_later_avatar_id}"
-                ),
-            }
+        assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
+        assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
+            "outside": "https://example.com/other-avatar.png"
+        }
+        assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
+            "owner": f"https://console.example.com/console/api/accounts/{owner_id}/avatars/{owner_avatar_id}",
+            "assigned-later": (
+                "https://console.example.com/console/api/accounts/"
+                f"{assigned_later_id}/avatars/{assigned_later_avatar_id}"
+            ),
+        }
 
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service
