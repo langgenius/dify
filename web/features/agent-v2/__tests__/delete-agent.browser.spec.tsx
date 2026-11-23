@@ -30,6 +30,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.get': api.agents,
       'agent.byAgentId.delete': api.delete,
+      'tags.get': () => [],
     }),
   }
 })
