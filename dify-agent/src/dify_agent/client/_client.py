@@ -653,13 +653,15 @@ class Client:
     ) -> AsyncGenerator[RunEvent]:
         """Yield typed events from SSE with cursor-based reconnect.
 
-        The initial cursor is ``after`` or ``"0-0"``. After every yielded event
-        with an id, reconnects resume from that id using the ``after`` query
-        parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
-        DTO validation failures, and malformed SSE frames are not retried.
-        ``max_reconnects`` limits consecutive reconnects that deliver no event; the
-        count resets whenever an event arrives, so a run that keeps progressing is
-        not failed by periodic disconnects (for example proxy connection limits). By
+        The initial cursor is ``after`` or ``"0-0"``. After every event whose id
+        advances the cursor, reconnects resume from that id using the ``after``
+        query parameter. Stale numbered events are ignored. Events without an id
+        are still yielded but do not restore the reconnect budget. HTTP 5xx stream
+        responses are retried, but HTTP 4xx responses, DTO validation failures,
+        and malformed SSE frames are not retried. ``max_reconnects`` limits
+        consecutive reconnects that make no cursor progress; the count resets only
+        when the cursor advances, so a run that keeps progressing is not failed by
+        periodic disconnects (for example proxy connection limits). By
         default, ``until_terminal=True`` closes the response before yielding a
         succeeded, failed, or cancelled terminal event and ends iteration immediately
         after that event. With
@@ -691,11 +693,14 @@ class Client:
                     self._stream_events_once(run_id, after=cursor, deadline=deadline, should_stop=should_stop)
                 ) as connection:
                     async for event in connection:
-                        if event.id is not None:
+                        cursor_advanced = _event_advances_stream_cursor(event.id, cursor)
+                        if event.id is not None and not cursor_advanced:
+                            continue
+                        if cursor_advanced:
+                            assert event.id is not None
                             cursor = event.id
-                        # The budget bounds consecutive failed connections; a delivered event proves the
-                        # stream is resuming from its cursor, so a long run may outlive many disconnects.
-                        reconnect_attempts = 0
+                            # Only cursor progress proves that reconnect resumed beyond previously seen events.
+                            reconnect_attempts = 0
                         if event.type in _TERMINAL_EVENT_TYPES:
                             terminal_event_seen = True
                             if until_terminal:
@@ -760,11 +765,14 @@ class Client:
                     deadline=deadline,
                     should_stop=should_stop,
                 ):
-                    if event.id is not None:
+                    cursor_advanced = _event_advances_stream_cursor(event.id, cursor)
+                    if event.id is not None and not cursor_advanced:
+                        continue
+                    if cursor_advanced:
+                        assert event.id is not None
                         cursor = event.id
-                    # The budget bounds consecutive failed connections; a delivered event proves the
-                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
-                    reconnect_attempts = 0
+                        # Only cursor progress proves that reconnect resumed beyond previously seen events.
+                        reconnect_attempts = 0
                     if event.type in _TERMINAL_EVENT_TYPES:
                         terminal_event_seen = True
                     yield event
@@ -1111,6 +1119,25 @@ def _next_reconnect_attempt(
     if max_reconnects is not None and reconnect_attempts >= max_reconnects:
         raise DifyAgentStreamError("SSE stream reconnect attempts exhausted") from error
     return reconnect_attempts + 1
+
+
+def _parse_redis_stream_id(value: str) -> tuple[int, int] | None:
+    """Parse a canonical Redis Stream ID for numeric cursor comparison."""
+    timestamp, separator, sequence = value.partition("-")
+    if not separator or not timestamp.isdecimal() or not sequence.isdecimal():
+        return None
+    return int(timestamp), int(sequence)
+
+
+def _event_advances_stream_cursor(event_id: str | None, cursor: str) -> bool:
+    """Return whether an event proves progress beyond the current resume cursor."""
+    if not event_id:
+        return False
+    event_position = _parse_redis_stream_id(event_id)
+    cursor_position = _parse_redis_stream_id(cursor)
+    if event_position is not None and cursor_position is not None:
+        return event_position > cursor_position
+    return event_id != cursor
 
 
 def _validate_stream_options(
