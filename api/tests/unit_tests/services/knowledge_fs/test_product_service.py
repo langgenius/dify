@@ -55,12 +55,11 @@ class FakeRBAC:
     def permission_keys_by_control_space(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
     ) -> dict[str, frozenset[KnowledgeFSProductPermission]]:
-        _ = (session, tenant_id, account_id)
+        _ = (tenant_id, account_id)
         self.batch_calls.append(tuple(control_space_ids))
         return {
             control_space_id: frozenset(KnowledgeFSProductPermission)
@@ -71,14 +70,12 @@ class FakeRBAC:
     def filter_authorized_control_space_ids(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
         permission: KnowledgeFSProductPermission,
     ) -> frozenset[str]:
         permissions = self.permission_keys_by_control_space(
-            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_ids=control_space_ids,

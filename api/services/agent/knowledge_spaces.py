@@ -72,7 +72,6 @@ def require_agent_knowledge_space_access(
 ) -> None:
     """Require local and enterprise read/query permission for every requested space."""
     permissions = DifyKnowledgeFSProductRBACPort().permission_keys_by_control_space(
-        session=None,
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_ids=ids,
