@@ -65,6 +65,12 @@ export type TagSelectorProps = TagSelectorRootProps &
     onApplyTags?: (tagIds: string[]) => void
   }
 
+type ClosingTagPopup = {
+  items: TagComboboxItem[]
+  inputValue: string
+  isTagCatalogEmpty: boolean
+}
+
 export const TagSelector = ({
   targetId,
   contextLabel,
@@ -82,6 +88,7 @@ export const TagSelector = ({
 }: TagSelectorProps) => {
   const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
+  const [closingPopup, setClosingPopup] = useState<ClosingTagPopup | null>(null)
   const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
   const pendingAgentTagRef = useRef<Promise<string | undefined> | null>(null)
   const [inputValue, setInputValue] = useState('')
@@ -125,7 +132,7 @@ export const TagSelector = ({
   const accessibleTriggerLabel = contextLabel ? `${triggerLabel}: ${contextLabel}` : triggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
-    if (!open) return EMPTY_TAGS
+    if (!open) return closingPopup?.items ?? EMPTY_TAGS
 
     const tagIds = new Set<string>()
     const nextItems: TagComboboxItem[] = []
@@ -161,7 +168,8 @@ export const TagSelector = ({
     }
 
     return nextItems
-  }, [canManageTags, inputValue, open, tagList, type, value])
+  }, [canManageTags, closingPopup, inputValue, open, tagList, type, value])
+  const isTagCatalogEmpty = closingPopup?.isTagCatalogEmpty ?? (hasLoadedTags && items.length === 0)
   const tagItemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
   const tagItems = useMemo(
     () =>
@@ -209,6 +217,9 @@ export const TagSelector = ({
   }, [draftTagIds, onApplyTags, onTagsChange, saveBindings, selectedTagIds, t, targetId, type])
 
   const closeAndApply = () => {
+    if (!open) return
+    // Applying bindings can refresh the catalog while the popup is still fading out.
+    setClosingPopup({ items, inputValue, isTagCatalogEmpty })
     void applyTagBindings()
     setOpen(false)
   }
@@ -264,13 +275,17 @@ export const TagSelector = ({
         if (!nextOpen) return closeAndApply()
         if (isSavingAgentTags) return details.cancel()
         setDraftTagIds(selectedTagIds)
+        setClosingPopup(null)
         setOpen(true)
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) setClosingPopup(null)
       }}
       items={tagItems}
       multiple
       value={draftTagIds}
       onValueChange={handleValueChange}
-      inputValue={inputValue}
+      inputValue={closingPopup?.inputValue ?? inputValue}
       onInputValueChange={setInputValue}
       filter={TAG_COMBOBOX_FILTER}
     >
@@ -301,7 +316,7 @@ export const TagSelector = ({
           >
             <TagSearchContent
               type={type}
-              isTagCatalogEmpty={hasLoadedTags && items.length === 0}
+              isTagCatalogEmpty={isTagCatalogEmpty}
               canBindOrUnbindTags={canBindOrUnbindTags}
               requiresTargetEditPermission={requiresTargetEditPermission}
               onOpenTagManagement={onOpenTagManagement}
