@@ -130,6 +130,24 @@ Get personal Account settings using the WebApp Account cookie, without App or wo
 | 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /account/session
+**Exchange a portal code and its S256 verifier on the Webapp origin and set its HttpOnly cookie**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebLoginExchangePayload](#webloginexchangepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account session established | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /audio-to-text
 **Convert audio to text**
 
@@ -3820,6 +3838,15 @@ Too many form requests. Please try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WebFormRateLimitExceededError |  | Too many form requests. Please try again later. |  |
+
+#### WebLoginExchangePayload
+
+Redeem an opaque one-use grant with the original browser's S256 verifier.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | Yes |
+| login_code | string |  | Yes |
 
 #### WebLoginUnavailableError
 

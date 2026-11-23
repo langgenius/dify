@@ -77,8 +77,8 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
 )
 from services.entities.auth_entities import LoginPayloadBase
-from services.web_login_handoff import WebLoginTarget
-from services.web_login_redirect import resolve_personal_login_redirect
+from services.web_login_handoff import WebLoginSession, WebLoginTarget
+from services.web_login_redirect import resolve_personal_login_redirect, resolve_web_portal_login_redirect
 from services.web_passport_service import WebPassportUnauthorizedError
 
 
@@ -151,17 +151,16 @@ class WebAppAccountSessionQuery(BaseModel):
     code_challenge: str | None = Field(
         default=None,
         pattern=r"^[A-Za-z0-9_-]{43}$",
-        description="S256 PKCE challenge required only when returning to an App",
+        description="S256 PKCE challenge for a published App or Webapp personal portal handoff",
     )
 
     @model_validator(mode="after")
     def validate_app_handoff(self) -> Self:
-        """Accept portal redirects alone; reject incomplete App handoffs before authentication."""
-        has_app_context = self.app_code is not None or self.code_challenge is not None
-        if has_app_context and any(
-            target is None for target in (self.app_code, self.redirect_url, self.code_challenge)
-        ):
+        """Require a destination for any PKCE grant and a challenge for app-scoped grants."""
+        if self.app_code is not None and (self.redirect_url is None or self.code_challenge is None):
             raise ValueError("App login handoff requires app_code, redirect_url, and code_challenge.")
+        if self.code_challenge is not None and self.redirect_url is None:
+            raise ValueError("Web App login handoff requires redirect_url.")
         return self
 
     @property
@@ -178,6 +177,11 @@ class WebAppAccountSessionQuery(BaseModel):
 class WebAppAccountSessionResponse(ResponseModel):
     logged_in: bool
     redirect_url: str | None
+    login_code: str | None = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="One-use portal code to exchange on the Webapp API using the matching PKCE verifier.",
+    )
 
 
 def _personal_portal_target(redirect_url: str | None) -> str:
@@ -222,8 +226,9 @@ class LoginApi(Resource):
     @console_ns.doc(
         description="Called by /signin in the Account origin before showing a login form and after successful login. "
         "Reuses or refreshes the existing Account session without workspace admission. "
-        "Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly "
-        "WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; "
+        "Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a "
+        "one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal "
+        "portal requests set an HttpOnly Webapp cookie on the Console API origin; "
         "App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page."
     )
     @console_ns.doc(params=query_params_from_model(WebAppAccountSessionQuery))
@@ -231,39 +236,52 @@ class LoginApi(Resource):
     @error_responses(WebLoginUnavailableHTTPError)
     @model_validate(WebAppAccountSessionQuery)
     def get(self, query: WebAppAccountSessionQuery):
+        """Resolve a trusted return target and reuse a Console account without workspace admission."""
         require_login_mode(LoginMode.END_USER)
         with web_login_errors():
             handoff = application_services().web_login_handoff
             target = query.handoff_target
             portal_target = None
+            portal_challenge = query.code_challenge if target is None else None
             if target is not None:
                 handoff.validate_target(target)
+            elif portal_challenge is not None:
+                assert query.redirect_url is not None
+                portal_target = resolve_web_portal_login_redirect(
+                    query.redirect_url, webapp_url=dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL
+                )
+                if portal_target is None:
+                    raise ValueError("Invalid personal portal login target.")
             else:
                 portal_target = _personal_portal_target(query.redirect_url)
+
+            def establish_session(token: str) -> tuple[str, str | None, WebLoginSession | None]:
+                """Return the verified destination with either a portal grant or a legacy cookie session."""
+                if target is not None:
+                    return handoff.authorize(target, token), None, None
+                assert portal_target is not None
+                if portal_challenge is not None:
+                    code = handoff.authorize_portal(access_token=token, code_challenge=portal_challenge)
+                    return portal_target, code, None
+                return portal_target, None, handoff.personal_session(token)
+
             access_token = extract_console_cookie_token(request)
             tokens = None
             personal_session = None
             redirect_url = None
+            login_code = None
             if access_token:
                 with suppress(WebPassportUnauthorizedError):
-                    if target is None:
-                        personal_session = handoff.personal_session(access_token)
-                        redirect_url = portal_target
-                    else:
-                        redirect_url = handoff.authorize(target, access_token)
+                    redirect_url, login_code, personal_session = establish_session(access_token)
             if redirect_url is None and (refresh_token := extract_refresh_token(request)):
                 try:
                     tokens = application_services().accounts.authentication.refresh(
                         refresh_token, mode=LoginMode.END_USER
                     )
-                    if target is None:
-                        personal_session = handoff.personal_session(tokens.access_token)
-                        redirect_url = portal_target
-                    else:
-                        redirect_url = handoff.authorize(target, tokens.access_token)
+                    redirect_url, login_code, personal_session = establish_session(tokens.access_token)
                 except (account_errors.InvalidRefreshTokenError, WebPassportUnauthorizedError):
                     tokens = None
-            data = {"logged_in": redirect_url is not None, "redirect_url": redirect_url}
+            data = {"logged_in": redirect_url is not None, "redirect_url": redirect_url, "login_code": login_code}
             if tokens is not None:
                 response = _token_response(tokens, WebAppAccountSessionResponse, data)
             else:

@@ -8,16 +8,20 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.account import AccountProfilePatchPayload
+from controllers.common.end_user_connections import ConnectionLoginRequiredError
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.web_login import WebLoginExchangePayload, WebLoginUnavailableHTTPError, web_login_errors
 from controllers.console.error import InvalidAccountPasswordRequestError
 from controllers.console.workspace.error import CurrentPasswordIncorrectError, RepeatPasswordNotMatchError
-from controllers.console.wraps import email_password_login_enabled
+from controllers.console.wraps import email_password_login_enabled, model_validate
 from controllers.web import web_ns
-from controllers.web.account_admission import web_account_context
+from controllers.web.account_admission import require_web_account_origin, web_account_context
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import build_avatar_url, dump_response
+from libs.token import set_webapp_access_token_to_cookie
 from services.account_errors import (
     AccountNotFoundError,
     CurrentAccountPasswordIncorrectError,
@@ -70,8 +74,29 @@ class WebAccountPasswordPayload(BaseModel):
         return self
 
 
-register_schema_models(web_ns, AccountProfilePatchPayload, WebAccountPasswordPayload)
-register_response_schema_models(web_ns, WebAccountResponse, WebAccountProfileResponse)
+register_schema_models(web_ns, AccountProfilePatchPayload, WebAccountPasswordPayload, WebLoginExchangePayload)
+register_response_schema_models(web_ns, WebAccountResponse, WebAccountProfileResponse, SimpleResultResponse)
+
+
+@web_ns.route("/account/session")
+class WebAccountSessionApi(Resource):
+    @web_ns.doc("exchange_web_account_login")
+    @web_ns.expect(web_ns.models[WebLoginExchangePayload.__name__])
+    @web_ns.response(HTTPStatus.OK, "Account session established", web_ns.models[SimpleResultResponse.__name__])
+    @error_responses(ConnectionLoginRequiredError, WebLoginUnavailableHTTPError)
+    @model_validate(WebLoginExchangePayload)
+    def post(self, payload: WebLoginExchangePayload):
+        """Exchange a portal code and its S256 verifier on the Webapp origin and set its HttpOnly cookie."""
+        require_web_account_origin()
+        with web_login_errors():
+            session = application_services().web_login_handoff.redeem_portal(
+                code=payload.login_code, code_verifier=payload.code_verifier
+            )
+        # response-contract:ignore credential-bearing response
+        response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
+        set_webapp_access_token_to_cookie(response, session.access_token, expires_at=session.expires_at)
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 @web_ns.route("/account/profile")

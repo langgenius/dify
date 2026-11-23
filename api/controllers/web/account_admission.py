@@ -31,13 +31,8 @@ def _origin(url: str) -> tuple[str, str, int]:
     return parsed.scheme, parsed.hostname, port if port is not None else (443 if parsed.scheme == "https" else 80)
 
 
-def web_account_identity() -> ConsumerIdentity:
-    """Admit only a valid WebApp Account cookie, without App or workspace scope.
-
-    Mutations require the configured WebApp Origin; reads may omit Origin.
-    Foreign or malformed origins fail before authentication or side effects.
-    Missing, expired, foreign-purpose or unavailable identities return 401.
-    """
+def require_web_account_origin() -> None:
+    """Reject foreign or malformed request origins. A mutation always requires the WebApp Origin."""
     origin = request.headers.get("Origin")
     if origin is not None or request.method not in {"GET", "HEAD", "OPTIONS"}:
         try:
@@ -50,6 +45,14 @@ def web_account_identity() -> ConsumerIdentity:
                 raise ValueError("Untrusted origin.")
         except ValueError:
             raise Forbidden("WebApp request origin is not allowed.") from None
+
+
+def web_account_identity() -> ConsumerIdentity:
+    """Admit only a valid same-origin WebApp Account cookie, without App or workspace scope.
+
+    Missing, expired, foreign-purpose or unavailable identities return 401.
+    """
+    require_web_account_origin()
     try:
         return application_services().consumer.authenticate(extract_webapp_cookie_token(request))
     except (WebIdentityError, WebPassportUnauthorizedError):

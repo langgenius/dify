@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from controllers.console import bp as console_bp
 from controllers.console import wraps
 from controllers.console.auth import login as console_login
+from controllers.web import account, passport
 from controllers.web import bp as web_bp
-from controllers.web import passport
 from extensions.ext_application_services import ApplicationServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth import decode_account_oauth_state
@@ -87,6 +87,7 @@ def handoff(
         now=lambda: clock[0],
     )
     monkeypatch.setattr(console_login, "application_services", lambda: services)
+    monkeypatch.setattr(account, "application_services", lambda: services)
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
     app = Flask("login-handoff")
     app.register_blueprint(console_bp)
@@ -331,11 +332,101 @@ def test_personal_portal_login_falls_back_to_configured_console_base_path(monkey
     assert console_login._personal_portal_target("/my-apps") == "https://console.example.com/dify/my-apps"
 
 
+def test_portal_handoff_writes_only_a_host_scoped_webapp_cookie(handoff: SimpleNamespace) -> None:
+    client = handoff.app.test_client()
+    console_origin = "https://console.example.com"
+    webapp_origin = "https://apps.example.net"
+    target = f"{webapp_origin}/my-apps?sort=recent#starred"
+    query = {"mode": "end_user", "redirect_url": target, "code_challenge": CHALLENGE}
+    response = client.get("/console/api/login", base_url=console_origin, query_string=query)
+    assert response.json == {"logged_in": False, "redirect_url": None}
+
+    client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
+    response = client.get("/console/api/login", base_url=console_origin, query_string=query)
+    assert response.status_code == 200
+    assert response.json["logged_in"] is True
+    assert response.json["redirect_url"] == target
+    assert response.headers["Cache-Control"] == "no-store"
+    assert not response.headers.getlist("Set-Cookie")
+    assert client.get_cookie("__Host-webapp_access_token", domain="apps.example.net") is None
+    payload = {"login_code": response.json["login_code"], "code_verifier": VERIFIER}
+
+    foreign_origin = client.post(
+        "/api/account/session", base_url=webapp_origin, headers={"Origin": console_origin}, json=payload
+    )
+    assert foreign_origin.status_code == 403
+    assert not foreign_origin.headers.getlist("Set-Cookie")
+    incorrect_verifier = client.post(
+        "/api/account/session",
+        base_url=webapp_origin,
+        headers={"Origin": webapp_origin},
+        json={**payload, "code_verifier": "x" * 43},
+    )
+    assert incorrect_verifier.status_code == 400
+    wrong_scope = client.post("/api/passport", base_url=webapp_origin, headers={"X-App-Code": "app-a"}, json=payload)
+    assert wrong_scope.status_code == 400
+
+    response = client.post(
+        "/api/account/session", base_url=webapp_origin, headers={"Origin": webapp_origin}, json=payload
+    )
+    assert response.status_code == 200
+    assert response.json == {"result": "success"}
+    assert response.headers["Cache-Control"] == "no-store"
+    cookie = client.get_cookie("__Host-webapp_access_token", domain="apps.example.net")
+    assert cookie is not None
+    assert cookie.http_only
+    assert cookie.secure
+    assert cookie.origin_only
+    assert cookie.same_site == "Lax"
+    assert handoff.signer.verify(cookie.value)["user_id"] == ACCOUNT_ID
+    assert client.get_cookie("__Host-webapp_access_token", domain="console.example.com") is None
+    assert client.get_cookie("__Host-access_token", domain="apps.example.net") is None
+    assert (
+        client.get("/api/passport?mode=end_user", base_url=webapp_origin, headers={"X-App-Code": "app-a"}).status_code
+        == 200
+    )
+
+    replay = client.post(
+        "/api/account/session", base_url=webapp_origin, headers={"Origin": webapp_origin}, json=payload
+    )
+    assert replay.status_code == 400
+    assert not replay.headers.getlist("Set-Cookie")
+
+
+def test_portal_handoff_does_not_accept_an_app_code_or_foreign_target(handoff: SimpleNamespace) -> None:
+    client = handoff.app.test_client()
+    webapp_origin = "https://apps.example.net"
+    service = handoff.services.web_login_handoff
+    app_callback = service.authorize(
+        WebLoginTarget(app_code="app-a", redirect_url=RETURN_URL, code_challenge=CHALLENGE), handoff.login
+    )
+    code = parse_qs(urlsplit(app_callback).query)["login_code"][0]
+    response = client.post(
+        "/api/account/session",
+        base_url=webapp_origin,
+        headers={"Origin": webapp_origin},
+        json={"login_code": code, "code_verifier": VERIFIER},
+    )
+    assert response.status_code == 400
+    assert not response.headers.getlist("Set-Cookie")
+    assert service.redeem(app_code="app-a", code=code, code_verifier=VERIFIER)
+
+    client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
+    for target in ("https://other.example/my-apps", RETURN_URL):
+        response = client.get(
+            "/console/api/login",
+            base_url="https://console.example.com",
+            query_string={"redirect_url": target, "code_challenge": CHALLENGE},
+        )
+        assert response.status_code == 400
+        assert not response.headers.getlist("Set-Cookie")
+
+
 @pytest.mark.parametrize(
     "query",
     [
         {"app_code": "app-a"},
-        {"redirect_url": RETURN_URL, "code_challenge": CHALLENGE},
+        {"code_challenge": CHALLENGE},
         {"mode": "console"},
     ],
 )

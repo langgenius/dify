@@ -6,7 +6,7 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from pydantic import BaseModel, Field
@@ -31,14 +31,24 @@ class WebLoginTarget(BaseModel):
     code_challenge: str = Field(pattern=r"^[A-Za-z0-9_-]{43}$", description="S256 PKCE challenge")
 
 
-class WebLoginGrant(BaseModel):
-    tenant_id: str
-    app_id: str
-    app_code: str
+class _WebLoginProof(BaseModel):
     account_id: str
     expires_at: int
     login_expires_at: int
     code_challenge: str
+
+
+class WebLoginGrant(_WebLoginProof):
+    tenant_id: str
+    app_id: str
+    app_code: str
+
+
+class WebPortalLoginGrant(_WebLoginProof):
+    kind: Literal["portal"]
+
+
+type WebLoginGrantRecord = WebLoginGrant | WebPortalLoginGrant
 
 
 class WebLoginUnavailableError(Exception):
@@ -52,11 +62,11 @@ class WebLoginSession:
 
 
 class WebLoginGrantStore(Protocol):
-    def put(self, key: str, grant: WebLoginGrant) -> None: ...
+    def put(self, key: str, grant: WebLoginGrantRecord) -> None: ...
 
-    def get(self, key: str) -> WebLoginGrant | None: ...
+    def get(self, key: str) -> WebLoginGrantRecord | None: ...
 
-    def consume(self, key: str) -> WebLoginGrant | None: ...
+    def consume(self, key: str) -> WebLoginGrantRecord | None: ...
 
 
 class WebLoginHandoffService:
@@ -132,6 +142,26 @@ class WebLoginHandoffService:
         assert claims.exp is not None
         return self._issue_login_session(account_id=claims.account_id, expires_at=claims.exp)
 
+    def authorize_portal(self, *, access_token: str, code_challenge: str) -> str:
+        """Issue a short-lived portal grant for a verified Console session and a validated S256 challenge."""
+        if not self._enabled:
+            raise WebPassportAccountExchangeDisabledError()
+        claims = self._console_identity(access_token)
+        assert claims.account_id is not None
+        assert claims.exp is not None
+        code = secrets.token_urlsafe(32)
+        self._grants.put(
+            self._key(code),
+            WebPortalLoginGrant(
+                kind="portal",
+                account_id=claims.account_id,
+                expires_at=min(claims.exp, int(self._now().timestamp()) + HANDOFF_TTL_SECONDS),
+                login_expires_at=claims.exp,
+                code_challenge=code_challenge,
+            ),
+        )
+        return code
+
     def _console_identity(self, access_token: str) -> WebAppLoginClaims:
         try:
             claims = self._identities.resolve_login(self._tokens.verify(access_token))
@@ -146,19 +176,37 @@ class WebLoginHandoffService:
             raise WebPassportAccountExchangeDisabledError()
         key = self._key(code)
         grant = self._grants.get(key)
-        challenge = (
-            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("ascii")).digest()).rstrip(b"=").decode()
-        )
         if (
-            grant is None
+            not isinstance(grant, WebLoginGrant)
             or grant.app_code != app_code
-            or grant.expires_at <= int(self._now().timestamp())
-            or not secrets.compare_digest(grant.code_challenge, challenge)
+            or not self._valid_proof(grant, code_verifier)
         ):
             raise ValueError("Invalid or expired Web App login code.")
         app = self._apps.get_active_web_app(app_code)
         if app is None or app.app_id != grant.app_id or app.tenant_id != grant.tenant_id:
             raise WebPassportNotFoundError()
+        return self._consume_grant(key, grant)
+
+    def redeem_portal(self, *, code: str, code_verifier: str) -> WebLoginSession:
+        """Redeem a valid portal grant once and issue a Webapp session for the admitted Account."""
+        if not self._enabled:
+            raise WebPassportAccountExchangeDisabledError()
+        key = self._key(code)
+        grant = self._grants.get(key)
+        if not isinstance(grant, WebPortalLoginGrant) or not self._valid_proof(grant, code_verifier):
+            raise ValueError("Invalid or expired Web App login code.")
+        return self._consume_grant(key, grant)
+
+    def _valid_proof(self, grant: _WebLoginProof, code_verifier: str) -> bool:
+        """Check the verifier and expiry without consuming the grant. The caller validates the verifier format."""
+        challenge = (
+            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode("ascii")).digest()).rstrip(b"=").decode()
+        )
+        now = int(self._now().timestamp())
+        return grant.expires_at > now and secrets.compare_digest(grant.code_challenge, challenge)
+
+    def _consume_grant(self, key: str, grant: WebLoginGrantRecord) -> WebLoginSession:
+        """Consume the checked grant atomically, recheck account admission, then mint its Webapp session."""
         # Failed proofs do not consume a valid grant; GETDEL admits only one successful exchange.
         if self._grants.consume(key) != grant:
             raise ValueError("Web App login code has already been consumed.")

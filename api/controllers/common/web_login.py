@@ -3,6 +3,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 
+from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.end_user_connections import ConnectionLoginRequiredError
@@ -19,6 +20,15 @@ class WebLoginUnavailableHTTPError(BaseHTTPException):
     code = 503
     error_code = "web_login_unavailable"
     description = "Web App login is temporarily unavailable. Please retry."
+
+
+class WebLoginExchangePayload(BaseModel):
+    """Redeem an opaque one-use grant with the original browser's S256 verifier."""
+
+    model_config = ConfigDict(hide_input_in_errors=True)
+
+    login_code: str = Field(min_length=1, max_length=256, repr=False)
+    code_verifier: str = Field(pattern=r"^[A-Za-z0-9._~-]{43,128}$", repr=False)
 
 
 @contextmanager

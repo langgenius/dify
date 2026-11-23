@@ -115,3 +115,11 @@ def resolve_personal_login_redirect(redirect_url: str | None, *, app_web_url: st
         if resolved is not None and resolved[1] is not None and _PERSONAL_ROUTE.fullmatch(resolved[1]):
             return resolved[0].geturl()
     return None
+
+
+def resolve_web_portal_login_redirect(redirect_url: str, *, webapp_url: str) -> str | None:
+    """Return a personal portal destination within the configured WebApp base, or None if invalid."""
+    resolved = _resolve_frontend_redirect(redirect_url, webapp_url)
+    if resolved is None or (route := resolved[1]) is None or not _PERSONAL_ROUTE.fullmatch(route):
+        return None
+    return resolved[0].geturl()
