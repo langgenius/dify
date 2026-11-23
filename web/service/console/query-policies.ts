@@ -9,6 +9,7 @@ import type {
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import type {
@@ -3063,11 +3064,25 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             byRelationId: {
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
+                  networkMode: 'always',
+                  onSettled: async (_data, error, { params }, _result, { client }) => {
                     if (error) return
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
-                    })
+                    const queryKey = consoleQuery.resourceAccessTokens.get.key()
+                    await client.cancelQueries({ queryKey })
+                    client.setQueriesData<ResourceAccessTokenListResponse>(
+                      { queryKey },
+                      (current) => {
+                        if (!current?.data.some((row) => row.token_id === params.token_id))
+                          return current
+
+                        return {
+                          ...current,
+                          data: current.data.filter((row) => row.token_id !== params.token_id),
+                          total: Math.max(0, current.total - 1),
+                        }
+                      },
+                    )
+                    void client.invalidateQueries({ queryKey })
                   },
                 },
               },
