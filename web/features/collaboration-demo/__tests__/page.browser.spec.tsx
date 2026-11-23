@@ -267,3 +267,18 @@ it('pauses when the thread is closed during playback and brings it back on resum
     .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
     .toBeVisible()
 })
+
+it('keeps the thread open when playback controls are pressed while paused', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+  const close = screen.getByRole('button', { name: 'collaborationDemo.thread.close' })
+  await expect.element(close).toBeInTheDocument()
+
+  await userEvent.keyboard('{Escape}')
+  await screen.getByRole('button', { name: 'collaborationDemo.playback.skip' }).click()
+
+  await expect
+    .element(screen.getByRole('heading', { name: 'collaborationDemo.end.enabled.title' }))
+    .toHaveFocus()
+  await expect.element(close).toBeInTheDocument()
+})

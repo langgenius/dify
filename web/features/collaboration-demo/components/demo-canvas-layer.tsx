@@ -72,6 +72,7 @@ function DraftInput({
 type DemoCanvasLayerProps = {
   frame: PlaybackFrame
   markerInteractive: boolean
+  finished: boolean
   reducedMotion: boolean
   threadOpen: boolean
   /** `fromMarker`: opened by pressing the marker, so the thread takes focus. */
@@ -82,6 +83,7 @@ type DemoCanvasLayerProps = {
 export function DemoCanvasLayer({
   frame,
   markerInteractive,
+  finished,
   reducedMotion,
   threadOpen,
   onThreadOpenChange,
@@ -219,7 +221,18 @@ export function DemoCanvasLayer({
         open={threadShown && Boolean(marker)}
         onOpenChange={(open, details) => {
           const fromMarker = details.reason === 'trigger-press'
-          if (open ? fromMarker : markerInteractive || details.reason === 'close-press') {
+          const target = details.event.target
+          const onControls =
+            details.reason === 'outside-press' &&
+            target instanceof Element &&
+            target.closest('[data-role="demo-controls"]')
+          const escapeInThread =
+            details.reason === 'escape-key' && target instanceof Node && popup?.contains(target)
+          const closes =
+            details.reason === 'close-press' ||
+            (markerInteractive && (fromMarker || escapeInThread)) ||
+            (finished && details.reason !== 'escape-key' && !onControls)
+          if (open ? fromMarker : closes) {
             returnFocusRef.current =
               details.reason === 'close-press' || details.reason === 'escape-key'
             onThreadOpenChange(open, fromMarker)

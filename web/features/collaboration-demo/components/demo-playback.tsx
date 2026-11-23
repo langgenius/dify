@@ -57,6 +57,7 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
       <DemoCanvasLayer
         frame={frame}
         markerInteractive={!playback.playing}
+        finished={playback.finished}
         reducedMotion={reducedMotion}
         threadOpen={threadOpen}
         onThreadOpenChange={changeThreadOpen}
@@ -72,7 +73,10 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
           }}
         />
       ) : (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+        <div
+          data-role="demo-controls"
+          className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
+        >
           <Button
             ref={focusOnMount}
             variant="ghost"
