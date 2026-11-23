@@ -6,6 +6,7 @@
   "agents.allowAgents": "Zezwalaj członkom na łączenie osobistych agentów",
   "agents.allowAgentsDescription": "Wyłączenie tej opcji blokuje dostęp agentów w całym obszarze roboczym.",
   "agents.authorizeDescription": "{{client}} chce odczytywać bazy wiedzy w tym obszarze roboczym w Twoim imieniu. Potem wrócisz do {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} chce odczytywać bazy wiedzy w tym obszarze roboczym w Twoim imieniu. Po podjęciu decyzji wrócisz do {{client}} na tym urządzeniu.",
   "agents.authorizeFootnote": "W każdej chwili możesz sprawdzić lub rozłączyć tego agenta w sekcji MCP Connector na liście baz wiedzy.",
   "agents.authorizeInvalid": "To żądanie jest nieprawidłowe lub wygasło. Rozpocznij łączenie ponownie w swoim agencie.",
   "agents.authorizeInvalidTitle": "Nie można użyć tego żądania połączenia",

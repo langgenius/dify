@@ -6,6 +6,7 @@
   "agents.allowAgents": "Permite membrilor să conecteze agenți personali",
   "agents.allowAgentsDescription": "Dezactivarea acestei opțiuni blochează accesul agenților în întregul spațiu de lucru.",
   "agents.authorizeDescription": "{{client}} vrea să citească bazele de cunoștințe din acest spațiu de lucru în numele tău. După ce decizi, vei reveni la {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} dorește să citească bazele de cunoștințe din acest spațiu de lucru în numele tău. După ce alegi, vei reveni la {{client}} pe acest dispozitiv.",
   "agents.authorizeFootnote": "Poți verifica sau deconecta oricând acest agent din MCP Connector, în lista bazelor de cunoștințe.",
   "agents.authorizeInvalid": "Această cerere este invalidă sau a expirat. Reîncepe conectarea din agentul tău.",
   "agents.authorizeInvalidTitle": "Această cerere de conectare nu poate fi folosită",

@@ -6,6 +6,7 @@
   "agents.allowAgents": "Cho phép thành viên kết nối agent cá nhân",
   "agents.allowAgentsDescription": "Tắt tùy chọn này sẽ chặn quyền truy cập của agent trên toàn không gian làm việc.",
   "agents.authorizeDescription": "{{client}} muốn đọc các cơ sở kiến thức trong không gian làm việc này thay cho bạn. Sau khi quyết định, bạn sẽ quay lại {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} muốn đọc các cơ sở kiến thức trong không gian làm việc này với danh nghĩa của bạn. Sau khi chọn, bạn sẽ quay lại {{client}} trên thiết bị này.",
   "agents.authorizeFootnote": "Bạn có thể xem lại hoặc ngắt kết nối agent này bất cứ lúc nào trong mục MCP Connector ở danh sách cơ sở kiến thức.",
   "agents.authorizeInvalid": "Yêu cầu này không hợp lệ hoặc đã hết hạn. Hãy bắt đầu kết nối lại từ agent của bạn.",
   "agents.authorizeInvalidTitle": "Không thể dùng yêu cầu kết nối này",

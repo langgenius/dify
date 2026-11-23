@@ -6,6 +6,7 @@
   "agents.allowAgents": "Üyelerin kişisel ajan bağlamasına izin ver",
   "agents.allowAgentsDescription": "Bunu kapatmak, çalışma alanının tamamında ajan erişimini engeller.",
   "agents.authorizeDescription": "{{client}}, bu çalışma alanındaki bilgi tabanlarını sizin adınıza okumak istiyor. Karar verdikten sonra {{host}} adresine döneceksiniz.",
+  "agents.authorizeDescriptionLocal": "{{client}}, bu çalışma alanındaki bilgi tabanlarını sizin adınıza okumak istiyor. Seçiminizden sonra bu cihazdaki {{client}} uygulamasına döneceksiniz.",
   "agents.authorizeFootnote": "Bu ajanı istediğiniz zaman bilgi tabanı listesindeki MCP Connector bölümünden inceleyebilir veya bağlantısını kesebilirsiniz.",
   "agents.authorizeInvalid": "Bu istek geçersiz veya süresi dolmuş. Bağlantıyı ajanınızdan yeniden başlatın.",
   "agents.authorizeInvalidTitle": "Bu bağlantı isteği kullanılamıyor",

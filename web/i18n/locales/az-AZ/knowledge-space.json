@@ -6,6 +6,7 @@
   "agents.allowAgents": "Üzvlərə şəxsi agentləri qoşmağa icazə ver",
   "agents.allowAgentsDescription": "Bunu söndürmək bütün iş sahəsində agent girişini bloklayır.",
   "agents.authorizeDescription": "{{client}} bu iş sahəsindəki bilik bazalarını sizin adınızdan oxumaq istəyir. Qərardan sonra {{host}} ünvanına qayıdacaqsınız.",
+  "agents.authorizeDescriptionLocal": "{{client}} sizin adınızdan bu iş sahəsindəki bilik bazalarını oxumaq istəyir. Seçimdən sonra bu cihazdakı {{client}} tətbiqinə qayıdacaqsınız.",
   "agents.authorizeFootnote": "Bu agenti istənilən vaxt bilik bazaları siyahısındakı MCP Connector bölməsində yoxlaya və ya ayıra bilərsiniz.",
   "agents.authorizeInvalid": "Bu sorğu etibarsızdır və ya müddəti bitib. Qoşulmanı agentinizdən yenidən başladın.",
   "agents.authorizeInvalidTitle": "Bu qoşulma sorğusundan istifadə etmək olmur",

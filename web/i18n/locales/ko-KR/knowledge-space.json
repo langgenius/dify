@@ -6,6 +6,7 @@
   "agents.allowAgents": "멤버의 개인 에이전트 연결 허용",
   "agents.allowAgentsDescription": "끄면 워크스페이스 전체에서 에이전트 액세스가 차단됩니다.",
   "agents.authorizeDescription": "{{client}}이(가) 사용자로서 이 워크스페이스의 지식 베이스를 읽으려고 합니다. 선택하면 {{host}}(으)로 돌아갑니다.",
+  "agents.authorizeDescriptionLocal": "{{client}}이(가) 사용자로서 이 워크스페이스의 지식 베이스를 읽으려고 합니다. 선택하면 이 기기의 {{client}}(으)로 돌아갑니다.",
   "agents.authorizeFootnote": "지식 베이스 목록의 MCP Connector에서 언제든지 이 에이전트를 확인하거나 연결을 끊을 수 있습니다.",
   "agents.authorizeInvalid": "요청이 잘못되었거나 만료되었습니다. 에이전트에서 다시 연결을 시작하세요.",
   "agents.authorizeInvalidTitle": "이 연결 요청은 사용할 수 없습니다",

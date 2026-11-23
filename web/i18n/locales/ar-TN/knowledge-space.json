@@ -6,6 +6,7 @@
   "agents.allowAgents": "السماح للأعضاء بربط الوكلاء الشخصيين",
   "agents.allowAgentsDescription": "إيقاف هذا الخيار يمنع وصول الوكلاء في كامل مساحة العمل.",
   "agents.authorizeDescription": "يريد {{client}} قراءة قواعد المعرفة في مساحة العمل هذه نيابةً عنك. بعد اتخاذ قرارك ستعود إلى {{host}}.",
+  "agents.authorizeDescriptionLocal": "يريد {{client}} قراءة قواعد المعرفة في مساحة العمل هذه بالنيابة عنك. بعد اختيارك، ستعود إلى {{client}} على هذا الجهاز.",
   "agents.authorizeFootnote": "يمكنك مراجعة هذا الوكيل أو قطع اتصاله في أي وقت من «MCP Connector» في قائمة قواعد المعرفة.",
   "agents.authorizeInvalid": "هذا الطلب غير صالح أو منتهي الصلاحية. ابدأ الاتصال من جديد من الوكيل.",
   "agents.authorizeInvalidTitle": "لا يمكن استخدام طلب الاتصال هذا",

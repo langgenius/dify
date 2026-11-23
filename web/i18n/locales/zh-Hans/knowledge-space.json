@@ -6,6 +6,7 @@
   "agents.allowAgents": "允许成员连接个人 Agent",
   "agents.allowAgentsDescription": "关闭后，将阻止整个工作空间内的 Agent 访问。",
   "agents.authorizeDescription": "{{client}} 请求以你的身份读取此工作空间中的知识库。做出选择后，你将返回 {{host}}。",
+  "agents.authorizeDescriptionLocal": "{{client}} 请求以你的身份读取此工作空间中的知识库。做出选择后，你将返回本机上的 {{client}}。",
   "agents.authorizeFootnote": "你可以随时在知识库列表的「MCP Connector」中查看或断开此 Agent。",
   "agents.authorizeInvalid": "此请求无效或已过期，请从你的 Agent 重新发起连接。",
   "agents.authorizeInvalidTitle": "无法使用此连接请求",

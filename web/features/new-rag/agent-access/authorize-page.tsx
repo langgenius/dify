@@ -20,7 +20,7 @@ import Link from '@/next/link'
 import { useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
-import { agentAccessErrorCode, rejectedKnowledgeBaseIds } from './agent-access'
+import { agentAccessErrorCode, isLoopbackHost, rejectedKnowledgeBaseIds } from './agent-access'
 import { useKnowledgeBaseOptions } from './knowledge-base-options'
 import { KnowledgeBasePicker } from './knowledge-base-picker'
 
@@ -148,10 +148,12 @@ export function KnowledgeAgentAuthorizePage() {
           </span>
         </h1>
         <p className="body-md-regular text-text-secondary">
-          {t(($) => $['agents.authorizeDescription'], {
-            client: described.client.name,
-            host: described.client.redirect_host,
-          })}
+          {isLoopbackHost(described.client.redirect_host)
+            ? t(($) => $['agents.authorizeDescriptionLocal'], { client: described.client.name })
+            : t(($) => $['agents.authorizeDescription'], {
+                client: described.client.name,
+                host: described.client.redirect_host,
+              })}
         </p>
       </div>
 

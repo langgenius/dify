@@ -6,6 +6,7 @@
   "agents.allowAgents": "Članom dovoli povezovanje osebnih agentov",
   "agents.allowAgentsDescription": "Če to izklopite, bo dostop agentov blokiran v celotnem delovnem prostoru.",
   "agents.authorizeDescription": "{{client}} želi v vašem imenu brati baze znanja v tem delovnem prostoru. Ko se odločite, se vrnete na {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} želi v vašem imenu brati baze znanja v tem delovnem prostoru. Po izbiri se boste vrnili v {{client}} v tej napravi.",
   "agents.authorizeFootnote": "Tega agenta lahko kadar koli pregledate ali odklopite v razdelku MCP Connector na seznamu baz znanja.",
   "agents.authorizeInvalid": "Ta zahteva je neveljavna ali je potekla. Povezovanje znova začnite v svojem agentu.",
   "agents.authorizeInvalidTitle": "Te zahteve za povezavo ni mogoče uporabiti",

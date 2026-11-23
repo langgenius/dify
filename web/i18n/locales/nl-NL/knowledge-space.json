@@ -6,6 +6,7 @@
   "agents.allowAgents": "Leden toestaan persoonlijke agents te koppelen",
   "agents.allowAgentsDescription": "Als je dit uitschakelt, wordt agenttoegang in de hele werkruimte geblokkeerd.",
   "agents.authorizeDescription": "{{client}} wil namens jou kennisbanken in deze werkruimte lezen. Daarna ga je terug naar {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} wil namens jou kennisbanken in deze workspace lezen. Na je keuze keer je terug naar {{client}} op dit apparaat.",
   "agents.authorizeFootnote": "Je kunt deze agent altijd bekijken of ontkoppelen via MCP Connector in de lijst met kennisbanken.",
   "agents.authorizeInvalid": "Dit verzoek is ongeldig of verlopen. Begin opnieuw met koppelen vanuit je agent.",
   "agents.authorizeInvalidTitle": "Dit koppelverzoek kan niet worden gebruikt",

@@ -6,6 +6,7 @@
   "agents.allowAgents": "メンバーによる個人エージェントの接続を許可",
   "agents.allowAgentsDescription": "オフにすると、ワークスペース全体でエージェントのアクセスがブロックされます。",
   "agents.authorizeDescription": "{{client}} が、あなたとしてこのワークスペースのナレッジベースを読み取ろうとしています。選択後、{{host}} に戻ります。",
+  "agents.authorizeDescriptionLocal": "{{client}} が、あなたとしてこのワークスペースのナレッジベースを読み取ろうとしています。選択後、このデバイス上の {{client}} に戻ります。",
   "agents.authorizeFootnote": "このエージェントは、ナレッジベース一覧の「MCP Connector」からいつでも確認・切断できます。",
   "agents.authorizeInvalid": "このリクエストは無効か期限切れです。エージェントから接続をやり直してください。",
   "agents.authorizeInvalidTitle": "この接続リクエストは使用できません",
