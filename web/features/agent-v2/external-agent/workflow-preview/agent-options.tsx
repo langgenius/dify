@@ -1,9 +1,10 @@
 import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { WorkflowAgentSelectorSkeleton } from '@/app/components/workflow/block-selector/workflow-agent-selector-skeleton'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import { toExternalAgentListItem } from '../model'
@@ -11,11 +12,13 @@ import { toExternalAgentListItem } from '../model'
 export function ExternalAgentOptions({
   keyword,
   tagIds = [],
+  showEmpty,
   allowDisabled = false,
   onSelect,
 }: {
   keyword: string
   tagIds?: string[]
+  showEmpty: boolean
   allowDisabled?: boolean
   onSelect: (agent: ExternalAgentAssetResponse) => void
 }) {
@@ -36,16 +39,11 @@ export function ExternalAgentOptions({
       }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
+      placeholderData: keepPreviousData,
     }),
   )
   if (agents.isPending || capabilities.isPending || workspaceLoading)
-    return (
-      <div aria-hidden className="space-y-1 p-2">
-        {[0, 1, 2].map((key) => (
-          <div key={key} className="h-8 rounded-md bg-state-base-hover-alt" />
-        ))}
-      </div>
-    )
+    return <WorkflowAgentSelectorSkeleton />
   if (agents.isError || capabilities.isError)
     return (
       <p role="status" className="p-3 system-xs-regular text-text-tertiary">
@@ -91,7 +89,7 @@ export function ExternalAgentOptions({
           </Button>
         )
       })}
-      {items.length === 0 && (
+      {showEmpty && !agents.isPlaceholderData && items.length === 0 && (
         <p role="status" className="p-3 system-xs-regular text-text-tertiary">
           {keyword || tagIds.length
             ? t(($) => $['roster.emptySearch'])

@@ -114,6 +114,30 @@ beforeEach(({ onTestFinished }) => {
   })
 })
 
+it('switches from the overview loading indicator to the app references loading state', async () => {
+  const detailResponse = createDeferred<ReturnType<typeof createExternalAgentDetail>>()
+  const referencesResponse = createDeferred<ReturnType<typeof createExternalAgentReferences>>()
+  requests.detail.mockReturnValue(detailResponse.promise)
+  requests.references.mockReturnValue(referencesResponse.promise)
+  await setup()
+
+  const indicator = page.getByRole('progressbar', { name: common.loading })
+  const referencesStatus = page.getByRole('status')
+  const loadingText = page.getByText(agentRoster['external.api.loading'], { exact: true })
+  await expect.element(indicator).toBeVisible()
+  await expect.element(loadingText).not.toBeInTheDocument()
+
+  detailResponse.resolve(detail)
+  await expect.element(page.getByRole('heading', { name: 'Live Reviewer' })).toBeVisible()
+  await expect.element(indicator).not.toBeInTheDocument()
+  await expect.element(referencesStatus).toHaveTextContent(common.loading)
+  await expect.element(loadingText).not.toBeInTheDocument()
+
+  referencesResponse.resolve(createExternalAgentReferences())
+  await expect.element(page.getByText(agentRoster['external.overview.emptyApps'])).toBeVisible()
+  await expect.element(referencesStatus).not.toBeInTheDocument()
+})
+
 it('renders saved asset and service declarations and waits for the server before changing tracing', async () => {
   await setup()
   await expect

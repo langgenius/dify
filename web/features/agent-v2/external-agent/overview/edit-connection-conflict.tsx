@@ -1,54 +1,112 @@
-import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
-import type { ExternalAgentOverview } from '../model'
+import type { ExternalAgentConnectionResponse } from '@dify/contracts/api/console/external-agents/types.gen'
+import type { ExternalConnectionComparisonSnapshot } from './edit-connection-snapshot'
 import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { connectionComparisonChanges, publicConnectionCard } from './edit-connection-snapshot'
 
 export function EditConnectionConflict({
-  settings,
+  draft,
   latest,
   latestSavedAudit,
   loading,
   loadFailed,
   onRetry,
 }: {
-  settings: ExternalConnectionSettings
-  latest?: ExternalAgentOverview
+  draft: ExternalConnectionComparisonSnapshot
+  latest?: ExternalAgentConnectionResponse
   latestSavedAudit?: string
   loading: boolean
   loadFailed: boolean
   onRetry: () => void
 }) {
   const { t } = useTranslation(['agentRoster', 'common'])
-  const authentication = (value: ExternalConnectionSettings['authentication']) =>
+  const authentication = (value?: string) =>
     value === 'bearer'
       ? t(($) => $['external.connection.bearerToken'])
-      : t(($) => $['external.connection.none'])
-  const rows = [
+      : value === 'none'
+        ? t(($) => $['external.connection.none'])
+        : value
+  const fields = [
     {
       label: t(($) => $['external.connection.endpoint']),
-      yours: settings.endpoint,
-      latest: latest?.endpoint,
+      value: draft.endpoint,
     },
     {
       label: t(($) => $['external.connection.authentication']),
-      yours: authentication(settings.authentication),
-      latest: latest && authentication(latest.authentication),
+      value: authentication(draft.auth_type),
     },
   ]
-  const changes = rows.filter((row) => row.yours !== row.latest)
+  const changedFields = latest ? connectionComparisonChanges(draft, latest) : []
+  const rows = [
+    {
+      key: 'endpoint',
+      label: t(($) => $['external.connection.endpoint']),
+      yours: draft.endpoint,
+      latest: latest?.endpoint,
+    },
+    {
+      key: 'auth_type',
+      label: t(($) => $['external.connection.authentication']),
+      yours: authentication(draft.auth_type),
+      latest: authentication(latest?.auth_type),
+    },
+    {
+      key: 'interface_url',
+      label: t(($) => $['external.connection.conflict.interfaceUrl']),
+      yours: draft.interface_url,
+      latest: latest?.interface_url,
+    },
+    {
+      key: 'profile',
+      label: t(($) => $['external.connection.conflict.profile']),
+      yours: draft.profile,
+      latest: latest?.profile,
+    },
+    {
+      key: 'has_credential',
+      label: t(($) => $['external.connection.conflict.credentialConfigured']),
+      yours: draft.has_credential,
+      latest: latest?.has_credential,
+    },
+    {
+      key: 'auth_check',
+      label: t(($) => $['external.connection.conflict.authCheck']),
+      yours: draft.auth_check,
+      latest: latest?.auth_check,
+    },
+    {
+      key: 'card',
+      label: t(($) => $['external.connection.conflict.agentCard']),
+      yours: draft.card,
+      latest: latest && publicConnectionCard(latest.card),
+    },
+    {
+      key: 'capabilities',
+      label: t(($) => $['external.connection.conflict.capabilities']),
+      yours: draft.capabilities,
+      latest: latest?.capabilities,
+    },
+  ] satisfies {
+    key: keyof ExternalConnectionComparisonSnapshot
+    label: string
+    yours: unknown
+    latest: unknown
+  }[]
+  const formatValue = (value: unknown) =>
+    value === undefined ? '—' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
   return (
     <div className="space-y-4">
-      {rows.map((row) => (
-        <Field key={row.label} disabled className="flex flex-col gap-1.5">
-          <FieldLabel>{row.label}</FieldLabel>
-          <Input value={row.yours} readOnly />
+      {fields.map((field) => (
+        <Field key={field.label} disabled className="flex flex-col gap-1.5">
+          <FieldLabel>{field.label}</FieldLabel>
+          <Input value={field.value} readOnly />
         </Field>
       ))}
-      {settings.authentication === 'bearer' && (
+      {draft.auth_type === 'bearer' && (
         <Field disabled className="flex flex-col gap-1.5">
           <FieldLabel>{t(($) => $['external.connection.token'])}</FieldLabel>
           <Input type="password" value="" placeholder="••••••••••••" readOnly />
@@ -69,7 +127,7 @@ export function EditConnectionConflict({
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
         </div>
-      ) : changes.length ? (
+      ) : latest ? (
         <div className="overflow-hidden rounded-lg border border-divider-subtle">
           <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">
             <thead className="bg-background-section text-text-tertiary">
@@ -86,19 +144,31 @@ export function EditConnectionConflict({
               </tr>
             </thead>
             <tbody className="divide-y divide-divider-subtle">
-              {changes.map((row) => (
-                <tr key={row.label}>
-                  <th scope="row" className="px-3 py-2 text-start font-normal text-text-tertiary">
-                    {row.label}
-                  </th>
-                  <td className="px-3 py-2 wrap-anywhere">{row.yours}</td>
-                  <td className="px-3 py-2 wrap-anywhere">{row.latest ?? '—'}</td>
-                </tr>
-              ))}
+              {rows
+                .filter((row) => changedFields.includes(row.key))
+                .map((row) => (
+                  <tr key={row.key}>
+                    <th
+                      scope="row"
+                      className="px-3 py-2 text-start align-top font-normal wrap-anywhere text-text-tertiary"
+                    >
+                      {row.label}
+                    </th>
+                    <td className="px-3 py-2 align-top wrap-anywhere whitespace-pre-wrap">
+                      {formatValue(row.yours)}
+                    </td>
+                    <td className="px-3 py-2 align-top wrap-anywhere whitespace-pre-wrap">
+                      {formatValue(row.latest)}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
       ) : null}
+      <p className="system-xs-regular text-text-tertiary">
+        {t(($) => $['external.connection.conflict.comparisonHint'])}
+      </p>
       <p className="system-xs-regular text-text-tertiary">
         {t(($) => $['external.connection.conflict.credentialsHint'])}
       </p>

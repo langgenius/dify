@@ -1,4 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { ExternalAgentListResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { NodeDefault } from '@/app/components/workflow/types'
@@ -14,6 +15,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import workflow from '@/i18n/locales/en-US/workflow.json'
 import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { AgentBlockItem } from '../agent-selector'
 import { BlockClassification } from '../types'
@@ -73,6 +75,8 @@ vi.mock('@/service/console', async (importOriginal) => {
             total: 2,
           }
         }
+        if (input?.query?.tag_ids?.length)
+          return { data: [], has_more: false, limit: 8, page, total: 0 }
         return { data, has_more: false, limit: 8, page, total: data.length }
       },
     }),
@@ -216,6 +220,61 @@ it('filters the active source while sharing the search and avoiding Dify request
   await expect.element(picker.getByRole('button', { name: /Document Review Agent/ })).toBeVisible()
 })
 
+it('keeps external agents visible while a new search is pending', async () => {
+  const { picker } = await setup()
+  const previousAgent = picker.getByRole('button', { name: /Contract Review Agent/ })
+  await expect.element(previousAgent).toBeVisible()
+
+  const response = createDeferred<ExternalAgentListResponse>()
+  mocks.fetchExternal.mockImplementationOnce(() => response.promise)
+  await picker.getByRole('searchbox', { name: 'Search agents', exact: true }).fill('document')
+  await expect
+    .poll(() => mocks.fetchExternal.mock.lastCall?.[0])
+    .toEqual({ query: { page: 1, limit: 20, keyword: 'document' } })
+  await expect.element(previousAgent).toBeVisible()
+
+  response.resolve({
+    items: [
+      createExternalAgentAsset({
+        id: '44444444-4444-4444-8444-444444444444',
+        name: 'Document Review Agent',
+      }),
+    ],
+    total: 1,
+    enabled_count: 1,
+    disabled_count: 0,
+    limit: 20,
+    page: 1,
+  })
+  await expect.element(previousAgent).not.toBeInTheDocument()
+  await expect.element(picker.getByRole('button', { name: /Document Review Agent/ })).toBeVisible()
+})
+
+it('shows the All search empty state only after both sources return no matches', async () => {
+  const { picker } = await setup()
+  const search = picker.getByRole('searchbox', { name: 'Search agents', exact: true })
+  const difyAgent = picker.getByRole('button', { name: /Research Agent/ })
+  const externalAgent = picker.getByRole('button', { name: /Contract Review Agent/ })
+  const emptyState = picker
+    .getByRole('status')
+    .filter({ hasText: /^No (agent yet|matching agents)$/ })
+  await expect.element(externalAgent).toBeVisible()
+
+  await search.fill('research')
+  await expect.element(externalAgent).not.toBeInTheDocument()
+  await expect.element(difyAgent).toBeVisible()
+  await expect.element(emptyState).not.toBeInTheDocument()
+
+  const response = createDeferred<ExternalAgentListResponse>()
+  mocks.fetchExternal.mockImplementationOnce(() => response.promise)
+  await search.fill('unmatched')
+  await expect.element(difyAgent).not.toBeInTheDocument()
+  await expect.element(emptyState).not.toBeInTheDocument()
+
+  response.resolve({ items: [], total: 0, enabled_count: 0, disabled_count: 0, limit: 20, page: 1 })
+  await expect.element(emptyState).toHaveTextContent('No matching agents')
+})
+
 it('skips disabled external agents during keyboard selection and closes with the external callback', async () => {
   const { picker, onSelect, onSelectExternal } = await setup()
   await picker.getByRole('tab', { name: 'External', exact: true }).click()
@@ -335,6 +394,30 @@ it('loads another server page before selecting an external agent outside the fir
   expect(mocks.fetchExternal).toHaveBeenLastCalledWith({ query: { page: 2, limit: 20 } })
   await picker.getByRole('button', { name: /Later page Agent/ }).click()
   expect(onSelectExternal).toHaveBeenCalledWith(later)
+})
+
+it('shows no matches for a tag-only filter in All and restores external agents when cleared', async () => {
+  const { picker } = await setup()
+  const externalAgent = picker.getByRole('button', { name: /Contract Review Agent/ })
+  const emptyState = picker.getByRole('status').filter({ hasText: /^No matching agents$/ })
+  await expect.element(externalAgent).toBeVisible()
+  await picker.getByRole('button', { name: 'Tags', exact: true }).click()
+  const popup = page.getByRole('dialog', { name: 'Tags', exact: true })
+  await popup.getByRole('checkbox', { name: 'Support', exact: true }).click()
+  await userEvent.keyboard('{Escape}')
+
+  await expect.element(emptyState).toBeVisible()
+  await expect.element(externalAgent).not.toBeInTheDocument()
+  expect(mocks.fetchAgents).toHaveBeenLastCalledWith({
+    query: { app_id: 'workflow-app', tag_ids: ['support'], page: 1, limit: 8 },
+  })
+
+  await picker.getByRole('button', { name: 'Support', exact: true }).click()
+  await popup.getByRole('checkbox', { name: 'Support', exact: true }).click()
+  await userEvent.keyboard('{Escape}')
+
+  await expect.element(externalAgent).toBeVisible()
+  await expect.element(emptyState).not.toBeInTheDocument()
 })
 
 it('keeps the tag popup above Dify results and pages through tagged agents in All', async () => {
