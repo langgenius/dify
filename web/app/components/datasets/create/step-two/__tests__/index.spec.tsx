@@ -13,6 +13,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createCatalogModelFixture,
   createDefaultModelFixture,
@@ -62,7 +63,11 @@ const document: DocumentDetailResponse = {
     },
   },
 }
-const saved = { batch: 'batch-1', dataset: { id: 'dataset-1', name: 'Handbook' }, documents: [] }
+const saved = {
+  batch: 'batch-1',
+  dataset: { id: TEST_DATASET_ID, name: 'Handbook' },
+  documents: [],
+}
 const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
 async function setup(
@@ -218,7 +223,7 @@ it('initializes document settings from saved rules and saves edits before notify
   expect(save).toHaveAttribute('aria-disabled', 'true')
   await user.click(save)
   expect(api.save).toHaveBeenCalledExactlyOnceWith({
-    params: { dataset_id: 'dataset-1' },
+    params: { dataset_id: TEST_DATASET_ID },
     body: expect.objectContaining({
       original_document_id: 'doc-1',
       doc_form: ChunkingMode.text,
@@ -582,7 +587,7 @@ it('keeps the existing dataset retrieval configuration when saving document chun
   await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.save' }))
   await waitFor(() => expect(api.save).toHaveBeenCalledOnce())
   expect(api.save).toHaveBeenCalledWith({
-    params: { dataset_id: 'dataset-1' },
+    params: { dataset_id: TEST_DATASET_ID },
     body: expect.objectContaining({ indexing_technique: 'economy', retrieval_model: retrieval }),
   })
 })
@@ -723,7 +728,7 @@ it('restores stored parent-child rules and saves edited child chunking', async (
   await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.save' }))
   await waitFor(() => expect(api.save).toHaveBeenCalledOnce())
   expect(api.save).toHaveBeenCalledWith({
-    params: { dataset_id: 'dataset-1' },
+    params: { dataset_id: TEST_DATASET_ID },
     body: expect.objectContaining({
       original_document_id: 'doc-1',
       doc_form: ChunkingMode.parentChild,

@@ -1,9 +1,8 @@
 import { createContext } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { humanInputV2FormClient } from '@/service/human-input-v2'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import FormContent from '../form'
 
 const RouteTokenContext = createContext('v2-token')
@@ -13,34 +12,37 @@ vi.mock('@/next/navigation', async () => {
   return { useParams: () => ({ token: use(RouteTokenContext) }) }
 })
 
-vi.mock('@/service/human-input-v2', () => ({
-  humanInputV2FormClient: { getForm: vi.fn(), requestAccess: vi.fn() },
-}))
-
 beforeEach(async () => {
   await page.viewport(1000, 800)
-  onTestFinished(guardUnexpectedFetch())
-  vi.mocked(humanInputV2FormClient.getForm).mockImplementation(async ({ params }) => ({
-    form_content: `Review ${params.form_token}\n\n{{#$output.response#}}`,
-    inputs: [
-      {
-        type: 'paragraph',
-        output_variable_name: 'response',
-        default: { type: 'constant', value: `Default for ${params.form_token}`, selector: [] },
-      },
-    ],
-    resolved_default_values: { response: `Default for ${params.form_token}` },
-    user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
-    expiration_time: 1_900_000_000,
-  }))
-  vi.mocked(humanInputV2FormClient.requestAccess).mockImplementation(async ({ params }) => ({
-    challenge_token: `challenge-${params.form_token}`,
-    expires_in_seconds: 300,
-    resend_after_seconds: 30,
-  }))
-  onTestFinished(() => {
-    vi.restoreAllMocks()
-  })
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('GET', 'public', '/form/human-input/v2/public/:token', ({ params }) => ({
+          form_content: `Review ${params.token}\n\n{{#$output.response#}}`,
+          inputs: [
+            {
+              type: 'paragraph',
+              output_variable_name: 'response',
+              default: { type: 'constant', value: `Default for ${params.token}`, selector: [] },
+            },
+          ],
+          resolved_default_values: { response: `Default for ${params.token}` },
+          user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+          expiration_time: 1_900_000_000,
+        })),
+        route(
+          'POST',
+          'public',
+          '/form/human-input/v2/public/:token/access-request',
+          ({ params }) => ({
+            challenge_token: `challenge-${params.token}`,
+            expires_in_seconds: 300,
+            resend_after_seconds: 30,
+          }),
+        ),
+      ],
+    }),
+  )
 })
 
 it('loads the v2 form for the route token', async () => {

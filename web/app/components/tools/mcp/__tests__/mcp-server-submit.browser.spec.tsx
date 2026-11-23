@@ -1,28 +1,27 @@
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import MCPServerModal from '../mcp-server-modal'
 
-const api = vi.hoisted(() => ({
-  create: vi.fn<typeof consoleClient.apps.byAppId.server.post>(),
-  update: vi.fn<typeof consoleClient.apps.byAppId.server.put>(),
-}))
+// Console routes validate UUID path params and the update payload's server id.
+const APP_ID = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
+const SERVER_ID = '7a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
 
-// boundary: generated network responses only; the form, mutations and Dialog remain real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.server.post': api.create,
-      'apps.byAppId.server.put': api.update,
-    }),
-  }
+const savedServer = {
+  id: SERVER_ID,
+  name: 'App MCP Server',
+  description: 'Draft description',
+  parameters: { query: 'Draft query' },
+  server_code: 'code',
+  status: 'active',
+} as const
+
+const fake = setupFakeApi({
+  console: {
+    apps: { byAppId: { server: { post: () => savedServer, put: () => savedServer } } },
+  },
 })
 
 function Harness({ edit }: { edit: boolean }) {
@@ -30,13 +29,13 @@ function Harness({ edit }: { edit: boolean }) {
   return (
     open && (
       <MCPServerModal
-        appID="app-123"
+        appID={APP_ID}
         show
         onHide={() => setOpen(false)}
         data={
           edit
             ? {
-                id: 'server-1',
+                id: SERVER_ID,
                 server_code: 'code',
                 status: 'active',
                 description: 'Saved description',
@@ -50,25 +49,12 @@ function Harness({ edit }: { edit: boolean }) {
   )
 }
 
-beforeEach(() => {
-  api.create.mockReset()
-  api.update.mockReset()
-  onTestFinished(guardUnexpectedFetch())
-})
-
 it.each([false, true])(
   'protects the submitted draft and allows retry after failure (edit=%s)',
   async (edit) => {
-    const pending = createDeferred<Awaited<ReturnType<typeof api.create>>>()
-    const operation = edit ? api.update : api.create
-    operation.mockReturnValueOnce(pending.promise).mockResolvedValue({
-      id: 'server-1',
-      name: 'App MCP Server',
-      description: 'Draft description',
-      parameters: { query: 'Draft query' },
-      server_code: 'code',
-      status: 'active',
-    })
+    const server = fake.console.apps.byAppId.server
+    const operation = edit ? server.put : server.post
+    const pending = hold(operation)
     const { wrapper: Wrapper } = createConsoleQueryWrapper()
     await render(
       <Wrapper>
@@ -95,14 +81,25 @@ it.each([false, true])(
     await expect
       .element(dialog.getByRole('button', { name: 'common.operation.close' }))
       .toBeDisabled()
+    await pending.arrived
     expect(operation).toHaveBeenCalledTimes(1)
 
-    pending.reject(new Error('Save failed'))
+    pending.reject(apiError({ status: 500, message: 'Save failed' }))
     await expect.element(submit).not.toHaveAttribute('aria-disabled', 'true')
     await expect.element(description).toHaveValue('Draft description')
     await expect.element(query).toHaveValue('Draft query')
     await submit.click()
     await expect.element(dialog).not.toBeInTheDocument()
     expect(operation).toHaveBeenCalledTimes(2)
+    expect(operation).toHaveBeenLastCalledWith({
+      params: { app_id: APP_ID },
+      body: edit
+        ? {
+            id: SERVER_ID,
+            description: 'Draft description',
+            parameters: { query: 'Draft query' },
+          }
+        : { description: 'Draft description', parameters: { query: 'Draft query' } },
+    })
   },
 )

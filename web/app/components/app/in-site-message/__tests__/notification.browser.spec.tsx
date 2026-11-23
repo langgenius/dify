@@ -6,29 +6,16 @@ import { render } from 'vitest-browser-react'
 import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.notification.get>(),
-  dismiss: vi.fn<typeof consoleClient.notification.dismiss.post>(),
-  pathname: '/apps',
-}))
+const route = vi.hoisted(() => ({ pathname: '/apps' }))
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({ usePathname: () => api.pathname }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'notification.get': api.list,
-      'notification.dismiss.post': api.dismiss,
-    }),
-  }
+vi.mock('@/next/navigation', () => ({ usePathname: () => route.pathname }))
+beforeEach(() => {
+  route.pathname = '/apps'
 })
-
 const notice = (
   body: string,
 ): Awaited<ReturnType<typeof consoleClient.notification.get>>['notifications'][number] => ({
@@ -61,38 +48,44 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   )
   return { screen, i18n }
 }
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  api.list.mockReset().mockResolvedValue({ should_show: false, notifications: [] })
-  api.dismiss.mockReset().mockResolvedValue({ result: 'success' })
-  api.pathname = '/apps'
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    notification: {
+      get: () => ({ should_show: false, notifications: [] }),
+      dismiss: { post: () => ({ result: 'success' }) },
+    },
+  },
+}))
 
 it('keeps cloud notifications unavailable in Community even when the service has a notice', async () => {
-  api.list.mockResolvedValue({ should_show: true, notifications: [notice('Cloud update')] })
+  fake.console.notification.get.mockResolvedValue({
+    should_show: true,
+    notifications: [notice('Cloud update')],
+  })
   const { screen } = await setup('COMMUNITY')
   await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
   await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
-  expect(api.list).not.toHaveBeenCalled()
+  expect(fake.console.notification.get).not.toHaveBeenCalled()
 })
 
 it('stays off the collaboration demo it links to without dismissing the notice', async () => {
-  api.pathname = '/collaboration-demo'
-  api.list.mockResolvedValue({ should_show: true, notifications: [notice('Cloud update')] })
+  route.pathname = '/collaboration-demo'
+  fake.console.notification.get.mockResolvedValue({
+    should_show: true,
+    notifications: [notice('Cloud update')],
+  })
   const { screen } = await setup()
   await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
   await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
-  expect(api.list).not.toHaveBeenCalled()
-  expect(api.dismiss).not.toHaveBeenCalled()
+  expect(fake.console.notification.get).not.toHaveBeenCalled()
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
 })
 
 it('replaces the displayed notice when the real interface language changes', async () => {
-  api.list.mockImplementation(
-    async ({ query }: NonNullable<Parameters<typeof consoleClient.notification.get>[0]> = {}) => ({
-      should_show: true,
-      notifications: [notice(query?.language === 'zh-Hans' ? '中文更新' : 'English update')],
-    }),
-  )
+  fake.console.notification.get.mockImplementation((input) => ({
+    should_show: true,
+    notifications: [notice(input?.query?.language === 'zh-Hans' ? '中文更新' : 'English update')],
+  }))
   const { screen, i18n } = await setup()
   await expect.element(screen.getByText('English update')).toBeVisible()
   await i18n.changeLanguage('zh-Hans')
@@ -100,11 +93,13 @@ it('replaces the displayed notice when the real interface language changes', asy
   await expect.element(screen.getByText('English update')).not.toBeInTheDocument()
   await screen.getByRole('button', { name: commonZh['operation.close'], exact: true }).click()
   await expect.element(screen.getByText('中文更新')).not.toBeInTheDocument()
-  expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+  await expect
+    .poll(() => fake.console.notification.dismiss.post)
+    .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
 })
 
 it('renders parsed copy and safe links, then dismisses through the real keyboard action', async () => {
-  api.list.mockResolvedValue({
+  fake.console.notification.get.mockResolvedValue({
     should_show: true,
     notifications: [
       notice(
@@ -151,7 +146,7 @@ it('renders parsed copy and safe links, then dismisses through the real keyboard
   const invalid = screen.getByRole('button', { name: 'Unavailable link' })
   await invalid.click()
   await expect.element(screen.getByText('Parsed body main')).toBeVisible()
-  expect(api.dismiss).not.toHaveBeenCalled()
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'Before notification' }).click()
   await userEvent.tab()
   await expect.element(docs).toHaveFocus()
@@ -163,7 +158,9 @@ it('renders parsed copy and safe links, then dismisses through the real keyboard
   await expect.element(screen.getByRole('button', { name: 'Dismiss now' })).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByText('Parsed body main')).not.toBeInTheDocument()
-  expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+  await expect
+    .poll(() => fake.console.notification.dismiss.post)
+    .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
 })
 
 it.each([
@@ -178,11 +175,16 @@ it.each([
 ])(
   'offers a working close action when the payload needs fallback: $content',
   async ({ body, content }) => {
-    api.list.mockResolvedValue({ should_show: true, notifications: [notice(body)] })
+    fake.console.notification.get.mockResolvedValue({
+      should_show: true,
+      notifications: [notice(body)],
+    })
     const { screen } = await setup()
     await expect.element(screen.getByText(content)).toBeVisible()
     await screen.getByRole('button', { name: 'Close', exact: true }).click()
     await expect.element(screen.getByText(content)).not.toBeInTheDocument()
-    expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
+    await expect
+      .poll(() => fake.console.notification.dismiss.post)
+      .toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
   },
 )
