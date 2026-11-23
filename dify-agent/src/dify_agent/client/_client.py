@@ -15,7 +15,7 @@ import asyncio
 import inspect
 import json
 import time
-from collections.abc import AsyncGenerator, Callable, Generator, Iterator
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import aclosing, closing
 from json import JSONDecodeError
 from types import TracebackType
@@ -456,11 +456,12 @@ class Client:
         resume_after = after
         if after is not None and self.get_run_sync(run_id).status == "cancelled":
             resume_after = None
-        for event in self.stream_events_sync(run_id, after=resume_after):
-            if isinstance(event, RunCancelledEvent):
-                return event
-            if event.type in _TERMINAL_EVENT_TYPES:
-                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        with closing(self.stream_events_sync(run_id, after=resume_after)) as events:
+            for event in events:
+                if isinstance(event, RunCancelledEvent):
+                    return event
+                if event.type in _TERMINAL_EVENT_TYPES:
+                    raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
         raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
 
     async def get_run(self, run_id: str) -> RunStatusResponse:
@@ -744,12 +745,15 @@ class Client:
         until_terminal: bool = True,
         timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
-    ) -> Iterator[RunEvent]:
+    ) -> Generator[RunEvent]:
         """Synchronous variant of ``stream_events`` with the same reconnect and stop rules.
 
-        The default terminal path closes the response before yielding the event.
-        Close the returned iterator when stopping early. HTTPX cleanup failures
-        raise ``DifyAgentTimeoutError`` or ``DifyAgentStreamError`` without reconnecting.
+        By default, ``until_terminal=True`` closes the response before yielding a
+        terminal event, and a captured terminal event takes precedence over response
+        cleanup errors. If you stop consuming early, close the returned generator
+        with ``events.close()`` or ``contextlib.closing`` to release the active
+        response promptly without reconnecting; HTTPX errors during caller-driven
+        cleanup raise ``DifyAgentTimeoutError`` or ``DifyAgentStreamError``.
         """
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
@@ -772,22 +776,22 @@ class Client:
                         if event.type in _TERMINAL_EVENT_TYPES:
                             terminal_event_seen = True
                             if until_terminal:
+                                # Leave closing(connection) before yielding so the HTTPX response is already closed.
                                 terminal_event = event
                                 break
                         yield event
             except _ReconnectableStreamError as exc:
-                if terminal_event_seen:
-                    return
-                if not reconnect:
-                    raise exc.error from exc
-                reconnect_attempts = _next_reconnect_attempt(
-                    reconnect_attempts,
-                    max_reconnects=max_reconnects,
-                    error=exc.error,
-                )
-                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
-                continue
+                if not terminal_event_seen:
+                    if not reconnect:
+                        raise exc.error from exc
+                    reconnect_attempts = _next_reconnect_attempt(
+                        reconnect_attempts,
+                        max_reconnects=max_reconnects,
+                        error=exc.error,
+                    )
+                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                    _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
+                    continue
             except (DifyAgentTimeoutError, DifyAgentStreamError):
                 # A captured terminal event takes precedence over response cleanup errors.
                 if terminal_event is None:
@@ -931,9 +935,10 @@ class Client:
         """Open one synchronous SSE connection and yield events until it ends or fails.
 
         Stop conditions are checked per chunk (for comment/heartbeat chunks that
-        emit no events) and immediately before each decoded or flushed yield,
-        and already-raised stop/stream errors take precedence over response
-        cleanup failures.
+        emit no events) and immediately before each decoded or flushed yield.
+        Caller interruption and already-raised stop/stream errors must not make
+        response cleanup failures reconnectable, and already-raised stop/stream
+        errors take precedence over response cleanup failures.
         """
         caller_interrupted = False
         stop_error: DifyAgentStreamError | DifyAgentTimeoutError | None = None
@@ -965,7 +970,7 @@ class Client:
                         if event is not None:
                             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                             yield event
-                except GeneratorExit:
+                except (GeneratorExit, KeyboardInterrupt):
                     caller_interrupted = True
                     raise
                 except (DifyAgentStreamError, DifyAgentTimeoutError) as exc:
