@@ -610,12 +610,23 @@ def validate_request[M: BaseModel](model: type[M]) -> M:
     # auditing callers. Malformed or falsy JSON currently becomes {}, allowing
     # optional payloads to succeed as no-ops; validation details currently travel
     # as a JSON string in the error message.
+    def parse_json_body_or_empty() -> object:
+        """Return decoded JSON, using an empty object only when the body has no content."""
+        body = request.get_data(cache=True)
+        if not body:
+            return {}
+
+        raw_body = request.get_json(silent=True)
+        if raw_body is None:
+            raise UnprocessableEntity("Invalid JSON body")
+        return raw_body
+
     if request.method == "GET":
         raw = request.args.to_dict(flat=True)
     elif request.method == "DELETE":
-        raw = request.args.to_dict(flat=True) or (request.get_json(silent=True) or {})
+        raw = request.args.to_dict(flat=True) or parse_json_body_or_empty()
     else:
-        raw = request.get_json(silent=True) or {}
+        raw = parse_json_body_or_empty()
 
     try:
         return model.model_validate(raw)
