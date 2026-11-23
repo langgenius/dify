@@ -34,7 +34,7 @@ function renderFilter(
   }
   return renderWithTags(<Owner />, data, permissions)
 }
-const search = () => page.getByRole('combobox', { name: 'common.placeholder.search' })
+const search = () => page.getByRole('combobox', { name: 'common.tag.searchTags' })
 const trigger = (name = 'common.tag.placeholder') => page.getByRole('combobox', { name })
 
 it('filters by resource type and reflects pointer selection, deselection and clearing in its trigger', async () => {
@@ -61,6 +61,7 @@ it('filters by resource type and reflects pointer selection, deselection and cle
 it('searches case-insensitively and selects a highlighted result with the native keyboard', async () => {
   await renderFilter()
   await trigger().click()
+  await expect.element(search()).toHaveAttribute('placeholder', 'common.tag.searchTags')
   await search().fill('back')
   await expect.element(page.getByRole('option', { name: 'Backend' })).toBeVisible()
   await expect.element(page.getByRole('option', { name: 'Frontend' })).not.toBeInTheDocument()
