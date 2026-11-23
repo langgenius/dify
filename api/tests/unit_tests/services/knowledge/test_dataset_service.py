@@ -1479,7 +1479,7 @@ class TestDatasetServiceDatasetCases:
                 _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
                     dataset,
                     _make_knowledge_configuration(
-                        indexing_technique=IndexTechniqueType.ECONOMY,
+                        indexing_technique=IndexTechniqueType.ECONOMY.value,
                         keyword_number=17,
                     ),
                     session=sqlite_session,
@@ -1512,7 +1512,7 @@ class TestDatasetServiceDatasetCases:
                     dataset,
                     _make_knowledge_configuration(
                         chunk_structure="paragraph",
-                        indexing_technique=IndexTechniqueType.ECONOMY,
+                        indexing_technique=IndexTechniqueType.ECONOMY.value,
                         keyword_number=12,
                     ),
                     has_published=True,
@@ -1536,7 +1536,7 @@ class TestDatasetServiceDatasetCases:
                     ),
                     _make_knowledge_configuration(
                         chunk_structure="paragraph",
-                        indexing_technique=IndexTechniqueType.ECONOMY,
+                        indexing_technique=IndexTechniqueType.ECONOMY.value,
                     ),
                     "not allowed to be updated to economy",
                 ),

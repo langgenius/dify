@@ -665,7 +665,9 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqli
         ("langgenius/gemini/google", ["langgenius/gemini/google", "google"]),
     ],
 )
-def test_get_provider_names_returns_short_and_full_aliases(provider_name: str, expected_provider_names: list[str]):
+def test_get_provider_names_returns_short_and_full_aliases(
+    provider_name: str, expected_provider_names: list[str]
+) -> None:
     assert ProviderManager._get_provider_names(provider_name) == expected_provider_names
 
 
@@ -711,12 +713,12 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
     ],
 )
 def test_get_configurations_resolves_system_preference_with_quota_and_custom_fallback(
-    mock_provider_entity,
+    mock_provider_entity: ProviderEntity,
     quota_is_valid: bool | None,
     has_custom_provider: bool,
     has_custom_model: bool,
     expected_using_provider_type: ProviderType,
-):
+) -> None:
     manager = _build_provider_manager()
     provider_configuration = Mock()
     provider_factory = Mock()
@@ -1546,7 +1548,9 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
     ],
 )
 def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str, sqlite_session: Session) -> None:
-    def build_record(provider_name: str, index: int, *, tenant_id: str = "tenant-id"):
+    def build_record(
+        provider_name: str, index: int, *, tenant_id: str = "tenant-id"
+    ) -> Provider | ProviderModel | ProviderModelSetting | ProviderModelCredential | ProviderCredential:
         match method_name:
             case "_get_all_provider_models":
                 record = ProviderModel(

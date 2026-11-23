@@ -8,6 +8,7 @@ document, and segment service test modules that exercise
 import json
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -70,6 +71,9 @@ from services.knowledge.entities.knowledge_entities import (
     WebsiteInfo,
 )
 from services.knowledge.entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
+
+# Mirrors the Literal field on KnowledgeConfiguration (rag_pipeline_entities.py).
+IndexingTechnique = Literal["high_quality", "economy"]  # guard-ignore: no-new-multi-string-literal -- mirrors entity
 
 __all__ = [
     "Account",
@@ -344,7 +348,7 @@ def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
 def _make_knowledge_configuration(
     *,
     chunk_structure: str = "paragraph",
-    indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
+    indexing_technique: IndexingTechnique = IndexTechniqueType.HIGH_QUALITY.value,
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,
