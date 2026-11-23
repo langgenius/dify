@@ -63,6 +63,7 @@ from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
     _collect_retrieval_contexts,
+    _collect_selected_contexts,
     _compute_metrics_summary,
     _create_runner,
     _delete_stored_result_file,
@@ -107,6 +108,51 @@ def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() ->
 
     assert _collect_retrieval_contexts(node_results, []) is None
     assert _collect_retrieval_contexts(node_results, ["missing", "first", "second", "third"]) == ["alpha", "3"]
+    assert _collect_selected_contexts(node_results, ["first", "result"]) == ["alpha"]
+
+
+def test_workflow_faithfulness_receives_selected_llm_text_as_context(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A selected LLM output reaches the judge even without a context placeholder in the prompt."""
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", lambda *_args: None)
+    evaluator = CapturingEvaluationInstance(
+        llm_result_factory=lambda items: [
+            EvaluationItemResult(index=item.index, metrics=[EvaluationMetric(name="faithfulness", value=1.0)])
+            for item in items
+        ]
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(metric="faithfulness", node_info_list=[NodeInfo(node_id="llm-2", title="LLM 2", type="llm")])
+        ],
+        llm_context_selector_mapping={"llm-2": ["llm-1", "text"]},
+        input_list=[EvaluationDatasetInput(index=0, inputs={"query": "question"})],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        EvaluationRunData.model_validate(run_data.model_dump(mode="json")),
+        evaluator,
+        [
+            {
+                "llm-1": NodeRunResult(outputs={"text": "Source answer"}),
+                "llm-2": NodeRunResult(process_data={"prompts": []}, outputs={"text": "Refined answer"}),
+            }
+        ],
+        _lease(run_data.evaluation_run_id),
+    )
+
+    assert evaluator.llm_items[0].context == ["Source answer"]
+    assert results[0].metrics[0].value == 1.0
 
 
 def test_store_result_file_persists_upload_matching_saved_bytes(
