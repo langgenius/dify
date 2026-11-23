@@ -299,6 +299,53 @@ def test_iris_vector_crud_and_vector_search(iris_module, monkeypatch: pytest.Mon
     assert docs[0].metadata["score"] == pytest.approx(0.9)
 
 
+class _RecordingCursor:
+    """A cursor that records the statements a search runs and returns no rows."""
+
+    def __init__(self) -> None:
+        self.statements: list[tuple[str, list[object]]] = []
+
+    def execute(self, sql: str, params: list[object]) -> None:
+        self.statements.append((sql, list(params)))
+
+    def fetchall(self) -> list[tuple[str, str, str, float]]:
+        return []
+
+
+def _vector_with_recording_cursor(iris_module):
+    with patch.object(iris_module, "get_iris_pool", return_value=None):
+        vector = iris_module.IrisVector("collection", _config(iris_module))
+    cursor = _RecordingCursor()
+
+    @contextmanager
+    def _cursor_ctx():
+        yield cursor
+
+    vector._get_cursor = _cursor_ctx
+    return vector, cursor
+
+
+def test_iris_vector_search_applies_document_ids_filter(iris_module):
+    vector, cursor = _vector_with_recording_cursor(iris_module)
+
+    vector.search_by_vector([0.1, 0.2], top_k=3, document_ids_filter=["d-1", "d-2"])
+
+    [(sql, params)] = cursor.statements
+    assert "WHERE JSON_VALUE(meta, '$.document_id') IN (?,?)" in sql
+    assert sql.index("WHERE") < sql.index("ORDER BY")
+    assert params == [json.dumps([0.1, 0.2]), "d-1", "d-2"]
+
+
+def test_iris_vector_search_without_document_ids_filter(iris_module):
+    vector, cursor = _vector_with_recording_cursor(iris_module)
+
+    vector.search_by_vector([0.1, 0.2], top_k=3)
+
+    [(sql, params)] = cursor.statements
+    assert "WHERE" not in sql
+    assert params == [json.dumps([0.1, 0.2])]
+
+
 def test_iris_vector_full_text_search_paths(iris_module, monkeypatch: pytest.MonkeyPatch):
     cfg = _config(iris_module, IRIS_TEXT_INDEX=True)
     with patch.object(iris_module, "get_iris_pool", return_value=MagicMock()):
