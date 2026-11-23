@@ -75,6 +75,9 @@ def save_workflow_node_executions_task(
                     )
                 ),
             )
+            # Lock the rows being updated, in id order so overlapping batches wait instead of
+            # deadlocking, for the reason given in ``_save_node_execution``.
+            query = query.order_by(WorkflowNodeExecutionModel.id).with_for_update(of=WorkflowNodeExecutionModel)
             existing_models = {model.id: model for model in session.scalars(query)}
             for execution in executions:
                 existing = existing_models.get(execution.id)
@@ -124,8 +127,9 @@ def save_workflow_node_execution_task(
 
     Postcondition: exactly one row exists for the execution. A delivery that loses the
     insert to a concurrent one is applied as an update in the same run instead of waiting
-    for a Celery retry, and a row that already finished is never moved back to a live
-    status (see ``_update_node_execution_from_domain``).
+    for a Celery retry. Updates to an existing row hold its lock, so a row that already
+    finished is never moved back to a live status, even by a delivery that overlaps the
+    finishing one (see ``_update_node_execution_from_domain``).
 
     Args:
         execution_data: Serialized WorkflowNodeExecution data
@@ -197,14 +201,20 @@ def _save_node_execution(
                 ),
             )
 
-        # Check if node execution already exists
+        # Lock the row until this transaction commits. The terminal-state guard in
+        # ``_update_node_execution_from_domain`` compares against the status read here, so a
+        # live delivery that read the row before a finishing delivery committed would
+        # otherwise move the finished row back. With the lock, the second delivery waits and
+        # then reads the committed status.
         existing_execution = session.scalar(
-            select(WorkflowNodeExecutionModel).where(
+            select(WorkflowNodeExecutionModel)
+            .where(
                 WorkflowNodeExecutionModel.id == execution.id,
                 WorkflowNodeExecutionModel.tenant_id == tenant_id,
                 WorkflowNodeExecutionModel.app_id == app_id,
                 WorkflowNodeExecutionModel.workflow_id == execution.workflow_id,
             )
+            .with_for_update()
         )
 
         if existing_execution:
