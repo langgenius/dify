@@ -13,7 +13,7 @@ type DemoMembersProps = {
 }
 
 export function DemoMembers({ listed, pillRef }: DemoMembersProps) {
-  const { t } = useTranslation(['collaborationDemo'])
+  const { t, i18n } = useTranslation(['collaborationDemo'])
 
   return (
     <div className="relative">
@@ -21,7 +21,7 @@ export function DemoMembers({ listed, pillRef }: DemoMembersProps) {
         ref={pillRef}
         role="img"
         aria-label={t(($) => $['members.label'], {
-          names: members.map(({ name }) => name).join(', '),
+          names: new Intl.ListFormat(i18n.language).format(members.map(({ name }) => name)),
         })}
         collaborators={members}
       />

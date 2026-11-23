@@ -176,7 +176,7 @@ it('announces messages through a region that exists before the first message', a
   await userEvent.keyboard('{Escape}')
   await expect.element(log).toHaveAttribute('aria-live', 'off')
   await userEvent.keyboard('{Tab}{Enter}')
-  await expect.element(log).toMatchTextContent(/Sam:.*Alex:/)
+  await expect.element(log).toMatchTextContent(/"author":"Sam".*"author":"Alex"/)
 })
 
 it('keeps focus on the primary action when Try it now becomes ready', async () => {
@@ -239,4 +239,31 @@ it('opens the thread beside its marker and closes it for a replay', async () => 
 
   await screen.getByRole('button', { name: 'collaborationDemo.playback.replay' }).click()
   await expect.element(thread).not.toBeInTheDocument()
+})
+
+it('pauses when the thread is closed during playback and brings it back on resume', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+
+  const close = screen.getByRole('button', { name: 'collaborationDemo.thread.close' })
+  await expect.element(close).toBeInTheDocument()
+  await close.click()
+
+  const marker = screen.getByRole('button', { name: /collaborationDemo\.thread\.open/ })
+  await expect.element(marker).toHaveFocus()
+  await expect.element(marker).toHaveAttribute('aria-expanded', 'false')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.resume' }))
+    .toBeVisible()
+
+  await userEvent.keyboard('{Enter}')
+  await expect.element(close).toHaveFocus()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(marker).toHaveFocus()
+
+  await screen.getByRole('button', { name: 'collaborationDemo.playback.resume' }).click()
+  await expect.element(close).toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
+    .toBeVisible()
 })

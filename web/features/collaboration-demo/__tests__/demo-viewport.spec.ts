@@ -39,4 +39,13 @@ describe('getDemoViewport', () => {
     expect(left).toBeGreaterThanOrEqual(56)
     expect(pin.x + 47).toBeLessThanOrEqual(width - 8)
   })
+
+  it('keeps the flow clear of the end-side toolbar in RTL', () => {
+    const viewport = getDemoViewport(1376, 900, 'rtl')
+    const pin = toScreen(viewport, demoCommentPosition)
+    const left = toScreen(viewport, demoGraphBounds).x
+
+    expect(left).toBeGreaterThanOrEqual(16)
+    expect(pin.x + 47 + 17 + 360).toBeLessThanOrEqual(1376 - 56)
+  })
 })

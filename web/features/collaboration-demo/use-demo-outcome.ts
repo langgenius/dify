@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
 import { canEditApps, getDemoEndState, pickLatestApp } from './end-state'
 
@@ -22,9 +22,11 @@ function useLatestApp(enabled: boolean) {
 
 export function useDemoOutcome() {
   const role = useAtomValue(currentWorkspaceAtom).role
+  const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
   const features = useQuery(consoleQuery.features.get.queryOptions())
   const collaborationEnabled = features.data?.workflow_collaboration_enabled === true
-  const apps = useLatestApp(collaborationEnabled && canEditApps(role))
+  const apps = useLatestApp(!workspaceLoading && collaborationEnabled && canEditApps(role))
+  if (workspaceLoading) return { kind: 'loading' } as const
   return getDemoEndState({
     features: features.data
       ? {

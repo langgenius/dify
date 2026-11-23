@@ -3,12 +3,12 @@
 import type { DemoEndState } from '../end-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
-import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { demoUsers } from '../demo-users'
 import { demoDuration, demoMessages, getPlaybackFrame } from '../playback-script'
+import { useMessageContent } from '../use-message-content'
 import { usePlayback } from '../use-playback'
 import { DemoCanvasLayer } from './demo-canvas-layer'
 import { DemoEndPanel } from './demo-end-panel'
@@ -17,20 +17,24 @@ const focusOnMount = (element: HTMLElement | null) => element?.focus()
 
 export function DemoPlayback({ endState }: { endState: DemoEndState }) {
   const { t } = useTranslation(['collaborationDemo'])
+  const messageContent = useMessageContent()
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
   const playback = usePlayback(demoDuration)
   const [threadOpen, setThreadOpen] = useState(true)
   const [threadReopened, setThreadReopened] = useState(false)
-  const pauseRef = useRef<HTMLButtonElement>(null)
-  const pauseButtonRef = useMergedRefs(pauseRef, focusOnMount)
   const frame = getPlaybackFrame(playback.seconds, reducedMotion)
 
   useHotkey('Escape', playback.pause, { enabled: playback.playing })
 
-  const changeThreadOpen = (open: boolean) => {
-    setThreadReopened(open)
-    if (!open && !playback.finished) pauseRef.current?.focus()
+  const changeThreadOpen = (open: boolean, fromMarker: boolean) => {
+    if (!open) playback.pause()
+    setThreadReopened(fromMarker)
     setThreadOpen(open)
+  }
+  const resume = () => {
+    setThreadReopened(false)
+    setThreadOpen(true)
+    playback.play()
   }
 
   return (
@@ -43,19 +47,19 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
       >
         {demoMessages.slice(0, frame.visibleMessages).map((message) => (
           <p key={message.id}>
-            {demoUsers[message.author].name}:{' '}
-            {message.mention && `@${demoUsers[message.mention].name} `}
-            {t(($) => $[`messages.${message.id}`])}
+            {t(($) => $['playback.messageLine'], {
+              author: demoUsers[message.author].name,
+              message: messageContent(message),
+            })}
           </p>
         ))}
       </div>
       <DemoCanvasLayer
         frame={frame}
-        markerInteractive={playback.finished}
+        markerInteractive={!playback.playing}
         reducedMotion={reducedMotion}
         threadOpen={threadOpen}
         onThreadOpenChange={changeThreadOpen}
-        markerRef={focusOnMount}
         focusThread={threadReopened}
       />
       {playback.finished ? (
@@ -70,9 +74,9 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
       ) : (
         <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto flex w-fit items-center gap-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <Button
-            ref={pauseButtonRef}
+            ref={focusOnMount}
             variant="ghost"
-            onClick={playback.playing ? playback.pause : playback.play}
+            onClick={playback.playing ? playback.pause : resume}
           >
             <span
               aria-hidden
