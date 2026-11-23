@@ -1238,7 +1238,6 @@ export const post67Errors = {
 export const post68Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
-  trigger_node_limit_exceeded: { status: 403, data: zTriggerNodeLimitExceededError },
 }
 
 export const get82Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
@@ -1246,6 +1245,7 @@ export const get82Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const post69Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  trigger_node_limit_exceeded: { status: 403, data: zTriggerNodeLimitExceededError },
 }
 
 export const get83Errors = {
