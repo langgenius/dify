@@ -102,6 +102,13 @@ root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
 `is_end_user` is a frontend navigation hint; clients select the existing
 `mode=end_user` API contract to request End User login.
 
+Both relative paths and absolute URLs are untrusted input. Absolute targets must
+match the configured origin exactly: same scheme, host, and effective port. The
+resolver rejects credentials in the authority, protocol-relative references,
+backslashes, control characters, and dot segments (including percent-encoded
+ones), and it rebuilds the response URL from the configured origin instead of
+echoing the supplied host. Route restrictions then apply to the resolved path.
+
 Console OAuth resolves relative returns against `CONSOLE_WEB_URL`. End User
 portal and App returns use `APP_WEB_URL`, falling back to `CONSOLE_WEB_URL` when
 unset. OAuth resume URLs for `/signin` still use the Console base so clients can

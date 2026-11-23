@@ -147,3 +147,36 @@ def test_console_relative_redirect_uses_configured_origin_and_base_path(path: st
 @pytest.mark.parametrize("path", ["apps", "//external.example/apps", "/apps/../home", "/apps/%2e%2e/home"])
 def test_console_rejects_invalid_relative_paths(path: str) -> None:
     assert resolve_console_login_redirect(path, console_web_url="https://console.example.com/console") is None
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["https://console.example.com/console/apps", "https://CONSOLE.example.com/console/apps"],
+)
+def test_console_absolute_redirect_is_rebuilt_from_configured_origin(target: str) -> None:
+    assert (
+        resolve_console_login_redirect(target, console_web_url="https://console.example.com/console")
+        == "https://console.example.com/console/apps"
+    )
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://evil.example/console/apps",
+        "https://console.example.com.evil.example/console/apps",
+        "https://console.example.com./console/apps",
+        "https://console.example.com:444/console/apps",
+        "http://console.example.com/console/apps",
+        "https://user@console.example.com/console/apps",
+        "https://:pass@console.example.com/console/apps",
+        "//console.example.com/console/apps",
+        "https://console.example.com/console/../apps",
+        "https://console.example.com/console/%2e%2e/apps",
+        "https://console.example.com/console/apps\\@evil.example",
+        "javascript:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+    ],
+)
+def test_console_rejects_absolute_redirect_outside_configured_origin(target: str) -> None:
+    assert resolve_console_login_redirect(target, console_web_url="https://console.example.com/console") is None

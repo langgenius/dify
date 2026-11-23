@@ -32,9 +32,12 @@ def _resolve_frontend_redirect(redirect_url: str, frontend_url: str) -> tuple[Sp
     """Resolve against trusted deployment configuration, not the current request.
 
     A root-relative target may include the deployment prefix or omit it. An
-    explicit URL must match the configured origin; its path is never moved.
-    Return the destination and its route within the base path (None when outside
-    it), or None for invalid input. Query and fragment are not decoded.
+    explicit URL must match the configured origin exactly (scheme, host, and
+    effective port); credentials, protocol-relative references, backslashes,
+    control characters, and dot segments are rejected. Return the destination
+    and its route within the base path (None when outside it), or None for
+    invalid input. The destination is rebuilt from the configured origin, so
+    the caller's host is never echoed, and query and fragment stay opaque.
     """
     if not redirect_url or _UNSAFE_CHARACTERS.search(redirect_url) or redirect_url.startswith("//"):
         return None
@@ -71,10 +74,11 @@ def _resolve_frontend_redirect(redirect_url: str, frontend_url: str) -> tuple[Sp
 
 
 def resolve_console_login_redirect(redirect_url: str, *, console_web_url: str) -> str | None:
-    """Bind a safe relative target to the configured Console frontend.
+    """Bind a relative target to the configured Console frontend.
 
-    Same-origin absolute targets remain on their original path. Return None for
-    unsafe targets without inspecting the API request origin.
+    Same-origin absolute targets stay on their original path. Any other origin
+    is rejected without inspecting the API request origin, so a caller-supplied
+    host can never select the redirect destination.
     """
     resolved = _resolve_frontend_redirect(redirect_url, console_web_url)
     return resolved[0].geturl() if resolved is not None else None
