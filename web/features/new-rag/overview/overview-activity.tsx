@@ -3,7 +3,7 @@
 import type { KnowledgeFsOverviewActivityResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,6 +30,7 @@ import dayjs from 'dayjs'
 import { useAtomValue, useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import {
   DatePicker,
   DatePickerContent,
@@ -165,7 +166,7 @@ function ActivityActor({
       ) : (
         <Avatar size={size} aria-hidden={showName || undefined} title={actor.name}>
           <AvatarFallback>{getAvatarInitial(actor.name)}</AvatarFallback>
-          <AvatarImage src={actor.avatar || undefined} alt={showName ? '' : actor.name} />
+          <AccountAvatarImage src={actor.avatar || undefined} alt={showName ? '' : actor.name} />
         </Avatar>
       )}
       {showName && <span className="truncate text-text-secondary">{actor.name}</span>}

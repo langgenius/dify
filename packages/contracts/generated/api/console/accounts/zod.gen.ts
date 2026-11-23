@@ -26,4 +26,6 @@ export const zGetAccountsByAccountIdAvatarsByFileIdPath = z.object({
 /**
  * Avatar image
  */
-export const zGetAccountsByAccountIdAvatarsByFileIdResponse = z.record(z.string(), z.unknown())
+export const zGetAccountsByAccountIdAvatarsByFileIdResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)

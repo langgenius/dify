@@ -15,6 +15,7 @@ from constants.languages import supported_language
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import (
     AvatarUrlResponse,
+    BinaryFileResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -63,6 +64,7 @@ from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from machinery.context import RequestContext
 from services import account_errors
@@ -268,6 +270,7 @@ register_response_schema_models(
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
+    BinaryFileResponse,
     EducationActivateResponse,
     EducationVerifyResponse,
     EducationStatusResponse,
@@ -350,10 +353,17 @@ class AccountAvatarApi(Resource):
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
 
+_ACCOUNT_AVATAR_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"]
+
+
 @console_ns.route("/accounts/<uuid:account_id>/avatars/<uuid:file_id>")
 class CurrentAccountAvatarFileApi(Resource):
-    @console_ns.doc("get_current_account_avatar_file")
-    @console_ns.response(HTTPStatus.OK, "Avatar image")
+    @console_ns.doc(
+        "get_current_account_avatar_file",
+        produces=_ACCOUNT_AVATAR_MEDIA_TYPES,
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: _ACCOUNT_AVATAR_MEDIA_TYPES},
+    )
+    @console_ns.response(HTTPStatus.OK, "Avatar image", console_ns.models[BinaryFileResponse.__name__])
     @console_ns.response(HTTPStatus.NOT_MODIFIED, "Avatar image has not changed")
     @console_ns.response(HTTPStatus.NOT_FOUND, "Avatar file not found")
     @console_account_admission(require_active_workspace=False, require_initialized=False)

@@ -50,29 +50,53 @@ it('shows a current avatar even when the collaboration session has no avatar sna
   await expect.element(screen.getByRole('button', { name: 'Dana' }).getByAltText('')).toBeVisible()
 })
 
-it('refreshes current avatars once a minute while the room remains visible', async () => {
+it('keeps the last visible avatars when a room refresh fails', async () => {
   onTestFinished(guardUnexpectedFetch())
+  const avatarUrl = URL.createObjectURL(
+    new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"/>'], {
+      type: 'image/svg+xml',
+    }),
+  )
+  onTestFinished(() => URL.revokeObjectURL(avatarUrl))
   // boundary: replace only the authorized room’s avatar response.
   const getOnlineUserAvatars = vi
     .spyOn(collaborationManager, 'getOnlineUserAvatars')
-    .mockResolvedValue({})
+    .mockResolvedValue({ 'sid-bob': avatarUrl })
   onTestFinished(() => getOnlineUserAvatars.mockRestore())
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   onTestFinished(() => {
     vi.useRealTimers()
   })
 
-  await renderWorkflowBrowserComponent(
+  const screen = await renderWorkflowBrowserComponent(
     <TooltipProvider>
       <OnlineUsers />
     </TooltipProvider>,
     { resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true } },
   )
   await vi.advanceTimersByTimeAsync(0)
-  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(1)
+  const bobAvatar = screen
+    .getByRole('button', { name: 'workflow.collaboration.viewCollaborators:{"count":4}' })
+    .getByAltText('')
+    .first()
+  await expect.element(bobAvatar).toBeVisible()
 
+  vi.clearAllTimers()
+  const trigger = screen.getByRole('button', {
+    name: 'workflow.collaboration.viewCollaborators:{"count":4}',
+  })
+  const callsBeforeOpen = getOnlineUserAvatars.mock.calls.length
+  await trigger.click()
+  await expect.poll(() => getOnlineUserAvatars.mock.calls.length).toBe(callsBeforeOpen + 1)
+  const callsBeforeRefresh = getOnlineUserAvatars.mock.calls.length
+  getOnlineUserAvatars.mockRejectedValueOnce(new Error('avatar acknowledgement timed out'))
   await vi.advanceTimersByTimeAsync(59_999)
-  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(1)
+  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(callsBeforeRefresh)
   await vi.advanceTimersByTimeAsync(1)
-  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(2)
+  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(callsBeforeRefresh + 1)
+  await expect(getOnlineUserAvatars.mock.results.at(-1)?.value).rejects.toThrow(
+    'avatar acknowledgement timed out',
+  )
+  await vi.advanceTimersByTimeAsync(0)
+  await expect.element(bobAvatar).toBeVisible()
 })

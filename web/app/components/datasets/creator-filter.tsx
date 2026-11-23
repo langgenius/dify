@@ -1,7 +1,7 @@
 'use client'
 
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarGroup } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -24,6 +24,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -115,7 +116,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                   style={{ zIndex: visible.length - index }}
                 >
                   <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
-                  <AvatarImage src={creator.avatar_url || undefined} alt="" />
+                  <AccountAvatarImage src={creator.avatar_url || undefined} alt="" />
                 </Avatar>
               ))}
             </AvatarGroup>
@@ -218,7 +219,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
                             className="border-[0.5px] border-divider-regular"
                           >
                             <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
-                            <AvatarImage src={creator.avatar_url || undefined} alt="" />
+                            <AccountAvatarImage src={creator.avatar_url || undefined} alt="" />
                           </Avatar>
                           <span className="min-w-0 flex-1 truncate system-sm-regular">
                             {creator.name}

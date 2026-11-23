@@ -382,7 +382,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Avatar image |  |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
 | 304 | Avatar image has not changed |  |
 | 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |

@@ -33,9 +33,7 @@ export type GetAccountsByAccountIdAvatarsByFileIdError =
   GetAccountsByAccountIdAvatarsByFileIdErrors[keyof GetAccountsByAccountIdAvatarsByFileIdErrors]
 
 export type GetAccountsByAccountIdAvatarsByFileIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
 export type GetAccountsByAccountIdAvatarsByFileIdResponse =

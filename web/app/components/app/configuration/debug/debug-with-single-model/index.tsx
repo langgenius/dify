@@ -2,10 +2,11 @@ import type { Ref } from 'react'
 import type { IChatItem, InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -205,7 +206,7 @@ const DebugWithSingleModel = ({
       questionIcon={
         <Avatar size="xl" role="img" aria-label={userProfile.name}>
           <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>
       }
       allToolIcons={allToolIcons}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,6 +17,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -100,7 +101,10 @@ function AddAccessSubjectMenuContent({
                 <AvatarFallback className="bg-components-icon-bg-blue-solid">
                   {getAvatarInitial(memberName)}
                 </AvatarFallback>
-                <AvatarImage src={(member.avatar_url ?? member.avatar) || undefined} alt="" />
+                <AccountAvatarImage
+                  src={(member.avatar_url ?? member.avatar) || undefined}
+                  alt=""
+                />
               </Avatar>
               <span className="min-w-0 flex-1">
                 <span className="block truncate system-sm-medium text-text-secondary">
