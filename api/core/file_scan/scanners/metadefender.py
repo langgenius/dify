@@ -76,6 +76,7 @@ class MetaDefenderScanner(FileScanner):
                 raise ScannerError(ScanProblem.PENDING, "scan is still running", external_id=data_id)
             self._sleep(POLL_INTERVAL_SECONDS)
 
+    @override
     def _scan_once(self, target: ScanTarget, *, external_id: str | None) -> ScanVerdict:
         """Submit once or poll once so request-bound callers can resume by data ID."""
         data_id = external_id or self._upload(target)
