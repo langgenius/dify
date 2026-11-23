@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 
@@ -35,12 +36,16 @@ export function ExternalAgentUsedInApps({ agentId }: { agentId: string }) {
                 href={`/app/${encodeURIComponent(app.app_id)}/overview`}
                 className="flex items-center gap-2.5 px-4 py-3 hover:bg-background-default-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
               >
-                <span
-                  aria-hidden
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-divider-regular bg-background-default text-xl"
-                >
-                  {app.mode === 'workflow' ? '🔄' : '💬'}
-                </span>
+                <AppIcon
+                  size="small"
+                  icon={{
+                    icon_type: app.icon_type ?? null,
+                    icon: app.icon ?? null,
+                    icon_background: app.icon_background ?? null,
+                    icon_url: app.icon_url ?? null,
+                  }}
+                  fallback={{ content: app.mode === 'workflow' ? '🔄' : '💬' }}
+                />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="system-md-semibold wrap-break-word text-text-primary">
                     {app.name}
