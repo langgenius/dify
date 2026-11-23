@@ -1,6 +1,7 @@
 import type { DemoEndState } from '../../end-state'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { render } from 'vitest-browser-react'
+import { notificationDemoHref } from '../../query-params'
 import { DemoEndPanel } from '../demo-end-panel'
 
 const api = vi.hoisted(() => ({ replace: vi.fn(), urlUpdate: vi.fn() }))
@@ -10,10 +11,10 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }
 
 const app = { id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }
 
-async function renderPanel(state: DemoEndState) {
+async function renderPanel(state: DemoEndState, searchParams = '') {
   const onReplay = vi.fn()
   const screen = await render(
-    <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={api.urlUpdate}>
       <DemoEndPanel state={state} onReplay={onReplay} />
     </NuqsTestingAdapter>,
   )
@@ -94,5 +95,17 @@ it('closes a demo tab opened from the product and falls back to the apps list ot
   vi.spyOn(window, 'opener', 'get').mockReturnValue(window)
   api.replace.mockClear()
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
+  expect(close).toHaveBeenCalledOnce()
+})
+
+it('closes a demo tab opened from the in-site notification', async () => {
+  const close = vi.spyOn(window, 'close').mockImplementation(() => {})
+  const { screen } = await renderPanel(
+    { kind: 'createApp' },
+    new URL(notificationDemoHref, window.location.origin).search,
+  )
+
+  await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
+
   expect(close).toHaveBeenCalledOnce()
 })
