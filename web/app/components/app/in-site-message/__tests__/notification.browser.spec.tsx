@@ -10,6 +10,12 @@ import { setupFakeApi } from '@/test/fake-api'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
+const route = vi.hoisted(() => ({ pathname: '/apps' }))
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
+vi.mock('@/next/navigation', () => ({ usePathname: () => route.pathname }))
+beforeEach(() => {
+  route.pathname = '/apps'
+})
 const notice = (
   body: string,
 ): Awaited<ReturnType<typeof consoleClient.notification.get>>['notifications'][number] => ({
@@ -60,6 +66,19 @@ it('keeps cloud notifications unavailable in Community even when the service has
   await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
   await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
   expect(fake.console.notification.get).not.toHaveBeenCalled()
+})
+
+it('stays off the collaboration demo it links to without dismissing the notice', async () => {
+  route.pathname = '/collaboration-demo'
+  fake.console.notification.get.mockResolvedValue({
+    should_show: true,
+    notifications: [notice('Cloud update')],
+  })
+  const { screen } = await setup()
+  await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
+  await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
+  expect(fake.console.notification.get).not.toHaveBeenCalled()
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
 })
 
 it('replaces the displayed notice when the real interface language changes', async () => {

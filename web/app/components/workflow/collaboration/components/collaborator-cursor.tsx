@@ -14,29 +14,24 @@ type CollaboratorCursorProps = {
  */
 export function CollaboratorCursor({ name, color, className, style }: CollaboratorCursorProps) {
   return (
-    <div className={cn('pointer-events-none', className)} style={style}>
-      <svg
+    <div dir="ltr" className={cn('pointer-events-none', className)} style={style}>
+      {/* The design's 24px pointer: a white outline under an arrow in the collaborator's
+          color, with its tip at (7, 3). */}
+      <span
         aria-hidden
-        width="20"
-        height="20"
-        viewBox="0 0 20 20"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="drop-shadow-md"
+        className="absolute -inset-s-1.75 -top-0.75 size-6 drop-shadow-[0_1px_1.8px_rgb(0_0_0/0.65)]"
       >
-        <path
-          d="M5 3L5 15L8 11.5L11 16L13 15L10 10.5L14 10.5L5 3Z"
-          fill={color}
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
+        <span className="absolute inset-0 i-custom-vender-workflow-collaborator-cursor-outline size-6 text-white" />
+        <span
+          className="absolute inset-0 i-custom-vender-workflow-collaborator-cursor-arrow size-6"
+          style={{ color }}
         />
-      </svg>
+      </span>
       <div
-        className="absolute inset-s-4 top-4 max-w-30 truncate rounded-sm border-[0.5px] border-divider-regular px-1.25 py-0.75 system-2xs-medium text-white shadow-md"
+        className="absolute inset-s-[13.5px] top-[17.5px] max-w-30 truncate rounded-sm border-[0.5px] border-divider-regular px-1.25 py-0.75 system-2xs-medium text-white shadow-md backdrop-blur-[5px]"
         style={{ backgroundColor: color }}
       >
-        {name}
+        <span dir="auto">{name}</span>
       </div>
     </div>
   )
