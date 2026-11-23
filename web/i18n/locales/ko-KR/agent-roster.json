@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "인증 정보는 표시되지 않습니다. 교체하려면 다시 입력하세요.",
   "external.connection.conflict.description": "저장하기 전에 최신 설정을 검토하세요.",
   "external.connection.conflict.latestConfiguration": "최신 설정",
-  "external.connection.conflict.latestEndpoint": "최신 설정: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "최신 설정: {{endpoint}}, 저장자: {{name}}",
   "external.connection.conflict.loadFailed": "최신 연결을 불러올 수 없습니다. 계속하기 전에 다시 시도하세요.",
   "external.connection.conflict.property": "속성",
   "external.connection.conflict.savedBy": "{{name}}님이 {{time}} 저장함",

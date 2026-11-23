@@ -201,7 +201,7 @@ export default interface Resources {
     'external.connection.conflict.credentialsHint': 'Credentials are not shown. Enter a replacement again if needed.'
     'external.connection.conflict.description': 'Review the latest configuration before saving.'
     'external.connection.conflict.latestConfiguration': 'Latest configuration'
-    'external.connection.conflict.latestEndpoint': 'Latest configuration: {{endpoint}}'
+    'external.connection.conflict.latestEndpoint': 'Latest configuration: {{endpoint}}, by {{name}}'
     'external.connection.conflict.loadFailed': 'Could not load the latest connection. Retry before continuing.'
     'external.connection.conflict.property': 'Property'
     'external.connection.conflict.savedBy': 'Saved by {{name}} {{time}}'

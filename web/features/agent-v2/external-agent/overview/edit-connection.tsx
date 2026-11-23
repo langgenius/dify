@@ -41,6 +41,7 @@ import { EditConnectionReview } from './edit-connection-review'
 
 function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common'])
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const [open, setOpen] = useState(false)
   const [base, setBase] = useState<ExternalAgentOverview>()
   const [review, setReview] = useState<ExternalAgentVerificationResponse>()
@@ -48,9 +49,8 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const [submitted, setSubmitted] = useState<ExternalAgentConnectionPayload>()
   const [saveUnknown, setSaveUnknown] = useState(false)
   const [saveError, setSaveError] = useState<string>()
+  const [conflictResolution, setConflictResolution] = useState<'keep' | 'latest'>()
   const [conflicted, setConflicted] = useState(false)
-  const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [latestEndpoint, setLatestEndpoint] = useState<string>()
   const endpointRef = useRef<HTMLInputElement>(null)
   const submitLabelId = useId()
   const loadEpochRef = useRef(0)
@@ -97,7 +97,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     setSubmitted(undefined)
     setSaveUnknown(false)
     setSaveError(undefined)
-    setLatestEndpoint(undefined)
+    setConflictResolution(undefined)
     setConflicted(false)
     invalidateVerification()
     resetSave()
@@ -144,7 +144,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     setSubmitted(undefined)
     setSaveUnknown(false)
     setSaveError(undefined)
-    setLatestEndpoint(undefined)
+    setConflictResolution(undefined)
     setConflicted(true)
     void detail.refetch()
   }
@@ -167,7 +167,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           ? { ...settings, token: '' }
           : { endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' },
       )
-      setLatestEndpoint(keepEdits ? loaded.endpoint : undefined)
+      setConflictResolution(keepEdits ? 'keep' : 'latest')
       setConflicted(false)
       setReview(undefined)
       setSubmitted(undefined)
@@ -346,9 +346,15 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
                 verified={Boolean(verification.evidence) || saveUnknown}
                 hasCredential={base.authentication === 'bearer' && base.hasCredential}
                 endpointDescription={
-                  latestEndpoint
-                    ? `${t(($) => $['external.connection.conflict.latestEndpoint'], { endpoint: latestEndpoint })} · ${savedAudit(base)}`
-                    : undefined
+                  conflictResolution === 'keep'
+                    ? t(($) => $['external.connection.conflict.latestEndpoint'], {
+                        endpoint: base.endpoint,
+                        name:
+                          base.connectionSavedBy?.name?.trim() || base.connectionSavedBy?.id || '—',
+                      })
+                    : conflictResolution === 'latest'
+                      ? savedAudit(base)
+                      : undefined
                 }
                 onChange={updateSettings}
               />

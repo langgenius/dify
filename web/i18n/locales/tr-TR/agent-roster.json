@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "Kimlik bilgileri gösterilmez. Gerekiyorsa yeni bilgileri tekrar girin.",
   "external.connection.conflict.description": "Kaydetmeden önce en son yapılandırmayı inceleyin.",
   "external.connection.conflict.latestConfiguration": "En son yapılandırma",
-  "external.connection.conflict.latestEndpoint": "En son yapılandırma: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "En son yapılandırma: {{endpoint}}, kaydeden: {{name}}",
   "external.connection.conflict.loadFailed": "En son bağlantı yüklenemedi. Devam etmeden önce yeniden deneyin.",
   "external.connection.conflict.property": "Özellik",
   "external.connection.conflict.savedBy": "{{name}} tarafından {{time}} kaydedildi",

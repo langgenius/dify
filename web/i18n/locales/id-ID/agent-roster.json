@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "Kredensial tidak ditampilkan. Masukkan kembali kredensial pengganti jika diperlukan.",
   "external.connection.conflict.description": "Tinjau konfigurasi terbaru sebelum menyimpan.",
   "external.connection.conflict.latestConfiguration": "Konfigurasi terbaru",
-  "external.connection.conflict.latestEndpoint": "Konfigurasi terbaru: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Konfigurasi terbaru: {{endpoint}}, disimpan oleh {{name}}",
   "external.connection.conflict.loadFailed": "Tidak dapat memuat koneksi terbaru. Coba lagi sebelum melanjutkan.",
   "external.connection.conflict.property": "Properti",
   "external.connection.conflict.savedBy": "Disimpan oleh {{name}} {{time}}",

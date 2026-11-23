@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "Thông tin xác thực không được hiển thị. Nhập lại thông tin thay thế nếu cần.",
   "external.connection.conflict.description": "Xem lại cấu hình mới nhất trước khi lưu.",
   "external.connection.conflict.latestConfiguration": "Cấu hình mới nhất",
-  "external.connection.conflict.latestEndpoint": "Cấu hình mới nhất: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Cấu hình mới nhất: {{endpoint}}, do {{name}} lưu",
   "external.connection.conflict.loadFailed": "Không thể tải kết nối mới nhất. Hãy thử lại trước khi tiếp tục.",
   "external.connection.conflict.property": "Thuộc tính",
   "external.connection.conflict.savedBy": "Được {{name}} lưu {{time}}",

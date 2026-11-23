@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "ຂໍ້ມູນຢືນຢັນຕົວຕົນຈະບໍ່ຖືກສະແດງ. ປ້ອນຂໍ້ມູນໃໝ່ອີກຄັ້ງຖ້າຈຳເປັນ.",
   "external.connection.conflict.description": "ກວດເບິ່ງການຕັ້ງຄ່າຫຼ້າສຸດກ່ອນບັນທຶກ.",
   "external.connection.conflict.latestConfiguration": "ການຕັ້ງຄ່າຫຼ້າສຸດ",
-  "external.connection.conflict.latestEndpoint": "ການຕັ້ງຄ່າຫຼ້າສຸດ: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "ການຕັ້ງຄ່າຫຼ້າສຸດ: {{endpoint}}, ບັນທຶກໂດຍ {{name}}",
   "external.connection.conflict.loadFailed": "ບໍ່ສາມາດໂຫຼດການເຊື່ອມຕໍ່ຫຼ້າສຸດໄດ້. ລອງໃໝ່ກ່ອນດຳເນີນການຕໍ່.",
   "external.connection.conflict.property": "ຄຸນສົມບັດ",
   "external.connection.conflict.savedBy": "ບັນທຶກໂດຍ {{name}} {{time}}",

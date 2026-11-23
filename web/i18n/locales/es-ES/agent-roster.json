@@ -26,7 +26,7 @@
   "external.connection.conflict.credentialsHint": "Las credenciales no se muestran. Si necesitas sustituirlas, introdúcelas de nuevo.",
   "external.connection.conflict.description": "Revisa la configuración más reciente antes de guardar.",
   "external.connection.conflict.latestConfiguration": "Configuración más reciente",
-  "external.connection.conflict.latestEndpoint": "Configuración más reciente: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Configuración más reciente: {{endpoint}}, guardada por {{name}}",
   "external.connection.conflict.loadFailed": "No se pudo cargar la conexión más reciente. Reinténtalo antes de continuar.",
   "external.connection.conflict.property": "Propiedad",
   "external.connection.conflict.savedBy": "Guardado por {{name}} {{time}}",

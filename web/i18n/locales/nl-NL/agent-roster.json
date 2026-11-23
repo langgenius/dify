@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "Inloggegevens worden niet getoond. Voer indien nodig opnieuw vervangende gegevens in.",
   "external.connection.conflict.description": "Controleer de nieuwste configuratie voordat je opslaat.",
   "external.connection.conflict.latestConfiguration": "Nieuwste configuratie",
-  "external.connection.conflict.latestEndpoint": "Nieuwste configuratie: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Nieuwste configuratie: {{endpoint}}, opgeslagen door {{name}}",
   "external.connection.conflict.loadFailed": "De nieuwste verbinding kon niet worden geladen. Probeer het opnieuw voordat u doorgaat.",
   "external.connection.conflict.property": "Eigenschap",
   "external.connection.conflict.savedBy": "Opgeslagen door {{name}} {{time}}",

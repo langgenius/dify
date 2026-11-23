@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "認証情報は表示されません。置き換える場合は再入力してください。",
   "external.connection.conflict.description": "保存する前に最新の設定を確認してください。",
   "external.connection.conflict.latestConfiguration": "最新の設定",
-  "external.connection.conflict.latestEndpoint": "最新の設定：{{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "最新の設定：{{endpoint}}（保存者：{{name}}）",
   "external.connection.conflict.loadFailed": "最新の接続を読み込めませんでした。続行する前に再試行してください。",
   "external.connection.conflict.property": "項目",
   "external.connection.conflict.savedBy": "{{name}} が {{time}}に保存",

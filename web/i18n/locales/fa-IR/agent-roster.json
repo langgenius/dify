@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "اطلاعات احراز هویت نمایش داده نمی‌شود. در صورت نیاز، اطلاعات جایگزین را دوباره وارد کنید.",
   "external.connection.conflict.description": "پیش از ذخیره، آخرین پیکربندی را بررسی کنید.",
   "external.connection.conflict.latestConfiguration": "آخرین پیکربندی",
-  "external.connection.conflict.latestEndpoint": "آخرین پیکربندی: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "آخرین پیکربندی: {{endpoint}}، ذخیره‌شده توسط {{name}}",
   "external.connection.conflict.loadFailed": "بارگیری جدیدترین اتصال ممکن نشد. پیش از ادامه دوباره تلاش کنید.",
   "external.connection.conflict.property": "ویژگی",
   "external.connection.conflict.savedBy": "ذخیره‌شده توسط {{name}} {{time}}",

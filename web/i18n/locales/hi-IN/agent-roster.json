@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "क्रेडेंशियल नहीं दिखाए जाते हैं। ज़रूरत होने पर नए क्रेडेंशियल दोबारा दर्ज करें।",
   "external.connection.conflict.description": "सहेजने से पहले नवीनतम कॉन्फ़िगरेशन की समीक्षा करें।",
   "external.connection.conflict.latestConfiguration": "नवीनतम कॉन्फ़िगरेशन",
-  "external.connection.conflict.latestEndpoint": "नवीनतम कॉन्फ़िगरेशन: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "नवीनतम कॉन्फ़िगरेशन: {{endpoint}}, {{name}} द्वारा सहेजा गया",
   "external.connection.conflict.loadFailed": "नवीनतम कनेक्शन लोड नहीं हो सका। आगे बढ़ने से पहले फिर से कोशिश करें।",
   "external.connection.conflict.property": "प्रॉपर्टी",
   "external.connection.conflict.savedBy": "{{name}} ने {{time}} सहेजा",

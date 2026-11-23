@@ -27,7 +27,7 @@
   "external.connection.conflict.credentialsHint": "Облікові дані не відображаються. За потреби повторно введіть нові дані.",
   "external.connection.conflict.description": "Перед збереженням перевірте найновішу конфігурацію.",
   "external.connection.conflict.latestConfiguration": "Найновіша конфігурація",
-  "external.connection.conflict.latestEndpoint": "Найновіша конфігурація: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Найновіша конфігурація: {{endpoint}}, автор — {{name}}",
   "external.connection.conflict.loadFailed": "Не вдалося завантажити останнє підключення. Повторіть спробу, перш ніж продовжити.",
   "external.connection.conflict.property": "Властивість",
   "external.connection.conflict.savedBy": "Збережено користувачем {{name}} {{time}}",

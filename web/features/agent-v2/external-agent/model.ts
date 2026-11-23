@@ -146,7 +146,7 @@ export function toExternalAgentOverview(
     connectionRevisionId: stringValue(connection.revision_id),
     connectionSavedBy:
       typeof savedBy.id === 'string' && savedBy.id
-        ? { id: savedBy.id, name: typeof savedBy.name === 'string' ? savedBy.name : null }
+        ? { id: savedBy.id, name: stringValue(savedBy.name).trim() || null }
         : null,
     connectionSavedAt:
       typeof connection.saved_at === 'string' && Number.isFinite(Date.parse(connection.saved_at))

@@ -27,7 +27,7 @@
   "external.connection.conflict.credentialsHint": "Poverilnice niso prikazane. Po potrebi znova vnesite nadomestne poverilnice.",
   "external.connection.conflict.description": "Pred shranjevanjem preglejte najnovejšo konfiguracijo.",
   "external.connection.conflict.latestConfiguration": "Najnovejša konfiguracija",
-  "external.connection.conflict.latestEndpoint": "Najnovejša konfiguracija: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Najnovejša konfiguracija: {{endpoint}}, shranjeno s strani {{name}}",
   "external.connection.conflict.loadFailed": "Najnovejše povezave ni bilo mogoče naložiti. Pred nadaljevanjem poskusite znova.",
   "external.connection.conflict.property": "Lastnost",
   "external.connection.conflict.savedBy": "Shranjeno: {{name}}, {{time}}",

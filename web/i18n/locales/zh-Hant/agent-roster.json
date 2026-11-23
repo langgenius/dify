@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "憑證不會顯示。如需替換，請重新輸入。",
   "external.connection.conflict.description": "儲存前請檢查最新設定。",
   "external.connection.conflict.latestConfiguration": "最新設定",
-  "external.connection.conflict.latestEndpoint": "最新設定：{{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "最新設定：{{endpoint}}，由 {{name}} 儲存",
   "external.connection.conflict.loadFailed": "無法載入最新連線。請重試後再繼續。",
   "external.connection.conflict.property": "屬性",
   "external.connection.conflict.savedBy": "由 {{name}} 於{{time}}儲存",

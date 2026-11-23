@@ -26,7 +26,7 @@
   "external.connection.conflict.credentialsHint": "Les identifiants ne sont pas affichés. Saisissez à nouveau les identifiants de remplacement si nécessaire.",
   "external.connection.conflict.description": "Vérifiez la dernière configuration avant d’enregistrer.",
   "external.connection.conflict.latestConfiguration": "Dernière configuration",
-  "external.connection.conflict.latestEndpoint": "Dernière configuration : {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "Dernière configuration : {{endpoint}}, enregistrée par {{name}}",
   "external.connection.conflict.loadFailed": "Impossible de charger la dernière connexion. Réessayez avant de continuer.",
   "external.connection.conflict.property": "Propriété",
   "external.connection.conflict.savedBy": "Enregistré par {{name}} {{time}}",

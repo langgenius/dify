@@ -145,11 +145,19 @@ it.each(['Use latest configuration', 'Keep my edits'] as const)(
     await dialog().getByRole('button', { name: choice, exact: true }).click()
     if (choice === 'Use latest configuration') {
       await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
+      await expect
+        .element(endpoint())
+        .toHaveAccessibleDescription('Saved by Jamie Lee 2 minutes ago')
       await expect.element(token()).not.toBeInTheDocument()
       await expect.element(verify()).toBeDisabled()
       await endpoint().fill('https://my-fresh-edit.example.test/agent')
     } else {
       await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+      await expect
+        .element(endpoint())
+        .toHaveAccessibleDescription(
+          'Latest configuration: https://latest.example.test/agent, by aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        )
       await expect.element(token()).toHaveValue('')
       await token().fill('fresh-replacement-token')
     }
@@ -268,7 +276,9 @@ it('recovers an older connection response without audit fields without inventing
     .not.toBeInTheDocument()
   await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
   await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
-  await expect.element(dialog().getByText(/Latest configuration:.*Saved by —/)).toBeVisible()
+  await expect
+    .element(endpoint())
+    .toHaveAccessibleDescription('Latest configuration: https://latest.example.test/agent, by —')
   expect(requests.verify).toHaveBeenCalledTimes(1)
   expect(requests.save).not.toHaveBeenCalled()
 })

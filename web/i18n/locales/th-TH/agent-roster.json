@@ -25,7 +25,7 @@
   "external.connection.conflict.credentialsHint": "ระบบจะไม่แสดงข้อมูลรับรอง หากต้องการเปลี่ยน ให้ป้อนข้อมูลใหม่อีกครั้ง",
   "external.connection.conflict.description": "ตรวจสอบการตั้งค่าล่าสุดก่อนบันทึก",
   "external.connection.conflict.latestConfiguration": "การตั้งค่าล่าสุด",
-  "external.connection.conflict.latestEndpoint": "การตั้งค่าล่าสุด: {{endpoint}}",
+  "external.connection.conflict.latestEndpoint": "การตั้งค่าล่าสุด: {{endpoint}} บันทึกโดย {{name}}",
   "external.connection.conflict.loadFailed": "ไม่สามารถโหลดการเชื่อมต่อล่าสุดได้ โปรดลองอีกครั้งก่อนดำเนินการต่อ",
   "external.connection.conflict.property": "คุณสมบัติ",
   "external.connection.conflict.savedBy": "บันทึกโดย {{name}} {{time}}",

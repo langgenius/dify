@@ -49,6 +49,15 @@ const endpoint = () => dialog().getByRole('textbox', { name: 'A2A endpoint', exa
 const token = () => dialog().getByLabelText('Token', { exact: true })
 const verify = () => dialog().getByRole('button', { name: 'Verify connection', exact: true })
 
+function freezeCurrentDate() {
+  const now = Date.now()
+  vi.setSystemTime(now)
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  return now
+}
+
 async function setup() {
   const i18n = createInstance()
   await i18n.init({
@@ -294,8 +303,17 @@ it('shows the referenced apps in the verified connection review before saving', 
 })
 
 it('replaces conflicted edits with the latest configuration and requires another edit before verification', async () => {
+  const now = freezeCurrentDate()
+  current = createExternalAgentDetail({
+    connection: {
+      ...current.connection,
+      saved_by: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Initial saver' },
+      saved_at: new Date(now - 86400000).toISOString(),
+    },
+  })
   requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
+  await expect.element(endpoint()).toHaveAccessibleDescription('')
   await endpoint().fill('https://my-change.example.test/agent')
   await token().fill('discarded-token')
   await verify().click()
@@ -303,12 +321,20 @@ it('replaces conflicted edits with the latest configuration and requires another
     .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
     .toBeEnabled()
   current = createExternalAgentDetail({
+    asset: {
+      ...current.asset,
+      created_by: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      updated_at: new Date(now - 7200000).toISOString(),
+    },
     connection: {
       ...current.connection,
       revision_id: '88888888-8888-4888-8888-888888888888',
       endpoint: 'https://latest.example.test/agent',
       auth_type: 'none',
       has_credential: false,
+      verified_at: new Date(now - 30000).toISOString(),
+      saved_by: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Earlier conflict saver' },
+      saved_at: new Date(now - 600000).toISOString(),
     },
   })
   await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
@@ -327,8 +353,18 @@ it('replaces conflicted edits with the latest configuration and requires another
   requests.verify.mockResolvedValue(
     createExternalVerification({ verification_id: '99999999-9999-4999-8999-999999999999' }),
   )
+  current = {
+    ...current,
+    connection: {
+      ...current.connection,
+      revision_id: '77777777-7777-4777-8777-777777777777',
+      saved_by: { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: ' Jamie Lee ' },
+      saved_at: new Date(now - 300000).toISOString(),
+    },
+  }
   await dialog().getByRole('button', { name: 'Use latest configuration', exact: true }).click()
   await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
+  await expect.element(endpoint()).toHaveAccessibleDescription('Saved by Jamie Lee 5 minutes ago')
   await expect.element(token()).not.toBeInTheDocument()
   await expect.element(verify()).toBeDisabled()
   expect(requests.verify).toHaveBeenCalledTimes(1)
@@ -346,12 +382,12 @@ it('replaces conflicted edits with the latest configuration and requires another
       auth_type: 'none',
       credential_action: 'remove',
       agent_id: current.asset.id,
-      expected_connection_revision_id: '88888888-8888-4888-8888-888888888888',
+      expected_connection_revision_id: '77777777-7777-4777-8777-777777777777',
     },
   })
   expect(requests.save.mock.calls[1]![0].body).toEqual({
     verification_id: '99999999-9999-4999-8999-999999999999',
-    expected_revision_id: '88888888-8888-4888-8888-888888888888',
+    expected_revision_id: '77777777-7777-4777-8777-777777777777',
     idempotency_key: expect.any(String),
   })
   expect(requests.save.mock.calls[1]![0].body.idempotency_key).not.toBe(
@@ -360,8 +396,10 @@ it('replaces conflicted edits with the latest configuration and requires another
 })
 
 it('keeps the edited endpoint and authentication after a conflict but reverifies a fresh credential against the latest revision', async () => {
+  const now = freezeCurrentDate()
   requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
+  await expect.element(endpoint()).toHaveAccessibleDescription('')
   await endpoint().fill('https://my-change.example.test/agent')
   await token().fill('discarded-token')
   await verify().click()
@@ -369,12 +407,20 @@ it('keeps the edited endpoint and authentication after a conflict but reverifies
     .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
     .toBeEnabled()
   current = createExternalAgentDetail({
+    asset: {
+      ...current.asset,
+      created_by: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      updated_at: new Date(now - 7200000).toISOString(),
+    },
     connection: {
       ...current.connection,
       revision_id: '88888888-8888-4888-8888-888888888888',
       endpoint: 'https://latest.example.test/agent',
       auth_type: 'none',
       has_credential: false,
+      verified_at: new Date(now - 30000).toISOString(),
+      saved_by: { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: ' Jamie Lee ' },
+      saved_at: new Date(now - 300000).toISOString(),
     },
   })
   await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
@@ -388,6 +434,11 @@ it('keeps the edited endpoint and authentication after a conflict but reverifies
   const original = requests.save.mock.calls[0]![0]
   await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
   await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect
+    .element(endpoint())
+    .toHaveAccessibleDescription(
+      'Latest configuration: https://latest.example.test/agent, by Jamie Lee',
+    )
   await expect.element(token()).toHaveValue('')
   await expect.element(verify()).toBeVisible()
   expect(requests.verify).toHaveBeenCalledTimes(1)
@@ -457,6 +508,35 @@ it('uses the latest saved credential when keeping endpoint edits without replayi
     },
   })
   expect(requests.save).toHaveBeenCalledTimes(1)
+})
+
+it('identifies the latest saver by account ID when their name is unavailable', async () => {
+  const now = freezeCurrentDate()
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await verify().click()
+  current = createExternalAgentDetail({
+    asset: {
+      ...current.asset,
+      created_by: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      updated_at: new Date(now - 60000).toISOString(),
+    },
+    connection: {
+      ...current.connection,
+      revision_id: '88888888-8888-4888-8888-888888888888',
+      endpoint: 'https://latest.example.test/agent',
+      verified_at: new Date(now - 120000).toISOString(),
+      saved_by: { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: null },
+      saved_at: new Date(now - 300000).toISOString(),
+    },
+  })
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await dialog().getByRole('button', { name: 'Use latest configuration', exact: true }).click()
+  await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
+  await expect
+    .element(endpoint())
+    .toHaveAccessibleDescription('Saved by eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee 5 minutes ago')
 })
 
 it('recovers an unknown connection Save with the original proof, revision and key after reopening', async () => {
