@@ -71,6 +71,8 @@ const TagInput = ({
     [items, onChange, t, required],
   )
   const handleKeyDown = (e: KeyboardEvent) => {
+    // The Enter that accepts an IME candidate must not add a tag or a return marker.
+    if (e.nativeEvent.isComposing) return
     if (isSpecialMode && e.key === 'Enter') setValue(`${value}↵`)
     if (e.key === customizedConfirmKey) {
       e.preventDefault()
