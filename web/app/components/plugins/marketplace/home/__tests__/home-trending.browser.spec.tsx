@@ -12,7 +12,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import plugin from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
 import HomeTrending from '../home-trending'
 
 // boundary: banner analytics stop at the telemetry adapter.
@@ -26,35 +26,6 @@ vi.unmock('react-i18next')
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
-
-// boundary: plugin detail hydration stops at the external Marketplace HTTP client.
-vi.mock('@/service/plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/plugins')>()),
-  fetchPluginInfoFromMarketPlace: vi
-    .fn<typeof import('@/service/plugins').fetchPluginInfoFromMarketPlace>()
-    .mockImplementation(async ({ org, name }) => ({
-      data: {
-        version: { version: '1.0.0' },
-        plugin: {
-          category: 'tool',
-          latest_package_identifier: `${org}/${name}:1.0.0`,
-          latest_version: '1.0.0',
-        },
-      },
-    })),
-}))
-
-// boundary: installed-plugin reads stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-  }
-})
 
 // boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
@@ -238,7 +209,29 @@ describe('Marketplace home trending carousel', () => {
       keySeparator: false,
       resources: { 'en-US': { app, common, navigation, plugin } },
     })
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          workspaces: {
+            current: {
+              plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
+            },
+          },
+        },
+        routes: [
+          route('GET', 'marketplace', '/plugins/:org/:name', ({ params }) => ({
+            data: {
+              version: { version: '1.0.0' },
+              plugin: {
+                category: 'tool',
+                latest_package_identifier: `${params.org}/${params.name}:1.0.0`,
+                latest_version: '1.0.0',
+              },
+            },
+          })),
+        ],
+      }),
+    )
     document.documentElement.dataset.isMarketplace = ''
     window.__marketplaceTracking__ = {
       track: vi.fn(),

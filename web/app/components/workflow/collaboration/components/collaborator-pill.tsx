@@ -1,26 +1,21 @@
-import type { ComponentProps, ReactNode } from 'react'
-import type { Collaborator } from './collaborator-avatar'
+import type { ComponentProps } from 'react'
+import { AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { CollaboratorAvatar } from './collaborator-avatar'
 
-type CollaboratorPillProps = Omit<ComponentProps<'span'>, 'children'> & {
-  /** The avatars shown in the pill, left to right. */
-  collaborators: Collaborator[]
-  /** People beyond `collaborators`; above zero the pill shows +N and a list chevron. */
+type CollaboratorPillProps = ComponentProps<'span'> & {
+  /** People beyond the avatars shown; above zero the pill shows +N and a list chevron. */
   overflowCount?: number
-  /** Wraps each avatar, for example in a tooltip trigger. Must render the avatar. */
-  renderAvatar?: (avatar: ReactNode, collaborator: Collaborator) => ReactNode
 }
 
 /**
- * The online-collaborators pill: overlapping 24px avatars, then +N and a
- * chevron when some people are folded into a list.
+ * The online-collaborators pill: its children are the 24px avatars, overlapping
+ * in an avatar group (give earlier ones a higher z-index to keep them on top),
+ * then +N and a chevron when some people are folded into a list.
  */
 export function CollaboratorPill({
-  collaborators,
   overflowCount = 0,
-  renderAvatar,
   className,
+  children,
   ...props
 }: CollaboratorPillProps) {
   const hasOverflow = overflowCount > 0
@@ -34,34 +29,12 @@ export function CollaboratorPill({
       )}
       {...props}
     >
-      {collaborators.map((collaborator, index) => {
-        const avatar = (
-          <CollaboratorAvatar
-            collaborator={collaborator}
-            size="sm"
-            className="ring-1 ring-components-panel-bg"
-          />
-        )
-        return (
-          <span
-            key={collaborator.id}
-            className={cn('relative flex rounded-full', index > 0 && '-ms-1')}
-            style={{ zIndex: collaborators.length - index }}
-          >
-            {renderAvatar ? renderAvatar(avatar, collaborator) : avatar}
-          </span>
-        )
-      })}
+      <AvatarGroup size="sm">
+        {children}
+        {hasOverflow && <AvatarGroupCount aria-hidden>+{overflowCount}</AvatarGroupCount>}
+      </AvatarGroup>
       {hasOverflow && (
-        <>
-          <span
-            aria-hidden
-            className="-ms-1 flex size-6 items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white ring-1 ring-components-panel-bg select-none"
-          >
-            +{overflowCount}
-          </span>
-          <span aria-hidden className="i-ri-arrow-down-s-line size-3 text-text-tertiary" />
-        </>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-3 text-text-tertiary" />
       )}
     </span>
   )

@@ -1,28 +1,17 @@
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { hold, setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture } from '@/test/fixtures/snippet'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetCreateButton from '../snippet-create-button'
 
-const api = vi.hoisted(() => ({ create: vi.fn(), sync: vi.fn(), push: vi.fn() }))
+const router = vi.hoisted(() => ({ push: vi.fn() }))
 
 // boundary: routing out of this component is supplied by Next.js.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.customizedSnippets.post': api.create,
-      'snippets.bySnippetId.workflows.draft.post': api.sync,
-    }),
-  }
-})
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: router.push }) }))
+// Snippet routes take UUID ids.
+const snippetId = '00000000-0000-4000-8000-000000000123'
 
 async function setup(permissions = ['snippets.create_and_modify']) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
@@ -44,11 +33,28 @@ async function openCreate() {
   return dialog
 }
 
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        customizedSnippets: {
+          post: () => createSnippetFixture({ id: snippetId }),
+        },
+      },
+    },
+    snippets: {
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: () => ({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 }),
+          },
+        },
+      },
+    },
+  },
+}))
 beforeEach(() => {
-  vi.resetAllMocks()
-  onTestFinished(guardUnexpectedFetch())
-  api.create.mockResolvedValue(createSnippetFixture({ id: 'snippet-123' }))
-  api.sync.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+  vi.clearAllMocks()
 })
 
 it('hides creation without workspace permission', async () => {
@@ -57,8 +63,9 @@ it('hides creation without workspace permission', async () => {
 })
 
 it('creates trimmed values and saves the draft before navigating, blocking duplicate shortcuts while pending', async () => {
-  const sync = createDeferred<unknown>()
-  api.sync.mockReturnValueOnce(sync.promise)
+  const createSnippet = fake.console.workspaces.current.customizedSnippets.post
+  const saveDraft = fake.console.snippets.bySnippetId.workflows.draft.post
+  const sync = hold(saveDraft)
   await setup()
   const dialog = await openCreate()
   const name = dialog.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
@@ -76,26 +83,22 @@ it('creates trimmed values and saves the draft before navigating, blocking dupli
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
     .toBeDisabled()
-  await expect.poll(() => api.sync.mock.calls.length).toBe(1)
+  await expect.poll(() => saveDraft.mock.calls.length).toBe(1)
   const graph = { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }
-  expect(api.create).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      name: 'My Snippet',
-      description: 'Useful snippet description',
-      graph,
-      input_fields: undefined,
-    },
+  expect(createSnippet).toHaveBeenCalledExactlyOnceWith({
+    // The contract fills the default snippet type.
+    body: { name: 'My Snippet', description: 'Useful snippet description', graph, type: 'node' },
   })
-  expect(api.sync).toHaveBeenCalledExactlyOnceWith({
-    params: { snippet_id: 'snippet-123' },
-    body: { graph, input_fields: undefined },
+  expect(saveDraft).toHaveBeenCalledExactlyOnceWith({
+    params: { snippet_id: snippetId },
+    body: { graph },
   })
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
-  expect(api.create).toHaveBeenCalledOnce()
-  expect(api.push).not.toHaveBeenCalled()
+  expect(createSnippet).toHaveBeenCalledOnce()
+  expect(router.push).not.toHaveBeenCalled()
   sync.resolve({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-123/orchestrate')
+  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
 })
 
 it('discards a cancelled draft and accepts the first shortcut after reopening', async () => {
@@ -118,5 +121,5 @@ it('discards a cancelled draft and accepts the first shortcut after reopening', 
   const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-123/orchestrate')
+  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
 })

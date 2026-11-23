@@ -2,9 +2,10 @@ import type {
   WorkflowCommentBasic,
   WorkflowCommentDetail,
 } from '@dify/contracts/api/console/apps/types.gen'
+import { networkError, pendingResponse } from '@/test/fake-api'
 
 // The server, request handlers and collaboration channel the comment layer browser specs
-// stand in for. It imports nothing from the app, so the specs' mocks can load it.
+// stand in for. It loads nothing the specs mock, so their mock factories can import it.
 
 export const api = {
   create: vi.fn(),
@@ -16,8 +17,8 @@ export const api = {
   detailFails: false,
   // Each thread read, by comment id.
   detail: vi.fn(),
-  // While set, a thread read answers with the thread as it was when asked, once the gate opens.
-  detailGate: undefined as undefined | Promise<unknown>,
+  // While set, thread reads never answer.
+  detailsPending: false,
   // While set, a list read answers with the list as it was when asked, once the gate opens.
   listGate: undefined as undefined | Promise<unknown>,
 }
@@ -83,32 +84,57 @@ export const saveReplyOnServer = (commentId: string, content: string, id = `repl
   return { id, created_at: createdAt }
 }
 
-export const consoleResponses = {
-  'apps.byAppId.workflow.comments.get': async () => {
-    const data = responseCopy(server.current.list)
-    await api.listGate
-    return { data }
+type CommentParams = { params: { app_id: string; comment_id: string } }
+
+// Handlers for the fake API: reads come from the server above, writes go to the `api` spies.
+export const commentLayerApi = () => ({
+  console: {
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            get: async () => {
+              const data = responseCopy(server.current.list)
+              await api.listGate
+              return { data }
+            },
+            mentionUsers: { get: () => ({ users: [] }) },
+            post: async (input: unknown) =>
+              (await api.create(input)) ?? { id: 'created-comment', created_at: 300 },
+            byCommentId: {
+              get: ({ params }: CommentParams) => {
+                api.detail(params.comment_id)
+                if (api.detailFails) throw networkError()
+                if (api.detailsPending) return pendingResponse()
+                return responseCopy(server.current.details[params.comment_id]!)
+              },
+              put: async (input: CommentParams) =>
+                (await api.update(input)) ?? { id: input.params.comment_id, updated_at: 300 },
+              delete: async (input: unknown) => {
+                await api.remove(input)
+              },
+              resolve: {
+                post: async (input: CommentParams) =>
+                  (await api.resolve(input)) ?? { id: input.params.comment_id, resolved: true },
+              },
+              replies: {
+                post: async (input: unknown) =>
+                  (await api.reply(input)) ?? { id: 'created-reply', created_at: 300 },
+                byReplyId: {
+                  put: async (input: { params: { reply_id: string } }) =>
+                    (await api.updateReply(input)) ?? {
+                      id: input.params.reply_id,
+                      updated_at: 300,
+                    },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
-  'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
-  'apps.byAppId.workflow.comments.byCommentId.get': async ({
-    params,
-  }: {
-    params: { comment_id: string }
-  }) => {
-    api.detail(params.comment_id)
-    if (api.detailFails) throw new Error('Network error')
-    const detail = responseCopy(server.current.details[params.comment_id])
-    await api.detailGate
-    return detail
-  },
-  'apps.byAppId.workflow.comments.post': (input: unknown) => api.create(input),
-  'apps.byAppId.workflow.comments.byCommentId.put': (input: unknown) => api.update(input),
-  'apps.byAppId.workflow.comments.byCommentId.delete': (input: unknown) => api.remove(input),
-  'apps.byAppId.workflow.comments.byCommentId.resolve.post': (input: unknown) => api.resolve(input),
-  'apps.byAppId.workflow.comments.byCommentId.replies.post': (input: unknown) => api.reply(input),
-  'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.put': (input: unknown) =>
-    api.updateReply(input),
-}
+})
 
 export const fakeCollaborationManager = {
   onCommentsUpdate: (handler: () => void) => {
@@ -119,10 +145,20 @@ export const fakeCollaborationManager = {
 }
 
 export function resetFakeServer() {
-  vi.resetAllMocks()
+  for (const spy of [
+    api.create,
+    api.update,
+    api.remove,
+    api.resolve,
+    api.reply,
+    api.updateReply,
+    api.detail,
+    collaboration.emit,
+  ])
+    spy.mockReset()
   api.detailFails = false
   api.listGate = undefined
-  api.detailGate = undefined
+  api.detailsPending = false
   avatar.url = undefined
   collaboration.handler = undefined
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))

@@ -112,9 +112,13 @@ catalog:
   '@napi-rs/keyring': 2.1.2
   '@orpc/client': 1.16.2
   '@orpc/contract': 1.16.2
+  '@orpc/json-schema': 1.16.2
+  '@orpc/openapi': 1.16.2
   '@orpc/openapi-client': 1.16.2
+  '@orpc/server': 1.16.2
   '@orpc/standard-server': 1.16.2
   '@orpc/tanstack-query': 1.16.2
+  '@orpc/zod': 1.16.2
   '@pierre/highlights': 0.5.1
   '@playwright/test': 1.65.1
   '@remixicon/react': 4.9.0

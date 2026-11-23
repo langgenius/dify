@@ -1,4 +1,4 @@
-import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -8,7 +8,9 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { basePath } from '@/utils/var'
 import CreateAppModal from '../index'
 
 const emojiData = [
@@ -31,8 +33,11 @@ const emojiMessages = {
   skinTones: [],
 }
 
-let appQuota = { size: 0, limit: 1 }
-const mocks = vi.hoisted(() => ({ create: vi.fn(), push: vi.fn(), track: vi.fn(), flush: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  push: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+}))
 // boundary: observe navigation without a running application router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -42,21 +47,28 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/app/components/base/amplitude/init', () => ({
   getAmplitudeClient: () => ({ track: mocks.track, flush: mocks.flush }),
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: appQuota }),
-      'apps.post': ({ body }: { body: Record<string, unknown> }) => mocks.create(body),
-    }),
-  }
-})
+// The emoji picker loads static emojibase data from the app origin, outside the API.
+const emojiCatalog = `${basePath}/emoji/emojibase-17.0.0/en`
+const fake = setupFakeApi(() => ({
+  routes: [
+    route('GET', 'origin', `${emojiCatalog}/data.json`, () => emojiData),
+    route('GET', 'origin', `${emojiCatalog}/messages.json`, () => emojiMessages),
+  ],
+  console: {
+    features: { get: () => zGetFeaturesResponse.parse({}) },
+    apps: {
+      post: () =>
+        createAppDetailFixture({
+          id: 'created-app',
+          mode: 'advanced-chat',
+          maintainer: 'user-1',
+        }),
+    },
+  },
+}))
 
 async function renderModal({ quota = { size: 0, limit: 1 }, show = true } = {}) {
-  appQuota = quota
+  fake.console.features.get.mockReturnValue(zGetFeaturesResponse.parse({ apps: quota }))
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { apps: quota },
@@ -101,21 +113,11 @@ const submitShortcut = () => userEvent.keyboard(`{${mod}>}{Enter}{/${mod}}`)
 
 beforeEach(async () => {
   await page.viewport(1440, 1000)
-  mocks.create
-    .mockReset()
-    .mockResolvedValue(
-      createAppDetailFixture({ id: 'created-app', mode: 'advanced-chat', maintainer: 'user-1' }),
-    )
+  mocks.push.mockReset()
   mocks.track.mockReset().mockReturnValue({ promise: Promise.resolve() })
   mocks.flush.mockReset().mockReturnValue({ promise: Promise.resolve() })
   setAnalyticsConsent('granted')
   sessionStorage.clear()
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    const url = input instanceof Request ? input.url : String(input)
-    if (!/^\/.*emoji\/emojibase-17\.0\.0\/en\/(?:data|messages)\.json$/.test(url))
-      throw new Error(`Unexpected URL: ${url}`)
-    return Response.json(url.endsWith('/messages.json') ? emojiMessages : emojiData)
-  })
 })
 afterEach(() => {
   toast.dismiss()
@@ -138,13 +140,15 @@ it('creates the named app and keeps submission busy until navigation replaces th
   await nameInput().fill('My App')
   await createButton().click()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
-  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({
-    name: 'My App',
-    description: '',
-    icon_type: 'emoji',
-    icon: '🤖',
-    icon_background: '#FFEAD5',
-    mode: 'advanced-chat',
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'My App',
+      description: '',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#FFEAD5',
+      mode: 'advanced-chat',
+    },
   })
   await expect.element(dialog()).toBeVisible()
   await expect.element(createButton()).toHaveAttribute('aria-disabled', 'true')
@@ -153,7 +157,7 @@ it('creates the named app and keeps submission busy until navigation replaces th
     keys: '[MouseLeft]',
     coords: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
   })
-  expect(mocks.create).toHaveBeenCalledOnce()
+  expect(fake.console.apps.post).toHaveBeenCalledOnce()
 })
 
 it('waits for analytics completion before navigating without submitting twice', async () => {
@@ -170,13 +174,15 @@ it('waits for analytics completion before navigating without submitting twice', 
     keys: '[MouseLeft]',
     coords: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
   })
-  expect(mocks.create).toHaveBeenCalledOnce()
+  expect(fake.console.apps.post).toHaveBeenCalledOnce()
   tracking.resolve()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
 })
 
 it('shows the creation error while keeping the dialog available for correction', async () => {
-  mocks.create.mockRejectedValueOnce(new Error('Creation failed'))
+  fake.console.apps.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'CREATE_FAILED', message: 'Creation failed' }),
+  )
   await renderModal()
   await nameInput().fill('My App')
   await createButton().click()
@@ -199,7 +205,7 @@ it('shows real quota usage and prevents button or keyboard creation when the wor
   await expect.element(page.getByPlaceholder('app.iconPicker.search')).not.toBeInTheDocument()
   await nameInput().click()
   await submitShortcut()
-  expect(mocks.create).not.toHaveBeenCalled()
+  expect(fake.console.apps.post).not.toHaveBeenCalled()
 })
 
 it('hands the template entry back to its owner and dismisses blank creation', async () => {
@@ -210,7 +216,7 @@ it('hands the template entry back to its owner and dismisses blank creation', as
 })
 
 it('creates a beginner chat app with the selected icon color through the scoped native shortcut', async () => {
-  mocks.create.mockResolvedValue(
+  fake.console.apps.post.mockResolvedValue(
     createAppDetailFixture({ id: 'chat-app', mode: 'chat', maintainer: 'user-1' }),
   )
   await renderModal()
@@ -220,7 +226,7 @@ it('creates a beginner chat app with the selected icon color through the scoped 
   await page.getByRole('button', { name: 'app.iconPicker.title' }).click()
   await page.getByPlaceholder('app.iconPicker.search').fill('robot')
   await submitShortcut()
-  expect(mocks.create).not.toHaveBeenCalled()
+  expect(fake.console.apps.post).not.toHaveBeenCalled()
   await page.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
   await page.getByRole('button', { name: /iconPicker\.ok/ }).click()
   await expect.element(page.getByPlaceholder('app.iconPicker.search')).not.toBeInTheDocument()
@@ -230,13 +236,15 @@ it('creates a beginner chat app with the selected icon color through the scoped 
   await nameInput().click()
   await submitShortcut()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/chat-app/configuration']])
-  expect(mocks.create).toHaveBeenCalledExactlyOnceWith({
-    name: 'Keyboard App',
-    description: 'Created from shortcut',
-    icon_type: 'emoji',
-    icon: '🤖',
-    icon_background: '#F3FEE7',
-    mode: 'chat',
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      name: 'Keyboard App',
+      description: 'Created from shortcut',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#F3FEE7',
+      mode: 'chat',
+    },
   })
 })
 
@@ -250,9 +258,9 @@ it('restores keyboard creation after closing and reopening the outer dialog with
   await nameInput().fill('Reopened App')
   await submitShortcut()
   await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
-  expect(mocks.create).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ name: 'Reopened App' }),
-  )
+  expect(fake.console.apps.post).toHaveBeenCalledExactlyOnceWith({
+    body: expect.objectContaining({ name: 'Reopened App' }),
+  })
 })
 
 it('keeps creation unavailable without a name', async () => {
@@ -260,7 +268,7 @@ it('keeps creation unavailable without a name', async () => {
   await nameInput().click()
   await submitShortcut()
   await expect.element(createButton()).toBeDisabled()
-  expect(mocks.create).not.toHaveBeenCalled()
+  expect(fake.console.apps.post).not.toHaveBeenCalled()
 })
 
 it('submits the final selected app type after switching between advanced and beginner types', async () => {
@@ -273,13 +281,20 @@ it('submits the final selected app type after switching between advanced and beg
   await nameInput().fill('Completion App')
   await createButton().click()
   await expect
-    .poll(() => mocks.create.mock.calls)
-    .toEqual([[expect.objectContaining({ name: 'Completion App', mode: 'completion' })]])
+    .poll(() => fake.console.apps.post.mock.calls)
+    .toEqual([
+      [
+        expect.objectContaining({
+          body: expect.objectContaining({ name: 'Completion App', mode: 'completion' }),
+        }),
+      ],
+    ])
+  // Wait for the post-create navigation so it cannot land in the next test.
+  await expect.poll(() => mocks.push.mock.calls).toEqual([['/app/created-app/workflow']])
 })
 
 it('keeps an in-flight create request single-submission until it succeeds', async () => {
-  const pending = createDeferred<AppDetail>()
-  mocks.create.mockReturnValueOnce(pending.promise)
+  const pending = hold(fake.console.apps.post)
   await renderModal()
   await nameInput().fill('Slow App')
   await createButton().click()
@@ -289,7 +304,8 @@ it('keeps an in-flight create request single-submission until it succeeds', asyn
     keys: '[MouseLeft]',
     coords: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
   })
-  expect(mocks.create).toHaveBeenCalledOnce()
+  await pending.arrived
+  expect(fake.console.apps.post).toHaveBeenCalledOnce()
   expect(mocks.push).not.toHaveBeenCalled()
   pending.resolve(
     createAppDetailFixture({ id: 'slow-app', mode: 'advanced-chat', maintainer: 'user-1' }),
