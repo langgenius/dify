@@ -2,22 +2,11 @@ import type {
   GetAppsByAppIdWorkflowAppLogsData,
   WorkflowAppLogPartialResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { CloudSandboxPlanState } from '../log/cloud-sandbox-retention'
-import type { LogIdentity } from '../log/log-filters'
-import dayjs from 'dayjs'
-import timezone from 'dayjs/plugin/timezone'
-import utc from 'dayjs/plugin/utc'
+import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import { useTranslation } from 'react-i18next'
-import { resolveLogTimePeriodOption } from '../log/cloud-sandbox-retention'
-import {
-  identityKey,
-  logIdentityFilters,
-  TIME_PERIOD_MAPPING,
-  useLogTimeFilterOptions,
-} from '../log/log-filters'
-
-dayjs.extend(utc)
-dayjs.extend(timezone)
+import { identityKey, logIdentityFilters } from '@/features/log-export/log-identity'
+import { logDateRange, useLogTimeFilterOptions } from '../log/log-filters'
 
 type WorkflowLogStatus = NonNullable<GetAppsByAppIdWorkflowAppLogsData['query']>['status']
 
@@ -55,22 +44,16 @@ export type WorkflowLogFilterOptions = ReturnType<typeof useWorkflowLogFilterOpt
 export function toWorkflowLogFilters(
   { period, status, keyword, identities }: WorkflowLogQuery,
   planState: CloudSandboxPlanState,
-  timezone?: string,
+  timezone: string,
 ) {
-  const timePeriod = resolveLogTimePeriodOption(period, TIME_PERIOD_MAPPING[period]!, planState)
+  const range = logDateRange(period, planState, timezone)
   return {
     ...(status && status !== 'all' ? { status } : {}),
     ...(keyword ? { keyword } : {}),
-    ...(period !== '9'
-      ? {
-          created_at__after: dayjs()
-            .subtract(timePeriod.value, 'day')
-            .startOf('day')
-            .tz(timezone)
-            .format('YYYY-MM-DDTHH:mm:ssZ'),
-          created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-        }
-      : {}),
+    ...(range && {
+      created_at__after: range.start.format('YYYY-MM-DDTHH:mm:ssZ'),
+      created_at__before: range.end.format('YYYY-MM-DDTHH:mm:ssZ'),
+    }),
     ...logIdentityFilters(identities),
   }
 }

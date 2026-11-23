@@ -16,18 +16,28 @@ vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
-  const mock = createReactI18nextMock({
-    'export.previewRows': copy['export.previewRows'],
-    'export.previewSize': copy['export.previewSize'],
-    'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
-  })
+  function createMock(category: 'one' | 'other') {
+    return createReactI18nextMock({
+      'export.previewRowCount': copy[`export.previewRowCount_${category}`],
+      'export.previewConversationCount': copy[`export.previewConversationCount_${category}`],
+      'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
+    })
+  }
+  const singular = createMock('one')
+  const plural = createMock('other')
   return {
     ...original,
-    ...mock,
-    useTranslation: (...args: Parameters<typeof mock.useTranslation>) => ({
-      ...mock.useTranslation(...args),
-      ready: true,
-    }),
+    ...plural,
+    useTranslation: (...args: Parameters<typeof plural.useTranslation>) => {
+      const translation = plural.useTranslation(...args)
+      const { t: singularT } = singular.useTranslation(...args)
+      return {
+        ...translation,
+        t: (key: unknown, options?: Record<string, unknown>) =>
+          (options?.count === 1 ? singularT : translation.t)(key, options),
+        ready: true,
+      }
+    },
   }
 })
 
@@ -143,6 +153,41 @@ it('keeps the previous export and Download available while editing the form', as
   expect(requests).toEqual([])
 })
 
+it('waits for both status and count refreshes when reopening with cached export data', async () => {
+  const latest = createDeferred()
+  const preview = createDeferred()
+  let refreshing = false
+  let latestReads = 0
+  onTestFinished(() => {
+    latest.resolve()
+    preview.resolve()
+  })
+  const { trigger, dialog, previews, requests } = await openExport(false, 'chat', {
+    waitForLatest: () => {
+      latestReads++
+      return refreshing ? latest.promise : undefined
+    },
+    waitForPreview: () => (refreshing ? preview.promise : undefined),
+  })
+  const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
+  await trigger.click()
+  await expect.element(submit).toBeEnabled()
+  const initialPreviewReads = previews.length
+  await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+
+  refreshing = true
+  await trigger.click()
+  await expect.poll(() => latestReads).toBe(2)
+  await expect.element(submit).toBeDisabled()
+  latest.resolve()
+  await expect.poll(() => previews.length).toBe(initialPreviewReads + 1)
+  await expect.element(submit).toBeDisabled()
+  preview.resolve()
+  await expect.element(submit).toBeEnabled()
+  expect(requests).toEqual([])
+})
+
 it('shows the last export filters in its own row after the user leaves and returns', async () => {
   const { screen, trigger, dialog, lastExport, renderLogs, requests } = await openExport()
   await trigger.click()
@@ -183,9 +228,7 @@ it('can select identities beyond the visible Logs page when exporting legacy Age
   const picker = page.getByRole('dialog', { name: identityLabel })
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await picker.getByRole('option', { name: 'user-1024' }).click()
-  await expect
-    .element(dialog.getByRole('status'))
-    .toHaveTextContent('Conversations 1 · CSV rows 2.')
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Conversation 1 · CSV rows 2.')
   await picker.getByRole('option', { name: 'Mia Chen' }).click()
   await expect
     .element(picker.getByRole('button', { name: 'common.operation.clear' }))
@@ -205,6 +248,10 @@ it('can select identities beyond the visible Logs page when exporting legacy Age
   await userEvent.keyboard('{Enter}')
   expect(requests).toEqual([])
   await userEvent.keyboard('{Escape}')
+  await dialog.getByRole('combobox', { name: identityLabel }).click()
+  await expect.element(search).toHaveValue('')
+  await expect.element(picker.getByRole('option', { name: 'user-1024' })).toBeVisible()
+  await dialog.getByRole('heading', { name: 'appLog.export.title' }).click()
   await period.click()
   await page.getByRole('option', { name: 'appLog.filter.period.allTime' }).click()
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
@@ -215,9 +262,9 @@ it('keeps the export dialog height stable while recounting after an identity cha
   await page.viewport(768, 900)
   const recount = createDeferred()
   onTestFinished(() => recount.resolve())
-  const { trigger, dialog } = await openExport(false, 'advanced-chat', (query) =>
-    query.has('end_user_ids') ? recount.promise : undefined,
-  )
+  const { trigger, dialog } = await openExport(false, 'advanced-chat', {
+    waitForPreview: (query) => (query.has('end_user_ids') ? recount.promise : undefined),
+  })
   await trigger.click()
   const count = dialog.getByRole('status')
   await expect.element(count).toHaveTextContent('Conversations 2 · CSV rows 4.')
@@ -234,7 +281,7 @@ it('keeps the export dialog height stable while recounting after an identity cha
   expect(dialogHeight()).toBe(initialHeight)
 
   recount.resolve()
-  await expect.element(count).toHaveTextContent('Conversations 1 · CSV rows 2.')
+  await expect.element(count).toHaveTextContent('Conversation 1 · CSV rows 2.')
   expect(dialogHeight()).toBe(initialHeight)
 })
 

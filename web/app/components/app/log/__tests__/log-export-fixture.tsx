@@ -51,7 +51,10 @@ const conversations: ConversationWithSummary[] = [
 export async function openExport(
   hasExistingTask = false,
   mode: 'chat' | 'agent-chat' | 'advanced-chat' | 'completion' = 'chat',
-  waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined,
+  responses?: {
+    waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined
+    waitForLatest?: () => Promise<void> | undefined
+  },
 ) {
   const appId = crypto.randomUUID()
   const listQueries: URLSearchParams[] = []
@@ -101,7 +104,7 @@ export async function openExport(
         return Response.json({ count: 0 })
       case 'conversation-log-exports/preview': {
         previews.push(url.searchParams)
-        await waitForPreview?.(url.searchParams)
+        await responses?.waitForPreview?.(url.searchParams)
         const identities =
           url.searchParams.getAll('end_user_ids').length +
           url.searchParams.getAll('account_ids').length
@@ -131,6 +134,7 @@ export async function openExport(
         return Response.json({ task_id: task.task_id, status: task.status }, { status: 202 })
       }
       case 'conversation-log-exports/latest':
+        await responses?.waitForLatest?.()
         if (!task) return Response.json({ task: null })
         statusReads++
         return Response.json({

@@ -1,12 +1,13 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { LogFilterOptions, LogIdentity, QueryParam } from './log-filters'
+import type { LogFilterOptions, QueryParam } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
-import { LogIdentityField } from './log-identity-picker'
+import { LogIdentityField } from '@/features/log-export/log-identity-picker'
 
 type IFilterProps = {
   isChatMode?: boolean

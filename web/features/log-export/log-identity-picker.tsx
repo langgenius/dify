@@ -1,4 +1,4 @@
-import type { LogIdentity } from './log-filters'
+import type { LogIdentity } from './log-identity'
 import {
   Combobox,
   ComboboxEmpty,
@@ -21,7 +21,7 @@ import { useDebounce } from 'ahooks'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { identityKey } from './log-filters'
+import { identityKey } from './log-identity'
 
 type LogIdentityFieldProps = {
   options: LogIdentity[]
@@ -190,6 +190,7 @@ export function LogIdentityField(
         else onChange(next)
       }}
       onOpenChange={(open) => {
+        if (!open) setSearch('')
         if (!applyOnClose) return
         if (open) {
           setDraft(value)

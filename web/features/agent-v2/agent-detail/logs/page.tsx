@@ -1,9 +1,8 @@
 'use client'
 
 import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { ComponentProps } from 'react'
 import type { AgentLogsSort } from './components/logs-table'
-import type { LogIdentity } from '@/app/components/app/log/log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import {
   Drawer,
   DrawerBackdrop,
@@ -22,51 +21,27 @@ import {
   PaginationPrevious,
   PaginationRoot,
 } from '@langgenius/dify-ui/pagination'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCloudSandboxPlanStatus } from '@/app/components/app/log/cloud-sandbox-retention'
-import { LogExportDialog } from '@/app/components/app/log/log-export-dialog'
-import { LogIdentityField } from '@/app/components/app/log/log-identity-picker'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import { LogIdentityField } from '@/features/log-export/log-identity-picker'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
 import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
+import { AgentLogExportDialog } from './log-export-dialog'
 import { agentLogPeriods, defaultAgentLogFilters, toAgentLogQuery } from './log-filters'
 
 type AgentLogsPageProps = {
   agentId: string
-}
-
-function AgentLogExportButton({
-  agent,
-  identityOptions,
-}: Pick<ComponentProps<typeof LogExportDialog>, 'identityOptions'> & {
-  agent: NonNullable<ComponentProps<typeof LogExportDialog>['agent']>
-}) {
-  const planState = useCloudSandboxPlanStatus()
-  const { data: name } = useQuery(
-    consoleQuery.agent.byAgentId.get.queryOptions({
-      input: { params: { agent_id: agent.id } },
-      select: (agent) => agent.name,
-    }),
-  )
-  if (!name) return null
-  return (
-    <LogExportDialog
-      agent={agent}
-      appName={name}
-      identityOptions={identityOptions}
-      planState={planState}
-    />
-  )
 }
 
 export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
@@ -74,7 +49,9 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { data: timezone } = useQuery(userTimezoneQueryOptions())
   const [filters, setFilters] = useState(defaultAgentLogFilters)
+  const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState<LogIdentity[]>([])
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<AgentLogsSort>({
     field: 'created_at',
@@ -98,29 +75,35 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   )
   const logsQuery = useQuery({
     ...consoleQuery.agent.byAgentId.logs.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          ...toAgentLogQuery(filters),
-          page,
-          limit,
-          keyword: keyword.trim() || undefined,
-          sort_by: sort.field,
-          sort_order: sort.order,
-        },
-      },
+      input: timezone
+        ? {
+            params: {
+              agent_id: agentId,
+            },
+            query: {
+              ...toAgentLogQuery(filters, timezone),
+              page,
+              limit,
+              keyword: keyword.trim() || undefined,
+              sort_by: sort.field,
+              sort_order: sort.order,
+            },
+          }
+        : skipToken,
     }),
     placeholderData: keepPreviousData,
   })
   const logs = logsQuery.data?.data ?? []
-  const identityOptions = logs.flatMap(({ end_user_id, account_id }): LogIdentity[] => {
+  const listedIdentities = logs.flatMap(({ end_user_id, account_id }): LogIdentity[] => {
     const identities: LogIdentity[] = []
     if (end_user_id) identities.push({ id: end_user_id, label: end_user_id, source: 'end-user' })
     if (account_id) identities.push({ id: account_id, label: account_id, source: 'account' })
     return identities
   })
+  const identityOptions =
+    filters.identities.length || (logsQuery.isPlaceholderData && identityOptionsBeforeFilter.length)
+      ? identityOptionsBeforeFilter
+      : listedIdentities
   const sourcePicker = {
     groups: logSourcesQuery.data?.groups ?? [],
     isLoading: logSourcesQuery.isPending,
@@ -158,10 +141,14 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
               </a>
             </p>
           </div>
-          {canExportLogs && (
-            <AgentLogExportButton
-              agent={{ id: agentId, currentFilters: filters, sourcePicker }}
+          {canExportLogs && timezone && (
+            <AgentLogExportDialog
+              key={agentId}
+              agentId={agentId}
+              currentFilters={filters}
+              sourcePicker={sourcePicker}
               identityOptions={identityOptions}
+              timezone={timezone}
             />
           )}
         </div>
@@ -198,6 +185,8 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
             options={identityOptions}
             value={filters.identities}
             onChange={(identities) => {
+              if (identities.length && !filters.identities.length)
+                setIdentityOptionsBeforeFilter(identityOptions)
               setPage(1)
               setFilters((previous) => ({ ...previous, identities }))
             }}

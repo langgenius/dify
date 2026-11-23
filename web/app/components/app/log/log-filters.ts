@@ -1,25 +1,30 @@
 import type {
   Conversation,
-  ConversationLogIdentityResponse,
   ConversationWithSummary,
   GetAppsByAppIdChatConversationsData,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { Dayjs } from 'dayjs'
-import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
+import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/console'
 import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
   isLogTimePeriodRestricted,
   resolveLogTimePeriodOption,
-} from './cloud-sandbox-retention'
+} from '@/features/log-export/cloud-sandbox-retention'
+import { identityKey, logIdentityFilters } from '@/features/log-export/log-identity'
+import { consoleQuery } from '@/service/console'
 
 dayjs.extend(quarterOfYear)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 // Count the days when the value is read, so a page left open past midnight still uses the current date.
 // Round the result, because a daylight saving change makes some days 23 or 25 hours long.
@@ -30,52 +35,41 @@ const daysSince = (getStart: (today: Dayjs) => Dayjs) => {
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePeriodName } } = {
+type LogTimePeriod = { value: number; name: TimePeriodName; start?: (today: Dayjs) => Dayjs }
+
+const calendarPeriod = (name: TimePeriodName, start: NonNullable<LogTimePeriod['start']>) => ({
+  get value() {
+    return daysSince(start)
+  },
+  name,
+  start,
+})
+
+export const TIME_PERIOD_MAPPING: Record<string, LogTimePeriod> = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
-  4: {
-    get value() {
-      return daysSince((today) => today.subtract(3, 'month'))
-    },
-    name: 'last3months',
-  },
-  5: {
-    get value() {
-      return daysSince((today) => today.subtract(12, 'month'))
-    },
-    name: 'last12months',
-  },
-  6: {
-    get value() {
-      return daysSince((today) => today.startOf('month'))
-    },
-    name: 'monthToDate',
-  },
-  7: {
-    get value() {
-      return daysSince((today) => today.startOf('quarter'))
-    },
-    name: 'quarterToDate',
-  },
-  8: {
-    get value() {
-      return daysSince((today) => today.startOf('year'))
-    },
-    name: 'yearToDate',
-  },
+  4: calendarPeriod('last3months', (today) => today.subtract(3, 'month')),
+  5: calendarPeriod('last12months', (today) => today.subtract(12, 'month')),
+  6: calendarPeriod('monthToDate', (today) => today.startOf('month')),
+  7: calendarPeriod('quarterToDate', (today) => today.startOf('quarter')),
+  8: calendarPeriod('yearToDate', (today) => today.startOf('year')),
   9: { value: -1, name: 'allTime' },
 }
 
-function logDateRange(days: number) {
-  const today = dayjs()
+export function logDateRange(period: string, planState: CloudSandboxPlanState, timezone: string) {
+  if (period === '9') return null
+  const today = dayjs().tz(timezone)
+  const option: LogTimePeriod = resolveLogTimePeriodOption(
+    period,
+    TIME_PERIOD_MAPPING[period]!,
+    planState,
+  )
   return {
-    start: today.subtract(days, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-    end: today.endOf('day').format('YYYY-MM-DD HH:mm'),
+    start: (option.start?.(today) ?? today.subtract(option.value, 'day')).startOf('day'),
+    end: today.endOf('day'),
   }
 }
-
-export type LogIdentity = ConversationLogIdentityResponse
 
 type ConversationsQuery = NonNullable<GetAppsByAppIdChatConversationsData['query']>
 
@@ -128,8 +122,6 @@ export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanSt
 
 export type LogFilterOptions = ReturnType<typeof useLogFilterOptions>
 
-export const identityKey = ({ id, source }: LogIdentity) => `${source}:${id}`
-
 export function getLogIdentities(logs: (Conversation | ConversationWithSummary)[]): LogIdentity[] {
   const identities = new Map<string, LogIdentity>()
   for (const log of logs) {
@@ -152,25 +144,18 @@ export function getLogIdentities(logs: (Conversation | ConversationWithSummary)[
   return [...identities.values()]
 }
 
-export function logIdentityFilters(identities: LogIdentity[] = []) {
-  const end_user_ids = identities
-    .filter((item) => item.source === 'end-user')
-    .map((item) => item.id)
-  const account_ids = identities.filter((item) => item.source === 'account').map((item) => item.id)
-  return {
-    ...(end_user_ids.length ? { end_user_ids } : {}),
-    ...(account_ids.length ? { account_ids } : {}),
-  }
-}
-
 export function toLogFilters(
   { period, identities, ...filters }: QueryParam,
   planState: CloudSandboxPlanState,
+  timezone: string,
 ) {
-  const timePeriod = resolveLogTimePeriodOption(period, TIME_PERIOD_MAPPING[period]!, planState)
+  const range = logDateRange(period, planState, timezone)
   return {
     ...filters,
     ...logIdentityFilters(identities),
-    ...(period !== '9' ? logDateRange(timePeriod.value) : {}),
+    ...(range && {
+      start: range.start.format('YYYY-MM-DD HH:mm'),
+      end: range.end.format('YYYY-MM-DD HH:mm'),
+    }),
   }
 }

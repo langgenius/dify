@@ -2,7 +2,8 @@
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { LogIdentity, QueryParam } from './log-filters'
+import type { QueryParam } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -14,12 +15,16 @@ import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import {
+  resolveLogTimePeriod,
+  useCloudSandboxPlanStatus,
+} from '@/features/log-export/cloud-sandbox-retention'
 import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
-import { resolveLogTimePeriod, useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
+import { ConversationLogExportDialog } from './conversation-log-export-dialog'
 import Filter from './filter'
 import List from './list'
-import { LogExportDialog } from './log-export-dialog'
 import { getLogIdentities, toLogFilters, useLogFilterOptions } from './log-filters'
 import { RetentionUpgradeNotice } from './retention-upgrade-notice'
 
@@ -45,6 +50,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const page = Math.max(pageParam ?? 1, 1)
   const cloudSandboxPlanState = useCloudSandboxPlanStatus()
   const filterOptions = useLogFilterOptions(appDetail.id, cloudSandboxPlanState)
+  const { data: timezone } = useQuery(userTimezoneQueryOptions())
   const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
   const cachedState = logsStateCache.get(appDetail.id)
   const [queryParams, setQueryParams] = useState<QueryParam>(
@@ -82,22 +88,20 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     appDetail.mode === 'advanced-chat' ||
     appDetail.mode === 'agent-chat'
 
-  const query = {
-    ...toLogFilters(requestQueryParams, cloudSandboxPlanState),
-    page,
-    limit,
-  }
+  const query = timezone
+    ? { ...toLogFilters(requestQueryParams, cloudSandboxPlanState, timezone), page, limit }
+    : undefined
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: mutateChatList } = useQuery(
     consoleQuery.apps.byAppId.chatConversations.get.queryOptions({
-      input: isChatMode ? { params: { app_id: appDetail.id }, query } : skipToken,
+      input: isChatMode && query ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
   )
 
   const { data: completionConversations, refetch: mutateCompletionList } = useQuery(
     consoleQuery.apps.byAppId.completionConversations.get.queryOptions({
-      input: !isChatMode ? { params: { app_id: appDetail.id }, query } : skipToken,
+      input: !isChatMode && query ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
   )
 
@@ -136,8 +140,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           identityOptions={supportsLogExport ? identityOptions : undefined}
           actions={
             supportsLogExport &&
-            canExportLogs && (
-              <LogExportDialog
+            canExportLogs &&
+            timezone && (
+              <ConversationLogExportDialog
                 key={appDetail.id}
                 appId={appDetail.id}
                 appName={appDetail.name}
@@ -146,6 +151,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 filterOptions={filterOptions}
                 identityOptions={identityOptions}
                 planState={cloudSandboxPlanState}
+                timezone={timezone}
               />
             )
           }

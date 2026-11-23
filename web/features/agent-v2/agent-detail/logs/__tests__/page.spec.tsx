@@ -8,6 +8,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentLogsPage } from '../page'
@@ -206,6 +207,8 @@ const renderPage = () => {
     consoleQuery.systemFeatures.get.queryKey(),
     createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
   )
+  seedAccountProfileQuery(queryClient, { timezone: 'UTC' })
+  queryClient.setQueryDefaults(consoleQuery.account.profile.get.queryKey(), { staleTime: Infinity })
 
   render(
     <QueryClientTestProvider queryClient={queryClient}>

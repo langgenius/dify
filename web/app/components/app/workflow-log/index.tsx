@@ -2,10 +2,10 @@
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { LogIdentity } from '../log/log-filters'
 import type { WorkflowLogQuery } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -15,13 +15,15 @@ import EmptyElement from '@/app/components/app/log/empty-element'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import {
+  resolveLogTimePeriod,
+  useCloudSandboxPlanStatus,
+} from '@/features/log-export/cloud-sandbox-retention'
 import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
-import { resolveLogTimePeriod, useCloudSandboxPlanStatus } from '../log/cloud-sandbox-retention'
-import { LogExportDialog } from '../log/log-export-dialog'
 import { TIME_PERIOD_MAPPING } from '../log/log-filters'
 import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
 import Filter from './filter'
@@ -31,6 +33,7 @@ import {
   toWorkflowLogFilters,
   useWorkflowLogFilterOptions,
 } from './log-filters'
+import { WorkflowLogExportDialog } from './workflow-log-export-dialog'
 
 export type ILogsProps = {
   appDetail: AppDetailWithSite
@@ -38,10 +41,7 @@ export type ILogsProps = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation(['appLog', 'common'])
-  const { data: timezone } = useQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.timezone ?? undefined,
-  })
+  const { data: timezone } = useQuery(userTimezoneQueryOptions())
   const [queryParams, setQueryParams] = useState<WorkflowLogQuery>({ status: 'all', period: '2' })
   const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState<LogIdentity[]>([])
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -54,16 +54,18 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
-  const query = {
-    page: currPage + 1,
-    detail: true,
-    limit,
-    ...toWorkflowLogFilters(requestQueryParams, cloudSandboxPlanState, timezone),
-  }
+  const query = timezone
+    ? {
+        page: currPage + 1,
+        detail: true,
+        limit,
+        ...toWorkflowLogFilters(requestQueryParams, cloudSandboxPlanState, timezone),
+      }
+    : undefined
 
   const { data: workflowLogs, refetch: mutate } = useQuery(
     consoleQuery.apps.byAppId.workflowAppLogs.get.queryOptions({
-      input: { params: { app_id: appDetail.id }, query },
+      input: query ? { params: { app_id: appDetail.id }, query } : skipToken,
     }),
   )
   const total = workflowLogs?.total
@@ -98,13 +100,17 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           filterOptions={filterOptions}
           identityOptions={identityOptions}
           actions={
-            canExportLogs && (
-              <LogExportDialog
+            canExportLogs &&
+            timezone && (
+              <WorkflowLogExportDialog
+                key={appDetail.id}
                 appId={appDetail.id}
                 appName={appDetail.name}
-                workflow={{ currentQueryParams: effectiveQueryParams, filterOptions, timezone }}
+                filterOptions={filterOptions}
+                currentQueryParams={effectiveQueryParams}
                 identityOptions={identityOptions}
                 planState={cloudSandboxPlanState}
+                timezone={timezone}
               />
             )
           }

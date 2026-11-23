@@ -1,8 +1,13 @@
 import type { GetAgentByAgentIdLogExportsPreviewData } from '@dify/contracts/api/console/agent/types.gen'
 import type { SourceFilterValue } from './components/source-picker'
-import type { LogIdentity } from '@/app/components/app/log/log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import dayjs from 'dayjs'
-import { logIdentityFilters } from '@/app/components/app/log/log-filters'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { logIdentityFilters } from '@/features/log-export/log-identity'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export const agentLogPeriods = ['last7days', 'last30days', 'allTime'] as const
 
@@ -18,12 +23,11 @@ export const defaultAgentLogFilters: AgentLogFilters = {
   identities: [],
 }
 
-export function toAgentLogQuery({
-  period,
-  sources,
-  identities,
-}: AgentLogFilters): NonNullable<GetAgentByAgentIdLogExportsPreviewData['query']> {
-  const now = dayjs()
+export function toAgentLogQuery(
+  { period, sources, identities }: AgentLogFilters,
+  timezone: string,
+): NonNullable<GetAgentByAgentIdLogExportsPreviewData['query']> {
+  const now = dayjs().tz(timezone)
   const format = 'YYYY-MM-DD HH:mm'
   return {
     ...(period !== 'allTime' && {

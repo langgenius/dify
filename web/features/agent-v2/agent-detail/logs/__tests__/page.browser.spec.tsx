@@ -1,10 +1,11 @@
 import type {
   AgentLogListResponse,
   AgentLogSourceListResponse,
+  GetAgentByAgentIdLogsData,
 } from '@dify/contracts/api/console/agent/types.gen'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import agentV2 from '@/i18n/locales/en-US/agent-v-2.json'
@@ -131,23 +132,39 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
   }
 })
 
-it('uses both selected identity types for the list, CSV preview, and export task', async () => {
-  mocks.logs.mockResolvedValue({
-    ...emptyLogs,
-    data: [
-      {
-        id: 'account-log',
-        conversation_id: 'account-log',
-        account_id: 'account-1',
-        message_count: 1,
-        unread: false,
-        status: 'success',
-      },
-    ],
-    total: 1,
-  } satisfies AgentLogListResponse)
+it('keeps identities selectable after narrowing the list and exports both selected types', async () => {
+  const logs: AgentLogListResponse['data'] = [
+    {
+      id: 'account-log',
+      conversation_id: 'account-log',
+      account_id: 'account-1',
+      message_count: 1,
+      unread: false,
+      status: 'success',
+    },
+    {
+      id: 'end-user-log',
+      conversation_id: 'end-user-log',
+      end_user_id: 'end-user-1',
+      message_count: 1,
+      unread: false,
+      status: 'success',
+    },
+  ]
+  mocks.logs.mockImplementation(({ query }: GetAgentByAgentIdLogsData) => {
+    const endUserIds = query?.end_user_ids ?? []
+    const accountIds = query?.account_ids ?? []
+    const data =
+      endUserIds.length || accountIds.length
+        ? logs.filter(
+            ({ end_user_id, account_id }) =>
+              endUserIds.includes(end_user_id ?? '') || accountIds.includes(account_id ?? ''),
+          )
+        : logs
+    return { ...emptyLogs, data, total: data.length } satisfies AgentLogListResponse
+  })
   mocks.sources.mockResolvedValue(emptySources)
-  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 2 } })
+  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 1 } })
   mocks.create.mockResolvedValue({ task_id: 'test-export', status: 'pending' })
   mocks.latest.mockResolvedValue({ task: null })
   const workspace = { ...initialWorkspaceSummary, id: 'workspace-1', role: 'owner' } as const
@@ -169,18 +186,24 @@ it('uses both selected identity types for the list, CSV preview, and export task
     const exportButton = screen.getByRole('button', { name: 'Export logs' })
     await expect.element(exportButton).toBeVisible()
     await expect.element(screen.getByRole('cell', { name: 'account-1' })).toBeVisible()
-    await screen.getByRole('combobox', { name: 'End User or Account' }).click()
+    const identityFilter = screen.getByRole('combobox', { name: 'End User or Account' })
+    await identityFilter.click()
     const search = screen.getByRole('combobox', { name: 'Search', exact: true })
     await search.fill('001')
     await screen.getByRole('option', { name: 'customer-001' }).click()
-    await expect.element(search).toBeVisible()
-    await screen.getByRole('option', { name: 'operator-001' }).click()
+    await expect.element(search).toHaveValue('001')
+    await userEvent.keyboard('{Escape}')
+    await expect.element(screen.getByRole('cell', { name: 'account-1' })).not.toBeInTheDocument()
+    await identityFilter.click()
+    await expect.element(search).toHaveValue('')
+    await screen.getByRole('option', { name: 'account-1' }).click()
+    await userEvent.keyboard('{Escape}')
     const identities = { end_user_ids: ['end-user-1'], account_ids: ['account-1'] }
     await exportButton.click()
     await expect.poll(() => mocks.logs.mock.lastCall?.[0].query).toMatchObject(identities)
 
     const dialog = screen.getByRole('dialog', { name: 'Export logs' })
-    await expect.element(dialog.getByText('Logs 1 · CSV rows 2.')).toBeVisible()
+    await expect.element(dialog.getByText('Log 1 · CSV row 1.')).toBeVisible()
     expect(mocks.preview.mock.lastCall?.[0].query).toMatchObject(identities)
     await dialog.getByRole('button', { name: 'Export as CSV' }).click()
     await expect.poll(() => mocks.create.mock.lastCall?.[0].body).toMatchObject(identities)

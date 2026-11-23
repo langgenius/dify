@@ -5,13 +5,13 @@ import type { QueryParam } from '../log-filters'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
   seedFeatures,
 } from '@/test/console/query-data'
-import { useCloudSandboxPlanStatus } from '../cloud-sandbox-retention'
 import Filter from '../filter'
 import { useLogFilterOptions } from '../log-filters'
 

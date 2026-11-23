@@ -6,8 +6,8 @@ import type {
   WorkflowAppLogPartialResponse,
   WorkflowRunForLogResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
+import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
@@ -31,8 +31,9 @@ type WorkflowLogsInput = {
 const mockedUseWorkflowLogs =
   vi.fn<(input: WorkflowLogsInput) => Promise<WorkflowAppLogPaginationResponse>>()
 
-vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../log/cloud-sandbox-retention')>()
+vi.mock('@/features/log-export/cloud-sandbox-retention', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/log-export/cloud-sandbox-retention')>()
   return {
     ...actual,
     useCloudSandboxPlanStatus: () => mockPlanState.value,
@@ -236,30 +237,28 @@ describe('Logs Container', () => {
           )
           await user.click(await screen.findByText(`appLog.filter.period.${next}`))
         }
-        const expectStart = (date: Date) =>
+        const expectStart = (date: string) =>
           waitFor(() =>
-            expect(dayjs(String(getMockCallParams()?.params?.created_at__after)).valueOf()).toBe(
-              date.getTime(),
-            ),
+            expect(getMockCallParams()?.params?.created_at__after).toBe(`${date}T00:00:00+00:00`),
           )
 
         // The page has been open since earlier days; each request uses the date of the request.
-        vi.setSystemTime(new Date(2026, 11, 1, 9))
+        vi.setSystemTime(new Date('2026-12-01T09:00:00Z'))
         await selectPeriod('last7days', 'monthToDate')
-        await expectStart(new Date(2026, 11, 1))
+        await expectStart('2026-12-01')
         await selectPeriod('monthToDate', 'quarterToDate')
-        await expectStart(new Date(2026, 9, 1))
+        await expectStart('2026-10-01')
         await selectPeriod('quarterToDate', 'last3months')
-        await expectStart(new Date(2026, 8, 1))
+        await expectStart('2026-09-01')
 
-        vi.setSystemTime(new Date(2027, 0, 1, 9))
+        vi.setSystemTime(new Date('2027-01-01T09:00:00Z'))
         await selectPeriod('last3months', 'yearToDate')
-        await expectStart(new Date(2027, 0, 1))
+        await expectStart('2027-01-01')
 
         // Twelve months before February 29 is the last day of the shorter February.
-        vi.setSystemTime(new Date(2028, 1, 29, 9))
+        vi.setSystemTime(new Date('2028-02-29T09:00:00Z'))
         await selectPeriod('yearToDate', 'last12months')
-        await expectStart(new Date(2027, 1, 28))
+        await expectStart('2027-02-28')
       } finally {
         vi.useRealTimers()
       }
