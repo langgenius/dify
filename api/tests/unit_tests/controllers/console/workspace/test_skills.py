@@ -1464,7 +1464,6 @@ def test_agent_skill_bindings_replaces_bound_skills(app: Flask, request_context:
 
     with (
         app.test_request_context("/", method="PUT", json={"skill_ids": ["skill-1"]}),
-        
         patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
     ):
         payload = method(api, request_context, "agent-1")
@@ -1489,13 +1488,11 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
 
     with (
         app.test_request_context("/", method="PUT", json={"skill_ids": "skill-1"}),
-
     ):
         with pytest.raises(UnprocessableEntity) as error:
             method(api, request_context, "agent-1")
 
     assert error.value.code == 422
-    
 
 
 def test_agent_skill_bindings_rejects_json_null_without_clearing_bindings(
