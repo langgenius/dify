@@ -41,16 +41,34 @@ it('keeps trace output ordered and exposes only the last thought as the final an
   await expect.element(screen.getByText(/finalProcessing/i)).toBeVisible()
 
   for (const llm of screen.getByText('LLM').all()) await llm.click()
-  for (const thought of ['Thought 1', 'Thought 2', 'Thought 3'])
-    await expect.element(screen.getByText(`"${thought}"`)).toBeVisible()
-  await expect.poll(() => screen.getByText('""', { exact: true }).all().length).toBe(3)
+  // Each editor title precedes its rendered value, so one document-order read proves both the
+  // iteration order and that only the last thought is labelled as the final answer.
+  const titlesAndValues = screen.getByText(
+    /^(?:OBSERVATION|THOUGHT|FINAL ANSWER|""|"Thought\s\d")$/,
+  )
+  await expect
+    // Monaco renders spaces as non-breaking spaces.
+    .poll(() =>
+      titlesAndValues
+        .all()
+        .map((element) => element.element().textContent?.replaceAll('\u00A0', ' ')),
+    )
+    .toEqual([
+      'OBSERVATION',
+      '""',
+      'THOUGHT',
+      '"Thought 1"',
+      'OBSERVATION',
+      '""',
+      'THOUGHT',
+      '"Thought 2"',
+      'OBSERVATION',
+      '""',
+      'FINAL ANSWER',
+      '"Thought 3"',
+    ])
+  await expect.element(screen.getByText('FINAL ANSWER')).toBeVisible()
   const editors = screen.getByRole('textbox', { name: 'Editor content' })
   await expect.poll(() => editors.all().length).toBe(6)
   for (const editor of editors.all()) await expect.element(editor).toHaveAttribute('readonly')
-  const titles = screen.getByText(/^(?:THOUGHT|FINAL ANSWER)$/).all()
-  expect(titles).toHaveLength(3)
-  await expect.element(titles[0]!).toHaveTextContent('THOUGHT')
-  await expect.element(titles[1]!).toHaveTextContent('THOUGHT')
-  await expect.element(titles[2]!).toHaveTextContent('FINAL ANSWER')
-  await expect.element(titles[2]!).toBeVisible()
 })
