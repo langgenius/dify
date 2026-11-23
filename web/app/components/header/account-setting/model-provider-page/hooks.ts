@@ -1,14 +1,9 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
-  ConfigurationMethodEnum,
-  Credential,
   CustomConfigurationModelFixedFields,
-  CustomModel,
   DefaultModel,
-  ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
-import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale } from '#i18n'
@@ -17,7 +12,6 @@ import {
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useModalContextSelector } from '@/context/modal-context'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
@@ -338,37 +332,5 @@ export const useRefreshModel = () => {
 
   return {
     handleRefreshModel,
-  }
-}
-
-export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector((state) => state.setShowModelModal)
-
-  return (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    extra: {
-      isModelCredential?: boolean
-      credential?: Credential
-      model?: CustomModel
-      onUpdate?: (newPayload?: ModelModalType, formValues?: Record<string, unknown>) => void
-      mode?: ModelModalModeEnum
-    } = {},
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-        isModelCredential: extra.isModelCredential,
-        credential: extra.credential,
-        model: extra.model,
-        mode: extra.mode,
-      },
-      onSaveCallback: (newPayload, formValues) => {
-        extra.onUpdate?.(newPayload, formValues)
-      },
-    })
   }
 }

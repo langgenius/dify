@@ -1,6 +1,12 @@
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import accountSettings from '@/i18n/locales/en-US/account-settings.json'
+import common from '@/i18n/locales/en-US/common.json'
+import deployments from '@/i18n/locales/en-US/deployments.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
 import {
   createNetworkAccessGroupFixture,
   seedNetworkAccessGroups,
@@ -10,58 +16,42 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
-const request = vi.hoisted(() => vi.fn<(path: string) => unknown>())
+vi.unmock('react-i18next')
 
+const request = vi.hoisted(() => vi.fn<(path: string, input?: unknown) => unknown>())
+
+// boundary: IP-policy reads and writes stop at the generated console transport.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
-    call: (path: readonly string[]) => request(path.join('.')),
+    call: (path: readonly string[], input?: unknown) => request(path.join('.'), input),
   },
 }))
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
-  usePathname: () => '/account/settings',
-  useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams(),
-}))
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
-}))
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const namespaces = {
-    accountSettings: (await import('@/i18n/locales/en-US/account-settings.json')).default,
-    common: (await import('@/i18n/locales/en-US/common.json')).default,
-    navigation: (await import('@/i18n/locales/en-US/navigation.json')).default,
-    deployments: (await import('@/i18n/locales/en-US/deployments.json')).default,
-  }
-  const translations = Object.fromEntries(
-    Object.entries(namespaces).flatMap(([namespace, messages]) =>
-      Object.entries(messages).map(([key, value]) => [`${namespace}.${key}`, value]),
-    ),
-  )
-  return { ...actual, ...createReactI18nextMock(translations) }
-})
 
 async function renderPoliciesSettings(width = 320) {
   await page.viewport(width, 800)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    fallbackLng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { accountSettings, common, navigation, deployments } },
+  })
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner', plan: 'team' },
     accountProfile: { timezone: 'Asia/Shanghai', interface_language: 'en-US' },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
   const groups = [
-    createNetworkAccessGroupFixture({ name: 'Internal Network', used_by_count: 2 }),
+    createNetworkAccessGroupFixture({
+      name: 'Internal Network',
+      used_by_count: 2,
+      updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    }),
     createNetworkAccessGroupFixture({
       id: 'group-2',
       name: 'Engineering Office',
       allowed_cidrs: ['192.0.2.0/24'],
+      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     }),
   ]
   seedNetworkAccessGroups(queryClient, { groups })
@@ -74,13 +64,15 @@ async function renderPoliciesSettings(width = 320) {
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
-        <AccountSetting
-          activeTab={ACCOUNT_SETTING_TAB.IP_POLICIES}
-          onCancelAction={vi.fn()}
-          onTabChangeAction={vi.fn()}
-        />
-      </NuqsTestingAdapter>
+      <I18nextProvider i18n={i18n}>
+        <NuqsTestingAdapter>
+          <AccountSetting
+            activeTab={ACCOUNT_SETTING_TAB.IP_POLICIES}
+            onCancelAction={vi.fn()}
+            onTabChangeAction={vi.fn()}
+          />
+        </NuqsTestingAdapter>
+      </I18nextProvider>
     </QueryClientTestProvider>,
   )
   await expect.element(screen.getByRole('table', { name: 'IP Policies' })).toBeVisible()
@@ -149,6 +141,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
         table.getByRole('columnheader', { name, exact: true }).element(),
         viewport,
       )
+    const updatedLabels = ['2 hours ago', '3 days ago']
     for (const [index, group] of groups.entries()) {
       const cells = table
         .getByRole('row')
@@ -157,7 +150,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
       await expect.element(cells.nth(0)).toHaveTextContent(group.name)
       await expect.element(cells.nth(1)).toHaveTextContent(String(group.allowed_cidrs.length))
       await expect.element(cells.nth(2)).toHaveTextContent(`${group.used_by_count} apps`)
-      expect(cells.nth(3).element().textContent?.trim()).toBeTruthy()
+      await expect.element(cells.nth(3)).toHaveTextContent(updatedLabels[index]!)
       for (let column = 0; column < 4; column++)
         await expectReadableText(cells.nth(column).element(), viewport)
     }
@@ -173,6 +166,78 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
   } finally {
     await screen.unmount()
     queryClient.clear()
+  }
+})
+
+it('restores edit focus to the opener or the heading if its row disappears', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+    const more = screen.getByRole('button', { name: 'More actions for Internal Network' })
+    await more.click()
+    await screen.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+    const editor = screen.getByRole('dialog', { name: 'Edit IP Policy' })
+    await expect.element(editor.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
+    await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(more).toHaveFocus()
+
+    await screen.getByRole('button', { name: 'Internal Network', exact: true }).click()
+    await expect.element(editor).toBeVisible()
+    seedNetworkAccessGroups(queryClient, { groups: groups.slice(1) })
+    await userEvent.keyboard('{Escape}')
+    await expect.element(editor).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('heading', { name: 'IP Policies' })).toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('confirms using the latest policy details and focuses the list after deleting the row', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  try {
+    const { screen, queryClient, groups } = await renderPoliciesSettings(1000)
+    const originalRequest = request.getMockImplementation()
+    let remainingGroups = groups
+    request.mockImplementation((path) => {
+      if (path === 'workspaces.current.networkAccessGroups.byGroupId.delete') {
+        remainingGroups = groups.slice(1)
+        return
+      }
+      if (path === 'workspaces.current.networkAccessGroups.get')
+        return { tenant_id: 'workspace-1', entitled: true, groups: remainingGroups }
+      return originalRequest?.(path)
+    })
+
+    await screen.getByRole('button', { name: 'More actions for Internal Network' }).click()
+    await screen.getByRole('menuitem', { name: 'Delete', exact: true }).click()
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete “Internal Network”?' })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteBoundDescription']))
+      .toBeVisible()
+    const refreshedPolicy = { ...groups[0]!, version: 7, used_by_count: 0 }
+    remainingGroups = [refreshedPolicy, ...groups.slice(1)]
+    seedNetworkAccessGroups(queryClient, { groups: remainingGroups })
+    await expect
+      .element(confirmation.getByText(common['settings.ipPolicyDeleteDescription']))
+      .toBeVisible()
+    await confirmation.getByRole('button', { name: 'Delete', exact: true }).click()
+    expect(request).toHaveBeenCalledWith(
+      'workspaces.current.networkAccessGroups.byGroupId.delete',
+      {
+        params: { group_id: refreshedPolicy.id },
+        query: { expected_version: 7 },
+      },
+    )
+    await expect
+      .element(screen.getByRole('button', { name: 'Internal Network', exact: true }))
+      .not.toBeInTheDocument()
+    await expect.element(confirmation).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('heading', { name: 'IP Policies', exact: true }))
+      .toHaveFocus()
+  } finally {
+    vi.unstubAllGlobals()
   }
 })
 

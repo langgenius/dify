@@ -7,14 +7,8 @@ import { ChunkingMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import TemplateCard from '../index'
 
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
-  usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
-}))
-vi.mock('@/app/components/workflow/workflow-preview', () => ({
-  default: () => <div>Workflow preview</div>,
-}))
 
 const pipeline: PipelineTemplate = {
   id: 'template-1',
@@ -40,7 +34,7 @@ function TemplateCardFixture({ queryClient }: { queryClient: QueryClient }) {
     <QueryClientProvider client={queryClient}>
       <Button>Before template</Button>
       <div className="w-80">
-        <TemplateCard pipeline={pipeline} type="built-in" showMoreOperations={false} />
+        <TemplateCard pipeline={pipeline} type="built-in" />
       </div>
     </QueryClientProvider>
   )
@@ -77,6 +71,7 @@ describe('Template card focus', () => {
     await userEvent.keyboard('{Enter}')
     const dialog = screen.getByRole('dialog', { name: 'Document pipeline' })
     await expect.element(dialog).toBeVisible()
+    expect(dialog.element().querySelector('#workflow-container')).not.toBeNull()
     await dialog.getByRole('button', { name: 'common.operation.close' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(details).toHaveFocus()

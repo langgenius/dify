@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const {
   membersRequest,
@@ -38,6 +38,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
           is_allow_transfer_workspace: true,
         }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': membersRequest,
       'workspaces.current.rbac.roles.get': rolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,
@@ -177,7 +178,6 @@ const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactO
 describe('MembersPage removal', () => {
   it.each([
     { status: 'active', enabled: true, contactCopy: true },
-    { status: 'pending', enabled: true, contactCopy: false },
     { status: 'active', enabled: false, contactCopy: false },
   ])(
     'uses the supported member endpoint for status=$status and gate=$enabled',
@@ -215,9 +215,9 @@ describe('MembersPage', () => {
     )
   })
 
-  it('sends an invitation and displays the returned invitation link', async () => {
+  it('sends an invitation and displays the returned invitation link without email delivery', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     await user.click(screen.getByRole('button', { name: /members\.invite$/ }))
     await user.type(
       screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
@@ -337,6 +337,30 @@ describe('MembersPage', () => {
     expect(updateRoles).toHaveBeenCalledTimes(2)
   })
 
+  it('closes member details once a pending role save succeeds', async () => {
+    const user = userEvent.setup()
+    const save = updateRoles.getMockImplementation()!
+    let resolveSave!: () => void
+    updateRoles.mockImplementationOnce(async (input) => {
+      await new Promise<void>((resolve) => {
+        resolveSave = resolve
+      })
+      return save(input)
+    })
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await act(async () => {
+      resolveSave()
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(
+      await within(screen.getByRole('row', { name: /admin@example.com/ })).findByText('Next role'),
+    ).toBeInTheDocument()
+  })
+
   it('opens ownership transfer from the owner action without opening member details', async () => {
     const user = userEvent.setup()
     await renderMembersPage()
@@ -409,7 +433,7 @@ describe('MembersPage', () => {
 
   it.each([
     ['sandbox', 5, 'plansCommon.member'],
-    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['sandbox', 0, 'plansCommon.memberAfter'],
     ['team', 50, 'plansCommon.memberAfter'],
   ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
     await renderMembersPage({
@@ -421,7 +445,7 @@ describe('MembersPage', () => {
 
   it('hands invitation results to a persistent dialog and closes them normally', async () => {
     const user = userEvent.setup()
-    await renderMembersPage()
+    await renderMembersPage({ systemFeatures: { is_email_setup: false } })
     const invite = screen.getByRole('button', { name: /members\.invite$/ })
     await user.click(invite)
     await user.type(

@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import Any, Protocol, cast, runtime_checkable
 
 import redis
+from pydantic import TypeAdapter
 from redis import RedisError
 from redis.backoff import ExponentialWithJitterBackoff  # type: ignore
 from redis.cache import CacheConfig
@@ -33,6 +34,8 @@ from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastCh
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
 logger = logging.getLogger(__name__)
+
+_sorted_set_entries = TypeAdapter(list[tuple[bytes, float]])
 
 
 _normalize_redis_key_prefix = normalize_redis_key_prefix
@@ -230,6 +233,13 @@ class RedisClientWrapper:
             gt=gt,
             lt=lt,
         )
+
+    def zrangebyscore_withscores(self, name: str, minimum: str, maximum: str) -> list[tuple[bytes, float]]:
+        """Read the scored entries in the given range from a logical Redis key."""
+        entries = self._require_client().zrangebyscore(
+            _serialize_redis_name(name, self._get_prefix()), minimum, maximum, withscores=True
+        )
+        return _sorted_set_entries.validate_python(entries)
 
     def zrem(self, name: str | bytes, *values: str | bytes | int | float) -> Any:
         return self._require_client().zrem(_serialize_redis_name_arg(name, self._get_prefix()), *values)
@@ -531,8 +541,13 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
     return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
-def init_app(app: DifyApp):
-    """Initialize Redis client and attach it to the app."""
+def init_app(app: DifyApp) -> None:
+    """Attach the cache client and select the global event-transport client.
+
+    Requires valid settings for the selected cache topology. Explicit PubSub
+    URLs take precedence; otherwise Sentinel is reused without requiring
+    standalone Redis host settings.
+    """
     global redis_client
 
     # Determine Redis mode and create appropriate client
@@ -551,7 +566,8 @@ def init_app(app: DifyApp):
 
     global _pubsub_redis_client
     _pubsub_redis_client = client
-    if dify_config.normalized_pubsub_redis_url:
+    pubsub_redis_url = (dify_config.PUBSUB_REDIS_URL or "").strip()
+    if pubsub_redis_url or not dify_config.REDIS_USE_SENTINEL:
         _pubsub_redis_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )

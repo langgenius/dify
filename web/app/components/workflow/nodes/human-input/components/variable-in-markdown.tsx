@@ -208,7 +208,7 @@ const FileUploadPreview: React.FC<{ methods: TransferMethod[]; t: TFunction<['co
           key={action.label}
           className="flex h-10 items-center justify-center rounded-xl bg-components-input-bg-normal px-3"
         >
-          <span className={cn('mr-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
+          <span className={cn('me-2 size-5 shrink-0 text-text-tertiary', action.iconClassName)} />
           <span className="truncate system-sm-medium text-text-tertiary">{action.label}</span>
         </div>
       ))}
@@ -253,11 +253,12 @@ export const Note: React.FC<{ input: FormInputItem; nodeName: (nodeId: string) =
     return <FileUploadPreview methods={input.allowed_file_upload_methods} t={t} />
   }
 
-  const isVariable = input.default.type === 'variable'
-  const newPath = sourceToVariablePath(input.default, nodeName)
+  const defaultValue = input.default
+  const isVariable = defaultValue?.type === 'variable'
+  const newPath = defaultValue ? sourceToVariablePath(defaultValue, nodeName) : ''
   return (
     <div className="my-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
-      {isVariable ? <Variable path={newPath} /> : <span>{input.default.value}</span>}
+      {isVariable ? <Variable path={newPath} /> : <span>{defaultValue?.value ?? ''}</span>}
     </div>
   )
 }

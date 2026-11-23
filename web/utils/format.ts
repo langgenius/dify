@@ -1,6 +1,7 @@
 import type { Dayjs } from 'dayjs'
 import type { Locale } from '@/i18n'
 import { localeMap } from '@/i18n/language'
+import 'dayjs/locale/ar'
 import 'dayjs/locale/az'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
@@ -12,6 +13,7 @@ import 'dayjs/locale/it'
 import 'dayjs/locale/nl'
 import 'dayjs/locale/ja'
 import 'dayjs/locale/ko'
+import 'dayjs/locale/lo'
 import 'dayjs/locale/pl'
 import 'dayjs/locale/pt-br'
 import 'dayjs/locale/ro'
@@ -72,7 +74,7 @@ export const formatFileSize = (fileSize: number) => {
   if (!fileSize) return fileSize
   const units = ['', 'K', 'M', 'G', 'T', 'P']
   let index = 0
-  while (fileSize >= 1024 && index < units.length) {
+  while (fileSize >= 1024 && index < units.length - 1) {
     fileSize = fileSize / 1024
     index++
   }
@@ -89,7 +91,7 @@ export const formatTime = (seconds: number) => {
   if (!seconds) return seconds
   const units = ['sec', 'min', 'h']
   let index = 0
-  while (seconds >= 60 && index < units.length) {
+  while (seconds >= 60 && index < units.length - 1) {
     seconds = seconds / 60
     index++
   }

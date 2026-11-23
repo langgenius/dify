@@ -152,8 +152,8 @@ class TestWorkflowPauseDetailsApiCases:
         assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models
 
 
-def _serialize_200_response(handler, payload: Any) -> Any:
-    response_doc = getattr(handler, "__apidoc__", {}).get("responses", {}).get("200")
+def _serialize_200_response(handler: Any, payload: Any) -> Any:
+    response_doc = handler.__apidoc__.get("responses", {}).get("200")
     if response_doc is None:
         return payload
 
@@ -193,7 +193,9 @@ def _workflow_run_api_mock_application_services(
     )
 
 
-def _workflow_run_summary(session: Session, **overrides: object) -> WorkflowRun:
+def _workflow_run_summary(
+    session: Session, conversation_id: str | None = None, message_id: str | None = None
+) -> WorkflowRun:
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     workflow_run = WorkflowRun(
         id="run-1",
@@ -217,9 +219,11 @@ def _workflow_run_summary(session: Session, **overrides: object) -> WorkflowRun:
         exceptions_count=0,
     )
     workflow_run.created_at = created_at
-    for name, value in overrides.items():
-        setattr(workflow_run, name, value)
-    workflow_run.retry_index = 0
+    if conversation_id is not None:
+        workflow_run.conversation_id = conversation_id  # pyrefly: ignore[missing-attribute]
+    if message_id is not None:
+        workflow_run.message_id = message_id  # pyrefly: ignore[missing-attribute]
+    workflow_run.retry_index = 0  # pyrefly: ignore[missing-attribute]
     session.add(workflow_run)
     session.commit()
     return workflow_run

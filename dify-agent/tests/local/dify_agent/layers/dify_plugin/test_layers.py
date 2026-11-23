@@ -1,11 +1,13 @@
 """Plugin tools use JSON identity, prepared schemas and native dispatch."""
 
 import json
+import base64
 
 import httpx
 import pytest
 
 from dify_agent.layers.dify_plugin import tools_layer
+from dify_agent.agent_stub.protocol import file_reference
 from dify_agent.layers.dify_plugin.llm_layer import Capability as ModelCapability, Config as ModelConfig
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Deps, Services
@@ -21,6 +23,196 @@ def identity():
         agent_mode="agent_app",
         invoke_from="web-app",
     )
+
+
+async def media_observation(message, handler, *, user_id="user", max_bytes=50 * 1024 * 1024):
+    async def transport(request):
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return httpx.Response(200, text="data: " + json.dumps({"code": 0, "message": "", "data": message}) + "\n")
+        return handler(request)
+
+    config = tools_layer.Config(
+        tools=[
+            {
+                "plugin_id": "media",
+                "provider": "media",
+                "tool_name": "generate",
+                "credential_type": "unauthorized",
+            }
+        ]
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": config.model_dump(mode="json"), "state": {}},
+                "execution_context": {
+                    "config": identity().model_copy(update={"user_id": user_id}).model_dump(mode="json"),
+                    "state": {},
+                },
+            },
+            services=Services(client, client, agent_file_upload_max_bytes=max_bytes),
+            run_id="media-test",
+        )
+        result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "generate", {})
+    return result.output
+
+
+def media_summary(output):
+    return json.loads(output.split(": ", 1)[1].split(" (call")[0])
+
+
+def reference_payload(reference):
+    assert reference.startswith("dify-file-ref:")
+    return json.loads(base64.urlsafe_b64decode(reference.removeprefix("dify-file-ref:")))
+
+
+@pytest.mark.anyio
+async def test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline_data():
+    requests = []
+    record_id = "dd22ff99-f8d5-4fde-8cb9-c8ec46556960"
+    blob = b"raw-plugin-image-content"
+
+    def handler(request):
+        requests.append(request)
+        if request.url.path.endswith("/upload-request"):
+            payload = json.loads(request.content)
+            assert payload["tenant_id"] == "tenant" and payload["user_id"] == "user"
+            assert payload["max_size"] == 50 * 1024 * 1024
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=signed"})
+        assert request.url.path == "/files/upload/for-plugin"
+        assert request.headers["content-type"].startswith("multipart/form-data")
+        assert blob in request.content
+        return httpx.Response(201, json={"id": record_id, "reference": file_reference(record_id)})
+
+    output = await media_observation(
+        {
+            "type": "blob",
+            "message": {"blob": base64.b64encode(blob).decode()},
+            "meta": {"filename": "chart.png", "mime_type": "image/png"},
+        },
+        handler,
+    )
+    assert len(requests) == 2
+    summary = media_summary(output)
+    assert summary["transfer_method"] == "tool_file"
+    assert summary["reference"] == file_reference(record_id)
+    assert reference_payload(summary["reference"]) == {"record_id": record_id}
+    assert summary["size"] == len(blob)
+    assert "read_media" in output
+    assert blob.decode() not in output and base64.b64encode(blob).decode() not in output
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "failure,diagnostic,request_count",
+    [
+        ("missing-user", "requires execution context user_id", 0),
+        ("oversized", "exceeds upload limit", 0),
+        ("http-error", "503", 1),
+        ("non-object", "file upload returned a non-object response", 2),
+        ("missing-reference", "reference is required for non-remote file mappings", 2),
+        ("invalid-reference", "canonical Dify file reference", 2),
+    ],
+)
+async def test_plugin_blob_upload_failures_never_stringify_file_content(failure, diagnostic, request_count):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if failure == "http-error":
+            return httpx.Response(503, json={"message": "storage unavailable"})
+        if request.url.path.endswith("/upload-request"):
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=signed"})
+        responses = {
+            "non-object": [],
+            "missing-reference": {"id": "dd22ff99-f8d5-4fde-8cb9-c8ec46556960"},
+            "invalid-reference": {"reference": "dify-file-ref:W10="},
+        }
+        return httpx.Response(201, json=responses[failure])
+
+    output = await media_observation(
+        {
+            "type": "blob",
+            "message": {"blob": base64.b64encode(b"secret-blob").decode()},
+            "meta": {"filename": "chart.png", "mime_type": "image/png"},
+        },
+        handler,
+        user_id=None if failure == "missing-user" else "user",
+        max_bytes=1 if failure == "oversized" else 100,
+    )
+    assert "Tool media unavailable" in output and "chart.png" in output and "11 bytes" in output
+    assert "secret-blob" not in output and "c2VjcmV0LWJsb2I=" not in output
+    assert diagnostic in output
+    assert len(requests) == request_count
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "kind,url,expected",
+    [
+        ("image", "https://example.com/chart.png?key=original", "remote_url"),
+        ("image_link", "/files/tools/dd22ff99-f8d5-4fde-8cb9-c8ec46556960.png?sign=x", "tool_file"),
+        ("binary_link", "https://example.com/audio.mp3?key=original", "remote_url"),
+    ],
+)
+async def test_plugin_media_links_return_handles_without_fetching_them(kind, url, expected):
+    def unexpected_request(request):
+        raise AssertionError(f"link output should not fetch {request.url}")
+
+    output = await media_observation({"type": kind, "message": {"text": url}}, unexpected_request)
+    summary = media_summary(output)
+    assert summary["transfer_method"] == expected
+    assert "read_media" in output
+    if expected == "tool_file":
+        assert reference_payload(summary["reference"]) == {"record_id": "dd22ff99-f8d5-4fde-8cb9-c8ec46556960"}
+        assert "sign=x" not in output
+    else:
+        assert summary["url"] == url
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("remote", [False, True])
+async def test_plugin_file_message_keeps_an_existing_file_locator(remote):
+    mapping = (
+        {"transfer_method": "remote_url", "remote_url": "https://example.com/chart.png?key=original"}
+        if remote
+        else {"transfer_method": "local_file", "reference": file_reference("upload-file")}
+    )
+
+    def unexpected_request(request):
+        raise AssertionError(f"file output should not fetch {request.url}")
+
+    output = await media_observation(
+        {
+            "type": "file",
+            "message": {"file_marker": "file"},
+            "meta": {"file": {**mapping, "filename": "chart.png", "mime_type": "image/png"}},
+        },
+        unexpected_request,
+    )
+    summary = media_summary(output)
+    assert summary["transfer_method"] == mapping["transfer_method"]
+    if remote:
+        assert summary["url"] == mapping["remote_url"]
+    else:
+        assert reference_payload(summary["reference"]) == {"record_id": "upload-file"}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("source", ["file", "meta"])
+@pytest.mark.parametrize("size", [True, "25", None])
+async def test_plugin_file_observations_omit_invalid_optional_metadata(source, size):
+    file = {"transfer_method": "remote_url", "url": "https://example.com/chart.png?key=original"}
+    optional_metadata = {"filename": 123, "mime_type": ["image/png"], "size": size}
+    meta = {"file": {**file, **optional_metadata}} if source == "file" else {"file": file, **optional_metadata}
+
+    def unexpected_request(request):
+        raise AssertionError(f"file output should not fetch {request.url}")
+
+    output = await media_observation(
+        {"type": "file", "message": {"file_marker": "file"}, "meta": meta}, unexpected_request
+    )
+    assert media_summary(output) == file
 
 
 @pytest.mark.anyio
@@ -130,13 +322,39 @@ async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_d
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "value,download",
+    "value,download_uri,expected_url",
     [
-        ({"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}, True),
-        ("https://example.com/file.pdf", False),
+        (
+            {"transfer_method": "tool_file", "reference": file_reference("file-1")},
+            "https://example.com/file.pdf",
+            "https://example.com/file.pdf",
+        ),
+        (
+            {
+                "transfer_method": "tool_file",
+                "reference": file_reference("file-1"),
+                "filename": "untrusted.exe",
+                "mime_type": "untrusted/type",
+                "size": 999_999,
+            },
+            "/files/tools/file-1.pdf?timestamp=1&nonce=n&sign=s",
+            "http://dify-api/files/tools/file-1.pdf?timestamp=1&nonce=n&sign=s",
+        ),
+        (
+            {
+                "transfer_method": "remote_url",
+                "url": "https://example.com/file.pdf",
+                "filename": "untrusted.exe",
+                "mime_type": "untrusted/type",
+                "size": 999_999,
+            },
+            None,
+            "https://example.com/file.pdf",
+        ),
+        ("https://example.com/file.pdf", None, "https://example.com/file.pdf"),
     ],
 )
-async def test_native_plugin_tool_converts_file_inputs(value, download):
+async def test_native_plugin_tool_converts_file_inputs(value, download_uri, expected_url):
     config = tools_layer.Config(
         tools=[
             {
@@ -154,18 +372,17 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
 
     def handler(request):
         payload = json.loads(request.content)
-        if request.url.path.endswith("/download/file/request"):
-            assert download
-            assert payload["file"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+        if request.url.path.endswith("/agent/files/download-request"):
+            assert download_uri is not None
+            assert payload["file"] == {"transfer_method": "tool_file", "reference": file_reference("file-1")}
+            assert payload["for_frontend"] is False
             return httpx.Response(
                 200,
                 json={
-                    "data": {
-                        "download_url": "https://example.com/file.pdf",
-                        "filename": "file.pdf",
-                        "mime_type": "application/pdf",
-                        "size": 10,
-                    }
+                    "download_uri": download_uri,
+                    "filename": "file.pdf",
+                    "mime_type": "application/pdf",
+                    "size": 10,
                 },
             )
         sent.append(payload["data"]["tool_parameters"]["source"])
@@ -179,12 +396,15 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
                 "tools": {"config": config.model_dump(mode="json"), "state": {}},
                 "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
             },
-            services=Services(client, client),
+            services=Services(client, client, inner_api_url="http://dify-api/"),
             run_id="test",
         )
         result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "read", {"source": value})
         assert result.output == "read"
-        assert sent[0]["url"] == "https://example.com/file.pdf"
+        assert sent[0]["url"] == expected_url
+        assert sent[0]["filename"] == "file.pdf"
+        assert sent[0]["mime_type"] == "application/pdf"
+        assert sent[0]["size"] == (10 if download_uri is not None else -1)
 
 
 @pytest.mark.anyio

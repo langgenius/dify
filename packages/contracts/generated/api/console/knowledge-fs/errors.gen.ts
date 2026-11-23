@@ -50,6 +50,8 @@ const zKnowledgeFsPublicFailureResponse = /* @__PURE__ */ (() =>
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -532,7 +534,7 @@ export const patch4Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get21Errors = {
+export const get22Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -571,7 +573,7 @@ export const delete7Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get22Errors = {
+export const get23Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -599,7 +601,7 @@ export const post14Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get23Errors = {
+export const get24Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -618,7 +620,7 @@ export const delete9Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get24Errors = {
+export const get25Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -637,7 +639,7 @@ export const patch5Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get25Errors = {
+export const get26Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -655,7 +657,7 @@ export const patch6Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const put3Errors = {
+export const put4Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -682,7 +684,7 @@ export const patch7Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get26Errors = {
+export const get27Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -695,15 +697,6 @@ export const get26Errors = {
 export const post15Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
-  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
-  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
-  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
-  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
-  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
-}
-
-export const get27Errors = {
-  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
   knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
@@ -758,31 +751,20 @@ export const get32Errors = {
 
 export const get33Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
+  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
   knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
 export const get34Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
-  knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
-  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
-  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
   knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
-  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
 export const get35Errors = {
-  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
-  knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
-  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
-  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
-  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
-  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
-  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
-}
-
-export const patch8Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -802,7 +784,7 @@ export const get36Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const post16Errors = {
+export const patch8Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -822,7 +804,27 @@ export const get37Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
+export const post16Errors = {
+  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+  knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
+  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+}
+
 export const get38Errors = {
+  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+  knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
+  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+}
+
+export const get39Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -869,7 +871,7 @@ export const post21Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get39Errors = {
+export const get40Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -888,7 +890,7 @@ export const delete11Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get40Errors = {
+export const get41Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -897,7 +899,7 @@ export const get40Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get41Errors = {
+export const get42Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -917,7 +919,7 @@ export const post22Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get42Errors = {
+export const get43Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -926,7 +928,7 @@ export const get42Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get43Errors = {
+export const get44Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -956,7 +958,7 @@ export const post23Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get44Errors = {
+export const get45Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -974,7 +976,7 @@ export const post24Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get45Errors = {
+export const get46Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -992,7 +994,7 @@ export const post25Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get46Errors = {
+export const get47Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1021,7 +1023,7 @@ export const post27Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get47Errors = {
+export const get48Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1060,7 +1062,7 @@ export const post30Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get48Errors = {
+export const get49Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1089,7 +1091,7 @@ export const post32Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get49Errors = {
+export const get50Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1108,7 +1110,7 @@ export const post33Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get50Errors = {
+export const get51Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1117,7 +1119,7 @@ export const get50Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const put4Errors = {
+export const put5Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -1156,7 +1158,7 @@ export const delete12Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get51Errors = {
+export const get52Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1175,7 +1177,7 @@ export const patch10Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get52Errors = {
+export const get53Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1195,12 +1197,12 @@ export const post36Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get53Errors = {
+export const get54Errors = {
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
   knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
 }
 
-export const put5Errors = {
+export const put6Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1208,24 +1210,6 @@ export const put5Errors = {
 }
 
 export const post37Errors = {
-  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
-  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
-  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
-  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
-  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
-  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
-}
-
-export const get54Errors = {
-  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
-  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
-  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
-  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
-  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
-  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
-}
-
-export const post38Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1243,6 +1227,15 @@ export const get55Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
+export const post38Errors = {
+  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
+  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+}
+
 export const get56Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -1252,7 +1245,7 @@ export const get56Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const patch11Errors = {
+export const get57Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1261,7 +1254,7 @@ export const patch11Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get57Errors = {
+export const patch11Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
@@ -1307,6 +1300,15 @@ export const get61Errors = {
 }
 
 export const get62Errors = {
+  knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+  knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+  knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
+  knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+  knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+}
+
+export const get63Errors = {
   knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
   knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
@@ -1383,7 +1385,7 @@ export const delete13Errors = {
   knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
 }
 
-export const get63Errors = {
+export const get64Errors = {
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
   knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
 }
@@ -1398,7 +1400,7 @@ export const patch12Errors = {
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get64Errors = {
+export const get65Errors = {
   knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
   knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },

@@ -2,13 +2,16 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { CollaborationUpgradeModal } from '@/app/components/workflow/collaboration/upgrade-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
@@ -137,6 +140,7 @@ const WorkflowAppWithAdditionalContext = () => {
     <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
         <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
+        <CollaborationUpgradeModal />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )
@@ -144,6 +148,12 @@ const WorkflowAppWithAdditionalContext = () => {
 
 const WorkflowAppWrapper = () => {
   const { appId } = useParams<{ appId: string }>()
+  const { t } = useTranslation(['common', 'workflow'])
+  const collaboration = useQuery({
+    ...consoleQuery.features.get.queryOptions(),
+    retry: false,
+    select: (features) => features.workflow_collaboration_enabled,
+  })
   const { data: mode } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
@@ -152,8 +162,30 @@ const WorkflowAppWrapper = () => {
   )
   if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
 
+  if (collaboration.data === undefined && collaboration.isPending) {
+    return (
+      <div className="relative flex size-full items-center justify-center">
+        <LoadingPlaceholder />
+      </div>
+    )
+  }
+  if (collaboration.data === undefined) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-4">
+        <div role="alert" className="system-sm-regular text-text-tertiary">
+          {t(($) => $['collaboration.capabilityUnavailable'], { ns: 'workflow' })}
+        </div>
+        <Button size="small" variant="secondary" onClick={() => void collaboration.refetch()}>
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
+  }
+
   return (
-    <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
+    <EditorResourceScope
+      resource={{ kind: 'app', appId, mode, collaborationEnabled: collaboration.data }}
+    >
       <WorkflowContextProvider
         injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
       >

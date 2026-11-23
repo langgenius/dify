@@ -20,7 +20,6 @@
   "selectedFiles": "Seçilen dosyalar ({{total}} dosyadan {{valid}} tanesi geçerli)",
   "startWith": "Şununla başla:",
   "startWithHelp": "İstediğiniz zaman daha fazla Kaynak veya Belge ekleyebilirsiniz.",
-  "uploadCharactersUnavailable": "Karakterler: —",
   "uploadCompleted": "Eklendi",
   "uploadDocuments": "Belgeleri yükleyin",
   "uploadDropZoneTitle": "Dosyaları sürükleyip bırakın veya göz atın",

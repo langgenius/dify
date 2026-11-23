@@ -69,14 +69,14 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
           <button
             type="button"
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
+            className="absolute inset-e-2.5 top-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
             onClick={onClose}
           >
             <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           {/* Title */}
           <div className="flex flex-col gap-y-[0.5px] px-3 pt-3.5 pb-1">
-            <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
+            <div className="flex ps-1 pe-8 system-xl-semibold text-text-primary">
               {t(($) => $['nodes.llm.jsonSchema.generatedResult'], { ns: 'workflowModels' })}
             </div>
             <div className="flex px-1 system-xs-regular text-text-tertiary">

@@ -63,6 +63,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -246,10 +247,8 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             pipeline._task_state = task_state
             return pipeline
 
-        def test_get_message_event_type_called_once_when_first_llm_chunk_arrives(
-            self, pipeline, mock_message_cycle_manager
-        ):
-            """Expect get_message_event_type to be called when processing the first LLM chunk event."""
+        def test_get_message_event_type_not_called_for_llm_text_chunks(self, pipeline, mock_message_cycle_manager):
+            """Expect LLM text chunks to always use MESSAGE event type."""
             # Setup a minimal LLM chunk event
             chunk = llm_chunk("hi")
             llm_chunk_event = QueueLLMChunkEvent(chunk=chunk)
@@ -260,7 +259,10 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             list(pipeline._process_stream_response(publisher=None))
 
             # Assert
-            mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
+            mock_message_cycle_manager.get_message_event_type.assert_not_called()
+            mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
+                answer="hi", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            )
 
         def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, task_state):
             """Test handling of LLM chunk events with text content."""
@@ -935,21 +937,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Moderation:
-                def should_direct_output(self):
-                    return True
-
-                def get_final_output(self):
-                    return "final"
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("token")
-
-            assert result is True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
+            result = list(pipeline._handle_output_moderation_chunk("token"))
+            assert result == []
             events = cast(_FakeQueueManager, pipeline.queue_manager).published_events
-            assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
-            assert any(isinstance(event, QueueStopEvent) for event in events)
+            assert events == []
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
@@ -1019,7 +1016,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert pipeline._task_state.llm_result.usage.prompt_tokens == 10
             assert pipeline._task_state.llm_result.usage.completion_tokens == 5
 
-        def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch):
+        def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
@@ -1062,45 +1059,62 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 )
             ]
 
-            class _Result:
-                def __init__(self, items):
-                    self._items = items
+            sqlite_session.add_all([*message_files, *upload_files])
+            sqlite_session.commit()
 
-                def all(self):
-                    return self._items
+            signed_upload_file_ids: list[str] = []
+            signed_tool_files: list[tuple[str, str]] = []
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    self.calls = 0
+            def _get_signed_file_url(*, upload_file_id: str) -> str:
+                signed_upload_file_ids.append(upload_file_id)
+                return "signed-url"
 
-                def __enter__(self):
-                    return self
+            def _sign_tool_file(*, tool_file_id: str, extension: str) -> str:
+                signed_tool_files.append((tool_file_id, extension))
+                return "signed-tool"
 
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    self.calls += 1
-                    return _Result(message_files if self.calls == 1 else upload_files)
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
-                lambda **kwargs: "signed-url",
+                _get_signed_file_url,
             )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.sign_tool_file",
-                lambda **kwargs: "signed-tool",
+                _sign_tool_file,
             )
 
             response = pipeline._message_end_to_stream_response()
             files = response.files
 
-            assert files
+            assert files is not None
             assert len(files) == 3
+            files_by_id = {}
+            for file_dict in files:
+                related_id = file_dict["related_id"]
+                assert isinstance(related_id, str)
+                files_by_id[related_id] = file_dict
+            assert set(files_by_id) == {"mf-1", "mf-2", "mf-3"}
+
+            remote_file = files_by_id["mf-1"]
+            assert remote_file["transfer_method"] == FileTransferMethod.REMOTE_URL
+            assert remote_file["url"] == "http://example.com/a.png"
+            assert remote_file["filename"] == "a.png"
+            assert remote_file["remote_url"] == "http://example.com/a.png"
+
+            local_file = files_by_id["mf-2"]
+            assert local_file["transfer_method"] == FileTransferMethod.LOCAL_FILE
+            assert local_file["url"] == "signed-url"
+            assert local_file["filename"] == "local.png"
+            assert local_file["mime_type"] == "image/png"
+            assert local_file["size"] == 123
+            assert local_file["extension"] == ".png"
+            assert local_file["upload_file_id"] == "upload-1"
+
+            tool_file = files_by_id["mf-3"]
+            assert tool_file["transfer_method"] == FileTransferMethod.TOOL_FILE
+            assert tool_file["type"] == FileType.CUSTOM.value
+            assert tool_file["url"] == "signed-tool"
+            assert signed_upload_file_ids == ["upload-1"]
+            assert signed_tool_files == [("file", ".bin")]
 
         def test_process_stream_response_handles_annotation_and_error(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
@@ -1727,7 +1741,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 prompt_messages=[],
                 delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
             )
-            pipeline._handle_output_moderation_chunk = lambda text: True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
             _set_queue_events(pipeline, [_queue_message(QueueLLMChunkEvent(chunk=chunk))])
 
             responses = list(pipeline._process_stream_response(publisher=None))
@@ -2223,7 +2242,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -2233,21 +2252,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 message=message,
                 stream=True,
             )
-            appended_tokens: list[str] = []
-
-            class _Moderation:
-                def should_direct_output(self):
-                    return False
-
-                def append_new_token(self, text):
-                    appended_tokens.append(text)
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("next-token")
-
-            assert result is False
-            assert appended_tokens == ["next-token"]
+            handler = OutputModeration(
+                tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+            )
+            pipeline.output_moderation_handler = handler
+            result = list(pipeline._handle_output_moderation_chunk("next-token"))
+            assert result == []
+            assert handler.buffer == "next-token"
 
 
 """Exercise message-end file serialization against persisted SQLite rows.

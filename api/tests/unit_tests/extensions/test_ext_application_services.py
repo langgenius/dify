@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -150,6 +151,7 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -158,6 +160,11 @@ from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import CeleryTraceEmitter
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.oauth_gateway import PluginTriggerOAuthGateway, TriggerOAuthBuilderGateway
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -731,9 +738,11 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+    assert services.workflow_comments._now is naive_utc_now
 
 
 def test_build_application_services_wires_app_statistic_boundary(
@@ -1118,6 +1127,54 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
+    assert services.workspaces.plugin_parameters._credentials is services.credential_queries
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
+    assert (
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
+    assert isinstance(gateway, TriggerOAuthBuilderGateway)
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
+    assert (
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
+    assert (
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
+    )
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
+    provider_query = services.triggers.providers
+    events_gateway = services.triggers.events._plugins
+    endpoint_gateway = services.triggers.endpoints._provider
+    subscription_gateway = services.triggers.subscription_management._providers
+    oauth_gateway = services.triggers.oauth._providers
+    parameter_gateway = services.workspaces.plugin_parameters._plugins
+    assert isinstance(provider_query, PluginTriggerProviderQuery)
+    assert isinstance(events_gateway, PluginTriggerEventGateway)
+    assert isinstance(endpoint_gateway, PluginTriggerEndpointGateway)
+    assert isinstance(subscription_gateway, PluginTriggerSubscriptionGateway)
+    assert isinstance(oauth_gateway, PluginTriggerOAuthGateway)
+    assert isinstance(parameter_gateway, DaemonPluginParameterGateway)
+    provider_loader = provider_query._providers
+    assert events_gateway._providers is provider_loader
+    assert endpoint_gateway._providers is provider_loader
+    assert subscription_gateway._providers is provider_loader
+    assert oauth_gateway._providers is provider_loader
+    assert parameter_gateway._providers is provider_loader
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
@@ -1939,7 +1996,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     )
     assert admitted_app.app_mode == "chat"
     previous_metadata = get_credit_usage_metadata()
-    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    event.listen(sqlite_session_factory, "after_begin", observe_naming_session)
     plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
     try:
         with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
@@ -1962,7 +2019,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             )
     finally:
         plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
-        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+        event.remove(sqlite_session_factory, "after_begin", observe_naming_session)
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]

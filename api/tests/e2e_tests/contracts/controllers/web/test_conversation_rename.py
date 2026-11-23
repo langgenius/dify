@@ -307,6 +307,7 @@ def test_end_user_outside_app_owner_scope_is_rejected(harness: _Harness, field: 
 def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     harness: _Harness, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given a provider lookup failure, keep the existing conversation name and log the cause."""
     response = harness.post({"auto_generate": True, "name": "Ignored manual title"})
     assert response.status_code == HTTPStatus.OK
     assert response.get_json()["name"] == "Original title"
@@ -314,7 +315,7 @@ def test_auto_rename_preserves_existing_name_when_real_provider_lookup_fails(
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.conversation_name_service" and record.exc_info is not None
+        if record.name == "services.conversation_name_service" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ProviderTokenNotInitError)

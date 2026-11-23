@@ -11,7 +11,8 @@ from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.errors.billing import BillingUpstreamError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -72,13 +73,26 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    with sio.app.app_context(), session_factory.create_session() as session:
-        result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    try:
+        with sio.app.app_context(), session_factory.create_session() as session:
+            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    except BillingUpstreamError:
+        logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
+        return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
     if not result:
         return {"msg": "unauthorized"}, 401
 
     user_id, is_leader = result
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
+
+
+@_sio_on("get_online_user_avatars")
+def handle_get_online_user_avatars(sid: str, _data: object = None) -> dict[str, str]:
+    """Return avatar URLs to the requesting socket using its server-side room membership."""
+    with sio.app.app_context():
+        return collaboration_service.get_online_user_avatars(sid, avatar_service=application_services().accounts.avatar)
 
 
 @observe_workflow_event("disconnect", sio)

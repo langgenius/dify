@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import SimpleNamespace
 
 import pytest
@@ -18,6 +18,7 @@ from dify_agent.layers.user_prompt import layer as user_prompt_layer
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_trace_sdk.events import TraceEvent
 from flask import Flask
+from pydantic import ValidationError
 from pydantic_ai.messages import BinaryContent, ImageUrl
 
 from clients.agent_backend import (
@@ -35,13 +36,14 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelFeature
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
@@ -74,12 +76,12 @@ def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
 def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
     calls: list[tuple[object, str, str]] = []
 
-    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> ModelRuntimeProfile:
         calls.append((run_context, provider_name, model_name))
-        return 32_768
+        return ModelRuntimeProfile(32_768, ["vision", "audio", "video", "document"])
 
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        "core.app.llm.model_access.resolve_model_runtime_profile",
         resolve,
     )
     return calls
@@ -112,6 +114,7 @@ class TestBuildForAgentApp:
             "execution_context",
             "history",
             "llm",
+            "read_media",
         ]
         assert "workflow_node_job_prompt" not in names
         # Agent App keeps layers alive across turns by default.
@@ -234,6 +237,7 @@ def _ctx(
     session_snapshot: SessionSnapshot | None = None,
     files: tuple[File, ...] = (),
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+    capture_available_tools: bool = False,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = DifyRunContext(
         tenant_id="tenant-1",
@@ -257,6 +261,7 @@ def _ctx(
         session_snapshot=session_snapshot,
         files=files,
         image_detail_config=image_detail_config,
+        capture_available_tools=capture_available_tools,
     )
 
 
@@ -322,12 +327,21 @@ class TestAgentAppRuntimeRequestBuilder:
             DIFY_CONFIG_LAYER_ID,
             "history",
             "llm",
+            "read_media",
         ]
         # plugin_id / provider normalized for plugin-daemon transport.
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).context_window_tokens == 32_768
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).supported_modalities == [
+            "vision",
+            "audio",
+            "video",
+            "document",
+        ]
+        media = next(layer for layer in req.composition.layers if layer.name == "read_media")
+        assert media.config["shell"] == "shell"
         assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
@@ -338,14 +352,15 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).agent_mode == "agent_app"
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).trace_id == "trace-session-1"
         # LLM credentials are resolved by API and never enter the Agent request.
-        assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
+        redacted_llm = next(
+            layer for layer in result.redacted_request["composition"]["layers"] if layer["name"] == "llm"
+        )
+        assert "credentials" not in redacted_llm["config"]
         assert result.metadata["conversation_id"] == "conv-1"
 
-    def test_build_sends_images_directly_to_vision_model(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
-            lambda **_kwargs: True,
-        )
+    def test_build_sends_images_directly_to_vision_model(
+        self, monkeypatch: pytest.MonkeyPatch, model_context_window_calls: list[tuple[object, str, str]]
+    ):
         prompt_content_calls: list[tuple[File, ImagePromptMessageContent.DETAIL | None]] = []
 
         def to_prompt_message_content(
@@ -368,14 +383,14 @@ class TestAgentAppRuntimeRequestBuilder:
         )
         builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
 
-        result = builder.build(
-            _ctx(
-                _soul_with_model(),
-                query="Describe this image.",
-                files=(_image_file(),),
-                image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
-            )
+        context = _ctx(
+            _soul_with_model(),
+            query="Describe this image.",
+            files=(_image_file(),),
+            image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
         )
+        result = builder.build(context)
+        assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
         layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
         config = DifyUserPromptLayerConfig.model_validate(layer.config)
 
@@ -390,8 +405,8 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_keeps_image_locator_for_non_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
-            lambda **_kwargs: False,
+            "core.app.llm.model_access.resolve_model_runtime_profile",
+            lambda **_kwargs: ModelRuntimeProfile(32_768, []),
         )
         builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
 
@@ -417,8 +432,8 @@ class TestAgentAppRuntimeRequestBuilder:
     ) -> None:
         apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
-            lambda **_kwargs: vision,
+            "core.app.llm.model_access.resolve_model_runtime_profile",
+            lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"] if vision else []),
         )
         model_factory = RecordingModelFactory(schema=llm_schema(features=[ModelFeature.VISION] if vision else []))
         monkeypatch.setattr("services.agent.knowledge_runtime_config.DifyModelFactory", model_factory)
@@ -496,8 +511,8 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
-            lambda **_kwargs: True,
+            "core.app.llm.model_access.resolve_model_runtime_profile",
+            lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"]),
         )
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
@@ -522,8 +537,8 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_keeps_non_image_locator_when_vision_image_is_direct(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
-            lambda **_kwargs: True,
+            "core.app.llm.model_access.resolve_model_runtime_profile",
+            lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"]),
         )
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
@@ -644,11 +659,16 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=tools_builder,  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul, agent_config_version_kind="draft"))
+        result = builder.build(_ctx(soul, agent_config_version_kind="draft", capture_available_tools=True))
 
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
         assert DIFY_CORE_TOOLS_LAYER_ID not in names
+        plugin_tool = next(
+            tool for tool in result.available_tools if tool.tool_ref == "plugin:langgenius/time/time/current_time"
+        )
+        assert plugin_tool.name == "current_time"
+        assert plugin_tool.input_schema == {"type": "object", "properties": {}, "required": []}
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_snapshot(self):
         soul = _soul_with_model()
@@ -669,6 +689,7 @@ class TestAgentAppRuntimeRequestBuilder:
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
         assert DIFY_CORE_TOOLS_LAYER_ID not in names
+        assert result.available_tools == ()
 
     def test_build_includes_core_tools_layer_returned_by_injected_builder(self):
         soul = _soul_with_model()
@@ -683,11 +704,13 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_CoreLayerBuilder(),  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul))
+        result = builder.build(_ctx(soul, capture_available_tools=True))
 
         names = [layer.name for layer in result.request.composition.layers]
         assert DIFY_CORE_TOOLS_LAYER_ID in names
         assert DIFY_PLUGIN_TOOLS_LAYER_ID not in names
+        assert result.available_tools[0].tool_ref == "core:builtin/audio/transcribe"
+        assert result.available_tools[0].name == "transcribe"
 
     def test_build_normalizes_marketplace_model_plugin_id(self):
         soul = _soul_with_model()
@@ -703,6 +726,7 @@ class TestAgentAppRuntimeRequestBuilder:
         llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
         assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
+        assert result.available_tools == ()
 
     def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
         soul = _soul_with_model()
@@ -821,7 +845,7 @@ class TestAgentAppRuntimeRequestBuilder:
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
-        result = builder.build(_ctx(soul))
+        result = builder.build(_ctx(soul, capture_available_tools=True))
 
         dumped = result.request.model_dump(mode="json")
         shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID][
@@ -835,6 +859,69 @@ class TestAgentAppRuntimeRequestBuilder:
             "dify_tool_names": [],
             "cli_tool_count": 1,
         }
+        assert [tool.name for tool in result.available_tools] == [
+            "shell_run",
+            "shell_wait",
+            "shell_input",
+            "shell_interrupt",
+        ]
+
+    @pytest.mark.parametrize(
+        ("inputs", "expected_block"),
+        [
+            (
+                {"second": "中文\nnext", "first": 0, "flag": False, "empty": "", "null": None, "secret": "hidden"},
+                '- first: 0\n- second: "中文\\nnext"\n- flag: false',
+            ),
+            ({"second": ["a", 2], "first": {"key": "值"}}, '- first: {"key": "值"}\n- second: ["a", 2]'),
+            ({"empty": "", "null": None, "secret": "hidden"}, None),
+            ({}, None),
+            ({"first": "  "}, '- first: "  "'),
+        ],
+        ids=["mixed", "nested", "all-skipped", "empty", "whitespace"],
+    )
+    def test_build_injects_only_declared_nonempty_inputs_in_declaration_order(self, inputs, expected_block):
+        soul = _soul_with_model()
+        soul.app_variables = [
+            AppVariableConfig(name=name, type="text-input") for name in ("first", "second", "flag", "empty", "null")
+        ]
+        query = "  original\n用户消息  "
+        context = replace(_ctx(soul, query=query), inputs=inputs)
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(context)
+
+        layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_app_user_prompt")
+        expected = (
+            query
+            if expected_block is None
+            else (
+                "App inputs for this run:\n"
+                + expected_block
+                + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+                + query
+            )
+        )
+        assert DifyUserPromptLayerConfig.model_validate(layer.config).text == expected
+
+    @pytest.mark.parametrize("query", ["", "  \n\t"])
+    def test_build_rejects_blank_query_with_inputs(self, query):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul, query=query), inputs={"name": "value"})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(ValidationError, match="prompt must not be blank"):
+            builder.build(context)
+
+    def test_build_rejects_non_json_input(self):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul), inputs={"name": object()})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            builder.build(context)
 
 
 # ── Agent config layer declaration on the Agent App surface ──────────────────

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import ANY, PropertyMock, patch
 
@@ -23,7 +22,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
 )
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline, PipelineCustomizedTemplate
-from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
@@ -73,17 +71,6 @@ def _pipeline() -> Pipeline:
     return pipeline
 
 
-@pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        PipelineCustomizedTemplate.__table__.create(db.engine)
-        yield app
-
-
 class TestPipelineTemplateListApi:
     def test_get_uses_query_defaults_and_serializes_nullable_fields(self, app: Flask, sqlite_engine: Engine) -> None:
         api = PipelineTemplateListApi()
@@ -91,7 +78,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
@@ -121,7 +110,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
@@ -147,7 +138,7 @@ class TestPipelineTemplateDetailApi:
         service_calls: list[tuple[str, str, str]] = []
 
         def get_pipeline_template_detail(
-            template_id: str, current_tenant_id: str, type: str, *, session
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
         ) -> dict[str, object]:
             del session
             service_calls.append((template_id, current_tenant_id, type))
@@ -174,7 +165,9 @@ class TestPipelineTemplateDetailApi:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        def get_pipeline_template_detail(template_id: str, current_tenant_id: str, type: str, *, session) -> None:
+        def get_pipeline_template_detail(
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
+        ) -> None:
             del template_id, current_tenant_id, type, session
 
         with (
@@ -191,7 +184,7 @@ class TestPipelineTemplateDetailApi:
 
 
 class TestCustomizedPipelineTemplateApi:
-    def test_patch_validates_payload_and_returns_empty_204(self, app: Flask) -> None:
+    def test_patch_validates_payload_and_returns_empty_204(self, app: Flask, unbound_session: Session) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.patch)
         payload = _payload()
@@ -205,9 +198,9 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
-            del session
+            assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
@@ -216,7 +209,12 @@ class TestCustomizedPipelineTemplateApi:
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
             response, status = method(
-                api, CustomizedPipelineTemplatePayload.model_validate(payload), tenant_id, account, "template-1"
+                api,
+                CustomizedPipelineTemplatePayload.model_validate(payload),
+                unbound_session,
+                tenant_id,
+                account,
+                "template-1",
             )
 
         assert (response, status) == ("", 204)
@@ -234,7 +232,7 @@ class TestCustomizedPipelineTemplateApi:
             "icon_url": None,
         }
 
-    def test_patch_defaults_missing_icon_info_before_service_call(self, app: Flask) -> None:
+    def test_patch_defaults_missing_icon_info_before_service_call(self, app: Flask, unbound_session: Session) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.patch)
         payload: dict[str, object] = {
@@ -251,9 +249,9 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
-            del session
+            assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
 
         with (
@@ -262,7 +260,12 @@ class TestCustomizedPipelineTemplateApi:
             patch.object(module.RagPipelineService, "update_customized_pipeline_template", side_effect=update_template),
         ):
             response, status = method(
-                api, CustomizedPipelineTemplatePayload.model_validate(payload), tenant_id, account, "template-1"
+                api,
+                CustomizedPipelineTemplatePayload.model_validate(payload),
+                unbound_session,
+                tenant_id,
+                account,
+                "template-1",
             )
 
         assert (response, status) == ("", 204)
@@ -278,21 +281,21 @@ class TestCustomizedPipelineTemplateApi:
             "icon_url": None,
         }
 
-    def test_delete_returns_empty_204(self, app: Flask) -> None:
+    def test_delete_returns_empty_204(self, app: Flask, unbound_session: Session) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.delete)
         tenant_id = "tenant-1"
         deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
-            del session
+        def delete_template(template_id: str, current_tenant_id: str, *, session: Session) -> None:
+            assert session is unbound_session
             deleted_templates.append((template_id, current_tenant_id))
 
         with (
             app.test_request_context("/rag/pipeline/customized/templates/template-1", method="DELETE"),
             patch.object(module.RagPipelineService, "delete_customized_pipeline_template", side_effect=delete_template),
         ):
-            response, status = method(api, tenant_id, "template-1")
+            response, status = method(api, unbound_session, tenant_id, "template-1")
 
         assert (response, status) == ("", 204)
         assert deleted_templates == [("template-1", tenant_id)]
@@ -365,7 +368,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         [check] = rbac_checks(PublishCustomizedPipelineTemplateApi.post)
         assert check.scene == module.RBACPermission.DATASET_PIPELINE_RELEASE
 
-    def test_post_validates_payload_and_returns_empty_204(self) -> None:
+    def test_post_validates_payload_and_returns_empty_204(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         payload = _payload()
@@ -379,10 +382,12 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module.DatasetService, "check_dataset_permission") as legacy_acl,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
-            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
+            response, status = method(
+                api, CustomizedPipelineTemplatePayload.model_validate(payload), unbound_session, account, pipeline
+            )
 
         assert (response, status) == ("", 204)
-        publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
+        publish.assert_called_once_with(pipeline, dataset, payload, account, session=unbound_session)
         legacy_acl.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -399,6 +404,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         self,
         payload: dict[str, object],
         expected_icon_info: dict[str, object | None],
+        unbound_session: Session,
     ) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
@@ -411,13 +417,15 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module, "get_pipeline_dataset", return_value=dataset),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
-            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
+            response, status = method(
+                api, CustomizedPipelineTemplatePayload.model_validate(payload), unbound_session, account, pipeline
+            )
 
         assert (response, status) == ("", 204)
-        publish.assert_called_once_with(pipeline, dataset, ANY, account, session=ANY)
+        publish.assert_called_once_with(pipeline, dataset, ANY, account, session=unbound_session)
         assert publish.call_args.args[2]["icon_info"] == expected_icon_info
 
-    def test_post_translates_missing_owned_resource_to_not_found(self) -> None:
+    def test_post_translates_missing_owned_resource_to_not_found(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         payload = _payload()
@@ -432,9 +440,11 @@ class TestPublishCustomizedPipelineTemplateApi:
             ),
             pytest.raises(NotFound, match="Workflow not found"),
         ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(payload), _account(), _pipeline())
+            method(
+                api, CustomizedPipelineTemplatePayload.model_validate(payload), unbound_session, _account(), _pipeline()
+            )
 
-    def test_post_allows_legacy_dataset_operator_after_dataset_acl(self) -> None:
+    def test_post_allows_legacy_dataset_operator_after_dataset_acl(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         account = _account()
@@ -449,13 +459,15 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
-            response = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
+            response = method(
+                api, CustomizedPipelineTemplatePayload.model_validate(payload), unbound_session, account, pipeline
+            )
 
         assert response == ("", 204)
         assert check_permission.call_args.args[:2] == (dataset, account)
-        publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
+        publish.assert_called_once_with(pipeline, dataset, payload, account, session=unbound_session)
 
-    def test_post_rejects_legacy_non_editor_before_dataset_acl(self) -> None:
+    def test_post_rejects_legacy_non_editor_before_dataset_acl(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         account = _account()
@@ -468,12 +480,14 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(Forbidden),
         ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
+            method(
+                api, CustomizedPipelineTemplatePayload.model_validate(_payload()), unbound_session, account, _pipeline()
+            )
 
         check_permission.assert_not_called()
         publish.assert_not_called()
 
-    def test_post_rejects_legacy_dataset_acl_before_publish(self) -> None:
+    def test_post_rejects_legacy_dataset_acl_before_publish(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         account = _account()
@@ -490,11 +504,13 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(Forbidden, match="Dataset is private"),
         ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
+            method(
+                api, CustomizedPipelineTemplatePayload.model_validate(_payload()), unbound_session, account, _pipeline()
+            )
 
         publish.assert_not_called()
 
-    def test_post_rejects_missing_legacy_dataset_before_publish(self) -> None:
+    def test_post_rejects_missing_legacy_dataset_before_publish(self, unbound_session: Session) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         account = _account()
@@ -507,7 +523,9 @@ class TestPublishCustomizedPipelineTemplateApi:
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(NotFound, match="Dataset not found"),
         ):
-            method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
+            method(
+                api, CustomizedPipelineTemplatePayload.model_validate(_payload()), unbound_session, account, _pipeline()
+            )
 
         check_permission.assert_not_called()
         publish.assert_not_called()

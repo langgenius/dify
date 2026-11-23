@@ -44,12 +44,6 @@ server {
       include proxy.conf;
     }
 
-    location /explore {
-      set $web_upstream web:3000;
-      proxy_pass http://$web_upstream;
-      include proxy.conf;
-    }
-
     location /e/ {
       set $plugin_daemon_upstream plugin_daemon:5002;
       proxy_pass http://$plugin_daemon_upstream;

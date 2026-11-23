@@ -173,7 +173,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
           <div className="flex flex-wrap">
             {allTypes.map((t) => (
               <FieldItem key={t} className="contents">
-                <label className="mr-4 flex h-7 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
+                <label className="me-4 flex h-7 cursor-pointer items-center space-x-2 has-data-disabled:cursor-not-allowed">
                   <Radio value={t} />
                   <div className="text-[13px] leading-4.5 font-normal text-text-secondary">
                     {bodyTextMap[t]}

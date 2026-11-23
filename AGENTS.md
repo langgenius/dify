@@ -8,4 +8,5 @@ Before starting backend development, read the [architecture](docs/BACKEND_ARCHIT
 
 - Run backend commands through `uv run --project api <command>`.
 - Backend integration tests are CI-only and are not expected to run locally.
+- Prefer targeted checks (specific test files, changed paths) on local machines. Before running a whole-project heavy job, such as the full Web `unit` or `browser` Vitest project, `pnpm -C web build` (`next build`), `pnpm -C web build:vinext`, or the full backend test suite, either get the user's approval or cap its resource use, for example `--maxWorkers=2` for Vitest, `NODE_OPTIONS=--max-old-space-size=4096` for Node builds, and `nice -n 10` for the process.
 - Keep `docker/.env.example` limited to settings that require manual user configuration. Omit settings whose built-in defaults work unchanged. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.

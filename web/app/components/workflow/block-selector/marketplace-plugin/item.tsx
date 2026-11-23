@@ -1,5 +1,5 @@
 'use client'
-import type { Plugin } from '@/app/components/plugins/types.ts'
+import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -29,12 +29,12 @@ function Item({ marketplace, payload }: Props) {
   const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   return (
-    <div className="group/plugin flex rounded-lg py-1 pr-1 pl-3 select-none hover:bg-state-base-hover">
+    <div className="group/plugin flex rounded-lg py-1 ps-3 pe-1 select-none hover:bg-state-base-hover">
       <div
         className="relative h-6 w-6 shrink-0 rounded-md border-[0.5px] border-components-panel-border-subtle bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${payload.icon})` }}
       />
-      <div className="ml-2 flex w-0 grow">
+      <div className="ms-2 flex w-0 grow">
         <div className="w-0 grow">
           <div className="h-4 truncate system-sm-medium leading-4 text-text-primary">
             {getLocalizedText(payload.label)}

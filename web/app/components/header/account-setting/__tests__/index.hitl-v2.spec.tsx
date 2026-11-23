@@ -4,7 +4,6 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -61,15 +60,6 @@ vi.mock('@/features/contacts/im-platform/account-setting-page', () => ({
   ContactsImPlatformAccountSettingPage: () => <div data-testid="contacts-im-platform-page" />,
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
-  default: vi.fn(),
-}))
-
 vi.mock('next-themes', () => ({
   useTheme: vi.fn(() => ({
     theme: 'system',
@@ -110,6 +100,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   const query = withConsoleResponses(actual.consoleQuery, {
+    'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
     'workspaces.current.members.get': async () => ({ accounts: [] }),
   })
   return {
@@ -255,13 +246,13 @@ describe('AccountSetting', () => {
       </NuqsTestingAdapter>,
       {
         queryClient,
+        features: null,
         accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
         systemFeatures: {
           deployment_edition: deploymentEdition,
           webapp_auth: { enabled: true },
           branding: { enabled: false },
           enable_marketplace: true,
-          enable_collaboration_mode: false,
           rbac_enabled: rbacEnabled,
         },
       },
@@ -275,7 +266,6 @@ describe('AccountSetting', () => {
     mockConfig.getFeatures.mockImplementation(() => new Promise(() => {}))
     canReplaceLogo = true
     mockConsoleState.current = baseConsoleState
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
 
   describe('Rendering', () => {

@@ -17,6 +17,10 @@
       "types": "./src/use-ref-with-init.ts",
       "import": "./src/use-ref-with-init.ts"
     },
+    "./use-media-query": {
+      "types": "./src/use-media-query.ts",
+      "import": "./src/use-media-query.ts"
+    },
     "./use-render": {
       "types": "./src/use-render.ts",
       "import": "./src/use-render.ts"
@@ -250,7 +254,6 @@
     "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",

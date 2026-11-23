@@ -1,11 +1,14 @@
+from collections.abc import Callable
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.console.datasets import external as controller
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from machinery.context import RequestContext
@@ -21,8 +24,30 @@ CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 ID = UUID(int=1)
 
 
+def test_external_dataset_description_respects_configured_limit() -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    payload = {
+        "name": "Dataset",
+        "external_knowledge_api_id": "api",
+        "external_knowledge_id": "knowledge",
+        "description": description,
+    }
+    assert controller.ExternalDatasetCreatePayload.model_validate(payload).description == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        controller.ExternalDatasetCreatePayload.model_validate({**payload, "description": description + "识"})
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = controller.ExternalDatasetCreatePayload.model_json_schema()["properties"]["description"]
+    assert schema["anyOf"][0]["maxLength"] == limit
+
+
 @pytest.fixture
-def external(monkeypatch):
+def external(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = create_autospec(ExternalKnowledgeApplicationService, instance=True, spec_set=True)
     monkeypatch.setattr(
         controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(external=service))
@@ -30,8 +55,8 @@ def external(monkeypatch):
     return service
 
 
-def test_templates_preserve_pagination(external):
-    page = {"data": [], "total": 0, "has_more": False, "page": 1, "limit": 100}
+def test_templates_preserve_pagination(external: MagicMock) -> None:
+    page: dict[str, object] = {"data": list[object](), "total": 0, "has_more": False, "page": 1, "limit": 100}
     external.list_templates.return_value = page
     result = unwrap(controller.ExternalApiTemplateListApi.get)(
         controller.ExternalApiTemplateListApi(),
@@ -71,10 +96,16 @@ def test_templates_preserve_pagination(external):
         ),
     ],
 )
-def test_template_missing_is_mapped_and_context_forwarded(external, resource, verb, operation, payload):
+def test_template_missing_is_mapped_and_context_forwarded(
+    external: MagicMock,
+    resource: type[object],
+    verb: Callable[..., object],
+    operation: Callable[[MagicMock], MagicMock],
+    payload: bool,
+) -> None:
     method = operation(external)
     method.side_effect = ExternalTemplateNotFoundError("API template not found.")
-    args = (
+    args: list[object] = (
         [
             controller.ExternalKnowledgeApiPayload(
                 name="API", settings={"endpoint": "https://example", "api_key": "secret"}
@@ -93,7 +124,7 @@ def test_template_missing_is_mapped_and_context_forwarded(external, resource, ve
         assert method.call_args.kwargs["template_id"] == str(ID)
 
 
-def test_template_serializes_settings_and_timestamp(external):
+def test_template_serializes_settings_and_timestamp(external: MagicMock) -> None:
     external.get_template.return_value = {
         "id": str(ID),
         "name": "API",
@@ -102,14 +133,14 @@ def test_template_serializes_settings_and_timestamp(external):
         "description": "",
         "created_by": "actor-1",
         "created_at": "2024-01-01T00:00:00",
-        "dataset_bindings": [],
+        "dataset_bindings": list[str](),
     }
     result, status = unwrap(controller.ExternalApiTemplateApi.get)(controller.ExternalApiTemplateApi(), CONTEXT, ID)
     assert status == 200
     assert result == external.get_template.return_value
 
 
-def test_delete_and_usage_response_contracts(external):
+def test_delete_and_usage_response_contracts(external: MagicMock) -> None:
     assert unwrap(controller.ExternalApiTemplateApi.delete)(controller.ExternalApiTemplateApi(), CONTEXT, ID) == (
         "",
         204,
@@ -121,7 +152,7 @@ def test_delete_and_usage_response_contracts(external):
     )
 
 
-def test_external_dataset_duplicate_name_maps_to_409(external):
+def test_external_dataset_duplicate_name_maps_to_409(external: MagicMock) -> None:
     payload = controller.ExternalDatasetCreatePayload(
         name="Dataset", external_knowledge_api_id="api", external_knowledge_id="knowledge"
     )
@@ -139,7 +170,7 @@ def test_external_dataset_duplicate_name_maps_to_409(external):
         (ExternalHitTestingError("failed"), InternalServerError),
     ],
 )
-def test_retrieval_maps_application_errors(external, error, http_error):
+def test_retrieval_maps_application_errors(external: MagicMock, error: Exception, http_error: type[Exception]) -> None:
     external.hit_testing.side_effect = error
     with pytest.raises(http_error):
         unwrap(controller.ExternalKnowledgeHitTestingApi.post)(
@@ -153,7 +184,7 @@ def test_retrieval_maps_application_errors(external, error, http_error):
     )
 
 
-def test_retrieval_response_is_serialized(external):
+def test_retrieval_response_is_serialized(external: MagicMock) -> None:
     external.hit_testing.return_value = {
         "query": {"content": "query"},
         "records": [{"content": "answer", "title": "title", "score": 0.8, "metadata": {"source": "doc"}}],

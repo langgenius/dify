@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
@@ -5,11 +6,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ModerationChecked, TraceCorrelation, TraceEvent
+from flask import Flask
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
+from core.moderation.factory import get_app_moderation
 from core.moderation.input_moderation import InputModeration
+from enums import DeploymentEdition
+from extensions.application_services.app_moderation import AppModeration
+from extensions.ext_code_based_extension import code_based_extension
 from models.model import AppMode
+from tests.helpers.unit.core.model_moderation_fixtures import make_tenant_moderation_provider
 
 
 class _Recorder:
@@ -33,15 +40,27 @@ def _trace_scope(recorder: _Recorder) -> TraceScope:
 
 
 class TestInputModeration:
+    def test_policy_registration_is_validated_without_a_request_scope(self) -> None:
+        app = Flask(__name__)
+        assert get_app_moderation() is None
+        with app.app_context():
+            app.extensions["app_moderation"] = object()
+            with pytest.raises(TypeError, match="Invalid app moderation policy registration"):
+                get_app_moderation()
+            policy = AppModeration()
+            app.extensions["app_moderation"] = policy
+            assert get_app_moderation() is policy
+        assert get_app_moderation() is None
+
     @pytest.fixture
-    def app_config(self):
+    def app_config(self) -> AppConfig:
         return AppConfig(tenant_id="test_tenant_id", app_id="test_app_id", app_mode=AppMode.CHAT)
 
     @pytest.fixture
-    def input_moderation(self):
+    def input_moderation(self) -> InputModeration:
         return InputModeration()
 
-    def test_check_no_sensitive_word_avoidance(self, app_config, input_moderation):
+    def test_check_no_sensitive_word_avoidance(self, app_config: AppConfig, input_moderation: InputModeration) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -62,8 +81,40 @@ class TestInputModeration:
         assert final_inputs == inputs
         assert final_query == query
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_not_flagged(self, mock_factory_cls, app_config, input_moderation):
+    @pytest.mark.parametrize("platform_enabled", [False, True])
+    def test_standalone_app_openai_uses_deployment_gate_without_a_model_bundle(
+        self,
+        app_config: AppConfig,
+        input_moderation: InputModeration,
+        config_overrides: Callable[..., None],
+        monkeypatch: pytest.MonkeyPatch,
+        platform_enabled: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODERATION_ENABLED=platform_enabled)
+        code_based_extension.init()
+        provider, client = make_tenant_moderation_provider()
+        monkeypatch.setattr("core.model_manager.create_plugin_provider_manager", lambda **_: provider)
+        app_config.tenant_id = provider.bundle.configuration.tenant_id
+        app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="openai_moderation", config={"inputs_config": {"enabled": True, "preset_response": "Blocked"}}
+        )
+        with Flask(__name__).app_context():
+            result = input_moderation.check(
+                app_id=app_config.app_id,
+                tenant_id=app_config.tenant_id,
+                app_config=app_config,
+                inputs={},
+                query="query",
+                message_id="message",
+                trace_scope=None,
+            )
+        assert result == (False, {}, "query")
+        assert [call[5] for call in client.calls] == ([] if platform_enabled else ["query"])
+
+    @patch("core.moderation.input_moderation.evaluate_app_input")
+    def test_check_not_flagged(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -75,9 +126,8 @@ class TestInputModeration:
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
-        mock_factory = mock_factory_cls.return_value
         mock_result = ModerationInputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-        mock_factory.moderation_for_inputs.return_value = mock_result
+        mock_factory_cls.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
             app_id=app_id,
@@ -92,10 +142,7 @@ class TestInputModeration:
         assert flagged is False
         assert final_inputs == inputs
         assert final_query == query
-        mock_factory_cls.assert_called_once_with(
-            name="keywords", app_id=app_id, tenant_id=tenant_id, config={"keywords": ["bad"]}
-        )
-        mock_factory.moderation_for_inputs.assert_called_once_with(dict(inputs), query)
+        mock_factory_cls.assert_called_once_with(app_config, dict(inputs), query, platform_owned=False)
 
     def test_check_without_sensitive_word_avoidance_emits_nothing(
         self, app_config: AppConfig, input_moderation: InputModeration
@@ -114,14 +161,12 @@ class TestInputModeration:
 
         assert recorder.events == []
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
+    @patch("core.moderation.input_moderation.evaluate_app_input")
     def test_check_with_trace_scope_emits_moderation_checked(
         self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
     ) -> None:
         app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(type="keywords", config={})
-        mock_factory_cls.return_value.moderation_for_inputs.return_value = ModerationInputsResult(
-            flagged=False, action=ModerationAction.DIRECT_OUTPUT
-        )
+        mock_factory_cls.return_value = ModerationInputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
         recorder = _Recorder()
 
         input_moderation.check(
@@ -150,12 +195,12 @@ class TestInputModeration:
         assert payload.started_at.utcoffset() == timedelta(0)
         assert payload.ended_at >= payload.started_at
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
+    @patch("core.moderation.input_moderation.evaluate_app_input")
     def test_check_flagged_direct_output_emits_before_raising(
         self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
     ) -> None:
         app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(type="keywords", config={})
-        mock_factory_cls.return_value.moderation_for_inputs.return_value = ModerationInputsResult(
+        mock_factory_cls.return_value = ModerationInputsResult(
             flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked content"
         )
         recorder = _Recorder()
@@ -178,8 +223,10 @@ class TestInputModeration:
         assert payload.action == "direct_output"
         assert payload.preset_response == "Blocked content"
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_direct_output(self, mock_factory_cls, app_config, input_moderation):
+    @patch("core.moderation.input_moderation.evaluate_app_input")
+    def test_check_flagged_direct_output(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -191,11 +238,10 @@ class TestInputModeration:
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
-        mock_factory = mock_factory_cls.return_value
         mock_result = ModerationInputsResult(
             flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked content"
         )
-        mock_factory.moderation_for_inputs.return_value = mock_result
+        mock_factory_cls.return_value = mock_result
 
         with pytest.raises(ModerationError) as excinfo:
             input_moderation.check(
@@ -210,8 +256,10 @@ class TestInputModeration:
 
         assert str(excinfo.value) == "Blocked content"
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_overridden(self, mock_factory_cls, app_config, input_moderation):
+    @patch("core.moderation.input_moderation.evaluate_app_input")
+    def test_check_flagged_overridden(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -223,14 +271,13 @@ class TestInputModeration:
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
-        mock_factory = mock_factory_cls.return_value
         mock_result = ModerationInputsResult(
             flagged=True,
             action=ModerationAction.OVERRIDDEN,
             inputs={"input_key": "overridden_value"},
             query="overridden query",
         )
-        mock_factory.moderation_for_inputs.return_value = mock_result
+        mock_factory_cls.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
             app_id=app_id,
@@ -246,8 +293,10 @@ class TestInputModeration:
         assert final_inputs == {"input_key": "overridden_value"}
         assert final_query == "overridden query"
 
-    @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_other_action(self, mock_factory_cls, app_config, input_moderation):
+    @patch("core.moderation.input_moderation.evaluate_app_input")
+    def test_check_flagged_other_action(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -259,11 +308,10 @@ class TestInputModeration:
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
-        mock_factory = mock_factory_cls.return_value
         mock_result = MagicMock()
         mock_result.flagged = True
         mock_result.action = "NONE"  # Some other action
-        mock_factory.moderation_for_inputs.return_value = mock_result
+        mock_factory_cls.return_value = mock_result
 
         flagged, final_inputs, final_query = input_moderation.check(
             app_id=app_id,

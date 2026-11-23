@@ -7,20 +7,26 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
-from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import ConvertToWorkflowApi
+from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync, TriggerNodeLimitExceededError
+from controllers.console.app.workflow import (
+    ConvertToWorkflowApi,
+    EvaluationPublishedWorkflowApi,
+    WorkflowKindConvertApi,
+)
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from graphon.file import File, FileTransferMethod, FileType
@@ -39,6 +45,7 @@ from models.model import AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
+from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_app
@@ -160,10 +167,13 @@ class TestWorkflowCases:
     def test_publish_workflow_returns_success(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
         advisory: str,
     ) -> None:
         current_user = SimpleNamespace(id="account-1")
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
         graph = {
             "nodes": [
                 {"id": "start", "data": {"type": "start"}},
@@ -197,19 +207,11 @@ class TestWorkflowCases:
                 "format_variable_reference_errors",
                 Mock(side_effect=RuntimeError("format")),
             )
-        session = Mock()
-        session.get.return_value = app_model
         monkeypatch.setattr(
             workflow_module,
             "WorkflowService",
             Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
         )
-        monkeypatch.setattr(
-            workflow_module,
-            "sessionmaker",
-            lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
-        )
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
             response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                 workflow_module.PublishedWorkflowApi(),
@@ -219,7 +221,11 @@ class TestWorkflowCases:
             )
 
         assert response["result"] == "success"
-        assert app_model.workflow_id == workflow.id
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        assert persisted_app is not None
+        assert persisted_app.workflow_id == workflow.id
+        assert persisted_app.updated_by == current_user.id
         assert isinstance(response["created_at"], int)
         if advisory == "warning":
             assert "Consumer" in response["warning"]
@@ -227,6 +233,73 @@ class TestWorkflowCases:
             assert "skipped branch" in response["warning"]
         else:
             assert "warning" not in response
+
+    @staticmethod
+    def test_publish_workflow_rolls_back_on_service_failure(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+    ) -> None:
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+
+        def fail_after_update(*, session: Session, **_kwargs: object) -> None:
+            persisted_app = session.get(_workflow_App, app_model.id)
+            assert persisted_app is not None
+            persisted_app.name = "changed"
+            session.flush()
+            raise RuntimeError("publish failed")
+
+        service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
+        monkeypatch.setattr(service, "publish_workflow", fail_after_update)
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(RuntimeError, match="publish failed"):
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_model,
+                )
+
+        sqlite_session.expire_all()
+        persisted_app = sqlite_session.get(_workflow_App, app_model.id)
+        assert persisted_app is not None
+        assert persisted_app.name == "Workflow App"
+        assert persisted_app.workflow_id is None
+
+    @staticmethod
+    def test_publish_workflow_reports_the_trigger_node_limit(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+
+        class OverLimitWorkflowService:
+            def publish_workflow(self, **_kwargs: object) -> NoReturn:
+                raise TriggerNodeLimitExceededServiceError(count=3, limit=2)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", OverLimitWorkflowService)
+        current_user = _workflow_Account(name="Test", email="test@example.com")
+        current_user.id = "account-1"
+        with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+            with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+                    workflow_module.PublishedWorkflowApi(),
+                    workflow_module.PublishWorkflowPayload.model_validate({}),
+                    current_user,
+                    app_model,
+                )
+
+        assert exc_info.value.code == 403
+        assert exc_info.value.data == {
+            "code": "trigger_node_limit_exceeded",
+            "message": TriggerNodeLimitExceededError.description,
+            "status": 403,
+            "details": {"count": 3, "limit": 2},
+        }
 
     @staticmethod
     @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
@@ -1366,6 +1439,20 @@ class TestWorkflowConvertApiCases:
 
             assert response["new_app_id"] == "new-app-1"
             assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+@pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
+def test_evaluation_workflow_mutations_reject_community(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+) -> None:
+    monkeypatch.setattr("controllers.console.wraps.FeatureService.is_evaluation_supported", lambda: False)
+
+    with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+        resource_class().post()
+
+    assert exc_info.value.code == 404
 
 
 def _make_account() -> _workflow_human_input_debug_api_Account:

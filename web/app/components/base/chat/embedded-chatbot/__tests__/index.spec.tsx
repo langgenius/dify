@@ -2,9 +2,9 @@ import type { ReactElement, RefObject } from 'react'
 import type { ChatConfig } from '../../types'
 import type { Theme } from '../theme/theme'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { screen } from '@testing-library/react'
 import { vi } from 'vite-plus/test'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
@@ -21,13 +21,8 @@ vi.mock('../hooks', () => ({
   useEmbeddedChatbot: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: vi.fn(),
-  MediaType: {
-    mobile: 'mobile',
-    tablet: 'tablet',
-    pc: 'pc',
-  },
+vi.mock('@langgenius/dify-ui/use-media-query', () => ({
+  useMediaQuery: vi.fn(),
 }))
 
 vi.mock('../chat-wrapper', () => ({
@@ -121,7 +116,7 @@ describe('EmbeddedChatbot index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBrandingWorkspaceLogo = ''
-    vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+    vi.mocked(useMediaQuery).mockReturnValue(true)
     vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn())
   })
 
@@ -259,7 +254,7 @@ describe('EmbeddedChatbot index', () => {
     })
 
     it('should not show powered by section on desktop', () => {
-      vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+      vi.mocked(useMediaQuery).mockReturnValue(false)
       vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({ appData: null }))
 
       render(<EmbeddedChatbot />)

@@ -47,7 +47,7 @@ from graphon.enums import (
     WorkflowType,
 )
 from graphon.node_events import NodeRunResult
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from repositories.entities.workflow_execution import WorkflowExecution
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
@@ -304,8 +304,7 @@ class WorkflowPersistenceLayer(Layer):
         domain_execution.status = WorkflowNodeExecutionStatus.RETRY
         domain_execution.error = event.error
         self._append_retry_history(domain_execution, event)
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_repository.save_with_execution_data(domain_execution)
         _inspector_publish_node_changed(
             workflow_run_id=self._get_workflow_execution().id_,
             node_id=domain_execution.node_id,
@@ -422,8 +421,8 @@ class WorkflowPersistenceLayer(Layer):
             error=event.node_run_result.error or event.error,
             elapsed_time=max((finished_at - event.start_at).total_seconds(), 0.0),
             execution_metadata={key.value: value for key, value in event.node_run_result.metadata.items()},
-            created_at=int(event.start_at.timestamp()),
-            finished_at=int(finished_at.timestamp()),
+            created_at=to_utc_timestamp(event.start_at),
+            finished_at=to_utc_timestamp(finished_at),
         )
         history.append(attempt.model_dump(mode="json"))
         process_data[RETRY_HISTORY_PROCESS_DATA_KEY] = history
@@ -490,8 +489,7 @@ class WorkflowPersistenceLayer(Layer):
                 domain_execution.process_data,
             )
 
-        self._workflow_node_execution_repository.save(domain_execution)
-        self._workflow_node_execution_repository.save_execution_data(domain_execution)
+        self._workflow_node_execution_repository.save_with_execution_data(domain_execution)
 
     def persist_unfinished_nodes_synchronously(self) -> None:
         """Make paused participants durable before exposing a resumable pause."""

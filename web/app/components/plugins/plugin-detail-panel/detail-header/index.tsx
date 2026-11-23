@@ -19,6 +19,7 @@ import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
@@ -28,7 +29,7 @@ import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { isEarlierThanVersion } from '@/utils/semver'
@@ -86,7 +87,7 @@ const DetailHeader = ({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.timezone ?? undefined,
   })
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
   const marketplace = useMarketplace()
@@ -117,7 +118,7 @@ const DetailHeader = ({
     isFromMarketplace,
   } = useDetailHeaderState(detail)
 
-  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting } =
+  const { handleUpdate, handleUpdatedFromMarketplace, handleDelete, deleting, githubDialog } =
     usePluginOperations({
       detail,
       modalStates,
@@ -188,6 +189,7 @@ const DetailHeader = ({
         isReadmeView && 'border-b-0 bg-transparent p-0',
       )}
     >
+      <GitHubInstallDialog handle={githubDialog} onUpdated={handleUpdatedFromMarketplace} />
       <div className="flex">
         {/* Plugin Icon */}
         <div
@@ -200,13 +202,13 @@ const DetailHeader = ({
         </div>
 
         {/* Plugin Info */}
-        <div className="ml-3 w-0 grow">
+        <div className="ms-3 w-0 grow">
           {/* Title Row */}
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
             {verified && !isReadmeView && (
               <Verified
-                className="ml-0.5 size-4"
+                className="ms-0.5 size-4"
                 text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
               />
             )}
@@ -227,7 +229,7 @@ const DetailHeader = ({
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
                     >
                       {hasNewVersion && (
-                        <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                        <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                       )}
                       <span>{isFromGitHub ? (meta?.version ?? version) : version}</span>
                       {canChangeVersion && !loadingVersions && (
@@ -283,7 +285,7 @@ const DetailHeader = ({
                 <TooltipTrigger
                   render={
                     <div>
-                      <Badge className="mr-1 cursor-pointer px-1">
+                      <Badge className="me-1 cursor-pointer px-1">
                         <span
                           aria-hidden
                           className="i-custom-vender-system-auto-update-line size-3"

@@ -68,6 +68,7 @@ export function UpdateSettingDialog({ category }: Props) {
   return (
     <Dialog
       actionsRef={actionsRef}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && isSavePending && details.reason !== 'imperative-action') details.cancel()
       }}
@@ -85,7 +86,7 @@ export function UpdateSettingDialog({ category }: Props) {
           </Button>
         }
       />
-      <DialogContent className="max-w-[calc(100vw-32px)]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}

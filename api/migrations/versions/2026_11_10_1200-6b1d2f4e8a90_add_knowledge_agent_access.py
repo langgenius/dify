@@ -1,7 +1,7 @@
 """add knowledge-agent connections for personal agents over MCP
 
 Revision ID: 6b1d2f4e8a90
-Revises: 53c10126d551
+Revises: f8b6e2c4a901
 Create Date: 2026-11-10 12:00:00.000000
 
 Personal agents (Claude Code, Codex, any MCP client) read Agent Knowledge Bases as a member.
@@ -21,7 +21,7 @@ from alembic import op
 import models
 
 revision = "6b1d2f4e8a90"
-down_revision = "53c10126d551"
+down_revision = "f8b6e2c4a901"
 branch_labels = None
 depends_on = None
 

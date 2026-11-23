@@ -477,19 +477,6 @@ export const zFileTransferMethod = z.enum([
 export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
 
 /**
- * FileInput
- *
- * Resolved single-file input constraints.
- */
-export const zFileInput = z.object({
-  allowed_file_extensions: z.array(z.string()),
-  allowed_file_types: z.array(zFileType),
-  allowed_file_upload_methods: z.array(zFileTransferMethod),
-  output_variable_name: z.string(),
-  type: z.literal('file_input').optional().default('file_input'),
-})
-
-/**
  * FileInputConfig
  */
 export const zFileInputConfig = z.object({
@@ -498,20 +485,6 @@ export const zFileInputConfig = z.object({
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   output_variable_name: z.string(),
   type: z.literal('file').optional().default('file'),
-})
-
-/**
- * FileListInput
- *
- * Resolved multi-file input constraints and effective number limit.
- */
-export const zFileListInput = z.object({
-  allowed_file_extensions: z.array(z.string()),
-  allowed_file_types: z.array(zFileType),
-  allowed_file_upload_methods: z.array(zFileTransferMethod),
-  number_limits: z.int(),
-  output_variable_name: z.string(),
-  type: z.literal('file_list_input').optional().default('file_list_input'),
 })
 
 /**
@@ -625,6 +598,15 @@ export const zHumanInputAccessRateLimitExceededError = zErrorResponse.and(
     status: z.literal(429),
   }),
 )
+
+/**
+ * HumanInputActionResponse
+ */
+export const zHumanInputActionResponse = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
 
 /**
  * HumanInputChallengeExpiredError
@@ -899,16 +881,6 @@ export const zMalformedUploadTokenError = zErrorResponse.and(
 )
 
 /**
- * MarkdownFragment
- *
- * One source-ordered Markdown fragment in a resolved form.
- */
-export const zMarkdownFragment = z.object({
-  text: z.string(),
-  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
-})
-
-/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -1030,17 +1002,6 @@ export const zNotWorkflowAppError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
-
-/**
- * ParagraphInput
- *
- * Resolved multiline text input.
- */
-export const zParagraphInput = z.object({
-  default_value: z.string().nullable(),
-  output_variable_name: z.string(),
-  type: z.literal('paragraph_input').optional().default('paragraph_input'),
-})
 
 /**
  * PassportAccessTokenResponse
@@ -1234,6 +1195,76 @@ export const zRemoteFileUrlBlockedError = zErrorResponse.and(
 )
 
 /**
+ * ResolvedFileListResponse
+ */
+export const zResolvedFileListResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file_list_input'),
+})
+
+/**
+ * ResolvedFileResponse
+ */
+export const zResolvedFileResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file_input'),
+})
+
+/**
+ * ResolvedMarkdownResponse
+ */
+export const zResolvedMarkdownResponse = z.object({
+  text: z.string(),
+  type: z.literal('markdown_fragment'),
+})
+
+/**
+ * ResolvedParagraphResponse
+ */
+export const zResolvedParagraphResponse = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph_input'),
+})
+
+/**
+ * ResolvedSelectResponse
+ */
+export const zResolvedSelectResponse = z.object({
+  default_value: z.string().nullable(),
+  options: z.array(z.string()),
+  output_variable_name: z.string(),
+  type: z.literal('select_input'),
+})
+
+export const zResolvedPartResponse = z.discriminatedUnion('type', [
+  zResolvedMarkdownResponse,
+  zResolvedParagraphResponse,
+  zResolvedSelectResponse,
+  zResolvedFileResponse,
+  zResolvedFileListResponse,
+])
+
+/**
+ * ResolvedForm
+ *
+ * Keep the existing resolved-form wire shape without exposing storage metadata.
+ */
+export const zResolvedForm = z.object({
+  actions: z.array(zHumanInputActionResponse),
+  legacy_form_content: z.string(),
+  parts: z.array(zResolvedPartResponse),
+  title: z.string(),
+})
+
+/**
  * ResultResponse
  */
 export const zResultResponse = z.object({
@@ -1291,26 +1322,6 @@ export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
-
-/**
- * SelectInput
- *
- * Resolved single-choice input with immutable concrete options.
- */
-export const zSelectInput = z.object({
-  default_value: z.string().nullable(),
-  options: z.array(z.string()),
-  output_variable_name: z.string(),
-  type: z.literal('select_input').optional().default('select_input'),
-})
-
-export const zFormPart = z.discriminatedUnion('type', [
-  zMarkdownFragment,
-  zParagraphInput,
-  zSelectInput,
-  zFileInput,
-  zFileListInput,
-])
 
 export const zShallowJsonValue = z
   .union([
@@ -1842,29 +1853,6 @@ export const zUploadTokenRequiredError = zErrorResponse.and(
 )
 
 /**
- * UserAction
- *
- * Resolved action values required for presentation and submission validation.
- */
-export const zUserAction = z.object({
-  button_style: zButtonStyle,
-  id: z.string(),
-  title: z.string(),
-})
-
-/**
- * ResolvedForm
- *
- * Immutable authoritative presentation snapshot for one v2 form.
- */
-export const zResolvedForm = z.object({
-  actions: z.array(zUserAction),
-  legacy_form_content: z.string(),
-  parts: z.array(zFormPart),
-  title: z.string(),
-})
-
-/**
  * UserActionConfig
  *
  * User action configuration.
@@ -2019,7 +2007,6 @@ export const zSystemFeatureModel = z.object({
   deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
-  enable_collaboration_mode: z.boolean().default(true),
   enable_creators_platform: z.boolean().default(false),
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),

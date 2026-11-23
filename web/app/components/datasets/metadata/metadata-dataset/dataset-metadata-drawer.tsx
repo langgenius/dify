@@ -246,7 +246,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
@@ -335,31 +335,39 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         </DialogTitle>
                       </DialogHeader>
 
-                      <DialogBody>
-                        <Field label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}>
-                          <Input
-                            aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
-                            value={templeName}
-                            onValueChange={setTempleName}
-                            placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
-                              ns: 'dataset',
-                            })}
-                          />
-                        </Field>
-                      </DialogBody>
-                      <DialogFooter>
-                        <Button
-                          onClick={() => {
-                            setIsShowRenameModal(false)
-                            setTempleName(currPayload!.name)
-                          }}
-                        >
-                          {t(($) => $['operation.cancel'], { ns: 'common' })}
-                        </Button>
-                        <Button onClick={handleRenamed} variant="primary" disabled={!templeName}>
-                          {t(($) => $['operation.save'], { ns: 'common' })}
-                        </Button>
-                      </DialogFooter>
+                      <form
+                        className="contents"
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          handleRenamed()
+                        }}
+                      >
+                        <DialogBody>
+                          <Field label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}>
+                            <Input
+                              aria-label={t(($) => $[`${i18nPrefix}.name`], { ns: 'dataset' })}
+                              value={templeName}
+                              onValueChange={setTempleName}
+                              placeholder={t(($) => $[`${i18nPrefix}.namePlaceholder`], {
+                                ns: 'dataset',
+                              })}
+                            />
+                          </Field>
+                        </DialogBody>
+                        <DialogFooter>
+                          <Button
+                            onClick={() => {
+                              setIsShowRenameModal(false)
+                              setTempleName(currPayload!.name)
+                            }}
+                          >
+                            {t(($) => $['operation.cancel'], { ns: 'common' })}
+                          </Button>
+                          <Button type="submit" variant="primary" disabled={!templeName}>
+                            {t(($) => $['operation.save'], { ns: 'common' })}
+                          </Button>
+                        </DialogFooter>
+                      </form>
                     </DialogContent>
                   </Dialog>
                 )}

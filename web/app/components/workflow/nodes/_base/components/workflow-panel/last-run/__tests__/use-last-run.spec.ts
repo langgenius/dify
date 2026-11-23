@@ -79,7 +79,12 @@ describe('useLastRun', () => {
       () => ({
         ...useLastRun({
           id: 'iteration',
-          resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+          resource: {
+            kind: 'app',
+            collaborationEnabled: false,
+            appId: 'flow-id',
+            mode: 'workflow',
+          },
           data,
           defaultRunInputData: {},
           isPaused: false,
@@ -87,7 +92,7 @@ describe('useLastRun', () => {
         flow: useStoreApi(),
       }),
       {
-        resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+        resource: { kind: 'app', collaborationEnabled: false, appId: 'flow-id', mode: 'workflow' },
         nodes: [
           createNode({
             id: 'source',

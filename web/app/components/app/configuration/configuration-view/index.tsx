@@ -51,7 +51,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
   featuresData,
   isAgent,
   isAdvancedMode,
-  isMobile,
+  isBelowSm,
   isShowDebugPanel,
   isShowHistoryModal,
   isShowSelectDataSet,
@@ -116,7 +116,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
         <>
           <div className="flex h-full flex-col">
             <div className="relative flex h-50 grow pt-14">
-              <div className="absolute top-0 left-0 h-14 w-full">
+              <div className="absolute inset-s-0 top-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center gap-2">
                     <h1 className="system-xl-semibold text-text-primary">
@@ -156,9 +156,9 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
                       </>
                     )}
-                    {isMobile && (
+                    {isBelowSm && (
                       <Button
-                        className="mr-2 h-8! text-[13px]! font-medium"
+                        className="me-2 h-8! text-[13px]! font-medium"
                         onClick={onOpenDebugPanel}
                       >
                         <span>{t(($) => $['operation.debugConfig'], { ns: 'appDebug' })}</span>
@@ -174,12 +174,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               >
                 <Config />
               </div>
-              {!isMobile && (
+              {!isBelowSm && (
                 <div
                   className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
                   style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
                 >
-                  <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
+                  <div className="flex grow flex-col rounded-ss-2xl border-s-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
                       onSetting={onOpenAccountSettings}
                       inputs={contextValue.inputs}
@@ -238,7 +238,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             />
           )}
 
-          {isMobile && (
+          {isBelowSm && (
             <Drawer
               open={isShowDebugPanel}
               modal
@@ -251,7 +251,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 <DrawerBackdrop className="bg-black/30" />
                 <DrawerViewport>
                   <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
-                    <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                    <DrawerContent className="p-6">
                       <div className="mb-4 flex shrink-0 justify-end">
                         <DrawerClose
                           render={

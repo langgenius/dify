@@ -18,7 +18,7 @@ import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import MemberSelector from './member-selector'
+import { MemberSelector } from './member-selector'
 
 const STEP = {
   start: 'start',
@@ -27,7 +27,7 @@ const STEP = {
 }
 type Step = (typeof STEP)[keyof typeof STEP]
 
-const TransferOwnershipContent = () => {
+export const TransferOwnershipContent = () => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -292,4 +292,3 @@ const TransferOwnershipContent = () => {
     </>
   )
 }
-export default TransferOwnershipContent

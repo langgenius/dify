@@ -8,7 +8,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { noop, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  noop,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -17,7 +24,7 @@ import { consoleQuery } from '@/service/console'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
-import { tracingQueryParamName, tracingQueryParser } from './query-params'
+import { tracingSearchParams } from './query-params'
 import { usesAgentTracePipeline } from './resource'
 import { TracingIcon } from './tracing-icon'
 
@@ -30,7 +37,7 @@ type TracingConfigurationProps = {
 
 export function TracingConfiguration({ resource, readOnly }: TracingConfigurationProps) {
   const { t } = useTranslation(['app', 'common'])
-  const [destination, setDestination] = useQueryState(tracingQueryParamName, tracingQueryParser)
+  const [destination, setDestination] = useQueryState('tracing', tracingSearchParams.tracing)
   const statusQuery = useQuery(
     resource.kind === 'agent'
       ? consoleQuery.agent.byAgentId.trace.get.queryOptions({
@@ -89,7 +96,7 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
   const queryClient = useQueryClient()
   // The popup's selected provider card shows these; start the request once the user aims at the trigger.
-  const { data: agentTracingEnabled } = useQuery({
+  const { data: agentTracingEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })

@@ -3,7 +3,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +15,7 @@ import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
-import { tracingQueryParamName } from './query-params'
+import { serializeTracingSearchParams } from './query-params'
 
 function useAppTracingAccess(appId: string) {
   const { data: appDetail } = useQuery(
@@ -55,7 +55,7 @@ export function InheritedTracingSummary({
   const policy = statusQuery.data
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
-  const { data: agentTracingEnabled } = useQuery({
+  const { data: agentTracingEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (features) => features.agent_tracing_api_collection_enabled,
   })
@@ -97,7 +97,7 @@ export function InheritedTracingSummary({
             <InfotipContent className="max-w-72">
               <p>{t(($) => $['tracing.inherited.description'], { ns: 'app' })}</p>
               {/* The capture policy has no effect where Agent tracing is unavailable. */}
-              {enabled && agentTracingEnabled !== false && (
+              {enabled && agentTracingEnabled && (
                 <dl className="mt-2 space-y-0.5">
                   <div className="flex justify-between gap-3">
                     <dt>{t(($) => $['tracing.captureContent'], { ns: 'app' })}</dt>
@@ -132,7 +132,9 @@ export function InheritedTracingSummary({
           <span aria-hidden className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />
         ) : canMonitor && canConfigureTracing ? (
           <Link
-            href={`/app/${appId}/overview?${tracingQueryParamName}=configure`}
+            href={serializeTracingSearchParams(`/app/${appId}/overview`, {
+              tracing: 'configure',
+            })}
             target="_blank"
             rel="noopener noreferrer"
             aria-describedby={settingsHintId}
@@ -153,7 +155,7 @@ export function InheritedTracingSummary({
           </span>
         )}
       </div>
-      {agentTracingEnabled === false ? (
+      {!agentTracingEnabled ? (
         <p className="flex gap-1 system-xs-regular text-text-warning">
           <span aria-hidden className="mt-px i-ri-error-warning-line size-3.5 shrink-0" />
           {t(($) => $['tracing.agentTracingUnavailable'], { ns: 'app' })}

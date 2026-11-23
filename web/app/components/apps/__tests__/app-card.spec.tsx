@@ -270,6 +270,27 @@ describe('AppCard', () => {
     expect(screen.getByText('Test Author')).toBeInTheDocument()
   })
 
+  it('shows each online collaborator once, however many tabs they have open', () => {
+    const alice = { user_id: 'alice', username: 'Alice', sid: 'alice-1' }
+    render(
+      <AppCard
+        onDelete={onDelete}
+        app={mockApp}
+        onlineUsers={[
+          alice,
+          { ...alice, sid: 'alice-2' },
+          { user_id: 'bob', username: 'Bob', sid: 'bob-1' },
+          { user_id: 'carol', username: 'Carol', sid: 'carol-1' },
+          { user_id: 'dave', username: 'Dave', sid: 'dave-1' },
+        ]}
+      />,
+    )
+
+    expect(screen.getAllByRole('img', { name: 'Alice' })).toHaveLength(1)
+    expect(screen.getByRole('img', { name: 'Bob' })).toBeInTheDocument()
+    expect(screen.getByText('+2')).toBeInTheDocument()
+  })
+
   it('should star the app from the card action', async () => {
     const user = userEvent.setup()
     render(<AppCard onDelete={onDelete} app={mockApp} />)
@@ -630,7 +651,8 @@ describe('AppCard', () => {
 
   it('keeps the failed edit draft and retries without reopening the card dialog', async () => {
     const user = userEvent.setup()
-    api.update.mockRejectedValueOnce(new Error('Edit failed'))
+    const firstSave = createDeferred<Awaited<ReturnType<typeof api.update>>>()
+    api.update.mockReturnValueOnce(firstSave.promise)
     render(<AppCard onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.editApp')
     const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
@@ -644,6 +666,9 @@ describe('AppCard', () => {
     await user.clear(description)
     await user.type(description, 'Updated description')
     await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await act(async () => firstSave.reject(new Error('Edit failed')))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Edit failed')
     expect(name).toHaveValue('Updated App')
     expect(description).toHaveValue('Updated description')

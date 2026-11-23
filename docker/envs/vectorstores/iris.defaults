@@ -11,7 +11,7 @@ IRIS_TIMEZONE=${IRIS_TIMEZONE:-UTC}
 # IRIS_PASSWORD=Dify@1234
 # IRIS_DATABASE=USER
 # IRIS_SCHEMA=dify
-# IRIS_HOST=iris
+IRIS_HOST=${IRIS_HOST-iris}
 # Set IRIS_SUPER_SERVER_PORT in docker/.env; Compose needs it before loading service files.
 # Set IRIS_WEB_SERVER_PORT in docker/.env; Compose needs it before loading service files.
 # IRIS_USER=_SYSTEM

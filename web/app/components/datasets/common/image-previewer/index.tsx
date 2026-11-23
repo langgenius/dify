@@ -1,8 +1,9 @@
+import type { HotkeyRegistrationHandle } from '@tanstack/react-hotkeys'
 import { Dialog, DialogBackdrop, DialogPopup, DialogPortal } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { formatForDisplay, getHotkeyManager } from '@tanstack/react-hotkeys'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { formatFileSize } from '@/utils/format'
@@ -143,16 +144,40 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
     [fetchImage],
   )
 
-  useHotkey('ArrowLeft', prevImage, {
-    target: previewRef,
-    enabled: currentIndex > 0,
-    requireReset: true,
-  })
-  useHotkey('ArrowRight', nextImage, {
-    target: previewRef,
-    enabled: currentIndex < images.length - 1,
-    requireReset: true,
-  })
+  const previousHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const nextHotkeyRef = useRef<HotkeyRegistrationHandle | null>(null)
+  const handlePrevious = useEffectEvent(prevImage)
+  const handleNext = useEffectEvent(nextImage)
+
+  useEffect(() => {
+    const target = previewRef.current
+    if (!target) return
+    // React hotkeys run at document, beyond DialogPopup's arrow propagation boundary.
+    const manager = getHotkeyManager()
+    const previousHotkey = manager.register('ArrowLeft', () => handlePrevious(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    const nextHotkey = manager.register('ArrowRight', () => handleNext(), {
+      target,
+      enabled: false,
+      requireReset: true,
+    })
+    previousHotkeyRef.current = previousHotkey
+    nextHotkeyRef.current = nextHotkey
+    return () => {
+      previousHotkey.unregister()
+      nextHotkey.unregister()
+      previousHotkeyRef.current = null
+      nextHotkeyRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    previousHotkeyRef.current?.setOptions({ enabled: currentIndex > 0 })
+    nextHotkeyRef.current?.setOptions({ enabled: currentIndex < images.length - 1 })
+  }, [currentIndex, images.length])
 
   return (
     <>
@@ -162,7 +187,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
         aria-label={currentImage!.name.trim() || t(($) => $['common.preview'], { ns: 'workflow' })}
         className="image-previewer fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
       >
-        <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
+        <div className="absolute inset-e-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
           <IconButton
             variant="tertiary"
             size="xl"
@@ -211,7 +236,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
           size="xl"
           aria-label={t(($) => $['pagination.previous'], { ns: 'common' })}
           onClick={prevImage}
-          className="absolute top-1/2 left-8 z-10 -translate-y-1/2 rounded-full"
+          className="absolute inset-s-8 top-1/2 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === 0}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-5" />
@@ -221,7 +246,7 @@ function ImagePreviewerContent({ images, initialIndex = 0, onClose }: ImagePrevi
           size="xl"
           aria-label={t(($) => $['pagination.next'], { ns: 'common' })}
           onClick={nextImage}
-          className="absolute top-1/2 right-8 z-10 -translate-y-1/2 rounded-full"
+          className="absolute inset-e-8 top-1/2 z-10 -translate-y-1/2 rounded-full"
           disabled={currentIndex === images.length - 1}
         >
           <span aria-hidden className="i-ri-arrow-right-line size-5" />

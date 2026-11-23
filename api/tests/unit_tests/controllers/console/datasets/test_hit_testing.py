@@ -1,6 +1,7 @@
 import uuid
 from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -14,19 +15,19 @@ from models.dataset import Dataset
 
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     app = Flask("test_hit_testing")
     app.config["TESTING"] = True
     return app
 
 
 @pytest.fixture
-def dataset_id():
+def dataset_id() -> UUID:
     return uuid.uuid4()
 
 
 @pytest.fixture
-def dataset():
+def dataset() -> Dataset:
     return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
 
 
@@ -83,7 +84,7 @@ def hit_testing_record() -> dict[str, object]:
 
 
 @pytest.fixture(autouse=True)
-def bypass_decorators(mocker: MockerFixture):
+def bypass_decorators(mocker: MockerFixture) -> None:
     """Bypass all decorators on the API method."""
     mocker.patch(
         "controllers.console.datasets.hit_testing.setup_required",
@@ -104,7 +105,7 @@ def bypass_decorators(mocker: MockerFixture):
 
 
 class TestHitTestingApi:
-    def test_hit_testing_success(self, app: Flask, dataset, dataset_id, account: Account):
+    def test_hit_testing_success(self, app: Flask, dataset: Dataset, dataset_id: UUID, account: Account) -> None:
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -141,7 +142,9 @@ class TestHitTestingApi:
         assert "records" in result
         assert result["records"] == []
 
-    def test_hit_testing_success_with_optional_record_fields(self, app: Flask, dataset, dataset_id, account: Account):
+    def test_hit_testing_success_with_optional_record_fields(
+        self, app: Flask, dataset: Dataset, dataset_id: UUID, account: Account
+    ) -> None:
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -181,7 +184,7 @@ class TestHitTestingApi:
         assert result["records"][0]["files"] == []
         assert result["records"][0]["score"] is None
 
-    def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id, account: Account):
+    def test_hit_testing_dataset_not_found(self, app: Flask, dataset_id: UUID, account: Account) -> None:
         api = HitTestingApi()
         method = unwrap(api.post)
 
@@ -206,7 +209,7 @@ class TestHitTestingApi:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, MagicMock(), account, "tenant-1", dataset_id)
 
-    def test_hit_testing_invalid_args(self, app: Flask, dataset, dataset_id, account: Account):
+    def test_hit_testing_invalid_args(self, app: Flask, dataset: Dataset, dataset_id: UUID, account: Account) -> None:
         api = HitTestingApi()
         method = unwrap(api.post)
 
