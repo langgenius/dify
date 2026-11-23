@@ -22,7 +22,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
 )
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
-from core.hosting_configuration import HostingProvider, PaidHostingQuota, TrialHostingQuota
+from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
@@ -31,6 +31,7 @@ from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -104,7 +105,7 @@ def _build_trial_provider_record() -> Provider:
         tenant_id="tenant-id",
         provider_name="openai",
         provider_type=ProviderType.SYSTEM,
-        quota_type=ProviderQuotaType.TRIAL,
+        quota_type=ModelProviderQuotaType.TRIAL,
         quota_limit=100,
         quota_used=0,
         is_valid=True,
@@ -394,6 +395,93 @@ def test_to_system_configuration_offers_only_the_plan_credit_pool(
         for quota in configuration.quota_configurations
     ] == [(pool_type, pool_quota_used, pool_quota_limit, expected_valid)]
     get_pool.assert_called_once_with(tenant_id="tenant-id", pool_type=pool_type)
+
+
+def test_to_system_configuration_rejects_paid_only_hosting_for_sandbox() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    hosting = HostingProvider(enabled=True, credentials={"api_key": "system-secret"}, quotas=[PaidHostingQuota()])
+    legacy_record = _build_trial_provider_record()
+    legacy_record.quota_type = ModelProviderQuotaType.PAID
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: hosting},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            return_value=CreditPoolBalance("tenant-id", "trial", 100, 0),
+        ),
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [legacy_record])
+
+    assert not configuration.enabled
+    assert configuration.credentials is None
+    assert not configuration.quota_configurations
+
+
+@pytest.mark.parametrize(
+    ("has_record", "quota_used", "quota_limit", "expected", "error"),
+    [
+        (False, None, None, (0, 0, False), None),
+        (True, 2, 10, (2, 10, True), None),
+        (True, 10, 10, (10, 10, False), None),
+        (True, 10, -1, (10, -1, True), None),
+        (True, None, 10, None, "quota_used is None"),
+        (True, 2, None, None, "quota_limit is None"),
+    ],
+)
+def test_to_system_configuration_reads_free_quota_from_provider_record(
+    has_record: bool,
+    quota_used: int | None,
+    quota_limit: int | None,
+    expected: tuple[int, int, bool] | None,
+    error: str | None,
+) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    hosting = HostingProvider(enabled=True, quotas=[FreeHostingQuota()])
+    records = (
+        [
+            Provider(
+                tenant_id="tenant-id",
+                provider_name="openai",
+                provider_type=ProviderType.SYSTEM,
+                quota_type=ModelProviderQuotaType.FREE,
+                quota_limit=quota_limit,
+                quota_used=quota_used,
+            )
+        ]
+        if has_record
+        else []
+    )
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: hosting},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            return_value=CreditPoolBalance("tenant-id", "trial", 100, 40),
+        ),
+    ):
+        if error is not None:
+            with pytest.raises(ValueError, match=error):
+                manager._to_system_configuration("tenant-id", provider_entity, records)
+            return
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, records)
+
+    [quota] = configuration.quota_configurations
+    assert quota.quota_type == ProviderQuotaType.FREE
+    assert (quota.quota_used, quota.quota_limit, quota.is_valid) == expected
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
