@@ -3,6 +3,7 @@
 from collections.abc import Callable, Generator
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
@@ -15,13 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
-from core.entities.provider_entities import (
-    ModelSettings,
-    ProviderQuotaType,
-    QuotaConfiguration,
-    QuotaUnit,
-    SystemConfiguration,
-)
+from core.entities.provider_entities import ModelSettings, ProviderQuotaType, QuotaUnit
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -688,23 +683,22 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
-    configuration = model_instance.provider_model_bundle.configuration
-    configuration.tenant_id = request.caller.tenant_id
-    configuration.using_provider_type = ProviderType.SYSTEM
-    configuration.system_configuration = SystemConfiguration(
-        enabled=True,
-        current_quota_type=ProviderQuotaType.TRIAL,
-        quota_configurations=[
-            QuotaConfiguration(
-                quota_type=ProviderQuotaType.TRIAL,
-                quota_unit=QuotaUnit.CREDITS,
-                quota_limit=100,
-                quota_used=0,
-                is_valid=True,
-            )
-        ],
-    )
+    model_instance.provider_model_bundle.configuration.tenant_id = request.caller.tenant_id
     prepared = _prepare(service, request, model_instance)
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
     reservations_by_request: dict[str, str] = {}
     committed_reservations: set[str] = set()
     effective_charges = 0
@@ -726,6 +720,7 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
         yield _chunk("done", usage=_usage())
 
     with (
+        patch("core.app.llm.quota._get_provider_configuration", return_value=provider_configuration),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
         patch("services.credit_pool_service.CreditPoolService._use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve", side_effect=reserve),

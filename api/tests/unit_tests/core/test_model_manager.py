@@ -311,6 +311,10 @@ def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
 
     first_id, second_id = str(uuid4()), str(uuid4())
     with (
+        patch(
+            "core.app.llm.quota._get_provider_configuration",
+            return_value=configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM}),
+        ) as fresh_provider_lookup,
         patch.object(
             BillingService,
             "quota_reserve",
@@ -335,6 +339,7 @@ def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
         assert llm.credential_calls == [{"api_key": "custom"}, {"api_key": "hosted"}]
         release.assert_not_called()
 
+    fresh_provider_lookup.assert_not_called()
     assert [call.kwargs["amount"] for call in billing_reserve.call_args_list] == [2, 2]
     assert [call.kwargs["bucket"] for call in billing_reserve.call_args_list] == [quota_type.value] * 2
     assert [call.kwargs["request_id"] for call in billing_reserve.call_args_list] == [first_id, second_id]
@@ -350,6 +355,7 @@ def test_quota_only_model_does_not_replace_executor_on_reservation_denial(
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
 
     with (
+        patch("core.app.llm.quota._get_provider_configuration", return_value=bundle.configuration) as provider_lookup,
         patch.object(
             BillingService,
             "quota_reserve",
@@ -359,6 +365,7 @@ def test_quota_only_model_does_not_replace_executor_on_reservation_denial(
     ):
         instance.invoke_llm(prompt_messages=[], stream=False)
 
+    provider_lookup.assert_called_once_with(tenant_id=bundle.configuration.tenant_id, provider=decorated.provider)
     assert not llm.credential_calls
 
 

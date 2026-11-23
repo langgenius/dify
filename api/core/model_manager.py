@@ -640,13 +640,23 @@ class QuotaManagedModelInstance(ModelInstance):
         app_type: CreditUsageAppTypeInput = None,
         created_by: CreditUsageCreatedByInput = None,
     ) -> "ModelQuotaReservation":
-        """Reserve against the configuration that supplied this instance's hosted credentials."""
-        from core.app.llm.quota import reserve_model_quota_for_model
-
+        """Reserve this model's quota, using bound metadata for omitted accounting tags."""
         if app_type is None:
             app_type = self._get_reservation_app_type(self._request_metadata)
         if created_by is None:
             created_by = self._get_reservation_created_by(self._request_metadata)
+
+        return self._reserve_model_quota(request_id=request_id, app_type=app_type, created_by=created_by)
+
+    def _reserve_model_quota(
+        self,
+        *,
+        request_id: str | None,
+        app_type: CreditUsageAppTypeInput,
+        created_by: CreditUsageCreatedByInput,
+    ) -> "ModelQuotaReservation":
+        """Reserve using the current workspace provider configuration; propagate reservation errors."""
+        from core.app.llm.quota import reserve_model_quota_for_model
 
         return reserve_model_quota_for_model(
             tenant_id=self.provider_model_bundle.configuration.tenant_id,
@@ -656,7 +666,6 @@ class QuotaManagedModelInstance(ModelInstance):
             request_id=request_id,
             app_type=app_type,
             created_by=created_by,
-            provider_configuration=self.provider_model_bundle.configuration,
         )
 
     @staticmethod
@@ -920,6 +929,26 @@ class QuotaManagedModelInstance(ModelInstance):
 
 class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
     """Replace only an invocation that Cloud Billing declined before inference starts."""
+
+    @override
+    def _reserve_model_quota(
+        self,
+        *,
+        request_id: str | None,
+        app_type: CreditUsageAppTypeInput,
+        created_by: CreditUsageCreatedByInput,
+    ) -> "ModelQuotaReservation":
+        """Reserve against the already selected System route so it cannot drift from its credentials."""
+        from core.app.llm.quota import reserve_model_quota_for_configuration
+
+        return reserve_model_quota_for_configuration(
+            self.provider_model_bundle.configuration,
+            model_type=self.model_type_instance.model_type,
+            model=self.model_name,
+            request_id=request_id,
+            app_type=app_type,
+            created_by=created_by,
+        )
 
     @override
     def _prepare_invocation(self, request_metadata: Mapping[str, object] | None) -> _PreparedModelInvocation:
