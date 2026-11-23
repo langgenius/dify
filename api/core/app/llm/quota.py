@@ -198,7 +198,6 @@ def reserve_model_quota_for_model(
             credits_required=amount,
             pool_type="paid" if quota_type == ProviderQuotaType.PAID else "trial",
             request_id=request_id or str(uuid4()),
-            session_factory=db.session,
             meta=reservation_meta,
         )
     elif quota_type == ProviderQuotaType.FREE:
@@ -347,24 +346,14 @@ def _deduct_used_model_quota(
         metadata[CREDIT_USAGE_CREATED_BY_META_KEY] = normalize_credit_usage_created_by(created_by)
 
         match system_configuration.current_quota_type:
-            case ProviderQuotaType.TRIAL:
+            case quota_type if quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
                 from services.credit_pool_service import CreditPoolService
 
                 CreditPoolService.deduct_credits_capped(
                     tenant_id=tenant_id,
                     credits_required=used_quota,
+                    pool_type=quota_type,
                     metadata=metadata,
-                    session=db.session(),
-                )
-            case ProviderQuotaType.PAID:
-                from services.credit_pool_service import CreditPoolService
-
-                CreditPoolService.deduct_credits_capped(
-                    tenant_id=tenant_id,
-                    credits_required=used_quota,
-                    pool_type="paid",
-                    metadata=metadata,
-                    session=db.session(),
                 )
             case ProviderQuotaType.FREE:
                 _deduct_free_model_quota(

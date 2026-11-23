@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
@@ -7,7 +6,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
@@ -34,15 +33,13 @@ from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
-from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
-from models import TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
-from services.credit_pool_service import CreditPoolReservation, CreditPoolReservationState
+from services.credit_pool_service import FEATURE_KEY_CREDIT_POOL, CreditPoolReservation, CreditPoolReservationState
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -99,23 +96,6 @@ def _provider_manager(configuration: ProviderConfiguration | None) -> ProviderMa
 
 
 @contextmanager
-def _patched_credit_pool_session_factory(engine: Engine) -> Generator[None]:
-    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    sessions = []
-
-    def _session() -> Session:
-        session = session_maker()
-        sessions.append(session)
-        return session
-
-    with patch.object(db, "session", _session):
-        try:
-            yield
-        finally:
-            for session in sessions:
-                session.close()
-
-
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
@@ -189,7 +169,7 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         pool_type="trial",
         amount=9,
         request_id="11111111-1111-5111-8111-111111111111",
-        reservation_id=None,
+        reservation_id="22222222-2222-5222-8222-222222222222",
     )
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
@@ -213,6 +193,7 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch.object(type(dify_config), "get_model_credits", return_value=9),
         patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
     ):
         reservation = reserve_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -232,7 +213,6 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         credits_required=9,
         pool_type="trial",
         request_id="11111111-1111-5111-8111-111111111111",
-        session_factory=ANY,
         meta={
             "source": "llm.invoke",
             "provider": "openai",
@@ -240,6 +220,14 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             "app_type": CreditUsageAppType.CHATBOT,
             "created_by": CreditUsageCreatedBy.APP.value,
         },
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id="tenant-id",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="22222222-2222-5222-8222-222222222222",
+        actual_amount=9,
+        meta={"request_id": "11111111-1111-5111-8111-111111111111"},
     )
     assert credit_reservation.state == CreditPoolReservationState.COMMITTED
 
@@ -250,7 +238,7 @@ def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
         pool_type="trial",
         amount=1,
         request_id="11111111-1111-5111-8111-111111111111",
-        reservation_id=None,
+        reservation_id="22222222-2222-5222-8222-222222222222",
     )
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
@@ -287,7 +275,7 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
         pool_type="trial",
         amount=3,
         request_id="11111111-1111-5111-8111-111111111111",
-        reservation_id=None,
+        reservation_id="22222222-2222-5222-8222-222222222222",
     )
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
@@ -311,6 +299,7 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
         patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+        patch("services.billing_service.BillingService.quota_commit"),
     ):
         reservation = reserve_model_quota_for_model(
             tenant_id="tenant-id",
@@ -331,7 +320,6 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
         credits_required=3,
         pool_type="trial",
         request_id=ANY,
-        session_factory=ANY,
         meta={
             "source": "model.invoke",
             "provider": "openai",
@@ -470,6 +458,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
 
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
+        pool_type=ProviderQuotaType.TRIAL,
         credits_required=42,
         metadata={
             "provider": "openai",
@@ -478,13 +467,10 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
             "app_type": CreditUsageAppType.UNKNOWN,
             "created_by": "unknown",
         },
-        session=ANY,
     )
 
 
-def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining(
-    sqlite_engine: Engine, sqlite_session: Session
-) -> None:
+def test_deduct_llm_quota_for_model_delegates_capped_trial_deduction_to_billing() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
     provider_configuration = _provider_configuration(
@@ -504,20 +490,13 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
         ),
     )
     provider_manager = _provider_manager(provider_configuration)
-    engine = sqlite_engine
-    trial_pool = TenantCreditPool(
-        tenant_id="tenant-id",
-        pool_type=ModelProviderQuotaType.TRIAL,
-        quota_limit=10,
-        quota_used=9,
-    )
-    trial_pool.id = "trial-pool"
-    sqlite_session.add(trial_pool)
-    sqlite_session.commit()
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
-        _patched_credit_pool_session_factory(engine),
+        patch(
+            "services.credit_pool_service.CreditPoolService.deduct_credits_capped",
+            return_value=1,
+        ) as mock_deduct_credits,
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -526,10 +505,9 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
             usage=usage,
         )
 
-    with engine.connect() as connection:
-        quota_used = connection.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == "trial-pool"))
-
-    assert quota_used == 10
+    mock_deduct_credits.assert_called_once()
+    assert mock_deduct_credits.call_args.kwargs["credits_required"] == 3
+    assert mock_deduct_credits.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
 
 
 def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
@@ -602,6 +580,7 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     mock_get_model_credits.assert_called_once_with("gpt-4o")
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
+        pool_type=ProviderQuotaType.TRIAL,
         credits_required=9,
         metadata={
             "provider": "openai",
@@ -610,7 +589,6 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
             "app_type": CreditUsageAppType.UNKNOWN,
             "created_by": "unknown",
         },
-        session=ANY,
     )
 
 
@@ -647,6 +625,7 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
 
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
+        pool_type=ProviderQuotaType.TRIAL,
         credits_required=1,
         metadata={
             "provider": "openai",
@@ -655,7 +634,6 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
             "app_type": CreditUsageAppType.UNKNOWN,
             "created_by": "unknown",
         },
-        session=ANY,
     )
 
 
@@ -693,8 +671,8 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
 
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
+        pool_type=ProviderQuotaType.PAID,
         credits_required=5,
-        pool_type="paid",
         metadata={
             "provider": "openai",
             "model": "gpt-4o",
@@ -702,7 +680,6 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
             "app_type": CreditUsageAppType.UNKNOWN,
             "created_by": "unknown",
         },
-        session=ANY,
     )
 
 

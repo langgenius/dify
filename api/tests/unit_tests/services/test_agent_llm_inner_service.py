@@ -722,7 +722,6 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     with (
         patch("core.app.llm.quota._get_provider_configuration", return_value=provider_configuration),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
-        patch("services.credit_pool_service.CreditPoolService._use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve", side_effect=reserve),
         patch("services.billing_service.BillingService.quota_commit", side_effect=commit),
         patch.object(ModelInstance, "_invoke_llm", side_effect=provider_invoke),
