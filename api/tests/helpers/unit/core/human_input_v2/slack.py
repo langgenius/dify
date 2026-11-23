@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from collections import defaultdict, deque
 from collections.abc import Generator, Mapping
@@ -13,6 +14,7 @@ from typing import override
 from urllib.parse import parse_qs
 
 import pytest
+from slack_sdk.http_retry import RetryHandler
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
@@ -169,16 +171,17 @@ def make_slack_form(
 def make_slack_adapter(
     monkeypatch: pytest.MonkeyPatch, server: SlackApiServer
 ) -> tuple[SlackIMProviderAdapter, WebClient]:
-    client = WebClient(
-        token="xoxb-sanitized-placeholder",
-        base_url=server.base_url,
-        timeout=2,
-        retry_handlers=[],
-    )
+    clients: list[WebClient] = []
 
-    def _client_factory(**kwargs: object) -> WebClient:
-        del kwargs
+    def _client_factory(
+        *, token: str, retry_handlers: list[RetryHandler], logger: logging.Logger | None = None, timeout: int = 2
+    ) -> WebClient:
+        client = WebClient(
+            token=token, base_url=server.base_url, timeout=timeout, retry_handlers=retry_handlers, logger=logger
+        )
+        clients.append(client)
         return client
 
     monkeypatch.setattr(slack_adapter_module, "WebClient", _client_factory)
-    return SlackIMProviderAdapter(slack_credentials()), client
+    adapter = SlackIMProviderAdapter(slack_credentials())
+    return adapter, clients[0]

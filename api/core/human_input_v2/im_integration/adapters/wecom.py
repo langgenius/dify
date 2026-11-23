@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from email.headerregistry import Address
 from json import JSONDecodeError
@@ -9,11 +10,13 @@ from typing import Annotated, Literal, Protocol, override
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr, ValidationError, field_validator
+from requests import Response as RequestsResponse
 from requests.exceptions import Timeout as RequestsTimeout
 from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
 from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -40,6 +43,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMMessaging,
     IMWebhookHandler,
 )
+
+logger = logging.getLogger(__name__)
 
 _SDK_TIMEOUT_SECONDS = 5.0
 _ACCESS_TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
@@ -358,11 +363,16 @@ class _WeComMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Attempt one WeCom message after token setup and log safe send rejection metadata."""
+        failure = MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
         if subject is not None:
             body = f"{subject}\n\n{body}"
         try:
             access_token = self._token_provider.get()
             client = _new_client(self._credentials, access_token=access_token)
+        except Exception:
+            return failure
+        try:
             response = _MessageSendResponse.model_validate(
                 client.message.send_text(
                     int(self._credentials.agent_id),
@@ -374,9 +384,9 @@ class _WeComMessaging(IMMessaging):
                 _optional_non_blank(invalid_target) is not None
                 for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
             ):
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+                return failure
             if not response.msgid.strip():
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+                return failure
             return MessageAccepted(
                 MessageLocator(
                     _WeComLocatorPayload(
@@ -386,10 +396,21 @@ class _WeComMessaging(IMMessaging):
                     ).encode()
                 )
             )
+        except WeChatClientException as error:
+            upstream = error.response
+            code = error.errcode
+            log_send_rejection(
+                logger,
+                IMProvider.WE_COM,
+                "send_text",
+                provider_error_code=code if type(code) is int else None,
+                http_status=upstream.status_code if isinstance(upstream, RequestsResponse) else None,
+            )
+            return failure
         # One mutation attempt is the maximum; every SDK/transport/response
         # failure is normalized without replay or Provider material.
         except Exception:
-            return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+            return failure
 
 
 class WeComIMProviderAdapter:

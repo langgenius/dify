@@ -46,6 +46,7 @@ from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -99,6 +100,8 @@ from core.human_input_v2.resolved_form import (
 )
 
 logger = logging.getLogger(__name__)
+# The Web SDK can log raw response bodies, including on JSON decoding errors.
+_WEB_SDK_LOGGER = logging.Logger(f"{__name__}.web_sdk", level=logging.CRITICAL + 1)
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = None) -> None:
@@ -794,6 +797,19 @@ class _SlackDirectory(IMDirectory):
         return _SlackDirectoryPagination(next_cursor or None)
 
 
+def _log_send_rejection(error: SlackApiError, operation: str) -> None:
+    """Log a failed post with only its Slack error identifier and HTTP status."""
+    # SlackResponse.get raises on binary responses. The status is still usable.
+    code = _slack_error_code(error) if isinstance(error.response.data, Mapping) else None
+    log_send_rejection(
+        logger,
+        IMProvider.SLACK,
+        operation,
+        provider_error_code=code,
+        http_status=error.response.status_code,
+    )
+
+
 class _SlackMessaging(IMMessaging):
     def __init__(self, client: WebClient) -> None:
         self._client = client
@@ -802,6 +818,7 @@ class _SlackMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Post the rendered text once and log safe Slack rejection metadata."""
         try:
             if subject is None:
                 response = self._client.chat_postMessage(channel=str(provider_user_id), markdown_text=body)
@@ -816,7 +833,9 @@ class _SlackMessaging(IMMessaging):
                 response = self._client.chat_postMessage(
                     channel=str(provider_user_id), text=f"{subject}\n\n{body}", blocks=blocks
                 )
-        except SlackClientError:
+        except SlackClientError as error:
+            if isinstance(error, SlackApiError):
+                _log_send_rejection(error, "send_text")
             return MessageSendingError("Slack message acceptance could not be confirmed.")
         return _accepted_message(response)
 
@@ -846,6 +865,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
+        """Post one representable card and log safe Slack rejection metadata."""
         assessment = self._codec.assess(intent)
         if not assessment.representable:
             raise DynamicCardMessagingError(assessment.reason or "Slack cannot preserve this card.")
@@ -859,7 +879,9 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
                 channel=str(provider_user_id),
                 blocks=blocks,
             )
-        except SlackClientError:
+        except SlackClientError as error:
+            if isinstance(error, SlackApiError):
+                _log_send_rejection(error, "send_card")
             return MessageSendingError("Slack card acceptance could not be confirmed.")
         return _accepted_message(response)
 
@@ -1139,7 +1161,7 @@ class SlackIMProviderAdapter:
         if not isinstance(credentials, SlackCredentials):
             raise TypeError("Slack adapter requires resolved Slack credentials")
         self._credentials = credentials
-        self._client = WebClient(token=credentials.bot_token, retry_handlers=[])
+        self._client = WebClient(token=credentials.bot_token, retry_handlers=[], logger=_WEB_SDK_LOGGER)
         self._directory = _SlackDirectory(self._client)
         self._messaging = _SlackMessaging(self._client)
         self._dynamic_card_messaging = _SlackDynamicCardMessaging(self._client, _SlackCardCodec())

@@ -22,6 +22,7 @@ from alibabacloud_dingtalk.robot_1_0.models import (
 from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
+from Tea.exceptions import TeaException
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
@@ -440,6 +441,49 @@ def test_public_messaging_returns_one_safe_failure_without_replay(
     assert result == MessageSendingError("DingTalk message acceptance could not be confirmed.")
     assert len(provider.calls) == 1
     assert len(robot.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("response_code", "metadata", "logged_code", "http_status"),
+    [
+        ("invalidParameter.userIds", {"statusCode": 400}, "invalidParameter.userIds", 400),
+        ("None", {"statusCode": 403}, None, 403),
+        ("None", {"errcode": 60011, "statusCode": "private bad status"}, "60011", None),
+        ("Bearer private-response-token", {"statusCode": 429}, None, 429),
+    ],
+)
+def test_public_messaging_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    response_code: str,
+    metadata: dict[str, object],
+    logged_code: str | None,
+    http_status: int | None,
+) -> None:
+    rejection = TeaException(
+        {
+            "code": response_code,
+            "message": "private SDK exception text",
+            "data": {**metadata, "requestId": "private-request-id", "message": "private provider response"},
+        }
+    )
+    adapter, provider, robot, _http = _adapter(
+        monkeypatch,
+        direct=_OAuthSequence(),
+        provider=_OAuthSequence(_token_response("private-access-token")),
+        robot=_RobotSequence(rejection),
+    )
+
+    result = adapter.messaging.send_text(ProviderUserId("private-recipient"), "private request body")
+
+    assert result == MessageSendingError("DingTalk message acceptance could not be confirmed.")
+    assert len(provider.calls) == 1
+    assert len(robot.calls) == 1
+    assert "im_provider=ding_talk" in caplog.text
+    assert "operation=send_text" in caplog.text
+    assert f"provider_error_code={logged_code}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
 
 
 def test_public_messaging_does_not_mutate_when_token_acquisition_fails(

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol, override
 from urllib import error as urllib_error
@@ -37,6 +37,7 @@ from requests.exceptions import Timeout as RequestsTimeout
 from Tea.exceptions import TeaException
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
 from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import DingTalkCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -374,10 +375,15 @@ class _DingTalkMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Attempt one robot message after token setup and log safe send rejection metadata."""
+        failure = MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
         if subject is not None:
             body = f"{subject}\n\n{body}"
         try:
             access_token = self._token_provider.get()
+        except Exception:
+            return failure
+        try:
             response = self._client.batch_send_otowith_options(
                 BatchSendOTORequest(
                     msg_key="sampleText",
@@ -403,8 +409,24 @@ class _DingTalkMessaging(IMMessaging):
                     ).encode()
                 )
             )
+        except TeaException as error:
+            data = error.data
+            http_status = data.get("statusCode") if isinstance(data, Mapping) else None
+            code = error.code
+            # The gateway stringifies a missing code as "None".
+            if code in (None, "", "None"):
+                legacy_code = data.get("errcode") if isinstance(data, Mapping) else None
+                code = legacy_code if type(legacy_code) is int else None
+            log_send_rejection(
+                logger,
+                IMProvider.DING_TALK,
+                "send_text",
+                provider_error_code=code,
+                http_status=http_status,
+            )
+            return failure
         except Exception:
-            return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+            return failure
 
 
 class DingTalkIMProviderAdapter:

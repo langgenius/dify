@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 
 import pytest
+from requests import Response
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
@@ -188,6 +189,46 @@ def test_messaging_returns_one_safe_failure_without_replay(
     assert "fake raw provider detail" not in result.reason
     assert "fake transport detail" not in result.reason
     assert "fake-secret-001" not in result.reason
+
+
+@pytest.mark.parametrize(
+    ("errcode", "http_status", "logged_code"),
+    [
+        (40003, 200, 40003),
+        (48002, None, 48002),
+        (None, 403, None),
+        ("Bearer private-response-token", 429, None),
+    ],
+)
+def test_messaging_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    errcode: int | str | None,
+    http_status: int | None,
+    logged_code: int | None,
+) -> None:
+    response = None
+    if http_status is not None:
+        response = Response()
+        response.status_code = http_status
+        response._content = b"private provider response"
+    rejection = WeChatClientException(errcode, "private SDK exception text", response=response)
+    wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
+    token_client = _TokenClient(_token_response("private-access-token"))
+    messaging_client = _MessagingClient(rejection)
+    _install_clients(monkeypatch, token_client, messaging_client)
+    adapter = wecom_module.WeComIMProviderAdapter(_credentials())
+
+    result = adapter.messaging.send_text(ProviderUserId("private-recipient"), "private request body")
+
+    assert result == MessageSendingError("WeCom message acceptance could not be confirmed.")
+    assert token_client.fetch_calls == 1
+    assert len(messaging_client.message.calls) == 1
+    assert "im_provider=we_com" in caplog.text
+    assert "operation=send_text" in caplog.text
+    assert f"provider_error_code={logged_code}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
 
 
 def test_messaging_does_not_attempt_creation_when_token_acquisition_fails(

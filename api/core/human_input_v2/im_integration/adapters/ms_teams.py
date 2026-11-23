@@ -30,8 +30,10 @@ from botbuilder.schema import (
     ChannelAccount,
     ConversationParameters,
     ConversationResourceResponse,
+    ErrorResponse,
     ResourceResponse,
 )
+from botbuilder.schema import Error as BotFrameworkError
 from botframework.connector import ConnectorClient
 from botframework.connector.auth import (
     JwtTokenValidation,
@@ -40,10 +42,12 @@ from botframework.connector.auth import (
 )
 from msrest.exceptions import HttpOperationError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
+from requests import Response as RequestsResponse
 from requests.exceptions import Timeout as RequestsTimeout
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -618,6 +622,7 @@ class _MSTeamsMessaging(IMMessaging):
     def send_text(
         self, provider_user_id: ProviderUserId, body: str, subject: str | None = None
     ) -> MessageSendingResult:
+        """Send the rendered text once and log safe Connector rejection metadata."""
         if subject:
             # Keep subject content literal inside the Markdown heading.
             escaped_subject = "".join(
@@ -628,13 +633,19 @@ class _MSTeamsMessaging(IMMessaging):
         return self._send_activity(
             provider_user_id,
             Activity(type="message", text=body, text_format=_EXTENDED_MARKDOWN_TEXT_FORMAT),
+            operation="send_text",
         )
 
     def _send_activity(
         self,
         provider_user_id: ProviderUserId,
         activity: Activity,
+        *,
+        operation: str,
     ) -> MessageSendingResult:
+        """Send one activity to a resolved user and log safe Connector rejection metadata."""
+        failure = MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+        stage = "create_conversation"
         try:
             conversation_client = _mutation_connector(self._credentials, _PUBLIC_TEAMS_SERVICE_URL)
             conversation = conversation_client.conversations.create_conversation(
@@ -651,6 +662,7 @@ class _MSTeamsMessaging(IMMessaging):
             service_url = conversation.service_url or _PUBLIC_TEAMS_SERVICE_URL
             if not _non_empty_string(conversation_id) or not _trusted_teams_service_url(service_url):
                 return MessageSendingError("Microsoft Teams returned no usable personal conversation reference.")
+            stage = "send_to_conversation"
             message_client = _mutation_connector(self._credentials, service_url)
             response = message_client.conversations.send_to_conversation(conversation_id, activity)
             if not isinstance(response, ResourceResponse):
@@ -669,9 +681,21 @@ class _MSTeamsMessaging(IMMessaging):
                     ).encode()
                 )
             )
+        except HttpOperationError as error:
+            response = error.response
+            envelope = error.error
+            detail = envelope.error if isinstance(envelope, ErrorResponse) else None
+            log_send_rejection(
+                logger,
+                IMProvider.MS_TEAMS,
+                f"{operation}.{stage}",
+                provider_error_code=detail.code if isinstance(detail, BotFrameworkError) else None,
+                http_status=response.status_code if isinstance(response, RequestsResponse) else None,
+            )
+            return failure
         except Exception:
             _log_safe_error("Unexpected Microsoft Teams message creation failure")
-            return MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+            return failure
 
 
 class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
@@ -696,13 +720,14 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
+        """Send one representable card and log safe Connector rejection metadata."""
         content = self._codec.encode(intent, correlation_token)
         activity = Activity(
             type="message",
             summary=_card_summary(intent),
             attachments=[Attachment(content_type=self._codec._CONTENT_TYPE, content=dict(content))],
         )
-        return self._send_activity(provider_user_id, activity)
+        return self._send_activity(provider_user_id, activity, operation="send_card")
 
     @override
     def replace_with_static(

@@ -563,6 +563,51 @@ def test_real_connector_sends_h1_subject_and_body_with_extended_markdown(
     }
 
 
+@pytest.mark.parametrize("operation", ["send_text", "send_card"])
+@pytest.mark.parametrize(
+    ("stage", "response_code", "http_status", "logged_code"),
+    [
+        ("create", "BotNotInConversationRoster", 403, "BotNotInConversationRoster"),
+        ("send", "BadArgument", 400, "BadArgument"),
+        ("send", None, 429, None),
+        ("send", "Bearer private-response-token", 403, None),
+    ],
+)
+def test_real_connector_logs_safe_send_rejection_without_replay(
+    monkeypatch: pytest.MonkeyPatch,
+    connector_server: _ConnectorServer,
+    caplog: pytest.LogCaptureFixture,
+    operation: str,
+    stage: str,
+    response_code: str | None,
+    http_status: int,
+    logged_code: str | None,
+) -> None:
+    state = connector_server.state
+    error: dict[str, object] = {"message": "private provider response"}
+    if response_code is not None:
+        error["code"] = response_code
+    if stage == "send":
+        state.enqueue("create", 201, {"id": "private-conversation", "serviceUrl": _PUBLIC_SERVICE_URL})
+    state.enqueue(stage, http_status, {"error": error})
+    adapter, _, _ = _adapter(monkeypatch, connector_factory=_connector_factory(connector_server))
+    user = ProviderUserId("private-recipient")
+    if operation == "send_text":
+        result = adapter.messaging.send_text(user, "private request body")
+    else:
+        result = adapter.dynamic_card_messaging.send_card(user, _card_intent(), CorrelationToken("private-correlation"))
+
+    assert result == MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
+    assert len(state.requests_for("create")) == 1
+    assert len(state.requests_for("send")) == (1 if stage == "send" else 0)
+    provider_operation = "send_to_conversation" if stage == "send" else "create_conversation"
+    assert "im_provider=ms_teams" in caplog.text
+    assert f"operation={operation}.{provider_operation}" in caplog.text
+    assert f"provider_error_code={logged_code}" in caplog.text
+    assert f"http_status={http_status}" in caplog.text
+    assert "private" not in caplog.text
+
+
 def test_real_connector_disables_automatic_replay_for_ambiguous_send(
     monkeypatch: pytest.MonkeyPatch,
     connector_server: _ConnectorServer,
