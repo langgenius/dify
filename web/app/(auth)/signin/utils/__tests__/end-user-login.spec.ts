@@ -24,13 +24,14 @@ describe('personal portal sign-in context', () => {
     (basePath) => {
       config.basePath = basePath
       vi.stubGlobal('location', undefined)
-      const redirectUrl = `${basePath}/my-apps`
+      const redirectUrl = '/my-apps'
 
       expect(
         getEndUserLoginContext(
           new URLSearchParams({ is_end_user: '1', redirect_url: redirectUrl }),
+          'https://apps.example/web',
         ),
-      ).toEqual({ mode: 'end_user', redirect_url: redirectUrl })
+      ).toEqual({ mode: 'end_user', redirect_url: `${basePath}/my-apps` })
     },
   )
 
@@ -40,17 +41,117 @@ describe('personal portal sign-in context', () => {
     'javascript:alert(1)',
   ])('rejects an unsafe personal destination in the browser: %s', (redirectUrl) => {
     expect(
-      getEndUserLoginContext(new URLSearchParams({ is_end_user: '1', redirect_url: redirectUrl })),
+      getEndUserLoginContext(
+        new URLSearchParams({ is_end_user: '1', redirect_url: redirectUrl }),
+        'https://apps.example/web',
+      ),
     ).toBeNull()
   })
 
-  it('resolves the relative personal login response on the current browser origin', () => {
+  it.each(
+    ['', '/console'].flatMap((basePath) =>
+      ['https://apps.example/web', '/web', ''].map((webappUrl) => ({
+        basePath,
+        webappUrl,
+      })),
+    ),
+  )(
+    'maps the verified Console target from $basePath onto the Webapp prefix $webappUrl',
+    ({ basePath, webappUrl }) => {
+      config.basePath = basePath
+      const route = '/my-apps?search=hello%20world&tag=workflow#recent'
+      const redirectUrl = `${basePath}${route}`
+      const context = getEndUserLoginContext(
+        new URLSearchParams({ is_end_user: '1', redirect_url: route }),
+        webappUrl,
+      )
+
+      expect(getEndUserAccountRedirectUrl(redirectUrl, context, webappUrl)).toBe(
+        new URL(`${webappUrl}${route}`, location.origin).href,
+      )
+      expect(context?.redirect_url).toBe(redirectUrl)
+    },
+  )
+
+  it('retains the provider path, query and hash when returning to Connections', () => {
+    config.basePath = '/console'
+    const redirectUrl = '/console/connections/langgenius%2Fgithub%2Fgithub?view=linked#account'
     const context = getEndUserLoginContext(
-      new URLSearchParams({ is_end_user: '1', redirect_url: '/my-apps' }),
+      new URLSearchParams({
+        is_end_user: '1',
+        redirect_url: '/connections/langgenius%2Fgithub%2Fgithub?view=linked#account',
+      }),
+      'https://apps.example/web',
     )
 
-    expect(getEndUserAccountRedirectUrl('/my-apps', context)).toBe(
-      new URL('/my-apps', location.origin).href,
+    expect(getEndUserAccountRedirectUrl(redirectUrl, context, 'https://apps.example/web')).toBe(
+      'https://apps.example/web/connections/langgenius%2Fgithub%2Fgithub?view=linked#account',
     )
+  })
+
+  it.each([
+    'https://external.example/console/my-apps',
+    '//external.example/console/my-apps',
+    'javascript:alert(1)',
+    '/console-signin/my-apps',
+    '/console/signin',
+    '/console/connections',
+    '/console/my-apps?other=1',
+    '/console/my-apps#other',
+    '/console/connections/%2E%2E',
+  ])('rejects an unverified response before applying the Webapp prefix: %s', (response) => {
+    config.basePath = '/console'
+    const context = getEndUserLoginContext(
+      new URLSearchParams({ is_end_user: '1', redirect_url: '/my-apps' }),
+      'https://apps.example/web',
+    )
+
+    expect(getEndUserAccountRedirectUrl(response, context, 'https://apps.example/web')).toBeNull()
+  })
+  it.each(['chat', 'chatbot', 'completion', 'workflow'])(
+    'resolves a public %s App path against the independent Webapp prefix for the Account API',
+    (route) => {
+      config.basePath = '/console'
+      const path = `/${route}/my-app?input=hello%20world#turn-2`
+      const challenge = 'a'.repeat(43)
+      expect(
+        getEndUserLoginContext(
+          new URLSearchParams({
+            is_end_user: '1',
+            app_code: 'my-app',
+            code_challenge: challenge,
+            redirect_url: path,
+          }),
+          'https://apps.example/web',
+        ),
+      ).toEqual({
+        mode: 'end_user',
+        app_code: 'my-app',
+        code_challenge: challenge,
+        redirect_url: `https://apps.example/web${path}`,
+      })
+    },
+  )
+
+  it.each([
+    '/web/chat/my-app',
+    '/console/chat/my-app',
+    '/environment/chat/my-app',
+    '/chat/another-app',
+    '//evil.example/chat/my-app',
+    'https://apps.example/web/chat/my-app',
+  ])('rejects prefixed, mismatched or non-public App paths: %s', (redirectUrl) => {
+    config.basePath = '/console'
+    expect(
+      getEndUserLoginContext(
+        new URLSearchParams({
+          is_end_user: '1',
+          app_code: 'my-app',
+          code_challenge: 'a'.repeat(43),
+          redirect_url: redirectUrl,
+        }),
+        'https://apps.example/web',
+      ),
+    ).toBeNull()
   })
 })

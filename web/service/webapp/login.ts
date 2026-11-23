@@ -1,4 +1,4 @@
-import { parseWebAppAddress } from '../webapp-address'
+import { parseWebAppAddress, removeWebAppBasePath } from '../webapp-address'
 import {
   captureWebAppAuthSession,
   setWebAppPassport,
@@ -114,7 +114,11 @@ export function beginWebAppAccountLogin(
     )
     login.searchParams.set('is_end_user', '1')
     login.searchParams.set('app_code', target.address.code)
-    login.searchParams.set('redirect_url', target.url)
+    const returnUrl = new URL(target.url)
+    login.searchParams.set(
+      'redirect_url',
+      `${removeWebAppBasePath(returnUrl.pathname)}${returnUrl.search}${returnUrl.hash}`,
+    )
     login.searchParams.set('code_challenge', challenge)
     login.searchParams.set('code_challenge_method', 'S256')
     return login.href

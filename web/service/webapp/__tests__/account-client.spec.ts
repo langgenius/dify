@@ -230,7 +230,7 @@ describe('generated account Web App client', () => {
     expect(signin.searchParams.has('source')).toBe(false)
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expect(signin.searchParams.get('redirect_url')).toBe(
-      '/console/my-apps?view=starred&q=hello%20world#apps',
+      '/my-apps?view=starred&q=hello%20world#apps',
     )
     expect(signin.searchParams.has('app_code')).toBe(false)
     expect(signin.searchParams.has('code_challenge')).toBe(false)
@@ -260,7 +260,7 @@ describe('generated account Web App client', () => {
     const signin = new URL(replace.mock.calls[0]![0])
     expect(signin.origin).toBe('https://accounts.example')
     expect(signin.pathname).toBe('/portal/signin')
-    expect(signin.searchParams.get('redirect_url')).toBe('/portal/my-apps?view=starred#apps')
+    expect(signin.searchParams.get('redirect_url')).toBe('/my-apps?view=starred#apps')
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expectAccountRequest(...fetch.mock.calls[1]!, '/system-features', 'GET')
   })

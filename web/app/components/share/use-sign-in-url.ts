@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import { parseWebAppAddress } from '@/service/webapp-address'
+import { parseWebAppAddress, removeWebAppBasePath } from '@/service/webapp-address'
 import { basePath } from '@/utils/var'
 import { useWebAppEntry } from './webapp-entry'
 
@@ -28,10 +28,17 @@ export default function useSignInUrl() {
   const location = useSyncExternalStore(subscribeToLocation, getClientLocation, getServerLocation)
   const address = parseWebAppAddress(pathname)
   if (address?.kind === 'default') {
+    signInParams.set(
+      'redirect_url',
+      `${removeWebAppBasePath(fullPathname)}${query ? `?${query}` : ''}`,
+    )
     if (location) {
       const currentUrl = new URL(currentPath, location)
       currentUrl.hash = new URL(location).hash
-      signInParams.set('redirect_url', currentUrl.href)
+      signInParams.set(
+        'redirect_url',
+        `${removeWebAppBasePath(currentUrl.pathname)}${currentUrl.search}${currentUrl.hash}`,
+      )
     }
     signInParams.set('is_end_user', '1')
     const consoleWebUrl = entry && 'parameters' in entry ? entry.parameters.console_web_url : prefix

@@ -60,16 +60,19 @@ describe('Webapp Account PKCE transaction', () => {
     captureAppAccessScope()
   })
 
-  it('keeps the verifier on the Web origin and preserves the API signin prefix and complete App URL', async () => {
+  it('keeps the verifier and full return URL on the Web origin while sending an unprefixed sign-in target', async () => {
     const login = new URL(await beginWebAppAccountLogin(accountUrl, returnUrl))
     expect(login.origin).toBe('https://accounts.example')
     expect(login.pathname).toBe('/console/signin')
     expect(login.searchParams.get('source')).toBe('webapp')
     expect(login.searchParams.get('app_code')).toBe(`app-${sequence}`)
-    expect(login.searchParams.get('redirect_url')).toBe(returnUrl)
+    expect(login.searchParams.get('redirect_url')).toBe(
+      `/chat/app-${sequence}?query=hello%20world&literal=a%2Bb#conversation`,
+    )
     expect(login.searchParams.get('code_challenge_method')).toBe('S256')
     expect(login.searchParams.get('code_verifier')).toBeNull()
     const stored = JSON.parse(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)!)
+    expect(stored.redirectUrl).toBe(returnUrl)
     const digest = new Uint8Array(
       await crypto.subtle.digest('SHA-256', new TextEncoder().encode(stored.verifier)),
     )

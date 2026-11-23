@@ -1,5 +1,5 @@
 import { zGetLoginQuery } from '@dify/contracts/api/console/login/zod.gen'
-import { parseWebAppAddress } from '@/service/webapp-address'
+import { parseWebAppRoute } from '@/service/webapp-address'
 import { basePath } from '@/utils/var'
 
 type LoginSearchParams = Pick<URLSearchParams, 'get'>
@@ -10,26 +10,39 @@ export function isEndUserSignIn(searchParams: LoginSearchParams) {
 }
 
 /** Normalize the Webapp return URL at the Account login boundary. */
-export function getEndUserLoginContext(searchParams: LoginSearchParams) {
+export function getEndUserLoginContext(searchParams: LoginSearchParams, webappUrl: string) {
   if (!isEndUserSignIn(searchParams)) return null
   const redirectUrl = searchParams.get('redirect_url')
-  if (!redirectUrl) return null
+  if (
+    !redirectUrl?.startsWith('/') ||
+    redirectUrl.startsWith('//') ||
+    /[\u0000-\u0020\u007F\\]/.test(redirectUrl)
+  )
+    return null
 
   try {
     const url = new URL(redirectUrl, RELATIVE_REDIRECT_ORIGIN)
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
-    if (url.username || url.password) return null
-    const appCode = searchParams.get('app_code') || parseWebAppAddress(url.pathname)?.code
+    const address = parseWebAppRoute(url.pathname)
+    const appCode = searchParams.get('app_code') || address?.code
     const challenge = searchParams.get('code_challenge')
+    // Deployment prefixes belong at the API boundary, outside the public sign-in URL.
+    let apiRedirectUrl: string
     if (appCode || challenge) {
-      if (!appCode || !challenge) return null
-    } else if (!getPersonalPortalUrl(redirectUrl)) {
-      return null
+      if (!appCode || !challenge || address?.kind !== 'default' || address.code !== appCode)
+        return null
+      apiRedirectUrl = new URL(
+        `${webappUrl.replace(/\/$/, '')}${redirectUrl}`,
+        globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN,
+      ).href
+    } else {
+      const portal = getPersonalPortalUrl(redirectUrl, '')
+      if (!portal) return null
+      apiRedirectUrl = `${basePath.replace(/\/$/, '')}${portal.pathname}${portal.search}${portal.hash}`
     }
     const input = zGetLoginQuery.safeParse({
       mode: 'end_user',
       app_code: appCode ?? undefined,
-      redirect_url: redirectUrl,
+      redirect_url: apiRedirectUrl,
       code_challenge: challenge ?? undefined,
     })
     return input.success ? input.data : null
@@ -38,14 +51,13 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams) {
   }
 }
 
-function getPersonalPortalUrl(raw: string) {
+function getPersonalPortalUrl(raw: string, prefix = basePath.replace(/\/$/, '')) {
   if (/[\u0000-\u0020\u007F\\]/.test(raw) || raw.startsWith('//')) return null
   try {
     // Relative portal targets also need to validate during server rendering.
     const origin = globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN
     const url = new URL(raw, origin)
     if (url.origin !== origin || url.username || url.password) return null
-    const prefix = basePath.replace(/\/$/, '')
     if (!url.pathname.startsWith(`${prefix}/`)) return null
     const route = url.pathname.slice(prefix.length + 1)
     if (!/^(?:my-apps|connections(?:\/(?:[\w.~-]|%[0-9A-Fa-f]{2})+)?)$/.test(route)) return null
@@ -59,12 +71,19 @@ function getPersonalPortalUrl(raw: string) {
 export function getEndUserAccountRedirectUrl(
   raw: string | null | undefined,
   context: ReturnType<typeof getEndUserLoginContext>,
+  webappUrl: string,
 ) {
   if (!raw || !context?.redirect_url) return null
   if (context.app_code) return getAccountLoginCallbackUrl(raw, context.redirect_url)
   const target = getPersonalPortalUrl(raw)
   const expected = getPersonalPortalUrl(context.redirect_url)
-  return target && expected && target.href === expected.href ? target.href : null
+  if (!target || !expected || target.href !== expected.href) return null
+
+  const portalPath = target.pathname.slice(basePath.replace(/\/$/, '').length)
+  return new URL(
+    `${webappUrl.replace(/\/$/, '')}${portalPath}${target.search}${target.hash}`,
+    target.origin,
+  ).href
 }
 
 /** Preserve the End User return context across external login redirects. */

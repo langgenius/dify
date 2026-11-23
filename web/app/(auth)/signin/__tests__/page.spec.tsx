@@ -83,7 +83,7 @@ describe('SignIn', () => {
     navigationMocks.searchParams = new URLSearchParams({
       is_end_user: '1',
       app_code: 'current-app',
-      redirect_url: 'https://apps.example/web/chat/current-app?conversation=existing#turn-2',
+      redirect_url: '/chat/current-app?conversation=existing#turn-2',
       code_challenge: 'a'.repeat(43),
       code_challenge_method: 'S256',
       switch_account: '1',
@@ -93,6 +93,7 @@ describe('SignIn', () => {
       <StrictMode>
         <SignInPage />
       </StrictMode>,
+      { systemFeatures: { webapp_url: 'https://apps.example/web' } },
     )
 
     expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()

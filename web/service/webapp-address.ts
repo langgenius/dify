@@ -15,10 +15,14 @@ export type WebAppAddress =
 
 const normalizePath = (path: string) => (path.startsWith('/') ? path : `/${path}`)
 
-export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
+export const removeWebAppBasePath = (pathname: string) => {
   const prefix = basePath.replace(/\/$/, '')
   if (prefix && (pathname === prefix || pathname.startsWith(`${prefix}/`)))
-    pathname = pathname.slice(prefix.length) || '/'
+    return pathname.slice(prefix.length) || '/'
+  return pathname
+}
+
+export const parseWebAppRoute = (pathname: string): WebAppAddress | null => {
   const segments = pathname.split('/').filter(Boolean)
   if (segments[0] === 'environment') {
     const [, route, code, ...rest] = segments
@@ -39,6 +43,9 @@ export const parseWebAppAddress = (pathname: string): WebAppAddress | null => {
   if (WEB_APP_SIGNIN_SEGMENTS.has(code)) return null
   return { kind: 'default', code }
 }
+
+export const parseWebAppAddress = (pathname: string): WebAppAddress | null =>
+  parseWebAppRoute(removeWebAppBasePath(pathname))
 
 export const resolveWebAppAddress = (): WebAppAddress | null => {
   if (typeof globalThis.location === 'undefined') return null
