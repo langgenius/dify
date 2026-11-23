@@ -11,6 +11,7 @@ from unittest.mock import PropertyMock, patch
 import pytest
 from flask import Flask, Response
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.console import console_ns
 from controllers.console.workspace.skills import (
@@ -1494,6 +1495,27 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
 
     assert status == 400
     assert payload["code"] == "invalid_request"
+
+
+
+def test_agent_skill_bindings_rejects_json_null_without_clearing_bindings(
+    app: Flask, request_context: RequestContext) -> None:
+    api = WorkspaceAgentSkillBindingsApi()
+    method = unwrap(api.put)
+    service, replace_agent_bindings = _recording_service("replace_agent_bindings")
+
+    with (
+        app.test_request_context("/", method="PUT", data="null", content_type="application/json"),
+        patch("controllers.console.workspace.skills.SkillManagementService", return_value=service),
+    ):
+        with pytest.raises(UnprocessableEntity) as error:
+            method(api, request_context, "agent-1")
+
+    assert error.value.code == 422
+    assert replace_agent_bindings.calls == []
+
+
+
 
 
 def test_skill_import_documents_required_multipart_file() -> None:
