@@ -12,7 +12,7 @@ import {
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
@@ -119,8 +119,13 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
     if (backupDraft) workflowStore.setState({ backupDraft })
   }, [workflowStore, handleLoadBackupDraft])
 
+  // The draft is selected when the panel opens. Remember it for the session, since the list
+  // filters (named versions only, only yours) can leave it out of the list later.
+  const draftVersionRef = useRef<WorkflowVersionListItem | null>(null)
+
   const handleVersionClick = useCallback(
     (item: WorkflowVersionListItem) => {
+      if (item.version === WorkflowVersion.Draft) draftVersionRef.current = item
       if (item.id !== currentVersion?.id) {
         setCurrentVersion(item)
         if (item.version === WorkflowVersion.Draft) showBackupDraft()
@@ -325,10 +330,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         // A deleted version can no longer be previewed or restored: go back to the draft. Read the
         // selection now, since it can change while the delete request is in flight.
         if (workflowStore.getState().currentVersion?.id === id) {
-          const draft = versionHistory?.pages
-            .flatMap((page) => page.items)
-            .find((item) => item.version === WorkflowVersion.Draft)
-          workflowStore.setState({ currentVersion: draft ?? null })
+          workflowStore.setState({ currentVersion: draftVersionRef.current })
           showBackupDraft()
         }
         deleteAllInspectVars()
@@ -342,15 +344,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         setDeleteConfirmOpen(false)
       }
     },
-    [
-      deleteWorkflow,
-      t,
-      deleteAllInspectVars,
-      invalidAllLastRun,
-      versionHistory?.pages,
-      workflowStore,
-      showBackupDraft,
-    ],
+    [deleteWorkflow, t, deleteAllInspectVars, invalidAllLastRun, workflowStore, showBackupDraft],
   )
 
   const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })

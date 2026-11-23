@@ -83,23 +83,23 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const createVersionPage = (page: number) => ({
-  items:
-    page === 1
-      ? [
-          createVersionHistory({
-            id: 'draft-version-id',
-            version: WorkflowVersion.Draft,
-          }),
-          createVersionHistory({
-            id: 'published-version-id',
-            version: '2024-01-01T00:00:00Z',
-            marked_name: 'v1.0',
-            marked_comment: 'First release',
-            environments: mockPublishedEnvironments,
-          }),
-        ]
-      : [],
+const createVersionPage = (page: number, namedOnly = false) => ({
+  items: (page === 1
+    ? [
+        createVersionHistory({
+          id: 'draft-version-id',
+          version: WorkflowVersion.Draft,
+        }),
+        createVersionHistory({
+          id: 'published-version-id',
+          version: '2024-01-01T00:00:00Z',
+          marked_name: 'v1.0',
+          marked_comment: 'First release',
+          environments: mockPublishedEnvironments,
+        }),
+      ]
+    : []
+  ).filter((item) => !namedOnly || item.marked_name),
   page,
   limit: 10,
   has_more: page === 1 && mockHasNextPage,
@@ -147,8 +147,10 @@ const selectAction = async (name: RegExp) => {
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFetchVersions.mockImplementation(async (input: { query: { page: number } }) =>
-      createVersionPage(input.query.page),
+    // Like the API, the named-only list leaves out every version without a name, the draft included.
+    mockFetchVersions.mockImplementation(
+      async (input: { query: { page: number; named_only?: boolean } }) =>
+        createVersionPage(input.query.page, input.query.named_only),
     )
     mockDeleteWorkflow.mockResolvedValue(undefined)
     mockRestoreWorkflow.mockResolvedValue(createWorkflowResponseFixture())
@@ -338,6 +340,31 @@ describe('VersionHistoryPanel', () => {
       expect(renderedStore.getState().currentVersion?.id).toBe('draft-version-id'),
     )
     await waitFor(() => expect(screen.queryByText('v1.0')).not.toBeInTheDocument())
+  })
+
+  it('returns to the draft after deleting the previewed version while only named versions are shown', async () => {
+    const user = userEvent.setup()
+    const { VersionHistoryPanel } = await import('../index')
+    render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
+    await user.click(await screen.findByRole('button', { name: 'v1.0' }))
+    const filterTrigger = screen
+      .getAllByRole('button')
+      .find((button) => button.getAttribute('aria-haspopup') === 'dialog')
+    if (!filterTrigger) throw new Error('filter trigger not found')
+    await user.click(filterTrigger)
+    await user.click(await screen.findByRole('switch'))
+    await waitFor(() =>
+      expect(
+        screen.queryByText('workflowHistory.versionHistory.currentDraft'),
+      ).not.toBeInTheDocument(),
+    )
+
+    await selectAction(/operation\.delete/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() =>
+      expect(renderedStore.getState().currentVersion?.id).toBe('draft-version-id'),
+    )
   })
 
   it('keeps the draft backup for the whole history session and clears it on close', async () => {
