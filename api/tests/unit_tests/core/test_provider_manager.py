@@ -1707,5 +1707,3 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     assert [record.provider_name for record in result["openai"]] == ["openai"]
     assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]
     assert "other-provider" not in result
-
-
