@@ -111,26 +111,6 @@ it('enables verification only while the connection has edits and disables it aga
   expect(requests.save).not.toHaveBeenCalled()
 })
 
-it('shows a fixed verification failure title with the server conflict reason', async () => {
-  requests.verify.mockRejectedValueOnce(
-    new ORPCError('conflict', {
-      status: 409,
-      message: 'The connection changed; load its current configuration.',
-    }),
-  )
-  await setup()
-  await endpoint().fill('https://my-change.example.test/agent')
-  await verify().click()
-  await expect
-    .element(dialog().getByRole('alert'))
-    .toMatchTextContent('Could not verify the connection.')
-  await expect
-    .element(dialog().getByRole('alert'))
-    .toMatchTextContent('The connection changed; load its current configuration.')
-  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
-  expect(requests.save).not.toHaveBeenCalled()
-})
-
 it.each([
   [
     'an unpunctuated generic server reason',
@@ -518,29 +498,7 @@ it('uses the latest saved credential when keeping endpoint edits without replayi
   expect(requests.save).toHaveBeenCalledTimes(1)
 })
 
-it.each([
-  {
-    missing: 'a null saver name',
-    metadata: (savedAt: string) => ({
-      saved_by: { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: null },
-      saved_at: savedAt,
-    }),
-    description: 'Saved by — 5 minutes ago',
-  },
-  {
-    missing: 'legacy save metadata',
-    metadata: (_savedAt: string) => ({}),
-    description: 'Saved by — —',
-  },
-  {
-    missing: 'a valid save timestamp',
-    metadata: (_savedAt: string) => ({
-      saved_by: { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', name: 'Jamie Lee' },
-      saved_at: 'not-a-date',
-    }),
-    description: 'Saved by Jamie Lee —',
-  },
-])('uses independent save-metadata fallbacks with $missing', async ({ metadata, description }) => {
+it('identifies the latest saver by account ID when their name is unavailable', async () => {
   const now = freezeCurrentDate()
   requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
@@ -557,13 +515,16 @@ it.each([
       revision_id: '88888888-8888-4888-8888-888888888888',
       endpoint: 'https://latest.example.test/agent',
       verified_at: new Date(now - 120000).toISOString(),
-      ...metadata(new Date(now - 300000).toISOString()),
+      saved_by: { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', name: null },
+      saved_at: new Date(now - 300000).toISOString(),
     },
   })
   await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
   await dialog().getByRole('button', { name: 'Use latest configuration', exact: true }).click()
   await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
-  await expect.element(endpoint()).toHaveAccessibleDescription(description)
+  await expect
+    .element(endpoint())
+    .toHaveAccessibleDescription('Saved by eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee 5 minutes ago')
 })
 
 it('recovers an unknown connection Save with the original proof, revision and key after reopening', async () => {

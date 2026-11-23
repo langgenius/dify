@@ -38,18 +38,6 @@ export const zExternalAgentOperationResponse = z.object({
 })
 
 /**
- * ExternalAgentVerifyPayload
- */
-export const zExternalAgentVerifyPayload = z.object({
-  agent_id: z.uuid().nullish(),
-  auth_type: z.enum(['bearer', 'none']),
-  credential: z.string().max(8192).nullish(),
-  credential_action: z.enum(['keep', 'remove', 'replace']).optional().default('remove'),
-  endpoint: z.string().min(1).max(4096),
-  expected_connection_revision_id: z.uuid().nullish(),
-})
-
-/**
  * ExternalAgentConnectionPayload
  */
 export const zExternalAgentConnectionPayload = z.object({
@@ -102,14 +90,6 @@ export const zExternalAgentListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
-})
-
-/**
- * ExternalAgentDetailResponse
- */
-export const zExternalAgentDetailResponse = z.object({
-  asset: zExternalAgentAssetResponse,
-  connection: z.record(z.string(), z.unknown()),
 })
 
 /**
@@ -208,6 +188,28 @@ export const zExternalAgentCapabilitiesResponse = z.object({
   limits: z.record(z.string(), z.unknown()),
   protocol: z.string(),
   transport: z.string(),
+})
+
+/**
+ * ExternalAuthType
+ */
+export const zExternalAuthType = z.enum(['bearer', 'none'])
+
+/**
+ * ExternalCredentialAction
+ */
+export const zExternalCredentialAction = z.enum(['keep', 'remove', 'replace'])
+
+/**
+ * ExternalAgentVerifyPayload
+ */
+export const zExternalAgentVerifyPayload = z.object({
+  agent_id: z.uuid().nullish(),
+  auth_type: zExternalAuthType,
+  credential: z.string().max(8192).nullish(),
+  credential_action: zExternalCredentialAction.optional().default('remove'),
+  endpoint: z.string().min(1).max(4096),
+  expected_connection_revision_id: z.uuid().nullish(),
 })
 
 /**
@@ -320,6 +322,9 @@ export const zExternalTracingProviderOverviewResponse = z.object({
   providers: z.array(zExternalTracingProviderStateResponse),
 })
 
+/**
+ * VerificationFailureReason
+ */
 export const zVerificationFailureReason = z.enum([
   'authentication_failed',
   'connection_failed',
@@ -347,6 +352,40 @@ export const zVerificationFailedError = zErrorResponse.and(
   }),
 )
 
+/**
+ * ExternalConnectionSaverResponse
+ */
+export const zExternalConnectionSaverResponse = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+})
+
+/**
+ * ExternalAgentConnectionResponse
+ */
+export const zExternalAgentConnectionResponse = z.object({
+  auth_check: z.string(),
+  auth_type: z.string(),
+  capabilities: z.record(z.string(), z.unknown()),
+  card: z.record(z.string(), z.unknown()),
+  endpoint: z.string(),
+  has_credential: z.boolean(),
+  interface_url: z.string(),
+  profile: z.string(),
+  revision_id: z.string(),
+  saved_at: z.iso.datetime(),
+  saved_by: zExternalConnectionSaverResponse,
+  verified_at: z.iso.datetime(),
+})
+
+/**
+ * ExternalAgentDetailResponse
+ */
+export const zExternalAgentDetailResponse = z.object({
+  asset: zExternalAgentAssetResponse,
+  connection: zExternalAgentConnectionResponse,
+})
+
 export const zExternalAgentJsonValue = z
   .union([
     z.boolean(),
@@ -362,6 +401,20 @@ export const zExternalAgentJsonValue = z
   .nullable()
 
 /**
+ * ExternalOutputType
+ *
+ * Frozen public output types deliberately exclude the internal integer alias.
+ */
+export const zExternalOutputType = z.enum([
+  'array',
+  'boolean',
+  'file',
+  'number',
+  'object',
+  'string',
+])
+
+/**
  * ExternalTestOutputField
  *
  * Public six-type profile; internal JSON-schema aliases are not wire types.
@@ -374,7 +427,7 @@ export const zExternalTestOutputField = z.object({
   default: zExternalAgentJsonValue.optional(),
   has_default: z.boolean().optional().default(false),
   item: z.lazy((): any => zExternalTestOutputField).nullish(),
-  kind: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
+  kind: zExternalOutputType,
   name: z.string().min(1).max(255),
   required: z.boolean().optional().default(true),
 })
