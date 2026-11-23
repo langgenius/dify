@@ -4,6 +4,7 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -34,13 +35,9 @@ export function ExternalAgentOverviewPage({ agentId }: { agentId: string }) {
   useDocumentTitle(detail.data?.asset.name ?? t(($) => $['external.overview.title']))
   if (missing) return null
   if (!canRead || detail.isPending || detail.isError) {
-    return (
-      <ExternalAgentRequestState
-        pending={workspaceLoading || (canRead && detail.isPending)}
-        forbidden={!workspaceLoading && !canRead}
-        error={detail.error}
-      />
-    )
+    if (workspaceLoading || (canRead && detail.isPending))
+      return <LoadingPlaceholder className="flex-1" />
+    return <ExternalAgentRequestState forbidden={!canRead} error={detail.error} />
   }
   const overview = toExternalAgentOverview(detail.data)
 

@@ -48,6 +48,25 @@ const dialog = () => page.getByRole('dialog', { name: 'Edit connection', exact: 
 const endpoint = () => dialog().getByRole('textbox', { name: 'A2A endpoint', exact: true })
 const token = () => dialog().getByLabelText('Token', { exact: true })
 const verify = () => dialog().getByRole('button', { name: 'Verify connection', exact: true })
+const comparison = () => dialog().getByRole('table')
+
+async function expectComparisonRow(
+  label: string,
+  yours: string | Record<string, unknown>,
+  latest: string | Record<string, unknown>,
+) {
+  const row = comparison()
+    .getByRole('row')
+    .filter({
+      has: page.getByRole('rowheader', { name: label, exact: true }),
+    })
+  for (const [index, expected] of [yours, latest].entries()) {
+    const cell = row.getByRole('cell').nth(index)
+    await expect.element(cell).toBeVisible()
+    if (typeof expected === 'string') await expect.element(cell).toHaveTextContent(expected)
+    else expect(JSON.parse(cell.element().textContent ?? '')).toEqual(expected)
+  }
+}
 
 async function setup() {
   const i18n = createInstance()
@@ -95,7 +114,11 @@ beforeEach(({ onTestFinished }) => {
 const revision2 = '88888888-8888-4888-8888-888888888888'
 const revision3 = '77777777-7777-4777-8777-777777777777'
 
-function advanceConnection(revision = revision2, name: string | null = 'Jamie Lee') {
+function advanceConnection(
+  revision = revision2,
+  name: string | null = 'Jamie Lee',
+  overrides: Partial<ExternalAgentDetailResponse['connection']> = {},
+) {
   current = createExternalAgentDetail({
     connection: {
       ...current.connection,
@@ -106,9 +129,271 @@ function advanceConnection(revision = revision2, name: string | null = 'Jamie Le
       saved_at: '2026-11-20T10:18:00Z',
       saved_by: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name },
       verified_at: '2026-11-20T09:00:00Z',
+      ...overrides,
     },
   })
 }
+
+it('shows only changed public properties and omits equal endpoint, authentication and credential values', async () => {
+  const originalCard = {
+    name: 'Original public agent',
+    description: 'Original service details.',
+    provider: { organization: 'Original provider' },
+    version: '1.0.0',
+    documentationUrl: 'https://original.example.test/docs',
+    skills: [{ id: 'review', name: 'Contract review', description: 'Review contracts.' }],
+    defaultInputModes: ['text/plain'],
+    defaultOutputModes: ['application/json'],
+    supportedInterfaces: [{ protocolVersion: '1.0', transport: 'HTTP+JSON' }],
+    capabilities: { streaming: false },
+    iconUrl: 'https://original.example.test/icon.png',
+  }
+  const latestCard = {
+    ...originalCard,
+    name: 'Latest public agent',
+    provider: { organization: 'Latest provider' },
+    version: '2.0.0',
+    skills: [{ id: 'rewrite', name: 'Clause rewrite', description: 'Rewrite risky clauses.' }],
+  }
+  current = createExternalAgentDetail({
+    connection: {
+      ...current.connection,
+      card: { ...originalCard, private_extension: { secret: 'original-private-card-value' } },
+    },
+  })
+  requests.verify.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await token().fill('same-settings-replacement-secret')
+  advanceConnection(revision2, 'Jamie Lee', {
+    endpoint: current.connection.endpoint,
+    auth_type: 'bearer',
+    has_credential: true,
+    interface_url: 'https://latest.example.test/interface',
+    profile: 'a2a_v2',
+    auth_check: 'passed_for_read_endpoint',
+    card: { ...latestCard, private_extension: { secret: 'latest-private-card-value' } },
+    capabilities: { streaming: true, traceability_supported: false },
+  })
+  await verify().click()
+  await expectComparisonRow(
+    'Interface URL',
+    'https://agents.example.test/contract',
+    'https://latest.example.test/interface',
+  )
+  await expectComparisonRow('Protocol profile', 'a2a_v1', 'a2a_v2')
+  await expectComparisonRow('Authentication verification', 'verified', 'passed_for_read_endpoint')
+  await expectComparisonRow('Agent Card', originalCard, latestCard)
+  await expectComparisonRow(
+    'Capabilities',
+    { traceability_supported: true },
+    { streaming: true, traceability_supported: false },
+  )
+  expect(comparison().getByRole('rowheader').elements()).toHaveLength(5)
+  for (const label of ['A2A endpoint', 'Authentication', 'Credential configured']) {
+    await expect
+      .element(comparison().getByRole('rowheader', { name: label, exact: true }))
+      .not.toBeInTheDocument()
+  }
+  await expect
+    .element(comparison())
+    .not.toMatchTextContent(/private-card-value|same-settings-replacement-secret/)
+  await expect
+    .element(
+      dialog().getByText(
+        'Service details reflect the connection loaded when editing started, or your last successful verification.',
+        { exact: true },
+      ),
+    )
+    .toBeVisible()
+  expect(requests.save).not.toHaveBeenCalled()
+})
+
+it('compares the last successful verification with the latest saved service details without exposing credentials or proof', async () => {
+  const verifiedCard = {
+    name: 'Successfully verified agent',
+    description: 'Details returned by the last successful verification.',
+    provider: { organization: 'Verified provider' },
+    skills: [],
+  }
+  const latestCard = {
+    name: 'Newer saved agent',
+    description: 'Latest saved service details.',
+    skills: [],
+  }
+  const proof = createExternalVerification({
+    interface_url: 'https://verified.example.test/interface',
+    auth_check: 'passed_for_read_endpoint',
+    card: {
+      ...verifiedCard,
+      credential_ciphertext: 'private-encrypted-credential',
+      private_extension: { token: 'private-card-token' },
+    },
+    capabilities: { streaming: false, traceability_supported: true },
+  })
+  requests.verify.mockResolvedValueOnce(proof)
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await token().fill('private-replacement-credential')
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  advanceConnection(revision2, 'Jamie Lee', {
+    interface_url: 'https://latest.example.test/interface',
+    profile: 'a2a_v2',
+    auth_check: 'not_exercised',
+    card: { ...latestCard, credential_ciphertext: 'latest-encrypted-credential' },
+    capabilities: { streaming: true, traceability_supported: false },
+  })
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expectComparisonRow(
+    'A2A endpoint',
+    'https://my-change.example.test/agent',
+    'https://latest.example.test/agent',
+  )
+  await expectComparisonRow('Authentication', 'Bearer token', 'None')
+  await expectComparisonRow('Credential configured', 'true', 'false')
+  await expectComparisonRow(
+    'Interface URL',
+    proof.interface_url,
+    'https://latest.example.test/interface',
+  )
+  await expectComparisonRow('Protocol profile', 'a2a_v1', 'a2a_v2')
+  await expectComparisonRow('Authentication verification', proof.auth_check, 'not_exercised')
+  await expectComparisonRow('Agent Card', verifiedCard, latestCard)
+  await expectComparisonRow('Capabilities', proof.capabilities, {
+    streaming: true,
+    traceability_supported: false,
+  })
+  await expect
+    .element(comparison())
+    .not.toMatchTextContent(
+      /private-replacement-credential|private-card-token|encrypted-credential|credential_ciphertext|private_extension/,
+    )
+  await expect.element(comparison()).not.toMatchTextContent(proof.verification_id)
+  await expect.element(comparison()).not.toMatchTextContent(proof.expires_at)
+  await expect.element(token()).toHaveValue('')
+  expect(requests.verify).toHaveBeenCalledTimes(1)
+  expect(requests.save).toHaveBeenCalledTimes(1)
+})
+
+it('rebases an equal Verify conflict without a comparison and lets the user verify and save the latest revision', async () => {
+  const provider = { organization: 'Same service', url: 'https://same.example.test' }
+  current = createExternalAgentDetail({
+    connection: {
+      ...current.connection,
+      card: {
+        name: 'Same public agent',
+        provider,
+        skills: [],
+        private_extension: 'old-private-value',
+      },
+      capabilities: { streaming: true, extensions: { first: true, second: false } },
+    },
+  })
+  requests.verify.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  advanceConnection(revision2, 'New saver', {
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    has_credential: true,
+    card: {
+      skills: [],
+      provider: { url: provider.url, organization: provider.organization },
+      name: 'Same public agent',
+      private_extension: 'new-private-value',
+    },
+    capabilities: { extensions: { second: false, first: true }, streaming: true },
+  })
+  await verify().click()
+  await expect.poll(() => requests.detail.mock.calls.length).toBe(2)
+  await expect.element(verify()).toBeEnabled()
+  await expect.element(comparison()).not.toBeInTheDocument()
+  await expect
+    .element(dialog().getByText('This connection was updated by someone else.', { exact: true }))
+    .not.toBeInTheDocument()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(token()).toHaveValue('')
+  expect(requests.verify).toHaveBeenCalledTimes(1)
+  expect(requests.save).not.toHaveBeenCalled()
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  expect(requests.verify.mock.calls[1]![0].body).toEqual({
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    credential_action: 'keep',
+    agent_id: current.asset.id,
+    expected_connection_revision_id: revision2,
+  })
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect.element(dialog()).not.toBeInTheDocument()
+  expect(requests.save).toHaveBeenCalledTimes(1)
+  expect(requests.save.mock.calls[0]![0].body.expected_revision_id).toBe(revision2)
+})
+
+it('invalidates an equal Save conflict proof, retains the token and saves only after fresh verification', async () => {
+  const originalProof = createExternalVerification()
+  const refreshedProof = createExternalVerification({
+    verification_id: '99999999-9999-4999-8999-999999999999',
+  })
+  requests.verify.mockResolvedValueOnce(originalProof).mockResolvedValueOnce(refreshedProof)
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await token().fill('retained-save-token')
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  advanceConnection(revision2, 'New saver', {
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    has_credential: true,
+    interface_url: originalProof.interface_url,
+    auth_check: originalProof.auth_check,
+    card: originalProof.card,
+    capabilities: originalProof.capabilities,
+  })
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect.element(verify()).toBeEnabled()
+  await expect.element(comparison()).not.toBeInTheDocument()
+  await expect
+    .element(dialog().getByText('This connection was updated by someone else.', { exact: true }))
+    .not.toBeInTheDocument()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+  await expect.element(token()).toHaveValue('retained-save-token')
+  expect(requests.verify).toHaveBeenCalledTimes(1)
+  expect(requests.save).toHaveBeenCalledTimes(1)
+  const originalSave = requests.save.mock.calls[0]![0].body
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  expect(requests.verify.mock.calls[1]![0].body).toEqual({
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    credential_action: 'replace',
+    credential: 'retained-save-token',
+    agent_id: current.asset.id,
+    expected_connection_revision_id: revision2,
+  })
+  expect(requests.save).toHaveBeenCalledTimes(1)
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect.element(dialog()).not.toBeInTheDocument()
+  expect(requests.save).toHaveBeenCalledTimes(2)
+  expect(requests.save.mock.calls[1]![0].body).toEqual({
+    verification_id: refreshedProof.verification_id,
+    expected_revision_id: revision2,
+    idempotency_key: expect.any(String),
+  })
+  expect(requests.save.mock.calls[1]![0].body.idempotency_key).not.toBe(
+    originalSave.idempotency_key,
+  )
+})
 
 it.each(['Use latest configuration', 'Keep my edits'] as const)(
   'recovers a Verify conflict through %s and displays the revision saver audit',
@@ -193,12 +478,16 @@ it.each(['Use latest configuration', 'Keep my edits'] as const)(
   },
 )
 
-it('blocks recovery when the latest read fails and retries without saving or revealing credentials', async () => {
+it('blocks recovery after a failed latest read and unlocks manual verification when a retry finds equal public configuration', async () => {
   requests.verify.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
   await endpoint().fill('https://my-change.example.test/agent')
-  await token().fill('discarded-token')
-  advanceConnection()
+  await token().fill('discard-after-read-failure')
+  advanceConnection(revision2, 'Jamie Lee', {
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    has_credential: true,
+  })
   requests.detail.mockRejectedValueOnce(new ORPCError('NOT_FOUND', { status: 404 }))
   await verify().click()
   await expect
@@ -216,29 +505,77 @@ it('blocks recovery when the latest read fails and retries without saving or rev
     .toBeDisabled()
   expect(requests.save).not.toHaveBeenCalled()
   await dialog().getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect.element(verify()).toBeEnabled()
+  await expect.element(comparison()).not.toBeInTheDocument()
   await expect
-    .element(dialog().getByText('https://latest.example.test/agent', { exact: true }))
-    .toBeVisible()
-  await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
+    .element(dialog().getByRole('button', { name: 'Retry', exact: true }))
+    .not.toBeInTheDocument()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
   await expect.element(token()).toHaveValue('')
   expect(requests.verify).toHaveBeenCalledTimes(1)
   expect(requests.save).not.toHaveBeenCalled()
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  expect(requests.verify.mock.calls[1]![0].body.expected_connection_revision_id).toBe(revision2)
+  expect(requests.verify.mock.calls[1]![0].body.credential_action).toBe('keep')
+  expect(requests.verify.mock.calls[1]![0].body).not.toHaveProperty('credential')
+  expect(requests.save).not.toHaveBeenCalled()
 })
 
-it('reloads a second Verify conflict and never saves automatically from a stale proof', async () => {
-  requests.verify.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+it('compares the updated base after a second conflict without retaining the previous verification snapshot or saving automatically', async () => {
+  const staleCard = { name: 'Previous verification snapshot' }
+  const revision2Card = { name: 'Revision two service' }
+  const revision3Card = { name: 'Revision three service' }
+  requests.verify.mockResolvedValueOnce(
+    createExternalVerification({
+      interface_url: 'https://previous-verification.example.test/interface',
+      card: staleCard,
+      capabilities: { streaming: false },
+    }),
+  )
+  requests.save.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
   await endpoint().fill('https://my-change.example.test/agent')
-  advanceConnection()
   await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  advanceConnection(revision2, 'Jamie Lee', {
+    interface_url: 'https://revision-two.example.test/interface',
+    profile: 'a2a_v2',
+    card: revision2Card,
+    capabilities: { streaming: true },
+  })
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expectComparisonRow('Agent Card', staleCard, revision2Card)
   await expect
     .element(dialog().getByRole('button', { name: 'Keep my edits', exact: true }))
     .toBeEnabled()
   await dialog().getByRole('button', { name: 'Keep my edits', exact: true }).click()
   await token().fill('replacement-for-revision2')
-  advanceConnection(revision3, 'Second saver')
+  advanceConnection(revision3, 'Second saver', {
+    interface_url: 'https://revision-three.example.test/interface',
+    profile: 'a2a_v3',
+    card: revision3Card,
+    capabilities: { streaming: false, traceability_supported: true },
+  })
   requests.verify.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await verify().click()
+  await expectComparisonRow(
+    'Interface URL',
+    'https://revision-two.example.test/interface',
+    'https://revision-three.example.test/interface',
+  )
+  await expectComparisonRow('Protocol profile', 'a2a_v2', 'a2a_v3')
+  await expectComparisonRow('Agent Card', revision2Card, revision3Card)
+  await expectComparisonRow(
+    'Capabilities',
+    { streaming: true },
+    { streaming: false, traceability_supported: true },
+  )
+  await expect.element(comparison()).not.toMatchTextContent('Previous verification snapshot')
   await expect
     .element(dialog().getByText('Saved by Second saver 2 minutes ago', { exact: true }))
     .toBeVisible()
@@ -252,7 +589,7 @@ it('reloads a second Verify conflict and never saves automatically from a stale 
   expect(requests.verify).toHaveBeenCalledTimes(3)
   expect(requests.verify.mock.calls[2]![0].body.expected_connection_revision_id).toBe(revision3)
   expect(requests.verify.mock.calls[2]![0].body.credential).toBe('fresh-replacement-for-revision3')
-  expect(requests.save).not.toHaveBeenCalled()
+  expect(requests.save).toHaveBeenCalledTimes(1)
 })
 
 it('recovers an older connection response without audit fields without inventing a saver or date', async () => {

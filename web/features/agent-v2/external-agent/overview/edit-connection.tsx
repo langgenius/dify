@@ -2,10 +2,12 @@
 
 import type {
   ExternalAgentConnectionPayload,
+  ExternalAgentDetailResponse,
   ExternalAgentVerificationResponse,
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
 import type { ExternalAgentOverview } from '../model'
+import type { ExternalConnectionComparisonSnapshot } from './edit-connection-snapshot'
 import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -21,7 +23,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -38,19 +40,26 @@ import {
 import { toExternalAgentOverview } from '../model'
 import { EditConnectionConflict } from './edit-connection-conflict'
 import { EditConnectionReview } from './edit-connection-review'
+import {
+  connectionComparisonChanges,
+  createConnectionComparisonSnapshot,
+} from './edit-connection-snapshot'
 
 function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [open, setOpen] = useState(false)
-  const [base, setBase] = useState<ExternalAgentOverview>()
+  const [baseDetail, setBaseDetail] = useState<ExternalAgentDetailResponse>()
+  const base = useMemo(() => baseDetail && toExternalAgentOverview(baseDetail), [baseDetail])
   const [review, setReview] = useState<ExternalAgentVerificationResponse>()
   const [settings, setSettings] = useState<ExternalConnectionSettings>()
   const [submitted, setSubmitted] = useState<ExternalAgentConnectionPayload>()
   const [saveUnknown, setSaveUnknown] = useState(false)
   const [saveError, setSaveError] = useState<string>()
   const [conflictResolution, setConflictResolution] = useState<'keep' | 'latest'>()
-  const [conflicted, setConflicted] = useState(false)
+  const [conflictDraft, setConflictDraft] = useState<ExternalConnectionComparisonSnapshot>()
+  const [resolvingConflict, setResolvingConflict] = useState(false)
+  const [allowVerificationWithoutEdits, setAllowVerificationWithoutEdits] = useState(false)
   const endpointRef = useRef<HTMLInputElement>(null)
   const submitLabelId = useId()
   const loadEpochRef = useRef(0)
@@ -73,7 +82,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       retry: false,
     }),
   )
-  const pending = verification.pending || save.isPending
+  const pending = verification.pending || save.isPending || resolvingConflict
   const hasChanges = Boolean(
     base &&
     settings &&
@@ -83,7 +92,9 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   )
   const executionEnabled = capabilities.data?.enabled === true
   const canSubmit =
-    saveUnknown || Boolean(verification.evidence) || (executionEnabled && hasChanges)
+    saveUnknown ||
+    Boolean(verification.evidence) ||
+    (executionEnabled && (hasChanges || allowVerificationWithoutEdits))
   const scopeRef = useRef(verification.scope)
   scopeRef.current = verification.scope
 
@@ -91,14 +102,16 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   const { reset: resetSave } = save
   const reset = useCallback(() => {
     loadEpochRef.current += 1
-    setBase(undefined)
+    setBaseDetail(undefined)
     setReview(undefined)
     setSettings(undefined)
     setSubmitted(undefined)
     setSaveUnknown(false)
     setSaveError(undefined)
     setConflictResolution(undefined)
-    setConflicted(false)
+    setConflictDraft(undefined)
+    setResolvingConflict(false)
+    setAllowVerificationWithoutEdits(false)
     invalidateVerification()
     resetSave()
   }, [invalidateVerification, resetSave])
@@ -123,7 +136,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       )
         return
       const loaded = toExternalAgentOverview(result.data)
-      setBase(loaded)
+      setBaseDetail(result.data)
       setSettings({ endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' })
     })
   }
@@ -137,16 +150,40 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
         })
       : t(($) => $['external.connection.conflict.savedByOnly'], { name })
   }
-  function showConflict() {
+  function resolveConflict(draft: ExternalConnectionComparisonSnapshot) {
     verification.invalidate()
-    setSettings((current) => current && { ...current, token: '' })
     setReview(undefined)
     setSubmitted(undefined)
     setSaveUnknown(false)
     setSaveError(undefined)
     setConflictResolution(undefined)
-    setConflicted(true)
-    void detail.refetch()
+    setResolvingConflict(true)
+    const scope = verification.scope
+    const epoch = ++loadEpochRef.current
+    void detail.refetch().then((result) => {
+      if (loadEpochRef.current !== epoch || scopeRef.current !== scope) return
+      setResolvingConflict(false)
+      if (
+        result.data &&
+        !result.error &&
+        connectionComparisonChanges(draft, result.data.connection).length === 0
+      ) {
+        // Rebase identical public configuration, but require a fresh proof for the latest revision.
+        setBaseDetail(result.data)
+        setConflictDraft(undefined)
+        setAllowVerificationWithoutEdits(true)
+        save.reset()
+      } else {
+        setConflictDraft(draft)
+        setSettings((current) => current && { ...current, token: '' })
+      }
+    })
+  }
+  function showConflict(verified?: ExternalAgentVerificationResponse, draftSettings = settings) {
+    if (!baseDetail || !draftSettings) return
+    resolveConflict(
+      createConnectionComparisonSnapshot(baseDetail.connection, draftSettings, verified),
+    )
   }
   function loadLatest(keepEdits: boolean) {
     verification.invalidate()
@@ -161,14 +198,15 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
       )
         return
       const loaded = toExternalAgentOverview(result.data)
-      setBase(loaded)
+      setBaseDetail(result.data)
       setSettings(
         keepEdits && settings
           ? { ...settings, token: '' }
           : { endpoint: loaded.endpoint, authentication: loaded.authentication, token: '' },
       )
       setConflictResolution(keepEdits ? 'keep' : 'latest')
-      setConflicted(false)
+      setConflictDraft(undefined)
+      setAllowVerificationWithoutEdits(false)
       setReview(undefined)
       setSubmitted(undefined)
       setSaveUnknown(false)
@@ -224,7 +262,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           if (!unknown) {
             setSubmitted(undefined)
             if (status === 400) verification.invalidate()
-            if (status === 409) showConflict()
+            if (status === 409) showConflict(review)
           }
         },
       },
@@ -253,10 +291,9 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     setReview(undefined)
     setSaveError(undefined)
     save.reset()
-    verification.verify(draft, setReview, showConflict)
+    verification.verify(draft, setReview, () => showConflict(undefined, draft))
   }
-  const latest =
-    conflicted && detail.data && !detail.isError ? toExternalAgentOverview(detail.data) : undefined
+  const latest = conflictDraft && detail.data && !detail.isError ? detail.data : undefined
 
   return (
     <Dialog
@@ -300,16 +337,16 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               />
             )}
           </DialogBody>
-        ) : conflicted ? (
+        ) : conflictDraft ? (
           <>
             <DialogBody>
               <EditConnectionConflict
-                settings={settings}
-                latest={latest}
-                latestSavedAudit={latest && savedAudit(latest)}
-                loading={detail.isFetching}
+                draft={conflictDraft}
+                latest={latest?.connection}
+                latestSavedAudit={latest && savedAudit(toExternalAgentOverview(latest))}
+                loading={detail.isFetching || resolvingConflict}
                 loadFailed={detail.isError}
-                onRetry={() => void detail.refetch()}
+                onRetry={() => resolveConflict(conflictDraft)}
               />
             </DialogBody>
             <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
@@ -318,14 +355,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               </Button>
               <Button
                 variant="secondary"
-                disabled={detail.isFetching || !latest}
+                disabled={detail.isFetching || resolvingConflict || !latest}
                 onClick={() => loadLatest(false)}
               >
                 {t(($) => $['external.connection.useLatest'])}
               </Button>
               <Button
                 variant="primary"
-                disabled={detail.isFetching || !latest}
+                disabled={detail.isFetching || resolvingConflict || !latest}
                 onClick={() => loadLatest(true)}
               >
                 {t(($) => $['external.connection.keepMyEdits'])}

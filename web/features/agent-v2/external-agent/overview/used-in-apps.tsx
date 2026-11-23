@@ -1,11 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 
+const appListClassName =
+  'divide-y divide-divider-subtle overflow-hidden rounded-xl border border-divider-regular'
+
 export function ExternalAgentUsedInApps({ agentId }: { agentId: string }) {
-  const { t } = useTranslation(['agentRoster', 'app'])
+  const { t } = useTranslation(['agentRoster', 'app', 'common'])
   const references = useQuery(
     consoleQuery.externalAgents.byAgentId.references.get.queryOptions({
       input: { params: { agent_id: agentId } },
@@ -21,15 +25,28 @@ export function ExternalAgentUsedInApps({ agentId }: { agentId: string }) {
         )}
       </h2>
       {references.isPending ? (
-        <p role="status" className="py-3 system-xs-regular text-text-tertiary">
-          {t(($) => $['external.api.loading'])}
-        </p>
+        <>
+          <span role="status" className="sr-only">
+            {t(($) => $.loading, { ns: 'common' })}
+          </span>
+          <div aria-hidden className={appListClassName}>
+            {[1, 2].map((row) => (
+              <SkeletonRow key={row} className="min-h-15.5 gap-2.5 px-4 py-3">
+                <SkeletonRectangle className="my-0 size-8 shrink-0 rounded-lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <SkeletonRectangle className="my-0 h-3 w-28 max-w-full rounded-sm" />
+                  <SkeletonRectangle className="my-0 h-2.5 w-16 max-w-full rounded-sm" />
+                </div>
+              </SkeletonRow>
+            ))}
+          </div>
+        </>
       ) : references.isError ? null : apps.length === 0 ? (
         <p className="rounded-[10px] bg-background-section p-3 text-center system-xs-regular text-text-tertiary">
           {t(($) => $['external.overview.emptyApps'])}
         </p>
       ) : (
-        <ul className="divide-y divide-divider-subtle overflow-hidden rounded-xl border border-divider-regular">
+        <ul className={appListClassName}>
           {apps.map((app) => (
             <li key={app.app_id}>
               <Link
