@@ -439,12 +439,12 @@ def test_list_preserves_tag_filter_and_model_projection(harness: Harness) -> Non
             pre_prompt="Example prompt",
             model=json.dumps({"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}),
         )
-        tag = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Team", created_by=harness.account_id)
+        tag = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Team", created_by=harness.account_id)
         session.add_all([config, tag])
         session.flush()
         app.app_model_config_id = config.id
         session.add(
-            TagBinding(tenant_id=harness.tenant_id, tag_id=tag.id, target_id=app_id, created_by=harness.account_id)
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag.id, target_id=agent_id, created_by=harness.account_id)
         )
         tag_id = tag.id
     response = harness.client.get(f"/console/api/agent?tag_ids={tag_id}", headers=harness.headers)
@@ -453,7 +453,120 @@ def test_list_preserves_tag_filter_and_model_projection(harness: Harness) -> Non
     assert item["id"] == agent_id
     assert item["model_config"]["model"]["name"] == "gpt-4o"
     assert item["model_config"]["pre_prompt"] == "Example prompt"
-    assert item["tags"] == [{"id": tag_id, "name": "Team", "type": "app"}]
+    assert item["tags"] == [{"id": tag_id, "name": "Team", "type": "agent"}]
+
+
+@pytest.mark.parametrize(("endpoint", "search_key"), [("agent", "name"), ("agent/invite-options", "keyword")])
+def test_agent_tag_filters_combine_and_paginate_before_counting(
+    harness: Harness, endpoint: str, search_key: str
+) -> None:
+    first_id, first_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        session.get_one(Agent, first_id).name = "Company Research"
+    second_id, second_app = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        session.get_one(Agent, second_id).name = "Market Monitor"
+    harness.create_agent()
+    with harness.sessions.begin() as session:
+        for agent_id, app_id, name in (
+            (first_id, first_app, "Company Research"),
+            (second_id, second_app, "Market Monitor"),
+        ):
+            agent = session.get_one(Agent, agent_id)
+            snapshot_id = agent.active_config_snapshot_id
+            assert snapshot_id is not None
+            agent.name = name
+            agent.active_config_has_model = True
+            session.get_one(App, app_id).name = name
+            session.add(
+                AgentConfigSnapshot(
+                    id=snapshot_id,
+                    tenant_id=harness.tenant_id,
+                    agent_id=agent_id,
+                    version=1,
+                    config_snapshot=AgentSoulConfig(),
+                )
+            )
+        research = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        finance = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Finance", created_by=harness.account_id)
+        studio = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Research", created_by=harness.account_id)
+        foreign = Tag(tenant_id=str(uuid4()), type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        session.add_all([research, finance, studio, foreign])
+        session.flush()
+        research_id, finance_id, studio_id, foreign_id = research.id, finance.id, studio.id, foreign.id
+        session.add_all(
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag_id, target_id=target_id, created_by=harness.account_id)
+            for tag_id, target_id in (
+                (research_id, first_id),
+                (research_id, second_id),
+                (finance_id, first_id),
+                (studio_id, first_app),
+            )
+        )
+
+    path = f"/console/api/{endpoint}"
+    first_page = harness.client.get(f"{path}?tag_ids={research_id}&limit=1", headers=harness.headers)
+    assert first_page.status_code == HTTPStatus.OK
+    body = first_page.get_json()
+    assert body["total"] == 2
+    assert body["has_more"] is True
+    second_page = harness.client.get(f"{path}?tag_ids={research_id}&limit=1&page=2", headers=harness.headers)
+    assert second_page.status_code == HTTPStatus.OK
+    assert second_page.get_json()["total"] == 2
+    assert second_page.get_json()["has_more"] is False
+    assert {body["data"][0]["id"], second_page.get_json()["data"][0]["id"]} == {first_id, second_id}
+
+    both = harness.client.get(
+        f"{path}?tag_ids={research_id}&tag_ids={finance_id}&tag_ids={research_id}", headers=harness.headers
+    )
+    assert both.status_code == HTTPStatus.OK
+    assert both.get_json()["total"] == 1
+    [item] = both.get_json()["data"]
+    assert item["id"] == first_id
+    assert {tag["id"] for tag in item["tags"]} == {research_id, finance_id}
+    assert all(tag["type"] == "agent" for tag in item["tags"])
+    assert studio_id not in {tag["id"] for tag in item["tags"]}
+
+    searched = harness.client.get(f"{path}?tag_ids={research_id}&{search_key}=Market", headers=harness.headers)
+    assert searched.status_code == HTTPStatus.OK
+    assert [item["id"] for item in searched.get_json()["data"]] == [second_id]
+    empty = harness.client.get(f"{path}?tag_ids={finance_id}&{search_key}=Market", headers=harness.headers)
+    assert empty.get_json()["total"] == 0
+    cleared = harness.client.get(f"{path}?{search_key}=Market", headers=harness.headers)
+    assert [item["id"] for item in cleared.get_json()["data"]] == [second_id]
+
+    for invalid_tag in (studio_id, foreign_id, str(uuid4())):
+        no_match = harness.client.get(f"{path}?tag_ids={research_id}&tag_ids={invalid_tag}", headers=harness.headers)
+        assert no_match.status_code == HTTPStatus.OK
+        assert no_match.get_json()["total"] == 0
+        assert no_match.get_json()["has_more"] is False
+        assert no_match.get_json()["data"] == []
+    invalid = harness.client.get(f"{path}?tag_ids=invalid-uuid", headers=harness.headers)
+    expected_status = HTTPStatus.BAD_REQUEST if endpoint == "agent" else HTTPStatus.UNPROCESSABLE_ENTITY
+    assert invalid.status_code == expected_status
+
+
+def test_agent_detail_returns_agent_tags_without_studio_bindings(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        agent_tag = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        studio_tag = Tag(tenant_id=harness.tenant_id, type=TagType.APP, name="Studio", created_by=harness.account_id)
+        session.add_all([agent_tag, studio_tag])
+        session.flush()
+        agent_tag_id = agent_tag.id
+        session.add_all(
+            [
+                TagBinding(
+                    tenant_id=harness.tenant_id, tag_id=agent_tag.id, target_id=agent_id, created_by=harness.account_id
+                ),
+                TagBinding(
+                    tenant_id=harness.tenant_id, tag_id=studio_tag.id, target_id=app_id, created_by=harness.account_id
+                ),
+            ]
+        )
+    response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json()["tags"] == [{"id": agent_tag_id, "name": "Research", "type": "agent"}]
 
 
 def test_list_includes_distinct_published_workflow_references(harness: Harness) -> None:

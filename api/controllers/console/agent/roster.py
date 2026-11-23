@@ -1,12 +1,14 @@
+import json
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -118,6 +120,7 @@ AgentPublicationStatus = Literal["published", "drafts"]
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+    tag_ids: list[UUID] = Field(default_factory=list, description="Agent tag IDs; every selected tag must match")
 
 
 class AgentAppListQuery(AppListQuery):
@@ -858,13 +861,23 @@ class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
     @console_ns.response(HTTPStatus.OK, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
     @console_account_admission()
-    @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
-        req_data: AgentInviteOptionsQuery,
         context: RequestContext,
     ) -> dict[str, object]:
-        """Return visible Workflow-callable Agents and their current workflow usage."""
+        """Return visible Workflow-callable Agents matching validated tag filters.
+
+        Preconditions: Console admission supplies the active workspace identity.
+        Postconditions: repeated tag_ids are validated as UUIDs and passed with
+        name/pagination filters; the response contains detached Agent tags.
+        """
+        try:
+            req_data = query_params_from_request(AgentInviteOptionsQuery, list_fields=("tag_ids",))
+        except ValidationError as exc:
+            # Preserve this endpoint's existing @model_validate 422 contract
+            # while parsing repeated tag IDs without exposing submitted values.
+            errors = exc.errors(include_url=False, include_input=False, include_context=False)
+            raise UnprocessableEntity(json.dumps(errors)) from None
         return dump_response(
             AgentInviteOptionsResponse,
             application_services().agent_invite_options.list(
@@ -873,6 +886,7 @@ class AgentInviteOptionsApi(Resource):
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
+                tag_ids=tuple(str(tag_id) for tag_id in req_data.tag_ids),
             ),
         )
 

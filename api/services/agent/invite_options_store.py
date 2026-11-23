@@ -1,6 +1,6 @@
 """Detached Agent directory records and persistence contract."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from machinery.context import RequestContext
@@ -67,6 +67,7 @@ class AgentInviteOption:
     is_in_current_workflow: bool
     in_current_workflow_count: int
     existing_node_ids: tuple[str, ...]
+    tags: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +91,12 @@ class AgentInviteOptionsStore(Protocol):
         keyword: str | None,
         app_id: str | None,
         accessible_agent_ids: set[str] | None,
+        tag_ids: tuple[str, ...] = (),
     ) -> AgentInviteOptionsPage:
-        """Return a validated, detached page after the read session closes."""
+        """Return a detached page after applying tenant, visibility and all tag IDs.
+
+        Preconditions: filters were validated at admission; empty tags preserves
+        the existing candidate range. Postconditions: count and page use identical
+        filters, and only Dify roster Agents match a nonempty Agent tag filter.
+        """
         ...

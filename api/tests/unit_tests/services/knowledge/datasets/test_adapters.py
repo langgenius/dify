@@ -43,7 +43,7 @@ from services.knowledge.entities.document_creation import DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef
 from services.rbac import contracts as rbac_contracts
-from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput
+from services.tag_application_service import CreateTagInput, TagApplicationService, TagBindingInput, TagKind
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -207,10 +207,10 @@ def test_listing_filters_tags_within_workspace(
     with sqlite_session_factory.begin() as session:
         session.add(dataset(id="untagged", name="Untagged"))
     context = RequestContext("request", None, "actor", "other") if foreign_tag else CONTEXT
-    tag = application_tags.create_tag(context, CreateTagInput(name="Selected", type="knowledge"))
+    tag = application_tags.create_tag(context, CreateTagInput(name="Selected", type=TagKind.KNOWLEDGE))
     application_tags.create_bindings(
         context,
-        TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type="knowledge"),
+        TagBindingInput(tag_ids=(tag.id,), target_id="foreign" if foreign_tag else "dataset", type=TagKind.KNOWLEDGE),
     )
 
     result = operations.list_datasets(CONTEXT, DatasetListFilter(tag_ids=[tag.id]), None)
