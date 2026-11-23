@@ -186,6 +186,18 @@ export function DemoCanvasLayer({
         </div>
       )}
 
+      <div aria-hidden>
+        {(['alex', 'sam'] as const).map((user) => (
+          <CollaboratorCursor
+            key={user}
+            name={demoUsers[user].name}
+            color={demoUsers[user].color}
+            className={markerInteractive ? 'absolute' : 'absolute z-40'}
+            style={cursorPosition(frame[user])}
+          />
+        ))}
+      </div>
+
       <Popover open={frame.marker === 'composing' && Boolean(marker)}>
         <PopoverPortal container={layer}>
           <PopoverPositioner anchor={marker} {...commentDraftPlacement} {...popupBounds}>
@@ -259,18 +271,6 @@ export function DemoCanvasLayer({
           </PopoverPositioner>
         </PopoverPortal>
       </Popover>
-
-      <div aria-hidden>
-        {(['alex', 'sam'] as const).map((user) => (
-          <CollaboratorCursor
-            key={user}
-            name={demoUsers[user].name}
-            color={demoUsers[user].color}
-            className="absolute z-40"
-            style={cursorPosition(frame[user])}
-          />
-        ))}
-      </div>
     </div>
   )
 }
