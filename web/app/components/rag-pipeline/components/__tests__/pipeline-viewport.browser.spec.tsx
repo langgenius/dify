@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -16,27 +15,27 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { useNodesSyncDraftByCanEdit } from '../../hooks/use-nodes-sync-draft'
 import { createRagPipelineSliceSlice } from '../../store'
 
-const saveDraft = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.rag.pipelines.byPipelineId.workflows.draft.post>(),
-)
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'rag.pipelines.byPipelineId.workflows.draft.post': saveDraft,
-    }),
-  }
+const pipelineId = '00000000-0000-4000-8000-000000000001'
+const fake = setupFakeApi({
+  console: {
+    rag: {
+      pipelines: {
+        byPipelineId: {
+          workflows: {
+            draft: {
+              post: () => ({ result: 'success', hash: 'saved-hash', updated_at: 1234 }),
+              variables: { get: () => ({ items: [], total: 0 }) },
+            },
+          },
+        },
+      },
+    },
+  },
 })
-vi.mock('@/service/workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchAllInspectVars: async () => [],
-}))
 // boundary: node bodies load per-type panels and queries; fixed-size boxes keep canvas geometry real.
 vi.mock('@/app/components/workflow/nodes', () => ({
   default: ({ data }: { data: { title: string } }) => (
@@ -155,7 +154,7 @@ function Fixture() {
   return (
     <QueryClientProvider client={queryClient}>
       <Provider store={atoms}>
-        <EditorResourceScope resource={{ kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' }}>
+        <EditorResourceScope resource={{ kind: 'knowledge-pipeline', pipelineId }}>
           <FeaturesProvider>
             <EventEmitterContextProvider>
               <WorkflowContext value={workflowStore}>
@@ -173,18 +172,13 @@ function Fixture() {
   )
 }
 
-beforeEach(() => {
-  saveDraft
-    .mockReset()
-    .mockResolvedValue({ result: 'success', hash: 'saved-hash', updated_at: 1234 })
-})
-
 it.each([
   { control: 'workflow.operator.zoomOut', label: '83%', zoom: 1 / 1.2 },
   { control: 'workflow.operator.zoomIn', label: '120%', zoom: 1.2 },
 ])(
   'autosaves the pipeline viewport after $control',
   async ({ control, label, zoom }) => {
+    const saveDraft = fake.console.rag.pipelines.byPipelineId.workflows.draft.post
     await page.viewport(1100, 700)
     const screen = await render(<Fixture />)
     await expect.element(screen.getByRole('button', { name: '100%' })).toBeVisible()
@@ -193,12 +187,11 @@ it.each([
     await expect.poll(() => saveDraft.mock.calls.length, { timeout: 7000 }).toBe(1)
     expect(saveDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: { pipeline_id: 'pipeline-1' },
+        params: { pipeline_id: pipelineId },
         body: expect.objectContaining({
           graph: expect.objectContaining({ viewport: expect.objectContaining({ zoom }) }),
         }),
       }),
-      expect.anything(),
     )
   },
   10_000,

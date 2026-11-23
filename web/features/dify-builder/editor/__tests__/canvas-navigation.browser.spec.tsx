@@ -5,6 +5,7 @@ import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import ZoomInOut from '@/app/components/workflow/operator/zoom-in-out'
 import { ControlMode } from '@/app/components/workflow/types'
+import { setupFakeApi } from '@/test/fake-api'
 import { draftResponse, nodes } from './canvas-navigation-data'
 import { Fixture } from './canvas-navigation-fixture'
 
@@ -82,11 +83,6 @@ vi.mock(
     default: () => ({ schemaTypeDefinitions: [] }),
   }),
 )
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useConversationVarValues: () => ({ data: [] }),
-  useSysVarValues: () => ({ data: [] }),
-}))
 // boundary: the model picker loads provider catalogs; the composer itself stays real.
 vi.mock('@/features/dify-builder/model/selector', () => ({
   default: () => null,
@@ -96,12 +92,6 @@ vi.mock('@/features/dify-builder/model/use-model', () => ({
   useDifyBuilderModel: () => ({
     model: { name: 'gpt-4o', provider: 'openai', mode: 'chat', completion_params: {} },
   }),
-}))
-const fetchDraft = vi.fn()
-vi.mock('@/service/workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: (...args: unknown[]) => fetchDraft(...args),
-  fetchAllInspectVars: async () => [],
 }))
 
 // The recovery scenario keeps WorkflowMain, draft refresh and the actual canvas real.
@@ -181,7 +171,6 @@ let graphReloadCallback: GraphReloadCallback | undefined
 beforeEach(() => {
   vi.restoreAllMocks()
   saveDraft.mockClear()
-  fetchDraft.mockReset().mockResolvedValue(draftResponse)
   graphReloadCallback = undefined
   vi.spyOn(collaborationManager, 'onGraphReloadRequired').mockImplementation((callback) => {
     graphReloadCallback = callback
@@ -192,6 +181,24 @@ beforeEach(() => {
   vi.spyOn(collaborationManager, 'isGraphReloadCurrent').mockReturnValue(true)
   vi.spyOn(collaborationManager, 'replaceGraphFromReactFlow').mockReturnValue(true)
   window.localStorage.setItem('workflow-operation-mode', JSON.stringify(ControlMode.Pointer))
+})
+
+const fake = setupFakeApi({
+  console: {
+    apps: {
+      byAppId: {
+        workflow: { comments: { get: () => ({ data: [] }) } },
+        workflows: {
+          draft: {
+            get: () => draftResponse,
+            variables: { get: () => ({ items: [], total: 0 }) },
+            conversationVariables: { get: () => ({ items: [] }) },
+            systemVariables: { get: () => ({ items: [] }) },
+          },
+        },
+      },
+    },
+  },
 })
 
 it('allows canvas navigation but blocks node movement until Builder releases its edit lock', async () => {
@@ -261,6 +268,7 @@ it('preserves the manual view through collaboration recovery and still adopts th
   await page.viewport(1100, 700)
   const workflowStore = createWorkflowStore()
   let refreshDraft!: RefreshDraft
+  const fetchDraft = fake.console.apps.byAppId.workflows.draft.get
   const screen = await render(
     <Fixture
       saveDraft={saveDraft}
@@ -318,6 +326,7 @@ it('preserves the manually panned view on a visibility refresh after Builder fin
   // Native pan and the production refresh/update pipeline prove that new graph data can arrive without moving the view.
   await page.viewport(1100, 700)
   let refreshDraft!: RefreshDraft
+  const fetchDraft = fake.console.apps.byAppId.workflows.draft.get
   const screen = await render(
     <Fixture
       saveDraft={saveDraft}
@@ -364,7 +373,7 @@ it('preserves the manually panned view on a visibility refresh after Builder fin
   expect(node.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
 })
 
-it('keeps the Builder prompt focused during native wheel zoom in an ordinary Test Run', async () => {
+it('keeps the Builder prompt focused during native wheel panning in an ordinary Test Run', async () => {
   // Real wheel events reach React Flow's move-start callback; continued typing must remain in the composer.
   await page.viewport(1100, 700)
   const screen = await render(<Fixture saveDraft={saveDraft} ordinaryRun />)
@@ -373,11 +382,11 @@ it('keeps the Builder prompt focused during native wheel zoom in an ordinary Tes
   const prompt = screen.getByRole('textbox', { name: 'difyBuilder.messagePlaceholder' })
   await expect.element(node).toBeVisible()
   await expect.element(prompt).toBeEnabled()
-  const initialWidth = node.element().getBoundingClientRect().width
+  const initialY = node.element().getBoundingClientRect().y
   await prompt.click()
   await expect.element(prompt).toHaveFocus()
   await canvas.wheel({ delta: { x: 0, y: 120 } })
-  await expect.poll(() => node.element().getBoundingClientRect().width).toBeLessThan(initialWidth)
+  await expect.poll(() => node.element().getBoundingClientRect().y).toBeLessThan(initialY)
   await expect.element(prompt).toHaveFocus()
   await userEvent.keyboard('Continue editing')
   await expect.element(prompt).toHaveValue('Continue editing')
