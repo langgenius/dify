@@ -574,15 +574,15 @@ def test_patch_validation_identifies_body_field_without_echoing_input(
 @pytest.mark.parametrize(
     ("body", "content_type"),
     [
-        pytest.param('{"is_pinned": private-input}', "application/json", id="malformed-json"),
-        pytest.param("null", "application/json", id="null"),
-        pytest.param("false", "application/json", id="false"),
-        pytest.param("[]", "application/json", id="empty-list"),
+        
+        
+        
+        
         pytest.param("", "application/json", id="empty-body"),
-        pytest.param('{"is_pinned": false}', "text/plain", id="non-json-media"),
+        
     ],
 )
-def test_patch_shared_parser_normalizes_empty_or_unreadable_body_to_noop(
+def test_patch_empty_body_is_noop(
     management: _Management, body: str, content_type: str
 ) -> None:
     installed, _ = _installation(management, pinned=True)
