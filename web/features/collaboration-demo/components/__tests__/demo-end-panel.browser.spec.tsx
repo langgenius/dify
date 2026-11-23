@@ -1,7 +1,6 @@
 import type { DemoEndState } from '../../end-state'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { render } from 'vitest-browser-react'
-import { notificationDemoHref } from '../../query-params'
 import { DemoEndPanel } from '../demo-end-panel'
 
 const api = vi.hoisted(() => ({ replace: vi.fn(), urlUpdate: vi.fn() }))
@@ -100,10 +99,7 @@ it('closes a demo tab opened from the product and falls back to the apps list ot
 
 it('closes a demo tab opened from the in-site notification', async () => {
   const close = vi.spyOn(window, 'close').mockImplementation(() => {})
-  const { screen } = await renderPanel(
-    { kind: 'createApp' },
-    new URL(notificationDemoHref, window.location.origin).search,
-  )
+  const { screen } = await renderPanel({ kind: 'createApp' }, '?source=notification')
 
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
 

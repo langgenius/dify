@@ -1,6 +1,6 @@
-import { useQueryState } from 'nuqs'
+import { useQueryStates } from 'nuqs'
 import { useRouter } from '@/next/navigation'
-import { demoSourceQueryParamName, demoSourceQueryParser } from './query-params'
+import { demoSearchParams } from './query-params'
 
 function openedFromSameOrigin() {
   try {
@@ -12,7 +12,7 @@ function openedFromSameOrigin() {
 
 export function useExitDemo() {
   const router = useRouter()
-  const [source] = useQueryState(demoSourceQueryParamName, demoSourceQueryParser)
+  const [{ source }] = useQueryStates(demoSearchParams)
   return () => {
     if (openedFromSameOrigin() || source === 'notification') {
       window.close()
