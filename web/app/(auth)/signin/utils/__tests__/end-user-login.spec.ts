@@ -91,6 +91,10 @@ describe('personal portal sign-in context', () => {
 
   it.each([
     'https://external.example/console/my-apps',
+    'https://apps.example/my-apps',
+    'https://apps.example/web/connections',
+    'https://apps.example/web/my-apps?other=1',
+    '//apps.example/web/my-apps',
     '//external.example/console/my-apps',
     'javascript:alert(1)',
     '/console-signin/my-apps',

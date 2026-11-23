@@ -4,6 +4,7 @@ import { basePath } from '@/utils/var'
 
 type LoginSearchParams = Pick<URLSearchParams, 'get'>
 const RELATIVE_REDIRECT_ORIGIN = 'https://login-redirect.invalid'
+const UNSAFE_REDIRECT_CHARACTERS = /[\u0000-\u0020\u007F\\]/
 
 export function isEndUserSignIn(searchParams: LoginSearchParams) {
   return searchParams.get('is_end_user') === '1' || searchParams.get('mode') === 'end_user'
@@ -16,7 +17,7 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams, webappUr
   if (
     !redirectUrl?.startsWith('/') ||
     redirectUrl.startsWith('//') ||
-    /[\u0000-\u0020\u007F\\]/.test(redirectUrl)
+    UNSAFE_REDIRECT_CHARACTERS.test(redirectUrl)
   )
     return null
 
@@ -52,7 +53,7 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams, webappUr
 }
 
 function getPersonalPortalUrl(raw: string, prefix = basePath.replace(/\/$/, '')) {
-  if (/[\u0000-\u0020\u007F\\]/.test(raw) || raw.startsWith('//')) return null
+  if (UNSAFE_REDIRECT_CHARACTERS.test(raw) || raw.startsWith('//')) return null
   try {
     // Relative portal targets also need to validate during server rendering.
     const origin = globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN
@@ -75,15 +76,31 @@ export function getEndUserAccountRedirectUrl(
 ) {
   if (!raw || !context?.redirect_url) return null
   if (context.app_code) return getAccountLoginCallbackUrl(raw, context.redirect_url)
-  const target = getPersonalPortalUrl(raw)
+  if (UNSAFE_REDIRECT_CHARACTERS.test(raw) || raw.startsWith('//')) return null
   const expected = getPersonalPortalUrl(context.redirect_url)
-  if (!target || !expected || target.href !== expected.href) return null
+  if (!expected) return null
 
-  const portalPath = target.pathname.slice(basePath.replace(/\/$/, '').length)
-  return new URL(
-    `${webappUrl.replace(/\/$/, '')}${portalPath}${target.search}${target.hash}`,
-    target.origin,
-  ).href
+  const portalPath = expected.pathname.slice(basePath.replace(/\/$/, '').length)
+  try {
+    const webappTarget = new URL(
+      `${webappUrl.replace(/\/$/, '')}${portalPath}${expected.search}${expected.hash}`,
+      expected.origin,
+    )
+    if (
+      !['http:', 'https:'].includes(webappTarget.protocol) ||
+      webappTarget.username ||
+      webappTarget.password
+    )
+      return null
+
+    // The session API can echo the Console path or return the final Webapp URL.
+    const responseTarget = new URL(raw, expected.origin)
+    if (responseTarget.href === expected.href || responseTarget.href === webappTarget.href)
+      return webappTarget.href
+  } catch {
+    return null
+  }
+  return null
 }
 
 /** Preserve the End User return context across external login redirects. */
