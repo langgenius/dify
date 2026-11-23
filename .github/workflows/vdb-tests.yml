@@ -26,14 +26,14 @@ jobs:
           persist-credentials: false
 
       - name: Free Disk Space
-        uses: endersonmenezes/free-disk-space@8b8cd4e2277836962939a8f3b4ea0ee4bc006156 # v4.0.1
+        uses: endersonmenezes/free-disk-space@8ffcdf1b35c974f0b10496711e9a22bcb0ff3790 # v4.0.2
         with:
           remove_dotnet: true
           remove_haskell: true
           remove_tool_cache: true
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
