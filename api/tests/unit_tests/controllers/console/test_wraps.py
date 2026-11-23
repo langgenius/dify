@@ -1444,3 +1444,31 @@ class TestEnterpriseLicense:
             with pytest.raises(UnauthorizedAndForceLogout) as exc_info:
                 enterprise_feature()
             assert "license is invalid" in str(exc_info.value)
+
+
+class TestOptionalPayloadMalformedJson:
+    class Payload(BaseModel):
+        name: str | None = None
+
+    @pytest.mark.parametrize("body", [b"{", b"null", b"false", b"0", b'""', b"[]", b'"value"', b"[1]"])
+    def test_optional_payload_rejects_malformed_and_non_object_json(self, body: bytes) -> None:
+        app = Flask(__name__)
+        with app.test_request_context("/items", method="POST", data=body, content_type="application/json"):
+            with pytest.raises(HTTPException) as exc_info:
+                validate_request(self.Payload)
+
+        assert exc_info.value.code == 422
+
+    @pytest.mark.parametrize("body", [b"", b"{}"])
+    def test_optional_payload_accepts_empty_body_and_empty_object(self, body: bytes) -> None:
+        app = Flask(__name__)
+        with app.test_request_context("/items", method="POST", data=body, content_type="application/json"):
+            assert validate_request(self.Payload) == self.Payload()
+
+    def test_delete_rejects_invalid_body_when_query_is_empty(self) -> None:
+        app = Flask(__name__)
+        with app.test_request_context("/items", method="DELETE", data=b"{", content_type="application/json"):
+            with pytest.raises(HTTPException) as exc_info:
+                validate_request(self.Payload)
+
+        assert exc_info.value.code == 422
