@@ -111,6 +111,20 @@ Put `// boundary: <reason>` immediately above each retained owned-path or otherw
 - Prefer typed builders with valid defaults for complex data. Add overrides only for fields relevant to the scenario.
 - Keep local mocks local. Move a mock helper to `web/__mocks__/` only when multiple suites genuinely share it.
 
+### API Data in Browser Specs
+
+Browser specs serve API data from the fake API in `web/test/fake-api.ts`, never by mocking `@/service/*` modules or stubbing `fetch`/`XMLHttpRequest` directly; `web/scripts/check-browser-spec-policy.ts` rejects both. Requests then run through the real clients, transports, error handling, and TanStack Query, and the fake validates every request and response against the generated oRPC contract, so a fixture that drifts from the API fails the test.
+
+- Call `setupFakeApi({ console: { … } })` once at module level. It installs a fresh fake before each test, tears it down afterwards, and fails the test on contract violations, requests no handler answers, and requests outside the known API prefixes. Use `installFakeApi` with `onTestFinished` only when the handlers depend on per-test arguments.
+- Handlers mirror the contract tree used by `consoleClient` (for example `workspaces.current.members.get`) and receive the validated input. Keep mutable server state in the handlers' closure or module variables reset in `beforeEach`; do not read it back from the query cache, which the app may reset.
+- Each handler is a `vi.fn` spy at `fake.console.<path>` that records the request parts the client sent, such as `{ body }` or `{ params }`. Assert them exactly; reach for `expect.objectContaining` only when the input carries defaulted query fields or declared headers that the test does not care about.
+- Answer errors with `throw apiError({ status, message })`, and offline failures with `networkError()`. Any other exception from a handler fails the test as a broken fixture.
+- Use `hold(spy)` to keep the next request pending: await `arrived` to know it was sent, then `resolve(value)`, `reject(error)`, or `release()` to answer with the handler's regular implementation. Settling before the request arrives is safe. For a loading state that never resolves, return `pendingResponse()` from the handler. Teardown waits for every other request to finish, so a response that breaks the contract after the last assertion still fails the test; a request that is neither held nor aborted fails as still pending. Use `fake.use({ … })` to replace or add handlers mid-test.
+- Endpoints without a contract, such as static files on the page origin, use `routes: [route(method, base, path, handler)]`. For specs that must not reach the network at all, register `onTestFinished(guardUnexpectedFetch())` from `web/test/unexpected-fetch.ts`.
+- The fake also rejects request shapes the Python API would: form bodies sent to JSON endpoints (only bodies with a file field accept forms), bodies Flask would not read as JSON (no `Content-Type`, or a type other than `application/json` or `application/*+json`), paths with a trailing slash, and JSON or form bodies that do not parse.
+- Shared fixtures use UUIDs for IDs that appear in request paths (`web/test/console/ids.ts`), because the contract validates them.
+- Do not mark a spec that uses the fake API with `it.fails` or the `{ fails: true }` option: Vitest also inverts the fake's contract failures. For a known product bug, keep the test normal, invert only the assertion that shows the bug, and link the issue in a `TODO` next to it.
+
 ## Async, Time, and Isolation
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
@@ -126,13 +140,18 @@ Put `// boundary: <reason>` immediately above each retained owned-path or otherw
 - Following [Vite+ testing configuration], tests under `web/` use two explicit projects; rendered component and feature tests default to `browser`, and non-DOM logic stays in `unit`. Both projects are configured in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser string locators use Vitest 5's exact, case-sensitive matching; use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; in Browser Mode, `toHaveTextContent` checks the entire normalized text, while `toMatchTextContent` handles substring or regular-expression checks, including negated partial checks.
 - Browser Mode omits dependency sourcemaps. Application sourcemaps, mapped error stacks, and failure screenshots remain available. Pass `--browser.dependencySourcemaps` when debugging into third-party dependencies.
-- Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
+- Browser files running in parallel share one system clipboard, so reading it back races other files. Capture clipboard writes at the clipboard API instead, and prefer driving editors by typing over copy and paste.
+- Monaco runs for real in Browser specs: production loads it from `public/vs`. Assert its content through visible text and its `Editor content` textbox; editable Monaco specs may keep a mock, because auto-closing rewrites typed input.
+- The browser context runs in the `UTC` time zone with the `en-US` locale and `prefers-reduced-motion: reduce`, whatever the host machine uses, so local runs match CI. Assert dates and numbers in that environment instead of reformatting them in the test. When the browser's own time zone is the contract, call `emulateTimezone` from `web/test/browser-media-emulation.ts`. Production motion that honors reduced motion is off; when an animation, transition or autoplay is the contract, call `emulateReducedMotion(false)` in that test, or in `beforeEach` for a suite whose every case depends on motion, so assertions that motion stops cannot pass because it never started. Both helpers restore the default when the test finishes.
+- Tests in one browser file share a page. The default viewport is 414×896, and `web/vitest.browser.setup.ts` restores it and moves the pointer away before each test; set the viewport a test depends on inside that test.
+- A Browser test fails when it logs `console.error`, such as a React warning or a request that reached the real network. A request failure the test produced, through `apiError()`, `networkError()` or another stubbed `fetch`, is exempt wherever production logs it, so failure-path specs need no silencing. Fix any other cause. When a different error is the expected outcome of the scenario, silence it in that test with `vi.spyOn(console, 'error').mockImplementation(() => {})` and assert the visible result. `web/test/console-error-allowlist.ts` lists existing offenders by exact path; delete an entry once its spec is clean and do not add new ones.
 - Keep one behavior domain per Browser spec and split suites near 500 lines. Scope fixtures and mocks to the file that uses them; extract only genuinely shared, side-effect-free presets.
 - Browser failures keep screenshots under `web/.vitest-browser/`; CI uploads that directory only when failure artifacts exist. Playwright traces are disabled locally and in CI because recording one, even with `retain-on-failure`, roughly doubles the browser project's CI time. To debug a failure, rerun the spec locally with `--browser.trace=on` and open the trace from `web/.vitest-browser/traces/`. Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - Shared test helpers must have no import-time side effects: no `beforeEach`/`afterEach` registration, global or fetch stubbing, or assertions. Render helpers accept initial store state and injected props and return the real stores and query client. When two or more specs need the same query-cache seed, extract a side-effect-free preset under `web/test/`, distinct from `__mocks__`, that seeds only the client passed in.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
+- In Browser specs, keep `@/next/navigation` real: render inside the `NavigationProvider` from `createTestNavigation` in `web/test/next-navigation.tsx`, which supplies Next's router, pathname, search-param and route-param contexts. Assert navigation through its recorded `router` spies. A navigation within the current pathname updates the URL, because Next keeps that page mounted; one to another pathname is only recorded, because it would replace the page. Use `navigate` for a URL change the component did not start. Pass `segments` for `useSelectedLayoutSegment(s)`.
 - Do not add another test runner, DOM environment, or network interception library without a demonstrated project-level need.
 
 ## Workflow
@@ -159,9 +178,14 @@ vp test watch --project unit path/to/spec
 
 # Diagnostic coverage report for the unit project; not an acceptance target
 vp test run --project unit --coverage path/to/spec-or-directory
+
+# Only tests affected by this branch and uncommitted changes; repeat for browser
+vp test run --project unit --changed=origin/main
 ```
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
+
+[`--changed`][Vitest changed] diffs from the merge base with the given ref, includes staged, unstaged, and untracked files, and selects tests that import the changed files. Bare `--changed` checks only uncommitted changes. Changes to setup files, Vite config, `package.json`, or the files in `forceRerunTriggers` in `web/vite.config.ts` run the whole project. When a spec reads a file from disk instead of importing it, add that file to `forceRerunTriggers`; avoid `?raw` imports of source files, which drop them from coverage. Fetch `origin/main` first so the merge base is current. Pull request CI runs the unit and browser projects the same way against the base branch without coverage; the merge queue runs both full projects with coverage.
 
 ## References
 
@@ -191,6 +215,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
 [Vitest Browser Mode traces]: https://vitest.dev/guide/browser/trace-view
 [Vitest Interactivity API]: https://vitest.dev/api/browser/interactivity
+[Vitest changed]: https://vitest.dev/config/changed
 [Vitest documentation]: https://vitest.dev/guide
 [Vitest test projects]: https://vitest.dev/guide/projects
 [Why Browser Mode]: https://vitest.dev/guide/browser/why

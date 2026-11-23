@@ -1,5 +1,6 @@
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Protocol, cast
 
 import pytest
@@ -8,7 +9,9 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
+from controllers.common.fields import SimpleResultResponse
 from controllers.openapi import model_providers
+from controllers.openapi._errors import CredentialNotFound
 from controllers.openapi._models import (
     CredentialWriteResponse,
     ModelCredentialCreatePayload,
@@ -22,6 +25,7 @@ from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import (
     ModelCredentialsApi,
     ModelProviderApi,
+    ModelProviderCredentialApi,
     _model_write_response,
     _provider_write_response,
     model_rows,
@@ -310,3 +314,525 @@ def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured
 
     assert (_ASK_SUMMARY in [hint.summary for hint in response.hints]) is asks
     assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
+
+
+def _handler(view: Callable[..., object]) -> Callable[..., object]:
+    """Return the bare view ``@endpoint`` attaches as ``__handler__``."""
+    handler = vars(view).get("__handler__")
+    assert callable(handler)
+    return handler
+
+
+def _visible(*_args: object, **_kwargs: object) -> list[CredentialConfiguration]:
+    return [CredentialConfiguration(credential_id="cred-1", credential_name="main")]
+
+
+def test_delete_removes_a_visible_credential(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    removed: list[tuple[str, str, str]] = []
+
+    def remove(_self: ModelProviderService, *, tenant_id: str, provider: str, credential_id: str) -> None:
+        removed.append((tenant_id, provider, credential_id))
+
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", _visible)
+    monkeypatch.setattr(ModelProviderService, "remove_provider_credential", remove)
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+
+    api = ModelProviderCredentialApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/cred-1", method="DELETE"
+    ):
+        result = _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "cred-1")
+
+    assert result == SimpleResultResponse(result="success")
+    assert removed == [("ws", _OPENAI, "cred-1")]
+
+
+def test_delete_answers_404_for_a_credential_the_list_does_not_show(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    removed: list[object] = []
+
+    def remove(*_args: object, **_kwargs: object) -> None:
+        removed.append(None)
+
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", lambda *_a, **_k: [])
+    monkeypatch.setattr(ModelProviderService, "remove_provider_credential", remove)
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+
+    api = ModelProviderCredentialApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/missing", method="DELETE"
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "missing")
+
+    assert removed == []
+
+
+# --- Phase-two endpoints: model credential delete/activate, model delete,
+# default models, and model settings (enable + load balancing). ---
+
+from controllers.openapi._errors import ModelNotFound, ProviderNotFound  # noqa: E402
+from controllers.openapi._models import (  # noqa: E402
+    DefaultModelResponse,
+    LoadBalancingEntryPayload,
+    LoadBalancingPayload,
+    ModelRefQuery,
+    ModelSettingsPutPayload,
+    ModelSettingsQuery,
+    ModelSettingsResponse,
+)
+from controllers.openapi.model_providers import (  # noqa: E402
+    DefaultModelApi,
+    ModelCredentialActivateApi,
+    ModelCredentialApi,
+    ModelProviderCredentialActivateApi,
+    ModelSettingsApi,
+    ProviderModelsApi,
+    _lb_config_dicts,
+)
+from services.entities.model_provider_entities import DefaultModelResponse as ServiceDefaultModelResponse  # noqa: E402
+from services.entities.model_provider_entities import SimpleProviderEntityResponse  # noqa: E402
+from services.model_load_balancing_service import LoadBalancingConfigSummaryDict, ModelLoadBalancingService  # noqa: E402
+
+
+def _ref_query() -> ModelRefQuery:
+    return ModelRefQuery(model="llama3", model_type=ModelType.LLM)
+
+
+def _settings_query() -> ModelSettingsQuery:
+    return ModelSettingsQuery(model="llama3", model_type=ModelType.LLM, config_from="custom-model")
+
+
+def test_model_credential_delete_removes_a_visible_credential(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    removed: list[dict[str, str]] = []
+    monkeypatch.setattr(ModelProviderService, "get_provider_model_available_credentials", lambda *_a, **_k: _visible())
+    monkeypatch.setattr(ModelProviderService, "remove_model_credential", lambda _self, **kwargs: removed.append(kwargs))
+
+    api = ModelCredentialApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/credentials/cred-1", method="DELETE"
+    ):
+        result = _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "cred-1", query=_ref_query())
+
+    assert result == SimpleResultResponse(result="success")
+    assert removed == [
+        {
+            "tenant_id": "ws",
+            "provider": _OPENAI,
+            "model_type": "llm",
+            "model": "llama3",
+            "credential_id": "cred-1",
+        }
+    ]
+
+
+def test_model_credential_delete_answers_404_for_an_unknown_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(ModelProviderService, "get_provider_model_available_credentials", lambda *_a, **_k: [])
+    monkeypatch.setattr(ModelProviderService, "remove_model_credential", lambda *_a, **_k: None)
+
+    api = ModelCredentialApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/credentials/missing", method="DELETE"
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "missing", query=_ref_query())
+
+
+def test_model_credential_delete_rejects_an_extra_query_parameter() -> None:
+    with pytest.raises(ValidationError):
+        ModelRefQuery.model_validate({"model": "m", "model_type": "llm", "surprise": "x"})
+
+
+def test_provider_credential_activate_switches_a_visible_credential(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    switched: list[dict[str, str]] = []
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", lambda *_a, **_k: _visible())
+    monkeypatch.setattr(
+        ModelProviderService, "switch_active_provider_credential", lambda _self, **kwargs: switched.append(kwargs)
+    )
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+    monkeypatch.setattr(model_providers, "_provider", lambda *_a: _model_provider())
+
+    api = ModelProviderCredentialActivateApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/cred-1:activate", method="POST"
+    ):
+        response = _handler(api.post)(api, _context(sqlite_session), "ws", _OPENAI, "cred-1")
+
+    assert isinstance(response, CredentialWriteResponse)
+    assert switched == [{"tenant_id": "ws", "provider": _OPENAI, "credential_id": "cred-1"}]
+
+
+def test_provider_credential_activate_answers_404_for_an_unknown_id(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", lambda *_a, **_k: [])
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+
+    api = ModelProviderCredentialActivateApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/missing:activate", method="POST"
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.post)(api, _context(sqlite_session), "ws", _OPENAI, "missing")
+
+
+def test_model_credential_activate_switches_a_visible_credential(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    switched: list[dict[str, str]] = []
+    monkeypatch.setattr(ModelProviderService, "get_provider_model_available_credentials", lambda *_a, **_k: _visible())
+    monkeypatch.setattr(
+        ModelProviderService,
+        "switch_active_custom_model_credential",
+        lambda _self, **kwargs: switched.append(kwargs),
+    )
+    monkeypatch.setattr(model_providers, "_provider", lambda *_a: _model_provider(_custom("cred-1")))
+
+    api = ModelCredentialActivateApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/credentials/cred-1:activate", method="POST"
+    ):
+        response = _handler(api.post)(api, _context(sqlite_session), "ws", _OPENAI, "cred-1", body=_LLAMA)
+
+    assert isinstance(response, CredentialWriteResponse)
+    assert switched == [
+        {
+            "tenant_id": "ws",
+            "provider": _OPENAI,
+            "model_type": "llm",
+            "model": "llama3",
+            "credential_id": "cred-1",
+        }
+    ]
+
+
+def test_model_credential_activate_answers_404_for_an_unknown_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(ModelProviderService, "get_provider_model_available_credentials", lambda *_a, **_k: [])
+
+    api = ModelCredentialActivateApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/credentials/missing:activate",
+            method="POST",
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.post)(api, _context(sqlite_session), "ws", _OPENAI, "missing", body=_LLAMA)
+
+
+def test_model_delete_removes_a_custom_model(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    removed: list[dict[str, str]] = []
+    monkeypatch.setattr(model_providers, "_provider", lambda *_a: _model_provider(_custom("cred-1")))
+    monkeypatch.setattr(ModelProviderService, "remove_model", lambda _self, **kwargs: removed.append(kwargs))
+
+    api = ProviderModelsApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OLLAMA}/models", method="DELETE"):
+        result = _handler(api.delete)(api, _context(sqlite_session), "ws", _OLLAMA, query=_ref_query())
+
+    assert result == SimpleResultResponse(result="success")
+    assert removed == [{"tenant_id": "ws", "provider": _OLLAMA, "model_type": "llm", "model": "llama3"}]
+
+
+def test_model_delete_answers_404_for_a_model_the_provider_does_not_list(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(model_providers, "_provider", lambda *_a: _model_provider())
+    monkeypatch.setattr(ModelProviderService, "remove_model", lambda *_a, **_k: None)
+
+    api = ProviderModelsApi()
+    with (
+        app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OLLAMA}/models", method="DELETE"),
+        pytest.raises(ModelNotFound),
+    ):
+        _handler(api.delete)(api, _context(sqlite_session), "ws", _OLLAMA, query=_ref_query())
+
+
+def _default_entity() -> ServiceDefaultModelResponse:
+    return ServiceDefaultModelResponse.model_construct(
+        model="gpt-4o",
+        model_type=ModelType.LLM,
+        provider=SimpleProviderEntityResponse.model_construct(
+            tenant_id="ws",
+            provider=_OPENAI,
+            label=I18nObject(en_US="OpenAI"),
+            icon_small=None,
+            supported_model_types=[ModelType.LLM],
+        ),
+    )
+
+
+def test_default_model_describe_reads_the_saved_default(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(
+        ModelProviderService, "get_default_model_of_model_type", lambda _self, *_a, **_k: _default_entity()
+    )
+
+    api = DefaultModelApi()
+    with app.test_request_context("/openapi/v1/workspaces/ws/default-models/llm"):
+        response = _handler(api.get)(api, _context(sqlite_session), "ws", "llm")
+
+    assert response == DefaultModelResponse(model_type="llm", provider=_OPENAI, model="gpt-4o")
+
+
+def test_default_model_describe_answers_nulls_while_unset(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(ModelProviderService, "get_default_model_of_model_type", lambda *_a, **_k: None)
+
+    api = DefaultModelApi()
+    with app.test_request_context("/openapi/v1/workspaces/ws/default-models/llm"):
+        response = _handler(api.get)(api, _context(sqlite_session), "ws", "llm")
+
+    assert response == DefaultModelResponse(model_type="llm", provider=None, model=None)
+
+
+def test_default_model_set_updates_and_echoes_the_default(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    updated: list[dict[str, str]] = []
+    monkeypatch.setattr(
+        ModelProviderService, "update_default_model_of_model_type", lambda _self, **k: updated.append(k)
+    )
+
+    api = DefaultModelApi()
+    with app.test_request_context("/openapi/v1/workspaces/ws/default-models/llm", method="PUT"):
+        response = _handler(api.put)(
+            api,
+            _context(sqlite_session),
+            "ws",
+            "llm",
+            body=model_providers.DefaultModelPayload(provider=_OPENAI, model="gpt-4o"),
+        )
+
+    assert response == DefaultModelResponse(model_type="llm", provider=_OPENAI, model="gpt-4o")
+    assert updated == [{"tenant_id": "ws", "model_type": "llm", "provider": _OPENAI, "model": "gpt-4o"}]
+
+
+def test_an_unknown_default_model_type_answers_422(app: Flask, sqlite_session: Session) -> None:
+    from werkzeug.exceptions import UnprocessableEntity
+
+    api = DefaultModelApi()
+    with (
+        app.test_request_context("/openapi/v1/workspaces/ws/default-models/video"),
+        pytest.raises(UnprocessableEntity),
+    ):
+        _handler(api.get)(api, _context(sqlite_session), "ws", "video")
+
+
+@dataclass
+class _FakeSetting:
+    enabled: bool
+
+
+@dataclass
+class _FakeConfiguration:
+    _setting: _FakeSetting | None
+
+    def get_provider_model_setting(self, *, model_type: object, model: str) -> _FakeSetting | None:  # noqa: ARG002
+        return self._setting
+
+
+_LB_ROWS: list[LoadBalancingConfigSummaryDict] = [
+    {
+        "id": "inherit-id",
+        "name": "__inherit__",
+        "credentials": {"api_key": "s3cr3t"},
+        "credential_id": None,
+        "enabled": True,
+        "in_cooldown": False,
+        "ttl": 0,
+    },
+    {
+        "id": "row-2",
+        "name": "spare",
+        "credentials": {"api_key": "other-secret"},
+        "credential_id": "cred-2",
+        "enabled": False,
+        "in_cooldown": False,
+        "ttl": 0,
+    },
+]
+
+
+def _stub_balancing(
+    monkeypatch: pytest.MonkeyPatch, rows: list[LoadBalancingConfigSummaryDict] | None = None
+) -> list[dict[str, object]]:
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        ModelLoadBalancingService,
+        "get_load_balancing_configs",
+        lambda _self, **_kwargs: (True, rows if rows is not None else list(_LB_ROWS)),
+    )
+    monkeypatch.setattr(
+        ModelLoadBalancingService,
+        "update_load_balancing_configs",
+        lambda _self, **kwargs: calls.append(kwargs),
+    )
+    monkeypatch.setattr(ModelLoadBalancingService, "enable_model_load_balancing", lambda *_a, **_k: None)
+    monkeypatch.setattr(ModelLoadBalancingService, "disable_model_load_balancing", lambda *_a, **_k: None)
+    return calls
+
+
+def test_model_settings_describe_reports_enabled_and_never_credentials(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(
+        model_providers, "_provider_configuration", lambda *_a: _FakeConfiguration(_FakeSetting(enabled=False))
+    )
+    _stub_balancing(monkeypatch)
+
+    api = ModelSettingsApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/settings"):
+        response = _handler(api.get)(api, _context(sqlite_session), "ws", _OPENAI, query=_settings_query())
+
+    assert isinstance(response, ModelSettingsResponse)
+    assert response.enabled is False
+    assert response.load_balancing.enabled is True
+    assert [(e.id, e.inherit) for e in response.load_balancing.entries] == [("inherit-id", True), ("row-2", False)]
+    dumped = response.model_dump(mode="json")
+    assert "credentials" not in dumped["load_balancing"]["entries"][0]
+    assert "s3cr3t" not in str(dumped)
+
+
+def test_model_settings_describe_defaults_to_enabled_without_a_setting_row(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(model_providers, "_provider_configuration", lambda *_a: _FakeConfiguration(None))
+    _stub_balancing(monkeypatch, rows=[])
+
+    api = ModelSettingsApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/settings"):
+        response = _handler(api.get)(api, _context(sqlite_session), "ws", _OPENAI, query=_settings_query())
+
+    assert isinstance(response, ModelSettingsResponse)
+    assert response.enabled is True
+
+
+def test_model_settings_describe_answers_404_for_an_unknown_provider(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    def missing(*_a: object) -> object:
+        raise ProviderNotFound()
+
+    monkeypatch.setattr(model_providers, "_provider_configuration", missing)
+
+    api = ModelSettingsApi()
+    with (
+        app.test_request_context("/openapi/v1/workspaces/ws/model-providers/none/models/settings"),
+        pytest.raises(ProviderNotFound),
+    ):
+        _handler(api.get)(api, _context(sqlite_session), "ws", "none", query=_settings_query())
+
+
+def test_lb_config_dicts_reuse_existing_ids_and_the_inherit_row() -> None:
+    desired = [
+        LoadBalancingEntryPayload(credential_id=None, enabled=False),
+        LoadBalancingEntryPayload(credential_id="cred-2", enabled=True),
+        LoadBalancingEntryPayload(credential_id="cred-3", enabled=True),
+    ]
+    configs = _lb_config_dicts(list(_LB_ROWS), desired)
+
+    assert configs == [
+        {"id": "inherit-id", "name": "__inherit__", "enabled": False},
+        {"id": "row-2", "name": "spare", "credential_id": "cred-2", "enabled": True},
+        {"name": "cred-3", "credential_id": "cred-3", "enabled": True},
+    ]
+
+
+def test_model_settings_payload_rejects_duplicate_credentials() -> None:
+    with pytest.raises(ValidationError):
+        ModelSettingsPutPayload.model_validate(
+            {
+                "model": "llama3",
+                "model_type": "llm",
+                "config_from": "custom-model",
+                "enabled": True,
+                "load_balancing": {
+                    "enabled": True,
+                    "entries": [{"credential_id": "c1", "enabled": True}, {"credential_id": "c1", "enabled": True}],
+                },
+            }
+        )
+    with pytest.raises(ValidationError):
+        ModelSettingsPutPayload.model_validate(
+            {
+                "model": "llama3",
+                "model_type": "llm",
+                "config_from": "custom-model",
+                "enabled": True,
+                "load_balancing": {
+                    "enabled": True,
+                    "entries": [{"credential_id": None, "enabled": True}, {"credential_id": None, "enabled": True}],
+                },
+            }
+        )
+
+
+def test_model_settings_put_translates_entries_and_replaces_the_whole_list(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    calls = _stub_balancing(monkeypatch)
+    enabled_models: list[dict[str, object]] = []
+    monkeypatch.setattr(model_providers, "_provider_configuration", lambda *_a: _FakeConfiguration(None))
+    monkeypatch.setattr(ModelProviderService, "enable_model", lambda _self, **k: enabled_models.append(k))
+    monkeypatch.setattr(ModelProviderService, "disable_model", lambda *_a, **_k: None)
+
+    body = ModelSettingsPutPayload(
+        model="llama3",
+        model_type=ModelType.LLM,
+        config_from="custom-model",
+        enabled=True,
+        load_balancing=LoadBalancingPayload(
+            enabled=True,
+            entries=[
+                LoadBalancingEntryPayload(credential_id=None, enabled=True),
+                LoadBalancingEntryPayload(credential_id="cred-3", enabled=True),
+            ],
+        ),
+    )
+
+    api = ModelSettingsApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/models/settings", method="PUT"):
+        response = _handler(api.put)(api, _context(sqlite_session), "ws", _OPENAI, body=body)
+
+    assert isinstance(response, ModelSettingsResponse)
+    # cred-2's row is absent from the desired list, so the service deletes it;
+    # the inherit row keeps its existing id and cred-3 becomes a new entry.
+    [update] = calls
+    assert update["configs"] == [
+        {"id": "inherit-id", "name": "__inherit__", "enabled": True},
+        {"name": "cred-3", "credential_id": "cred-3", "enabled": True},
+    ]
+    assert enabled_models == [{"tenant_id": "ws", "provider": _OPENAI, "model": "llama3", "model_type": "llm"}]

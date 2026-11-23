@@ -122,7 +122,7 @@ export function RetrievalComposer() {
                     ns: 'knowledgeRetrieval',
                     name: image.name,
                   })}
-                  className="absolute -top-1 -right-1 shadow-xs"
+                  className="absolute -inset-e-1 -top-1 shadow-xs"
                   disabled={disabled || uploading}
                   onClick={() => removeImage(image.uploadFileId)}
                 >

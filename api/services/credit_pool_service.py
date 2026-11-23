@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
-from core.errors.error import QuotaExceededError
+from core.errors.error import InsufficientHostedCreditsError, QuotaExceededError
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
@@ -254,7 +254,11 @@ class CreditPoolService:
         session_factory: Callable[[], Session] | None = None,
         meta: dict[str, Any] | None = None,
     ) -> CreditPoolReservation:
-        """Reserve the full amount or raise before the billable operation starts."""
+        """Reserve the full positive amount for a request before starting a billable operation.
+
+        A Cloud Billing denial raises InsufficientHostedCreditsError without a reservation.
+        Upstream failures propagate; they do not establish that no credits were reserved.
+        """
         if credits_required <= 0:
             raise ValueError("credits_required must be greater than 0")
         if not request_id:
@@ -275,7 +279,7 @@ class CreditPoolService:
             )
             reservation_id = result.reservation_id
             if not reservation_id:
-                raise QuotaExceededError("Insufficient credits remaining")
+                raise InsufficientHostedCreditsError("Insufficient credits remaining")
             return CreditPoolReservation(
                 tenant_id=tenant_id,
                 pool_type=normalized_pool_type,

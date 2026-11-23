@@ -8,9 +8,10 @@
  *
  * Best practices from nuqs documentation:
  * - Use useQueryState for single parameters
- * - Use useQueryStates for multiple related parameters (atomic updates)
- * - Always provide parsers with defaults for type safety
- * - Use shallow routing to avoid unnecessary re-renders
+ * - Use useQueryStates for reading and updating related parameters together
+ * - Share parser definitions with serializers and loaders when needed
+ * - Provide defaults only when missing or invalid values have a meaningful fallback
+ * - Shallow routing avoids server navigation; React state still updates immediately
  */
 
 import { createParser, useQueryStates } from 'nuqs'

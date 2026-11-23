@@ -160,10 +160,10 @@ function GoldenQuestionEditorDialog({
           params: { control_space_id: knowledgeSpaceId },
         })
         toast.success(t(($) => $['qualityPage.createdToast'], { ns: 'knowledgeQuality' }))
+        await queryClient.invalidateQueries({
+          queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
+        })
       }
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
-      })
       close()
     } catch (error) {
       setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))

@@ -1,8 +1,11 @@
 import type { TestWorld } from '@test/fixtures/kernel'
+import { existsSync, readFileSync } from 'node:fs'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { catalog } from '@/plugins/catalog'
 import { commands } from '@/plugins/commands'
+
+const FIXTURE = readFileSync(new URL('../../../../test/fixtures/catalog.json', import.meta.url))
 
 const worlds: TestWorld[] = []
 afterEach(async () => {
@@ -10,16 +13,15 @@ afterEach(async () => {
 })
 
 it('deletes the cached catalog file', async () => {
-  const w = await testContext({ login: true, argv: ['refresh', 'cache'] })
+  const w = await testContext({ login: false, env: true, argv: ['delete', 'cache'] })
   worlds.push(w)
-  await (await w.ctx.get(commands)).run()
-  expect((await w.ctx.get(catalog)).loaded).toBe(true)
+  const cache = await w.ctx.get(catalog)
+  await cache.replace(FIXTURE)
 
-  const w2 = await testContext({ login: true, argv: ['delete', 'cache'], reuseDirOf: w })
-  worlds.push(w2)
-  expect(await (await w2.ctx.get(commands)).run()).toBe(0)
-  expect(JSON.parse(w2.io.outBuf())).toEqual({ cleared: true })
-  expect((await w2.ctx.get(catalog)).loaded).toBe(false)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf())).toEqual({ cleared: true })
+  expect(existsSync(cache.path)).toBe(false)
+  expect(cache.loaded).toBe(false)
 })
 
 it('rejects with exit 4 when not logged in', async () => {

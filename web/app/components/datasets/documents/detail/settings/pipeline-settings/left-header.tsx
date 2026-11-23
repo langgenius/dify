@@ -28,13 +28,13 @@ const LeftHeader = ({ title }: LeftHeaderProps) => {
       <IconButton
         variant="secondary-accent"
         size="xl"
-        className="absolute top-3.5 -left-11 rounded-full"
+        className="absolute -inset-s-11 top-3.5 rounded-full"
         onClick={navigateBack}
         aria-label={t(($) => $['operation.back'], { ns: 'common' })}
       >
         <span aria-hidden className="i-ri-arrow-left-line size-5" />
       </IconButton>
-      <Effect className="-top-8.5 left-8 opacity-20" />
+      <Effect className="inset-s-8 -top-8.5 opacity-20" />
     </div>
   )
 }

@@ -34,8 +34,8 @@ const OnMinuteSelector = ({ value = 0, onChange, disabled }: OnMinuteSelectorPro
       </SliderLabel>
       <div className="relative flex h-8 items-center rounded-lg bg-components-input-bg-normal">
         <SliderValue className="flex h-full w-12 shrink-0 items-center justify-center text-[13px] text-components-input-text-filled" />
-        <div className="absolute top-0 left-12 h-full w-px bg-components-panel-bg"></div>
-        <div className="flex h-full grow items-center pr-3 pl-4">
+        <div className="absolute inset-s-12 top-0 h-full w-px bg-components-panel-bg"></div>
+        <div className="flex h-full grow items-center ps-4 pe-3">
           <SliderControl>
             <SliderTrack>
               <SliderIndicator />

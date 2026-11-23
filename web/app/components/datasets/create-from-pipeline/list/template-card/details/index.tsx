@@ -41,7 +41,7 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
           <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             size="lg"
-            className="absolute top-4 right-4 z-10"
+            className="absolute inset-e-4 top-4 z-10"
           >
             <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden />
           </IconButton>
@@ -49,14 +49,14 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
       />
       {pipelineTemplateInfo ? (
         <div className="flex h-full">
-          <div className="flex grow items-center justify-center p-3 pr-0">
+          <div className="flex grow items-center justify-center p-3 pe-0">
             <WorkflowPreview
               {...pipelineTemplateInfo.graph}
               className="overflow-hidden rounded-2xl"
             />
           </div>
           <div className="relative flex w-90 shrink-0 flex-col">
-            <div className="flex items-start gap-x-3 pt-6 pr-12 pb-2 pl-4">
+            <div className="flex items-start gap-x-3 ps-4 pe-12 pt-6 pb-2">
               <AppIcon size="large" icon={pipelineTemplateInfo.icon_info} />
               <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
                 <DialogTitle

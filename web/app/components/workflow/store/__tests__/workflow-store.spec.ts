@@ -5,6 +5,38 @@ import { createTestWorkflowStore, renderWorkflowHook } from '../../__tests__/wor
 import { createWorkflowStore, useStore, useWorkflowStore } from '../workflow'
 
 describe('workflow store composition', () => {
+  it('ends a draft comment with comment mode unless a quick add started it', () => {
+    const store = createTestWorkflowStore()
+    const draft = { x: 1, y: 2 }
+
+    store.getState().setControlMode('comment')
+    store.getState().setPendingComment(draft)
+    store.getState().setControlMode('pointer')
+    expect(store.getState().pendingComment).toBeNull()
+
+    store.getState().setCommentQuickAdd(true)
+    store.getState().setPendingComment(draft)
+    store.getState().setControlMode('hand')
+    expect(store.getState().pendingComment).toEqual(draft)
+  })
+
+  it('ends a quick add with its draft, but not while it is still placing one', () => {
+    const store = createTestWorkflowStore()
+    const draft = { x: 1, y: 2 }
+
+    store.getState().setCommentQuickAdd(true)
+    store.getState().setCommentPlacing(true)
+    store.getState().setPendingComment(null)
+    expect(store.getState().isCommentQuickAdd).toBe(true)
+
+    store.getState().setPendingComment(draft)
+    store.getState().setCommentPlacing(false)
+    expect(store.getState().isCommentQuickAdd).toBe(true)
+
+    store.getState().setPendingComment(null)
+    expect(store.getState().isCommentQuickAdd).toBe(false)
+  })
+
   it('updates clipboard nodes and edges atomically without affecting another editor', () => {
     const store = createTestWorkflowStore()
     const other = createTestWorkflowStore()
