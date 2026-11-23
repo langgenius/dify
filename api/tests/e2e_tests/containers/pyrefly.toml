@@ -90,10 +90,6 @@ project-excludes = [
   "test_workflow_pause_integration.py",
   "trigger/conftest.py",
   "trigger/test_trigger_e2e.py",
-  "workflow/nodes/code_executor/test_code_javascript.py",
-  "workflow/nodes/code_executor/test_code_jinja2.py",
-  "workflow/nodes/code_executor/test_code_python3.py",
-  "workflow/nodes/code_executor/test_utils.py",
 ]
 
 [errors]
