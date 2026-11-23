@@ -30,7 +30,7 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
       <span
         aria-hidden
         className={cn(
-          'mr-0.5 i-custom-vender-knowledge-chunk size-3 [mask-clip:content-box] [mask-origin:content-box] p-px text-text-tertiary',
+          'me-0.5 i-custom-vender-knowledge-chunk size-3 [mask-clip:content-box] [mask-origin:content-box] p-px text-text-tertiary',
           iconClassName,
         )}
       />

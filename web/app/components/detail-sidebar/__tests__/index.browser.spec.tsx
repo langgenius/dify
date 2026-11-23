@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { DetailSidebarMode } from '../cookie'
+import type { TestNavigation } from '@/test/next-navigation'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { useHydrateAtoms } from 'jotai/utils'
 import Cookies from 'js-cookie'
@@ -9,29 +10,28 @@ import { render } from 'vitest-browser-react'
 import { ThemeProvider } from '@/features/theme/provider'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
-import { seedSystemFeatures } from '@/test/console/query-data'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '../cookie'
 import { detailSidebarModeAtom } from '../state'
 
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async () => {
-  const { useSyncExternalStore } = await import('react')
-  const subscribe = (notify: () => void) => {
-    window.addEventListener('popstate', notify)
-    return () => window.removeEventListener('popstate', notify)
-  }
-  return {
-    usePathname: () =>
-      useSyncExternalStore(
-        subscribe,
-        () => window.location.pathname,
-        () => window.location.pathname,
-      ),
-  }
-})
+const boundary = vi.hoisted(() => ({ openZendesk: vi.fn() }))
+
+// boundary: Zendesk loads a third-party widget outside the test page.
+vi.mock('@/app/components/base/zendesk/runtime', () => ({
+  zendeskRuntime: { open: boundary.openZendesk },
+}))
+
+// boundary: the widget key is supplied by the deployment environment.
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ZENDESK_WIDGET_KEY: 'zendesk-key',
+}))
+
+let navigation: TestNavigation
 
 function InitialDetailSidebarMode({
   children,
@@ -48,16 +48,20 @@ async function renderSidebar({
   currentEnv = null,
   mode = 'expand',
   width = 1024,
+  plan,
 }: {
   currentEnv?: string | null
   mode?: DetailSidebarMode
   width?: number
+  plan?: 'team' | 'sandbox'
 } = {}) {
   await page.viewport(width, 720)
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, {}, { currentEnv })
   seedCurrentWorkspaceQuery(queryClient)
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, { deployment_edition: plan ? 'CLOUD' : 'COMMUNITY' })
+  if (plan) seedFeatures(queryClient, { billing: { subscription: { plan } } })
+  navigation = createTestNavigation({ url: '/app/app-1/overview' })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
@@ -90,16 +94,33 @@ async function renderSidebar({
         </ThemeProvider>
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
+    { wrapper: navigation.NavigationProvider },
   )
   return screen
 }
 
 beforeEach(() => {
-  window.history.replaceState({}, '', '/app/app-1/overview')
+  vi.clearAllMocks()
+  boundary.openZendesk.mockResolvedValue(undefined)
   Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
 })
 
 afterEach(() => Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME))
+
+it('opens paid Cloud support from expanded and collapsed detail sidebars', async () => {
+  const screen = await renderSidebar({ plan: 'team' })
+  const contact = screen.getByRole('button', { name: 'common.userProfile.contactSupport' })
+
+  await expect.element(contact).toBeVisible()
+  await userEvent.click(contact)
+  expect(boundary.openZendesk).toHaveBeenCalledWith('CLOUD')
+
+  await userEvent.click(screen.getByRole('button', { name: 'Toggle detail' }))
+  await expect.element(screen.getByText('Collapsed detail')).toBeVisible()
+  await expect.element(contact).toBeVisible()
+  await userEvent.click(contact)
+  expect(boundary.openZendesk).toHaveBeenCalledTimes(2)
+})
 
 it('uses the native shortcut outside editors and persists the resulting preference', async () => {
   const screen = await renderSidebar({ currentEnv: 'TESTING' })
@@ -127,8 +148,7 @@ it('uses the real compact viewport without overwriting the desktop preference', 
   await expect.element(screen.getByText('Expanded content')).toBeVisible()
   expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
 
-  window.history.pushState({}, '', '/app/app-1/logs')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  navigation.navigate('/app/app-1/logs')
   await expect.element(screen.getByText('Collapsed content')).toBeVisible()
   expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
 })

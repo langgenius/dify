@@ -31,7 +31,7 @@ import { getPluginDetailPath, getTemplateDetailPath } from '@/features/marketpla
 import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
-import { getPluginIconInMarketplace } from '../utils'
+import { getPluginIconInMarketplace } from '../plugin-card-adapter'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
@@ -123,7 +123,7 @@ function MarketplaceSuggestionList({
               <AutocompleteItem
                 key={item.id}
                 value={item}
-                className="items-start gap-1 py-1 pr-1 pl-3"
+                className="items-start gap-1 py-1 ps-3 pe-1"
                 onClick={() => onSelect(item.selection)}
               >
                 <span className="flex shrink-0 items-start py-1">

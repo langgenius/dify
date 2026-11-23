@@ -1,5 +1,4 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { consoleClient } from '@/service/console'
 import { zAgentAppPagination } from '@dify/contracts/api/console/agent/zod.gen'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -12,31 +11,22 @@ import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
+import { hold, installFakeApi } from '@/test/fake-api'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import RosterPage from '../roster/page'
 
-const api = vi.hoisted(() => ({
-  agents: vi.fn<typeof consoleClient.agent.get>(),
-  delete: vi.fn<typeof consoleClient.agent.byAgentId.delete>(),
-}))
 vi.unmock('react-i18next')
-// boundary: generated Console transport is the server edge below the real roster owners.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.get': api.agents,
-      'agent.byAgentId.delete': api.delete,
-    }),
-  }
-})
 
-const agent = (id: string, name: string): AgentAppPartial => ({
+// Agent ids are UUIDs in the contract; derive a stable one from each readable key.
+const agentIds = new Map<string, string>()
+const agentId = (key: string) => {
+  if (!agentIds.has(key))
+    agentIds.set(key, `00000000-0000-4000-8000-${String(agentIds.size + 1).padStart(12, '0')}`)
+  return agentIds.get(key)!
+}
+const agent = (key: string, name: string): AgentAppPartial => ({
   ...createAgentFixture({
-    id,
+    id: agentId(key),
     name,
     permission_keys: [AgentPermission.Delete, AgentPermission.Edit],
   }),
@@ -66,9 +56,17 @@ afterEach(() => {
 async function setup(initialAgents: AgentAppPartial[]) {
   await page.viewport(1024, 768)
   let agents = initialAgents
-  api.agents.mockReset().mockImplementation(async () => agentPage(agents))
-  api.delete.mockReset().mockImplementation(async ({ params }) => {
-    agents = agents.filter(({ id }) => id !== params.agent_id)
+  const fake = installFakeApi({
+    console: {
+      agent: {
+        get: () => agentPage(agents),
+        byAgentId: {
+          delete: ({ params }) => {
+            agents = agents.filter(({ id }) => id !== params.agent_id)
+          },
+        },
+      },
+    },
   })
   const i18n = createInstance()
   await i18n.init({
@@ -89,6 +87,11 @@ async function setup(initialAgents: AgentAppPartial[]) {
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
   )
+  // Unmount before the fake API leaves, so a late refetch cannot reach the real network.
+  onTestFinished(async () => {
+    await screen.unmount()
+    await fake()
+  })
   await expect.element(screen.getByRole('list', { name: 'Agent list', exact: true })).toBeVisible()
   await expect
     .element(screen.getByRole('link', { name: 'Learn more about Agent' }))
@@ -103,19 +106,15 @@ async function setup(initialAgents: AgentAppPartial[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.poll(() => menu.isConnected).toBe(false)
   }
-  return { screen, queryClient, openDelete, actions }
+  return { screen, queryClient, openDelete, actions, fake }
 }
 
 it('focuses the next agent after deletion and keeps the next canceled action keyboard-operable', async () => {
   const target = agent('target', 'Research Agent')
   const remaining = agent('remaining', 'Writing Agent')
-  const { screen, queryClient, openDelete, actions } = await setup([target, remaining])
-  const pending = createDeferred<void>()
-  const deleteAgent = api.delete.getMockImplementation()!
-  api.delete.mockImplementationOnce(async (input) => {
-    await pending.promise
-    return deleteAgent(input)
-  })
+  const { screen, queryClient, openDelete, actions, fake } = await setup([target, remaining])
+  const deleteRequest = fake.console.agent.byAgentId.delete
+  const pending = hold(deleteRequest)
   try {
     const deletedCard = screen.getByRole('link', { name: target.name, exact: true }).element()
     await openDelete(target.name)
@@ -124,9 +123,9 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await screen.getByRole('button', { name: 'Autofill' }).click()
     await input.click()
     await userEvent.keyboard('{Enter}')
-    await expect.poll(() => api.delete.mock.calls.length).toBe(1)
+    await expect.poll(() => deleteRequest.mock.calls.length).toBe(1)
     await expect.element(input).toHaveFocus()
-    pending.resolve()
+    pending.release()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect
@@ -141,9 +140,8 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await expect.element(actions(remaining.name)).toBeVisible()
     await userEvent.keyboard('{Enter}')
     await expect.element(screen.getByRole('menu')).toBeVisible()
-    expect(api.delete).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: target.id } })
+    expect(deleteRequest).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: target.id } })
   } finally {
-    pending.resolve()
     queryClient.clear()
   }
 })
@@ -176,22 +174,24 @@ it('focuses the next card without moving the roster scroll position', async () =
   const targetName = 'Agent 15'
   const { screen, queryClient, openDelete } = await setup(agents)
   try {
-    const viewport = screen
-      .getByRole('region', { name: 'Agents', exact: true })
-      .element().parentElement!
-    await expect.poll(() => viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
-    viewport.scrollTo({ top: 600 })
-    await expect.poll(() => viewport.scrollTop).toBeGreaterThan(0)
+    const target = screen.getByRole('link', { name: targetName, exact: true })
+    await expect.element(target).toBeInTheDocument()
+    target.element().scrollIntoView({ block: 'center' })
+    // A surviving card above the deletion keeps the same painted position only if
+    // restoring focus does not scroll the roster.
+    const anchor = screen.getByRole('link', { name: 'Agent 12', exact: true })
+    await expect.element(anchor).toBeInTheDocument()
+    const anchorElement = anchor.element()
     const deletedCard = screen.getByRole('link', { name: targetName, exact: true }).element()
     await openDelete(targetName)
-    const scrollTop = viewport.scrollTop
+    const anchorTop = anchorElement.getBoundingClientRect().top
     const dialog = screen.getByRole('alertdialog').element()
     await screen.getByRole('button', { name: 'Autofill' }).click()
     await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(screen.getByRole('link', { name: 'Agent 16', exact: true })).toHaveFocus()
-    expect(viewport.scrollTop).toBe(scrollTop)
+    expect(anchorElement.getBoundingClientRect().top).toBeCloseTo(anchorTop)
   } finally {
     queryClient.clear()
   }

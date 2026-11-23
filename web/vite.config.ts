@@ -11,6 +11,30 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
+// `--changed` follows source imports, so inputs outside the module graph rerun every test.
+// Keep coverage-counted sources out of `?raw` imports: those report zero lines.
+const forceRerunTriggers = [
+  ...configDefaults.forceRerunTriggers,
+  '**/pnpm-lock.yaml',
+  '**/pnpm-workspace.yaml',
+  '**/patches/**',
+  // `tsconfigPaths` resolves aliases from these files.
+  '**/web/tsconfig.json',
+  '**/packages/tsconfig/**',
+  // Specs read these from disk or copy them into a temporary project.
+  '**/web/public/embed{,.min}.js',
+  '**/web/i18n/locales/*/{skill,deployments}.json',
+  '**/web/i18n/lib.{client,server}.ts',
+  '**/web/app/route-metadata.ts',
+  '**/web/scripts/check-i18n{.js,-values.ts}',
+  // Tests and the Vite plugin load this workspace package from its built `dist`.
+  '**/packages/openapi-content-mapper/src/**',
+  // Browser setup loads global styles through CSS imports, which the module graph does not track.
+  '**/web/app/styles/**',
+  '**/web/themes/**',
+  '**/web/app/components/base/{badge,premium-badge}/index.css',
+  '**/packages/dify-ui/src/{styles,themes,plugins}/**',
+]
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -41,6 +65,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
         command === 'serve' && isPreview !== true
           ? (await import('code-inspector-plugin')).codeInspectorPlugin({
               bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
             })
           : undefined
 
@@ -78,7 +103,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: '~@', replacement: projectRoot }],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook
@@ -95,12 +121,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
 
     // Vitest config
     test: {
-      // Vitest 5 stores Browser Mode failure screenshots as attachments; keep them beside the traces.
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
       attachmentsDir: './.vitest-browser/attachments',
+      forceRerunTriggers,
       coverage: {
         provider: 'v8',
-        // Include authored sources even when no test imports them.
-        include: ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        // Unit uploads establish the full source denominator; browser uploads add executed code.
+        include:
+          process.env.DIFY_TEST_COVERAGE_ONLY_EXECUTED === 'true'
+            ? undefined
+            : ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
         exclude: [
           // Test infrastructure and examples do not belong in the source denominator.
@@ -149,11 +179,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
               '@base-ui/react/number-field',
               '@base-ui/react/popover',
               '@base-ui/react/slider',
+              '@lexical/react/LexicalExtensionComposer',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
+              'next/dist/shared/lib/app-router-context.shared-runtime',
+              'next/dist/shared/lib/hooks-client-context.shared-runtime',
+              'next/navigation',
               'next/script',
               'react-textarea-autosize',
             ],
@@ -165,12 +200,28 @@ export default defineConfig(({ command, mode, isPreview }) => {
             include: [browserTestPattern],
             browser: {
               enabled: true,
-              provider: playwright(),
+              // Pin what the host machine would otherwise decide, so local runs match CI.
+              provider: playwright({
+                // `TZ` instead of `timezoneId`: a context override would block the
+                // per-spec `Emulation.setTimezoneOverride` behind `emulateTimezone`.
+                launchOptions: { env: { ...process.env, TZ: 'UTC' } },
+                contextOptions: {
+                  locale: 'en-US',
+                  reducedMotion: 'reduce',
+                },
+              }),
               instances: [{ browser: 'chromium' }],
+              // Vitest's default, stated so specs and the setup file share one documented size.
+              viewport: { width: 414, height: 896 },
               headless: true,
+              // Keep application maps and mapped error stacks without sending dependency maps.
+              dependencySourcemaps: false,
               screenshotFailures: true,
               trace: {
-                mode: 'retain-on-failure',
+                // Recording zips every test on the Vitest main thread, even with
+                // retain-on-failure, and roughly doubles CI time. Failure screenshots remain.
+                mode: 'off',
+                screenshots: false,
                 tracesDir: './.vitest-browser/traces',
               },
             },

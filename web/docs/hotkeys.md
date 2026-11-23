@@ -33,8 +33,8 @@ Attach the ref to the Popup. Import the hook and type from `@tanstack/react-hotk
   `ignoreInputs: false`; canvas commands use `true` to preserve editing. See [defaults].
 - Use `requireReset: true` for one-shot commands with default consumption; allow continuous
   actions such as zoom to repeat. Conditional event owners follow the rules below.
-- Pass a ref, not `ref.current`. An empty ref skips registration; a bare null target falls back
-  to document. Ref mutation does not re-render the owner: put the hook in mounted content or
+- Pass a ref, not `ref.current`. An empty ref, `null`, or `undefined` target skips registration. Omit `target` to
+  register on the document. Ref mutation does not re-render the owner: put the hook in mounted content or
   use the actual Form's `onKeyDown` when it mounts later. Lexical root replacement can use its
   root subscription with element state; disable registration while that element is null.
 - For form commands, call `event.currentTarget.requestSubmit()` to share native submission and
@@ -75,10 +75,14 @@ scope while the global opener is suspended. Scope precedence and exceptions belo
 
 Use normal library consumption unless the owner must decide whether to claim an event:
 
-- An element's native listener can precede child React handlers. When children must go first,
-  handle React bubbling, or use document bubble plus owner containment as Workflow does.
-  `capture: true` is for an intentional requirement to precede descendants, not a general fix.
-- The manager does not skip `defaultPrevented`. Conditional owners set `preventDefault: false`
+- Element-target hotkeys run after React child handlers by default, so a child can stop the
+  event before the application command. Workflow's document bubble listener also checks owner
+  containment. DialogPopup stops arrows before they reach document. Preview owners register their
+  arrows with the core manager on the actual Popup element, retaining native bubbling and library
+  input filtering. Keep those handles for the mounted lifetime, update availability with
+  `setOptions`, and unregister on cleanup so held-key reset state survives rerenders.
+  `capture: true` intentionally precedes descendants; do not use it as a general fix.
+- By default, the manager does not skip `defaultPrevented`. Conditional owners set `preventDefault: false`
   and `stopPropagation: false`, check scope and `defaultPrevented`, then consume accepted events.
   Consume repeats before returning on `event.repeat`; leave `requireReset` unset in this mode
   so its callback latch cannot bypass that consumption. `stopPropagation()` does not stop

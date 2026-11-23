@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 import types
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -45,7 +46,8 @@ def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: 
 
 
 @pytest.fixture
-def vector_factory_module():
+def vector_factory_module() -> Iterator[types.ModuleType]:
+    """Reload the factory module and leave no cached test factories after the case."""
     import importlib
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -53,7 +55,11 @@ def vector_factory_module():
     reg.clear_vector_factory_cache()
     import core.rag.datasource.vdb.vector_factory as module
 
-    return importlib.reload(module)
+    try:
+        yield importlib.reload(module)
+    finally:
+        # Restoring sys.modules does not evict fake classes cached by the registry.
+        reg.clear_vector_factory_cache()
 
 
 def test_gen_index_struct_dict(vector_factory_module):

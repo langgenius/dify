@@ -1,13 +1,35 @@
+import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { createDeferred } from '@/test/deferred'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderBaseField } from './base-field-test-env'
 
-const mockDynamicOptions = vi.fn()
-
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: (...args: unknown[]) => mockDynamicOptions(...args),
+type DynamicOptions = Awaited<
+  ReturnType<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>
+>
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: {
+          parameters: {
+            dynamicOptions: { get: () => ({ options: [] }) },
+          },
+        },
+      },
+    },
+  },
 }))
+const dynamicOptions = () => fake.console.workspaces.current.plugin.parameters.dynamicOptions.get
+
+const dynamicSelectParams = {
+  plugin_id: 'plugin-1',
+  provider: 'provider-1',
+  action: 'choose',
+  parameter: 'credential',
+  credential_id: 'credential-1',
+}
 
 describe('BaseField dynamic options', () => {
   it.each([
@@ -16,18 +38,18 @@ describe('BaseField dynamic options', () => {
   ])(
     'focuses the trigger from its label and supports keyboard selection (multiple: $multiple)',
     async ({ type, multiple }) => {
-      const options = [{ label: 'Primary', value: 'primary' }]
-      mockDynamicOptions.mockReturnValue({ data: { options }, isLoading: false, error: null })
+      const options = [{ label: { en_US: 'Primary' }, value: 'primary' }]
+      dynamicOptions().mockResolvedValue({ options })
       await renderBaseField({
         formSchema: {
           type,
+          dynamicSelectParams,
           multiple,
           name: 'credential',
           label: 'Credential',
           description: 'Use the workspace credential',
           tooltip: 'Credential help',
           required: true,
-          options,
         },
         defaultValues: { credential: multiple ? [] : '' },
         fieldState: {
@@ -53,10 +75,12 @@ describe('BaseField dynamic options', () => {
   )
 
   it('shows loading while the service boundary is pending', async () => {
-    mockDynamicOptions.mockReturnValue({ data: undefined, isLoading: true, error: null })
+    const request = createDeferred<DynamicOptions>()
+    dynamicOptions().mockReturnValue(request.promise)
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
+        dynamicSelectParams,
         name: 'plugin',
         label: 'Plugin',
         required: false,
@@ -65,19 +89,20 @@ describe('BaseField dynamic options', () => {
     })
 
     await expect.element(page.getByText('common.dynamicSelect.loading')).toBeVisible()
+    request.resolve({ options: [{ label: { en_US: 'Ready' }, value: 'ready' }] })
+    await expect.element(page.getByRole('combobox', { name: 'Plugin' })).toBeEnabled()
+    await page.getByRole('combobox', { name: 'Plugin' }).click()
+    await expect.element(page.getByRole('option', { name: 'Ready' })).toBeVisible()
   })
 
   it('renders translated service options and applies one', async () => {
-    mockDynamicOptions.mockReturnValue({
-      data: {
-        options: [{ label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' }],
-      },
-      isLoading: false,
-      error: null,
+    dynamicOptions().mockResolvedValue({
+      options: [{ label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' }],
     })
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
+        dynamicSelectParams,
         name: 'plugin_option',
         label: 'Plugin option',
         required: false,
@@ -95,19 +120,16 @@ describe('BaseField dynamic options', () => {
   })
 
   it('preserves and extends multiple service values', async () => {
-    mockDynamicOptions.mockReturnValue({
-      data: {
-        options: [
-          { label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' },
-          { label: { en_US: 'Option B', zh_Hans: '选项B' }, value: 'b' },
-        ],
-      },
-      isLoading: false,
-      error: null,
+    dynamicOptions().mockResolvedValue({
+      options: [
+        { label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' },
+        { label: { en_US: 'Option B', zh_Hans: '选项B' }, value: 'b' },
+      ],
     })
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
+        dynamicSelectParams,
         name: 'plugin_options',
         label: 'Plugin options',
         required: false,
@@ -126,14 +148,13 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows a service error without presenting options', async () => {
-    mockDynamicOptions.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error('Failed'),
-    })
+    dynamicOptions().mockRejectedValue(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }),
+    )
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
+        dynamicSelectParams,
         name: 'ds_error',
         label: 'DS Error',
         required: false,
@@ -146,10 +167,11 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows an empty service result without presenting options', async () => {
-    mockDynamicOptions.mockReturnValue({ data: { options: [] }, isLoading: false, error: null })
+    dynamicOptions().mockResolvedValue({ options: [] })
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
+        dynamicSelectParams,
         name: 'ds_empty',
         label: 'DS Empty',
         required: false,
@@ -163,8 +185,5 @@ describe('BaseField dynamic options', () => {
 })
 
 beforeEach(async () => {
-  mockDynamicOptions.mockReset()
-  mockDynamicOptions.mockReturnValue({ data: undefined, isLoading: false, error: null })
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
 })

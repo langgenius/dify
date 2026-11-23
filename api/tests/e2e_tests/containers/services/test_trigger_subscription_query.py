@@ -1,6 +1,7 @@
 """Subscription HTTP reads use real plugin HTTP, RSA, SQL and Redis credential caches."""
 
 import json
+import shutil
 from collections.abc import Iterator
 from contextvars import Context
 from http import HTTPStatus
@@ -8,38 +9,47 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from flask import Flask
 from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+import core.db.session_factory as session_factory_module
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from extensions.ext_redis import redis_client
-from models.base import TypeBase
+from extensions.ext_redis import RedisClientWrapper, redis_client
 from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as PermissionCredentialType
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from services.trigger.credential_encryption import TriggerProviderCredentialsCache, TriggerProviderPropertiesCache
+from tests.e2e_tests.containers import conftest as container_conftest
 from tests.unit_tests.controllers.console.workspace import test_trigger_oauth_client, test_trigger_provider_query
 from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _PROVIDER, _Harness
 from tests.unit_tests.controllers.console.workspace.test_trigger_provider_query import _Daemon, _provider
 from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_query import _LIST, _add_subscription
 
-application_redis = test_trigger_oauth_client.application_redis
+application_redis = container_conftest.application_redis
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_provider_query.daemon
 
 
 @pytest.fixture
-def sqlite_engine(flask_app_with_containers: Flask, tmp_path: Path) -> Iterator[Engine]:
-    # Reuse the real HTTP/admission harness with an isolated SQL database. Redis
-    # is the container-backed production cache, initialized by the Flask fixture.
-    assert redis_client is flask_app_with_containers.extensions["redis"]
-    engine = create_engine(f"sqlite:///{tmp_path / 'subscriptions.sqlite3'}")
-    TypeBase.metadata.create_all(engine)
+def sqlite_engine(
+    application_redis: RedisClientWrapper,
+    _sqlite_database_template: Path,
+    tmp_path: Path,
+) -> Iterator[Engine]:
+    """Provide an isolated SQL engine with real Redis already initialized.
+
+    Copy the closed pristine schema into a test-owned file before creating the
+    engine. Commits, concurrent connections and destructive DDL remain local to
+    this case. Dispose the engine after use and propagate setup or consumer failures.
+    """
+    assert application_redis is redis_client
+    database_path = tmp_path / "subscriptions.sqlite3"
+    shutil.copyfile(_sqlite_database_template, database_path)
+    engine = create_engine(f"sqlite:///{database_path}")
     try:
         yield engine
     finally:
@@ -47,8 +57,15 @@ def sqlite_engine(flask_app_with_containers: Flask, tmp_path: Path) -> Iterator[
 
 
 @pytest.fixture
-def sqlite_session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
-    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+def sqlite_session_factory(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> sessionmaker[Session]:
+    """Bind injected repositories and the login loader to this case's database.
+
+    The global login session factory must use the same isolated engine without
+    relying on full application startup. Restore its prior binding at teardown.
+    """
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    return factory
 
 
 def _provider_with_secrets() -> dict[str, object]:

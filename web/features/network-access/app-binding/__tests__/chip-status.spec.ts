@@ -1,4 +1,4 @@
-import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
+import { ACCESS_POINT_ORDER } from '@/models/app-access-point'
 import { getAccessControlChipState, getInServiceCoverage } from '../chip-status'
 
 const assignment = {

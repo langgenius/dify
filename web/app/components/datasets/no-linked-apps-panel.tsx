@@ -21,7 +21,7 @@ const NoLinkedAppsPanel = () => {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <RiBookOpenLine className="mr-1 size-4 text-text-accent" />
+        <RiBookOpenLine className="me-1 size-4 text-text-accent" />
         {t(($) => $['datasetMenus.viewDoc'], { ns: 'common' })}
       </a>
     </div>

@@ -73,6 +73,8 @@ export type AgentAppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentNameConflictError = ErrorResponse & {
@@ -251,6 +253,11 @@ export type AgentSoulLockedError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
 export type AgentBuildDraftApplyResponse = {
   draft: {
     [key: string]: unknown
@@ -258,14 +265,14 @@ export type AgentBuildDraftApplyResponse = {
   result: string
 }
 
-export type InvalidComposerConfigError = ErrorResponse & {
-  code: 'invalid_composer_config_error'
-  status: 400
-}
-
 export type PlaintextSecretNotAllowedError = ErrorResponse & {
   code: 'plaintext_secret_not_allowed_error'
   status: 400
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status: 409
 }
 
 export type AgentHomeSnapshotTooLargeError = ErrorResponse & {
@@ -805,6 +812,8 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentPublicationCountsResponse = {
@@ -909,6 +918,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -942,6 +953,7 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
+  tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
@@ -1483,8 +1495,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -2590,6 +2602,8 @@ export type AgentAppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentAppPartialWritable = {
@@ -2626,6 +2640,8 @@ export type AgentAppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {
@@ -2725,6 +2741,7 @@ export type GetAgentInviteOptionsData = {
     keyword?: string
     limit?: number
     page?: number
+    tag_ids?: Array<string>
   }
   url: '/agent/invite-options'
 }
@@ -3065,7 +3082,7 @@ export type PutAgentByAgentIdBuildDraftData = {
 }
 
 export type PutAgentByAgentIdBuildDraftErrors = {
-  400: AgentSoulLockedError | ErrorResponse
+  400: AgentSoulLockedError | InvalidComposerConfigError | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -3096,6 +3113,7 @@ export type PostAgentByAgentIdBuildDraftApplyErrors = {
     | AgentNotFoundError
     | AgentVersionNotFoundError
     | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   413: AgentHomeSnapshotTooLargeError | ErrorResponse
   502: AgentHomeSnapshotCreateFailedError | ErrorResponse
   default: ErrorResponse

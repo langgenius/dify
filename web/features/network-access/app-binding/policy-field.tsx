@@ -152,7 +152,7 @@ export function AccessControlPolicyField({
                 key={policy.id}
                 type="button"
                 disabled={readOnly}
-                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-left system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-2 text-start system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
                   if (!readOnly) {
                     onSelectPolicy(policy.id)
