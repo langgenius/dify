@@ -143,7 +143,7 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
           .element(popup.getByRole('link', { name: 'Learn more' }))
           .toHaveAttribute(
             'href',
-            'https://docs.dify.ai/en/cloud/use-dify/workspace/channels/email',
+            'https://docs.dify.ai/en/self-host/use-dify/workspace/channels/overview',
           )
       }
       if (surface === 'IM configuration') {

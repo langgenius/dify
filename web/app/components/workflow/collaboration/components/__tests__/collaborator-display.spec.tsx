@@ -3,7 +3,7 @@ import type { Collaborator } from '../collaborator-avatar'
 import { render as rtlRender, screen } from '@testing-library/react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { COLLABORATOR_COLORS, getUserColor } from '../../utils/user-color'
-import { CollaboratorAvatarStack } from '../collaborator-avatar'
+import { CollaboratorAvatar, CollaboratorAvatarStack } from '../collaborator-avatar'
 import { CollaboratorCursor } from '../collaborator-cursor'
 import { CollaboratorPill } from '../collaborator-pill'
 
@@ -37,21 +37,17 @@ it('colors a collaborator by their id unless a color is given', () => {
   expect(screen.getByText('M')).toHaveStyle({ backgroundColor: getUserColor('me') })
 })
 
-it('shows +N in the pill only when people are folded away, and lets callers wrap avatars', () => {
-  const { rerender } = render(
-    <CollaboratorPill
-      collaborators={people.slice(0, 2)}
-      renderAvatar={(avatar, collaborator) => (
-        <button type="button" aria-label={collaborator.name}>
-          {avatar}
-        </button>
-      )}
-    />,
-  )
+it('shows +N in the pill only when people are folded away, around the avatars it is given', () => {
+  const avatars = people.slice(0, 2).map((person) => (
+    <button key={person.id} type="button" aria-label={person.name}>
+      <CollaboratorAvatar collaborator={person} />
+    </button>
+  ))
+  const { rerender } = render(<CollaboratorPill>{avatars}</CollaboratorPill>)
   expect(screen.getByRole('button', { name: 'Bob' })).toBeInTheDocument()
   expect(screen.queryByText(/^\+/)).not.toBeInTheDocument()
 
-  rerender(<CollaboratorPill collaborators={people.slice(0, 2)} overflowCount={3} />)
+  rerender(<CollaboratorPill overflowCount={3}>{avatars}</CollaboratorPill>)
   expect(screen.getByText('+3')).toBeInTheDocument()
 })
 
