@@ -36,7 +36,7 @@ const Field: FC<Props> = ({ valueSelector, name, payload, depth = 1, readonly, o
           render={
             <div
               className={cn(
-                'flex items-center justify-between rounded-md pr-2 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+                'flex items-center justify-between rounded-md pe-2 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
                 !readonly && 'hover:bg-state-base-hover',
                 depth !== MAX_DEPTH + 1 && 'cursor-pointer',
               )}
@@ -58,7 +58,7 @@ const Field: FC<Props> = ({ valueSelector, name, payload, depth = 1, readonly, o
                 )}
               </div>
               {depth < MAX_DEPTH + 1 && (
-                <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+                <div className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
                   {getFieldType(payload)}
                 </div>
               )}

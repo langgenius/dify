@@ -49,10 +49,20 @@ class KnowledgeFSTidyDocumentProgressResponse(ResponseModel):
     failed: int
 
 
+class KnowledgeFSTidyCurrentScanResponse(ResponseModel):
+    """How far the scanner is through the document it is scanning now."""
+
+    documentId: str
+    title: str
+    passagesDone: int
+    passagesTotal: int
+
+
 class KnowledgeFSTidySummaryResponse(ResponseModel):
     findings: list[KnowledgeFSTidyFindingCountResponse]
     documents: KnowledgeFSTidyDocumentProgressResponse
     modelCalls: int
+    current: KnowledgeFSTidyCurrentScanResponse | None = None
 
 
 class KnowledgeFSTidyEvidenceResponse(ResponseModel):
@@ -79,9 +89,21 @@ class KnowledgeFSTidyFindingResponse(ResponseModel):
     stale: bool = False
 
 
+class KnowledgeFSTidyDocumentCardResponse(ResponseModel):
+    """What the review page shows about a document a finding quotes."""
+
+    title: str
+    mimeType: str
+    sizeBytes: int
+    publishedAt: str
+    enabled: bool
+
+
 class KnowledgeFSTidyFindingListResponse(ResponseModel):
     items: list[KnowledgeFSTidyFindingResponse]
     nextCursor: str | None
+    # Keyed by document id; absent from KnowledgeFS releases before document cards existed.
+    documents: dict[str, KnowledgeFSTidyDocumentCardResponse] = Field(default_factory=dict)
 
 
 class KnowledgeFSTidyFindingQuery(BaseModel):

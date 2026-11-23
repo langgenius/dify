@@ -65,6 +65,14 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .file_scan import (
     FileScanFallbackAction,
@@ -94,6 +102,13 @@ from .human_input_v2 import (
     IMSyncContactSnapshot,
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
+)
+from .knowledge_agent import (
+    KnowledgeAgentClient,
+    KnowledgeAgentGrant,
+    KnowledgeAgentGrantSpace,
+    KnowledgeAgentRefreshToken,
+    KnowledgeAgentWorkspaceSetting,
 )
 from .knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
@@ -313,6 +328,12 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunItemStatus",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
@@ -347,6 +368,11 @@ __all__ = [
     "IconType",
     "InstalledApp",
     "InvitationCode",
+    "KnowledgeAgentClient",
+    "KnowledgeAgentGrant",
+    "KnowledgeAgentGrantSpace",
+    "KnowledgeAgentRefreshToken",
+    "KnowledgeAgentWorkspaceSetting",
     "KnowledgeFSApiCredential",
     "KnowledgeFSApiCredentialStatus",
     "KnowledgeFSAppSpaceJoinStatus",

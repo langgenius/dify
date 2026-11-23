@@ -39,7 +39,7 @@ export default function TrialAppAccessBoundary({
       <Button
         variant="tertiary"
         aria-label={t(($) => $['operation.close'])}
-        className="absolute top-3 right-3 z-10"
+        className="absolute inset-e-3 top-3 z-10"
         onClick={onClose}
       >
         <span aria-hidden className="i-ri-close-line size-5" />

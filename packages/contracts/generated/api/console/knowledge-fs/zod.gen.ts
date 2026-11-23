@@ -19,6 +19,52 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * KnowledgeAgentAuthorizationPayload
+ */
+export const zKnowledgeAgentAuthorizationPayload = z.object({
+  approve: z.boolean(),
+  client_id: z.string().max(2048).nullish(),
+  code_challenge: z.string().max(128).nullish(),
+  code_challenge_method: z.string().max(16).nullish(),
+  knowledge_base_ids: z.array(z.string()).max(100).optional(),
+  redirect_uri: z.string().max(2048).nullish(),
+  resource: z.string().max(2048).nullish(),
+  response_type: z.string().nullish(),
+  scope: z.string().max(512).nullish(),
+  state: z.string().max(1024).nullish(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationDecisionResponse
+ */
+export const zKnowledgeAgentAuthorizationDecisionResponse = z.object({
+  redirect_to: z.string(),
+})
+
+/**
+ * KnowledgeAgentGrantUpdatePayload
+ */
+export const zKnowledgeAgentGrantUpdatePayload = z.object({
+  knowledge_base_ids: z.array(z.string()).min(1).max(100),
+})
+
+/**
+ * KnowledgeAgentTokenPayload
+ */
+export const zKnowledgeAgentTokenPayload = z.object({
+  expires_in_days: z.int().gte(1).lte(365).nullish().default(30),
+  knowledge_base_ids: z.array(z.string()).min(1).max(100),
+  name: z.string().min(1).max(100),
+})
+
+/**
+ * KnowledgeAgentWorkspacePayload
+ */
+export const zKnowledgeAgentWorkspacePayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
  * KnowledgeFSFeaturesResponse
  */
 export const zKnowledgeFsFeaturesResponse = z.object({
@@ -142,6 +188,7 @@ export const zKnowledgeFsDocumentChunkListResponse = z.object({
 export const zKnowledgeFsExternalAccessResponse = z.object({
   agent_enabled: z.boolean(),
   mcp_enabled: z.boolean(),
+  personal_agent_enabled: z.boolean().optional().default(true),
   revision: z.int(),
   service_api_enabled: z.boolean(),
   workflow_enabled: z.boolean(),
@@ -153,6 +200,7 @@ export const zKnowledgeFsExternalAccessResponse = z.object({
 export const zKnowledgeFsExternalAccessPayload = z.object({
   agent_enabled: z.boolean(),
   mcp_enabled: z.boolean().optional().default(false),
+  personal_agent_enabled: z.boolean().nullish(),
   service_api_enabled: z.boolean(),
   workflow_enabled: z.boolean(),
 })
@@ -618,6 +666,87 @@ export const zKnowledgeFsjwksResponse = z.object({
 })
 
 /**
+ * KnowledgeAgentAuthorizationClientResponse
+ */
+export const zKnowledgeAgentAuthorizationClientResponse = z.object({
+  kind: z.enum(['cimd', 'dcr']),
+  name: z.string(),
+  redirect_host: z.string(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationWorkspaceResponse
+ */
+export const zKnowledgeAgentAuthorizationWorkspaceResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * KnowledgeAgentAuthorizationResponse
+ */
+export const zKnowledgeAgentAuthorizationResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  blocked_knowledge_base_ids: z.array(z.string()),
+  client: zKnowledgeAgentAuthorizationClientResponse,
+  scopes: z.array(z.string()),
+  workspace: zKnowledgeAgentAuthorizationWorkspaceResponse,
+})
+
+/**
+ * KnowledgeAgentGrantAccountResponse
+ */
+export const zKnowledgeAgentGrantAccountResponse = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * KnowledgeAgentGrantResponse
+ */
+export const zKnowledgeAgentGrantResponse = z.object({
+  account: zKnowledgeAgentGrantAccountResponse.nullish(),
+  client_name: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullish(),
+  id: z.string(),
+  kind: z.enum(['oauth', 'personal']),
+  knowledge_base_ids: z.array(z.string()),
+  last_used_at: z.iso.datetime().nullish(),
+  name: z.string(),
+  scopes: z.array(z.string()),
+  token_hint: z.string().nullish(),
+})
+
+/**
+ * KnowledgeAgentMineResponse
+ */
+export const zKnowledgeAgentMineResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  available: z.boolean(),
+  blocked_knowledge_base_ids: z.array(z.string()),
+  grants: z.array(zKnowledgeAgentGrantResponse),
+  mcp_url: z.string(),
+})
+
+/**
+ * KnowledgeAgentTokenCreatedResponse
+ */
+export const zKnowledgeAgentTokenCreatedResponse = z.object({
+  grant: zKnowledgeAgentGrantResponse,
+  token: z.string(),
+})
+
+/**
+ * KnowledgeAgentWorkspaceResponse
+ */
+export const zKnowledgeAgentWorkspaceResponse = z.object({
+  agent_access_enabled: z.boolean(),
+  grants: z.array(zKnowledgeAgentGrantResponse),
+})
+
+/**
  * KnowledgeFSQueryImageReference
  */
 export const zKnowledgeFsQueryImageReference = z.object({
@@ -714,6 +843,8 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -1013,6 +1144,8 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -1162,6 +1295,8 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2335,6 +2470,8 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -2499,6 +2636,19 @@ export const zKnowledgeFsSpaceListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSTidyDocumentCardResponse
+ *
+ * What the review page shows about a document a finding quotes.
+ */
+export const zKnowledgeFsTidyDocumentCardResponse = z.object({
+  enabled: z.boolean(),
+  mimeType: z.string(),
+  publishedAt: z.string(),
+  sizeBytes: z.int(),
+  title: z.string(),
+})
+
+/**
  * KnowledgeFSTidyEvidenceResponse
  */
 export const zKnowledgeFsTidyEvidenceResponse = z.object({
@@ -2532,6 +2682,7 @@ export const zKnowledgeFsTidyFindingResponse = z.object({
  * KnowledgeFSTidyFindingListResponse
  */
 export const zKnowledgeFsTidyFindingListResponse = z.object({
+  documents: z.record(z.string(), zKnowledgeFsTidyDocumentCardResponse).optional(),
   items: z.array(zKnowledgeFsTidyFindingResponse),
   nextCursor: z.string().nullable(),
 })
@@ -2557,6 +2708,18 @@ export const zKnowledgeFsTidyScanListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSTidyCurrentScanResponse
+ *
+ * How far the scanner is through the document it is scanning now.
+ */
+export const zKnowledgeFsTidyCurrentScanResponse = z.object({
+  documentId: z.string(),
+  passagesDone: z.int(),
+  passagesTotal: z.int(),
+  title: z.string(),
+})
+
+/**
  * KnowledgeFSTidyDocumentProgressResponse
  */
 export const zKnowledgeFsTidyDocumentProgressResponse = z.object({
@@ -2579,6 +2742,7 @@ export const zKnowledgeFsTidyFindingCountResponse = z.object({
  * KnowledgeFSTidySummaryResponse
  */
 export const zKnowledgeFsTidySummaryResponse = z.object({
+  current: zKnowledgeFsTidyCurrentScanResponse.nullish(),
   documents: zKnowledgeFsTidyDocumentProgressResponse,
   findings: z.array(zKnowledgeFsTidyFindingCountResponse),
   modelCalls: z.int(),
@@ -3652,6 +3816,74 @@ export const zKnowledgeFsQualityReplayListResponse = z.object({
  * Agent Knowledge Base Capability v2 public keys
  */
 export const zGetKnowledgeFsWellKnownJwksJsonResponse = zKnowledgeFsjwksResponse
+
+/**
+ * Your agent connections
+ */
+export const zGetKnowledgeFsAgentAccessResponse = zKnowledgeAgentMineResponse
+
+export const zGetKnowledgeFsAgentAccessAuthorizeQuery = z.object({
+  client_id: z.string().max(2048).optional(),
+  code_challenge: z.string().max(128).optional(),
+  code_challenge_method: z.string().max(16).optional(),
+  redirect_uri: z.string().max(2048).optional(),
+  resource: z.string().max(2048).optional(),
+  response_type: z.string().optional(),
+  scope: z.string().max(512).optional(),
+  state: z.string().max(1024).optional(),
+})
+
+/**
+ * Authorization request
+ */
+export const zGetKnowledgeFsAgentAccessAuthorizeResponse = zKnowledgeAgentAuthorizationResponse
+
+export const zPostKnowledgeFsAgentAccessAuthorizeBody = zKnowledgeAgentAuthorizationPayload
+
+/**
+ * Where the browser goes next
+ */
+export const zPostKnowledgeFsAgentAccessAuthorizeResponse =
+  zKnowledgeAgentAuthorizationDecisionResponse
+
+export const zDeleteKnowledgeFsAgentAccessGrantsByGrantIdPath = z.object({
+  grant_id: z.string(),
+})
+
+/**
+ * Disconnected
+ */
+export const zDeleteKnowledgeFsAgentAccessGrantsByGrantIdResponse = z.void()
+
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdBody = zKnowledgeAgentGrantUpdatePayload
+
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdPath = z.object({
+  grant_id: z.string(),
+})
+
+/**
+ * Connection updated
+ */
+export const zPatchKnowledgeFsAgentAccessGrantsByGrantIdResponse = zKnowledgeAgentGrantResponse
+
+export const zPostKnowledgeFsAgentAccessTokensBody = zKnowledgeAgentTokenPayload
+
+/**
+ * Personal token created
+ */
+export const zPostKnowledgeFsAgentAccessTokensResponse = zKnowledgeAgentTokenCreatedResponse
+
+/**
+ * Workspace agent access
+ */
+export const zGetKnowledgeFsAgentAccessWorkspaceResponse = zKnowledgeAgentWorkspaceResponse
+
+export const zPatchKnowledgeFsAgentAccessWorkspaceBody = zKnowledgeAgentWorkspacePayload
+
+/**
+ * Workspace agent access updated
+ */
+export const zPatchKnowledgeFsAgentAccessWorkspaceResponse = zKnowledgeAgentWorkspaceResponse
 
 /**
  * Agent Knowledge Base availability

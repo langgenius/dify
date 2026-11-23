@@ -24,7 +24,7 @@ export function AccessControlChipAffix({
       <PremiumBadge size="s" color="blue">
         <span
           aria-hidden
-          className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+          className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px ps-0.75 text-components-premium-badge-indigo-text-stop-0"
         />
         <span className="system-xs-medium">
           {t(($) => $['studio.accessControl.proBadge'], { ns: 'deployments' })}

@@ -171,6 +171,10 @@ from services.knowledge_fs.query_images import (
     KnowledgeFSQueryImagePreviewPort,
     load_query_image_previews,
 )
+from services.knowledge_fs.retrieval_contracts import (
+    KnowledgeFSRetrievalTestPayload,
+    KnowledgeFSRetrievalTestResponse,
+)
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from services.knowledge_fs.service_query_image_upload import validate_service_query_image_references
 from services.knowledge_fs.tidy_dto import (
@@ -488,6 +492,37 @@ class KnowledgeFSDataFacade:
             ),
         )
         return KnowledgeFSStatResponse.model_validate(raw)
+
+    def retrieve_evidence(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSRetrievalTestPayload,
+    ) -> KnowledgeFSRetrievalTestResponse:
+        """Hybrid retrieval as the member (no answer generation), for personal agents."""
+        return KnowledgeFSRetrievalTestResponse.model_validate(
+            self._interactive(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                operation_id="retrieveEvidence",
+                payload=payload,
+            )
+        )
+
+    def open_knowledge_fs_node(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, node_id: str
+    ) -> JsonValue:
+        """One citation-ready passage with its source location."""
+        return self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="openNodeKnowledgeFs",
+            query=(("nodeId", node_id),),
+        )
 
     def get_tidy_settings(
         self, *, tenant_id: str, account_id: str, control_space_id: str

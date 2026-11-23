@@ -90,34 +90,42 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           </DialogTitle>
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
-        <DialogBody className="flex flex-col gap-y-4">
-          <Field name="title" invalid={titleError}>
-            <FieldLabel className="system-sm-semibold">
-              {t(($) => $['versionHistory.editField.title'], { ns: 'workflowHistory' })}
-            </FieldLabel>
-            <Input
-              value={title}
-              placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
-              onValueChange={setTitle}
-            />
-          </Field>
-          <Field name="releaseNotes" invalid={releaseNotesError}>
-            <FieldLabel className="system-sm-semibold">
-              {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflowHistory' })}
-            </FieldLabel>
-            <Textarea
-              value={releaseNotes}
-              placeholder={`${t(($) => $['versionHistory.releaseNotesPlaceholder'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
-              onValueChange={handleDescriptionChange}
-            />
-          </Field>
-        </DialogBody>
-        <DialogFooter>
-          <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handlePublish}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handlePublish()
+          }}
+        >
+          <DialogBody className="flex flex-col gap-y-4">
+            <Field name="title" invalid={titleError}>
+              <FieldLabel className="system-sm-semibold">
+                {t(($) => $['versionHistory.editField.title'], { ns: 'workflowHistory' })}
+              </FieldLabel>
+              <Input
+                value={title}
+                placeholder={`${t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
+                onValueChange={setTitle}
+              />
+            </Field>
+            <Field name="releaseNotes" invalid={releaseNotesError}>
+              <FieldLabel className="system-sm-semibold">
+                {t(($) => $['versionHistory.editField.releaseNotes'], { ns: 'workflowHistory' })}
+              </FieldLabel>
+              <Textarea
+                value={releaseNotes}
+                placeholder={`${t(($) => $['versionHistory.releaseNotesPlaceholder'], { ns: 'workflowHistory' })}${t(($) => $['panel.optional'], { ns: 'workflow' })}`}
+                onValueChange={handleDescriptionChange}
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button type="submit" variant="primary">
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

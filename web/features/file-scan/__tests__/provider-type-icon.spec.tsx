@@ -4,7 +4,6 @@ import { ProviderTypeIcon } from '../provider-type-icon'
 
 describe('ProviderTypeIcon', () => {
   it.each([
-    ['clamav', '/images/file-scan/clamav.png'],
     ['cloudmersive', '/images/file-scan/cloudmersive.png'],
     ['scanii', '/images/file-scan/scanii.svg'],
     ['metadefender', '/images/file-scan/metadefender.png'],

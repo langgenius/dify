@@ -142,6 +142,7 @@ export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
 
 export type EducationStatusResponse = {
   allow_refresh: boolean
+  can_redeem_discount: boolean
   expire_at: number | null
   is_student: boolean
   result: boolean

@@ -75,7 +75,7 @@ async function setup(withFinding = false) {
     </QueryClientTestProvider>,
   )
 }
-// A controlled popup opens from either a switch or an evidence button removed after processing.
+// A controlled popup opens from either a switch or a card button removed after processing.
 // Real focus and animation completion prove restoration when that original target disappears.
 describe('Tidy confirmation focus', () => {
   beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
@@ -93,13 +93,14 @@ describe('Tidy confirmation focus', () => {
   })
   it('keeps focus on the review queue after processing removes the evidence button', async () => {
     const screen = await setup(true)
-    await screen
-      .getByRole('button', { name: 'knowledgeSpace.tidy.disableDocument Policy B' })
-      .click()
+    await screen.getByRole('button', { name: /knowledgeSpace\.tidy\.disableOne.*Policy B/ }).click()
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+    // Focus returns to the active type tab at the top of the review queue.
     await expect
-      .element(screen.getByRole('button', { name: 'knowledgeSpace.tidy.open' }))
+      .element(
+        screen.getByRole('button', { name: /knowledgeSpace\.tidy\.allKinds/, pressed: true }),
+      )
       .toHaveFocus()
   })
 })

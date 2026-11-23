@@ -1,5 +1,5 @@
 """Typed Dify-owned KnowledgeFS Console product API."""
 
-from . import resources, tidy
+from . import agent_access, resources, tidy
 
-__all__ = ["resources", "tidy"]
+__all__ = ["agent_access", "resources", "tidy"]

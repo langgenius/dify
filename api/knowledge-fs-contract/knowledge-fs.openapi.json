@@ -151,6 +151,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -2391,6 +2394,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -3681,6 +3687,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6282,6 +6291,9 @@
                   "MODEL_RUNTIME_TIMEOUT",
                   "MODEL_RUNTIME_UNAVAILABLE",
                   "MODEL_SELECTION_NOT_FOUND",
+                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                   "RESEARCH_TASK_DISPATCH_DEAD",
                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6412,6 +6424,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -6617,6 +6632,9 @@
                       "MODEL_RUNTIME_TIMEOUT",
                       "MODEL_RUNTIME_UNAVAILABLE",
                       "MODEL_SELECTION_NOT_FOUND",
+                      "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                      "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                      "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                       "RESEARCH_TASK_CAPABILITY_REVOKED",
                       "RESEARCH_TASK_DISPATCH_DEAD",
                       "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7008,6 +7026,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7182,6 +7203,9 @@
                   "MODEL_RUNTIME_TIMEOUT",
                   "MODEL_RUNTIME_UNAVAILABLE",
                   "MODEL_SELECTION_NOT_FOUND",
+                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                   "RESEARCH_TASK_DISPATCH_DEAD",
                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -7695,6 +7719,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10503,6 +10530,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10662,6 +10692,9 @@
                   "items": {
                     "type": "object",
                     "properties": {
+                      "hasChildren": {
+                        "type": "boolean"
+                      },
                       "lastEditedTime": {
                         "type": "string"
                       },
@@ -10792,6 +10825,9 @@
                     "MODEL_RUNTIME_TIMEOUT",
                     "MODEL_RUNTIME_UNAVAILABLE",
                     "MODEL_SELECTION_NOT_FOUND",
+                    "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                    "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                    "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                     "RESEARCH_TASK_CAPABILITY_REVOKED",
                     "RESEARCH_TASK_DISPATCH_DEAD",
                     "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -10938,6 +10974,9 @@
               "MODEL_RUNTIME_TIMEOUT",
               "MODEL_RUNTIME_UNAVAILABLE",
               "MODEL_SELECTION_NOT_FOUND",
+              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
               "RESEARCH_TASK_CAPABILITY_REVOKED",
               "RESEARCH_TASK_DISPATCH_DEAD",
               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -11712,7 +11751,7 @@
             }
           },
           "409": {
-            "description": "The event conflicts with prior monotonic authorization state",
+            "description": "Grant conflict, or CAPABILITY_SPACE_DELETED when durable Space deletion has completed",
             "content": {
               "application/json": {
                 "schema": {
@@ -17062,11 +17101,42 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "documents": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer"
+                          },
+                          "publishedAt": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "mimeType",
+                          "sizeBytes",
+                          "publishedAt",
+                          "enabled"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "items",
-                    "nextCursor"
+                    "nextCursor",
+                    "documents"
                   ]
                 }
               }
@@ -17710,12 +17780,39 @@
                     },
                     "modelCalls": {
                       "type": "integer"
+                    },
+                    "current": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "documentId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "passagesDone": {
+                          "type": "integer"
+                        },
+                        "passagesTotal": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "title",
+                        "passagesDone",
+                        "passagesTotal"
+                      ]
                     }
                   },
                   "required": [
                     "findings",
                     "documents",
-                    "modelCalls"
+                    "modelCalls",
+                    "current"
                   ]
                 }
               }
@@ -38360,6 +38457,22 @@
                           "type": "integer",
                           "minimum": 0
                         },
+                        "researchOutlineLexicalMs": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "researchOutlineSelectedTerms": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "researchOutlineDiscardedTerms": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "researchOutlineCandidateWindowSize": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
                         "researchPlanMs": {
                           "type": "number",
                           "minimum": 0
@@ -45776,6 +45889,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -45906,6 +46022,9 @@
                                     "MODEL_RUNTIME_TIMEOUT",
                                     "MODEL_RUNTIME_UNAVAILABLE",
                                     "MODEL_SELECTION_NOT_FOUND",
+                                    "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                                    "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                                    "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                                     "RESEARCH_TASK_CAPABILITY_REVOKED",
                                     "RESEARCH_TASK_DISPATCH_DEAD",
                                     "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -46111,6 +46230,9 @@
                                   "MODEL_RUNTIME_TIMEOUT",
                                   "MODEL_RUNTIME_UNAVAILABLE",
                                   "MODEL_SELECTION_NOT_FOUND",
+                                  "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                                  "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                                  "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                                   "RESEARCH_TASK_CAPABILITY_REVOKED",
                                   "RESEARCH_TASK_DISPATCH_DEAD",
                                   "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -46501,6 +46623,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -46631,6 +46756,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -46836,6 +46964,9 @@
                             "MODEL_RUNTIME_TIMEOUT",
                             "MODEL_RUNTIME_UNAVAILABLE",
                             "MODEL_SELECTION_NOT_FOUND",
+                            "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                            "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                            "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                             "RESEARCH_TASK_CAPABILITY_REVOKED",
                             "RESEARCH_TASK_DISPATCH_DEAD",
                             "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -47217,6 +47348,9 @@
                         "MODEL_RUNTIME_TIMEOUT",
                         "MODEL_RUNTIME_UNAVAILABLE",
                         "MODEL_SELECTION_NOT_FOUND",
+                        "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                        "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                        "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                         "RESEARCH_TASK_CAPABILITY_REVOKED",
                         "RESEARCH_TASK_DISPATCH_DEAD",
                         "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -47347,6 +47481,9 @@
                               "MODEL_RUNTIME_TIMEOUT",
                               "MODEL_RUNTIME_UNAVAILABLE",
                               "MODEL_SELECTION_NOT_FOUND",
+                              "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                              "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                              "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                               "RESEARCH_TASK_CAPABILITY_REVOKED",
                               "RESEARCH_TASK_DISPATCH_DEAD",
                               "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -47552,6 +47689,9 @@
                             "MODEL_RUNTIME_TIMEOUT",
                             "MODEL_RUNTIME_UNAVAILABLE",
                             "MODEL_SELECTION_NOT_FOUND",
+                            "QUERY_IMAGE_EXPANSION_RESPONSE_INVALID",
+                            "QUERY_IMAGE_EXPANSION_TIMEOUT",
+                            "QUERY_IMAGE_EXPANSION_UNAVAILABLE",
                             "RESEARCH_TASK_CAPABILITY_REVOKED",
                             "RESEARCH_TASK_DISPATCH_DEAD",
                             "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
@@ -48804,6 +48944,27 @@
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "required": false,
+            "name": "parentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "tree"
+              ]
+            },
+            "required": false,
+            "name": "view",
             "in": "query"
           },
           {

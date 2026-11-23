@@ -16,6 +16,8 @@
   "settings.membersRequired": "팀원을 한 명 이상 선택하세요.",
   "settings.nameRequired": "Agent 지식 베이스 이름은 필수입니다.",
   "settings.pageDescription": "기본 정보, API 액세스 및 검색 설정을 관리합니다.",
+  "settings.personalAgentDescription": "멤버는 자신의 에이전트(Claude Code, Codex, MCP 클라이언트)가 자신의 권한으로 이 지식 베이스를 읽게 할 수 있습니다.",
+  "settings.personalAgentLabel": "개인 에이전트",
   "settings.reloadLatest": "최신 설정 다시 불러오기",
   "settings.rerankModelRequired": "리랭크 모델을 선택하세요.",
   "settings.retrievalDepth": "검색 깊이",

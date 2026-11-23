@@ -134,3 +134,20 @@ def test_channel_openapi_uses_only_canonical_routes_and_registered_dtos(
         assert expected_version["in"] == "query"
         assert expected_version["required"] is True
         assert expected_version["schema"]["type"] == "string"
+
+
+def test_provider_diagnostics_are_documented_on_test_and_mutation_responses(channel_openapi: dict[str, object]) -> None:
+    components = channel_openapi["components"]
+    assert isinstance(components, dict)
+    schemas = components["schemas"]
+    assert isinstance(schemas, dict)
+    for schema_name in ("ChannelTestResponse", "ChannelProviderBadRequestResponse"):
+        schema = schemas[schema_name]
+        assert isinstance(schema, dict)
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        for field in ("provider_error_code", "provider_request_id"):
+            assert field in properties
+            field_schema = properties[field]
+            assert isinstance(field_schema, dict)
+            assert field_schema["default"] is None

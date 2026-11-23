@@ -29,7 +29,7 @@ language_timezone_mapping = {
 languages = list(language_timezone_mapping.keys())
 
 
-def supported_language(lang):
+def supported_language(lang: str) -> str:
     if lang in languages:
         return lang
 

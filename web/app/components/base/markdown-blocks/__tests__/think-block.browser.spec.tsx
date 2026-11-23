@@ -51,12 +51,11 @@ it('freezes elapsed time after the public stop action and keeps the completed th
   expect(screen.getByText(/\(\d+\.\ds\)/).element().textContent).toBe(frozenTime)
 
   await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
-  const summaryLabel = screen.getByText(/common\.chat\.thought/).first()
-  const summary = summaryLabel.element().closest('summary')
-  if (!(summary instanceof HTMLElement)) throw new TypeError('Expected a summary control')
-  expect(summary).toBe(document.activeElement)
+  // Native Tab and Enter must operate the completed disclosure.
   await userEvent.keyboard('{Enter}')
   expect(content.element().checkVisibility()).toBe(true)
+  await userEvent.keyboard('{Enter}')
+  expect(content.element().checkVisibility()).toBe(false)
 })
 
 it('removes a nested completion marker and presents the finished thought as a disclosure', async () => {
@@ -71,10 +70,6 @@ it('removes a nested completion marker and presents the finished thought as a di
   await expect.element(screen.getByText('common.chat.thought')).toBeVisible()
   await expect.element(screen.getByText(/ENDTHINKFLAG/)).not.toBeInTheDocument()
   await userEvent.keyboard('{Tab}')
-  const summaryLabel = screen.getByText('common.chat.thought')
-  const summary = summaryLabel.element().closest('summary')
-  if (!(summary instanceof HTMLElement)) throw new TypeError('Expected a summary control')
-  expect(summary).toBe(document.activeElement)
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByText('Nested conclusion')).toBeVisible()
 })

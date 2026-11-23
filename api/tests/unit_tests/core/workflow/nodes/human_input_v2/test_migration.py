@@ -1,10 +1,10 @@
 import pytest
 
-from core.human_input_v2.shared.values import NormalizedEmail
+from core.human_input_v2.shared.values import ContactId
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from core.workflow.nodes.human_input_v2.migration import (
-    MemberEmailSnapshot,
-    ResolvedMemberEmail,
+    MemberContactSnapshot,
+    ResolvedMemberContact,
     convert_legacy_human_input_node_data,
 )
 from graphon.enums import BuiltinNodeTypes
@@ -14,11 +14,11 @@ _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
 _SECOND_EMAIL_METHOD_ID = "33333333-3333-4333-8333-333333333333"
 
 
-def _member_email_snapshot(entries: dict[str, str] | None = None) -> MemberEmailSnapshot:
-    return MemberEmailSnapshot(
+def _member_contact_snapshot(entries: dict[str, str] | None = None) -> MemberContactSnapshot:
+    return MemberContactSnapshot(
         tuple(
-            ResolvedMemberEmail(member_id=member_id, email=NormalizedEmail(email))
-            for member_id, email in (entries or {}).items()
+            ResolvedMemberContact(member_id=member_id, contact_id=ContactId(contact_id))
+            for member_id, contact_id in (entries or {}).items()
         )
     )
 
@@ -66,7 +66,7 @@ def test_canonical_default_value_matches_historical_normalization_and_converts_t
             "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
         }
     )
-    conversion = convert_legacy_human_input_node_data(node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(node_data, _member_contact_snapshot())
 
     assert node_data.model_dump(mode="json")["default_value"] == [normalized_default]
     assert conversion.blockers == ()
@@ -98,7 +98,7 @@ def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -143,7 +143,7 @@ def test_converter_preserves_historically_accepted_action_id_with_trailing_line_
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -160,7 +160,7 @@ def test_converter_preserves_repeated_historical_output_slots() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -168,7 +168,7 @@ def test_converter_preserves_repeated_historical_output_slots() -> None:
     assert conversion.node_data.output_variable_names() == ("reason", "reason")
 
 
-def test_external_and_member_email_sources_become_normalized_onetime_email() -> None:
+def test_external_email_remains_onetime_and_member_retains_contact_identity() -> None:
     legacy_node_data = HumanInputNodeDataFull.model_validate(
         {
             "title": "Approval",
@@ -194,14 +194,14 @@ def test_external_and_member_email_sources_become_normalized_onetime_email() -> 
 
     conversion = convert_legacy_human_input_node_data(
         legacy_node_data,
-        _member_email_snapshot({"member-1": "  MEMBER@Example.COM "}),
+        _member_contact_snapshot({"member-1": "contact-1"}),
     )
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
     assert [recipient.model_dump(mode="json") for recipient in conversion.node_data.recipients_spec] == [
         {"type": "onetime_email", "email": "approver@example.com"},
-        {"type": "onetime_email", "email": "member@example.com"},
+        {"type": "contact", "contact_id": "contact-1"},
     ]
 
 
@@ -227,15 +227,15 @@ def test_member_user_id_has_safe_resolution_blocker_value() -> None:
 
     resolved = convert_legacy_human_input_node_data(
         legacy_node_data,
-        _member_email_snapshot({"member-1": "member@example.com"}),
+        _member_contact_snapshot({"member-1": "contact-1"}),
     )
-    unresolved = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    unresolved = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert resolved.blockers == ()
     assert resolved.node_data is not None
     assert resolved.node_data.recipients_spec[0].model_dump(mode="json") == {
-        "type": "onetime_email",
-        "email": "member@example.com",
+        "type": "contact",
+        "contact_id": "contact-1",
     }
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in unresolved.blockers] == [
         ("unresolved-member", _EMAIL_METHOD_ID, "member-1"),
@@ -263,10 +263,10 @@ def test_external_email_conversion_is_independent_of_unrelated_directory_state()
         }
     )
 
-    without_directory_entries = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    without_directory_entries = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
     with_unrelated_entries = convert_legacy_human_input_node_data(
         legacy_node_data,
-        _member_email_snapshot({"unrelated-account": "approver@example.com"}),
+        _member_contact_snapshot({"unrelated-account": "approver@example.com"}),
     )
 
     assert without_directory_entries == with_unrelated_entries
@@ -305,13 +305,13 @@ def test_whole_workspace_marker_preserves_overlap_source_order_and_deduplicates(
 
     conversion = convert_legacy_human_input_node_data(
         legacy_node_data,
-        _member_email_snapshot({"member-1": "member@example.com"}),
+        _member_contact_snapshot({"member-1": "contact-1"}),
     )
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
     assert [recipient.model_dump(mode="json") for recipient in conversion.node_data.recipients_spec] == [
-        {"type": "onetime_email", "email": "member@example.com"},
+        {"type": "contact", "contact_id": "contact-1"},
         {"type": "all_workspace_contacts"},
         {"type": "initiator"},
     ]
@@ -352,7 +352,7 @@ def test_matching_email_templates_debug_mode_and_canonical_dedupe_are_determinis
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -404,7 +404,7 @@ def test_lossy_delivery_configuration_produces_stably_ordered_blockers() -> None
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in conversion.blockers] == [
@@ -425,7 +425,7 @@ def test_conversion_forces_untrusted_legacy_node_type_to_human_input() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -460,7 +460,7 @@ def test_conflicting_email_templates_block_after_recipient_preflight() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id) for blocker in conversion.blockers] == [
@@ -512,7 +512,7 @@ def test_webapp_default_does_not_mask_email_blockers(
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy, MemberEmailSnapshot())
+    conversion = convert_legacy_human_input_node_data(legacy, MemberContactSnapshot())
 
     assert conversion.node_data is None
     assert [blocker.code for blocker in conversion.blockers] == [expected_blocker]
@@ -533,8 +533,8 @@ def test_shared_fields_input_immutability_and_repeated_conversion_are_preserved(
     )
     original_legacy_value = legacy_node_data.model_dump(mode="json")
 
-    first = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
-    second = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    first = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
+    second = convert_legacy_human_input_node_data(legacy_node_data, _member_contact_snapshot())
 
     assert first == second
     assert legacy_node_data.model_dump(mode="json") == original_legacy_value
@@ -564,7 +564,7 @@ def test_formal_v1_im_delivery_keeps_unsupported_delivery_blocker() -> None:
             ]
         }
     )
-    conversion = convert_legacy_human_input_node_data(v1, MemberEmailSnapshot())
+    conversion = convert_legacy_human_input_node_data(v1, MemberContactSnapshot())
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in conversion.blockers] == [
         ("unsupported-delivery-method", _EMAIL_METHOD_ID, "im"),
