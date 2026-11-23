@@ -2,6 +2,7 @@ import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { route, setupFakeApi } from '@/test/fake-api'
 import { basePath } from '@/utils/var'
 import { emojiCatalogOptions } from '../emoji-data'
@@ -122,6 +123,8 @@ afterEach(() => {
 })
 
 it('ignores crop completion during the closing animation while Cancel remains available', async () => {
+  // The closing animation is the window this race needs.
+  await emulateReducedMotion(false)
   const { client, trigger, dialog, save, onConfirm } = await openImageSession()
   const crop = deferNextCanvasBlob()
   const popup = dialog.element()
@@ -159,6 +162,8 @@ it('ignores crop completion during the closing animation while Cancel remains av
 })
 
 it('ignores an old upload when reopened as soon as keyboard focus returns', async () => {
+  // The closing animation is the window this race needs.
+  await emulateReducedMotion(false)
   let finishUpload!: (response: PostFilesUploadResponse) => void
   const pendingUpload = new Promise<PostFilesUploadResponse>((resolve) => {
     finishUpload = resolve

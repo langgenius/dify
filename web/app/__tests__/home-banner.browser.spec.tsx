@@ -58,7 +58,11 @@ function getSlidesContainer(carousel: Element) {
 }
 
 describe('Home banner browser interactions', () => {
-  beforeEach(() => onTestFinished(guardUnexpectedFetch()))
+  beforeEach(async () => {
+    onTestFinished(guardUnexpectedFetch())
+    // Autoplay is the contract; reduced-motion cases switch back inside the test.
+    await emulateReducedMotion(false)
+  })
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -155,7 +159,6 @@ describe('Home banner browser interactions', () => {
 
   it('keeps autoplay initialized but stopped for reduced motion so Play remains safe', async () => {
     await emulateReducedMotion(true)
-    onTestFinished(() => emulateReducedMotion(false))
 
     const screen = await renderBanner()
     const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })
