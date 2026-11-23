@@ -1,14 +1,12 @@
 import { createSerializer, parseAsStringLiteral } from 'nuqs'
 
-export const demoSourceQueryParamName = 'source'
+export const demoSearchParams = {
+  source: parseAsStringLiteral(['notification']),
+}
 
-export const demoSourceQueryParser = parseAsStringLiteral(['notification'])
+export const serializeDemoSearchParams = createSerializer(demoSearchParams)
 
-/** Builds a link to the demo; the in-site notification links to `notificationDemoHref`. */
-export const collaborationDemoHref = createSerializer({
-  [demoSourceQueryParamName]: demoSourceQueryParser,
-})
-
-export const notificationDemoHref = collaborationDemoHref('/collaboration-demo', {
+/** The link the in-site notification's "View demo" action points to. */
+export const notificationDemoHref = serializeDemoSearchParams('/collaboration-demo', {
   source: 'notification',
 })
