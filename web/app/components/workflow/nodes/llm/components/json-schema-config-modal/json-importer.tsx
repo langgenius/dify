@@ -93,12 +93,12 @@ const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
             <button
               type="button"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute right-2.5 bottom-0 flex size-8 items-center justify-center border-none bg-transparent p-0"
+              className="absolute inset-e-2.5 bottom-0 flex size-8 items-center justify-center border-none bg-transparent p-0"
               onClick={onClose}
             >
               <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
             </button>
-            <div className="flex pr-8 pl-1 system-xl-semibold text-text-primary">
+            <div className="flex ps-1 pe-8 system-xl-semibold text-text-primary">
               {t(($) => $['nodes.llm.jsonSchema.import'], { ns: 'workflowModels' })}
             </div>
           </div>

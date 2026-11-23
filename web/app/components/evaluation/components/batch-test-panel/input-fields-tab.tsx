@@ -29,6 +29,8 @@ const InputFieldsTab = ({
   return (
     <div className="space-y-5">
       <InputFieldsRequirements
+        resourceType={resourceType}
+        resourceId={resourceId}
         inputFields={actions.templateColumns}
         isLoading={actions.isTemplateColumnsLoading}
       />

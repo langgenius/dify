@@ -9,9 +9,13 @@ import type {
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import type { AccountWithRoleListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AccountWithRoleListResponse,
+  RbacRoleList,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
@@ -905,17 +909,29 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSettled: (_data, error, _variables, _result, context) =>
-                      error
-                        ? undefined
-                        : Promise.all([
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                            }),
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.members.get.key(),
-                            }),
-                          ]),
+                    onSettled: (_data, error, { params }, _result, { client }) => {
+                      if (error) return
+                      const roles = consoleQuery.workspaces.current.rbac.roles.get
+                      const removeRole = (page: RbacRoleList): RbacRoleList =>
+                        page.data?.some((role) => role.id === params.role_id)
+                          ? {
+                              ...page,
+                              data: page.data.filter((role) => role.id !== params.role_id),
+                            }
+                          : page
+                      client.setQueriesData<RbacRoleList>(
+                        { queryKey: roles.key({ type: 'query' }) },
+                        (data) => data && removeRole(data),
+                      )
+                      client.setQueriesData<InfiniteData<RbacRoleList>>(
+                        { queryKey: roles.key({ type: 'infinite' }) },
+                        (data) => data && { ...data, pages: data.pages.map(removeRole) },
+                      )
+                      void client.invalidateQueries({ queryKey: roles.key() })
+                      void client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.members.get.key(),
+                      })
+                    },
                   },
                 },
                 copy: {
@@ -984,7 +1000,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   mutationOptions: {
                     onSettled: (_data, error, _variables, _result, context) => {
                       if (error) return
-                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                      void invalidateAccessPolicyQueries(consoleQuery, context.client)
                     },
                   },
                 },
@@ -3048,11 +3064,25 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             byRelationId: {
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
+                  networkMode: 'always',
+                  onSettled: async (_data, error, { params }, _result, { client }) => {
                     if (error) return
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
-                    })
+                    const queryKey = consoleQuery.resourceAccessTokens.get.key()
+                    await client.cancelQueries({ queryKey })
+                    client.setQueriesData<ResourceAccessTokenListResponse>(
+                      { queryKey },
+                      (current) => {
+                        if (!current?.data.some((row) => row.token_id === params.token_id))
+                          return current
+
+                        return {
+                          ...current,
+                          data: current.data.filter((row) => row.token_id !== params.token_id),
+                          total: Math.max(0, current.total - 1),
+                        }
+                      },
+                    )
+                    void client.invalidateQueries({ queryKey })
                   },
                 },
               },
@@ -3457,6 +3487,7 @@ function invalidateHumanInputChannelQueries(
     invalidateHumanInputContactQueries(query, client),
     invalidateQueryKeys(client, [
       query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.testChannels.key(),
       query.workspaces.current.humanInput.v2.imIdentities.key(),
       query.workspaces.current.humanInput.v2.imSyncRuns.key(),
     ]),

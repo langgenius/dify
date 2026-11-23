@@ -27,16 +27,16 @@ const Label = ({ htmlFor, label, isRequired, showOptional, tooltip, className }:
         {label}
       </label>
       {!isRequired && showOptional && (
-        <div className="ml-1 system-xs-regular text-text-tertiary">
+        <div className="ms-1 system-xs-regular text-text-tertiary">
           {t(($) => $['label.optional'], { ns: 'common' })}
         </div>
       )}
       {isRequired && (
-        <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
+        <div className="ms-1 system-xs-regular text-text-destructive-secondary">*</div>
       )}
       {tooltip && (
         <Infotip>
-          <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+          <InfotipTrigger aria-labelledby={labelId} className="ms-0.5" />
           <InfotipContent aria-labelledby={labelId} className="w-50">
             {tooltip}
           </InfotipContent>

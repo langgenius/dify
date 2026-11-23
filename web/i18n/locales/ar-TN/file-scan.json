@@ -2,7 +2,6 @@
   "dialog.addTitle": "إضافة أداة فحص",
   "dialog.apiKey": "مفتاح API",
   "dialog.apiSecret": "سر API",
-  "dialog.clamavHint": "يعمل ClamAV داخل هذا النشر. يحدد مسؤول النشر عنوانه.",
   "dialog.dataNotice": "يتم إرسال محتوى الملفات إلى هذه الخدمة.",
   "dialog.editTitle": "تعديل أداة الفحص",
   "dialog.endpoint": "نقطة النهاية (اختياري)",

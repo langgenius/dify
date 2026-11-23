@@ -163,7 +163,7 @@ function AgentSelectorList({
               <MenuItem
                 key={agent.id}
                 closeOnClick={Boolean(agent.active_config_snapshot_id)}
-                className="h-auto gap-2 py-1.5 pr-3 pl-2"
+                className="h-auto gap-2 py-1.5 ps-2 pe-3"
                 onClick={() => handleSelect(agent)}
               >
                 <span aria-hidden className="shrink-0">
@@ -215,7 +215,7 @@ function AgentSelectorLoadingSkeleton() {
           <div
             key={key}
             className={cn(
-              'flex items-center gap-2 py-1.5 pr-3 pl-2 opacity-20',
+              'flex items-center gap-2 py-1.5 ps-2 pe-3 opacity-20',
               index === 3 && 'opacity-10',
             )}
           >
@@ -263,11 +263,11 @@ export function AgentBlockItem({
           <Button
             variant="ghost"
             size="medium"
-            className="w-full justify-start gap-0 px-3 text-left data-popup-open:bg-state-base-hover"
+            className="w-full justify-start gap-0 px-3 text-start data-popup-open:bg-state-base-hover"
           />
         }
       >
-        <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
+        <BlockIcon className="me-2 shrink-0" type={block.metaData.type} />
         <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">
           {block.metaData.title}
         </span>
@@ -275,7 +275,7 @@ export function AgentBlockItem({
           size="xs"
           variant="dimm"
           text={t(($) => $['menus.status'], { ns: 'navigation' })}
-          className="ml-2 shrink-0"
+          className="ms-2 shrink-0"
         />
         <span
           aria-hidden

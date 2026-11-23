@@ -19,8 +19,8 @@ const Header = () => {
   }, [workflowStore, handleCancelDebugAndPreviewPanel])
 
   return (
-    <div className="flex items-center gap-x-2 pt-4 pr-3 pl-4">
-      <div className="grow pr-8 pl-1 system-xl-semibold text-text-primary">
+    <div className="flex items-center gap-x-2 ps-4 pe-3 pt-4">
+      <div className="grow ps-1 pe-8 system-xl-semibold text-text-primary">
         {t(($) => $['testRun.title'], { ns: 'datasetPipeline' })}
       </div>
       <IconButton

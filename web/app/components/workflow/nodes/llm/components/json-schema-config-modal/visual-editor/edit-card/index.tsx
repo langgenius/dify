@@ -232,7 +232,7 @@ const EditCard: FC<EditCardProps> = ({ fields, depth, path, parentPath }) => {
       ref={editorRef}
       className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4"
     >
-      <div className="flex h-6 items-center pr-0.5 pl-1">
+      <div className="flex h-6 items-center ps-1 pe-0.5">
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}

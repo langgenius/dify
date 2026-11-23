@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from services.credentials.query import CredentialQuery
 
@@ -80,15 +80,33 @@ class ModelProviderService:
         self, tenant_id: str, model_type: ModelType, *, session: Session
     ) -> tuple[str, str] | None:
         """Resolve a workspace default without creating or committing a default-model record."""
+        return self._get_saved_default_model_selection(tenant_id, model_type, session=session) or (
+            self._discover_default_model_selection(tenant_id, model_type)
+        )
+
+    def resolve_default_model_selection(
+        self, tenant_id: str, model_type: ModelType, *, session_factory: sessionmaker[Session]
+    ) -> tuple[str, str] | None:
+        """Read the saved choice in a short session, then discover a model if no choice is saved."""
+        with session_factory() as session:
+            saved_model = self._get_saved_default_model_selection(tenant_id, model_type, session=session)
+        return saved_model or self._discover_default_model_selection(tenant_id, model_type)
+
+    @staticmethod
+    def _get_saved_default_model_selection(
+        tenant_id: str, model_type: ModelType, *, session: Session
+    ) -> tuple[str, str] | None:
+        """Return the saved provider and model names, or None when there is no selection."""
         saved_model = session.execute(
             select(TenantDefaultModel.provider_name, TenantDefaultModel.model_name).where(
                 TenantDefaultModel.tenant_id == tenant_id,
                 TenantDefaultModel.model_type == model_type,
             )
         ).one_or_none()
-        if saved_model is not None:
-            return saved_model.provider_name, saved_model.model_name
+        return (saved_model.provider_name, saved_model.model_name) if saved_model is not None else None
 
+    def _discover_default_model_selection(self, tenant_id: str, model_type: ModelType) -> tuple[str, str] | None:
+        """Return the first active provider model, or None if discovery fails or finds none."""
         try:
             configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
             available_models = configurations.get_models(model_type=model_type, only_active=True)

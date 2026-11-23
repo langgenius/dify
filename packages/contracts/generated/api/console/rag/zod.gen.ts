@@ -35,13 +35,6 @@ export const zSimpleDataResponse = z.object({
 })
 
 /**
- * RagPipelineDatasetImportPayload
- */
-export const zRagPipelineDatasetImportPayload = z.object({
-  yaml_content: z.string(),
-})
-
-/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -264,6 +257,24 @@ export const zPublishedWorkflowRunPayload = z.object({
 export const zWorkflowUpdatePayload = z.object({
   marked_comment: z.string().max(100).nullish(),
   marked_name: z.string().max(20).nullish(),
+})
+
+/**
+ * IconInfo
+ */
+export const zRagPipelineIconInfo = z.object({
+  icon: z.string(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullish(),
+})
+
+/**
+ * RagPipelineDatasetImportPayload
+ */
+export const zRagPipelineDatasetImportPayload = z.object({
+  icon_info: zRagPipelineIconInfo.nullish(),
+  yaml_content: z.string(),
 })
 
 /**

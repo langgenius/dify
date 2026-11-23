@@ -1,4 +1,3 @@
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
@@ -14,12 +13,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-const renderProvider = (
-  features: Parameters<typeof seedFeatures>[1] = {},
-  edition: DeploymentEdition = 'CLOUD',
-) => {
+const renderProvider = (features: Parameters<typeof seedFeatures>[1] = {}) => {
   const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { deployment_edition: edition },
+    systemFeatures: { deployment_edition: 'CLOUD' },
     currentWorkspace: { id: 'workspace-1' },
   })
   seedFeatures(queryClient, features)
@@ -74,20 +70,14 @@ describe('Trigger events limit prompt', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
-    'does not show Cloud quota prompts in %s',
-    (edition) => {
-      renderProvider(
-        {
-          billing: { subscription: { plan: 'sandbox' } },
-          trigger_event: { usage: 200, limit: 200 },
-        },
-        edition,
-      )
+  it('does not show the prompt when the trigger event quota is unlimited', () => {
+    renderProvider({
+      billing: { subscription: { plan: 'sandbox' } },
+      trigger_event: { usage: 200, limit: -1 },
+    })
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    },
-  )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 
   it('opens the trigger events limit modal and persists dismissal in localStorage', async () => {
     const features = {
