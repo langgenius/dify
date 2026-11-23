@@ -58,7 +58,8 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const handleBackupDraft = useCallback(() => {
     const { getNodes, edges } = store.getState()
     const { getViewport } = reactflow
-    const { backupDraft, setBackupDraft, environmentVariables } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, environmentVariables, ragPipelineVariables } =
+      workflowStore.getState()
 
     if (!backupDraft) {
       setBackupDraft({
@@ -66,22 +67,25 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         edges,
         viewport: getViewport(),
         environmentVariables,
+        ragPipelineVariables,
       })
       doSyncWorkflowDraft()
     }
   }, [reactflow, workflowStore, store, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const { backupDraft, setBackupDraft, setEnvironmentVariables } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, setEnvironmentVariables, setRagPipelineVariables } =
+      workflowStore.getState()
 
     if (backupDraft) {
-      const { nodes, edges, viewport, environmentVariables } = backupDraft
+      const { nodes, edges, viewport, environmentVariables, ragPipelineVariables } = backupDraft
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
         viewport,
       })
       setEnvironmentVariables(environmentVariables)
+      if (ragPipelineVariables) setRagPipelineVariables?.(ragPipelineVariables)
       setBackupDraft(undefined)
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])

@@ -9,6 +9,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { fullWorkflowAccessControl } from '../../../hooks-store/store'
 import { WorkflowVersion } from '../../../types'
@@ -361,6 +362,31 @@ describe('VersionHistoryPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(renderedStore.getState().backupDraft).toBeUndefined()
+  })
+
+  it('returns to the draft when the version being deleted is selected before the delete finishes', async () => {
+    const user = userEvent.setup()
+    const deletion = createDeferred<undefined>()
+    mockDeleteWorkflow.mockReturnValueOnce(deletion.promise)
+    const { VersionHistoryPanel } = await import('../index')
+    render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
+    await waitFor(() =>
+      expect(renderedStore.getState().currentVersion?.id).toBe('draft-version-id'),
+    )
+
+    // Start deleting v1.0 while the draft is selected, then preview v1.0 before the delete returns.
+    await selectAction(/operation\.delete/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await waitFor(() => expect(mockDeleteWorkflow).toHaveBeenCalled())
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(await screen.findByRole('button', { name: 'v1.0' }))
+    expect(renderedStore.getState().currentVersion?.id).toBe('published-version-id')
+
+    deletion.resolve(undefined)
+
+    await waitFor(() =>
+      expect(renderedStore.getState().currentVersion?.id).toBe('draft-version-id'),
+    )
   })
 
   it('should keep restore mode backup state when restore request fails', async () => {

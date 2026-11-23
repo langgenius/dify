@@ -177,6 +177,17 @@ describe('usePipelineRunByCanEdit', () => {
       })
     })
 
+    it('brings back the draft input fields after previewing a published version', () => {
+      const draftFields = [{ variable: 'draft-field' }]
+      const { result, store } = renderPipelineRun({ ragPipelineVariables: draftFields })
+
+      act(() => result.current.run.handleBackupDraft())
+      act(() => store.getState().setRagPipelineVariables?.([]))
+      act(() => result.current.run.handleLoadBackupDraft())
+
+      expect(store.getState().ragPipelineVariables).toEqual(draftFields)
+    })
+
     it('leaves the canvas alone when there is no backup to restore', () => {
       const { result } = renderPipelineRun()
 

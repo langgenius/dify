@@ -322,17 +322,14 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
       try {
         // The generated delete mutation resets the version list.
         await deleteWorkflow(id)
-        // A deleted version can no longer be previewed or restored: go back to the draft.
-        if (currentVersion?.id === id) {
+        // A deleted version can no longer be previewed or restored: go back to the draft. Read the
+        // selection now, since it can change while the delete request is in flight.
+        if (workflowStore.getState().currentVersion?.id === id) {
           const draft = versionHistory?.pages
             .flatMap((page) => page.items)
             .find((item) => item.version === WorkflowVersion.Draft)
-          if (draft) {
-            handleVersionClick(draft)
-          } else {
-            workflowStore.setState({ currentVersion: null })
-            showBackupDraft()
-          }
+          workflowStore.setState({ currentVersion: draft ?? null })
+          showBackupDraft()
         }
         deleteAllInspectVars()
         invalidAllLastRun()
@@ -350,9 +347,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
       t,
       deleteAllInspectVars,
       invalidAllLastRun,
-      currentVersion?.id,
       versionHistory?.pages,
-      handleVersionClick,
       workflowStore,
       showBackupDraft,
     ],
