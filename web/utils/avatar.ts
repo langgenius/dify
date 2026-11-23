@@ -13,7 +13,7 @@ type QueryWithData<T> = {
   }
 }
 
-const getAvatarExpiresAt = (url: AvatarUrl): number | undefined => {
+export const getAvatarExpiresAt = (url: AvatarUrl): number | undefined => {
   if (!url) return undefined
 
   try {

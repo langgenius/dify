@@ -1,32 +1,25 @@
 import { useEventListener } from 'ahooks'
-import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from './store'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()
-  const { handleCreateComment, handleCommentCancel, refreshExpiredCommentAvatars } =
-    useWorkflowComment()
-
-  useEventListener('focus', () => {
-    void refreshExpiredCommentAvatars().catch((error) => {
-      console.warn('Failed to refresh expired workflow comment avatars', error)
-    })
-  })
+  const { screenToFlowPosition } = useReactFlow()
 
   useEventListener('click', (e) => {
-    const { controlMode, mousePosition, pendingComment, isCommentPlacing } =
-      workflowStore.getState()
+    const { controlMode, pendingComment, isCommentPlacing } = workflowStore.getState()
     const target = e.target as HTMLElement
     const isInDropdown = target.closest('[data-mention-dropdown]')
     const isInCommentInput = target.closest('[data-comment-input]')
     const isOnCanvasPane = target.closest('.react-flow__pane')
+    const pointed = () => screenToFlowPosition({ x: e.clientX, y: e.clientY })
 
     if (isCommentPlacing) {
       if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
         e.stopPropagation()
         workflowStore.setState({
-          pendingComment: mousePosition,
+          pendingComment: pointed(),
           isCommentPlacing: false,
         })
       }
@@ -39,8 +32,8 @@ const CommentManager = () => {
       if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
         e.stopPropagation()
-        if (pendingComment) handleCommentCancel()
-        else handleCreateComment(mousePosition)
+        if (pendingComment) workflowStore.getState().setPendingComment(null)
+        else workflowStore.getState().setPendingComment(pointed())
       }
     }
   })

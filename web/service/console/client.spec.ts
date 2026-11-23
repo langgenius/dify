@@ -782,6 +782,52 @@ describe('consoleQuery workspace member avatar freshness', () => {
   })
 })
 
+describe('consoleQuery workflow comment avatar freshness', () => {
+  const receivedAt = Date.UTC(2026, 10, 23, 2, 0, 59)
+  const issuedAt = receivedAt / 1000 - 59
+  const expiresAt = issuedAt + 300
+  const owner = '11111111-1111-1111-1111-111111111111'
+  const avatarUrl = `https://files.example.com/files/avatar/file-preview?${new URLSearchParams({
+    timestamp: String(issuedAt),
+    nonce: `account-avatar-v2:${owner}`,
+    sign: `${'A'.repeat(43)}=`,
+    expires_at: String(expiresAt),
+  })}`
+  const avatarAccount = {
+    id: owner,
+    name: 'Avatar Owner',
+    email: 'avatar@example.com',
+    avatar_url: avatarUrl,
+  }
+
+  it('caps mention-user freshness at the earliest avatar expiry', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = createQueryClient({ defaultOptions: { queries: { staleTime: 300_000 } } })
+    const options = consoleQuery.apps.byAppId.workflow.comments.mentionUsers.get.queryOptions({
+      input: { params: { app_id: 'app-1' } },
+    })
+    queryClient.setQueryData(
+      options.queryKey,
+      {
+        users: [
+          {
+            ...avatarAccount,
+            role: 'normal',
+            status: 'active',
+          },
+        ],
+      },
+      { updatedAt: receivedAt },
+    )
+
+    const now = vi.spyOn(Date, 'now').mockReturnValue(receivedAt + 200_000)
+    expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(false)
+
+    now.mockReturnValue(expiresAt * 1000 - 5_000)
+    expect(new QueryObserver(queryClient, options).getCurrentResult().isStale).toBe(true)
+  })
+})
+
 describe('consoleQuery app mutation defaults', () => {
   it('should merge the reset token into the exact app site without replacing other detail fields', async () => {
     const consoleQuery = await loadConsoleQuery()
