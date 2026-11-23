@@ -295,3 +295,22 @@ it('zooms the canvas with the comment pinned to it and frames it again for a rep
   await expect.poll(() => marker.element().getBoundingClientRect().left).toBeCloseTo(framed.left, 0)
   expect(marker.element().getBoundingClientRect().top).toBeCloseTo(framed.top, 0)
 })
+
+it("shows the editor's Toolbar with only the comment tool reachable", async () => {
+  const screen = await renderDemo('owner')
+  await expect
+    .element(screen.getByRole('button', { name: 'workflow.common.handMode', includeHidden: true }))
+    .toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'workflow.common.handMode' }).query()).toBeNull()
+
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  const commentTool = screen.getByRole('button', { name: 'collaborationDemo.commentTool' })
+  await userEvent.keyboard('{Tab}{Tab}{Tab}')
+  await expect.element(commentTool).toHaveFocus()
+  await userEvent.keyboard('{Tab}')
+  await expect.element(commentTool).not.toHaveFocus()
+  expect(document.activeElement?.closest('[inert]')).toBeNull()
+})
