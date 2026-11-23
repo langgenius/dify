@@ -1,6 +1,6 @@
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
-import { cdp, page, userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import AuthLayout from '@/app/(auth)/layout'
 import accountSettings from '@/i18n/locales/zh-Hans/account-settings.json'
@@ -8,6 +8,7 @@ import common from '@/i18n/locales/zh-Hans/common.json'
 import login from '@/i18n/locales/zh-Hans/login.json'
 import { getInitOptions } from '@/i18n/settings'
 import { consoleQuery } from '@/service/console'
+import { emulateTimezone } from '@/test/browser-media-emulation'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -24,10 +25,7 @@ const workspaceName = "invitee@example.com's Workspace"
 
 async function renderInvitation() {
   // Pin the browser's own timezone so the default invitation timezone is deterministic.
-  await cdp().send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Taipei' })
-  onTestFinished(async () => {
-    await cdp().send('Emulation.setTimezoneOverride', { timezoneId: '' })
-  })
+  await emulateTimezone('Asia/Taipei')
   const i18n = createInstance()
   await i18n.init({
     ...getInitOptions(['accountSettings', 'common', 'login']),
