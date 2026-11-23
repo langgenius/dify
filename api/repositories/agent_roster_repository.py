@@ -9,6 +9,7 @@ from machinery.context import RequestContext
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentKind,
     AgentScope,
     WorkflowAgentNodeBinding,
 )
@@ -18,6 +19,7 @@ from repositories.agent_roster_queries import (
     load_published_workflows_by_agent_id,
     load_reference_counts_by_agent_id,
 )
+from repositories.tag_repository import TagRepository
 from services.agent.invite_options_store import (
     AgentInviteOption,
     AgentInviteOptionsPage,
@@ -51,8 +53,13 @@ def _invite_option(
     active_config_is_published: bool,
     reference_count: int,
     node_ids: tuple[str, ...],
+    tags: list[dict[str, str]],
 ) -> AgentInviteOption:
-    """Project loaded Agent data and workflow usage before its session closes."""
+    """Detach loaded Agent data, workflow usage and tenant-scoped Agent tags.
+
+    Preconditions: all inputs were loaded within the same tenant scope.
+    Postconditions: the result requires no database access for serialization.
+    """
     return AgentInviteOption(
         id=agent.id,
         name=agent.name,
@@ -86,6 +93,7 @@ def _invite_option(
         is_in_current_workflow=bool(node_ids),
         in_current_workflow_count=len(node_ids),
         existing_node_ids=node_ids,
+        tags=tags,
     )
 
 
@@ -147,16 +155,28 @@ def list_invite_options_in_session(
     keyword: str | None,
     app_id: str | None,
     accessible_agent_ids: set[str] | None,
+    tag_ids: tuple[str, ...] = (),
 ) -> AgentInviteOptionsPage:
-    """Read and detach a page of callable Agents using the caller's tenant-scoped session."""
-    stmt = build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
-        Agent.active_config_has_model.is_(True), workflow_callable_active_snapshot_filter()
+    """Read a callable Agent page with all requested Agent tags before pagination.
+
+    Preconditions: the caller owns the session and validated pagination/IDs.
+    Postconditions: count, page and detached tags share the same tenant scope;
+    absent tags retain the original candidate range. This function never commits.
+    """
+    stmt = (
+        build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
+        .where(Agent.active_config_has_model.is_(True), workflow_callable_active_snapshot_filter())
+        .order_by(Agent.id)
     )
     if accessible_agent_ids is not None:
         stmt = stmt.where(Agent.id.in_(accessible_agent_ids))
+    if tag_ids:
+        target_ids = TagRepository.get_target_ids_by_tag_ids("agent", tenant_id, list(tag_ids), session, match_all=True)
+        stmt = stmt.where(Agent.agent_kind == AgentKind.DIFY_AGENT, Agent.id.in_(target_ids))
     total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     agents = list(session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
     agent_ids = [agent.id for agent in agents]
+    tags = TagRepository.load_tags_for_targets(session, tenant_id=tenant_id, tag_type="agent", target_ids=agent_ids)
     versions = load_versions_by_id(
         session, [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
     )
@@ -191,6 +211,7 @@ def list_invite_options_in_session(
             active_config_is_published=published.get(agent.id, False),
             reference_count=counts.get(agent.id, 0),
             node_ids=tuple(usage_by_agent_id.get(agent.id, ())),
+            tags=tags.get(agent.id, []),
         )
         for agent in agents
     )
@@ -212,8 +233,14 @@ class SQLAlchemyAgentRosterRepository:
         keyword: str | None,
         app_id: str | None,
         accessible_agent_ids: set[str] | None,
+        tag_ids: tuple[str, ...] = (),
     ) -> AgentInviteOptionsPage:
-        """Return the admitted tenant's visible callable Agents after closing the session."""
+        """Return the admitted tenant's tagged, visible callable Agents.
+
+        Preconditions: all filters are validated; empty tags preserve existing
+        candidates. Postconditions: detached records include independent Agent
+        tags, all selected IDs match, and the read session has closed.
+        """
         with self._session_factory() as session:
             return list_invite_options_in_session(
                 session,
@@ -223,4 +250,5 @@ class SQLAlchemyAgentRosterRepository:
                 keyword=keyword,
                 app_id=app_id,
                 accessible_agent_ids=accessible_agent_ids,
+                tag_ids=tag_ids,
             )
