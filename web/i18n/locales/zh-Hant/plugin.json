@@ -140,7 +140,7 @@
   "detailPanel.toolSelector.toolLabel": "工具",
   "detailPanel.toolSelector.toolSetting": "工具設定",
   "detailPanel.toolSelector.uninstalledContent": "此外掛是從 local/GitHub 儲存庫安裝的。請在安裝後使用。",
-  "detailPanel.toolSelector.uninstalledLink": "在外掛中管理",
+  "detailPanel.toolSelector.uninstalledLink": "在整合中管理",
   "detailPanel.toolSelector.uninstalledTitle": "未安裝工具",
   "detailPanel.toolSelector.unsupportedContent": "已安裝的外掛版本不提供此作。",
   "detailPanel.toolSelector.unsupportedContent2": "按兩下以切換版本。",
