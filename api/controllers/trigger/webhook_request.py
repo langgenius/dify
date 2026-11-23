@@ -167,6 +167,9 @@ class WebhookRequestParser:
         # Process body parameters based on content type
         result["body"] = self._process_body_parameters(raw_data["body"], node_data.body, node_data.content_type)
 
+        # Validate required file uploads for multipart data
+        self._validate_required_files(raw_data["files"], node_data.body, node_data.content_type)
+
         return result
 
     def _validate_content_length(self) -> None:
@@ -397,7 +400,7 @@ class WebhookRequestParser:
             param_type = body_config.type
             required = body_config.required
 
-            # Multipart file validation is handled separately in the extraction phase.
+            # Required multipart files are checked in _validate_required_files.
             if not (param_type == SegmentType.FILE and content_type == ContentType.FORM_DATA):
                 if required and name not in raw_body:
                     raise WebhookRequestValidationError(f"Required body parameter missing: {name}")
@@ -578,6 +581,28 @@ class WebhookRequestParser:
                 sanitized_name = self._sanitize_key(header_name).lower()
                 if header_name.lower() not in headers_lower and sanitized_name not in headers_sanitized:
                     raise WebhookRequestValidationError(f"Required header missing: {header_name}")
+
+    def _validate_required_files(
+        self,
+        files: dict[str, Any],
+        body_configs: Sequence[WebhookBodyParameter],
+        content_type: ContentType,
+    ) -> None:
+        """Validate required file parameters are present in multipart/form-data requests.
+
+        Args:
+            files: Processed file objects indexed by field name
+            body_configs: List of body parameter configurations
+            content_type: The configured request content type
+
+        Raises:
+            WebhookRequestValidationError: If a required file is missing
+        """
+        if content_type != ContentType.FORM_DATA:
+            return
+        for body_config in body_configs:
+            if body_config.type == SegmentType.FILE and body_config.required and body_config.name not in files:
+                raise WebhookRequestValidationError(f"Required file missing: {body_config.name}")
 
     def _validate_http_metadata(self, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> ValidationResultDict:
         """Validate HTTP method and content-type.
