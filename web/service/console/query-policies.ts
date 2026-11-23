@@ -355,16 +355,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 delete: {
                   mutationOptions: {
                     // Reset the version lists so they reload from the first page: the deleted version is gone
-
                     // even if the reload fails, and no stale page can shift the next one. Not awaited, so
-
                     // callers can close their UI as soon as the version is deleted.
-
                     onSuccess: (_data, variables, _result, context) => {
                       void context.client.resetQueries({
                         queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                           type: 'infinite',
-
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
                       })
@@ -1750,16 +1746,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               delete: {
                 mutationOptions: {
                   // Reset the version lists so they reload from the first page: the deleted version is gone
-
                   // even if the reload fails, and no stale page can shift the next one. Not awaited, so
-
                   // callers can close their UI as soon as the version is deleted.
-
                   onSuccess: (_data, variables, _result, context) => {
                     void context.client.resetQueries({
                       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                         type: 'infinite',
-
                         input: { params: { app_id: variables.params.app_id } },
                       }),
                     })
@@ -2513,16 +2505,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               delete: {
                 mutationOptions: {
                   // Reset the version lists so they reload from the first page: the deleted version is gone
-
                   // even if the reload fails, and no stale page can shift the next one. Not awaited, so
-
                   // callers can close their UI as soon as the version is deleted.
-
                   onSuccess: (_data, variables, _result, context) => {
                     void context.client.resetQueries({
                       queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                         type: 'infinite',
-
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
                     })
