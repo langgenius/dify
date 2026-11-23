@@ -14,6 +14,7 @@ from collections.abc import Callable
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.console import console_ns
 from controllers.console.workspace.rbac import resources as rbac_mod
@@ -186,3 +187,20 @@ def test_workspace_matrix_documents_pagination_and_language(apis: rbac_mod._Reso
     assert parameters["page"]["schema"]["type"] == "integer"
     assert parameters["limit"]["schema"]["type"] == "integer"
     assert parameters["language"]["schema"]["enum"] == ["en", "ja", "zh"]
+
+
+def test_workspace_bindings_rejects_json_null_before_replacing_bindings(
+    app: Flask,
+    apis: rbac_mod._ResourceAccessApis,
+    domain: RBACDomain,
+) -> None:
+    method = inspect.unwrap(vars(apis.workspace_bindings)["put"])
+    context = RequestContext("request", "trace", "actor", "tenant")
+
+    with app.test_request_context("/", method="PUT", data="null", content_type="application/json"):
+        with pytest.raises(UnprocessableEntity) as error:
+            method(apis.workspace_bindings(), context, policy_id="policy-1")
+
+    assert error.value.code == 422
+    assert domain.transport.requests == []
+
