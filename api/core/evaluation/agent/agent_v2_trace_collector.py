@@ -49,6 +49,41 @@ class AgentV2TraceCollector:
         self._seen_event_ids: set[str] = set()
         self._current_message_step: AgentTrajectoryStep | None = None
         self._warnings: list[str] = []
+        self._attempt = 0
+
+    def begin_attempt(self, attempt: int) -> None:
+        """Start one backend attempt while preserving previously collected trace steps.
+
+        ``attempt`` must be non-negative. Source event IDs and open tool indexes
+        are scoped to one backend run, so they are reset here; completed steps,
+        tool calls, and warnings remain available for the final snapshot.
+        """
+        if attempt < 0:
+            raise ValueError("Agent trace attempt must be non-negative")
+        self._attempt = attempt
+        self._seen_event_ids.clear()
+        self._tools_by_call_id.clear()
+        self._tools_by_index.clear()
+        self._close_message_segment()
+
+    def record_failed_output_attempt(self, *, output: Any, error: str) -> None:
+        """Append an output rejected by validation before the node retries.
+
+        The rejected output closes the current attempt with a failed
+        ``final_output`` step. Existing trace state is retained so the next
+        attempt can be appended without losing the failed trajectory.
+        """
+        self._close_message_segment()
+        self._steps.append(
+            AgentTrajectoryStep(
+                step_id=f"attempt-{self._attempt}-output-{len(self._steps) + 1}",
+                sequence=len(self._steps),
+                step_type="final_output",
+                content=_render_output(output),
+                status="failed",
+                error=error,
+            )
+        )
 
     def consume(self, event: AgentBackendInternalEvent) -> None:
         """Consume one adapted event, ignoring replayed source event IDs."""
@@ -197,7 +232,7 @@ class AgentV2TraceCollector:
         elif index >= 0 and index in self._tools_by_index and not self._tools_by_index[index].observed:
             state = self._tools_by_index[index]
         else:
-            key = call_id or f"stream-{len(self._tool_states) + 1}"
+            key = self._attempt_scoped_key(call_id or f"stream-{len(self._tool_states) + 1}")
             resolved_name = name or "unknown_tool"
             tool_definition = self._tools_by_name.get(resolved_name)
             tool_ref = tool_definition.tool_ref if tool_definition else resolved_name
@@ -238,7 +273,7 @@ class AgentV2TraceCollector:
             content = dict(part)
 
         if state is None:
-            key = call_id or f"orphan-{len(self._steps) + 1}"
+            key = self._attempt_scoped_key(call_id or f"orphan-{len(self._steps) + 1}")
             tool_definition = self._tools_by_name.get(name or "")
             self._steps.append(
                 AgentTrajectoryStep(
@@ -324,6 +359,12 @@ class AgentV2TraceCollector:
 
     def _close_message_segment(self) -> None:
         self._current_message_step = None
+
+    def _attempt_scoped_key(self, key: str) -> str:
+        """Keep retry step IDs unique while preserving first-attempt IDs."""
+        if self._attempt == 0:
+            return key
+        return f"attempt-{self._attempt}-{key}"
 
 
 def _event_index(data: Mapping[str, Any]) -> int:
