@@ -1,75 +1,50 @@
 'use client'
 
 import type { Ref } from 'react'
-import type { DemoUserId } from '../demo-users'
 import type { CursorAnchor, PlaybackFrame } from '../playback-script'
-import { AvatarGroup } from '@langgenius/dify-ui/avatar'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useRef, useState } from 'react'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+} from '@langgenius/dify-ui/popover'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore, useViewport } from 'reactflow'
+import { CollaboratorCursor } from '@/app/components/workflow/collaboration/components/collaborator-cursor'
+import { NodeEditorAvatars } from '@/app/components/workflow/collaboration/components/node-editors'
+import {
+  CommentComposerActions,
+  CommentComposerFrame,
+} from '@/app/components/workflow/comment/comment-composer'
+import { CommentMarker } from '@/app/components/workflow/comment/comment-marker'
+import { highlightMentions } from '@/app/components/workflow/comment/mention-highlight'
+import {
+  commentDraftPlacement,
+  commentThreadPlacement,
+  getCommentPopupBounds,
+} from '@/app/components/workflow/comment/popup-placement'
+import {
+  CommentMessage,
+  CommentReplyBar,
+  CommentThreadItem,
+  CommentThreadList,
+  CommentThreadPopup,
+} from '@/app/components/workflow/comment/thread-view'
 import { demoNodePositions } from '../demo-graph'
 import { demoUsers } from '../demo-users'
-import { getThreadPlacement } from '../demo-viewport'
 import { demoCommentPosition, demoMessages } from '../playback-script'
-import { DemoAvatar } from './demo-avatar'
 
 type Point = { x: number; y: number }
-type MessageId = (typeof demoMessages)[number]['id']
+type Box = { left: number; top: number; height: number }
 
-const floatingShadow =
-  'shadow-[0_12px_16px_-4px_var(--color-shadow-shadow-5),0_4px_6px_-2px_var(--color-shadow-shadow-1)]'
+const mentionNames = Object.values(demoUsers).map(({ name }) => name)
 
-function RemoteCursor({ user, x, y }: { user: DemoUserId } & Point) {
-  const { color, name } = demoUsers[user]
-  return (
-    <div aria-hidden className="pointer-events-none absolute z-40" style={{ left: x, top: y }}>
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="drop-shadow-md">
-        <path
-          d="M5 3L5 15L8 11.5L11 16L13 15L10 10.5L14 10.5L5 3Z"
-          fill={color}
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <div
-        className="absolute inset-s-4 top-4 rounded-sm px-1.5 py-0.5 system-xs-medium whitespace-nowrap text-white shadow-sm"
-        style={{ backgroundColor: color }}
-      >
-        {name}
-      </div>
-    </div>
-  )
-}
-
-function MarkerBubble({
-  participants,
-  selected,
-}: {
-  participants: DemoUserId[]
-  selected?: boolean
-}) {
-  return (
-    <div
-      data-selected={selected || undefined}
-      className={cn(
-        'relative flex rounded-[13.5px] rounded-es-[3px] bg-components-panel-bg-blur p-[1.5px] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border-[0.5px] after:border-components-panel-border data-selected:after:border-[1.5px] data-selected:after:border-components-option-card-option-selected-border',
-        floatingShadow,
-      )}
-    >
-      <AvatarGroup size="sm">
-        {participants.map((user) => (
-          <DemoAvatar key={user} user={user} />
-        ))}
-      </AvatarGroup>
-    </div>
-  )
-}
-
-function useMessageText() {
+function useMessageContent() {
   const { t } = useTranslation(['collaborationDemo'])
-  return (id: MessageId) => t(($) => $[`messages.${id}`])
+  return (message: (typeof demoMessages)[number]) =>
+    `${message.mention ? `@${demoUsers[message.mention].name} ` : ''}${t(($) => $[`messages.${message.id}`])}`
 }
 
 function DraftInput({
@@ -79,32 +54,21 @@ function DraftInput({
   draft: PlaybackFrame['draft']
   placeholder: string
 }) {
-  const messageText = useMessageText()
+  const messageContent = useMessageContent()
   const message = draft && demoMessages.find(({ id }) => id === draft.message)
-  const text = message
-    ? `${message.mention ? `@${demoUsers[message.mention].name} ` : ''}${messageText(message.id)}`
-    : ''
+  const text = message ? messageContent(message) : ''
   const typed = draft ? text.slice(0, Math.round(text.length * draft.progress)) : ''
 
   return (
-    <div className="flex items-end gap-1">
-      <div className="max-h-24 min-w-0 flex-1 overflow-hidden px-2 py-1.5 body-sm-regular wrap-break-word text-text-primary">
-        {typed || <span className="text-components-input-text-placeholder">{placeholder}</span>}
+    <div inert className="flex items-end body-sm-regular leading-4.5">
+      <div className="max-h-22 min-w-0 flex-1 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary">
+        {typed ? (
+          highlightMentions(typed, mentionNames)
+        ) : (
+          <span className="text-components-input-text-placeholder">{placeholder}</span>
+        )}
       </div>
-      {!typed && (
-        <span className="flex size-7 shrink-0 items-center justify-center">
-          <span className="i-ri-mic-line size-4 text-text-tertiary" />
-        </span>
-      )}
-      <span className="flex size-7 shrink-0 items-center justify-center">
-        <span className="i-ri-at-line size-4 text-text-tertiary" />
-      </span>
-      <span
-        data-ready={typed ? '' : undefined}
-        className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-components-button-primary-bg-disabled data-ready:bg-components-button-primary-bg"
-      >
-        <span className="i-ri-arrow-up-line size-4 text-components-button-primary-text" />
-      </span>
+      <CommentComposerActions canSend={Boolean(typed)} />
     </div>
   )
 }
@@ -116,7 +80,8 @@ type DemoCanvasLayerProps = {
   threadOpen: boolean
   onThreadOpenChange: (open: boolean) => void
   markerRef: Ref<HTMLButtonElement>
-  threadCloseRef: Ref<HTMLButtonElement>
+  /** The thread was opened from its marker, so it takes focus. */
+  focusThread: boolean
 }
 
 export function DemoCanvasLayer({
@@ -126,17 +91,20 @@ export function DemoCanvasLayer({
   threadOpen,
   onThreadOpenChange,
   markerRef,
-  threadCloseRef,
+  focusThread,
 }: DemoCanvasLayerProps) {
   const { t } = useTranslation(['collaborationDemo', 'workflowComments'])
-  const messageText = useMessageText()
+  const messageContent = useMessageContent()
   const { x: vx, y: vy, zoom } = useViewport()
-  const width = useStore((state) => state.width)
-  const height = useStore((state) => state.height)
+  const canvas = useStore((state) => state.domNode)
+  const popupBounds = getCommentPopupBounds({ canvas: canvas ?? null, direction: useDirection() })
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null)
+  const [marker, setMarker] = useState<HTMLDivElement | null>(null)
+  const [popup, setPopup] = useState<HTMLDivElement | null>(null)
+  const [threadBox, setThreadBox] = useState<Box>()
   const listRef = useRef<HTMLDivElement>(null)
-  const [threadElement, setThreadElement] = useState<HTMLElement | null>(null)
-  const [threadHeight, setThreadHeight] = useState(0)
   const visibleMessages = frame.visibleMessages
+  const threadShown = frame.marker === 'thread' && threadOpen
 
   useEffect(() => {
     const list = listRef.current
@@ -144,153 +112,165 @@ export function DemoCanvasLayer({
       list.scrollTo({ top: list.scrollHeight, behavior: reducedMotion ? 'instant' : 'smooth' })
   }, [reducedMotion, visibleMessages])
 
-  useEffect(() => {
-    if (!threadElement) return
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setThreadHeight(entry.borderBoxSize[0]!.blockSize)
-    })
-    observer.observe(threadElement)
-    return () => observer.disconnect()
-  }, [threadElement])
+  // Cursors move to the reply box only during playback, which renders every frame.
+  const measureThread = () => {
+    if (!popup || !layer) return setThreadBox(undefined)
+    const origin = layer.getBoundingClientRect()
+    const rect = popup.getBoundingClientRect()
+    const box = { left: rect.left - origin.left, top: rect.top - origin.top, height: rect.height }
+    setThreadBox((current) =>
+      current?.left === box.left && current.top === box.top && current.height === box.height
+        ? current
+        : box,
+    )
+  }
+  useLayoutEffect(measureThread)
 
   const toScreen = ({ x, y }: Point) => ({ x: x * zoom + vx, y: y * zoom + vy })
   const pin = toScreen(demoCommentPosition)
-  const thread = getThreadPlacement(pin, { width, height })
   const anchorToScreen = (anchor: CursorAnchor) =>
     anchor === 'reply'
-      ? { x: thread.left + 72, y: thread.top + threadHeight - 32 }
+      ? threadBox
+        ? { x: threadBox.left + 72, y: threadBox.top + threadBox.height - 32 }
+        : pin
       : toScreen(anchor)
   const cursorPosition = ({ from, to, progress }: PlaybackFrame['alex']) => {
     const start = anchorToScreen(from)
     const end = anchorToScreen(to)
-    return { x: start.x + (end.x - start.x) * progress, y: start.y + (end.y - start.y) * progress }
+    return {
+      left: start.x + (end.x - start.x) * progress,
+      top: start.y + (end.y - start.y) * progress,
+    }
   }
   const viewing = frame.samViewing && toScreen(demoNodePositions[frame.samViewing])
-  const participants: DemoUserId[] = visibleMessages > 1 ? ['alex', 'sam'] : ['alex']
+  const participants = visibleMessages > 1 ? [demoUsers.alex, demoUsers.sam] : [demoUsers.alex]
   const replyDraft = frame.draft?.message === demoMessages[0]!.id ? undefined : frame.draft
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-5 overflow-hidden">
+    <div ref={setLayer} className="pointer-events-none absolute inset-0 z-5 overflow-clip">
       {viewing && (
         <div
+          inert
           aria-hidden
-          className="absolute origin-top-left"
-          style={{ left: viewing.x + 206 * zoom, top: viewing.y + 15 * zoom, scale: zoom }}
+          className="absolute flex origin-top-left"
+          style={{ left: viewing.x + 206 * zoom, top: viewing.y + 17 * zoom, scale: zoom }}
         >
-          <AvatarGroup size="sm">
-            <DemoAvatar user="sam" />
-          </AvatarGroup>
+          <NodeEditorAvatars editors={[demoUsers.sam]} />
         </div>
       )}
 
-      {frame.marker === 'composing' && (
+      {frame.marker && (
         <div
-          aria-hidden
-          className="absolute flex items-start gap-3"
-          style={{ left: Math.min(pin.x, width - 368), top: pin.y - 27 }}
+          ref={setMarker}
+          className="absolute -translate-y-full"
+          style={{ left: pin.x, top: pin.y }}
         >
-          <MarkerBubble participants={['alex']} selected />
-          <div className={cn('w-80 rounded-xl bg-components-panel-bg p-1', floatingShadow)}>
-            <DraftInput
-              draft={frame.draft}
-              placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
-            />
-          </div>
+          {frame.marker === 'composing' ? (
+            <CommentMarker aria-hidden selected participants={participants} />
+          ) : threadOpen || !markerInteractive ? (
+            <CommentMarker aria-hidden participants={participants} selected={threadOpen} />
+          ) : (
+            <button
+              ref={markerRef}
+              type="button"
+              aria-label={t(($) => $['thread.open'], {
+                name: demoUsers.alex.name,
+                count: visibleMessages - 1,
+              })}
+              className="pointer-events-auto flex cursor-pointer rounded-[13.5px] rounded-es-[3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              onClick={() => onThreadOpenChange(true)}
+            >
+              <CommentMarker participants={participants} />
+            </button>
+          )}
         </div>
       )}
 
-      {frame.marker === 'thread' &&
-        (threadOpen || !markerInteractive ? (
-          <div
-            aria-hidden
-            className="absolute -translate-y-full"
-            style={{ left: pin.x, top: pin.y }}
-          >
-            <MarkerBubble participants={participants} selected={threadOpen} />
-          </div>
-        ) : (
-          <button
-            ref={markerRef}
-            type="button"
-            aria-label={t(($) => $['thread.open'], {
-              name: demoUsers.alex.name,
-              count: visibleMessages - 1,
-            })}
-            className="pointer-events-auto absolute -translate-y-full cursor-pointer rounded-[13.5px] rounded-es-[3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            style={{ left: pin.x, top: pin.y }}
-            onClick={() => onThreadOpenChange(true)}
-          >
-            <MarkerBubble participants={participants} />
-          </button>
+      <Popover open={frame.marker === 'composing' && Boolean(marker)}>
+        <PopoverPortal container={layer}>
+          <PopoverPositioner anchor={marker} {...commentDraftPlacement} {...popupBounds}>
+            <PopoverPopup
+              inert
+              aria-hidden
+              initialFocus={false}
+              finalFocus={false}
+              className="w-80 transition-none"
+            >
+              <CommentComposerFrame className="shadow-lg">
+                <DraftInput
+                  draft={frame.draft}
+                  placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
+                />
+              </CommentComposerFrame>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
+
+      <Popover
+        open={threadShown && Boolean(marker)}
+        onOpenChange={(open, details) => {
+          // Playback keeps the thread open; Escape there pauses playback instead.
+          if (
+            !open &&
+            (details.reason === 'close-press' ||
+              (details.reason === 'escape-key' && markerInteractive))
+          )
+            onThreadOpenChange(false)
+          else details.cancel()
+        }}
+      >
+        <PopoverPortal container={layer}>
+          <PopoverPositioner anchor={marker} {...commentThreadPlacement} {...popupBounds}>
+            <CommentThreadPopup
+              ref={setPopup}
+              title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
+              closeLabel={t(($) => $['thread.close'])}
+              initialFocus={focusThread}
+              finalFocus={false}
+              className="nowheel nopan pointer-events-auto"
+            >
+              <CommentThreadList ref={listRef}>
+                {demoMessages.slice(0, visibleMessages).map((message) => (
+                  <CommentThreadItem
+                    key={message.id}
+                    className="motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
+                  >
+                    <CommentMessage
+                      author={demoUsers[message.author]}
+                      timeLabel={t(($) => $['thread.justNow'])}
+                      content={messageContent(message)}
+                      mentionNames={mentionNames}
+                    />
+                  </CommentThreadItem>
+                ))}
+              </CommentThreadList>
+              <div aria-hidden>
+                <CommentReplyBar author={demoUsers[frame.replyAuthor]}>
+                  <DraftInput
+                    draft={replyDraft}
+                    placeholder={t(($) => $['comments.placeholder.reply'], {
+                      ns: 'workflowComments',
+                    })}
+                  />
+                </CommentReplyBar>
+              </div>
+            </CommentThreadPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
+
+      <div aria-hidden>
+        {(['alex', 'sam'] as const).map((user) => (
+          <CollaboratorCursor
+            key={user}
+            name={demoUsers[user].name}
+            color={demoUsers[user].color}
+            className="absolute z-40"
+            style={cursorPosition(frame[user])}
+          />
         ))}
-
-      {frame.marker === 'thread' && threadOpen && (
-        <section
-          ref={setThreadElement}
-          aria-labelledby="collaboration-demo-thread-title"
-          className="nowheel nopan pointer-events-auto absolute z-30 flex w-90 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)]"
-          style={thread}
-        >
-          <div className="flex items-center justify-between border-b border-divider-subtle py-1 ps-4 pe-2">
-            <h2
-              id="collaboration-demo-thread-title"
-              className="system-sm-semibold text-text-primary uppercase"
-            >
-              {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
-            </h2>
-            <button
-              ref={threadCloseRef}
-              type="button"
-              aria-label={t(($) => $['thread.close'])}
-              className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={() => onThreadOpenChange(false)}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
-          </div>
-          <div ref={listRef} className="max-h-70 overflow-y-auto">
-            {demoMessages.slice(0, visibleMessages).map((message) => (
-              <article
-                key={message.id}
-                className="flex gap-3 py-3 ps-4 pe-3 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
-              >
-                <DemoAvatar user={message.author} className="shrink-0 ring-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1">
-                    <span className="system-sm-medium text-text-primary">
-                      {demoUsers[message.author].name}
-                    </span>
-                    <span aria-hidden className="system-xs-regular text-text-tertiary">
-                      {t(($) => $['thread.justNow'])}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 body-sm-regular wrap-break-word text-text-secondary">
-                    {message.mention && (
-                      <span className="text-text-accent">@{demoUsers[message.mention].name} </span>
-                    )}
-                    {messageText(message.id)}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div
-            aria-hidden
-            className="flex items-center gap-3 border-t-[0.5px] border-divider-subtle bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 py-3 ps-4 pe-3"
-          >
-            <DemoAvatar user={frame.replyAuthor} className="shrink-0 ring-0" />
-            <div className="min-w-0 flex-1 rounded-xl border border-components-panel-bg bg-components-input-bg-normal p-1">
-              <DraftInput
-                draft={replyDraft}
-                placeholder={t(($) => $['comments.placeholder.reply'], { ns: 'workflowComments' })}
-              />
-            </div>
-          </div>
-        </section>
-      )}
-
-      <RemoteCursor user="alex" {...cursorPosition(frame.alex)} />
-      <RemoteCursor user="sam" {...cursorPosition(frame.sam)} />
+      </div>
     </div>
   )
 }
