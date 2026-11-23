@@ -274,6 +274,10 @@ export type ExternalMetricValuesResponse = {
 
 export type ExternalAgentAppReferenceResponse = {
   app_id: string
+  icon: string | null
+  icon_background: string | null
+  icon_type: string | null
+  icon_url: string | null
   mode: string
   name: string
   node_ids: Array<string>

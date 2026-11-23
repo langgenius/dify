@@ -44,11 +44,14 @@ from controllers.console.agent.external_observability import (
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.agent import Agent, AgentKind, AgentScope, AgentSource
+from models.agent import Agent, AgentKind, AgentScope, AgentSource, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent_config_entities import WorkflowNodeJobConfig
 from models.external_agent import ExternalAgentConnectionRevision, ExternalAgentHead, ExternalAgentInvocation
+from models.model import App, AppMode, IconType
+from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.asset_repository import ExternalAssetRepository
 from services.external_agents.contracts import VerificationEvidence
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
 @runtime_checkable
@@ -148,6 +151,98 @@ def test_roster_detail_and_reference_wire_projection_never_exposes_ciphertext(en
     assert "metadata" not in wire(wire(detail["connection"])["card"])
     references = invoke(endpoint_domain, ExternalAgentReferencesApi, "get", agent_id=UUID(identifier))
     assert references == {"apps": [], "may_have_in_flight": False}
+
+
+def test_reference_http_contract_returns_latest_app_icons_and_refreshable_image_urls(
+    endpoint_domain: EndpointDomain,
+) -> None:
+    """Actual JSON GETs preserve App icon protocol through SQL, service and response projection."""
+    app, context, agent_id, _, sessions = endpoint_domain
+    app_id, workflow_id, file_id = (str(uuid4()) for _ in range(3))
+    with sessions.begin() as session:
+        session.add(
+            make_app(
+                app_id=app_id,
+                tenant_id=context.active_workspace_id,
+                mode=AppMode.WORKFLOW,
+                icon_type=IconType.EMOJI,
+                icon="🔎",
+                icon_background="#FFF2CC",
+            )
+        )
+        session.add(
+            make_upload_file(
+                file_id=file_id,
+                tenant_id=context.active_workspace_id,
+                created_by=context.account_id,
+                name="app.png",
+                extension="png",
+                mime_type="image/png",
+            )
+        )
+        session.add(
+            Workflow(
+                id=workflow_id,
+                tenant_id=context.active_workspace_id,
+                app_id=app_id,
+                type=WorkflowType.WORKFLOW,
+                version=Workflow.VERSION_DRAFT,
+                graph="{}",
+                _features="{}",
+                created_by=context.account_id,
+            )
+        )
+        for node_id in ("node-1", "node-2"):
+            session.add(
+                WorkflowAgentNodeBinding(
+                    tenant_id=context.active_workspace_id,
+                    app_id=app_id,
+                    workflow_id=workflow_id,
+                    workflow_version=Workflow.VERSION_DRAFT,
+                    node_id=node_id,
+                    agent_id=agent_id,
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    node_job_config=WorkflowNodeJobConfig(),
+                )
+            )
+    handler = inspect.unwrap(vars(ExternalAgentReferencesApi)["get"])
+    assert isinstance(handler, AdmittedHandler)
+
+    def references_get(agent_id: UUID) -> dict[str, object]:
+        """Exercise the admitted handler through Flask's real HTTP/JSON adapter."""
+        return wire(handler(ExternalAgentReferencesApi(), context, agent_id=agent_id))
+
+    app.add_url_rule(
+        "/external-agents/<uuid:agent_id>/references",
+        view_func=references_get,
+    )
+    client = app.test_client()
+    path = f"/external-agents/{agent_id}/references"
+    response = client.get(path)
+    assert response.status_code == 200
+    row = response.get_json()["apps"][0]
+    assert row == {
+        "app_id": app_id,
+        "name": "Test App",
+        "mode": "workflow",
+        "node_ids": ["node-1", "node-2"],
+        "icon_type": "emoji",
+        "icon": "🔎",
+        "icon_background": "#FFF2CC",
+        "icon_url": None,
+    }
+    with sessions.begin() as session:
+        stored_app = session.get(App, app_id)
+        assert stored_app is not None
+        stored_app.icon_type, stored_app.icon = IconType.IMAGE, file_id
+    image = client.get(path)
+    assert image.status_code == 200
+    row = image.get_json()["apps"][0]
+    assert row["icon_type"] == "image"
+    assert row["icon"] == file_id
+    assert isinstance(row["icon_url"], str)
+    assert file_id in row["icon_url"]
+    assert client.get(path).get_json()["apps"][0]["icon_url"] != row["icon_url"]
 
 
 def test_connection_conflict_reload_exposes_the_current_saver_and_save_time(endpoint_domain: EndpointDomain) -> None:

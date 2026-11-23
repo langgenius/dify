@@ -10,7 +10,7 @@ from graphon.file.helpers import verify_file_signature
 from models.agent import Agent, AgentIconType, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.base import TypeBase
 from models.external_agent import ExternalAgentFileLease
-from models.model import App, AppMode, UploadFile
+from models.model import App, AppMode, IconType, UploadFile
 from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.observability_repository import DatabaseExternalObservationAccess
 from services.external_agents.contracts import (
@@ -302,3 +302,120 @@ def test_non_image_icons_keep_the_existing_raw_value_and_no_image_url(
     displayed = control.assets.detail(control.context, identifier)["asset"]
     assert displayed["icon"] == icon
     assert displayed["icon_url"] is None
+
+
+def test_reference_icons_refresh_from_current_apps_and_batch_only_readable_uploads(icon_control: ControlPlane) -> None:
+    """Fresh references expose live icons with bounded SQL and no hidden file capabilities."""
+    control, agent = icon_control, icon_control.database[3]
+    visible = tuple(bind_app(control, (agent, agent)) for _ in range(4))
+    hidden = bind_app(control, (agent,))
+    foreign = bind_app(control, (agent,), tenant=uid())
+    uploads = tuple(image_upload(control) for _ in range(6))
+    with control.database[1].begin() as session:
+        for app_id, upload in zip((*visible, hidden, foreign), uploads, strict=True):
+            app = stored(session, App, app_id)
+            app.icon_type, app.icon, app.icon_background = IconType.IMAGE, upload, "#E0EAFF"
+    # Include a foreign App in the admitted set to prove SQL still fences the tenant.
+    control.access.reference_ids = frozenset((*visible[:1], foreign))
+    statements: list[tuple[str, object]] = []
+
+    def capture(
+        _connection: object, _cursor: object, statement: str, parameters: object, _context: object, _many: bool
+    ) -> None:
+        statements.append((statement, parameters))
+
+    engine = bound_engine(control.database[1])
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        first = control.assets.references(control.context, agent)
+        first_queries = len(statements)
+        statements.clear()
+        control.access.reference_ids = frozenset((*visible, foreign))
+        result = control.assets.references(control.context, agent)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    assert len(statements) == first_queries
+    assert {app.app_id for app in result.apps} == set(visible)
+    assert all(app.node_ids == ("node-0", "node-1") for app in result.apps)
+    upload_reads = [(sql, params) for sql, params in statements if "FROM upload_files" in sql]
+    assert len(upload_reads) == 1
+    assert all(upload not in str(upload_reads[0][1]) for upload in uploads[4:])
+    for app in result.apps:
+        assert app.icon_type == "image"
+        assert app.icon_background == "#E0EAFF"
+        assert app.icon is not None
+        assert app.icon_url is not None
+        query = parse_qs(urlsplit(app.icon_url).query)
+        assert verify_file_signature(
+            upload_file_id=app.icon, timestamp=query["timestamp"][0], nonce=query["nonce"][0], sign=query["sign"][0]
+        )
+    refreshed = next(app for app in result.apps if app.app_id == visible[0])
+    assert first.apps[0].icon_url != refreshed.icon_url
+    with control.database[1].begin() as session:
+        app = stored(session, App, visible[0])
+        app.icon_type, app.icon, app.icon_background = IconType.EMOJI, "🔎", "#FFF2CC"
+    latest = next(app for app in control.assets.references(control.context, agent).apps if app.app_id == visible[0])
+    assert (latest.icon_type, latest.icon, latest.icon_background, latest.icon_url) == ("emoji", "🔎", "#FFF2CC", None)
+
+
+@pytest.mark.parametrize(
+    ("icon_type", "icon", "background"),
+    [(IconType.EMOJI, "🌊", "#E4FBCC"), (IconType.LINK, "https://example.test/app.svg", None), (None, None, None)],
+)
+def test_reference_non_image_icons_preserve_the_existing_app_protocol(
+    control: ControlPlane, icon_type: IconType | None, icon: str | None, background: str | None
+) -> None:
+    """Unconfigured, emoji and link Apps need no uploaded-image lookup or URL."""
+    app_id = bind_app(control, (control.database[3],))
+    control.access.reference_ids = frozenset({app_id})
+    with control.database[1].begin() as session:
+        app = stored(session, App, app_id)
+        app.icon_type, app.icon, app.icon_background = icon_type, icon, background
+    reference = control.assets.references(control.context, control.database[3]).apps[0]
+    assert (reference.icon_type, reference.icon, reference.icon_background, reference.icon_url) == (
+        icon_type,
+        icon,
+        background,
+        None,
+    )
+
+
+@pytest.mark.parametrize("kind", ["foreign", "missing", "malformed", "not_image", "temporary"])
+def test_reference_image_icons_never_sign_invalid_or_temporary_uploads(icon_control: ControlPlane, kind: str) -> None:
+    """Legacy App metadata stays readable while unadmitted files never gain a URL."""
+    control, agent = icon_control, icon_control.database[3]
+    app_id = bind_app(control, (agent,))
+    control.access.reference_ids = frozenset({app_id})
+    image = (
+        "legacy-not-a-uuid"
+        if kind == "malformed"
+        else uid()
+        if kind == "missing"
+        else image_upload(
+            control,
+            tenant=uid() if kind == "foreign" else None,
+            media_type="text/plain" if kind == "not_image" else "image/png",
+        )
+    )
+    with control.database[1].begin() as session:
+        app = stored(session, App, app_id)
+        app.icon_type, app.icon, app.icon_background = IconType.IMAGE, image, "#E0EAFF"
+        if kind == "temporary":
+            session.add(
+                ExternalAgentFileLease(
+                    id=uid(),
+                    tenant_id=control.context.active_workspace_id,
+                    owner_id=control.context.account_id,
+                    agent_id=agent,
+                    page_session_id="icons",
+                    file_id=image,
+                    temporary_copy=True,
+                    purpose="input",
+                    storage_key="temporary/icon",
+                    size=10,
+                    media_type="image/png",
+                    expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
+                )
+            )
+    app = control.assets.references(control.context, agent).apps[0]
+    assert (app.icon_type, app.icon, app.icon_background, app.icon_url) == ("image", image, "#E0EAFF", None)

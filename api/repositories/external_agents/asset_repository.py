@@ -740,13 +740,30 @@ class ExternalAssetRepository:
         with self._sessions() as session:
             self._rows(session, tenant_id, agent_id)
             stmt = self._reference_statement(tenant_id, (agent_id,)).with_only_columns(
-                App.id, App.name, App.mode, WorkflowAgentNodeBinding.node_id
+                App.id,
+                App.name,
+                App.mode,
+                WorkflowAgentNodeBinding.node_id,
+                App.icon_type,
+                App.icon,
+                App.icon_background,
             )
             if app_ids is not None:
                 stmt = stmt.where(App.id.in_(app_ids))
             grouped: dict[str, dict[str, Any]] = {}
-            for id, name, mode, node in session.execute(stmt):
-                item = grouped.setdefault(id, {"app_id": id, "name": name, "mode": str(mode), "node_ids": []})
+            for id, name, mode, node, icon_type, icon, icon_background in session.execute(stmt):
+                item = grouped.setdefault(
+                    id,
+                    {
+                        "app_id": id,
+                        "name": name,
+                        "mode": str(mode),
+                        "node_ids": [],
+                        "icon_type": str(icon_type) if icon_type is not None else None,
+                        "icon": icon,
+                        "icon_background": icon_background,
+                    },
+                )
                 if node not in item["node_ids"]:
                     item["node_ids"].append(node)
             active = session.scalar(
@@ -789,6 +806,9 @@ class ExternalAssetRepository:
                         name=item["name"],
                         mode=item["mode"],
                         node_ids=tuple(sorted(item["node_ids"])),
+                        icon_type=item["icon_type"],
+                        icon=item["icon"],
+                        icon_background=item["icon_background"],
                     )
                     for key in sorted(grouped)
                     for item in (grouped[key],)

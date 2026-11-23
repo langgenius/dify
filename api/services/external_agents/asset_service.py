@@ -436,12 +436,24 @@ class ExternalAssetService:
         Preconditions: an Owner/Admin/Editor can read this asset. Postcondition:
         the App list uses the same admitted App scope as Monitoring; only an
         asset-wide boolean warns about possible unresolved work elsewhere.
+        Current icon metadata is read with the Apps; image URLs are refreshed
+        after one tenant-owned file admission query over those visible Apps.
         This read does not reserve a revision, cancel work or authorize deletion.
         """
         self._require(context, manage=False)
         self._visible(context, agent_id)
         app_ids = self._reference_access.reference_app_ids(context, agent_id)
-        return self._store.references(tenant_id=context.active_workspace_id, agent_id=agent_id, app_ids=app_ids)
+        result = self._store.references(tenant_id=context.active_workspace_id, agent_id=agent_id, app_ids=app_ids)
+        image_ids = tuple(app.icon for app in result.apps if app.icon_type == "image" and app.icon is not None)
+        owned = self._store.owned_icon_file_ids(tenant_id=context.active_workspace_id, file_ids=image_ids)
+        urls = self._icons.image_urls(tuple(owned))
+        return replace(
+            result,
+            apps=tuple(
+                replace(app, icon_url=urls.get(app.icon) if app.icon_type == "image" and app.icon is not None else None)
+                for app in result.apps
+            ),
+        )
 
     def operation(self, context: RequestContext, operation_id: str) -> OperationResult:
         self._require(context, manage=True)
