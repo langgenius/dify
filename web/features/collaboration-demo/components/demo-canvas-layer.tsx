@@ -99,7 +99,13 @@ export function DemoCanvasLayer({
   const messageContent = useMessageContent()
   const { x: vx, y: vy, zoom } = useViewport()
   const canvas = useStore((state) => state.domNode)
-  const popupBounds = getCommentPopupBounds({ canvas: canvas ?? null, direction: useDirection() })
+  const direction = useDirection()
+  const canvasBounds = getCommentPopupBounds({ canvas: canvas ?? null, direction })
+  // The preview's minimap stands 128px tall at the canvas's bottom end.
+  const popupBounds = {
+    ...canvasBounds,
+    collisionPadding: { ...canvasBounds.collisionPadding, bottom: 136 },
+  }
   const [layer, setLayer] = useState<HTMLDivElement | null>(null)
   const [marker, setMarker] = useState<HTMLDivElement | null>(null)
   const [popup, setPopup] = useState<HTMLDivElement | null>(null)
@@ -202,8 +208,13 @@ export function DemoCanvasLayer({
       </div>
 
       <Popover open={frame.marker === 'composing' && Boolean(marker)}>
-        <PopoverPortal>
-          <PopoverPositioner anchor={marker} {...commentDraftPlacement} {...popupBounds}>
+        <PopoverPortal container={layer}>
+          <PopoverPositioner
+            anchor={marker}
+            {...commentDraftPlacement}
+            {...popupBounds}
+            dir={direction}
+          >
             <PopoverPopup
               inert
               aria-hidden
@@ -250,8 +261,13 @@ export function DemoCanvasLayer({
           markerTriggerRef.current?.focus()
         }}
       >
-        <PopoverPortal>
-          <PopoverPositioner anchor={marker} {...commentThreadPlacement} {...popupBounds}>
+        <PopoverPortal container={layer}>
+          <PopoverPositioner
+            anchor={marker}
+            {...commentThreadPlacement}
+            {...popupBounds}
+            dir={direction}
+          >
             <CommentThreadPopup
               ref={setPopup}
               title={t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
