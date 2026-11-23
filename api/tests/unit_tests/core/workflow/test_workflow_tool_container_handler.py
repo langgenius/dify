@@ -1801,8 +1801,8 @@ class TestWorkflowToolEventDeliveryCases:
             assert execution.outputs_dict is not None
             if caller_save_fails:
                 assert resolution_calls == []
-                assert execution.error == "Workflow node execution caller is unavailable"
-                assert execution.outputs_dict["error_type"] == "agent_workflow_node_runtime_error"
+                assert execution.error == "Caller store unavailable"
+                assert execution.outputs_dict["error_type"] == "WorkflowNodeError"
             else:
                 # The real workspace store must see the caller synchronously before
                 # the binding resolver reports this deliberately unconfigured Agent.
