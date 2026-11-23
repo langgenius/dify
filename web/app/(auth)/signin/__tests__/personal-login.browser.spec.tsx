@@ -106,23 +106,33 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-it('uses the Webapp URL for the final personal redirect while verifying the original Console target', async () => {
-  authenticated = true
-  await showSignin(false, { webapp_url: 'https://apps.example/web' })
+it.each(['Console path', 'absolute Webapp URL'])(
+  'returns to My Apps when the session API responds with the %s',
+  async (responseKind) => {
+    authenticated = true
+    const webappUrl = 'https://apps.example/web'
+    if (responseKind === 'absolute Webapp URL') {
+      vi.mocked(fetch).mockImplementationOnce(async (input, init) => {
+        requests.push(new Request(input, init))
+        return Response.json({ logged_in: true, redirect_url: `${webappUrl}${destination}` })
+      })
+    }
+    await showSignin(false, { webapp_url: webappUrl })
 
-  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
-  expect(mocks.redirect.mock.calls[0]![0]).toEqual({
-    kind: 'absolute',
-    href: 'https://apps.example/web/my-apps?search=hello%20world&tag=workflow#recent',
-  })
-  expect(requests).toHaveLength(1)
-  expect(requests[0]!.method).toBe('GET')
-  expect(Object.fromEntries(new URL(requests[0]!.url).searchParams)).toEqual({
-    mode: 'end_user',
-    redirect_url: accountDestination(),
-  })
-  expect(mocks.replace).not.toHaveBeenCalled()
-})
+    await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
+    expect(mocks.redirect.mock.calls[0]![0]).toEqual({
+      kind: 'absolute',
+      href: `${webappUrl}${destination}`,
+    })
+    expect(requests).toHaveLength(1)
+    expect(requests[0]!.method).toBe('GET')
+    expect(Object.fromEntries(new URL(requests[0]!.url).searchParams)).toEqual({
+      mode: 'end_user',
+      redirect_url: accountDestination(),
+    })
+    expect(mocks.replace).not.toHaveBeenCalled()
+  },
+)
 
 it('signs in with password then establishes a cookie account session before returning to My Apps', async () => {
   mocks.searchParams.set('mode', 'console')
