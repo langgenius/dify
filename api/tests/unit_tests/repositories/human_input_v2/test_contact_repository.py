@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from sqlite3 import Connection
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, event, func
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.shared import AccountId, ContactId, TenantId
@@ -17,6 +18,8 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
+from repositories.account_avatar import validated_account_avatar
+from repositories.human_input_v2 import sqlalchemy_contact_repository
 from repositories.human_input_v2.contact import (
     ContactError,
     ContactErrorCode,
@@ -709,6 +712,48 @@ def test_organization_candidate_count_list_keyword_and_pagination_share_one_cand
     assert out_of_range == ()
     assert keyword_count == len(keyword_page) == 1
     assert {candidate.id for candidate in keyword_page} == {contact_repository_context.contact_ids.unavailable}
+
+
+def test_organization_candidate_pagination_validates_only_returned_avatars(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluated_avatars: list[str | None] = []
+
+    def record_avatar_validation(avatar: str | None) -> str | None:
+        evaluated_avatars.append(avatar)
+        return avatar
+
+    monkeypatch.setattr(
+        sqlalchemy_contact_repository,
+        "validated_account_avatar",
+        lambda: func.record_avatar_validation(validated_account_avatar()),
+    )
+    with Session(sqlite_engine) as session:
+        # Reverse the creation order so the sort replaces candidates while scanning the records.
+        for position in range(10):
+            account_id = AccountId(f"00000000-0000-0000-1000-{position:012d}")
+            contact_id = ContactId(f"00000000-0000-0000-2000-{position:012d}")
+            created_at = _NOW - timedelta(seconds=position)
+            account = _account(
+                account_id,
+                name=f"Candidate {position}",
+                email=f"{position}@example.com",
+                created_at=created_at,
+            )
+            account.avatar = f"https://example.com/{position}.png"
+            session.add_all([account, _account_identity(account_id, contact_id, created_at)])
+        session.flush()
+        connection = session.connection().connection.driver_connection
+        assert isinstance(connection, Connection)
+        connection.create_function("record_avatar_validation", 1, record_avatar_validation)
+
+        candidates = SQLAlchemyContactRepository(session).list_organization_candidates(page=2, limit=2)
+
+    expected_avatars = ["https://example.com/7.png", "https://example.com/6.png"]
+    assert [candidate.avatar_file_id for candidate in candidates] == expected_avatars
+    assert len(evaluated_avatars) == len(expected_avatars)
+    assert set(evaluated_avatars) == set(expected_avatars)
 
 
 def test_candidate_contact_id_round_trips_through_platform_entry_creation(

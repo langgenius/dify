@@ -318,15 +318,33 @@ class SQLAlchemyContactRepository:
         limit: int,
         keyword: str = "",
     ) -> Sequence[OrganizationCandidate]:
+        """Filter and page eligible candidates before validating their display avatars."""
         if page < 1:
             raise ValueError("page must be positive")
         if limit < 1:
             raise ValueError("limit must be positive")
-        rows = self._session.execute(
+        candidate_page = (
             self._organization_candidates_query(keyword)
+            .add_columns(
+                HumanInputContactIdentity.account_id,
+                HumanInputContactIdentity.created_at.label("contact_created_at"),
+                Account.created_at.label("account_created_at"),
+            )
             .order_by(Account.created_at, HumanInputContactIdentity.id)
             .offset((page - 1) * limit)
             .limit(limit)
+            .subquery()
+        )
+        rows = self._session.execute(
+            sa.select(
+                candidate_page.c.id,
+                Account.name,
+                Account.email,
+                validated_account_avatar(),
+                candidate_page.c.contact_created_at,
+            )
+            .join(Account, Account.id == candidate_page.c.account_id)
+            .order_by(candidate_page.c.account_created_at, candidate_page.c.id)
         ).all()
         return tuple(self._candidate_from_row(row) for row in rows)
 
@@ -340,12 +358,12 @@ class SQLAlchemyContactRepository:
         candidate_id: ContactId,
         added_by_account_id: AccountId,
     ) -> None:
-        candidate = self._session.execute(
+        matched_id = self._session.scalar(
             self._organization_candidates_query("").where(
                 HumanInputContactIdentity.id == str(candidate_id),
             )
-        ).one_or_none()
-        if candidate is None:
+        )
+        if matched_id is None:
             raise ContactError(ContactErrorCode.NOT_FOUND, "Organization candidate was not found")
         now = naive_utc_now()
         values = {
@@ -520,13 +538,10 @@ class SQLAlchemyContactRepository:
         return sa.union_all(workspace_contacts, platform_contacts, external_contacts).subquery("current_contacts")
 
     @staticmethod
-    def _organization_candidates_query(keyword: str):
+    def _organization_candidates_query(keyword: str) -> sa.Select[tuple[str]]:
+        """Select matching active account identity IDs for listing, counting, or creating entries."""
         statement = (
-            sa.select(
-                HumanInputContactIdentity,
-                Account,
-                validated_account_avatar().label(_AVATAR_FILE_ID),
-            )
+            sa.select(HumanInputContactIdentity.id)
             .join(Account, Account.id == HumanInputContactIdentity.account_id)
             .where(
                 HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
@@ -560,15 +575,15 @@ class SQLAlchemyContactRepository:
 
     @staticmethod
     def _candidate_from_row(
-        row: Row[tuple[HumanInputContactIdentity, Account, str | None]],
+        row: Row[tuple[str, str, str, str | None, datetime]],
     ) -> OrganizationCandidate:
-        identity, account, avatar_file_id = row
+        contact_id, name, email, avatar_file_id, created_at = row
         return OrganizationCandidate(
-            id=CandidateId(identity.id),
-            name=account.name,
-            email=account.email,
+            id=CandidateId(contact_id),
+            name=name,
+            email=email,
             avatar_file_id=avatar_file_id,
-            created_at=ensure_naive_utc(identity.created_at),
+            created_at=ensure_naive_utc(created_at),
         )
 
 

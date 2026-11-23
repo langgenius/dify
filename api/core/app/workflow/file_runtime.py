@@ -198,11 +198,15 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             purpose = "file-preview"
         payload = f"{purpose}|{upload_file_id}|{timestamp}|{nonce}"
         sign = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
-        return {
+        query = {
             "timestamp": str(timestamp),
             "nonce": nonce,
             "sign": base64.urlsafe_b64encode(sign).decode(),
         }
+        if avatar_account_id is not None:
+            # Let clients refresh cached responses before the embedded URL expires.
+            query["expires_at"] = str(timestamp + dify_config.FILES_ACCESS_TIMEOUT)
+        return query
 
     def _resolve_storage_key(self, *, file: File) -> str:
         parsed_reference = parse_file_reference(file.reference)

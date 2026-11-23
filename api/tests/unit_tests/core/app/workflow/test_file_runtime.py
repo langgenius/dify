@@ -249,8 +249,10 @@ def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
     assert parsed.path == "/files/upload-file-id/file-preview"
     assert query["timestamp"] == ["120"]
     assert query["nonce"] == [f"account-avatar-v2:{account_id}"]
+    assert query["expires_at"] == ["420"]
     assert next_query["timestamp"] == ["180"]
     assert next_query["nonce"] == query["nonce"]
+    assert next_query["expires_at"] == ["480"]
 
     def verify_first() -> bool:
         return runtime.verify_preview_signature(
@@ -281,6 +283,8 @@ def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
     assert verify_first()
     now = 114
     assert not verify_first()
+    now = 420
+    assert verify_first()
     now = 421
     assert not verify_first()
 
@@ -301,6 +305,7 @@ def test_resolve_upload_file_url_keeps_fresh_generic_nonces(
     assert first != second
     assert parse_qs(urlparse(first).query)["nonce"] == ["01" * 16]
     assert parse_qs(urlparse(second).query)["nonce"] == ["02" * 16]
+    assert "expires_at" not in parse_qs(urlparse(first).query)
 
 
 def test_verify_preview_signature_validates_signature_and_expiration(
