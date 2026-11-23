@@ -65,9 +65,6 @@ export function DemoViewportFit() {
     flowElement
       ?.querySelector(':scope > .react-flow__renderer')
       ?.setAttribute('aria-hidden', 'true')
-    const attribution = flowElement?.querySelector(':scope > .react-flow__attribution')
-    attribution?.setAttribute('inert', '')
-    attribution?.setAttribute('aria-hidden', 'true')
   }, [flowElement])
 
   return null
