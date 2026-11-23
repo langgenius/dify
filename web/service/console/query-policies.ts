@@ -9,6 +9,7 @@ import type {
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import type {
@@ -999,7 +1000,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   mutationOptions: {
                     onSettled: (_data, error, _variables, _result, context) => {
                       if (error) return
-                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                      void invalidateAccessPolicyQueries(consoleQuery, context.client)
                     },
                   },
                 },
@@ -1220,6 +1221,57 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflow: {
+            comments: {
+              // Collaborators change comments while the editor is closed, and their live
+              // updates reach only an open editor, so every mount reads comments again. While
+              // open, live updates keep them current; a read on window focus could land on an
+              // optimistic write.
+              get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+              byCommentId: {
+                get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+                resolve: {
+                  post: {
+                    // Resolving shows at once, on the thread and on the canvas: a thread resolved
+                    // while resolved ones are hidden closes and its marker goes. Reads running for
+                    // the comment are stopped first, and a failed resolve puts both back.
+                    mutationOptions: {
+                      onMutate: async ({ params }, context) => {
+                        await Promise.all([
+                          context.client.cancelQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: params.app_id } },
+                            }),
+                          }),
+                          context.client.cancelQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: true,
+                        })
+                      },
+                      onError: (_error, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: false,
+                        })
+                      },
+                      onSuccess: (result, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: result.resolved,
+                          resolved_at: result.resolved_at,
+                          resolved_by: result.resolved_by,
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           annotations: {
             byAnnotationId: {
               post: {
@@ -3063,11 +3115,25 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             byRelationId: {
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
+                  networkMode: 'always',
+                  onSettled: async (_data, error, { params }, _result, { client }) => {
                     if (error) return
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
-                    })
+                    const queryKey = consoleQuery.resourceAccessTokens.get.key()
+                    await client.cancelQueries({ queryKey })
+                    client.setQueriesData<ResourceAccessTokenListResponse>(
+                      { queryKey },
+                      (current) => {
+                        if (!current?.data.some((row) => row.token_id === params.token_id))
+                          return current
+
+                        return {
+                          ...current,
+                          data: current.data.filter((row) => row.token_id !== params.token_id),
+                          total: Math.max(0, current.total - 1),
+                        }
+                      },
+                    )
+                    void client.invalidateQueries({ queryKey })
                   },
                 },
               },
@@ -3409,6 +3475,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   })
 
   return consoleQuery
+}
+
+// A comment's resolved state, on its thread and in its app's comment list.
+function setCommentResolved(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  params: { app_id: string; comment_id: string },
+  fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
+) {
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
+    (detail) => (detail ? { ...detail, ...fields } : detail),
+  )
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: params.app_id } },
+    }),
+    (list) =>
+      list
+        ? {
+            ...list,
+            data: list.data.map((comment) =>
+              comment.id === params.comment_id
+                ? { ...comment, resolved: fields.resolved }
+                : comment,
+            ),
+          }
+        : list,
+  )
 }
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {

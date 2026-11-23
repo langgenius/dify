@@ -33,10 +33,12 @@ export default function ResourceAccessTokenTable({
   rows,
   isPending,
   onEdit,
+  deletionDisabled,
 }: {
   rows: ResourceAccessTokenRowResponse[] | undefined
   isPending: boolean
   onEdit: (row: TokenTableRow) => void
+  deletionDisabled: boolean
 }) {
   const { t } = useTranslation(['accountSettings'])
   const tokenRows = useMemo(() => getTokenRows(rows ?? []), [rows])
@@ -85,7 +87,12 @@ export default function ResourceAccessTokenTable({
           )}
           {!isPending &&
             tokenRows.map((row) => (
-              <ResourceAccessTokenRow key={row.tokenId} row={row} onEdit={onEdit} />
+              <ResourceAccessTokenRow
+                key={row.tokenId}
+                row={row}
+                onEdit={onEdit}
+                deletionDisabled={deletionDisabled}
+              />
             ))}
           {!isPending && tokenRows.length === 0 && (
             <tr>
