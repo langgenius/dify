@@ -170,6 +170,7 @@ function renderPanel({
   selected?: boolean
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
+    features: { end_user_auth_enabled: true },
     workspacePermissionKeys: ['credential.use'],
   })
   seedAppDslVersion(queryClient)

@@ -33,8 +33,9 @@ function NormalForm() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isEndUser = isEndUserSignIn(searchParams)
-  const accountInput = getEndUserLoginContext(searchParams)
+  const accountInput = getEndUserLoginContext(searchParams, systemFeatures.webapp_url)
   const accountSession = useQuery(
     consoleQuery.login.get.queryOptions({
       input: accountInput ? { query: accountInput } : skipToken,
@@ -44,10 +45,6 @@ function NormalForm() {
       retry: false,
       refetchOnWindowFocus: false,
     }),
-  )
-  const accountCallback = getEndUserAccountRedirectUrl(
-    accountSession.data?.redirect_url,
-    accountInput,
   )
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
@@ -64,7 +61,11 @@ function NormalForm() {
     refetchOnWindowFocus: false,
   })
   const isLoggedIn = !isInviteLink && !!userResp && !probeError
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const accountCallback = getEndUserAccountRedirectUrl(
+    accountSession.data?.redirect_url,
+    accountInput,
+    systemFeatures.webapp_url,
+  )
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
     systemFeatures.deployment_edition === 'ENTERPRISE'

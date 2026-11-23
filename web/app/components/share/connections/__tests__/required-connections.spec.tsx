@@ -105,7 +105,7 @@ describe('RequiredConnections', () => {
     expect(destination.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
     expect(destination.searchParams.has('code_verifier')).toBe(false)
     expect(destination.searchParams.get('redirect_url')).toBe(
-      new URL('/workflow/another-app?conversation=current', window.location.origin).href,
+      '/workflow/another-app?conversation=current',
     )
   })
 

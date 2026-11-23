@@ -230,10 +230,29 @@ describe('generated account Web App client', () => {
     expect(signin.searchParams.has('source')).toBe(false)
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expect(signin.searchParams.get('redirect_url')).toBe(
-      '/console/my-apps?view=starred&q=hello%20world#apps',
+      '/my-apps?view=starred&q=hello%20world#apps',
     )
     expect(signin.searchParams.has('app_code')).toBe(false)
     expect(signin.searchParams.has('code_challenge')).toBe(false)
+  })
+
+  it('redirects an unauthorized My Account profile to Web App sign-in', async () => {
+    deployment.basePath = '/webapp'
+    window.history.replaceState({}, '', '/webapp/my-account/?view=profile#account')
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ message: 'Account login required.' }, { status: 401 }))
+      .mockResolvedValueOnce(Response.json(systemFeatures))
+
+    const result = webAppClient.account.profile.get(undefined, { context: { silent: true } })
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(replace).toHaveBeenCalledOnce()
+    const signin = new URL(replace.mock.calls[0]![0])
+    expect(signin.origin).toBe('https://accounts.example')
+    expect(signin.pathname).toBe('/console/signin')
+    expect(signin.searchParams.get('is_end_user')).toBe('1')
+    expect(signin.searchParams.get('redirect_url')).toBe('/my-apps')
   })
 
   it.each([403, 500])('does not redirect account errors with status %s', async (status) => {
@@ -260,7 +279,7 @@ describe('generated account Web App client', () => {
     const signin = new URL(replace.mock.calls[0]![0])
     expect(signin.origin).toBe('https://accounts.example')
     expect(signin.pathname).toBe('/portal/signin')
-    expect(signin.searchParams.get('redirect_url')).toBe('/portal/my-apps?view=starred#apps')
+    expect(signin.searchParams.get('redirect_url')).toBe('/my-apps?view=starred#apps')
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expectAccountRequest(...fetch.mock.calls[1]!, '/system-features', 'GET')
   })

@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Vaš Dify račun in povezani uporabniški podatki.",
   "account.myAccount": "Moj račun",
   "account.name": "Ime",
+  "account.nameLengthInvalid": "Ime mora vsebovati od {{min}} do {{max}} znakov.",
   "account.newPassword": "Novo geslo",
   "account.notEqual": "Gesli se ne ujemata.",
   "account.password": "Geslo",

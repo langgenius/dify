@@ -1,8 +1,7 @@
-import { QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { render } from 'vitest-browser-react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { createTestQueryClient } from '@/test/query-client'
 import SignInPage from '../sign-in-page'
 
 const mocks = vi.hoisted(() => ({
@@ -22,7 +21,7 @@ it('keeps account login blocked after logout fails and lets the user retry', asy
   mocks.searchParams = new URLSearchParams({
     is_end_user: '1',
     app_code: 'current-app',
-    redirect_url: 'https://apps.example/chat/current-app',
+    redirect_url: '/chat/current-app',
     code_challenge: 'a'.repeat(43),
     switch_account: '1',
   })
@@ -30,12 +29,15 @@ it('keeps account login blocked after logout fails and lets the user retry', asy
     .mockReset()
     .mockRejectedValueOnce(new Error('Logout failed'))
     .mockReturnValueOnce(retry.promise)
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { webapp_url: 'https://apps.example' },
+  })
   const screen = await render(
-    <QueryClientProvider client={createTestQueryClient()}>
+    <Wrapper>
       <StrictMode>
         <SignInPage />
       </StrictMode>
-    </QueryClientProvider>,
+    </Wrapper>,
   )
 
   await expect.element(screen.getByRole('alert')).toHaveTextContent('Logout failed')

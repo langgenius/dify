@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "アカウントに関連するユーザーデータ。",
   "account.myAccount": "マイアカウント",
   "account.name": "名前",
+  "account.nameLengthInvalid": "名前は{{min}}文字以上{{max}}文字以下で入力してください。",
   "account.newPassword": "新しいパスワード",
   "account.notEqual": "2 つのパスワードが異なります。",
   "account.password": "パスワード",

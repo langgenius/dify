@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Tu cuenta Dify y los datos de usuario asociados.",
   "account.myAccount": "Mi Cuenta",
   "account.name": "Nombre",
+  "account.nameLengthInvalid": "El nombre debe tener entre {{min}} y {{max}} caracteres.",
   "account.newPassword": "Nueva contraseña",
   "account.notEqual": "Las dos contraseñas son diferentes.",
   "account.password": "Contraseña",

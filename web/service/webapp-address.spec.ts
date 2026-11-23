@@ -4,12 +4,31 @@ import {
   getWebAppConversationScopeId,
   getWebAppPublicApiPath,
   parseWebAppAddress,
+  removeWebAppBasePath,
   resolveWebAppAddress,
 } from './webapp-address'
 
+const deployment = vi.hoisted(() => ({ basePath: '' }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
+}))
+
 describe('WebAppAddress', () => {
   afterEach(() => {
+    deployment.basePath = ''
     vi.unstubAllGlobals()
+  })
+
+  it('removes a deployment prefix only at its route boundary', () => {
+    deployment.basePath = '/web'
+
+    expect(removeWebAppBasePath('/web/chat/app')).toBe('/chat/app')
+    expect(removeWebAppBasePath('/web')).toBe('/')
+    expect(removeWebAppBasePath('/web-other/chat/app')).toBe('/web-other/chat/app')
+    expect(parseWebAppAddress('/web/chat/app')).toEqual({ kind: 'default', code: 'app' })
   })
 
   it('parses ordinary and environment workflow addresses without using the app code format', () => {

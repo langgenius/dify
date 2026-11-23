@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।",
   "account.myAccount": "मेरा खाता",
   "account.name": "नाम",
+  "account.nameLengthInvalid": "नाम में {{min}} से {{max}} वर्ण होने चाहिए।",
   "account.newPassword": "नया पासवर्ड",
   "account.notEqual": "दो पासवर्ड अलग हैं।",
   "account.password": "पासवर्ड",

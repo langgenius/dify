@@ -44,6 +44,7 @@ export default interface Resources {
     'account.langGeniusAccountTip': 'The user data of your account.'
     'account.myAccount': 'My Account'
     'account.name': 'Name'
+    'account.nameLengthInvalid': 'Name must be between {{min}} and {{max}} characters.'
     'account.newPassword': 'New password'
     'account.notEqual': 'Two passwords are different.'
     'account.password': 'Password'

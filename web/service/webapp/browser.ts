@@ -48,10 +48,13 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         silent: options.context.silent,
       }).catch(async (error: unknown) => {
         assertCurrentAccount()
-        if (
-          isUnauthorizedError(error) &&
-          window.location.pathname.replace(/\/$/, '') === `${appBasePath}/my-apps`
-        ) {
+        const pathname = window.location.pathname.replace(/\/$/, '')
+        const isMyApps = pathname === `${appBasePath}/my-apps`
+        const isMyAccountProfile =
+          pathname === `${appBasePath}/my-account` &&
+          path === '/account/profile' &&
+          input.method === 'GET'
+        if (isUnauthorizedError(error) && (isMyApps || isMyAccountProfile)) {
           const returnLocation = window.location.href
           const { webAppClient } = await import('./index')
           const features = await webAppClient.systemFeatures
@@ -67,16 +70,14 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
             throw new DOMException('The personal portal page changed.', 'AbortError')
           const consolePrefix = features.console_web_url
           const signin = new URL(`${consolePrefix}/signin`, window.location.origin)
-          const returnUrl = new URL(
-            `${consolePrefix}/my-apps${window.location.search}${window.location.hash}`,
-            window.location.origin,
-          )
           signin.searchParams.set('is_end_user', '1')
           signin.searchParams.set(
             'redirect_url',
-            `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`,
+            isMyApps ? `/my-apps${window.location.search}${window.location.hash}` : '/my-apps',
           )
           window.location.replace(signin.href)
+          if (isMyAccountProfile)
+            throw new DOMException('Redirecting to Web App sign-in.', 'AbortError')
         }
         throw error
       })

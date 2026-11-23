@@ -23,6 +23,14 @@ const anonymousEntry = getWebAppEntryState({
 })
 
 const navigation = vi.hoisted(() => ({ pathname: '/workflow/demo', query: '' }))
+const deployment = vi.hoisted(() => ({ basePath: '' }))
+
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
+}))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -39,6 +47,7 @@ function navigate(pathname: string, query = '', fragment = '') {
 describe('Web app SignIn', () => {
   const originalUrl = window.location.href
   beforeEach(() => {
+    deployment.basePath = ''
     navigate('/workflow/demo')
     vi.stubGlobal('crypto', webcrypto)
     vi.spyOn(window.location, 'assign').mockImplementation(() => {})
@@ -51,7 +60,7 @@ describe('Web app SignIn', () => {
   })
 
   it.each(['https://accounts.example/account-prefix', '/console-prefix', ''])(
-    'starts PKCE using the Console prefix %s while preserving the full Web return URL',
+    'starts PKCE using the Console prefix %s with an unprefixed Web return path',
     async (consoleWebUrl) => {
       const user = userEvent.setup()
       navigate('/workflow/demo', '', '#earlier-conversation')
@@ -90,10 +99,55 @@ describe('Web app SignIn', () => {
       expect(destination.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
       expect(destination.searchParams.has('code_verifier')).toBe(false)
       expect(destination.searchParams.get('redirect_url')).toBe(
-        new URL('/workflow/demo#earlier-conversation', window.location.origin).href,
+        '/workflow/demo#earlier-conversation',
       )
     },
   )
+
+  it('removes the Webapp deployment prefix from the sign-in link while keeping it in the PKCE transaction', async () => {
+    const user = userEvent.setup()
+    deployment.basePath = '/web'
+    navigate('/web/chat/demo', 'conversation=saved&prompt=hello%2Bworld', '#history')
+    const returnUrl = window.location.href
+    render(
+      <WebAppEntryContext value={anonymousEntry}>
+        <SignIn />
+      </WebAppEntryContext>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
+    const destination = new URL(vi.mocked(window.location.assign).mock.calls[0]![0])
+    expect(destination.pathname).toBe('/account-prefix/signin')
+    expect(destination.searchParams.get('redirect_url')).toBe(
+      '/chat/demo?conversation=saved&prompt=hello%2Bworld#history',
+    )
+    expect(JSON.parse(sessionStorage.getItem('webapp-account-login-demo')!).redirectUrl).toBe(
+      returnUrl,
+    )
+  })
+
+  it('keeps the deployment prefix for Enterprise environment sign-in', async () => {
+    const user = userEvent.setup()
+    deployment.basePath = '/web'
+    navigate('/web/environment/chat/demo', 'conversation=saved')
+    render(<SignIn />)
+
+    await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
+    const destination = new URL(
+      vi.mocked(window.location.assign).mock.calls[0]![0],
+      window.location.origin,
+    )
+    expect(destination.pathname).toBe('/web/webapp-signin')
+    expect(destination.searchParams.get('redirect_url')).toBe(
+      '/web/environment/chat/demo?conversation=saved',
+    )
+    expect(destination.searchParams.has('is_end_user')).toBe(false)
+    expect(destination.searchParams.has('code_challenge')).toBe(false)
+  })
 
   it('preserves Unicode and special query characters when starting sign-in', async () => {
     const user = userEvent.setup()
@@ -109,10 +163,8 @@ describe('Web app SignIn', () => {
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
     const destination = new URL(vi.mocked(window.location.assign).mock.calls[0]![0])
     expect(destination.pathname).toBe('/signin')
-    expect(destination.searchParams.get('redirect_url')).toBe(
-      new URL(`/workflow/demo?${query}`, window.location.origin).href,
-    )
-    const returnUrl = new URL(destination.searchParams.get('redirect_url')!)
+    expect(destination.searchParams.get('redirect_url')).toBe(`/workflow/demo?${query}`)
+    const returnUrl = new URL(destination.searchParams.get('redirect_url')!, window.location.origin)
     expect(returnUrl.searchParams.get('prompt')).toBe('你好 & a+b / 50%')
     expect(returnUrl.searchParams.get('conversation')).toBe('a&b')
   })
@@ -130,7 +182,7 @@ describe('Web app SignIn', () => {
     const second = new URL(vi.mocked(window.location.assign).mock.calls[1]![0])
     expect(second.searchParams.get('app_code')).toBe('another-app')
     expect(second.searchParams.get('redirect_url')).toBe(
-      new URL('/workflow/another-app?conversation=current', window.location.origin).href,
+      '/workflow/another-app?conversation=current',
     )
 
     navigate('/workflow/another-app')
@@ -138,9 +190,7 @@ describe('Web app SignIn', () => {
     await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledTimes(3))
     const third = new URL(vi.mocked(window.location.assign).mock.calls[2]![0])
-    expect(third.searchParams.get('redirect_url')).toBe(
-      new URL('/workflow/another-app', window.location.origin).href,
-    )
+    expect(third.searchParams.get('redirect_url')).toBe('/workflow/another-app')
   })
 
   it('moves embedded login to the same App in the top-level tab before creating its PKCE transaction', async () => {
@@ -178,7 +228,7 @@ describe('Web app SignIn', () => {
     const destination = new URL(vi.mocked(window.location.assign).mock.calls[0]![0])
     expect(destination.origin).toBe('https://accounts.example')
     expect(destination.searchParams.get('redirect_url')).toBe(
-      new URL('/chat/demo?conversation=current&prompt=hello#history', window.location.origin).href,
+      '/chat/demo?conversation=current&prompt=hello#history',
     )
     expect(destination.searchParams.has('code_verifier')).toBe(false)
     expect(destination.searchParams.get('code_challenge_method')).toBe('S256')

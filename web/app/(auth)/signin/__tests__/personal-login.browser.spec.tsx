@@ -38,14 +38,17 @@ vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
 
 const address = { kind: 'default', code: 'personal-login-test' } as const
-const destination = '/portal/my-apps?search=hello%20world&tag=workflow#recent'
+const destination = '/my-apps?search=hello%20world&tag=workflow#recent'
+const accountDestination = () => `${mocks.basePath}${destination}`
 const appLoginTarget = {
   is_end_user: '1',
   app_code: 'my-app',
   code_challenge: 'a'.repeat(43),
   code_challenge_method: 'S256',
-  redirect_url: 'https://apps.example/web/chat/my-app?input=hello%20world#turn-2',
+  redirect_url: '/chat/my-app?input=hello%20world#turn-2',
 }
+const appReturnUrl = `https://apps.example/web${appLoginTarget.redirect_url}`
+const appFeatures = { webapp_url: 'https://apps.example/web' }
 let requests: Request[]
 let authenticated: boolean
 
@@ -58,6 +61,7 @@ async function showSignin(
     systemFeatures: {
       enable_email_code_login: true,
       enable_social_oauth_login: true,
+      webapp_url: mocks.basePath,
       ...systemFeatures,
     },
   })
@@ -82,7 +86,7 @@ beforeEach(() => {
       if (request.method === 'GET' && url.pathname.endsWith('/login'))
         return Response.json({
           logged_in: authenticated,
-          redirect_url: authenticated ? destination : null,
+          redirect_url: authenticated ? url.searchParams.get('redirect_url') : null,
         })
       if (
         request.method === 'POST' &&
@@ -100,6 +104,24 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   window.localStorage.clear()
+})
+
+it('uses the Webapp URL for the final personal redirect while verifying the original Console target', async () => {
+  authenticated = true
+  await showSignin(false, { webapp_url: 'https://apps.example/web' })
+
+  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
+  expect(mocks.redirect.mock.calls[0]![0]).toEqual({
+    kind: 'absolute',
+    href: 'https://apps.example/web/my-apps?search=hello%20world&tag=workflow#recent',
+  })
+  expect(requests).toHaveLength(1)
+  expect(requests[0]!.method).toBe('GET')
+  expect(Object.fromEntries(new URL(requests[0]!.url).searchParams)).toEqual({
+    mode: 'end_user',
+    redirect_url: accountDestination(),
+  })
+  expect(mocks.replace).not.toHaveBeenCalled()
 })
 
 it('signs in with password then establishes a cookie account session before returning to My Apps', async () => {
@@ -133,11 +155,11 @@ it('signs in with password then establishes a cookie account session before retu
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(2)
   expect(mocks.redirect.mock.calls[1]![0]).toEqual({
     kind: 'absolute',
-    href: new URL(destination, location.origin).href,
+    href: new URL(accountDestination(), location.origin).href,
   })
   expect(Object.fromEntries(new URL(requests[2]!.url).searchParams)).toEqual({
     mode: 'end_user',
-    redirect_url: destination,
+    redirect_url: accountDestination(),
   })
   expect(requests.map((request) => request.method)).toEqual(['GET', 'POST', 'GET'])
   expect(mocks.replace).not.toHaveBeenCalled()
@@ -161,7 +183,9 @@ it('returns email-code login through signin with its personal destination intact
   mocks.searchParams = resume.searchParams
   await showSignin()
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(2)
-  expect(mocks.redirect.mock.calls[1]![0].href).toBe(new URL(destination, location.origin).href)
+  expect(mocks.redirect.mock.calls[1]![0].href).toBe(
+    new URL(accountDestination(), location.origin).href,
+  )
 })
 
 it('preserves personal mode and the complete return URL across OAuth', async () => {
@@ -179,7 +203,9 @@ it('preserves personal mode and the complete return URL across OAuth', async () 
   mocks.searchParams = resume.searchParams
   await showSignin()
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
-  expect(mocks.redirect.mock.calls[0]![0].href).toBe(new URL(destination, location.origin).href)
+  expect(mocks.redirect.mock.calls[0]![0].href).toBe(
+    new URL(accountDestination(), location.origin).href,
+  )
 })
 
 it('preserves the App PKCE handoff without starting a personal session early', async () => {
@@ -188,14 +214,14 @@ it('preserves the App PKCE handoff without starting a personal session early', a
   callback.search = new URLSearchParams({
     mode: 'end_user',
     login_code: 'single-use',
-    redirect_url: appLoginTarget.redirect_url,
+    redirect_url: appReturnUrl,
   }).toString()
   vi.mocked(fetch).mockImplementation(async (input, init) => {
     requests.push(new Request(input, init))
     return Response.json({ logged_in: true, redirect_url: callback.href })
   })
   setWebAppAccessToken('legacy-app-session')
-  await showSignin()
+  await showSignin(false, appFeatures)
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
   const target = new URL(mocks.redirect.mock.calls[0]![0].href)
   expect(target.origin).toBe('https://apps.example')
@@ -206,7 +232,7 @@ it('preserves the App PKCE handoff without starting a personal session early', a
     mode: 'end_user',
     app_code: appLoginTarget.app_code,
     code_challenge: appLoginTarget.code_challenge,
-    redirect_url: appLoginTarget.redirect_url,
+    redirect_url: appReturnUrl,
   })
   expect(requests).toHaveLength(1)
   expect(getWebAppAccessToken()).toBe('legacy-app-session')
@@ -217,7 +243,7 @@ it('returns password login through Account sign-in with the complete App PKCE ha
   const callback = new URL('https://apps.example/web/webapp-signin')
   callback.search = new URLSearchParams({
     mode: 'end_user',
-    redirect_url: appLoginTarget.redirect_url,
+    redirect_url: appReturnUrl,
     login_code: 'one-use-code',
   }).toString()
   vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -232,7 +258,7 @@ it('returns password login through Account sign-in with the complete App PKCE ha
       redirect_url: authenticated ? callback.href : null,
     })
   })
-  const screen = await showSignin()
+  const screen = await showSignin(false, appFeatures)
   await screen.getByLabelText('login.email').fill('personal@example.com')
   await screen.getByLabelText('login.password').fill('Password123!')
   await screen.getByRole('button', { name: 'login.signBtn' }).click()
@@ -243,7 +269,7 @@ it('returns password login through Account sign-in with the complete App PKCE ha
   expect(Object.fromEntries(resume.searchParams)).toEqual(appLoginTarget)
   await screen.unmount()
   mocks.searchParams = resume.searchParams
-  await showSignin()
+  await showSignin(false, appFeatures)
 
   await expect.poll(() => mocks.redirect.mock.calls.length).toBe(2)
   const target = new URL(mocks.redirect.mock.calls[1]![0].href)
@@ -254,7 +280,7 @@ it('returns password login through Account sign-in with the complete App PKCE ha
     input: 'hello world',
     mode: 'end_user',
     login_code: 'one-use-code',
-    redirect_url: appLoginTarget.redirect_url,
+    redirect_url: appReturnUrl,
   })
   expect(requests.map((request) => request.method)).toEqual(['GET', 'POST', 'GET'])
   expect(mocks.replace).not.toHaveBeenCalled()
@@ -270,7 +296,7 @@ it('shows the Account handoff error without a duplicate toast', async () => {
       { status: 503 },
     )
   })
-  const screen = await showSignin()
+  const screen = await showSignin(false, appFeatures)
 
   await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
   await expect
@@ -290,16 +316,14 @@ it.each(['return URL', 'origin'] as const)(
     callback.search = new URLSearchParams({
       mode: 'end_user',
       redirect_url:
-        mismatch === 'return URL'
-          ? 'https://apps.example/web/chat/another-app'
-          : appLoginTarget.redirect_url,
+        mismatch === 'return URL' ? 'https://apps.example/web/chat/another-app' : appReturnUrl,
       login_code: 'unexpected-code',
     }).toString()
     if (mismatch === 'origin') callback.hostname = 'untrusted.example'
     vi.mocked(fetch).mockResolvedValue(
       Response.json({ logged_in: true, redirect_url: callback.href }),
     )
-    const screen = await showSignin()
+    const screen = await showSignin(false, appFeatures)
 
     await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
     expect(mocks.redirect).not.toHaveBeenCalled()
@@ -346,7 +370,7 @@ it.each(['redirect_url', 'code_challenge'])(
   async (missing) => {
     mocks.searchParams = new URLSearchParams(appLoginTarget)
     mocks.searchParams.delete(missing)
-    const screen = await showSignin()
+    const screen = await showSignin(false, appFeatures)
 
     await expect.element(screen.getByText('share.common.appUnknownError')).toBeVisible()
     await expect

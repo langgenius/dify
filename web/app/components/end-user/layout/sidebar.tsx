@@ -64,7 +64,7 @@ export default function Sidebar() {
           <BuildAppLink />
         </div>
         <div className="flex items-center gap-2 md:px-2 md:py-3">
-          <AccountMenu />
+          <AccountMenu showProfileError={pathname?.replace(/\/$/, '') !== '/my-account'} />
         </div>
       </div>
     </div>

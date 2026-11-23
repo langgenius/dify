@@ -254,9 +254,7 @@ describe('SignIn entry integration', () => {
     expect(getDestination().pathname).toBe('/console/signin')
     expect(getDestination().searchParams.has('source')).toBe(false)
     expect(getDestination().searchParams.get('is_end_user')).toBe('1')
-    expect(getDestination().searchParams.get('redirect_url')).toBe(
-      new URL('/chat/app-code', window.location.origin).href,
-    )
+    expect(getDestination().searchParams.get('redirect_url')).toBe('/chat/app-code')
     rerender(
       <WebAppEntryContext
         value={getWebAppEntryState({

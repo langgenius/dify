@@ -3,9 +3,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
+import { isAbortError } from '@/service/client-error'
+import { isUnauthorizedError } from '@/service/http-error'
 import { webAppQuery } from '@/service/webapp'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -31,7 +34,16 @@ function AccountSession({ authSession }: { authSession: number }) {
       staleTime: Infinity,
     }),
   )
-  const account = profile.data
+  const { error } = profile
+  const reportedErrorRef = useRef<typeof error>(null)
+  useEffect(() => {
+    if (!error || error === reportedErrorRef.current || isAbortError(error)) return
+    reportedErrorRef.current = error
+    const message = isUnauthorizedError(error) ? undefined : error.message
+    toast.error(message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+  }, [error, t])
+
+  const account = profile.isError ? undefined : profile.data
 
   return (
     <div className="mx-auto w-full max-w-160 px-6 pt-12 pb-8">
@@ -40,15 +52,6 @@ function AccountSession({ authSession }: { authSession: number }) {
       </h1>
       {profile.isPending ? (
         <LoadingPlaceholder className="py-8" />
-      ) : profile.isError ? (
-        <div className="space-y-2">
-          <p role="alert" className="system-sm-regular text-text-destructive">
-            {profile.error.message}
-          </p>
-          <Button onClick={() => profile.refetch()}>
-            {t(($) => $['operation.retry'], { ns: 'common' })}
-          </Button>
-        </div>
       ) : account ? (
         <>
           <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
