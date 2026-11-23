@@ -30,6 +30,7 @@
   "nodes.lookupRefund": "查询退款",
   "nodes.refundStatus": "退款状态",
   "nodes.start": "开始",
+  "playback.messageLine": "{{author}}：{{message}}",
   "playback.pause": "暂停",
   "playback.replay": "再看一次",
   "playback.resume": "继续",

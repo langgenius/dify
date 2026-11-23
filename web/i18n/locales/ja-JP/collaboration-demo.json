@@ -30,6 +30,7 @@
   "nodes.lookupRefund": "返金を照会",
   "nodes.refundStatus": "返金状況",
   "nodes.start": "開始",
+  "playback.messageLine": "{{author}}：{{message}}",
   "playback.pause": "一時停止",
   "playback.replay": "もう一度見る",
   "playback.resume": "再開",

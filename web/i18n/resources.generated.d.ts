@@ -1803,6 +1803,7 @@ export default interface Resources {
     'nodes.lookupRefund': 'Look up refund'
     'nodes.refundStatus': 'Refund status'
     'nodes.start': 'Start'
+    'playback.messageLine': '{{author}}: {{message}}'
     'playback.pause': 'Pause'
     'playback.replay': 'Watch again'
     'playback.resume': 'Resume'

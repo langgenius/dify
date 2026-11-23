@@ -30,8 +30,9 @@ export function DemoStepGuide({ step, target, onAction, onExit }: DemoStepGuideP
   return (
     <Coachmark
       open={step !== 'playing'}
-      onOpenChange={(_open, { reason }) => {
-        if (reason === 'close-press') onExit()
+      onOpenChange={(_open, details) => {
+        if (details.reason === 'close-press') onExit()
+        else details.cancel()
       }}
       target={target}
       highlightSelectors={members ? ['[data-collaboration-demo-members]'] : undefined}

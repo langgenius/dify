@@ -9,7 +9,7 @@ export function usePlayback(duration: number) {
     let frame = 0
     let last = performance.now()
     const tick = (now: number) => {
-      const delta = (now - last) / 1000
+      const delta = Math.min(0.1, (now - last) / 1000)
       last = now
       setPlayback((current) => {
         const seconds = Math.min(duration, current.seconds + delta)

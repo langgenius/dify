@@ -1,13 +1,14 @@
 'use client'
 
-import type { Ref } from 'react'
 import type { CursorAnchor, PlaybackFrame } from '../playback-script'
 import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import {
+  createPopoverHandle,
   Popover,
   PopoverPopup,
   PopoverPortal,
   PopoverPositioner,
+  PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,17 +36,12 @@ import {
 import { demoNodePositions } from '../demo-graph'
 import { demoUsers } from '../demo-users'
 import { demoCommentPosition, demoMessages } from '../playback-script'
+import { useMessageContent } from '../use-message-content'
 
 type Point = { x: number; y: number }
 type Box = { left: number; top: number; height: number }
 
 const mentionNames = Object.values(demoUsers).map(({ name }) => name)
-
-function useMessageContent() {
-  const { t } = useTranslation(['collaborationDemo'])
-  return (message: (typeof demoMessages)[number]) =>
-    `${message.mention ? `@${demoUsers[message.mention].name} ` : ''}${t(($) => $[`messages.${message.id}`])}`
-}
 
 function DraftInput({
   draft,
@@ -78,9 +74,8 @@ type DemoCanvasLayerProps = {
   markerInteractive: boolean
   reducedMotion: boolean
   threadOpen: boolean
-  onThreadOpenChange: (open: boolean) => void
-  markerRef: Ref<HTMLButtonElement>
-  /** The thread was opened from its marker, so it takes focus. */
+  /** `fromMarker`: opened by pressing the marker, so the thread takes focus. */
+  onThreadOpenChange: (open: boolean, fromMarker: boolean) => void
   focusThread: boolean
 }
 
@@ -90,7 +85,6 @@ export function DemoCanvasLayer({
   reducedMotion,
   threadOpen,
   onThreadOpenChange,
-  markerRef,
   focusThread,
 }: DemoCanvasLayerProps) {
   const { t } = useTranslation(['collaborationDemo', 'workflowComments'])
@@ -103,6 +97,9 @@ export function DemoCanvasLayer({
   const [popup, setPopup] = useState<HTMLDivElement | null>(null)
   const [threadBox, setThreadBox] = useState<Box>()
   const listRef = useRef<HTMLDivElement>(null)
+  const markerTriggerRef = useRef<HTMLButtonElement>(null)
+  const returnFocusRef = useRef(false)
+  const [threadHandle] = useState(createPopoverHandle)
   const visibleMessages = frame.visibleMessages
   const threadShown = frame.marker === 'thread' && threadOpen
 
@@ -167,21 +164,19 @@ export function DemoCanvasLayer({
         >
           {frame.marker === 'composing' ? (
             <CommentMarker aria-hidden selected participants={participants} />
-          ) : threadOpen || !markerInteractive ? (
-            <CommentMarker aria-hidden participants={participants} selected={threadOpen} />
           ) : (
-            <button
-              ref={markerRef}
-              type="button"
+            <PopoverTrigger
+              ref={markerTriggerRef}
+              handle={threadHandle}
+              disabled={!markerInteractive}
               aria-label={t(($) => $['thread.open'], {
                 name: demoUsers.alex.name,
                 count: visibleMessages - 1,
               })}
-              className="pointer-events-auto flex cursor-pointer rounded-[13.5px] rounded-es-[3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={() => onThreadOpenChange(true)}
+              className="pointer-events-auto flex cursor-pointer rounded-[13.5px] rounded-es-[3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
             >
-              <CommentMarker participants={participants} />
-            </button>
+              <CommentMarker participants={participants} selected={threadShown} />
+            </PopoverTrigger>
           )}
         </div>
       )}
@@ -220,16 +215,20 @@ export function DemoCanvasLayer({
       </Popover>
 
       <Popover
+        handle={threadHandle}
         open={threadShown && Boolean(marker)}
         onOpenChange={(open, details) => {
-          // Playback keeps the thread open; Escape there pauses playback instead.
-          if (
-            !open &&
-            (details.reason === 'close-press' ||
-              (details.reason === 'escape-key' && markerInteractive))
-          )
-            onThreadOpenChange(false)
-          else details.cancel()
+          const fromMarker = details.reason === 'trigger-press'
+          if (open ? fromMarker : markerInteractive || details.reason === 'close-press') {
+            returnFocusRef.current =
+              details.reason === 'close-press' || details.reason === 'escape-key'
+            onThreadOpenChange(open, fromMarker)
+          } else details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (open || !returnFocusRef.current) return
+          returnFocusRef.current = false
+          markerTriggerRef.current?.focus()
         }}
       >
         <PopoverPortal container={layer}>
