@@ -47,7 +47,7 @@ export function StartMode({
         aria-describedby={disabled ? `${descriptionId} ${unavailableId}` : descriptionId}
         disabled={disabled}
         className={cn(
-          'relative flex w-full items-center gap-3 px-4 text-left outline-hidden',
+          'relative flex w-full items-center gap-3 px-4 text-start outline-hidden',
           value === 'empty' || !selected ? 'min-h-15.5 py-3' : 'min-h-16 py-3.5',
           'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
@@ -67,7 +67,7 @@ export function StartMode({
         </span>
         {endAdornment}
         {disabled && (
-          <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+          <span id={unavailableId} className="ms-3 shrink-0 system-xs-medium text-text-disabled">
             {t(($) => $['cornerLabel.unavailable'], { ns: 'dataset' })}
           </span>
         )}
@@ -82,7 +82,7 @@ export function KnowledgeIllustration({ title }: { title: string }) {
     <div className="flex size-full flex-col items-start bg-background-default" aria-hidden>
       <div className="min-h-0 w-full flex-1 border-b border-divider-subtle" />
       <div className="flex max-h-full w-full shrink-0 flex-col items-start overflow-hidden pb-23.5">
-        <div className="flex w-full shrink-0 flex-col items-start gap-4 overflow-hidden py-4 pr-32 pl-8">
+        <div className="flex w-full shrink-0 flex-col items-start gap-4 overflow-hidden py-4 ps-8 pe-32">
           <span className="flex size-14 shrink-0 items-center justify-center rounded-[10px] backdrop-blur-[6px]">
             <span className="flex size-full items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 text-text-accent">
               <span className="i-ri-book-open-line size-6" />

@@ -38,7 +38,7 @@ const FeatureBar = ({
   }, [features, isChatMode, showFileUpload])
 
   return (
-    <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+    <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
       {noFeatureEnabled && (
         <button
           type="button"

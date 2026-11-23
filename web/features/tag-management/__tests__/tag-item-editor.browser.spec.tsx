@@ -2,9 +2,9 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
+import { renderWithTags } from '@/test/tag-management'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagManagementModal } from '../components/tag-management-modal'
-import { renderWithTags } from './render-browser'
+import { TagManagementDialog } from '../tag-management-dialog'
 
 const mocks = vi.hoisted(() => ({ update: vi.fn(), remove: vi.fn(), tags: [] as Tag[] }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -39,7 +39,7 @@ function renderEditor(bindingCount = '3') {
     { ...baseTag, binding_count: bindingCount },
     { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
   ]
-  return renderWithTags(<TagManagementModal type="app" show onClose={() => {}} />, mocks.tags)
+  return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, mocks.tags)
 }
 const edit = () => page.getByRole('button', { name: 'common.operation.edit Frontend' })
 const remove = () => page.getByRole('button', { name: 'common.operation.remove Frontend' })
