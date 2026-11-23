@@ -632,6 +632,7 @@ def validate_request[M: BaseModel](model: type[M]) -> M:
         errors = exc.errors(include_url=False, include_input=False, include_context=False)
         raise UnprocessableEntity(json.dumps(errors)) from None
 
+
 def model_validate[T, M: BaseModel, **P, R](
     model: type[M],
 ) -> Callable[

@@ -788,7 +788,7 @@ class TestValidateRequest:
 
         assert exc_info.value.code == 422
 
-    @pytest.mark.parametrize("body", [b"", b"{}"] )
+    @pytest.mark.parametrize("body", [b"", b"{}"])
     def test_optional_payload_accepts_empty_body_and_empty_object(self, body: bytes) -> None:
         app = Flask(__name__)
         with app.test_request_context("/items", method="POST", data=body, content_type="application/json"):
