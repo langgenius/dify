@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
+from functools import cached_property
 
 from celery import Celery, signature
 from celery.canvas import Signature
@@ -54,9 +55,11 @@ class RagPipelineTaskProxy:
         if self._celery_app is None:
             return signature(task, queue=queue)
         return self._celery_app.signature(task, queue=queue)
+
     @cached_property
     def features(self):
         return FeatureService.get_features(self._dataset_tenant_id, exclude_vector_space=True)
+
     def _upload_invoke_entities(self) -> str:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]
         # Convert list to proper JSON string
