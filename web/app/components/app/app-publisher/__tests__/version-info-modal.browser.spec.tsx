@@ -32,6 +32,10 @@ it('keeps invalid release metadata open and publishes the corrected title and no
   const title = screen.getByRole('textbox', { name: /editField\.title$/ })
   const notes = screen.getByRole('textbox', { name: /editField\.releaseNotes$/ })
   const save = screen.getByRole('button', { name: 'common.operation.save' })
+  // The validation toast is also a dialog; name the editor so the query does not wait for it to close.
+  const editor = screen.getByRole('dialog', {
+    name: 'workflowHistory.versionHistory.editVersionInfo',
+  })
   await expect.element(title).toHaveValue('Old title')
   await expect.element(notes).toHaveValue('Old notes')
   await title.fill('a'.repeat(16))
@@ -40,7 +44,7 @@ it('keeps invalid release metadata open and publishes the corrected title and no
   await expect
     .element(screen.getByText(/versionHistory\.editField\.titleLengthLimit/))
     .toBeVisible()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await expect.element(editor).toBeVisible()
   await expect
     .element(screen.getByRole('region', { name: 'Published version' }))
     .not.toBeInTheDocument()
@@ -53,14 +57,14 @@ it('keeps invalid release metadata open and publishes the corrected title and no
   await expect
     .element(screen.getByText(/versionHistory\.editField\.releaseNotesLengthLimit/))
     .toBeVisible()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await expect.element(editor).toBeVisible()
   await expect
     .element(screen.getByRole('region', { name: 'Published version' }))
     .not.toBeInTheDocument()
 
   await notes.fill('Stable release notes')
   await save.click()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect.element(editor).not.toBeInTheDocument()
   const published = screen.getByRole('region', { name: 'Published version' })
   await expect.element(published.getByRole('heading', { name: 'Release 3' })).toBeVisible()
   await expect.element(published.getByText('Stable release notes')).toBeVisible()

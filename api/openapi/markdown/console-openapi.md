@@ -387,7 +387,7 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[WorkspaceMemberLimitReachedError](#workspacememberlimitreachederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -452,7 +452,11 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
-**Return visible Workflow-callable Agents and their current workflow usage**
+**Return visible Workflow-callable Agents matching validated tag filters**
+
+Preconditions: Console admission supplies the active workspace identity.
+Postconditions: repeated tag_ids are validated as UUIDs and passed with
+name/pagination filters; the response contains detached Agent tags.
 
 #### Parameters
 
@@ -462,6 +466,7 @@ Check if activation token is valid
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Agent tag IDs; every selected tag must match | No | [ string (uuid) ] |
 
 #### Responses
 
@@ -664,6 +669,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
+**Discard the caller's draft and report success even if it was already absent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -679,6 +686,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
+**Return the admitted account's existing Build draft, or 404 when none exists**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1196,6 +1205,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
+**Reset the admitted account's Build conversation and return the new empty conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5642,7 +5653,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
-| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[TriggerNodeLimitExceededError](#triggernodelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -14015,7 +14026,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "agent", "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -14025,6 +14036,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tags
+**Create a validated tag only after authorization for its pool; conflicts preserve existing tags**
+
 #### Request Body
 
 | Required | Schema |
@@ -14039,6 +14052,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
+**Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14053,6 +14068,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /tags/{tag_id}
+**Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -15329,6 +15346,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
+**List supported providers for the admitted administrator without accessing disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15337,6 +15356,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channels
+**List supported configured channels for the admitted administrator without reading disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15356,6 +15377,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/channels/email/test
@@ -15420,6 +15442,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailChannelMutationResponse](#emailchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15456,6 +15479,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/channels/im/test
@@ -15520,6 +15544,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15541,6 +15566,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IMChannelMutationResponse](#imchannelmutationresponse)<br> |
+| 400 | Provider configuration rejected | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15562,7 +15588,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ChannelTestResponse](#channeltestresponse)<br> |
-| 400 | The test provider must match the saved IM Channel. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | The test provider must match the saved IM Channel. | **application/json**: [ChannelProviderBadRequestResponse](#channelproviderbadrequestresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Configuration conflict | **application/json**: [ChannelConflictResponse](#channelconflictresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15863,7 +15889,7 @@ Return one required result bucket from the latest IM sync run using page and lim
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/node-data-migration
-Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Every legacy Email recipient becomes onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
+Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1"; any other explicit version is rejected. Legacy members become Contact recipients; external Email recipients become onetime_email, while whole_workspace becomes all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; the caller owns applying it to the Draft workflow.
 
 #### Request Body
 
@@ -15893,6 +15919,19 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/human-input/v2/test-channels
+**List test identifiers for an authenticated workspace member in every edition**
+
+Discovery grants no channel-management or app-execution permissions and
+performs no writes or provider I/O. Storage failures propagate normally.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputTestChannelsResponse](#humaninputtestchannelsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
@@ -19414,6 +19453,47 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/{workspace_id}/members/pending-invitations
+**List pending invitations for the active workspace**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PendingWorkspaceInvitationListResponse](#pendingworkspaceinvitationlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /workspaces/{workspace_id}/members/pending-invitations/revoke
+**Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PendingInvitationRevokePayload](#pendinginvitationrevokepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [PendingInvitationNotFoundError](#pendinginvitationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
 #### Parameters
 
@@ -21001,6 +21081,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
+| tags | [ [Tag](#tag) ] | Workspace Agent tags, independent of Studio App tags | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
@@ -21014,6 +21095,7 @@ Supported icon storage formats for Agent roster entries.
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| tag_ids | [ string (uuid) ] | Agent tag IDs; every selected tag must match | No |
 
 #### AgentInviteOptionsResponse
 
@@ -23214,6 +23296,8 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 
 #### AppModelSelectionResponse
 
+Readable model selection; missing or null identifiers mean it is not fully configured.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completion_params | object |  | No |
@@ -24130,6 +24214,18 @@ You cannot transfer ownership to yourself.
 | connection_mode | string, <br>**Default:** custom_app |  | No |
 | provider | [EmailProviderType](#emailprovidertype)<br>[IMProvider](#improvider) |  | Yes |
 
+#### ChannelProviderBadRequestResponse
+
+HTTP failure with only provider-supplied diagnostic identifiers.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| provider_error_code | string | Original provider error code, if supplied. | No |
+| provider_request_id | string | Original provider request ID, if supplied. | No |
+| status | integer |  | Yes |
+
 #### ChannelStatus
 
 | Name | Type | Description | Required |
@@ -24155,6 +24251,8 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| provider_error_code | string | Original provider error code, if supplied. | No |
+| provider_request_id | string | Original provider request ID, if supplied. | No |
 | status | [ChannelStatus](#channelstatus) |  | Yes |
 | status_description | string |  | Yes |
 
@@ -26611,6 +26709,7 @@ Too many incorrect password attempts. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
 | email | string |  | Yes |
+| invite_token | string | Invitation link token being accepted. | No |
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
@@ -27165,6 +27264,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 
 #### EvaluationRunResponse
 
+Expose the model pinned in the run snapshot, independent of later config edits.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completed_at | integer |  | No |
@@ -27174,6 +27275,8 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | dataset_file_id | string |  | No |
 | error | string |  | No |
 | evaluation_config_id | string |  | Yes |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
 | failed_items | integer |  | Yes |
 | id | string |  | Yes |
 | metrics_summary | object |  | No |
@@ -27463,6 +27566,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -27473,6 +27577,8 @@ Effective feature availability and limits for the current workspace.
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
@@ -27482,6 +27588,7 @@ Effective feature availability and limits for the current workspace.
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workflow_collaboration_enabled | boolean |  | Yes |
+| workflow_collaboration_upgrade_available | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
@@ -27563,18 +27670,6 @@ The file extension is blocked for security reasons.
 | mimetype | string |  | Yes |
 | size | integer |  | Yes |
 
-#### FileInput
-
-Resolved single-file input constraints.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -27582,19 +27677,6 @@ Resolved single-file input constraints.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
-#### FileListInput
-
-Resolved multi-file input constraints and effective number limit.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -27822,12 +27904,6 @@ Model class for form option.
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
 
-#### FormPart
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
-
 #### FormShowOnObject
 
 Model class for form show on.
@@ -27970,6 +28046,14 @@ Response body for reading the latest IM sync run summary.
 | stopped_at | integer |  | Yes |
 | tokens | integer |  | Yes |
 | word_count | integer |  | Yes |
+
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
 
 #### HumanInputContact
 
@@ -28137,6 +28221,12 @@ Human Input node data.
 | form_id | string |  | Yes |
 | form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | type | string |  | Yes |
+
+#### HumanInputTestChannelsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
 
 #### I18nObject
 
@@ -31899,8 +31989,8 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Maximum number of resources allowed; 0 means unlimited | Yes |
+| size | integer | Number of resources already consumed | Yes |
 
 #### ListChannelProvidersResponse
 
@@ -32141,15 +32231,6 @@ Paginated response body for organization candidate search.
 | client_secret | [_RequiredSecret](#_requiredsecret)<br>[UnchangedInput](#unchangedinput) |  | Yes |
 | provider | string |  | Yes |
 | tenant_id | [_UUIDString](#_uuidstring)<br>[UnchangedInput](#unchangedinput) |  | Yes |
-
-#### MarkdownFragment
-
-One source-ordered Markdown fragment in a resolved form.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
-| type | string |  | No |
 
 #### MaxKeysExceededError
 
@@ -33455,16 +33536,6 @@ This feature requires a paid plan.
 | ---- | ---- | ----------- | -------- |
 | PaidPlanRequiredError |  | This feature requires a paid plan. |  |
 
-#### ParagraphInput
-
-Resolved multiline text input.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
 #### ParagraphInputConfig
 
 Form input definition.
@@ -33836,6 +33907,34 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
+
+#### PendingInvitationNotFoundError
+
+No live invitation exists for this email in the workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PendingInvitationNotFoundError |  | No live invitation exists for this email in the workspace. |  |
+
+#### PendingInvitationRevokePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+
+#### PendingWorkspaceInvitationListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitations | [ [PendingWorkspaceInvitationResponse](#pendingworkspaceinvitationresponse) ] |  | Yes |
+
+#### PendingWorkspaceInvitationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### Permission
 
@@ -35035,6 +35134,7 @@ Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| icon_info | [RagPipelineIconInfo](#ragpipelineiconinfo) |  | No |
 | yaml_content | string |  | Yes |
 
 #### RagPipelineDatasourceListResponse
@@ -35061,6 +35161,15 @@ Resource types understood by access policies.
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### RagPipelineIconInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string |  | Yes |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
 #### RagPipelineImportCheckDependenciesResponse
 
@@ -35452,16 +35561,67 @@ Response body returned after resetting one contact IM override.
 | ---- | ---- | ----------- | -------- |
 | contact | [HumanInputContact](#humaninputcontact) | Contact snapshot after the override is cleared. | Yes |
 
-#### ResolvedForm
-
-Immutable authoritative presentation snapshot for one v2 form.
+#### ResolvedFileListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | Yes |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedForm
+
+Keep the existing resolved-form wire shape without exposing storage metadata.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
 | legacy_form_content | string |  | Yes |
-| parts | [ [FormPart](#formpart) ] |  | Yes |
+| parts | [ [ResolvedPartResponse](#resolvedpartresponse) ] |  | Yes |
 | title | string |  | Yes |
+
+#### ResolvedMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedPartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResolvedPartResponse | [ResolvedMarkdownResponse](#resolvedmarkdownresponse)<br>[ResolvedParagraphResponse](#resolvedparagraphresponse)<br>[ResolvedSelectResponse](#resolvedselectresponse)<br>[ResolvedFileResponse](#resolvedfileresponse)<br>[ResolvedFileListResponse](#resolvedfilelistresponse) |  |  |
+
+#### ResolvedSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ResourceAccessTokenCreatePayload
 
@@ -35971,17 +36131,6 @@ The Roster Agent package exceeds the size limit.
 | max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
  | Custom separator for splitting text. | No |
-
-#### SelectInput
-
-Resolved single-choice input with immutable concrete options.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| options | [ string ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -37071,7 +37220,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
+| type | [TagType](#tagtype) | Tag type filter | Yes |
 
 #### TagListResponse
 
@@ -37929,6 +38078,21 @@ the app is not allowed to be trial.
 | ---- | ---- | ----------- | -------- |
 | TriggerCreationMethod | string |  |  |
 
+#### TriggerNodeLimitDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| limit | integer |  | Yes |
+
+#### TriggerNodeLimitExceededError
+
+The workflow has more trigger nodes than the workspace plan allows.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerNodeLimitExceededError |  | The workflow has more trigger nodes than the workspace plan allows. |  |
+
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
@@ -38294,16 +38458,6 @@ Payload for updating a snippet.
 | count | integer |  | Yes |
 | is_using | boolean |  | Yes |
 
-#### UserAction
-
-Resolved action values required for presentation and submission validation.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
-| id | string |  | Yes |
-| title | string |  | Yes |
-
 #### UserActionConfig
 
 User action configuration.
@@ -38347,8 +38501,8 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| size | integer |  | Yes |
+| limit | integer | Vector storage allowed, in MB; -1 means unlimited | Yes |
+| size | integer | Vector storage already consumed, in MB | Yes |
 | usage_unknown | boolean |  | No |
 
 #### VerificationTokenResponse
@@ -39793,6 +39947,14 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
+
+#### WorkspaceMemberLimitReachedError
+
+The workspace has reached its member limit, so this invitation cannot be accepted right now.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkspaceMemberLimitReachedError |  | The workspace has reached its member limit, so this invitation cannot be accepted right now. |  |
 
 #### WorkspacePaginationResponse
 

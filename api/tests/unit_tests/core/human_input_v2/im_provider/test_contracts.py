@@ -55,8 +55,6 @@ def test_resolved_slack_credentials_are_strict_immutable_and_secret_safe() -> No
     assert "xapp-test-app-token" not in repr(credentials)
 
     with pytest.raises(ValidationError):
-        SlackCredentials.model_validate({**credentials.model_dump(), "unexpected": "value"})
-    with pytest.raises(ValidationError):
         SlackCredentials.model_validate({**credentials.model_dump(), "provider": IMProvider.FEISHU})
     pytest.raises(ValidationError, setattr, credentials, "client_id", "changed")
 

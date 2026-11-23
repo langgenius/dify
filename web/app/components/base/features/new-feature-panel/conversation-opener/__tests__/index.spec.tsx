@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
 import ConversationOpener from '../index'
+// Load the lazily imported settings modal up front so its cold transform does not
+// count against the first dialog query's timeout on a busy runner.
+import '../modal'
 
 const renderOpener = (
   opening: Features['opening'] = { enabled: false },

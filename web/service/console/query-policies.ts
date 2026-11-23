@@ -8,10 +8,17 @@ import type {
   DatasetListResponse,
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsGoldenQuestionListResponse,
+  KnowledgeFsSpaceListResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import type { AccountWithRoleListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  AccountWithRoleListResponse,
+  RbacRoleList,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
@@ -905,17 +912,29 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSettled: (_data, error, _variables, _result, context) =>
-                      error
-                        ? undefined
-                        : Promise.all([
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                            }),
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.members.get.key(),
-                            }),
-                          ]),
+                    onSettled: (_data, error, { params }, _result, { client }) => {
+                      if (error) return
+                      const roles = consoleQuery.workspaces.current.rbac.roles.get
+                      const removeRole = (page: RbacRoleList): RbacRoleList =>
+                        page.data?.some((role) => role.id === params.role_id)
+                          ? {
+                              ...page,
+                              data: page.data.filter((role) => role.id !== params.role_id),
+                            }
+                          : page
+                      client.setQueriesData<RbacRoleList>(
+                        { queryKey: roles.key({ type: 'query' }) },
+                        (data) => data && removeRole(data),
+                      )
+                      client.setQueriesData<InfiniteData<RbacRoleList>>(
+                        { queryKey: roles.key({ type: 'infinite' }) },
+                        (data) => data && { ...data, pages: data.pages.map(removeRole) },
+                      )
+                      void client.invalidateQueries({ queryKey: roles.key() })
+                      void client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.members.get.key(),
+                      })
+                    },
                   },
                 },
                 copy: {
@@ -984,7 +1003,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   mutationOptions: {
                     onSettled: (_data, error, _variables, _result, context) => {
                       if (error) return
-                      return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                      void invalidateAccessPolicyQueries(consoleQuery, context.client)
                     },
                   },
                 },
@@ -1205,6 +1224,57 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflow: {
+            comments: {
+              // Collaborators change comments while the editor is closed, and their live
+              // updates reach only an open editor, so every mount reads comments again. While
+              // open, live updates keep them current; a read on window focus could land on an
+              // optimistic write.
+              get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+              byCommentId: {
+                get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+                resolve: {
+                  post: {
+                    // Resolving shows at once, on the thread and on the canvas: a thread resolved
+                    // while resolved ones are hidden closes and its marker goes. Reads running for
+                    // the comment are stopped first, and a failed resolve puts both back.
+                    mutationOptions: {
+                      onMutate: async ({ params }, context) => {
+                        await Promise.all([
+                          context.client.cancelQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: params.app_id } },
+                            }),
+                          }),
+                          context.client.cancelQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: true,
+                        })
+                      },
+                      onError: (_error, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: false,
+                        })
+                      },
+                      onSuccess: (result, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: result.resolved,
+                          resolved_at: result.resolved_at,
+                          resolved_by: result.resolved_by,
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           annotations: {
             byAnnotationId: {
               post: {
@@ -1922,6 +1992,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            goldenQuestions: {
+              byQuestionId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: async (question, { params }, _result, { client }) => {
+                      const get =
+                        consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      const scope = { queryKey: get.key({ input }) }
+                      await client.cancelQueries(scope)
+                      client.setQueriesData<InfiniteData<KnowledgeFsGoldenQuestionListResponse>>(
+                        { queryKey: get.key({ input, type: 'infinite' }) },
+                        (list) =>
+                          list && {
+                            ...list,
+                            pages: list.pages.map((page) => ({
+                              ...page,
+                              data: page.data.map((item) =>
+                                item.id === question.id ? question : item,
+                              ),
+                            })),
+                          },
+                      )
+                      void client.invalidateQueries(scope)
+                    },
+                  },
+                },
+              },
+            },
             documents: {
               byDocumentId: {
                 patch: {
@@ -3048,11 +3147,25 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             byRelationId: {
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, error, _variables, _result, context) => {
+                  networkMode: 'always',
+                  onSettled: async (_data, error, { params }, _result, { client }) => {
                     if (error) return
-                    void context.client.invalidateQueries({
-                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
-                    })
+                    const queryKey = consoleQuery.resourceAccessTokens.get.key()
+                    await client.cancelQueries({ queryKey })
+                    client.setQueriesData<ResourceAccessTokenListResponse>(
+                      { queryKey },
+                      (current) => {
+                        if (!current?.data.some((row) => row.token_id === params.token_id))
+                          return current
+
+                        return {
+                          ...current,
+                          data: current.data.filter((row) => row.token_id !== params.token_id),
+                          total: Math.max(0, current.total - 1),
+                        }
+                      },
+                    )
+                    void client.invalidateQueries({ queryKey })
                   },
                 },
               },
@@ -3396,6 +3509,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   return consoleQuery
 }
 
+// A comment's resolved state, on its thread and in its app's comment list.
+function setCommentResolved(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  params: { app_id: string; comment_id: string },
+  fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
+) {
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
+    (detail) => (detail ? { ...detail, ...fields } : detail),
+  )
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: params.app_id } },
+    }),
+    (list) =>
+      list
+        ? {
+            ...list,
+            data: list.data.map((comment) =>
+              comment.id === params.comment_id
+                ? { ...comment, resolved: fields.resolved }
+                : comment,
+            ),
+          }
+        : list,
+  )
+}
+
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
 }
@@ -3457,6 +3599,7 @@ function invalidateHumanInputChannelQueries(
     invalidateHumanInputContactQueries(query, client),
     invalidateQueryKeys(client, [
       query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.testChannels.key(),
       query.workspaces.current.humanInput.v2.imIdentities.key(),
       query.workspaces.current.humanInput.v2.imSyncRuns.key(),
     ]),

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import LabelSelector from '../selector'
 
@@ -13,6 +13,9 @@ function Labels() {
 }
 
 it('retains the real catalog selection after closing and reopening', async () => {
+  // The ~590px popup overflows the default 414px viewport. Clicking an option then scrolls
+  // the page, the popup repositions, and the click can land on stale coordinates.
+  await page.viewport(1024, 768)
   const screen = await render(<Labels />)
   const trigger = screen.getByRole('region', { name: 'Labels' }).getByRole('button').first()
   await trigger.click()

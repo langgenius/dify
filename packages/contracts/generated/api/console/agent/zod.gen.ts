@@ -1593,6 +1593,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -2273,12 +2274,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -3954,6 +3957,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**

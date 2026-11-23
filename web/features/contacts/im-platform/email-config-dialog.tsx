@@ -147,7 +147,7 @@ export function ContactEmailConfigContent({
           />{' '}
           <a
             className="text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            href={docLink('/use-dify/workspace/channels/email')}
+            href={docLink('/use-dify/workspace/channels/overview')}
             rel="noreferrer"
             target="_blank"
           >

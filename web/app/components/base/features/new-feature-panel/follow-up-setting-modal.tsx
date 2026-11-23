@@ -68,7 +68,7 @@ export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSetti
   const actionsRef = useRef<DialogActions>(null)
 
   return (
-    <Dialog actionsRef={actionsRef}>
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
       <div className="relative min-h-8">
         <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary group-focus-within/follow-up:invisible group-hover/follow-up:invisible">
           {data.model?.name ||
@@ -210,7 +210,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
                 value={PROMPT_MODE.default}
                 nativeButton
                 render={<button type="button" />}
-                className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
+                className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-start hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -252,7 +252,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
                 value={PROMPT_MODE.custom}
                 nativeButton
                 render={<button type="button" />}
-                className="w-full text-left"
+                className="w-full text-start"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>

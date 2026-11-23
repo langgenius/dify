@@ -1,12 +1,14 @@
+import json
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -17,6 +19,7 @@ from controllers.common.schema import (
 )
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.agent.build_session import AgentBuildDraftHandlers, AgentBuildDraftResponse
 from controllers.console.apikey import (
     API_KEY_DELETE_ROLES,
     API_KEY_EDIT_ROLES,
@@ -77,7 +80,6 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
-from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
@@ -118,6 +120,7 @@ AgentPublicationStatus = Literal["published", "drafts"]
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+    tag_ids: list[UUID] = Field(default_factory=list, description="Agent tag IDs; every selected tag must match")
 
 
 class AgentAppListQuery(AppListQuery):
@@ -285,12 +288,6 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     access_ready: bool = False
 
 
-class AgentDebugConversationRefreshResponse(BaseModel):
-    debug_conversation_id: str
-    debug_conversation_has_messages: bool = False
-    debug_conversation_message_count: int = 0
-
-
 class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
@@ -313,19 +310,9 @@ class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(ResponseModel):
-    variant: str
-    draft: AgentConfigDraftSummaryResponse
-    agent_soul: AgentSoulConfig
-
-
 class AgentBuildDraftApplyResponse(BaseModel):
     result: str
     draft: dict[str, object]
-
-
-class AgentSimpleResultResponse(BaseModel):
-    result: str
 
 
 class AgentPublicationCountsResponse(ResponseModel):
@@ -369,11 +356,8 @@ register_response_schema_models(
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
-    AgentDebugConversationRefreshResponse,
     AgentPublishResponse,
-    AgentBuildDraftResponse,
     AgentBuildDraftApplyResponse,
-    AgentSimpleResultResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -587,6 +571,8 @@ class AgentAppListApi(Resource):
             detail = application_services().agent_apps.collection.create(context, params)
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError from exc
+        except AgentAppNameConflictError as exc:
+            raise AgentNameConflictError from exc
         return _agent_app_detail_response(detail), HTTPStatus.CREATED
 
 
@@ -659,36 +645,6 @@ class AgentAppApi(Resource):
         return "", HTTPStatus.NO_CONTENT
 
 
-@console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
-class AgentDebugConversationRefreshApi(Resource):
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(
-        200,
-        "Agent debug conversation refreshed",
-        console_ns.models[AgentDebugConversationRefreshResponse.__name__],
-    )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        debug_conversation_id = _agent_roster_service(session).reset_build_conversation(
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-        return AgentDebugConversationRefreshResponse(
-            debug_conversation_id=debug_conversation_id,
-            debug_conversation_has_messages=False,
-            debug_conversation_message_count=0,
-        ).model_dump(mode="json")
-
-
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
     @error_responses(
@@ -759,26 +715,7 @@ class AgentBuildDraftCheckoutApi(Resource):
 
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft")
-class AgentBuildDraftApi(Resource):
-    @error_responses(AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
-    @console_ns.response(404, "Agent build draft not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.load_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-
+class AgentBuildDraftApi(AgentBuildDraftHandlers, Resource):
     @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
@@ -805,24 +742,6 @@ class AgentBuildDraftApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=req_data,
-        )
-
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.discard_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
         )
 
 
@@ -942,13 +861,23 @@ class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
     @console_ns.response(HTTPStatus.OK, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
     @console_account_admission()
-    @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
-        req_data: AgentInviteOptionsQuery,
         context: RequestContext,
     ) -> dict[str, object]:
-        """Return visible Workflow-callable Agents and their current workflow usage."""
+        """Return visible Workflow-callable Agents matching validated tag filters.
+
+        Preconditions: Console admission supplies the active workspace identity.
+        Postconditions: repeated tag_ids are validated as UUIDs and passed with
+        name/pagination filters; the response contains detached Agent tags.
+        """
+        try:
+            req_data = query_params_from_request(AgentInviteOptionsQuery, list_fields=("tag_ids",))
+        except ValidationError as exc:
+            # Preserve this endpoint's existing @model_validate 422 contract
+            # while parsing repeated tag IDs without exposing submitted values.
+            errors = exc.errors(include_url=False, include_input=False, include_context=False)
+            raise UnprocessableEntity(json.dumps(errors)) from None
         return dump_response(
             AgentInviteOptionsResponse,
             application_services().agent_invite_options.list(
@@ -957,6 +886,7 @@ class AgentInviteOptionsApi(Resource):
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
+                tag_ids=tuple(str(tag_id) for tag_id in req_data.tag_ids),
             ),
         )
 

@@ -4,20 +4,8 @@ import { page } from 'vite-plus/test/browser'
 import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import EmailConfigureModal from '../email-configure-modal'
-
-// boundary: workspace member reads stop at the generated Console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.members.get': () => ({ accounts: [] }),
-    }),
-  }
-})
 
 const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig => ({
   recipients: {
@@ -128,5 +116,9 @@ it.each(['common.operation.close', 'common.operation.cancel'])(
 beforeEach(async () => {
   toast.dismiss()
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: { workspaces: { current: { members: { get: () => ({ accounts: [] }) } } } },
+    }),
+  )
 })

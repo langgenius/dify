@@ -244,6 +244,17 @@ const defaultRestrictedProperties = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+// `crypto.randomUUID` exists only in secure contexts, so it is undefined on
+// self-hosted consoles opened over plain HTTP. Matching the property alone also
+// catches `globalThis.crypto.randomUUID` and optional-call forms.
+const insecureContextRestrictedProperties = [
+  {
+    property: 'randomUUID',
+    message:
+      'crypto.randomUUID is unavailable over plain HTTP (non-secure contexts). Use `v4` from `uuid` instead.',
+  },
+]
+
 const storageRestrictedProperties = [
   'error',
   {
@@ -360,6 +371,41 @@ export const stylingContractRules = {
           allow: ['w-*', 'max-w-*', 'whitespace-pre-wrap'],
           message:
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
+        },
+        {
+          pattern: '^InfotipTrigger$',
+          allow: ['layout', 'text-color', 'opacity'],
+          deny: [
+            'size',
+            'w',
+            'h',
+            'min-w',
+            'max-w',
+            'min-h',
+            'max-h',
+            'inline-size',
+            'min-inline-size',
+            'max-inline-size',
+            'block-size',
+            'min-block-size',
+            'max-block-size',
+            'basis',
+            'flex',
+            'grow',
+            'shrink',
+            'aspect',
+            'scale',
+            'overflow',
+            'static',
+            '*-stretch',
+            'before:*',
+            '[width:*]',
+            '[height:*]',
+            '[inline-size:*]',
+            '[block-size:*]',
+          ],
+          message:
+            '"{{className}}" is outside the InfotipTrigger styling contract. Use its size prop for the icon and box; callers may place it, colour the icon, or fade it in.',
         },
         {
           pattern: '^Alert$',
@@ -1821,7 +1867,11 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'no-restricted-globals': [...defaultRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...defaultRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...defaultRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
         'no-restricted-imports': [
           'error',
           {
@@ -1842,7 +1892,11 @@ export const lintConfig = {
       ],
       rules: {
         'no-restricted-globals': [...storageRestrictedGlobals, ...rawHttpGlobals],
-        'no-restricted-properties': [...storageRestrictedProperties, ...rawHttpProperties],
+        'no-restricted-properties': [
+          ...storageRestrictedProperties,
+          ...rawHttpProperties,
+          ...insecureContextRestrictedProperties,
+        ],
       },
     },
     {
@@ -1876,6 +1930,12 @@ export const lintConfig = {
       excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
       rules: {
         'dify/marketplace-boundary': 'error',
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      rules: {
+        'dify/no-module-scope-clock': 'error',
       },
     },
   ],

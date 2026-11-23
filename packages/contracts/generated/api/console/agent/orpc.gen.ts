@@ -238,15 +238,21 @@ import {
 } from './zod.gen.ts'
 
 /**
- * Return visible Workflow-callable Agents and their current workflow usage
+ * Return visible Workflow-callable Agents matching validated tag filters
+ *
+ * Preconditions: Console admission supplies the active workspace identity.
+ * Postconditions: repeated tag_ids are validated as UUIDs and passed with
+ * name/pagination filters; the response contains detached Agent tags.
  */
 export const get = oc
   .route({
+    description:
+      'Preconditions: Console admission supplies the active workspace identity.\nPostconditions: repeated tag_ids are validated as UUIDs and passed with\nname/pagination filters; the response contains detached Agent tags.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentInviteOptions',
     path: '/agent/invite-options',
-    summary: 'Return visible Workflow-callable Agents and their current workflow usage',
+    summary: 'Return visible Workflow-callable Agents matching validated tag filters',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())
@@ -472,12 +478,16 @@ export const checkout = {
   post: post6,
 }
 
+/**
+ * Discard the caller's draft and report success even if it was already absent
+ */
 export const delete2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAgentByAgentIdBuildDraft',
     path: '/agent/{agent_id}/build-draft',
+    summary: "Discard the caller's draft and report success even if it was already absent",
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAgentByAgentIdBuildDraftPath }))
@@ -487,12 +497,16 @@ export const delete2 = oc
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   })
 
+/**
+ * Return the admitted account's existing Build draft, or 404 when none exists
+ */
 export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdBuildDraft',
     path: '/agent/{agent_id}/build-draft',
+    summary: "Return the admitted account's existing Build draft, or 404 when none exists",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdBuildDraftPath }))
@@ -1053,12 +1067,17 @@ export const copy = {
   post: post12,
 }
 
+/**
+ * Reset the admitted account's Build conversation and return the new empty conversation
+ */
 export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdDebugConversationRefresh',
     path: '/agent/{agent_id}/debug-conversation/refresh',
+    summary:
+      "Reset the admitted account's Build conversation and return the new empty conversation",
     tags: ['console'],
   })
   .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))

@@ -1,7 +1,7 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { consoleClient } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import ChangePasswordForm from '../page'
 
 const navigation = vi.hoisted(() => ({
@@ -22,18 +22,6 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'forgotPassword.resets.post': vi.fn(),
-    }),
-  }
-})
-
-const changePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 const validPassword = 'ValidPass123!'
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
@@ -69,10 +57,13 @@ async function completePasswordChange() {
   return screen
 }
 
+const fake = setupFakeApi(() => ({
+  console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
+}))
+
 beforeEach(() => {
   navigation.replace.mockReset()
   navigation.search = 'token=reset-token'
-  changePassword.mockReset().mockResolvedValue({ result: 'success' })
 })
 
 afterEach(() => {
@@ -102,7 +93,7 @@ it('reveals the native password input and submits the form with Enter', async ()
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(changePassword).toHaveBeenCalledWith({
+    expect(fake.console.forgotPassword.resets.post).toHaveBeenCalledWith({
       body: {
         token: 'reset-token',
         new_password: validPassword,
@@ -128,13 +119,13 @@ it('revalidates the confirmation field as the native password value changes', as
   await expect.element(confirmation).toHaveAttribute('aria-invalid', 'true')
   await expect.element(confirmation).toHaveAccessibleDescription('accountSettings.account.notEqual')
   await expect.element(confirmation).toHaveFocus()
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 
   await userEvent.fill(password, 'DifferentPass123!')
 
   await expect.element(confirmation).not.toHaveAttribute('aria-invalid', 'true')
   await expect.element(screen.getByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 })
 
 it.each([
