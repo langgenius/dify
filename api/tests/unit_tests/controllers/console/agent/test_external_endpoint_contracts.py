@@ -52,7 +52,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.asset_repository import ExternalAssetRepository
 from repositories.tag_repository import TagRepository
 from services.external_agents.contracts import VerificationEvidence
-from services.tag_application_service import CreateTagInput, TagBindingInput, TagKind
+from services.tag_application_service import CreateTagInput, TagBindingInput
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
@@ -251,10 +251,10 @@ def test_external_list_http_preserves_repeated_uuid_tags_and_current_labels(endp
     """Actual HTTP query decoding requires all tags before counters and serializes current labels/ACLs."""
     app, context, identifier, _, sessions = endpoint_domain
     tags = TagRepository(sessions)
-    first = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared A", TagKind.AGENT))
-    second = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared B", TagKind.AGENT))
+    first = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared A", "agent"))
+    second = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared B", "agent"))
     tags.create_bindings(
-        context.active_workspace_id, context.account_id, TagBindingInput((first.id,), identifier, TagKind.AGENT)
+        context.active_workspace_id, context.account_id, TagBindingInput((first.id,), identifier, "agent")
     )
     handler = inspect.unwrap(vars(ExternalAgentsApi)["get"])
     assert isinstance(handler, AdmittedHandler)
@@ -265,7 +265,7 @@ def test_external_list_http_preserves_repeated_uuid_tags_and_current_labels(endp
     assert missing.status_code == 200
     assert missing.get_json()["total"] == missing.get_json()["enabled_count"] == 0
     tags.create_bindings(
-        context.active_workspace_id, context.account_id, TagBindingInput((second.id,), identifier, TagKind.AGENT)
+        context.active_workspace_id, context.account_id, TagBindingInput((second.id,), identifier, "agent")
     )
     matched = client.get(path)
     assert matched.status_code == 200
