@@ -195,7 +195,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           'text-input': {
             label: item.name,
             variable: item.key,
-            required: item.required !== false, // default true
+            required: item.required !== false,
             max_length: item.max_length,
             default: getString(item.default),
             hide: item.hide,
@@ -208,7 +208,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           paragraph: {
             label: item.name,
             variable: item.key,
-            required: item.required !== false, // default true
+            required: item.required !== false,
             max_length: item.max_length,
             default: getString(item.default),
             hide: item.hide,
@@ -221,7 +221,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           number: {
             label: item.name,
             variable: item.key,
-            required: item.required !== false, // default true
+            required: item.required !== false,
             default: typeof item.default === 'number' ? item.default : getString(item.default),
             hide: item.hide,
           },
@@ -231,7 +231,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           checkbox: {
             label: item.name,
             variable: item.key,
-            required: item.required !== false, // default true
+            required: item.required !== false,
             default: typeof item.default === 'boolean' ? item.default : getString(item.default),
             hide: item.hide,
           },
@@ -241,7 +241,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           select: {
             label: item.name,
             variable: item.key,
-            required: item.required !== false, // default true
+            required: item.required !== false,
             options: item.options,
             default: getString(item.default),
             hide: item.hide,
@@ -306,7 +306,6 @@ export const formatBooleanInputs = (
   useInputs.forEach((item) => {
     const isBooleanInput = item.type === 'checkbox'
     if (isBooleanInput) {
-      // Convert boolean inputs to boolean type
       res[item.key] = !!res[item.key]
     }
   })

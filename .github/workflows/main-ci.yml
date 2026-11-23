@@ -21,6 +21,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
+  comment-ratchet:
+    name: Comment Ratchet
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          python-version: '3.13'
+          enable-cache: false
+      - name: Prepare comment parser
+        run: uvx --from ast-grep-cli==0.51.3 ast-grep --version
+      - name: Test comment guard
+        run: uv run --no-project python scripts/tests/test_no_new_comments.py
+      - name: Reject new explanatory comments
+        env:
+          COMMENT_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || github.event.merge_group.base_sha }}
+        run: uv run --no-project python scripts/check_no_new_comments.py --base-rev "$COMMENT_BASE_REV"
+
   # Keep orchestration on Depot to avoid GitHub-hosted runner queue delays.
   pre_job:
     name: Skip Duplicate Checks

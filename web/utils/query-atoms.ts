@@ -11,18 +11,6 @@ type ResolvedAtomWithSuspenseQueryResult<TData, TError = DefaultError> = Awaited
   AtomWithSuspenseQueryResult<TData, TError>
 >
 
-/**
- * Creates an atomWithSuspenseQuery-compatible atom for data that is already resolved.
- *
- * Use this when a suspense query atom is read from another atom after an outer
- * boundary or bootstrap step has already resolved it. The parameters match
- * atomWithSuspenseQuery, while the returned atom exposes only the resolved query
- * result instead of `QueryResult | Promise<QueryResult>`.
- *
- * This helper intentionally does not await the promise or create an async
- * derived atom. If the suspense query is still pending, reading the atom throws
- * to make the broken "already resolved" invariant explicit.
- */
 export function atomWithResolvedSuspenseQuery<
   TQueryFnData = unknown,
   TError = DefaultError,

@@ -16,3 +16,4 @@ if [ -f "$(git_path MERGE_HEAD)" ] || \
 fi
 
 vp staged
+python3 scripts/check_no_new_comments.py --staged

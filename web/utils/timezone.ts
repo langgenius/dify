@@ -24,7 +24,6 @@ const formatOffset = (totalMinutes: number) => {
     : `UTC${sign}${hours}`
 }
 
-// Offset in minutes of a timezone at a given instant, following DST. Undefined if the runtime cannot resolve it.
 export const getTimezoneOffsetMinutes = (timezone: string, date: Date): number | undefined => {
   try {
     const name = new Intl.DateTimeFormat('en-US', {
@@ -49,7 +48,6 @@ export const convertTimezoneToOffsetStr = (timezone?: string, date: Date = new D
   if (offsetMinutes !== undefined) return formatOffset(offsetMinutes)
   const tzItem = tz.find((item) => item.value === timezone)
   if (!tzItem) return DEFAULT_OFFSET_STR
-  // Fallback for runtimes without the timezone. Extract the standard offset from names like "-11:00 Niue Time".
   const offsetMatch = /^([+-]?\d{1,2}):(\d{2})/.exec(tzItem.name)
   /* v8 ignore next 2 -- timezone.json entries are normalized to "{offset} {name}"; this protects against malformed data only. */
   if (!offsetMatch) return DEFAULT_OFFSET_STR

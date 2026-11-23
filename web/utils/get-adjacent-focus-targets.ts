@@ -1,4 +1,3 @@
-/** Capture candidates before the source item unmounts: following siblings, then preceding siblings in reverse. */
 export function getAdjacentFocusTargets<T extends HTMLElement>(
   item: Element | null | undefined,
   getTarget: (sibling: Element) => T | null,

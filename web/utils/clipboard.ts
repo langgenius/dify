@@ -3,9 +3,7 @@ export async function writeTextToClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text)
       return
-    } catch {
-      // Fall through to the legacy path when browsers deny Clipboard API access.
-    }
+    } catch {}
   }
 
   return fallbackCopyTextToClipboard(text)
@@ -14,7 +12,7 @@ export async function writeTextToClipboard(text: string): Promise<void> {
 async function fallbackCopyTextToClipboard(text: string): Promise<void> {
   const textArea = document.createElement('textarea')
   textArea.value = text
-  textArea.style.position = 'fixed' // Avoid scrolling to bottom
+  textArea.style.position = 'fixed'
   document.body.appendChild(textArea)
   textArea.focus()
   textArea.select()

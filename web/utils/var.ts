@@ -130,7 +130,6 @@ export const getVars = (value: string) => {
       })
       .filter((key) => key.length <= MAX_VAR_KEY_LENGTH) || []
   const keyObj: Record<string, boolean> = {}
-  // remove duplicate keys
   const res: string[] = []
   keys.forEach((key) => {
     if (keyObj[key]) return
@@ -141,8 +140,6 @@ export const getVars = (value: string) => {
   return res
 }
 
-// Set the value of basePath
-// example: /dify
 export const basePath = env.NEXT_PUBLIC_BASE_PATH
 
 export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {

@@ -4,16 +4,6 @@ import { flushEvents, trackEvent } from '@/app/components/base/amplitude/utils'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
 
-// const EXTERNAL_UTM_SOURCE_MAP = {
-//   'blog': 'blog',
-//   'dify_blog': 'blog',
-//   'linkedin': 'linkedin',
-//   'newsletter': 'blog',
-//   'twitter': 'twitter/x',
-//   'twitter/x': 'twitter/x',
-//   'x': 'twitter/x',
-// } as const
-
 type SearchParamReader = {
   get: (name: string) => string | null
 }

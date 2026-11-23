@@ -10,9 +10,6 @@ export const draft07Validator = (schema: any): Draft07ValidationResult => {
   try {
     return validator.validate(schema, draft07Schema as unknown as Schema)
   } catch {
-    // The jsonschema library may throw URL errors in browser environments
-    // when resolving schema $id URIs. Return empty errors since structural
-    // validation is handled separately by preValidateSchema (#34841).
     return { valid: true, errors: [] as ValidationError[] }
   }
 }

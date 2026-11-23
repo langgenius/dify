@@ -1,0 +1,590 @@
+{
+  "base_revision": "0f0913be0d69a203c165709b3f8ec2f85b1beef8",
+  "scope": "web/utils production sources; test sources deferred",
+  "entries": [
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 198,
+      "text": "// default true",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 211,
+      "text": "// default true",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 224,
+      "text": "// default true",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 234,
+      "text": "// default true",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 244,
+      "text": "// default true",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/model-config.ts",
+      "line": 309,
+      "text": "// Convert boolean inputs to boolean type",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/completion-params.ts",
+      "line": 25,
+      "text": "// keep stop in advanced mode",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 1,
+      "text": "/**\n * Field Encoding Utilities\n * Provides Base64 encoding for sensitive fields (password, verification code)\n * during transmission from frontend to backend.\n *\n * Note: This uses Base64 encoding for obfuscation, not cryptographic encryption.\n * Real security relies on HTTPS for transport layer encryption.\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0002-field-encoding.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 10,
+      "text": "/**\n * Encode sensitive field using Base64\n * @param plaintext - The plain text to encode\n * @returns Base64 encoded text\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 17,
+      "text": "// Base64 encode the plaintext",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 18,
+      "text": "// btoa works with ASCII, so we need to handle UTF-8 properly",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0002-field-encoding.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 24,
+      "text": "// If encoding fails, throw error to prevent sending plaintext",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0002-field-encoding.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 29,
+      "text": "/**\n * Encrypt password field for login\n * @param password - Plain password\n * @returns Encrypted password or original if encryption disabled\n */",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "There is no encryption-disabled branch; the implementation always encodes or throws."
+    },
+    {
+      "path": "web/utils/encryption.ts",
+      "line": 38,
+      "text": "/**\n * Encrypt verification code for email code login\n * @param code - Plain verification code\n * @returns Encrypted code or original if encryption disabled\n */",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "There is no encryption-disabled branch; the implementation always encodes or throws."
+    },
+    {
+      "path": "web/utils/query-atoms.ts",
+      "line": 14,
+      "text": "/**\n * Creates an atomWithSuspenseQuery-compatible atom for data that is already resolved.\n *\n * Use this when a suspense query atom is read from another atom after an outer\n * boundary or bootstrap step has already resolved it. The parameters match\n * atomWithSuspenseQuery, while the returned atom exposes only the resolved query\n * result instead of `QueryResult | Promise<QueryResult>`.\n *\n * This helper intentionally does not await the promise or create an async\n * derived atom. If the suspense query is still pending, reading the atom throws\n * to make the broken \"already resolved\" invariant explicit.\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0004-resolved-query-atoms.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 1,
+      "text": "/**\n * Validates that a URL is safe for redirection.\n * Only allows HTTP and HTTPS protocols to prevent XSS attacks.\n *\n * @param url - The URL string to validate\n * @throws Error if the URL has an unsafe protocol\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 17,
+      "text": "// If URL parsing fails, it's also invalid",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 22,
+      "text": "/**\n * Check if URL is a private/local network address or cloud debug URL\n * @param url - The URL string to check\n * @returns true if the URL is a private/local address or cloud debug URL\n */",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "The implementation only checks local/private hostnames, with no cloud debug URL branch."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 32,
+      "text": "// Check for localhost",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 35,
+      "text": "// Check for private IP ranges",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 40,
+      "text": "// 10.0.0.0/8",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 42,
+      "text": "// 172.16.0.0/12",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 44,
+      "text": "// 192.168.0.0/16",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 46,
+      "text": "// 169.254.0.0/16 (link-local)",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/urlValidation.ts",
+      "line": 50,
+      "text": "// Check for .local domains",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/emoji.ts",
+      "line": 3,
+      "text": "/** Resolve persisted emoji-mart IDs (including aliases) without loading picker data. */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0003-persisted-references.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/validators.ts",
+      "line": 13,
+      "text": "// The jsonschema library may throw URL errors in browser environments",
+      "category": "Excuse",
+      "action": "delete; see https://github.com/langgenius/dify/issues/46945",
+      "reason": "Justifies returning valid for every validator exception without distinguishing URL resolution errors."
+    },
+    {
+      "path": "web/utils/validators.ts",
+      "line": 14,
+      "text": "// when resolving schema $id URIs. Return empty errors since structural",
+      "category": "Excuse",
+      "action": "delete; see https://github.com/langgenius/dify/issues/46945",
+      "reason": "Justifies returning valid for every validator exception without distinguishing URL resolution errors."
+    },
+    {
+      "path": "web/utils/validators.ts",
+      "line": 15,
+      "text": "// validation is handled separately by preValidateSchema (#34841).",
+      "category": "Excuse",
+      "action": "delete; see https://github.com/langgenius/dify/issues/46945",
+      "reason": "Justifies returning valid for every validator exception without distinguishing URL resolution errors."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 29,
+      "text": "/**\n * Formats a number with comma separators.\n * @example formatNumber(1234567) will return '1,234,567'\n * @example formatNumber(1234567.89) will return '1,234,567.89'\n * @example formatNumber(0.0000008) will return '0.0000008'\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 41,
+      "text": "// Force fixed decimal for small numbers to avoid scientific notation",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 47,
+      "text": "// Scientific notation: precision is exponent + decimal digits in mantissa",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 53,
+      "text": "// Decimal notation: count decimal places",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 67,
+      "text": "/**\n * Format file size into standard string format.\n * @param fileSize file size (Byte)\n * @example formatFileSize(1024) will return '1.00 KB'\n * @example formatFileSize(1024 * 1024) will return '1.00 MB'\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 85,
+      "text": "/**\n * Format time into standard string format.\n * @example formatTime(60) will return '1.00 min'\n * @example formatTime(60 * 60) will return '1.00 h'\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 101,
+      "text": "/**\n * Formats a number into a readable string using \"k\", \"M\", or \"B\" suffix.\n * @example\n * 950     => \"950\"\n * 1200    => \"1.2k\"\n * 1500000 => \"1.5M\"\n * 2000000000 => \"2B\"\n *\n * @param {number} num - The number to format\n * @returns {string} - The formatted number string\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 113,
+      "text": "// If less than 1000, return as-is",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 116,
+      "text": "// Define thresholds and suffixes",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 129,
+      "text": "// If rounded value >= 1000, promote to next unit",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 141,
+      "text": "// Fallback: if no threshold matched, return the number string",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 149,
+      "text": "/**\n * Get file extension from file name.\n * @param fileName file name\n * @example getFileExtension('document.pdf') will return 'pdf'\n * @example getFileExtension('archive.tar.gz') will return 'gz'\n * @example getFileExtension('.gitignore') will return '' (hidden file with no extension)\n * @example getFileExtension('.hidden.txt') will return 'txt'\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/format.ts",
+      "line": 160,
+      "text": "// Handle hidden files (starting with dot) by finding dot after the first character",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/gtag.ts",
+      "line": 3,
+      "text": "/**\n * Send Google Analytics event\n * @param eventName - event name\n * @param eventParams - event params\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/page-leave-guard.ts",
+      "line": 6,
+      "text": "// Keep confirmation guards separate from beforeunload listeners that save drafts",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/page-leave-guard.ts",
+      "line": 7,
+      "text": "// or release locks. Probing them by dispatching beforeunload would run those effects.",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/var.ts",
+      "line": 133,
+      "text": "// remove duplicate keys",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/var.ts",
+      "line": 144,
+      "text": "// Set the value of basePath",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/var.ts",
+      "line": 145,
+      "text": "// example: /dify",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/marketplace-site-track.ts",
+      "line": 1,
+      "text": "/**\n * Standalone Marketplace host contract.\n *\n * The Dify console stamps `data-is-marketplace=\"false\"` and never assigns\n * `window.__marketplaceTracking__`, so every helper here is a no-op in a Dify\n * build. The standalone marketplace (dify-marketplace) owns the producer: it\n * sets `data-is-marketplace` on `<html>` and injects `__marketplaceTracking__`\n * from its analytics runtime. Shared Marketplace UI calls these helpers; the\n * host implements the bridge.\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0007-marketplace-analytics-host.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 7,
+      "text": "// const EXTERNAL_UTM_SOURCE_MAP = {",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 8,
+      "text": "//   'blog': 'blog',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 9,
+      "text": "//   'dify_blog': 'blog',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 10,
+      "text": "//   'linkedin': 'linkedin',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 11,
+      "text": "//   'newsletter': 'blog',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 12,
+      "text": "//   'twitter': 'twitter/x',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 13,
+      "text": "//   'twitter/x': 'twitter/x',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 14,
+      "text": "//   'x': 'twitter/x',",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/create-app-tracking.ts",
+      "line": 15,
+      "text": "// } as const",
+      "category": "Stale",
+      "action": "delete",
+      "reason": "Dead commented-out source map has no executable consumer."
+    },
+    {
+      "path": "web/utils/mcp.ts",
+      "line": 1,
+      "text": "/**\n * MCP (Model Context Protocol) utility functions\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/mcp.ts",
+      "line": 5,
+      "text": "/**\n * Determines if the MCP icon should be used based on the icon source\n * @param src - The icon source, can be a string URL or an object with content and background\n * @returns true if the MCP icon should be used (when it's an emoji object with \ud83d\udd17 content)\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/mcp.ts",
+      "line": 14,
+      "text": "/**\n * Checks if an app icon should use the MCP icon\n * @param iconType - The type of icon ('emoji' | 'image')\n * @param icon - The icon content (emoji or file ID)\n * @returns true if the MCP icon should be used\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/error-parser.ts",
+      "line": 1,
+      "text": "/**\n * Parse plugin error message from nested error structure\n * Extracts the real error message from PluginInvokeError JSON string\n *\n * @example\n * Input: { message: \"req_id: xxx PluginInvokeError: {\\\"message\\\":\\\"Bad credentials\\\"}\" }\n * Output: \"Bad credentials\"\n *\n * @param error - Error object (an Error or object with a message property)\n * @returns Parsed error message\n */",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/error-parser.ts",
+      "line": 15,
+      "text": "// Try to extract nested JSON from PluginInvokeError",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/error-parser.ts",
+      "line": 16,
+      "text": "// Use greedy match .+ to capture the complete JSON object with nested braces",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0006-numeric-and-plugin-error-formatting.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/error-parser.ts",
+      "line": 23,
+      "text": "// Return the inner message if exists",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/error-parser.ts",
+      "line": 25,
+      "text": "// Fallback to error_type if message not available",
+      "category": "Tautology",
+      "action": "delete",
+      "reason": "Repeats the adjacent operation, types, function name, or return value."
+    },
+    {
+      "path": "web/utils/clipboard.ts",
+      "line": 7,
+      "text": "// Fall through to the legacy path when browsers deny Clipboard API access.",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/clipboard.ts",
+      "line": 17,
+      "text": "// Avoid scrolling to bottom",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/provider-reference.ts",
+      "line": 7,
+      "text": "/**\n * The identifier to persist when a node, agent config or prompt mention points at a\n * provider. MCP providers are resolved by `server_identifier` at runtime because it\n * survives a DSL export/import into another workspace; the primary key does not.\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0003-persisted-references.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/provider-reference.ts",
+      "line": 18,
+      "text": "/**\n * Whether a persisted reference points at this provider.\n * Use idOrServerIdentifier for backward compatibility. Previous id content could be non-deterministic,\n * we will support both primary key or server_identifier as reference\n */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0003-persisted-references.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/timezone.ts",
+      "line": 27,
+      "text": "// Offset in minutes of a timezone at a given instant, following DST. Undefined if the runtime cannot resolve it.",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/timezone.ts",
+      "line": 52,
+      "text": "// Fallback for runtimes without the timezone. Extract the standard offset from names like \"-11:00 Niue Time\".",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    },
+    {
+      "path": "web/utils/get-adjacent-focus-targets.ts",
+      "line": 1,
+      "text": "/** Capture candidates before the source item unmounts: following siblings, then preceding siblings in reverse. */",
+      "category": "Decision Record",
+      "action": "delete; see docs/adr/0005-browser-interaction-fallbacks.md",
+      "reason": "Preserves an integration, compatibility, security, or user-interaction constraint that is not apparent from the local operation."
+    }
+  ]
+}

@@ -22,7 +22,6 @@ export const mergeValidCompletionParams = (
 
   Object.entries(oldParams).forEach(([key, value]) => {
     if (key === 'stop' && isAdvancedMode) {
-      // keep stop in advanced mode
       nextParams[key] = value
       return
     }
