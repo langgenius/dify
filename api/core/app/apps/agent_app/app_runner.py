@@ -13,10 +13,11 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Generator, Iterator, Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
+from dify_agent.protocol import RunEvent
 from pydantic import JsonValue
 
 from clients.agent_backend import (
@@ -88,6 +89,10 @@ _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
 _FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS = 5.0
 _FINALIZATION_TIMEOUT_MESSAGE = "Build chat finalization timed out."
 
+_TerminalEvent = (
+    AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
+)
+
 _BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
 
 This step is only for persisting Agent config changes discovered in the current Build chat. Do not install packages,
@@ -142,10 +147,7 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
 
 
 def _raise_for_unsuccessful_terminal(
-    terminal: AgentBackendRunSucceededInternalEvent
-    | AgentBackendRunFailedInternalEvent
-    | AgentBackendRunCancelledInternalEvent
-    | None,
+    terminal: _TerminalEvent | None,
 ) -> AgentBackendRunSucceededInternalEvent:
     """Return a successful terminal or raise the shared backend/provider error.
 
@@ -757,12 +759,7 @@ class AgentAppRunner:
         )
 
         terminal_usage = None
-        if isinstance(
-            terminal,
-            AgentBackendRunSucceededInternalEvent
-            | AgentBackendRunFailedInternalEvent
-            | AgentBackendRunCancelledInternalEvent,
-        ):
+        if isinstance(terminal, _TerminalEvent):
             terminal_usage = _llm_usage_from_agent_backend(terminal.usage)
             self._persist_message_usage(
                 message_id=message_id,
@@ -840,10 +837,11 @@ class AgentAppRunner:
         Requires a Flask application context and may allocate a draft workspace
         binding. Releases the request-scoped database session after building the
         request, before starting the backend run. Run creation and event consumption
-        share the positive app execution budget. After a run is accepted, timeouts
-        and stream errors trigger cancellation under a separate deadline. The runtime may
-        update the config note. Finalization leaves chat records, session history,
-        and message traces untouched.
+        share the positive app execution budget. The runner closes the SSE
+        generator before attempting bounded cancellation for failures before a
+        terminal event. Transport timeouts and execution deadline expiry use
+        the same public error. The runtime may update the config note.
+        Chat records, history snapshots, and message traces belong to chat turns.
 
         Discard terminal.session_snapshot even after success: if build-draft/apply
         fails, continued Build chat or another Apply must reuse history without the
@@ -895,33 +893,31 @@ class AgentAppRunner:
         last_event_id: str | None = None
         stream_error: Exception | None = None
         if remaining is None or remaining > 0:
+            public_events: Iterator[RunEvent] | None = None
             try:
                 public_events = self._agent_backend_client.stream_events(run_id, timeout_seconds=remaining)
-                while terminal is None and (public_event := next(public_events, None)) is not None:
+                for public_event in public_events:
                     if public_event.id is not None:
                         last_event_id = public_event.id
-                    terminal = next(
-                        (
-                            event
-                            for event in self._event_adapter.adapt(public_event)
-                            if isinstance(
-                                event,
-                                AgentBackendRunSucceededInternalEvent
-                                | AgentBackendRunFailedInternalEvent
-                                | AgentBackendRunCancelledInternalEvent,
-                            )
-                        ),
-                        None,
-                    )
+                    internal_events = self._event_adapter.adapt(public_event)
+                    terminal = next((event for event in internal_events if isinstance(event, _TerminalEvent)), None)
+                    if terminal is not None:
+                        break
             except Exception as exc:
                 stream_error = exc
+            finally:
+                if isinstance(public_events, Generator):
+                    try:
+                        public_events.close()
+                    except Exception as exc:
+                        if stream_error is None:
+                            stream_error = exc
 
-        timed_out = (
-            terminal is None
-            and deadline is not None
-            and (time.monotonic() >= deadline or isinstance(stream_error, AgentBackendTimeoutError))
+        timed_out = terminal is None and (
+            isinstance(stream_error, AgentBackendTimeoutError)
+            or (deadline is not None and time.monotonic() >= deadline)
         )
-        if timed_out or stream_error is not None:
+        if terminal is None and (timed_out or stream_error is not None):
             cancel_timeout = _FINALIZATION_CANCEL_WAIT_TIMEOUT_SECONDS
             if execution_timeout > 0:
                 cancel_timeout = min(cancel_timeout, float(execution_timeout))
@@ -1064,12 +1060,7 @@ class AgentAppRunner:
                     last_event_id = public_event.id
                 internal_events = self._event_adapter.adapt(public_event)
                 for internal_event in internal_events:
-                    if isinstance(
-                        internal_event,
-                        AgentBackendRunSucceededInternalEvent
-                        | AgentBackendRunFailedInternalEvent
-                        | AgentBackendRunCancelledInternalEvent,
-                    ):
+                    if isinstance(internal_event, _TerminalEvent):
                         # A terminal frame may already have arrived when stop
                         # becomes visible. Keep the observed runtime result.
                         terminal = internal_event
@@ -1209,9 +1200,7 @@ class AgentAppRunner:
 
     def _finish_stopped_terminal(
         self,
-        terminal: AgentBackendRunSucceededInternalEvent
-        | AgentBackendRunFailedInternalEvent
-        | AgentBackendRunCancelledInternalEvent,
+        terminal: _TerminalEvent,
         *,
         dify_context: DifyRunContext,
         session_scope: AgentAppSessionScope,

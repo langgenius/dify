@@ -123,7 +123,7 @@ function RetrievalResultSession() {
 
   return (
     <>
-      <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
+      <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden ps-3">
         <h2 className="shrink-0 system-sm-semibold leading-5 text-text-primary">
           {selected?.kind === 'research'
             ? t(($) => $['retrievalTest.researchResult'], { ns: 'knowledgeRetrieval' })
@@ -165,7 +165,7 @@ function RetrievalResultSession() {
       {selectedQueryImages.length > 0 && (
         <ul
           aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
-          className="flex shrink-0 gap-2 overflow-x-auto pl-3"
+          className="flex shrink-0 gap-2 overflow-x-auto ps-3"
         >
           {selectedQueryImages.map((image) => (
             <li key={image.uploadFileId} className="shrink-0">
@@ -264,7 +264,7 @@ function RetrievalResultSession() {
         {currentEvidence.length > 0 && (
           <div className={cn(selectedResearchTask && 'mt-3')}>
             {selectedResearchActive && (
-              <h3 className="flex h-6 items-start pb-2 pl-3 system-xs-medium text-text-tertiary">
+              <h3 className="flex h-6 items-start ps-3 pb-2 system-xs-medium text-text-tertiary">
                 {t(($) => $['retrievalTest.foundSoFar'], {
                   ns: 'knowledgeRetrieval',
                   count: currentEvidence.length,
@@ -298,7 +298,7 @@ function RetrievalResultSession() {
       </div>
 
       {!showAll && (currentEvidence.length > initialEvidenceCount || hasMoreEvidencePages) && (
-        <div className="shrink-0 pl-1">
+        <div className="shrink-0 ps-1">
           <button
             type="button"
             className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
@@ -314,7 +314,7 @@ function RetrievalResultSession() {
       )}
 
       {showAll && (traceHasNextPage || researchHasNextPage) && (
-        <div className="shrink-0 pl-1">
+        <div className="shrink-0 ps-1">
           <Button
             loading={traceIsFetchingNextPage || researchIsFetchingNextPage}
             onClick={loadMoreEvidence}

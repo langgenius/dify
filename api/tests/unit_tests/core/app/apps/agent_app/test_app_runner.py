@@ -16,7 +16,9 @@ from typing import Any, override
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
+import httpx
 import pytest
+from dify_agent.client import Client
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
 from dify_agent.protocol import (
@@ -47,17 +49,20 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
 )
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session
+from sqlalchemy import event, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import (
     AgentBackendError,
+    AgentBackendInternalEvent,
+    AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
     AgentBackendStreamInternalEvent,
     AgentBackendTimeoutError,
     AgentBackendTransportError,
+    DifyAgentBackendRunClient,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
@@ -105,9 +110,10 @@ from models.agent_config_entities import (
 from models.enums import ConversationFromSource
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Conversation, Message, MessageAgentThought
+from repositories.message_repository import MessageRepository
 from services.agent.roster_service import AgentRosterService
 from services.tracing.adapters import StoredPolicyTraceScopes
-from tests.helpers.unit.model_factories import make_app, make_conversation
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation
 from tests.helpers.unit.services.tracing_ports import RecordingTracingHooks, untraced_scopes
 
 
@@ -693,7 +699,7 @@ def _compatible_session_snapshot() -> SessionSnapshot:
 
 
 def _runner(
-    client: FakeAgentBackendRunClient,
+    client: AgentBackendRunClient,
     store: _FakeSessionStore,
     *,
     text_delta_debounce_seconds: float = 0,
@@ -1737,10 +1743,18 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
 
 
 class _FinalizationClient(_RecordingFakeAgentBackendRunClient):
-    def __init__(self, outcome: str, *, scoped_session: Session, cancel_fails: bool = False) -> None:
+    def __init__(
+        self,
+        outcome: str,
+        *,
+        scoped_session: Session,
+        check_chat_history: Callable[[], None],
+        cancel_fails: bool = False,
+    ) -> None:
         super().__init__(run_id="run-1")
         self.outcome = outcome
         self.scoped_session = scoped_session
+        self.check_chat_history = check_chat_history
         self.cancel_fails = cancel_fails
 
     @override
@@ -1763,6 +1777,7 @@ class _FinalizationClient(_RecordingFakeAgentBackendRunClient):
         # These real process events would create thoughts on the normal chat path.
         process_events = iter(_ProcessStreamingFakeAgentBackendRunClient().stream_events(run_id))
         yield from (event for event in process_events if not isinstance(event, RunSucceededEvent))
+        self.check_chat_history()
         snapshot = SessionSnapshot(layers={"history": {"finalization": "FINISHED"}})
         usage = AgentRunUsage(prompt_tokens=13, completion_tokens=8)
         if self.outcome == "stream_error":
@@ -1830,11 +1845,12 @@ def test_finalization_preserves_chat_records_and_binding_history(
     expected_error: type[Exception] | None,
     expected_message: str | None,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     config_overrides: Callable[..., None],
 ) -> None:
-    """Require each backend outcome's exact error while preserving existing chat state."""
+    """Retain only the existing chat history during and after each finalization outcome."""
     config_overrides(APP_MAX_EXECUTION_TIME=60)
     history = _compatible_session_snapshot()
     workspace = AgentWorkspace(
@@ -1868,8 +1884,14 @@ def test_finalization_preserves_chat_records_and_binding_history(
         home_snapshot_id="home-1",
         agent_workspace_binding_id=binding.id,
     )
+    existing_message = _message_record()
+    existing_message.from_source = ConversationFromSource.CONSOLE
+    existing_message.from_account_id = "user-1"
+    existing_message.from_end_user_id = None
+    existing_message.invoke_from = ModelInvokeFrom.DEBUGGER
     sqlite_session.add_all(
         [
+            make_account(account_id="user-1"),
             make_app(mode=AppMode.AGENT),
             make_conversation(
                 conversation_id="conv-1",
@@ -1878,7 +1900,7 @@ def test_finalization_preserves_chat_records_and_binding_history(
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id="user-1",
             ),
-            _message_record(),
+            existing_message,
             workspace,
             binding,
             draft,
@@ -1891,6 +1913,25 @@ def test_finalization_preserves_chat_records_and_binding_history(
     ]
     sqlite_session.rollback()
 
+    history_checked = False
+
+    def check_chat_history() -> None:
+        """Read committed history from a fresh session before the runtime emits its terminal event."""
+        nonlocal history_checked
+        page = MessageRepository(session_factory=sqlite_session_factory).get_console_message_page(
+            app_id="app-1",
+            app_owner_tenant_id="tenant-1",
+            account_id="user-1",
+            conversation_id="conv-1",
+            first_id=None,
+            limit=20,
+        )
+        assert [(item.record.id, item.record.query) for item in page.data] == [("msg-1", "hello")]
+        with sqlite_session_factory() as observer:
+            assert observer.scalar(select(func.count()).select_from(Message)) == 1
+            assert observer.scalar(select(func.count()).select_from(MessageAgentThought)) == 0
+        history_checked = True
+
     def resolve_model_profile(**_kwargs: object) -> ModelRuntimeProfile:
         """Open a scoped read during runtime assembly, as model and tool resolution may do."""
         assert sqlite_session.scalar(select(Conversation.id)) == "conv-1"
@@ -1901,7 +1942,9 @@ def test_finalization_preserves_chat_records_and_binding_history(
     hooks = RecordingTracingHooks(None)
     trace_app = Flask(__name__)
     bind_tracing(trace_app, scopes=StoredPolicyTraceScopes(untraced_scopes()), hooks=hooks)
-    client = _FinalizationClient(outcome, scoped_session=sqlite_session, cancel_fails=cancel_fails)
+    client = _FinalizationClient(
+        outcome, scoped_session=sqlite_session, check_chat_history=check_chat_history, cancel_fails=cancel_fails
+    )
     runner = AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(),
         agent_backend_client=client,
@@ -1912,6 +1955,7 @@ def test_finalization_preserves_chat_records_and_binding_history(
     expectation = nullcontext() if expected_error is None else pytest.raises(expected_error, match=expected_message)
     with trace_app.app_context(), expectation as exc_info:
         _run_finalization(runner)
+    assert history_checked
     if expected_error is not None:
         assert exc_info is not None
         assert type(exc_info.value) is expected_error
@@ -1940,21 +1984,83 @@ def test_finalization_preserves_chat_records_and_binding_history(
     assert after == before
 
 
+@pytest.mark.parametrize("close_fails", [False, True])
+def test_finalization_closes_event_stream_before_cancelling_after_adapter_error(
+    close_fails: bool,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cancel from the offending event after releasing the stream and retain the adapter error."""
+    config_overrides(APP_MAX_EXECUTION_TIME=60)
+    adapter_error = RuntimeError("event adaptation failed")
+    original_adapt = AgentBackendRunEventAdapter.adapt
+    stream_closed = False
+
+    def adapt(self: AgentBackendRunEventAdapter, event: RunEvent) -> list[AgentBackendInternalEvent]:
+        if isinstance(event, PydanticAIStreamRunEvent):
+            raise adapter_error
+        return original_adapt(self, event)
+
+    class ObservedStreamClient(_RecordingFakeAgentBackendRunClient):
+        @override
+        def stream_events(
+            self,
+            run_id: str,
+            *,
+            after: str | None = None,
+            timeout_seconds: float | None = None,
+            should_stop: Callable[[], bool] | None = None,
+        ) -> Iterator[RunEvent]:
+            nonlocal stream_closed
+            try:
+                yield from _ProcessStreamingFakeAgentBackendRunClient().stream_events(
+                    run_id, after=after, timeout_seconds=timeout_seconds, should_stop=should_stop
+                )
+            finally:
+                stream_closed = True
+                if close_fails:
+                    raise AgentBackendTransportError("response close failed")
+
+        @override
+        def cancel_run_and_wait(
+            self,
+            run_id: str,
+            request: CancelRunRequest | None = None,
+            *,
+            after: str | None = None,
+            timeout_seconds: float | None = None,
+        ) -> RunCancelledEvent:
+            assert stream_closed
+            return super().cancel_run_and_wait(run_id, request, after=after, timeout_seconds=timeout_seconds)
+
+    monkeypatch.setattr(AgentBackendRunEventAdapter, "adapt", adapt)
+    client = ObservedStreamClient(run_id="run-1")
+    with pytest.raises(RuntimeError, match="event adaptation failed") as caught:
+        _run_finalization(_runner(client, _FakeSessionStore()))
+
+    assert caught.value is adapter_error
+    assert client.cancelled_run_ids == ["run-1"]
+    assert client.cancel_after == ["2-0"]
+    assert client.cancel_timeouts == [5.0]
+
+
 @pytest.mark.parametrize(
-    ("stream_error", "stream_end"),
+    ("execution_timeout", "stream_error", "stream_end"),
     [
-        (None, 101.0),
-        (AgentBackendTimeoutError("SSE stream exceeded its timeout"), nextafter(101.0, 100.0)),
+        (1, None, 101.0),
+        (1, AgentBackendTimeoutError("SSE stream exceeded its timeout"), nextafter(101.0, 100.0)),
+        (0, AgentBackendTimeoutError("SSE transport timed out"), 100.5),
     ],
 )
-def test_finalization_cancels_the_created_run_at_its_execution_deadline(
+def test_finalization_cancels_the_created_run_on_stream_timeout(
+    execution_timeout: int,
     stream_error: Exception | None,
     stream_end: float,
     config_overrides: Callable[..., None],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Use the budget left after run creation and cancel on either deadline signal."""
-    config_overrides(APP_MAX_EXECUTION_TIME=1)
+    """Use the remaining budget if configured and cancel on deadline or transport timeout."""
+    config_overrides(APP_MAX_EXECUTION_TIME=execution_timeout)
     client = _RecordingFakeAgentBackendRunClient(run_id="run-1")
     now = 100.0
     monkeypatch.setattr(app_runner_module.time, "monotonic", lambda: now)
@@ -1962,7 +2068,7 @@ def test_finalization_cancels_the_created_run_at_its_execution_deadline(
 
     def create_run(request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
         nonlocal now
-        assert timeout_seconds == 1.0
+        assert timeout_seconds == (1.0 if execution_timeout else None)
         now = 100.25
         return create(request, timeout_seconds=timeout_seconds)
 
@@ -1973,10 +2079,10 @@ def test_finalization_cancels_the_created_run_at_its_execution_deadline(
         timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        """Report EOF or an SDK deadline just before the runner's clock reaches it."""
+        """Report EOF at the execution deadline or an SDK timeout."""
         nonlocal now
         assert after is None
-        assert timeout_seconds == 0.75
+        assert timeout_seconds == (0.75 if execution_timeout else None)
         assert should_stop is None
         yield RunStartedEvent(id="3-0", run_id=run_id)
         now = stream_end
@@ -1991,8 +2097,56 @@ def test_finalization_cancels_the_created_run_at_its_execution_deadline(
     assert caught.value.__cause__ is stream_error
     assert client.cancelled_run_ids == ["run-1"]
     assert client.cancel_after == ["3-0"]
-    assert client.cancel_timeouts == [1.0]
+    assert client.cancel_timeouts == ([1.0] if execution_timeout else [5.0])
     assert store.saved == []
+
+
+def test_finalization_cancels_and_maps_exhausted_sse_read_timeouts(
+    config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Keep the timeout classification across the SDK and API wrapper before the app deadline."""
+    config_overrides(APP_MAX_EXECUTION_TIME=60)
+    monkeypatch.setattr("dify_agent.client._client._sleep_sync", lambda _seconds: None)
+
+    class StalledEventStream(httpx.SyncByteStream):
+        @override
+        def __iter__(self) -> Iterator[bytes]:
+            yield b": heartbeat\n\n"
+            raise httpx.ReadTimeout("stream stalled")
+
+    cancelled = RunCancelledEvent(id="1-0", run_id="run-1")
+    responses = iter(
+        [
+            httpx.Response(201, json={"run_id": "run-1", "status": "running"}),
+            httpx.Response(200, stream=StalledEventStream()),
+            httpx.Response(200, stream=StalledEventStream()),
+            httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"}),
+            httpx.Response(200, text=f"data: {cancelled.model_dump_json()}\n\n"),
+        ]
+    )
+    requests: list[tuple[str, str]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        return next(responses)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http_client:
+        sdk = Client(base_url="http://agent-backend", sync_http_client=http_client)
+        client = DifyAgentBackendRunClient(sdk, stream_max_reconnects=1)
+        with pytest.raises(AgentBackendError, match=r"^Build chat finalization timed out\.$") as caught:
+            _run_finalization(_runner(client, _FakeSessionStore()))
+
+    cause = caught.value.__cause__
+    assert isinstance(cause, AgentBackendTimeoutError)
+    assert str(cause) == "SSE stream reconnect attempts exhausted"
+    assert requests == [
+        ("POST", "/runs"),
+        ("GET", "/runs/run-1/events/sse"),
+        ("GET", "/runs/run-1/events/sse"),
+        ("POST", "/runs/run-1/cancel"),
+        ("GET", "/runs/run-1/events/sse"),
+    ]
+    assert "Failed to cancel Agent App finalization run" not in caplog.text
 
 
 def test_finalization_skips_event_stream_after_run_creation_exhausts_budget(

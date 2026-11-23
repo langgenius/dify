@@ -20,6 +20,7 @@ from core.human_input_v2.entities import DebugChannel, EmailProviderType, IMProv
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared import AccountId, TenantId
 from enums import DeploymentEdition
+from extensions.ext_mail import mail
 from graphon.variable_loader import VariableLoader
 from libs.key_providers.rsa_key_provider import RSAKeyProvider
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole
@@ -90,6 +91,13 @@ def channel_client(
         "build_human_input_email_channel_management_service",
         lambda: HumanInputEmailChannelManagementService(
             ResendProviderGateway(), session_factory=sqlite_session_factory
+        ),
+    )
+    monkeypatch.setattr(
+        channel_controller,
+        "build_message_template_test_service",
+        lambda tenant_id, account_id, account_email: _build_template_service(
+            sqlite_session_factory, tenant_id=tenant_id, account_id=account_id, account_email=account_email
         ),
     )
     return template_console_app.test_client(), account
@@ -204,6 +212,7 @@ def test_test_channel_discovery_requires_dify_authentication_before_channel_read
 
     monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", unexpected_read)
     monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", unexpected_read)
+    monkeypatch.setattr(channel_controller, "build_message_template_test_service", unexpected_read)
     application = Flask(__name__)
     LoginManager(application)
     application.register_blueprint(console_bp)
@@ -213,19 +222,71 @@ def test_test_channel_discovery_requires_dify_authentication_before_channel_read
     assert response.status_code == 401
 
 
-def test_enterprise_workspace_channel_discovery_preserves_edition_admission(
+@pytest.mark.parametrize("mail_available", [False, True])
+@pytest.mark.parametrize("role", list(TenantAccountRole))
+def test_enterprise_workspace_members_discover_deployment_test_channels(
     channel_client: tuple[FlaskClient, Account],
+    sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
+    mail_available: bool,
+    role: TenantAccountRole,
 ) -> None:
-    client, _account = channel_client
+    client, account = channel_client
+    account.role = role
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
-    assert client.get(_TEST_CHANNELS_URL).status_code == 501
+    monkeypatch.setattr(mail, "is_inited", lambda: mail_available)
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            HumanInputIMChannel(
+                owner_key="deployment",
+                provider=IMProvider.FEISHU,
+                provider_tenant_id="enterprise-feishu",
+                app_identifier="enterprise-app",
+                webhook_id="enterprise-private-webhook",
+                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="not-decryptable"),
+                status=IMChannelStatus.CONNECTED,
+            )
+        )
+
+    response = client.get(_TEST_CHANNELS_URL)
+
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json() == {"channels": ["email", "feishu"] if mail_available else ["feishu"]}
+    assert client.get("/console/api/workspaces/current/human-input/v2/channels").status_code == 501
 
 
-@pytest.fixture
-def template_service() -> MessageTemplateTestService:
-    sessions = sessionmaker()
+@pytest.mark.parametrize("mail_available", [False, True])
+def test_enterprise_test_channel_discovery_does_not_fall_back_to_workspace_configuration(
+    channel_client: tuple[FlaskClient, Account],
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    mail_available: bool,
+) -> None:
+    client, account = channel_client
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(mail, "is_inited", lambda: mail_available)
+    tenant_id = account.current_tenant_id
+    assert tenant_id is not None
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            HumanInputEmailProvider(
+                tenant_id=tenant_id,
+                provider=EmailProviderType.RESEND,
+                sender_email="sender@example.com",
+                sender_name="Sender",
+                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="not-decryptable"),
+            )
+        )
 
+    response = client.get(_TEST_CHANNELS_URL)
+
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json() == {"channels": ["email"] if mail_available else []}
+
+
+def _build_template_service(
+    sessions: sessionmaker[Session], *, tenant_id: str, account_id: str, account_email: str
+) -> MessageTemplateTestService:
     def build_adapter(_channel: IMChannel) -> IMProviderAdapter:
         raise AssertionError("Controller dispatch must not resolve a provider")
 
@@ -234,18 +295,25 @@ def template_service() -> MessageTemplateTestService:
 
     return MessageTemplateTestService(
         session_factory=sessions,
-        tenant_id=TenantId("tenant-id"),
-        account_id=AccountId("editor-id"),
-        account_email="editor@example.com",
+        tenant_id=TenantId(tenant_id),
+        account_id=AccountId(account_id),
+        account_email=account_email,
         email_repository_factory=SQLAlchemyEmailChannelRepository,
         email_gateway=ResendProviderGateway(),
         im_adapter_factory=build_adapter,
         form_service=HumanInputDeliveryTestFormService(
             session_factory=sessions,
-            tenant_id=TenantId("tenant-id"),
-            account_id=AccountId("editor-id"),
+            tenant_id=TenantId(tenant_id),
+            account_id=AccountId(account_id),
             variable_loader_factory=variable_loader,
         ),
+    )
+
+
+@pytest.fixture
+def template_service() -> MessageTemplateTestService:
+    return _build_template_service(
+        sessionmaker(), tenant_id="tenant-id", account_id="editor-id", account_email="editor@example.com"
     )
 
 

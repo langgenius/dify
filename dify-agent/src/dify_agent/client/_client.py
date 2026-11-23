@@ -15,8 +15,8 @@ import asyncio
 import inspect
 import json
 import time
-from collections.abc import AsyncGenerator, Callable, Iterator
-from contextlib import aclosing
+from collections.abc import AsyncGenerator, Callable, Generator, Iterator
+from contextlib import aclosing, closing
 from json import JSONDecodeError
 from types import TracebackType
 from typing import Any, Self, TypeVar, cast
@@ -89,7 +89,7 @@ class DifyAgentTimeoutError(DifyAgentClientError):
 
 
 class DifyAgentStreamError(DifyAgentClientError):
-    """Raised for malformed SSE frames or exhausted SSE reconnect attempts."""
+    """Raised for malformed SSE frames, caller cancellation, or non-timeout reconnect exhaustion."""
 
 
 class _ReconnectableStreamError(Exception):
@@ -469,13 +469,16 @@ class Client:
             == "cancelled"
         ):
             resume_after = None
-        for event in self.stream_events_sync(
-            run_id, after=resume_after, timeout_seconds=_time_remaining(deadline, timeout_message)
-        ):
-            if isinstance(event, RunCancelledEvent):
-                return event
-            if event.type in _TERMINAL_EVENT_TYPES:
-                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        with closing(
+            self.stream_events_sync(
+                run_id, after=resume_after, timeout_seconds=_time_remaining(deadline, timeout_message)
+            )
+        ) as events:
+            for event in events:
+                if isinstance(event, RunCancelledEvent):
+                    return event
+                if event.type in _TERMINAL_EVENT_TYPES:
+                    raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
         raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
 
     async def get_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
@@ -660,8 +663,10 @@ class Client:
         DTO validation failures, and malformed SSE frames are not retried.
         ``max_reconnects`` limits consecutive reconnects that deliver no event; the
         count resets whenever an event arrives, so a run that keeps progressing is
-        not failed by periodic disconnects (for example proxy connection limits). By
-        default, ``until_terminal=True`` closes the response before yielding a
+        not failed by periodic disconnects (for example proxy connection limits).
+        Exhausting the limit raises ``DifyAgentTimeoutError`` if the last attempt
+        timed out and ``DifyAgentStreamError`` for other failures. By default,
+        ``until_terminal=True`` closes the response before yielding a
         succeeded, failed, or cancelled terminal event and ends iteration immediately
         after that event. With
         ``until_terminal=False``, iteration may consume the remainder of the current
@@ -669,19 +674,26 @@ class Client:
         response ends normally or raises a reconnectable transport error.
 
         A non-negative ``timeout_seconds`` sets a deadline for HTTP I/O, retries
-        and backoff. While the response is open, each read uses the remaining
-        budget on the same connection.
+        and backoff. Each reconnect delay is capped by the remaining budget.
+        While the response is open, each read uses the remaining
+        budget on the same connection. The client checks ``should_stop`` and
+        the deadline before connecting, before reconnect sleeps, on each chunk,
+        and immediately before yielding each decoded or flushed event. With
+        ``until_terminal=True``, the client also checks after closing the response
+        and before yielding the terminal event. A stop condition closes any
+        active response and ends iteration with
+        ``DifyAgentStreamError`` or ``DifyAgentTimeoutError``.
 
         If you stop consuming early, close the returned async generator with
         ``await events.aclose()`` or ``contextlib.aclosing`` to release the active
         response promptly without reconnecting. HTTPX errors during caller-driven
         cleanup raise ``DifyAgentTimeoutError`` or ``DifyAgentStreamError``.
         """
-        _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
+        _validate_stream_options(max_reconnects, reconnect_delay_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
         terminal_event_seen = False
-        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+        deadline = _deadline_after(timeout_seconds)
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
             terminal_event: RunEvent | None = None
@@ -703,22 +715,24 @@ class Client:
                                 break
                         yield event
             except _ReconnectableStreamError as exc:
-                if not terminal_event_seen:
-                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                    if not reconnect:
-                        raise exc.error from exc
-                    reconnect_attempts = _next_reconnect_attempt(
-                        reconnect_attempts,
-                        max_reconnects=max_reconnects,
-                        error=exc.error,
-                    )
-                    await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
-                    continue
+                if terminal_event_seen:
+                    return
+                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                if not reconnect:
+                    raise exc.error from exc
+                reconnect_attempts = _next_reconnect_attempt(
+                    reconnect_attempts,
+                    max_reconnects=max_reconnects,
+                    error=exc.error,
+                )
+                await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
+                continue
             except (DifyAgentTimeoutError, DifyAgentStreamError):
                 # A captured terminal event takes precedence over response cleanup errors.
                 if terminal_event is None:
                     raise
             if terminal_event is not None:
+                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                 yield terminal_event
             if terminal_event_seen:
                 return
@@ -743,32 +757,35 @@ class Client:
         until_terminal: bool = True,
         timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
-    ) -> Iterator[RunEvent]:
-        """Synchronous variant of ``stream_events`` with the same deadline and reconnect rules."""
-        _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
+    ) -> Generator[RunEvent]:
+        """Synchronous variant of ``stream_events`` with the same deadline, stop, and reconnect rules.
+
+        Use ``events.close()`` or ``contextlib.closing`` to release the response when
+        consumption ends early. HTTPX errors during caller-driven cleanup raise
+        ``DifyAgentTimeoutError`` or ``DifyAgentStreamError``.
+        """
+        _validate_stream_options(max_reconnects, reconnect_delay_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
         terminal_event_seen = False
-        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+        deadline = _deadline_after(timeout_seconds)
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+            terminal_event: RunEvent | None = None
             try:
-                for event in self._stream_events_once_sync(
-                    run_id,
-                    after=cursor,
-                    deadline=deadline,
-                    should_stop=should_stop,
-                ):
-                    if event.id is not None:
-                        cursor = event.id
-                    # The budget bounds consecutive failed connections; a delivered event proves the
-                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
-                    reconnect_attempts = 0
-                    if event.type in _TERMINAL_EVENT_TYPES:
-                        terminal_event_seen = True
-                    yield event
-                    if until_terminal and terminal_event_seen:
-                        return
+                with closing(
+                    self._stream_events_once_sync(run_id, after=cursor, deadline=deadline, should_stop=should_stop)
+                ) as connection:
+                    for event in connection:
+                        if event.id is not None:
+                            cursor = event.id
+                        reconnect_attempts = 0
+                        if event.type in _TERMINAL_EVENT_TYPES:
+                            terminal_event_seen = True
+                            if until_terminal:
+                                terminal_event = event
+                                break
+                        yield event
             except _ReconnectableStreamError as exc:
                 if terminal_event_seen:
                     return
@@ -782,6 +799,13 @@ class Client:
                 )
                 _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
+            except (DifyAgentTimeoutError, DifyAgentStreamError):
+                # A captured terminal event takes precedence over response cleanup errors.
+                if terminal_event is None:
+                    raise
+            if terminal_event is not None:
+                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                yield terminal_event
             if terminal_event_seen:
                 return
             if not reconnect:
@@ -803,15 +827,20 @@ class Client:
     ) -> RunStatusResponse:
         """Check the current status, then poll for a terminal status until the deadline.
 
+        A positive timeout covers response cleanup. Return a terminal status
+        only while budget remains after the response closes.
+
         With a zero timeout, query once using the configured HTTP request timeout.
         A terminal run returns immediately and a nonterminal run raises DifyAgentTimeoutError.
         """
-        _validate_wait_options(poll_interval_seconds, timeout_seconds)
-        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+        _validate_poll_interval(poll_interval_seconds)
+        deadline = _deadline_after(timeout_seconds)
         timeout_message = f"run {run_id!r} did not finish before timeout"
         while True:
             request_timeout = None if timeout_seconds == 0 else _time_remaining(deadline, timeout_message)
             status = await self.get_run(run_id, timeout_seconds=request_timeout)
+            if timeout_seconds != 0:
+                _time_remaining(deadline, timeout_message)
             if status.status in _TERMINAL_RUN_STATUSES:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
@@ -830,12 +859,14 @@ class Client:
         timeout_seconds: float | None = None,
     ) -> RunStatusResponse:
         """Synchronous variant of ``wait_run``."""
-        _validate_wait_options(poll_interval_seconds, timeout_seconds)
-        deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
+        _validate_poll_interval(poll_interval_seconds)
+        deadline = _deadline_after(timeout_seconds)
         timeout_message = f"run {run_id!r} did not finish before timeout"
         while True:
             request_timeout = None if timeout_seconds == 0 else _time_remaining(deadline, timeout_message)
             status = self.get_run_sync(run_id, timeout_seconds=request_timeout)
+            if timeout_seconds != 0:
+                _time_remaining(deadline, timeout_message)
             if status.status in _TERMINAL_RUN_STATUSES:
                 return status
             sleep_for = _next_sleep_seconds(poll_interval_seconds, deadline)
@@ -856,7 +887,10 @@ class Client:
     ) -> AsyncGenerator[RunEvent]:
         """Yield events from one connection, bounding all I/O by its deadline.
 
-        Caller interruption must not make response cleanup failures reconnectable.
+        Stop conditions are checked per chunk (for comment/heartbeat chunks that
+        emit no events) and immediately before each decoded or flushed yield.
+        Caller interruptions and already-raised stop or stream errors take
+        precedence over retrying a failed response cleanup.
         """
         client = self._get_async_http_client()
         timeout = httpx.Timeout(self._stream_timeout)
@@ -868,6 +902,7 @@ class Client:
             timeout=timeout,
         )
         caller_interrupted = False
+        stop_error: DifyAgentStreamError | DifyAgentTimeoutError | None = None
         try:
             async with stream_async(client, request, timeout, _request_budget(deadline)) as response:
                 try:
@@ -876,24 +911,30 @@ class Client:
                     _raise_for_stream_status(response)
                     decoder = _SSEDecoder()
                     async for text in response.aiter_text():
+                        # Check per chunk so comment/heartbeat chunks still observe cancellation and deadlines.
                         _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                         for event in decoder.feed_text(text):
+                            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                             yield event
                     for event in decoder.finish():
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                         yield event
                 except (GeneratorExit, asyncio.CancelledError):
                     caller_interrupted = True
                     raise
-        except DifyAgentHTTPError:
-            raise
-        except DifyAgentStreamError:
-            raise
+                except (DifyAgentStreamError, DifyAgentTimeoutError) as exc:
+                    stop_error = exc
+                    raise
         except httpx.TimeoutException as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             timeout_error = DifyAgentTimeoutError("SSE stream timed out")
             if caller_interrupted:
                 raise timeout_error from exc
             raise _ReconnectableStreamError(timeout_error) from exc
         except (httpx.TransportError, httpx.StreamError) as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
             stream_error = DifyAgentStreamError(f"SSE stream failed: {exc}")
             if caller_interrupted:
                 raise stream_error from exc
@@ -906,8 +947,13 @@ class Client:
         after: str,
         deadline: float | None,
         should_stop: Callable[[], bool] | None,
-    ) -> Iterator[RunEvent]:
-        """Yield events from one sync connection, bounding all I/O by its deadline."""
+    ) -> Generator[RunEvent]:
+        """Yield events from one sync connection, bounding all I/O by its deadline.
+
+        Stop conditions are checked per chunk and immediately before each decoded
+        or flushed yield. Caller interruptions and already-raised stop or stream
+        errors take precedence over retrying a failed response cleanup.
+        """
         client = self._get_sync_http_client()
         timeout = httpx.Timeout(self._stream_timeout)
         request = client.build_request(
@@ -917,26 +963,44 @@ class Client:
             headers=self._merged_headers(),
             timeout=timeout,
         )
+        caller_interrupted = False
+        stop_error: DifyAgentStreamError | DifyAgentTimeoutError | None = None
         try:
             with stream_sync(client, request, timeout, _request_budget(deadline)) as response:
-                if response.status_code >= 400:
-                    _ = response.read()
-                _raise_for_stream_status(response)
-                decoder = _SSEDecoder()
-                for text in response.iter_text():
-                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                    yield from decoder.feed_text(text)
-                yield from decoder.finish()
-        except DifyAgentHTTPError:
-            raise
-        except DifyAgentStreamError:
-            raise
+                try:
+                    if response.status_code >= 400:
+                        _ = response.read()
+                    _raise_for_stream_status(response)
+                    decoder = _SSEDecoder()
+                    for text in response.iter_text():
+                        # Check per chunk so comment/heartbeat chunks still observe cancellation and deadlines.
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                        for event in decoder.feed_text(text):
+                            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                            yield event
+                    for event in decoder.finish():
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                        yield event
+                except GeneratorExit:
+                    caller_interrupted = True
+                    raise
+                except (DifyAgentStreamError, DifyAgentTimeoutError) as exc:
+                    stop_error = exc
+                    raise
         except httpx.TimeoutException as exc:
-            raise _ReconnectableStreamError(DifyAgentTimeoutError("SSE stream timed out")) from exc
-        except httpx.TransportError as exc:
-            raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
-        except httpx.StreamError as exc:
-            raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
+            timeout_error = DifyAgentTimeoutError("SSE stream timed out")
+            if caller_interrupted:
+                raise timeout_error from exc
+            raise _ReconnectableStreamError(timeout_error) from exc
+        except (httpx.TransportError, httpx.StreamError) as exc:
+            if stop_error is not None:
+                raise stop_error from stop_error.__cause__
+            stream_error = DifyAgentStreamError(f"SSE stream failed: {exc}")
+            if caller_interrupted:
+                raise stream_error from exc
+            raise _ReconnectableStreamError(stream_error) from exc
 
     def _get_sync_http_client(self) -> httpx.Client:
         """Return an open sync HTTPX client, creating an owned one lazily."""
@@ -1118,23 +1182,19 @@ def _next_reconnect_attempt(
     max_reconnects: int | None,
     error: DifyAgentClientError,
 ) -> int:
-    """Increment reconnect attempts or raise when the configured budget is spent."""
+    """Count a reconnect, preserving timeout classification at retry exhaustion."""
     if max_reconnects is not None and reconnect_attempts >= max_reconnects:
-        raise DifyAgentStreamError("SSE stream reconnect attempts exhausted") from error
+        error_type = DifyAgentTimeoutError if isinstance(error, DifyAgentTimeoutError) else DifyAgentStreamError
+        raise error_type("SSE stream reconnect attempts exhausted") from error
     return reconnect_attempts + 1
 
 
-def _validate_stream_options(
-    max_reconnects: int | None,
-    reconnect_delay_seconds: float,
-    timeout_seconds: float | None,
-) -> None:
-    """Reject stream options that cannot produce deterministic reconnect behavior."""
+def _validate_stream_options(max_reconnects: int | None, reconnect_delay_seconds: float) -> None:
+    """Reject negative reconnect limits and delays."""
     if max_reconnects is not None and max_reconnects < 0:
         raise DifyAgentValidationError(detail="max_reconnects must be non-negative")
     if reconnect_delay_seconds < 0:
         raise DifyAgentValidationError(detail="reconnect_delay_seconds must be non-negative")
-    _validate_timeout_seconds(timeout_seconds)
 
 
 def _validate_timeout_seconds(timeout_seconds: float | None) -> None:
@@ -1143,6 +1203,7 @@ def _validate_timeout_seconds(timeout_seconds: float | None) -> None:
 
 
 def _deadline_after(timeout_seconds: float | None) -> float | None:
+    """Return a monotonic deadline for a validated timeout, or None for no deadline."""
     _validate_timeout_seconds(timeout_seconds)
     return time.monotonic() + timeout_seconds if timeout_seconds is not None else None
 
@@ -1183,11 +1244,10 @@ def _bounded_sleep_seconds(seconds: float, deadline: float | None) -> float:
     return max(0.0, min(seconds, deadline - time.monotonic()))
 
 
-def _validate_wait_options(poll_interval_seconds: float, timeout_seconds: float | None) -> None:
-    """Reject wait options that would make polling ambiguous."""
+def _validate_poll_interval(poll_interval_seconds: float) -> None:
+    """Reject a negative poll interval."""
     if poll_interval_seconds < 0:
         raise DifyAgentValidationError(detail="poll_interval_seconds must be non-negative")
-    _validate_timeout_seconds(timeout_seconds)
 
 
 def _next_sleep_seconds(poll_interval_seconds: float, deadline: float | None) -> float | None:

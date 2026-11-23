@@ -351,37 +351,39 @@ class _AsyncBody(httpx.AsyncByteStream):
 def stream_sync(
     client: httpx.Client, request: httpx.Request, timeout: httpx.Timeout, budget: RemainingTime | None
 ) -> Iterator[httpx.Response]:
+    """Open a synchronous response under the request budget and own its cleanup."""
     if budget is not None:
         _attach_deadline_backends(client)
-    with _use_budget(budget):
-        _update_timeouts(request, timeout)
-        response = client.send(request, stream=True)
+    response: httpx.Response | None = None
     try:
-        if budget is not None:
-            if budget() <= 0:
-                raise httpx.ReadTimeout(_EXPIRED)
-            assert isinstance(response.stream, httpx.SyncByteStream)
+        with _use_budget(budget):
+            _update_timeouts(request, timeout)
+            response = client.send(request, stream=True)
+            _limit(None, httpx.ReadTimeout)
+        if budget is not None and isinstance(response.stream, httpx.SyncByteStream):
             response.stream = _SyncBody(response.stream, response.request, timeout, budget)
         yield response
     finally:
-        response.close()
+        if response is not None:
+            response.close()
 
 
 @asynccontextmanager
 async def stream_async(
     client: httpx.AsyncClient, request: httpx.Request, timeout: httpx.Timeout, budget: RemainingTime | None
 ) -> AsyncIterator[httpx.Response]:
+    """Open an asynchronous response under the request budget and own its cleanup."""
     if budget is not None:
         _attach_deadline_backends(client)
-    with _use_budget(budget):
-        _update_timeouts(request, timeout)
-        response = await client.send(request, stream=True)
+    response: httpx.Response | None = None
     try:
-        if budget is not None:
-            if budget() <= 0:
-                raise httpx.ReadTimeout(_EXPIRED)
-            assert isinstance(response.stream, httpx.AsyncByteStream)
+        with _use_budget(budget):
+            _update_timeouts(request, timeout)
+            response = await client.send(request, stream=True)
+            _limit(None, httpx.ReadTimeout)
+        if budget is not None and isinstance(response.stream, httpx.AsyncByteStream):
             response.stream = _AsyncBody(response.stream, response.request, timeout, budget)
         yield response
     finally:
-        await response.aclose()
+        if response is not None:
+            await response.aclose()

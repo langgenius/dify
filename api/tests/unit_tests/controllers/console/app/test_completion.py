@@ -63,7 +63,8 @@ _MODEL_ID = "gpt-4o-mini"
         (InvokeBadRequestError("invalid model"), console_errors.CompletionRequestError, "invalid model"),
         (AgentBackendError("backend failed"), console_errors.CompletionRequestError, "backend failed"),
         (AgentWorkspaceError("binding unavailable"), console_errors.CompletionRequestError, "binding unavailable"),
-        (AgentBackendError(""), console_errors.CompletionRequestError, "Build chat finalization failed."),
+        (AgentBackendError(""), console_errors.CompletionRequestError, None),
+        (AgentWorkspaceError(""), console_errors.CompletionRequestError, None),
         (
             console_errors.CompletionRequestError("existing error"),
             console_errors.CompletionRequestError,
@@ -120,6 +121,8 @@ def test_chat_and_finalization_share_console_error_mapping(
         assert caught.value is error
     elif not isinstance(error, console_errors.CompletionRequestError):
         assert caught.value.__cause__ is error
+    if isinstance(error, AgentBackendError | AgentWorkspaceError) and not str(error):
+        description = "Build chat finalization failed." if finalization else "Agent request failed."
     if description is not None:
         assert isinstance(caught.value, HTTPException)
         assert caught.value.description == description

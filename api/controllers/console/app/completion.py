@@ -481,7 +481,8 @@ def _create_build_chat_finalization_message(
             app_model=app_model,
             conversation_id=debug_conversation_id,
             external_trace_id=get_external_trace_id(request),
-        )
+        ),
+        default_agent_error_message="Build chat finalization failed.",
     )
     return {"result": "success"}, 200
 
@@ -507,11 +508,13 @@ def _generate_chat_message(
     )
 
 
-def _run_console_chat_action[T](action: Callable[[], T]) -> T:
+def _run_console_chat_action[T](
+    action: Callable[[], T], *, default_agent_error_message: str = "Agent request failed."
+) -> T:
     """Run a synchronous Console chat action and translate its application errors.
 
-    Returns the action's result unchanged. Configuration ValueErrors propagate;
-    provider/workspace/backend errors use the existing Console HTTP contracts.
+    Returns the action's result unchanged. Configuration ValueErrors propagate.
+    Workspace or backend errors with empty messages use the supplied fallback.
     """
     try:
         return action()
@@ -537,7 +540,7 @@ def _run_console_chat_action[T](action: Callable[[], T]) -> T:
     except InvokeError as e:
         raise CompletionRequestError(e.description) from e
     except (AgentBackendError, AgentWorkspaceError) as e:
-        raise CompletionRequestError(str(e) or "Build chat finalization failed.") from e
+        raise CompletionRequestError(str(e) or default_agent_error_message) from e
     except ValueError as e:
         raise e
     except Exception as e:

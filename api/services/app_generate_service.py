@@ -167,9 +167,11 @@ class AppGenerateService:
     ) -> None:
         """Synchronously finalize an admitted Console account's build draft.
 
-        Requires its resolved debug conversation id. Quota and rate limits cover
-        the entire execution and are released/refunded through the shared guardrail
-        contract on failure. No chat message is generated.
+        Requires its resolved debug conversation id and shares ``generate``'s
+        admission guard. In Cloud, the guard reserves workflow quota before
+        rate-limit admission and commits it after acquiring a slot. On admission
+        failure, ``refund()`` releases the uncommitted reservation. The concurrency
+        slot covers the entire synchronous run and is released on exit.
         """
         cls._run_with_guardrails(
             app_model=app_model,

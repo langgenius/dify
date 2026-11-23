@@ -35,6 +35,11 @@ from core.app.apps.agent_app.app_generator import (
     AgentAppGeneratorError,
     AgentAppNotPublishedError,
 )
+from core.app.apps.agent_app.runtime_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequest,
+    AgentAppRuntimeRequestBuilder,
+)
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
@@ -1375,6 +1380,8 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
 ) -> None:
     """Preserve existing history across finalization and retry without input guards or chat writes."""
     app_model, user, draft = finalization_records
+    editor_id = user.id
+    assert draft.account_id == editor_id
     history = SessionSnapshot(
         layers={
             "history": HistoryState(
@@ -1401,7 +1408,7 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
         tenant_id="tenant",
         agent_id="agent1",
         app_id="app1",
-        account_id=user.id,
+        account_id=editor_id,
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
         conversation_id="conv",
     )
@@ -1418,6 +1425,19 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
 
     client = ObservingClient()
     monkeypatch.setattr(module, "create_agent_backend_run_client", lambda **_kwargs: client)
+
+    build = AgentAppRuntimeRequestBuilder.build
+
+    def check_editor_context(
+        self: AgentAppRuntimeRequestBuilder, context: AgentAppRuntimeBuildContext
+    ) -> AgentAppRuntimeRequest:
+        dify_context = context.dify_context
+        assert dify_context.user_id == editor_id
+        assert dify_context.user_from == UserFrom.ACCOUNT
+        assert dify_context.invoke_from == InvokeFrom.DEBUGGER
+        return build(self, context)
+
+    monkeypatch.setattr(AgentAppRuntimeRequestBuilder, "build", check_editor_context)
 
     def reject_input_guard(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Internal finalization invoked input moderation or annotation lookup")
@@ -1437,6 +1457,7 @@ def test_finalization_commits_mapping_and_retries_without_creating_chat_state(
     first_request_id = client.request.idempotency_key
     context = next(layer for layer in client.request.composition.layers if layer.name == "execution_context")
     assert context.config["agent_config_version_id"] == "build-1"
+    assert context.config["user_id"] == editor_id
     assert context.config["user_from"] == "account"
     assert context.config["invoke_from"] == "debugger"
     assert context.config["trace_id"] == "trace-1"
