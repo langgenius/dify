@@ -8,7 +8,7 @@ import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from enum import StrEnum
 from uuid import uuid4
 
 import pytest
@@ -24,7 +24,10 @@ _WAIT = 10.0
 # How long the second delivery is given to get past the first one's lock if it does not wait.
 _BLOCKED_FOR = 0.5
 
-Writer = Literal["single", "batch"]
+
+class Writer(StrEnum):
+    SINGLE = "single"
+    BATCH = "batch"
 
 
 def _seed_running_row(ids: dict[str, str]) -> None:
@@ -88,13 +91,13 @@ def _send(ids: dict[str, str], status: WorkflowNodeExecutionStatus, writer: Writ
         "creator_user_id": ids["account"],
         "creator_user_role": CreatorUserRole.ACCOUNT.value,
     }
-    if writer == "batch":
+    if writer == Writer.BATCH:
         return node_execution_tasks.save_workflow_node_executions_task.run(executions_data=[data], **common)
     return node_execution_tasks.save_workflow_node_execution_task.run(execution_data=data, **common)
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
-@pytest.mark.parametrize("live_writer", ["single", "batch"])
+@pytest.mark.parametrize("live_writer", list(Writer))
 @pytest.mark.parametrize(
     ("first", "second"),
     [
@@ -131,7 +134,7 @@ def test_overlapping_updates_never_move_a_finished_row_back(
     monkeypatch.setattr(node_execution_tasks, "_update_node_execution_from_domain", update_after_read)
 
     def writer_for(status: WorkflowNodeExecutionStatus) -> Writer:
-        return live_writer if status == WorkflowNodeExecutionStatus.RETRY else "single"
+        return live_writer if status == WorkflowNodeExecutionStatus.RETRY else Writer.SINGLE
 
     def send(status: WorkflowNodeExecutionStatus) -> bool:
         return _send(ids, status, writer_for(status))
