@@ -20,7 +20,9 @@ from controllers.console.workspace.error import SkillFilenameMissingError, Skill
 from controllers.console.wraps import (
     RBACPermission,
     edit_permission_required,
+    validate_request,
 )
+
 from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
@@ -858,7 +860,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
     @with_session
     def put(self, session: Session, request_context: RequestContext, agent_id: str):
         try:
-            payload = AgentSkillBindingsPayload.model_validate(console_ns.payload or {})
+            payload = validate_request(AgentSkillBindingsPayload)
             result = SkillManagementService(session=session).replace_agent_bindings(
                 tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
