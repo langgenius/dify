@@ -1397,7 +1397,8 @@ class TestAppDslService:
                             "subscription_id": "s",
                         },
                     },
-                ]
+                ],
+                "edges": [],
             }
         }
 
