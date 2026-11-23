@@ -3,7 +3,15 @@
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from redis.exceptions import RedisError
+from redis.exceptions import (
+    AuthenticationError,
+    AuthorizationError,
+    ClusterDownError,
+    ConnectionError,
+    ReadOnlyError,
+    TimeoutError,
+    TryAgainError,
+)
 
 from libs.datetime_utils import utc_now
 from services.retention.log_export_task import (
@@ -198,7 +206,10 @@ class RedisLogExportTasks[FiltersT]:
         try:
             renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
             return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
-        except RedisError as exc:
+        except (AuthenticationError, AuthorizationError):
+            # redis-py subclasses ConnectionError for credential failures.
+            raise
+        except (ConnectionError, TimeoutError, ReadOnlyError, ClusterDownError, TryAgainError) as exc:
             raise LogExportLeaseBusyError("Could not renew the log export lease.") from exc
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:

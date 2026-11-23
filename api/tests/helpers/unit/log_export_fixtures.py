@@ -19,8 +19,9 @@ class LogExportRedisIo:
     client: RedisClientWrapper
     cache: dict[str, str]
     get: MagicMock
-    renew: MagicMock
     reject_submission: bool = False
+    renew_calls: int = 0
+    renew_error: Exception | None = None
 
 
 @pytest.fixture
@@ -54,11 +55,16 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         cache[keys[0]] = args[2]
         return 1
 
+    def renew(**_arguments: object) -> int:
+        io.renew_calls += 1
+        if (error := io.renew_error) is not None:
+            raise error
+        return 1
+
     def unconfigured_script(**_arguments: object) -> int:
         """Permit registration when composing services, then fail if an unrelated script runs."""
         raise AssertionError("Unexpected Redis script execution in a log export test")
 
-    renew = MagicMock(return_value=1)
     scripts = {
         log_export_task_cache._SAVE_LOG_EXPORT_TASK: save,
         log_export_task_cache._CLAIM_LOG_EXPORT_TASK: claim,
@@ -72,7 +78,7 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         patch.object(client, "delete", side_effect=cache.pop),
         patch.object(client, "register_script", side_effect=lambda script: scripts.get(script, unconfigured_script)),
     ):
-        io = LogExportRedisIo(client, cache, get, renew)
+        io = LogExportRedisIo(client, cache, get)
         yield io
 
 
