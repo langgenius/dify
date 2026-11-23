@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Ваша учетная запись Dify и связанные с ней пользовательские данные.",
   "account.myAccount": "Моя учетная запись",
   "account.name": "Имя",
+  "account.nameLengthInvalid": "Имя должно содержать от {{min}} до {{max}} символов.",
   "account.newPassword": "Новый пароль",
   "account.notEqual": "Два пароля различаются.",
   "account.password": "Пароль",

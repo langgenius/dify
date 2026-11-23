@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "حساب Dify شما و داده‌های کاربری مرتبط.",
   "account.myAccount": "حساب من",
   "account.name": "نام",
+  "account.nameLengthInvalid": "نام باید بین {{min}} تا {{max}} نویسه باشد.",
   "account.newPassword": "رمز عبور جدید",
   "account.notEqual": "دو رمز عبور متفاوت هستند.",
   "account.password": "رمز عبور",

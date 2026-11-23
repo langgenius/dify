@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "The user data of your account.",
   "account.myAccount": "My Account",
   "account.name": "Name",
+  "account.nameLengthInvalid": "De naam moet tussen {{min}} en {{max}} tekens bevatten.",
   "account.newPassword": "New password",
   "account.notEqual": "Two passwords are different.",
   "account.password": "Password",

@@ -2,6 +2,7 @@ import type { WebAccountProfileResponse } from '@dify/contracts/api/web/types.ge
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { installFakeApi, route } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import Account from '../index'
 
@@ -36,19 +37,21 @@ function mockAccount({ isPasswordSet = false, failPassword = false } = {}) {
     return Response.json(profile)
   })
   const getProfile = vi.fn(() => Response.json(profile))
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = new Request(input, init)
-    const path = new URL(request.url).pathname
-    if (path.endsWith('/system-features')) {
-      return Response.json({ ...createSystemFeaturesFixture(), enable_email_password_login: true })
-    }
-    if (path.endsWith('/account/profile')) {
-      return request.method === 'PATCH' ? updateName(await request.json()) : getProfile()
-    }
-    if (path.endsWith('/account/password') && request.method === 'POST')
-      return updatePassword(request)
-    throw new Error(`Unexpected request: ${request.method} ${path}`)
-  })
+  onTestFinished(
+    installFakeApi({
+      routes: [
+        route('GET', 'public', '/system-features', () => ({
+          ...createSystemFeaturesFixture(),
+          enable_email_password_login: true,
+        })),
+        route('GET', 'public', '/account/profile', getProfile),
+        route('PATCH', 'public', '/account/profile', ({ body }) =>
+          updateName(body as { name: string }),
+        ),
+        route('POST', 'public', '/account/password', ({ request }) => updatePassword(request)),
+      ],
+    }),
+  )
   return { getProfile, updateName, updatePassword }
 }
 
@@ -84,6 +87,56 @@ it('saves the account name and refreshes the profile shown on the page', async (
   expect(requests.updateName).toHaveBeenCalledOnce()
   expect(requests.updateName).toHaveBeenCalledWith({ name: 'Ada Lovelace' })
   expect(requests.getProfile).toHaveBeenCalledTimes(2)
+})
+
+it('validates names before saving and lets the user correct the linked field error', async () => {
+  const requests = mockAccount()
+  const screen = await showAccount()
+  await screen.getByRole('button', { name: 'common.operation.edit' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'accountSettings.account.editName' })
+  const name = dialog.getByRole('textbox', { name: 'accountSettings.account.name' })
+  const save = dialog.getByRole('button', { name: 'common.operation.save' })
+
+  await name.fill('')
+  await expect.element(save, { timeout: 1000 }).toBeEnabled()
+  await save.click()
+  await expect.element(name).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(name).toHaveAccessibleDescription('login.error.nameEmpty')
+  expect(requests.updateName).not.toHaveBeenCalled()
+
+  for (const invalidName of ['Al', 'a'.repeat(31), '🤖🤖']) {
+    await name.fill(invalidName)
+    await save.click()
+    await expect.element(name).toHaveAttribute('aria-invalid', 'true')
+    await expect
+      .element(name)
+      .toHaveAccessibleDescription('accountSettings.account.nameLengthInvalid:{"min":3,"max":30}')
+    expect(requests.updateName).not.toHaveBeenCalled()
+  }
+
+  await name.fill(' A ')
+  await expect.element(name).not.toHaveAttribute('aria-invalid', 'true')
+  await save.click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(requests.updateName).toHaveBeenCalledExactlyOnceWith({ name: ' A ' })
+})
+
+it.each([
+  { kind: 'three-character', name: 'Ada' },
+  { kind: 'thirty-character', name: 'a'.repeat(30) },
+  { kind: 'three-emoji', name: '🤖'.repeat(3) },
+  { kind: 'thirty-emoji', name: '🤖'.repeat(30) },
+])('saves a $kind name at the supported Unicode length boundary', async ({ name }) => {
+  const requests = mockAccount()
+  const screen = await showAccount()
+  await screen.getByRole('button', { name: 'common.operation.edit' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'accountSettings.account.editName' })
+  await dialog.getByRole('textbox', { name: 'accountSettings.account.name' }).fill(name)
+  await dialog.getByRole('button', { name: 'common.operation.save' }).click()
+
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByText(name, { exact: true }).first()).toBeVisible()
+  expect(requests.updateName).toHaveBeenCalledExactlyOnceWith({ name })
 })
 
 it('sets a first password without a current password and updates the page to Reset password', async () => {

@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "Data pengguna akun Anda.",
   "account.myAccount": "Akun Saya",
   "account.name": "Nama",
+  "account.nameLengthInvalid": "Nama harus terdiri dari {{min}} hingga {{max}} karakter.",
   "account.newPassword": "Kata sandi baru",
   "account.notEqual": "Dua kata sandi berbeda.",
   "account.password": "Kata sandi",

@@ -41,6 +41,7 @@
   "account.langGeniusAccountTip": "بيانات المستخدم الخاصة بحسابك.",
   "account.myAccount": "حسابي",
   "account.name": "الاسم",
+  "account.nameLengthInvalid": "يجب أن يتراوح طول الاسم بين {{min}} و{{max}} حرفًا.",
   "account.newPassword": "كلمة مرور جديدة",
   "account.notEqual": "كلمتا المرور مختلفتان.",
   "account.password": "كلمة المرور",

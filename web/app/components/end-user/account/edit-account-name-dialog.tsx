@@ -1,12 +1,15 @@
 'use client'
 
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import { zAccountProfilePatchPayload } from '@dify/contracts/api/web/zod.gen'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditAccountNameForm } from '@/app/components/account/edit-account-name-form'
 import { webAppQuery } from '@/service/webapp'
+
+const nameConstraints = zAccountProfilePatchPayload.shape.name.unwrap()
 
 export default function EditAccountNameDialog({
   name,
@@ -15,7 +18,7 @@ export default function EditAccountNameDialog({
   name: string
   authSession: number
 }) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'accountSettings'])
   const actionsRef = useRef<DialogActions>(null)
   const updateProfile = useMutation(
     webAppQuery.account.profile.patch.mutationOptions({ context: { authSession, silent: true } }),
@@ -47,6 +50,19 @@ export default function EditAccountNameDialog({
           isPending={updateProfile.isPending}
           onSave={save}
           error={updateProfile.error?.message}
+          validateName={(value) => {
+            const length = Array.from(value).length
+            if (
+              nameConstraints.minLength !== null &&
+              nameConstraints.maxLength !== null &&
+              (length < nameConstraints.minLength || length > nameConstraints.maxLength)
+            )
+              return t(($) => $['account.nameLengthInvalid'], {
+                ns: 'accountSettings',
+                min: nameConstraints.minLength,
+                max: nameConstraints.maxLength,
+              })
+          }}
         />
       </DialogContent>
     </Dialog>
