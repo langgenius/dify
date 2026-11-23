@@ -6,6 +6,7 @@
   "agents.allowAgents": "Autoriser les membres à connecter des agents personnels",
   "agents.allowAgentsDescription": "Désactiver cette option bloque l’accès des agents dans tout l’espace de travail.",
   "agents.authorizeDescription": "{{client}} souhaite lire les bases de connaissances de cet espace de travail en votre nom. Ensuite, vous reviendrez sur {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} souhaite lire les bases de connaissances de cet espace de travail en votre nom. Ensuite, vous reviendrez sur {{client}} sur cet appareil.",
   "agents.authorizeFootnote": "Vous pouvez consulter ou déconnecter cet agent à tout moment dans « MCP Connector » de la liste des bases de connaissances.",
   "agents.authorizeInvalid": "Cette demande est invalide ou a expiré. Relancez la connexion depuis votre agent.",
   "agents.authorizeInvalidTitle": "Cette demande de connexion est inutilisable",

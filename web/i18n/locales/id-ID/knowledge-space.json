@@ -6,6 +6,7 @@
   "agents.allowAgents": "Izinkan anggota menghubungkan agen pribadi",
   "agents.allowAgentsDescription": "Menonaktifkan ini akan memblokir akses agen di seluruh ruang kerja.",
   "agents.authorizeDescription": "{{client}} ingin membaca basis pengetahuan di ruang kerja ini atas nama Anda. Setelah memutuskan, Anda akan kembali ke {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} ingin membaca basis pengetahuan di ruang kerja ini atas nama Anda. Setelah memilih, Anda akan kembali ke {{client}} di perangkat ini.",
   "agents.authorizeFootnote": "Anda dapat meninjau atau memutus agen ini kapan saja di MCP Connector pada daftar basis pengetahuan.",
   "agents.authorizeInvalid": "Permintaan ini tidak valid atau sudah kedaluwarsa. Mulai hubungkan lagi dari agen Anda.",
   "agents.authorizeInvalidTitle": "Permintaan koneksi ini tidak dapat digunakan",

@@ -132,6 +132,21 @@ describe('KnowledgeAgentAuthorizePage', () => {
     )
   })
 
+  it('names the agent instead of a loopback port, and the site for a hosted agent', async () => {
+    const view = renderWithConsoleQuery(<KnowledgeAgentAuthorizePage />)
+    expect(await screen.findByText(/agents\.authorizeDescriptionLocal/)).toBeInTheDocument()
+    expect(screen.queryByText(/33418/)).not.toBeInTheDocument()
+    view.unmount()
+
+    api.describe.mockResolvedValue(
+      described({ client: { kind: 'cimd', name: 'Hosted Agent', redirect_host: 'agent.example' } }),
+    )
+    renderWithConsoleQuery(<KnowledgeAgentAuthorizePage />)
+    expect(
+      await screen.findByText(/agents\.authorizeDescription[^L]*agent\.example/),
+    ).toBeInTheDocument()
+  })
+
   it('denies without granting anything', async () => {
     api.decide.mockResolvedValue({
       redirect_to: 'http://127.0.0.1:33418/callback?error=access_denied',

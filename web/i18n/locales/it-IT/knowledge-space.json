@@ -6,6 +6,7 @@
   "agents.allowAgents": "Consenti ai membri di collegare agenti personali",
   "agents.allowAgentsDescription": "Disattivando questa opzione, l’accesso degli agenti viene bloccato in tutto lo spazio di lavoro.",
   "agents.authorizeDescription": "{{client}} vuole leggere le knowledge base di questo spazio di lavoro a tuo nome. Dopo la scelta tornerai a {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} vuole leggere le basi di conoscenza di questo workspace a tuo nome. Dopo la scelta, tornerai a {{client}} su questo dispositivo.",
   "agents.authorizeFootnote": "Puoi controllare o scollegare questo agente in qualsiasi momento da MCP Connector nell’elenco delle knowledge base.",
   "agents.authorizeInvalid": "Questa richiesta non è valida o è scaduta. Ricomincia il collegamento dal tuo agente.",
   "agents.authorizeInvalidTitle": "Impossibile usare questa richiesta di collegamento",

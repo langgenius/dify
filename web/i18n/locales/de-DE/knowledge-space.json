@@ -6,6 +6,7 @@
   "agents.allowAgents": "Mitgliedern erlauben, persönliche Agenten zu verbinden",
   "agents.allowAgentsDescription": "Wenn du dies deaktivierst, wird der Agentenzugriff im gesamten Workspace blockiert.",
   "agents.authorizeDescription": "{{client}} möchte in deinem Namen Wissensdatenbanken in diesem Workspace lesen. Danach kehrst du zu {{host}} zurück.",
+  "agents.authorizeDescriptionLocal": "{{client}} möchte in deinem Namen Wissensdatenbanken in diesem Workspace lesen. Danach kehrst du zu {{client}} auf diesem Gerät zurück.",
   "agents.authorizeFootnote": "Du kannst diesen Agenten jederzeit unter „MCP Connector“ in der Liste der Wissensdatenbanken prüfen oder trennen.",
   "agents.authorizeInvalid": "Diese Anfrage ist ungültig oder abgelaufen. Starte die Verbindung erneut von deinem Agenten aus.",
   "agents.authorizeInvalidTitle": "Diese Verbindungsanfrage kann nicht verwendet werden",

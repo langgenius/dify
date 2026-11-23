@@ -6,6 +6,7 @@
   "agents.allowAgents": "允許成員連接個人 Agent",
   "agents.allowAgentsDescription": "關閉後，將封鎖整個工作區內的 Agent 存取。",
   "agents.authorizeDescription": "{{client}} 要求以你的身分讀取此工作區中的知識庫。做出選擇後，你將返回 {{host}}。",
+  "agents.authorizeDescriptionLocal": "{{client}} 請求以你的身分讀取此工作區中的知識庫。做出選擇後，你將返回本機上的 {{client}}。",
   "agents.authorizeFootnote": "你可以隨時在知識庫清單的「MCP Connector」中查看或中斷此 Agent。",
   "agents.authorizeInvalid": "此請求無效或已過期，請從你的 Agent 重新發起連接。",
   "agents.authorizeInvalidTitle": "無法使用此連接請求",

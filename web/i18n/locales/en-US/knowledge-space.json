@@ -6,6 +6,7 @@
   "agents.allowAgents": "Allow members to connect personal agents",
   "agents.allowAgentsDescription": "Turning this off blocks agent access across the workspace.",
   "agents.authorizeDescription": "{{client}} wants to read knowledge bases in this workspace as you. After you decide, you'll return to {{host}}.",
+  "agents.authorizeDescriptionLocal": "{{client}} wants to read knowledge bases in this workspace as you. After you decide, you'll return to {{client}} on this device.",
   "agents.authorizeFootnote": "You can review or disconnect this agent anytime under MCP Connector on the knowledge base list.",
   "agents.authorizeInvalid": "This request is invalid or has expired. Start connecting again from your agent.",
   "agents.authorizeInvalidTitle": "This connection request can't be used",
