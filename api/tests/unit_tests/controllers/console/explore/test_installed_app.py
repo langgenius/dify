@@ -574,17 +574,10 @@ def test_patch_validation_identifies_body_field_without_echoing_input(
 @pytest.mark.parametrize(
     ("body", "content_type"),
     [
-        
-        
-        
-        
         pytest.param("", "application/json", id="empty-body"),
-        
     ],
 )
-def test_patch_empty_body_is_noop(
-    management: _Management, body: str, content_type: str
-) -> None:
+def test_patch_empty_body_is_noop(management: _Management, body: str, content_type: str) -> None:
     installed, _ = _installation(management, pinned=True)
     management.sessions.clear()
 
