@@ -88,6 +88,7 @@ export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
 
   return (
     <section
+      data-role="demo-controls"
       aria-labelledby="collaboration-demo-end-title"
       aria-describedby="collaboration-demo-end-description"
       className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 mx-auto w-100 max-w-[calc(100%-32px)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-5 shadow-xl motion-safe:transition-opacity motion-safe:duration-300 motion-safe:starting:opacity-0"
