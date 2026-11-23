@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Literal
 
 import pytest
@@ -25,10 +26,16 @@ from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendStrea
 from core.tools.entities.common_entities import I18nObject
 from core.workflow.nodes.agent_v2.tool_activity import (
     _TOOL_FIELD_LIMIT,
+    ActivityStatus,
     WorkflowAgentToolActivityProjector,
 )
 
 _CREATED_AT = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+class _ExecutionStatus(StrEnum):
+    EXECUTED = "executed"
+    NOT_EXECUTED = "not_executed"
 
 
 def test_prepared_label_is_frozen_without_changing_native_call_identity() -> None:
@@ -48,10 +55,11 @@ def test_prepared_label_is_frozen_without_changing_native_call_identity() -> Non
 
 
 @pytest.mark.parametrize(
-    ("status", "reason", "used"), [("executed", None, 2), ("not_executed", "call_limit_reached", 3)]
+    ("status", "reason", "used"),
+    [(_ExecutionStatus.EXECUTED, None, 2), (_ExecutionStatus.NOT_EXECUTED, "call_limit_reached", 3)],
 )
 def test_native_result_metadata_projects_usage_and_denial_without_trusting_model_text(
-    status: Literal["executed", "not_executed"], reason: Literal["call_limit_reached"] | None, used: int
+    status: _ExecutionStatus, reason: Literal["call_limit_reached"] | None, used: int
 ) -> None:
     """Real native event serialization retains the runtime's dispatch annotation."""
     projector = _projector()
@@ -60,7 +68,7 @@ def test_native_result_metadata_projects_usage_and_denial_without_trusting_model
         "tool_identity": '["plugin","langgenius/github/github","search"]',
         "limit": 3,
         "used": used,
-        "execution_status": status,
+        "execution_status": status.value,
         "reason": reason,
     }
     native = PydanticAIStreamRunEvent(
@@ -126,9 +134,12 @@ def test_unrelated_native_metadata_keeps_existing_unlimited_tool_results(metadat
     assert activity.data.call_limit is None
 
 
-@pytest.mark.parametrize(("marker", "expected"), [(True, "failed"), (False, "succeeded"), ("true", "succeeded")])
+@pytest.mark.parametrize(
+    ("marker", "expected"),
+    [(True, ActivityStatus.FAILED), (False, ActivityStatus.SUCCEEDED), ("true", ActivityStatus.SUCCEEDED)],
+)
 def test_handled_transport_failure_preserves_quota_and_failed_tool_status(
-    marker: bool | str, expected: Literal["failed", "succeeded"]
+    marker: bool | str, expected: ActivityStatus
 ) -> None:
     """A handled failure remains charged and failed without failing the Agent run."""
     event = _tool_result(
@@ -147,6 +158,7 @@ def test_handled_transport_failure_preserves_quota_and_failed_tool_status(
     )
     activity = _projector().handle(event)[0]
     assert activity.status == expected
+    assert activity.model_dump(mode="json")["status"] == expected.value
     assert activity.data.call_limit is not None
     assert activity.data.call_limit.used == 1
     assert activity.data.call_limit.execution_status == "executed"
