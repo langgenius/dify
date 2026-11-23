@@ -1,43 +1,74 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
-  RiCheckboxCircleFill,
-  RiCheckboxCircleLine,
-  RiCheckLine,
-  RiCloseLine,
-  RiFilter3Line,
-} from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { CollaboratorAvatarStack } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
+import { prefetchCommentThread } from '@/app/components/workflow/comment/comment-prefetch'
+import { isWritingComments } from '@/app/components/workflow/comment/comment-writes'
+import { getCommentParticipants } from '@/app/components/workflow/comment/participants'
+import { useRevealComment } from '@/app/components/workflow/comment/use-reveal-comment'
+import {
+  editorAppIdAtom,
+  editorCollaborationEnabledAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useWorkflowComment } from '../../hooks/use-workflow-comment'
+import { consoleQuery } from '@/service/console'
+
+type CommentFilter = 'all' | 'mine'
+
+const EMPTY_COMMENTS: WorkflowCommentBasic[] = []
 
 const CommentsPanel = () => {
-  const { t } = useTranslation(['workflowComments'])
+  const { t } = useTranslation(['common', 'workflowComments'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)
   const showResolvedComments = useStore((s) => s.showResolvedComments)
   const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
-  const { comments, loading, handleCommentIconClick, handleCommentResolve } = useWorkflowComment()
+  const appId = useAtomValue(editorAppIdAtom)
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const queryClient = useQueryClient()
+  // Not read again on mount while a comment write to the app is running; the canvas reconciles
+  // after it.
+  const { data: comments = EMPTY_COMMENTS, isLoading: loading } = useQuery({
+    ...consoleQuery.apps.byAppId.workflow.comments.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      enabled: isCollaborationEnabled,
+      staleTime: () => (appId && isWritingComments(queryClient, appId) ? Infinity : 0),
+    }),
+    select: (list) => list.data,
+  })
+  const resolveComment = useMutation(
+    consoleQuery.apps.byAppId.workflow.comments.byCommentId.resolve.post.mutationOptions(),
+  )
+  const revealComment = useRevealComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
-  const [showFilter, setShowFilter] = useState(false)
-
-  const handleSelect = useCallback(
-    (comment: WorkflowCommentBasic) => {
-      handleCommentIconClick(comment)
-    },
-    [handleCommentIconClick],
-  )
 
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -52,18 +83,11 @@ const CommentsPanel = () => {
     return data
   }, [comments, currentUserId, showOnlyMine, showResolvedComments])
 
-  const handleResolve = useCallback(
-    async (comment: WorkflowCommentBasic) => {
-      if (comment.resolved) return
-      try {
-        await handleCommentResolve(comment.id)
-        setActiveCommentId(comment.id)
-      } catch (e) {
-        console.error('Resolve comment failed', e)
-      }
-    },
-    [handleCommentResolve, setActiveCommentId],
-  )
+  // Resolving leaves the selection alone; the user may have opened another thread since.
+  const handleResolve = (comment: WorkflowCommentBasic) => {
+    if (comment.resolved || !appId) return
+    resolveComment.mutate({ params: { app_id: appId, comment_id: comment.id } })
+  }
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments
 
@@ -77,84 +101,63 @@ const CommentsPanel = () => {
         <div className="system-xl-semibold leading-6 font-semibold text-text-primary">
           {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
         </div>
-        <div className="relative flex items-center gap-2">
-          <button
-            className={cn(
-              'group flex size-6 items-center justify-center rounded-md hover:bg-state-accent-active',
-              hasActiveFilter && 'bg-state-accent-active',
-            )}
-            aria-label={t(($) => $['comments.aria.filterComments'], { ns: 'workflowComments' })}
-            onClick={() => setShowFilter((v) => !v)}
-          >
-            <RiFilter3Line
-              className={cn(
-                'size-4 text-text-secondary group-hover:text-text-accent',
-                hasActiveFilter && 'text-text-accent',
-              )}
+        <div className="flex items-center gap-2">
+          <Menu>
+            <MenuTrigger
+              render={
+                <IconButton
+                  variant={hasActiveFilter ? 'ghost-accent' : 'default'}
+                  aria-label={t(($) => $['comments.aria.filterComments'], {
+                    ns: 'workflowComments',
+                  })}
+                >
+                  <span aria-hidden className="i-ri-filter-3-line size-4" />
+                </IconButton>
+              }
             />
-          </button>
-          {showFilter && (
-            <div className="absolute inset-e-10 top-9 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
-              <button
-                className={cn(
-                  'flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
-                  !showOnlyMine && 'bg-components-panel-on-panel-item-bg',
-                )}
-                onClick={() => {
-                  setShowOnlyMine(false)
-                  setShowFilter(false)
-                }}
+            <MenuContent align="end" alignOffset={-17} sideOffset={12} className="min-w-46">
+              <MenuRadioGroup<CommentFilter>
+                value={showOnlyMine ? 'mine' : 'all'}
+                onValueChange={(value) => setShowOnlyMine(value === 'mine')}
               >
-                <span className="text-text-secondary">
+                <MenuRadioItem<CommentFilter> value="all" closeOnClick>
                   {t(($) => $['comments.filter.all'], { ns: 'workflowComments' })}
-                </span>
-                {!showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
-              </button>
-              <button
-                className={cn(
-                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
-                  showOnlyMine && 'bg-components-panel-on-panel-item-bg',
-                )}
-                onClick={() => {
-                  setShowOnlyMine(true)
-                  setShowFilter(false)
-                }}
-              >
-                <span className="text-text-secondary">
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
+                <MenuRadioItem<CommentFilter> value="mine" closeOnClick>
                   {t(($) => $['comments.filter.onlyYourThreads'], { ns: 'workflowComments' })}
-                </span>
-                {showOnlyMine && <RiCheckLine className="size-4 text-primary-600" />}
-              </button>
-              <Separator orientation="horizontal" className="my-1 h-[0.5px]" />
-              <div
-                className="flex w-full items-center justify-between rounded-md p-2"
-                onClick={(e) => {
-                  e.stopPropagation()
-                }}
+                  <MenuRadioItemIndicator />
+                </MenuRadioItem>
+              </MenuRadioGroup>
+              <MenuSeparator />
+              <MenuCheckboxItem
+                checked={showResolvedComments}
+                closeOnClick={false}
+                className="justify-between"
+                onCheckedChange={setShowResolvedComments}
               >
-                <span className="text-sm text-text-secondary">
-                  {t(($) => $['comments.filter.showResolved'], { ns: 'workflowComments' })}
-                </span>
+                {t(($) => $['comments.filter.showResolved'], { ns: 'workflowComments' })}
+                {/* The item owns the checkbox semantics; the switch only shows its state. */}
                 <Switch
-                  size="md"
                   checked={showResolvedComments}
-                  onCheckedChange={(checked: boolean) => {
-                    setShowResolvedComments(checked)
-                  }}
+                  readOnly
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  className="pointer-events-none"
                 />
-              </div>
-            </div>
-          )}
+              </MenuCheckboxItem>
+            </MenuContent>
+          </Menu>
           <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-          <div
-            className="flex size-6 cursor-pointer items-center justify-center"
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => {
               setControlMode(ControlMode.Pointer)
               setActiveCommentId(null)
             }}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
         </div>
       </div>
       <div className="grow overflow-y-auto px-1">
@@ -167,23 +170,32 @@ const CommentsPanel = () => {
                 'group mb-2 cursor-pointer rounded-xl bg-components-panel-bg p-3 transition-colors hover:bg-components-panel-on-panel-item-bg-hover',
                 isActive && 'bg-components-panel-on-panel-item-bg-hover',
               )}
-              onClick={() => handleSelect(c)}
+              onClick={() => revealComment(c)}
+              onPointerEnter={() => {
+                if (appId) prefetchCommentThread(queryClient, { app_id: appId, comment_id: c.id })
+              }}
             >
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">
-                  <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
+                  <CollaboratorAvatarStack collaborators={getCommentParticipants(c)} />
                   <div className="ms-2 flex items-center">
                     {c.resolved ? (
-                      <RiCheckboxCircleFill className="size-4 text-text-secondary" />
+                      <span
+                        aria-hidden
+                        className="i-ri-checkbox-circle-fill size-4 text-text-secondary"
+                      />
                     ) : (
-                      <RiCheckboxCircleLine
-                        className="size-4 cursor-pointer text-text-tertiary hover:text-text-secondary"
+                      <IconButton
+                        aria-label={t(($) => $['comments.aria.resolveComment'], {
+                          ns: 'workflowComments',
+                        })}
                         onClick={(e) => {
-                          e.preventDefault()
                           e.stopPropagation()
                           handleResolve(c)
                         }}
-                      />
+                      >
+                        <span aria-hidden className="i-ri-checkbox-circle-line size-4" />
+                      </IconButton>
                     )}
                   </div>
                 </div>
@@ -206,7 +218,10 @@ const CommentsPanel = () => {
                 {c.reply_count > 0 && (
                   <div className="mt-2 flex items-center justify-between">
                     <div className="system-2xs-regular text-text-tertiary">
-                      {c.reply_count} {t(($) => $['comments.reply'], { ns: 'workflowComments' })}
+                      {t(($) => $['comments.replyCount'], {
+                        ns: 'workflowComments',
+                        count: c.reply_count,
+                      })}
                     </div>
                   </div>
                 )}
