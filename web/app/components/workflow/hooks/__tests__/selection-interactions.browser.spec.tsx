@@ -111,7 +111,7 @@ async function setup() {
     createAppDetailFixture({ mode: 'workflow' }),
   )
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
-  // boundary: the Vitest iframe is not granted clipboard-read, so the written payload is captured at the API.
+  // boundary: the system clipboard is shared by spec files running in parallel, so the written payload is captured at the API.
   const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
   const { NavigationProvider } = createTestNavigation({ url: '/app/app-1/workflow' })
   const screen = await render(
