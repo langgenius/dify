@@ -232,6 +232,8 @@ class RagPipelineTaskProxyTestDataFactory:
         features.billing.subscription = Mock()
         features.billing.subscription.plan = plan
         return features
+
+    @staticmethod
     def create_rag_pipeline_invoke_entity(
         pipeline_id: str = "pipeline-123",
         user_id: str = "user-456",
@@ -354,6 +356,7 @@ class TestRagPipelineTaskProxyCasesServices:
             assert features2 == mock_features
             assert features1 is features2  # Should be the same instance due to caching
             mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
+
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
         def test_upload_invoke_entities(self, mock_db: MagicMock, mock_file_service_class: MagicMock) -> None:
@@ -596,7 +599,7 @@ class TestRagPipelineTaskProxyCasesServices:
         ) -> None:
             """Test _dispatch method outside Cloud."""
             # Arrange
-            proxy._send_to_priority_direct_queue = Mock()
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -646,9 +649,9 @@ class TestRagPipelineTaskProxyCasesServices:
         ) -> None:
             """Test _dispatch method with empty plan string."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan="")
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
             mock_feature_service.get_workspace_plan.return_value = ""
-            proxy._send_to_priority_tenant_queue = Mock()
+            tenant_queue_commands.return_value = None
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -681,7 +684,8 @@ class TestRagPipelineTaskProxyCasesServices:
         ) -> None:
             """Test _dispatch method with None plan."""
             # Arrange
-            mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=None)
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
+            tenant_queue_commands.return_value = None
             mock_feature_service.get_workspace_plan.return_value = None
 
             mock_file_service = Mock()
