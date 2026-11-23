@@ -25,7 +25,13 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
+from core.model_manager import (
+    HostedCreditFallbackModelInstance,
+    LBModelManager,
+    ModelInstance,
+    ModelManager,
+    QuotaManagedModelInstance,
+)
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from enums import DeploymentEdition
@@ -42,7 +48,11 @@ from models.provider import ProviderType
 from services.billing_client import billing
 from services.billing_service import BillingService
 from tests.helpers.unit.core.model_fixtures import make_model_config
-from tests.helpers.unit.core.model_moderation_fixtures import RecordingLLM, make_tenant_moderation_provider
+from tests.helpers.unit.core.model_moderation_fixtures import (
+    RecordingLLM,
+    RecordingProviderManager,
+    make_tenant_moderation_provider,
+)
 
 
 @pytest.fixture
@@ -145,6 +155,7 @@ def _build_model_manager_bundle(
     provider_type: ProviderType,
     restrict_models: list[RestrictModel],
     model_type: ModelType = ModelType.LLM,
+    quota_type: ProviderQuotaType = ProviderQuotaType.TRIAL,
 ) -> tuple[ModelManager, MagicMock]:
     provider_manager = MagicMock()
     bundle = MagicMock()
@@ -152,10 +163,10 @@ def _build_model_manager_bundle(
     bundle.configuration.tenant_id = "tenant-1"
     bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
-    bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
+    bundle.configuration.system_configuration.current_quota_type = quota_type
     bundle.configuration.system_configuration.quota_configurations = [
         QuotaConfiguration(
-            quota_type=ProviderQuotaType.TRIAL,
+            quota_type=quota_type,
             quota_unit=QuotaUnit.CREDITS,
             quota_limit=200,
             quota_used=0,
@@ -177,7 +188,19 @@ def test_model_manager_wraps_allowlisted_system_llm() -> None:
 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
 
-    assert isinstance(model_instance, QuotaManagedModelInstance)
+    assert isinstance(model_instance, HostedCreditFallbackModelInstance)
+
+
+def test_model_manager_uses_quota_only_for_hosted_free_models() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[],
+        quota_type=ProviderQuotaType.FREE,
+    )
+
+    instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+
+    assert type(instance) is QuotaManagedModelInstance
 
 
 @pytest.mark.parametrize("model_type", list(ModelType))
@@ -230,7 +253,7 @@ def test_model_manager_matches_allowlist_name_across_model_types() -> None:
     assert isinstance(model_instance, QuotaManagedModelInstance)
 
 
-def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[QuotaManagedModelInstance, RecordingLLM]:
+def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[HostedCreditFallbackModelInstance, RecordingLLM]:
     config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     bundle = config.provider_model_bundle
     configuration = bundle.configuration
@@ -253,9 +276,12 @@ def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[QuotaManag
     assert isinstance(runtime, PluginModelRuntime)
     configuration.bind_model_runtime(runtime)
     llm = RecordingLLM(template, parts=["ok"])
-    return QuotaManagedModelInstance(
-        ProviderModelBundle(configuration=configuration, model_type_instance=llm), config.model
-    ), llm
+    manager = ModelManager(
+        RecordingProviderManager(ProviderModelBundle(configuration=configuration, model_type_instance=llm))
+    )
+    instance = manager.get_model_instance(configuration.tenant_id, config.provider, ModelType.LLM, config.model)
+    assert isinstance(instance, HostedCreditFallbackModelInstance)
+    return instance, llm
 
 
 @pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID])
@@ -314,6 +340,28 @@ def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
     assert [call.kwargs["request_id"] for call in billing_reserve.call_args_list] == [first_id, second_id]
 
 
+def test_quota_only_model_does_not_replace_executor_on_reservation_denial(
+    config_overrides: Callable[..., None],
+) -> None:
+    decorated, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    bundle = decorated.provider_model_bundle
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    instance = QuotaManagedModelInstance(bundle, decorated.model_name)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+
+    with (
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+        ),
+        pytest.raises(InsufficientHostedCreditsError, match="Insufficient credits remaining"),
+    ):
+        instance.invoke_llm(prompt_messages=[], stream=False)
+
+    assert not llm.credential_calls
+
+
 @pytest.mark.parametrize("custom_state", ["missing", "empty", "unrelated"])
 def test_hosted_credit_denial_without_eligible_custom_preserves_quota_error(
     config_overrides: Callable[..., None], custom_state: str
@@ -357,7 +405,10 @@ def test_hosted_credit_fallback_does_not_catch_other_reservation_errors(
     assert not llm.credential_calls
 
 
-def test_hosted_credit_fallback_does_not_retry_after_model_invocation(config_overrides: Callable[..., None]) -> None:
+@pytest.mark.parametrize("failure", [TimeoutError("commit timeout"), InsufficientHostedCreditsError("late denial")])
+def test_hosted_credit_fallback_does_not_retry_after_model_invocation(
+    config_overrides: Callable[..., None], failure: Exception
+) -> None:
     instance, llm = _make_hosted_credit_model(ProviderQuotaType.PAID)
     configuration = instance.provider_model_bundle.configuration
     configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
@@ -368,12 +419,13 @@ def test_hosted_credit_fallback_does_not_retry_after_model_invocation(config_ove
             "quota_reserve",
             return_value=billing.QuotaReserveReply(reservation_id="reserved", available=0, reserved=1),
         ),
-        patch.object(BillingService, "quota_commit", side_effect=TimeoutError("commit timeout")),
+        patch.object(BillingService, "quota_commit", side_effect=failure),
         patch.object(BillingService, "quota_release") as release,
-        pytest.raises(TimeoutError, match="commit timeout"),
+        pytest.raises(type(failure)) as raised,
     ):
         instance.invoke_llm(prompt_messages=[], stream=False)
 
+    assert raised.value is failure
     assert llm.credential_calls == [{"api_key": "hosted"}]
     release.assert_called_once()
 
@@ -422,7 +474,7 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     )
     reservation = MagicMock(commit_before_delivery=True)
     events: list[str] = []
-    reservation.commit.side_effect = lambda _usage: events.append("commit")
+    reservation.commit.side_effect = lambda _usage=None: events.append("commit")
 
     invocation_id = str(uuid4())
     with (

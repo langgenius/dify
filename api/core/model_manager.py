@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import (
     IO,
     TYPE_CHECKING,
@@ -29,7 +31,7 @@ from core.credit_usage import (
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import ModelLoadBalancingConfiguration
+from core.entities.provider_entities import ModelLoadBalancingConfiguration, ProviderQuotaType
 from core.errors.error import InsufficientHostedCreditsError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
 from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
@@ -56,6 +58,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
 class LLMModerationPolicy(Protocol):
@@ -585,8 +588,50 @@ class ModelInstance:
         )
 
 
+@dataclass(frozen=True)
+class _PreparedModelInvocation:
+    """A selected executor and its settlement, if the invocation consumes hosted quota."""
+
+    model: ModelInstance
+    reservation: "ModelQuotaReservation | None"
+
+    def commit(self, usage: LLMUsage | None = None) -> None:
+        """Settle executed work without charging an unmetered invocation."""
+        if self.reservation is not None:
+            if usage is None:
+                self.reservation.commit()
+            else:
+                self.reservation.commit(usage)
+
+    def stream(self, chunks: Iterable[T], *, usage_for: Callable[[T], LLMUsage | None] | None = None) -> Generator[T]:
+        """Forward unmetered output or deliver only after the selected reservation has settled.
+
+        Buffer streams that report usage only when the reservation needs terminal usage.
+        An unmetered stream is delegated directly so cancellation reaches its producer.
+        """
+        if self.reservation is None:
+            yield from chunks
+            return
+
+        buffered = [] if usage_for is not None and not self.reservation.commit_before_delivery else None
+        usage = None
+        for chunk in chunks:
+            chunk_usage = usage_for(chunk) if usage_for is not None else None
+            if chunk_usage is not None:
+                usage = chunk_usage
+            if buffered is None:
+                self.commit(usage)
+                yield chunk
+            else:
+                buffered.append(chunk)
+
+        if buffered is not None:
+            self.commit(usage)
+            yield from buffered
+
+
 class QuotaManagedModelInstance(ModelInstance):
-    """Own hosted quota settlement or select workspace credentials before starting inference."""
+    """Reserve and settle hosted quota before delivering model results."""
 
     def reserve_quota(
         self,
@@ -642,7 +687,7 @@ class QuotaManagedModelInstance(ModelInstance):
             return None
         return normalize_credit_usage_app_type(app_type)
 
-    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
+    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None) -> "ModelQuotaReservation":
         request_id = self._get_reservation_request_id(request_metadata)
         app_type = self._get_reservation_app_type(request_metadata)
         created_by = self._get_reservation_created_by(request_metadata)
@@ -658,51 +703,21 @@ class QuotaManagedModelInstance(ModelInstance):
             reservation_kwargs["created_by"] = created_by
         return self.reserve_quota(**reservation_kwargs)
 
-    def _reserve_or_select_custom(
+    def _prepare_invocation(self, request_metadata: Mapping[str, object] | None) -> _PreparedModelInvocation:
+        """Reserve quota for this executor without invoking it; reservation failures propagate."""
+        return _PreparedModelInvocation(model=self, reservation=self._reserve_quota_for_request(request_metadata))
+
+    @contextmanager
+    def _admitted_invocation(
         self, request_metadata: Mapping[str, object] | None
-    ) -> "tuple[ModelInstance, ModelQuotaReservation | None]":
-        """Select the invocation instance before inference; only Custom fallback has no reservation.
-
-        Only an explicit Cloud Billing denial allows fallback. Missing Custom configuration or
-        credentials preserve the original quota error; the hosted configuration stays unchanged.
-        """
+    ) -> Generator[_PreparedModelInvocation]:
+        """Own the prepared invocation until completion, releasing any unsettled quota on exit."""
+        invocation = self._prepare_invocation(request_metadata)
         try:
-            return self, self._reserve_quota_for_request(request_metadata)
-        except InsufficientHostedCreditsError:
-            custom = self._get_custom_fallback(request_metadata)
-            if custom is None:
-                raise
-            return custom, None
-
-    def _get_custom_fallback(self, request_metadata: Mapping[str, object] | None) -> ModelInstance | None:
-        """Resolve the same tenant, provider and model under Custom, or return None if unavailable.
-
-        The caller must already have a definitive reservation denial. Credential policy errors
-        propagate and no model invocation or preference update occurs here.
-        """
-        configuration = self.provider_model_bundle.configuration
-        custom = configuration.custom_configuration
-        if not (custom.provider or custom.models):
-            return None
-
-        custom_provider_configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
-        model_type = self.model_type_instance.model_type
-        if custom_provider_configuration.get_provider_model(model_type, self.model_name, only_active=True) is None:
-            return None
-        credentials = custom_provider_configuration.get_current_credentials(model_type, self.model_name)
-        if not credentials:
-            return None
-
-        bundle = ProviderModelBundle(
-            configuration=custom_provider_configuration, model_type_instance=self.model_type_instance
-        )
-        logger.info(
-            "Using custom credentials after hosted credit reservation denial: tenant_id=%s provider=%s model=%s",
-            configuration.tenant_id,
-            self.provider,
-            self.model_name,
-        )
-        return ModelInstance(bundle, self.model_name, credentials, request_metadata, moderation=self._moderation)
+            yield invocation
+        finally:
+            if invocation.reservation is not None:
+                self.release_quota_safely(invocation.reservation)
 
     @staticmethod
     def release_quota_safely(reservation) -> None:
@@ -721,15 +736,10 @@ class QuotaManagedModelInstance(ModelInstance):
         )
         if effective_request_metadata is not None:
             kwargs["request_metadata"] = effective_request_metadata
-        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
-        if reservation is None:
-            return function(instance, *args, **kwargs)
-        try:
-            response = function(instance, *args, **kwargs)
-            reservation.commit()
+        with self._admitted_invocation(effective_request_metadata) as invocation:
+            response = function(invocation.model, *args, **kwargs)
+            invocation.commit()
             return response
-        finally:
-            self.release_quota_safely(reservation)
 
     @override
     def _invoke_llm(
@@ -761,11 +771,9 @@ class QuotaManagedModelInstance(ModelInstance):
             )
 
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
-        try:
-            # The original public invocation owns moderation for either credential route.
+        with self._admitted_invocation(effective_request_metadata) as invocation:
             response = ModelInstance._invoke_llm(
-                instance,
+                invocation.model,
                 prompt_messages=normalized_prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -776,12 +784,8 @@ class QuotaManagedModelInstance(ModelInstance):
             )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
-            if reservation is not None:
-                reservation.commit(response.usage)
+            invocation.commit(response.usage)
             return response
-        finally:
-            if reservation is not None:
-                self.release_quota_safely(reservation)
 
     def _invoke_llm_stream(
         self,
@@ -794,11 +798,9 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
-        usage: LLMUsage | None = None
-        try:
+        with self._admitted_invocation(effective_request_metadata) as invocation:
             response = ModelInstance._invoke_llm(
-                instance,
+                invocation.model,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -810,31 +812,7 @@ class QuotaManagedModelInstance(ModelInstance):
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
 
-            if reservation is None:
-                yield from response
-                return
-
-            if reservation.commit_before_delivery:
-                for chunk in response:
-                    chunk_usage = chunk.delta.usage
-                    if chunk_usage is not None:
-                        usage = chunk_usage
-                    reservation.commit(usage)
-                    yield chunk
-                return
-
-            buffered_chunks = []
-            for chunk in response:
-                chunk_usage = chunk.delta.usage
-                if chunk_usage is not None:
-                    usage = chunk_usage
-                buffered_chunks.append(chunk)
-
-            reservation.commit(usage)
-            yield from buffered_chunks
-        finally:
-            if reservation is not None:
-                self.release_quota_safely(reservation)
+            yield from invocation.stream(response, usage_for=lambda chunk: chunk.delta.usage)
 
     @override
     def invoke_text_embedding(
@@ -930,24 +908,59 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        instance, reservation = self._reserve_or_select_custom(effective_request_metadata)
-        try:
+        with self._admitted_invocation(effective_request_metadata) as invocation:
             response = ModelInstance.invoke_tts(
-                instance,
+                invocation.model,
                 content_text=content_text,
                 voice=voice,
                 request_metadata=effective_request_metadata,
             )
-            if reservation is None:
-                yield from response
-                return
+            yield from invocation.stream(response)
 
-            for chunk in response:
-                reservation.commit()
-                yield chunk
-        finally:
-            if reservation is not None:
-                self.release_quota_safely(reservation)
+
+class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
+    """Replace only an invocation that Cloud Billing declined before inference starts."""
+
+    @override
+    def _prepare_invocation(self, request_metadata: Mapping[str, object] | None) -> _PreparedModelInvocation:
+        """Prefer hosted admission; keep its error if the same model cannot run on Custom."""
+        try:
+            return super()._prepare_invocation(request_metadata)
+        except InsufficientHostedCreditsError:
+            custom = self._resolve_custom_model(request_metadata)
+            if custom is None:
+                raise
+            return _PreparedModelInvocation(model=custom, reservation=None)
+
+    def _resolve_custom_model(self, request_metadata: Mapping[str, object] | None) -> ModelInstance | None:
+        """Resolve workspace credentials for the same model without invoking or changing the hosted instance.
+
+        Call only after a definitive reservation denial. Return None for missing or inactive
+        configuration; credential policy failures propagate without running either model.
+        """
+        configuration = self.provider_model_bundle.configuration
+        custom = configuration.custom_configuration
+        if not (custom.provider or custom.models):
+            return None
+
+        custom_provider_configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
+        model_type = self.model_type_instance.model_type
+        if custom_provider_configuration.get_provider_model(model_type, self.model_name, only_active=True) is None:
+            return None
+        credentials = custom_provider_configuration.get_current_credentials(model_type, self.model_name)
+        if not credentials:
+            return None
+
+        bundle = ProviderModelBundle(
+            configuration=custom_provider_configuration, model_type_instance=self.model_type_instance
+        )
+        logger.info(
+            "Using custom credentials after hosted credit reservation denial: tenant_id=%s provider=%s model=%s",
+            configuration.tenant_id,
+            self.provider,
+            self.model_name,
+        )
+        return ModelInstance(bundle, self.model_name, credentials, request_metadata, moderation=self.moderation)
 
 
 class ModelManager:
@@ -1047,10 +1060,14 @@ class ModelManager:
         raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
 
     @staticmethod
-    def _model_instance_class(provider_model_bundle: ProviderModelBundle, model_type: ModelType) -> type[ModelInstance]:
-        if provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM:
-            return QuotaManagedModelInstance
-        return ModelInstance
+    def _model_instance_class(provider_model_bundle: ProviderModelBundle) -> type[ModelInstance]:
+        """Compose the fallback layer only around a System model using a hosted credit bucket."""
+        configuration = provider_model_bundle.configuration
+        if configuration.using_provider_type != ProviderType.SYSTEM:
+            return ModelInstance
+        if configuration.system_configuration.current_quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+            return HostedCreditFallbackModelInstance
+        return QuotaManagedModelInstance
 
     def get_model_instance(
         self,
@@ -1087,7 +1104,7 @@ class ModelManager:
                 configuration=configuration, model_type_instance=provider_model_bundle.model_type_instance
             )
         self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
-        model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
+        model_instance_class = self._model_instance_class(provider_model_bundle)
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         moderation = self._moderation if model_type == ModelType.LLM else None
 
