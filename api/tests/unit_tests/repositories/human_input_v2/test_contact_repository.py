@@ -641,8 +641,9 @@ def test_account_contact_avatar_projection_rejects_unowned_or_unsafe_legacy_valu
                     file_id=avatar_ids["candidate"],
                     tenant_id=str(_TENANT_A),
                     created_by=str(account_ids["candidate"]),
+                    name="avatar.webp",
                     extension="webp",
-                    mime_type="image/webp",
+                    mime_type="image/png",
                     created_at=_NOW,
                 ),
                 make_upload_file(

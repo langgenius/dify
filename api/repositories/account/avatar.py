@@ -7,7 +7,7 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.types import StringUUID
 
-_AVATAR_RASTER_FORMATS = (
+_RASTER_FORMATS = (
     ("png", "image/png"),
     ("jpg", "image/jpeg"),
     ("jpeg", "image/jpeg"),
@@ -15,25 +15,31 @@ _AVATAR_RASTER_FORMATS = (
     ("gif", "image/gif"),
     ("bmp", "image/bmp"),
 )
+# Older avatar crops kept the original filename when canvas fell back to PNG.
+_LEGACY_RASTER_FORMATS = (("gif", "image/png"), ("webp", "image/png"))
 _UUID_PATTERN = r"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$"
 
 
-def _is_raster_avatar() -> ColumnElement[bool]:
+def _is_raster_avatar(*, allow_legacy: bool) -> ColumnElement[bool]:
+    """Match canonical raster metadata and optionally older PNG crop metadata."""
+    formats = _RASTER_FORMATS + _LEGACY_RASTER_FORMATS if allow_legacy else _RASTER_FORMATS
     return or_(
         *(
             and_(func.lower(UploadFile.extension) == extension, func.lower(UploadFile.mime_type) == mime_type)
-            for extension, mime_type in _AVATAR_RASTER_FORMATS
+            for extension, mime_type in formats
         )
     )
 
 
-def owned_avatar_file_conditions(*, account_id: str, file_id: str) -> tuple[ColumnElement[bool], ...]:
-    """Match one account's raster upload without granting access to another creator's file."""
+def owned_avatar_file_conditions(
+    *, account_id: str, file_id: str, allow_legacy: bool
+) -> tuple[ColumnElement[bool], ...]:
+    """Match an account's own raster upload, accepting legacy metadata only when reading avatars."""
     return (
         UploadFile.id == file_id,
         UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
         UploadFile.created_by == account_id,
-        _is_raster_avatar(),
+        _is_raster_avatar(allow_legacy=allow_legacy),
     )
 
 
@@ -48,7 +54,7 @@ def validated_account_avatar() -> ColumnElement[str | None]:
             UploadFile.id == file_id,
             UploadFile.created_by == Account.id,
             UploadFile.created_by_role == CreatorUserRole.ACCOUNT,
-            _is_raster_avatar(),
+            _is_raster_avatar(allow_legacy=True),
         )
         .correlate(Account)
         .exists()

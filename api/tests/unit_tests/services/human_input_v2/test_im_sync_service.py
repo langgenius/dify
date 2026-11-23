@@ -32,7 +32,7 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity, HumanInputIMSyncRun
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
@@ -47,6 +47,7 @@ from repositories.human_input_v2.im_identity_repository import IMIdentityObserva
 from repositories.human_input_v2.im_integration.mappers import sync_result_to_record
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelReader,
     DeploymentIMChannelWriter,
     WorkspaceIMChannelReader,
     WorkspaceIMChannelWriter,
@@ -92,11 +93,11 @@ class _ServiceContext:
 
     def service(self, *, channel_override: IMChannel | None = None) -> IMSyncService:
         def resolve_channel(session: Session, owner_scope: DirectoryScope) -> IMChannel | None:
-            assert owner_scope == _SCOPE
             if channel_override is not None:
                 return channel_override
-            assert isinstance(owner_scope, WorkspaceScope)
-            return WorkspaceIMChannelReader(session, _TENANT_ID).get()
+            if isinstance(owner_scope, WorkspaceScope):
+                return WorkspaceIMChannelReader(session, owner_scope.id).get()
+            return DeploymentIMChannelReader(session).get()
 
         return IMSyncService(
             self.sessions,
@@ -246,18 +247,40 @@ def test_latest_result_and_identity_queries_use_current_channel(service_context:
     assert identity_page.items[0].binding_status.value == "bound"
 
 
-def test_workspace_latest_results_keep_only_currently_eligible_uploaded_contact_avatars(
-    service_context: _ServiceContext,
+@pytest.mark.parametrize(
+    ("owner_scope", "initiator", "account_status"),
+    [
+        (_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID), AccountStatus.ACTIVE),
+        (DeploymentScope(), SysUserIMSyncInitiator(SysUserId(str(_ACCOUNT_ID))), AccountStatus.ACTIVE),
+        (DeploymentScope(), SysUserIMSyncInitiator(SysUserId(str(_ACCOUNT_ID))), AccountStatus.BANNED),
+    ],
+    ids=["workspace", "deployment", "deployment-inactive-contact"],
+)
+def test_latest_results_keep_only_currently_eligible_uploaded_contact_avatars(
+    sqlite_engine: Engine,
+    owner_scope: DirectoryScope,
+    initiator: IMSyncInitiator,
+    account_status: AccountStatus,
 ) -> None:
+    service_context = _ServiceContext(sessionmaker(bind=sqlite_engine, expire_on_commit=False), [])
+    with service_context.sessions.begin() as session:
+        if isinstance(owner_scope, WorkspaceScope):
+            WorkspaceIMChannelWriter(session, owner_scope.id, _ACCOUNT_ID).create(_channel())
+        else:
+            DeploymentIMChannelWriter(session).create(_channel())
     service = service_context.service()
-    run = service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID)).run
+    run = service.create_or_get_active_run(owner_scope, initiator).run
     contact_id = ContactId("00000000-0000-0000-0000-000000000601")
     hidden_contact_id = ContactId("00000000-0000-0000-0000-000000000602")
     eligible_avatar_id = "00000000-0000-0000-0000-000000000901"
     other_avatar_id = "00000000-0000-0000-0000-000000000902"
     snapshot_created_at = datetime(2025, 1, 2, 3, 4, 5)
     snapshot_avatars = {
-        "matching-upload": (contact_id, eligible_avatar_id, eligible_avatar_id),
+        "matching-upload": (
+            contact_id,
+            eligible_avatar_id,
+            eligible_avatar_id if account_status == AccountStatus.ACTIVE else None,
+        ),
         "changed-upload": (contact_id, other_avatar_id, None),
         "hidden-contact": (hidden_contact_id, eligible_avatar_id, None),
         "http-external": (
@@ -277,7 +300,9 @@ def test_workspace_latest_results_keep_only_currently_eligible_uploaded_contact_
     with service_context.sessions.begin() as session:
         tenant = Tenant(name="Workspace")
         tenant.id = str(_TENANT_ID)
-        account = Account(name="Current Contact", email="contact@example.com", avatar=eligible_avatar_id)
+        account = Account(
+            name="Current Contact", email="contact@example.com", avatar=eligible_avatar_id, status=account_status
+        )
         account.id = str(_ACCOUNT_ID)
         identity = HumanInputContactIdentity(
             subject_type=ContactSubjectType.ACCOUNT,
@@ -286,15 +311,14 @@ def test_workspace_latest_results_keep_only_currently_eligible_uploaded_contact_
         identity.id = str(contact_id)
         identity.created_at = _NOW
         identity.updated_at = _NOW
+        if isinstance(owner_scope, WorkspaceScope):
+            session.add(
+                TenantAccountJoin(tenant_id=str(_TENANT_ID), account_id=str(_ACCOUNT_ID), role=TenantAccountRole.NORMAL)
+            )
         session.add_all(
             [
                 tenant,
                 account,
-                TenantAccountJoin(
-                    tenant_id=str(_TENANT_ID),
-                    account_id=str(_ACCOUNT_ID),
-                    role=TenantAccountRole.NORMAL,
-                ),
                 identity,
                 make_upload_file(
                     file_id=eligible_avatar_id,
@@ -342,7 +366,7 @@ def test_workspace_latest_results_keep_only_currently_eligible_uploaded_contact_
                 )
             )
 
-    page = service.list_latest_results(_SCOPE, IMSyncResultType.SKIPPED, page=1, limit=20)
+    page = service.list_latest_results(owner_scope, IMSyncResultType.SKIPPED, page=1, limit=20)
     snapshots = {result.operation_key: result.contact_snapshot for result in page.items}
 
     assert page.total == len(snapshot_avatars)

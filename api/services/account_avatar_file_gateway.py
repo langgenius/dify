@@ -26,7 +26,7 @@ class SQLAlchemyAccountAvatarFileGateway(AccountAvatarFileGateway):
         with self._session_factory() as session:
             owned_file_id = session.scalar(
                 select(UploadFile.id)
-                .where(*owned_avatar_file_conditions(file_id=upload_file_id, account_id=account_id))
+                .where(*owned_avatar_file_conditions(file_id=upload_file_id, account_id=account_id, allow_legacy=True))
                 .limit(1)
             )
 

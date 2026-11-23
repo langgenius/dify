@@ -348,6 +348,18 @@ class SQLAlchemyContactRepository:
         ).all()
         return tuple(self._candidate_from_row(row) for row in rows)
 
+    def get_organization_candidate_avatars(self, contact_ids: Sequence[ContactId]) -> Mapping[ContactId, str | None]:
+        """Read current avatars for the requested active Organization candidates without writing.
+
+        Unavailable identities are omitted. Available candidates without an eligible avatar map to None.
+        """
+        statement = (
+            self._organization_candidates_query("")
+            .where(HumanInputContactIdentity.id.in_(contact_ids))
+            .add_columns(validated_account_avatar())
+        )
+        return {ContactId(contact_id): avatar for contact_id, avatar in self._session.execute(statement).tuples()}
+
     def count_organization_candidates(self, keyword: str = "") -> int:
         candidates = self._organization_candidates_query(keyword).subquery()
         return self._session.scalar(sa.select(sa.func.count()).select_from(candidates)) or 0

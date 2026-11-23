@@ -98,6 +98,11 @@ def test_update_profile_persists_multiple_fields(
             ),
             id="non-image",
         ),
+        pytest.param(
+            _AVATAR_ID,
+            make_upload_file(file_id=_AVATAR_ID, name="avatar.webp", extension="webp", mime_type="image/png"),
+            id="legacy-crop",
+        ),
     ],
 )
 def test_update_profile_rejects_invalid_avatar_without_writes(

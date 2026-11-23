@@ -33,7 +33,9 @@ class UploadFileDeliveryQueryRepository(UploadFileDeliveryQuery):
     def get_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDeliveryRecord | None:
         with self._session_factory() as session:
             row = session.execute(
-                self._file_query().where(*owned_avatar_file_conditions(file_id=file_id, account_id=account_id))
+                self._file_query().where(
+                    *owned_avatar_file_conditions(file_id=file_id, account_id=account_id, allow_legacy=True)
+                )
             ).one_or_none()
 
         return self._to_record(row)

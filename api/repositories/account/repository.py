@@ -278,7 +278,7 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
                     raise AvatarFileNotFoundError from error
                 owned_avatar_id = session.scalar(
                     select(UploadFile.id)
-                    .where(*owned_avatar_file_conditions(account_id=account_id, file_id=avatar))
+                    .where(*owned_avatar_file_conditions(account_id=account_id, file_id=avatar, allow_legacy=False))
                     .limit(1)
                 )
                 if owned_avatar_id is None:

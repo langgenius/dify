@@ -17,7 +17,7 @@ from core.human_input_v2.im_integration import (
     SyncResultPage,
 )
 from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator, IMSyncInitiator
-from core.human_input_v2.shared import DirectoryScope, IMSyncRunId, WorkspaceScope
+from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputIMSyncRun
@@ -152,7 +152,7 @@ class IMSyncService:
     def _filter_result_avatars(
         session: Session, owner_scope: DirectoryScope, result_page: SyncResultPage
     ) -> SyncResultPage:
-        # Frozen snapshots can predate avatar authorization. Reuse the current workspace's authorized contacts.
+        """Verify frozen uploads against the current contacts visible in the run's directory scope."""
         uploads = {
             result.id: snapshot
             for result in result_page.items
@@ -163,14 +163,15 @@ class IMSyncService:
         if not uploads:
             return result_page
 
-        current_contacts = (
-            SQLAlchemyContactRepository(session).get_contacts_by_ids(
-                owner_scope.id, [snapshot.contact_id for snapshot in uploads.values()]
-            )
-            if isinstance(owner_scope, WorkspaceScope)
-            else ()
-        )
-        avatars_by_contact = {contact.id: contact.avatar_file_id for contact in current_contacts}
+        contact_ids = [snapshot.contact_id for snapshot in uploads.values()]
+        contacts = SQLAlchemyContactRepository(session)
+        if isinstance(owner_scope, DeploymentScope):
+            avatars_by_contact = contacts.get_organization_candidate_avatars(contact_ids)
+        else:
+            avatars_by_contact = {
+                contact.id: contact.avatar_file_id
+                for contact in contacts.get_contacts_by_ids(owner_scope.id, contact_ids)
+            }
         items = []
         for result in result_page.items:
             snapshot = uploads.get(result.id)

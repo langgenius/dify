@@ -247,6 +247,34 @@ class TestFilePreviewApi:
         assert response.headers["Cache-Control"] == f"private, max-age={max_age}, must-revalidate"
         assert preview_storage.reads == [("stream", "uploads/file-1")]
 
+    @pytest.mark.parametrize("extension", ["gif", "webp"])
+    def test_avatar_preview_serves_legacy_png_crop(
+        self,
+        app: Flask,
+        sqlite_session_factory: sessionmaker[Session],
+        preview_storage: _PreviewStorage,
+        extension: str,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add(
+                make_upload_file(
+                    file_id=str(_AVATAR_FILE_ID),
+                    created_by=_AVATAR_OWNER_ID,
+                    name=f"avatar.{extension}",
+                    extension=extension,
+                    mime_type="image/png",
+                )
+            )
+        signed_url = get_signed_avatar_url(upload_file_id=str(_AVATAR_FILE_ID), account_id=_AVATAR_OWNER_ID)
+        assert signed_url is not None
+
+        with app.test_request_context(f"/?{urlsplit(signed_url).query}"):
+            response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
+
+        assert response.mimetype == "image/png"
+        assert "Content-Disposition" not in response.headers
+        assert preview_storage.reads == [("stream", "uploads/file-1")]
+
     @pytest.mark.parametrize(
         ("creator", "role", "extension", "mime_type"),
         [
