@@ -62,6 +62,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   toast.dismiss()
+  vi.unstubAllGlobals()
 })
 
 it('names the owning app and filters existing tags without offering a case-only duplicate', async () => {
@@ -73,6 +74,53 @@ it('names the owning app and filters existing tags without offering a case-only 
     .element(page.getByRole('option', { name: /common\.tag\.create/ }))
     .not.toBeInTheDocument()
 })
+
+it.each(['app', 'agent'] as const)(
+  'keeps the %s tag options visible while the popup fades out',
+  async (type) => {
+    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+    mocks.tags = tags.map((tag) => ({ ...tag, type }))
+    await renderWithTags(
+      <TagSelector
+        type={type}
+        targetId="card-1"
+        value={[{ ...firstTag, type }]}
+        canBindOrUnbindTags
+      />,
+      mocks.tags,
+      [`${type}.tag.manage`],
+    )
+    await trigger().click()
+    await expect.element(search()).toHaveFocus()
+    const dialog = page.getByRole('dialog', { name: 'Frontend' })
+    await expect.element(dialog.getByRole('option', { name: 'Frontend' })).toBeVisible()
+    await expect.element(dialog.getByRole('option', { name: 'Backend' })).toBeVisible()
+    const popup = dialog.element()
+    await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
+
+    const exitFrame = createDeferred<{ opacity: number; options: string[]; text: string }>()
+    const captureExit = (event: Event) => {
+      if (!(event instanceof TransitionEvent)) return
+      if (event.target !== popup || event.propertyName !== 'opacity') return
+      popup.removeEventListener('transitionrun', captureExit)
+      exitFrame.resolve({
+        opacity: Number(getComputedStyle(popup).opacity),
+        options: Array.from(
+          popup.querySelectorAll('[role="option"]'),
+          (option) => option.textContent?.trim() ?? '',
+        ),
+        text: popup.textContent ?? '',
+      })
+    }
+    popup.addEventListener('transitionrun', captureExit)
+    await userEvent.keyboard('{Escape}')
+    const frame = await exitFrame.promise
+    expect(frame.opacity).toBeGreaterThan(0)
+    expect(frame.options).toEqual(['Frontend', 'Backend'])
+    expect(frame.text).not.toContain('common.tag.noTagsYetCreateHint')
+    await expect.poll(() => popup.isConnected).toBe(false)
+  },
+)
 
 it('applies added tags only after closing and refreshes displayed names from the real query', async () => {
   mocks.bind.mockImplementation(async () => {
