@@ -236,7 +236,7 @@ export function ExternalRoster() {
           >
             <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
             {[0, 1, 2, 3].map((item) => (
-              <SkeletonRectangle key={item} className="h-36.5 rounded-xl" />
+              <SkeletonRectangle key={item} className="h-43 rounded-xl" />
             ))}
           </div>
         ) : (
