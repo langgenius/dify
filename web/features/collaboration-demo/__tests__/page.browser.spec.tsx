@@ -1,4 +1,5 @@
 import type { TenantAccountRole } from '@dify/contracts/api/console/workspaces/types.gen'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -25,7 +26,11 @@ const appPage = (app?: { id: string; name: string; updated_at: number }) => ({
   total: app ? 1 : 0,
 })
 
-async function renderDemo(role: TenantAccountRole) {
+async function renderDemo(
+  role: TenantAccountRole,
+  searchParams = '',
+  direction: 'ltr' | 'rtl' = 'ltr',
+) {
   await page.viewport(1440, 900)
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient)
@@ -33,11 +38,13 @@ async function renderDemo(role: TenantAccountRole) {
   seedFeatures(queryClient, { workflow_collaboration_enabled: true })
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
+      <NuqsTestingAdapter searchParams={searchParams}>
         <HotkeysProvider>
-          <div style={{ height: 900 }}>
-            <CollaborationDemoPage />
-          </div>
+          <DirectionProvider direction={direction}>
+            <div dir={direction} style={{ height: 900 }}>
+              <CollaborationDemoPage />
+            </div>
+          </DirectionProvider>
         </HotkeysProvider>
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
@@ -313,4 +320,50 @@ it("shows the editor's Toolbar with only the comment tool reachable", async () =
   await userEvent.keyboard('{Tab}')
   await expect.element(commentTool).not.toHaveFocus()
   expect(document.activeElement?.closest('[inert]')).toBeNull()
+})
+
+it('closes a demo tab opened from the product and goes to Studio otherwise', async () => {
+  const close = vi.spyOn(window, 'close').mockImplementation(() => {})
+  const screen = await renderDemo('owner')
+  const exit = screen.getByRole('button', { name: 'collaborationDemo.exit' }).first()
+
+  await exit.click()
+  expect(close).not.toHaveBeenCalled()
+  expect(api.replace).toHaveBeenCalledWith('/apps')
+
+  vi.spyOn(window, 'opener', 'get').mockReturnValue(window)
+  await exit.click()
+  expect(close).toHaveBeenCalledOnce()
+})
+
+it('closes a demo tab opened from the in-site notification', async () => {
+  const close = vi.spyOn(window, 'close').mockImplementation(() => {})
+  const screen = await renderDemo('owner', '?source=notification')
+
+  await screen.getByRole('button', { name: 'collaborationDemo.exit' }).first().click()
+  expect(close).toHaveBeenCalledOnce()
+})
+
+it('lays out playback and the thread in the page direction, which React Flow resets', async () => {
+  document.documentElement.dir = 'rtl'
+  onTestFinished(() => document.documentElement.removeAttribute('dir'))
+  const screen = await renderDemo('owner', '', 'rtl')
+  await startPlayback(screen)
+  const pause = screen.getByRole('button', { name: 'collaborationDemo.playback.pause' })
+  expect(getComputedStyle(pause.element()).direction).toBe('rtl')
+
+  await userEvent.keyboard('{Tab}{Enter}')
+  const thread = screen.getByRole('dialog', { name: 'workflowComments.comments.panelTitle' })
+  await expect.element(thread).toBeVisible()
+  expect(getComputedStyle(thread.element()).direction).toBe('rtl')
+})
+
+it("keeps the playback controls above the preview's zoom control on a narrow canvas", async () => {
+  const screen = await renderDemo('owner')
+  await page.viewport(375, 900)
+  await startPlayback(screen)
+  const pause = screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }).element()
+  const box = pause.getBoundingClientRect()
+  const hit = document.elementFromPoint(box.left + 4, box.top + box.height / 2)
+  expect(pause.contains(hit)).toBe(true)
 })
