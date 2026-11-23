@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "인라인 에이전트 생성에 실패했습니다. 새로 고침 후 다시 시도하세요.",
   "roster.nodeSelector.dialogLabel": "에이전트 선택",
   "roster.nodeSelector.manageInAgentConsole": "Agents에서 관리",
-  "roster.nodeSelector.searchPlaceholder": "검색…",
+  "roster.nodeSelector.searchPlaceholder": "에이전트 검색…",
   "roster.nodeSelector.startFromScratch": "처음부터 시작",
   "roster.references.label": "{{name}}을(를) 사용하는 워크플로",
   "roster.references.trigger": "{{name}}을(를) 사용하는 워크플로",

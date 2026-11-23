@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Nie udało się utworzyć inline agenta. Odśwież i spróbuj ponownie.",
   "roster.nodeSelector.dialogLabel": "Wybierz agenta",
   "roster.nodeSelector.manageInAgentConsole": "Zarządzaj w Agents",
-  "roster.nodeSelector.searchPlaceholder": "Szukaj…",
+  "roster.nodeSelector.searchPlaceholder": "Szukaj agentów…",
   "roster.nodeSelector.startFromScratch": "Zacznij od zera",
   "roster.references.label": "Workflow używające {{name}}",
   "roster.references.trigger": "Workflow używające {{name}}",

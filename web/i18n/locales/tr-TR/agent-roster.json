@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Inline ajan oluşturulamadı. Yenileyip tekrar deneyin.",
   "roster.nodeSelector.dialogLabel": "Bir ajan seç",
   "roster.nodeSelector.manageInAgentConsole": "Agents'da yönet",
-  "roster.nodeSelector.searchPlaceholder": "Ara…",
+  "roster.nodeSelector.searchPlaceholder": "Ajanları ara…",
   "roster.nodeSelector.startFromScratch": "Sıfırdan Başla",
   "roster.references.label": "{{name}} kullanan iş akışları",
   "roster.references.trigger": "{{name}} kullanan iş akışları",

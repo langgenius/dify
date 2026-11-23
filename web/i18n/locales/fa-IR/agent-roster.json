@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "ایجاد عامل inline ناموفق بود. تازه‌سازی کنید و دوباره امتحان کنید.",
   "roster.nodeSelector.dialogLabel": "یک عامل انتخاب کنید",
   "roster.nodeSelector.manageInAgentConsole": "مدیریت در Agents",
-  "roster.nodeSelector.searchPlaceholder": "جستجو…",
+  "roster.nodeSelector.searchPlaceholder": "جستجوی عوامل…",
   "roster.nodeSelector.startFromScratch": "از صفر شروع کنید",
   "roster.references.label": "گردش‌های کار با استفاده از {{name}}",
   "roster.references.trigger": "گردش‌های کار با استفاده از {{name}}",

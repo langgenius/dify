@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Tạo tác nhân inline thất bại. Làm mới và thử lại.",
   "roster.nodeSelector.dialogLabel": "Chọn một tác nhân",
   "roster.nodeSelector.manageInAgentConsole": "Quản lý trong Agents",
-  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm…",
+  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm tác nhân…",
   "roster.nodeSelector.startFromScratch": "Bắt đầu từ đầu",
   "roster.references.label": "Quy trình làm việc đang dùng {{name}}",
   "roster.references.trigger": "Quy trình làm việc đang dùng {{name}}",

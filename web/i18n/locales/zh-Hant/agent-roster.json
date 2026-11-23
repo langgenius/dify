@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Inline Agent 建立失敗。請重新整理後再試。",
   "roster.nodeSelector.dialogLabel": "選擇 Agent",
   "roster.nodeSelector.manageInAgentConsole": "在 Agents 中管理",
-  "roster.nodeSelector.searchPlaceholder": "搜尋…",
+  "roster.nodeSelector.searchPlaceholder": "搜尋 Agent…",
   "roster.nodeSelector.startFromScratch": "從空白開始",
   "roster.references.label": "使用 {{name}} 的工作流程",
   "roster.references.trigger": "使用 {{name}} 的工作流程",

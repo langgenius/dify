@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Не удалось создать встроенного агента. Обновите и попробуйте снова.",
   "roster.nodeSelector.dialogLabel": "Выберите агента",
   "roster.nodeSelector.manageInAgentConsole": "Управлять в Agents",
-  "roster.nodeSelector.searchPlaceholder": "Поиск…",
+  "roster.nodeSelector.searchPlaceholder": "Поиск агентов…",
   "roster.nodeSelector.startFromScratch": "Начать с нуля",
   "roster.references.label": "Рабочие процессы, использующие {{name}}",
   "roster.references.trigger": "Рабочие процессы, использующие {{name}}",

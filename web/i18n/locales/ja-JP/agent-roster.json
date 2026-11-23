@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "インラインエージェントの作成に失敗しました。更新してもう一度お試しください。",
   "roster.nodeSelector.dialogLabel": "エージェントを選択",
   "roster.nodeSelector.manageInAgentConsole": "Agents で管理",
-  "roster.nodeSelector.searchPlaceholder": "検索…",
+  "roster.nodeSelector.searchPlaceholder": "エージェントを検索…",
   "roster.nodeSelector.startFromScratch": "ゼロから始める",
   "roster.references.label": "{{name}} を使用するワークフロー",
   "roster.references.trigger": "{{name}} を使用するワークフロー",

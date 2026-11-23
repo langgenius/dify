@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "ສ້າງຕົວແທນ inline ບໍ່ສຳເລັດ. ກະລຸນາໂຫຼດໜ້າຄືນໃໝ່ ແລະ ລອງອີກຄັ້ງ.",
   "roster.nodeSelector.dialogLabel": "ເລືອກຕົວແທນ",
   "roster.nodeSelector.manageInAgentConsole": "ຈັດການໃນ Agents",
-  "roster.nodeSelector.searchPlaceholder": "ຄົ້ນຫາ...",
+  "roster.nodeSelector.searchPlaceholder": "ຄົ້ນຫາຕົວແທນ...",
   "roster.nodeSelector.startFromScratch": "ເລີ່ມຈາກສູນ",
   "roster.references.label": "ເວີກໂຟລທີ່ໃຊ້ {{name}}",
   "roster.references.trigger": "ເວີກໂຟລທີ່ໃຊ້ {{name}}",

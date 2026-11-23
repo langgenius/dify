@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Daxili agent yaratmaq mümkün olmadı. Səhifəni yeniləyin və yenidən cəhd edin.",
   "roster.nodeSelector.dialogLabel": "Agent seçimi",
   "roster.nodeSelector.manageInAgentConsole": "Agentlər bölməsində idarə et",
-  "roster.nodeSelector.searchPlaceholder": "Axtar…",
+  "roster.nodeSelector.searchPlaceholder": "Agentləri axtar…",
   "roster.nodeSelector.startFromScratch": "Sıfırdan başla",
   "roster.references.label": "{{name}} agentindən istifadə edən iş axınları",
   "roster.references.trigger": "{{name}} agentindən istifadə edən iş axınları",

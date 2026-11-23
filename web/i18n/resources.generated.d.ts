@@ -215,7 +215,7 @@ export default interface Resources {
     'roster.nodeSelector.createInlineFailed': 'Failed to create inline agent. Refresh and try again.'
     'roster.nodeSelector.dialogLabel': 'Select an agent'
     'roster.nodeSelector.manageInAgentConsole': 'Manage in Agents'
-    'roster.nodeSelector.searchPlaceholder': 'Search…'
+    'roster.nodeSelector.searchPlaceholder': 'Search agents…'
     'roster.nodeSelector.startFromScratch': 'Start from Scratch'
     'roster.references.label': 'Workflows using {{name}}'
     'roster.references.trigger': 'Workflows using {{name}}'

@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "इनलाइन एजेंट बनाने में विफल। रीफ़्रेश करें और पुनः प्रयास करें।",
   "roster.nodeSelector.dialogLabel": "एक एजेंट चुनें",
   "roster.nodeSelector.manageInAgentConsole": "Agents में प्रबंधित करें",
-  "roster.nodeSelector.searchPlaceholder": "खोजें…",
+  "roster.nodeSelector.searchPlaceholder": "एजेंट खोजें…",
   "roster.nodeSelector.startFromScratch": "शुरुआत से आरंभ करें",
   "roster.references.label": "{{name}} का उपयोग करने वाले वर्कफ़्लो",
   "roster.references.trigger": "{{name}} का उपयोग करने वाले वर्कफ़्लो",

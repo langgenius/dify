@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "สร้างตัวแทนแบบอินไลน์ไม่สำเร็จ รีเฟรชและลองอีกครั้ง",
   "roster.nodeSelector.dialogLabel": "เลือกตัวแทน",
   "roster.nodeSelector.manageInAgentConsole": "จัดการใน Agents",
-  "roster.nodeSelector.searchPlaceholder": "ค้นหา…",
+  "roster.nodeSelector.searchPlaceholder": "ค้นหาตัวแทน…",
   "roster.nodeSelector.startFromScratch": "เริ่มต้นจากศูนย์",
   "roster.references.label": "เวิร์กโฟลว์ที่ใช้ {{name}}",
   "roster.references.trigger": "เวิร์กโฟลว์ที่ใช้ {{name}}",

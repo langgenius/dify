@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Inline Agent 创建失败。请刷新后重试。",
   "roster.nodeSelector.dialogLabel": "选择 Agent",
   "roster.nodeSelector.manageInAgentConsole": "在 Agents 中管理",
-  "roster.nodeSelector.searchPlaceholder": "搜索…",
+  "roster.nodeSelector.searchPlaceholder": "搜索 Agent…",
   "roster.nodeSelector.startFromScratch": "从空白开始",
   "roster.references.label": "使用 {{name}} 的工作流",
   "roster.references.trigger": "使用 {{name}} 的工作流",

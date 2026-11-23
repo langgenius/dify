@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Crearea agentului inline a eșuat. Reîmprospătați și încercați din nou.",
   "roster.nodeSelector.dialogLabel": "Selectați un agent",
   "roster.nodeSelector.manageInAgentConsole": "Gestionați în Agents",
-  "roster.nodeSelector.searchPlaceholder": "Căutați…",
+  "roster.nodeSelector.searchPlaceholder": "Căutați agenți…",
   "roster.nodeSelector.startFromScratch": "Începeți de la zero",
   "roster.references.label": "Workflow-uri care folosesc {{name}}",
   "roster.references.trigger": "Workflow-uri care folosesc {{name}}",

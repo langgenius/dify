@@ -39,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Gagal membuat agen inline. Segarkan dan coba lagi.",
   "roster.nodeSelector.dialogLabel": "Pilih agen",
   "roster.nodeSelector.manageInAgentConsole": "Kelola di Agents",
-  "roster.nodeSelector.searchPlaceholder": "Cari…",
+  "roster.nodeSelector.searchPlaceholder": "Cari agen…",
   "roster.nodeSelector.startFromScratch": "Mulai dari Awal",
   "roster.references.label": "Alur kerja yang menggunakan {{name}}",
   "roster.references.trigger": "Alur kerja yang menggunakan {{name}}",
