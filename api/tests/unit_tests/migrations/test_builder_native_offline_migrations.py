@@ -3,7 +3,6 @@
 import logging
 import logging.config
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from alembic import command
@@ -12,7 +11,7 @@ from flask import Flask
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
-_MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "migrations"
+from tests.helpers.builder_migration import BUILDER_MAIN_REVISION, BUILDER_REVISION, MIGRATIONS_DIR
 
 
 @pytest.mark.parametrize("dialect", ["postgresql", "mysql"])
@@ -23,7 +22,7 @@ def test_native_migrations_export_sql_without_database_reads(
     output = StringIO()
     # The real environment always applies the CLI log ini, which closes handlers
     # and disables unrelated application loggers. Only isolate that setup hook.
-    config = Config(str(_MIGRATIONS_DIR / "alembic.ini"), output_buffer=output)
+    config = Config(str(MIGRATIONS_DIR / "alembic.ini"), output_buffer=output)
     monkeypatch.setattr(logging.config, "fileConfig", lambda *_args, **_kwargs: None)
     loggers = [
         logging.getLogger(),
@@ -33,7 +32,7 @@ def test_native_migrations_export_sql_without_database_reads(
         logger: (logger.disabled, logger.level, logger.propagate, tuple(logger.handlers), tuple(logger.filters))
         for logger in loggers
     }
-    config.set_main_option("script_location", str(_MIGRATIONS_DIR))
+    config.set_main_option("script_location", str(MIGRATIONS_DIR))
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://" if dialect == "postgresql" else "mysql+pymysql://"
     database = SQLAlchemy(app)
@@ -42,9 +41,9 @@ def test_native_migrations_export_sql_without_database_reads(
     with app.app_context():
         try:
             if upgrade:
-                command.upgrade(config, "base:head", sql=True)
+                command.upgrade(config, f"{BUILDER_MAIN_REVISION}:{BUILDER_REVISION}", sql=True)
             else:
-                command.downgrade(config, "head:base", sql=True)
+                command.downgrade(config, f"{BUILDER_REVISION}:{BUILDER_MAIN_REVISION}", sql=True)
         finally:
             database.engine.dispose()
 

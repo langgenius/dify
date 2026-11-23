@@ -22,7 +22,6 @@ Cross-dialect notes:
   uniqueness across both dialects (NULLs are distinct in both, matching
   the rotate-in-place contract documented on ``OAuthAccessToken``).
 """
-
 import sqlalchemy as sa
 from alembic import op
 
@@ -121,6 +120,9 @@ def upgrade():
 
 
 def downgrade():
-    # Remove the table with its FK-backed indexes in one operation. MySQL
-    # cannot drop idx_oauth_account while the account foreign key exists.
+    op.drop_index("uq_oauth_active_per_device", table_name="oauth_access_tokens")
+    op.drop_index("idx_oauth_token_hash", table_name="oauth_access_tokens")
+    op.drop_index("idx_oauth_client", table_name="oauth_access_tokens")
+    op.drop_index("idx_oauth_account", table_name="oauth_access_tokens")
+    op.drop_index("idx_oauth_subject_email", table_name="oauth_access_tokens")
     op.drop_table("oauth_access_tokens")
