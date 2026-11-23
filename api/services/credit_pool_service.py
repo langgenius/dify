@@ -6,7 +6,6 @@ quota API; this module only owns the reservation lifecycle and the metadata
 contract that the ledger records for each event.
 """
 
-import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
@@ -14,10 +13,8 @@ from typing import Any
 from uuid import uuid4
 
 from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
-from core.errors.error import QuotaExceededError
+from core.errors.error import InsufficientHostedCreditsError
 from models.enums import ProviderQuotaType
-
-logger = logging.getLogger(__name__)
 
 FEATURE_KEY_CREDIT_POOL = "credit_pool"
 CREDIT_USAGE_CREATED_BY_META_KEY = "created_by"
@@ -152,7 +149,11 @@ class CreditPoolService:
         request_id: str,
         meta: dict[str, Any] | None = None,
     ) -> CreditPoolReservation:
-        """Reserve the full amount or raise before the billable operation starts."""
+        """Reserve the full positive amount for a request before starting a billable operation.
+
+        A Billing denial raises InsufficientHostedCreditsError without a reservation.
+        Upstream failures propagate; they do not establish that no credits were reserved.
+        """
         if credits_required <= 0:
             raise ValueError("credits_required must be greater than 0")
         if not request_id:
@@ -171,7 +172,7 @@ class CreditPoolService:
             meta=reservation_meta,
         )
         if not result.reservation_id:
-            raise QuotaExceededError("Insufficient credits remaining")
+            raise InsufficientHostedCreditsError("Insufficient credits remaining")
 
         return CreditPoolReservation(
             tenant_id=tenant_id,

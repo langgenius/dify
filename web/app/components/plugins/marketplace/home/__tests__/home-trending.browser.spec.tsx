@@ -1,5 +1,6 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { i18n as I18n } from 'i18next'
+import type { TestNavigation } from '@/test/next-navigation'
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
@@ -10,9 +11,11 @@ import app from '@/i18n/locales/en-US/app.json'
 import common from '@/i18n/locales/en-US/common.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import plugin from '@/i18n/locales/en-US/plugin.json'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import HomeTrending from '../home-trending'
 
 // boundary: banner analytics stop at the telemetry adapter.
@@ -21,40 +24,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 vi.unmock('react-i18next')
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}))
-
-// boundary: plugin detail hydration stops at the external Marketplace HTTP client.
-vi.mock('@/service/plugins', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/plugins')>()),
-  fetchPluginInfoFromMarketPlace: vi
-    .fn<typeof import('@/service/plugins').fetchPluginInfoFromMarketPlace>()
-    .mockImplementation(async ({ org, name }) => ({
-      data: {
-        version: { version: '1.0.0' },
-        plugin: {
-          category: 'tool',
-          latest_package_identifier: `${org}/${name}:1.0.0`,
-          latest_version: '1.0.0',
-        },
-      },
-    })),
-}))
-
-// boundary: installed-plugin reads stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-  }
-})
 
 // boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
@@ -167,8 +136,13 @@ const mixedRecommendations: PluginBanner = {
 }
 
 let i18n: I18n
+let testNavigation: TestNavigation
 
-const withI18n = (node: React.ReactNode) => <I18nextProvider i18n={i18n}>{node}</I18nextProvider>
+const withI18n = (node: React.ReactNode) => (
+  <testNavigation.NavigationProvider>
+    <I18nextProvider i18n={i18n}>{node}</I18nextProvider>
+  </testNavigation.NavigationProvider>
+)
 
 async function renderTrending(
   props: {
@@ -188,6 +162,7 @@ async function renderTrending(
     systemFeatures: { deployment_edition: edition },
   })
   seedModelProviderQueries(queryClient)
+  testNavigation = createTestNavigation({ url: '/marketplace' })
   return render(
     withI18n(
       <ConsoleProvider>
@@ -238,7 +213,29 @@ describe('Marketplace home trending carousel', () => {
       keySeparator: false,
       resources: { 'en-US': { app, common, navigation, plugin } },
     })
-    onTestFinished(guardUnexpectedFetch())
+    onTestFinished(
+      installFakeApi({
+        console: {
+          workspaces: {
+            current: {
+              plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
+            },
+          },
+        },
+        routes: [
+          route('GET', 'marketplace', '/plugins/:org/:name', ({ params }) => ({
+            data: {
+              version: { version: '1.0.0' },
+              plugin: {
+                category: 'tool',
+                latest_package_identifier: `${params.org}/${params.name}:1.0.0`,
+                latest_version: '1.0.0',
+              },
+            },
+          })),
+        ],
+      }),
+    )
     document.documentElement.dataset.isMarketplace = ''
     window.__marketplaceTracking__ = {
       track: vi.fn(),
@@ -316,18 +313,8 @@ describe('Marketplace home trending carousel', () => {
   })
 
   it('keeps reduced-motion autoplay stopped until the user explicitly starts it', async () => {
-    const nativeMatchMedia = window.matchMedia.bind(window)
-    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-      const result = nativeMatchMedia(query)
-      if (query !== '(prefers-reduced-motion: reduce)') return result
-      return new Proxy(result, {
-        get(target, property) {
-          if (property === 'matches') return true
-          const value = Reflect.get(target, property)
-          return typeof value === 'function' ? value.bind(target) : value
-        },
-      })
-    })
+    await emulateReducedMotion(true)
+    onTestFinished(() => emulateReducedMotion(false))
     const screen = await renderTrending()
     const carousel = getCarousel(screen)
     const track = carousel.element().querySelector('[aria-live]')!

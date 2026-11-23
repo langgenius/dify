@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
@@ -95,7 +94,6 @@ def _provider_manager(configuration: ProviderConfiguration | None) -> ProviderMa
     return manager
 
 
-@contextmanager
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,

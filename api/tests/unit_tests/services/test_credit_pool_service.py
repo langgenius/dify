@@ -7,7 +7,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.credit_usage import CreditUsageAppType
-from core.errors.error import QuotaExceededError
+from core.errors.error import InsufficientHostedCreditsError
 from models.enums import ProviderQuotaType
 from services.billing_client import billing
 from services.credit_pool_service import (
@@ -126,7 +126,7 @@ def test_reserve_credits_raises_when_billing_has_no_reservation() -> None:
     with patch("services.billing_service.BillingService.quota_reserve") as quota_reserve:
         quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="", available=1, reserved=0)
 
-        with pytest.raises(QuotaExceededError, match="Insufficient credits remaining"):
+        with pytest.raises(InsufficientHostedCreditsError, match="Insufficient credits remaining"):
             CreditPoolService.reserve_credits(tenant_id="tenant-1", credits_required=3, request_id="request-1")
 
 
