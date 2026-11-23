@@ -15,8 +15,8 @@ class KnowledgeFSTidySettingsPayload(BaseModel):
     enabled: bool
     # Conflict detection calls the space's reasoning model; duplicate detection never does.
     conflicts: bool | None = None
-    expectedRevision: int = Field(ge=0)
-    acknowledgeTokenUsage: bool = False
+    expectedRevision: int = Field(ge=0)  # noqa: N815  # Public field name.
+    acknowledgeTokenUsage: bool = False  # noqa: N815  # Public field name.
 
     model_config = ConfigDict(extra="forbid")
 
@@ -32,8 +32,8 @@ class KnowledgeFSTidySettingsResponse(ResponseModel):
     enabled: bool
     conflicts: bool
     revision: int
-    lastError: Literal["scan_failed", "authorization_failed", "model_unavailable"] | None
-    updatedAt: str
+    lastError: Literal["scan_failed", "authorization_failed", "model_unavailable"] | None  # noqa: N815  # Public field name.
+    updatedAt: str  # noqa: N815  # Public field name.
 
 
 class KnowledgeFSTidyFindingCountResponse(ResponseModel):
@@ -52,24 +52,24 @@ class KnowledgeFSTidyDocumentProgressResponse(ResponseModel):
 class KnowledgeFSTidyCurrentScanResponse(ResponseModel):
     """How far the scanner is through the document it is scanning now."""
 
-    documentId: str
+    documentId: str  # noqa: N815  # Public field name.
     title: str
-    passagesDone: int
-    passagesTotal: int
+    passagesDone: int  # noqa: N815  # Public field name.
+    passagesTotal: int  # noqa: N815  # Public field name.
 
 
 class KnowledgeFSTidySummaryResponse(ResponseModel):
     findings: list[KnowledgeFSTidyFindingCountResponse]
     documents: KnowledgeFSTidyDocumentProgressResponse
-    modelCalls: int
+    modelCalls: int  # noqa: N815  # Public field name.
     current: KnowledgeFSTidyCurrentScanResponse | None = None
 
 
 class KnowledgeFSTidyEvidenceResponse(ResponseModel):
-    documentId: str
+    documentId: str  # noqa: N815  # Public field name.
     revision: int
     title: str
-    chunkId: str
+    chunkId: str  # noqa: N815  # Public field name.
     start: int
     end: int
     text: str
@@ -84,8 +84,8 @@ class KnowledgeFSTidyFindingResponse(ResponseModel):
     similarity: float | None
     status: TidyFindingStatus
     revision: int
-    actionId: str | None
-    createdAt: str
+    actionId: str | None  # noqa: N815  # Public field name.
+    createdAt: str  # noqa: N815  # Public field name.
     stale: bool = False
 
 
@@ -93,15 +93,15 @@ class KnowledgeFSTidyDocumentCardResponse(ResponseModel):
     """What the review page shows about a document a finding quotes."""
 
     title: str
-    mimeType: str
-    sizeBytes: int
-    publishedAt: str
+    mimeType: str  # noqa: N815  # Public field name.
+    sizeBytes: int  # noqa: N815  # Public field name.
+    publishedAt: str  # noqa: N815  # Public field name.
     enabled: bool
 
 
 class KnowledgeFSTidyFindingListResponse(ResponseModel):
     items: list[KnowledgeFSTidyFindingResponse]
-    nextCursor: str | None
+    nextCursor: str | None  # noqa: N815  # Public field name.
     # Keyed by document id; absent from KnowledgeFS releases before document cards existed.
     documents: dict[str, KnowledgeFSTidyDocumentCardResponse] = Field(default_factory=dict)
 
@@ -118,9 +118,9 @@ class KnowledgeFSTidyScanQuery(BaseModel):
 
 
 class KnowledgeFSTidyActionPayload(BaseModel):
-    expectedRevision: int = Field(gt=0)
+    expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
     action: Literal["dismiss", "review", "disable_document", "undo"]
-    documentId: str | None = None
+    documentId: str | None = None  # noqa: N815  # Public field name.
 
     model_config = ConfigDict(extra="forbid")
 
@@ -133,17 +133,17 @@ class KnowledgeFSTidyActionPayload(BaseModel):
 
 
 class KnowledgeFSTidyScanResponse(ResponseModel):
-    documentId: str
+    documentId: str  # noqa: N815  # Public field name.
     title: str
     state: TidyScanState
     windows: int
-    modelCalls: int
+    modelCalls: int  # noqa: N815  # Public field name.
     error: str | None
 
 
 class KnowledgeFSTidyScanListResponse(ResponseModel):
     items: list[KnowledgeFSTidyScanResponse]
-    nextCursor: str | None
+    nextCursor: str | None  # noqa: N815  # Public field name.
 
 
 class KnowledgeFSTidyRetryResponse(ResponseModel):
