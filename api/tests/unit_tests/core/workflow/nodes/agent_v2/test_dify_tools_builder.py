@@ -119,7 +119,7 @@ def _tool(*, runtime_parameters: dict[str, Any] | None = None) -> FakeTool:
         identity=ToolIdentity(
             author="langgenius",
             name="search",
-            label=I18nObject(en_US="Search"),
+            label=I18nObject(en_US="Search", zh_Hans="搜索"),
             provider="search",
         ),
         description=ToolDescription(human=I18nObject(en_US="Search"), llm="Search the web."),
@@ -288,8 +288,9 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
 def test_call_limit_survives_preparation_on_every_dify_tool_route(
     provider_type: str, provider_id: str, destination: str, limit: int | None
 ) -> None:
+    runtime = _tool()
     builder = WorkflowAgentDifyToolsBuilder(
-        tool_runtime_provider=FakeRuntimeProvider(_tool()),
+        tool_runtime_provider=FakeRuntimeProvider(runtime),
         mcp_provider_id_resolver=lambda *, tenant_id, provider_id: "canonical-mcp-server",
     )
     tools = AgentSoulToolsConfig.model_validate(
@@ -313,7 +314,11 @@ def test_call_limit_survives_preparation_on_every_dify_tool_route(
     layer = result.plugin_tools if destination == "plugin" else result.core_tools
     assert layer is not None
     assert layer.tools[0].max_calls_per_run == limit
+    assert result.tool_labels["search"] == {"en_US": "Search", "zh_Hans": "搜索", "pt_BR": "Search", "ja_JP": "Search"}
+    runtime.entity.identity.label.en_US = "Renamed after preparation"
+    assert result.tool_labels["search"]["en_US"] == "Search"
     serialized_tool = layer.model_dump(mode="json")["tools"][0]
+    assert "tool_labels" not in serialized_tool
     if limit is None:
         assert "max_calls_per_run" not in serialized_tool
     else:
@@ -830,6 +835,10 @@ def test_research_tool_exposes_one_choice_per_bound_agent_knowledge_space(tool_n
         "create_research_task",
         "create_research_task",
     ]
+    assert result.tool_labels == {
+        "create_research_task_1": tool.entity.identity.label.to_dict(),
+        "create_research_task_2": tool.entity.identity.label.to_dict(),
+    }
     for prepared, space in zip(result.core_tools.tools, spaces, strict=True):
         assert prepared.runtime_parameters["resource"] == {
             "kind": "knowledge_fs",
@@ -1172,7 +1181,7 @@ def test_tool_scoped_provider_still_requires_credential_id(provider_type: str):
 # ── provider-level entries (tool_name omitted = all tools of the provider) ───
 
 
-def test_provider_level_entry_expands_to_all_tools():
+def test_provider_level_entry_expands_to_all_tools() -> None:
     runtime_provider = FakeRuntimeProvider(_tool())
     listed: list[tuple[str, str, ToolProviderType]] = []
 
@@ -1193,10 +1202,14 @@ def test_provider_level_entry_expands_to_all_tools():
         }
     )
 
-    result = _build(builder, tools)
+    result = builder.build_layers(
+        tenant_id="tenant-1", app_id="app-1", user_id="user-1", tools=tools, invoke_from=InvokeFrom.DEBUGGER
+    )
 
-    assert result is not None
-    assert [tool.tool_name for tool in result.tools] == ["search", "image_search"]
+    assert result.plugin_tools is not None
+    assert [tool.tool_name for tool in result.plugin_tools.tools] == ["search", "image_search"]
+    assert set(result.tool_labels) == {"search", "image_search"}
+    assert all(label["zh_Hans"] == "搜索" for label in result.tool_labels.values())
     assert listed == [("tenant-1", "langgenius/search/search", ToolProviderType.PLUGIN)]
 
 

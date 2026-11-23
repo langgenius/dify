@@ -21,6 +21,7 @@ from dify_agent.protocol.tool_call_limits import (
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from clients.agent_backend import AgentBackendStreamInternalEvent
+from core.tools.entities.common_entities import I18nObjectDict
 
 _TOOL_FIELD_LIMIT = 16 * 1024
 
@@ -134,10 +135,25 @@ class WorkflowAgentToolActivityProjector:
     terminal calls are never regressed.
     """
 
-    def __init__(self, *, node_id: str, node_execution_id: str, node_title: str) -> None:
+    def __init__(
+        self,
+        *,
+        node_id: str,
+        node_execution_id: str,
+        node_title: str,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
+    ) -> None:
+        """Snapshot this run's prepared display names without changing native identity.
+
+        Label mappings come from admitted tool declarations, not stream content.
+        The existing flat Workflow label uses the declaration's English fallback;
+        technical names and IDs remain available for correlation. Copy values so
+        later declaration edits cannot change already projected records.
+        """
         self._node_id = node_id
         self._node_execution_id = node_execution_id
         self._node_title = node_title
+        self._tool_display_names = {name: label.get("en_US") or name for name, label in (tool_labels or {}).items()}
         self._calls: dict[tuple[str, str], _ToolCallState] = {}
 
     def handle(self, event: AgentBackendStreamInternalEvent) -> list[WorkflowAgentToolActivity]:
@@ -336,7 +352,7 @@ class WorkflowAgentToolActivityProjector:
             id=f"{run_id}:{state.tool_call_id}",
             node_id=self._node_id,
             node_execution_id=self._node_execution_id,
-            label=state.tool_name,
+            label=self._tool_display_names.get(state.tool_name, state.tool_name),
             status=state.status,
             error=state.error,
             data=WorkflowAgentToolActivityData(

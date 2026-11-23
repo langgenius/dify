@@ -60,6 +60,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.tools.entities.common_entities import I18nObjectDict
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
@@ -273,6 +274,8 @@ class _AgentProcessRecorder:
     native run/call identities reuse one thought row and terminal states never
     regress. Structured activity metadata is persisted
     before queue notification, including after the user stops consuming SSE.
+    Prepared tool labels are copied for this run and frozen on the persisted
+    thought; reconstructing a recorder never relabels an existing invocation.
     """
 
     def __init__(
@@ -281,10 +284,12 @@ class _AgentProcessRecorder:
         dify_context: DifyRunContext,
         message_id: str,
         queue_manager: AppQueueManager,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
     ) -> None:
         self._dify_context = dify_context
         self._message_id = message_id
         self._queue_manager = queue_manager
+        self._tool_labels = {name: label.copy() for name, label in (tool_labels or {}).items()}
         self._next_position = 1
         self._thinking_by_index: dict[int, str] = {}
         self._answer_thought_id: str | None = None
@@ -700,7 +705,7 @@ class _AgentProcessRecorder:
             message_chain_id=None,
             thought=thought or "",
             tool=tool or "",
-            tool_labels_str=_tool_labels(tool),
+            tool_labels_str=self._labels_for_tool(tool),
             tool_meta_str=json.dumps(
                 {AGENT_TOOL_ACTIVITY_META_KEY: tool_activity.model_dump(mode="json")} if tool_activity else {},
                 ensure_ascii=False,
@@ -757,7 +762,7 @@ class _AgentProcessRecorder:
             changed = True
         if tool and row.tool != tool:
             row.tool = tool
-            row.tool_labels_str = _tool_labels(tool)
+            row.tool_labels_str = self._labels_for_tool(tool)
             changed = True
         if tool_input is not None and row.tool_input != tool_input:
             row.tool_input = tool_input
@@ -790,6 +795,18 @@ class _AgentProcessRecorder:
         if self._dify_context.invoke_from.runs_as_account():
             return CreatorUserRole.ACCOUNT
         return CreatorUserRole.END_USER
+
+    def _labels_for_tool(self, tool: str | None) -> str:
+        """Freeze the prepared label for a new name, falling back for native tools.
+
+        The run's prepared labels contain only declared display metadata.
+        Existing rows retain their original labels unless their technical
+        name is still being assembled by the native stream.
+        """
+        if not tool:
+            return "{}"
+        label = self._tool_labels.get(tool) or {"en_US": tool, "zh_Hans": tool}
+        return json.dumps({tool: label}, ensure_ascii=False)
 
 
 def _event_index(data: dict[str, Any]) -> int:
@@ -827,12 +844,6 @@ def _json_or_text(value: Any) -> str | None:
         return json.dumps(value, ensure_ascii=False)
     except Exception:
         return str(value)
-
-
-def _tool_labels(tool: str | None) -> str:
-    if not tool:
-        return "{}"
-    return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
 
 
 def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
@@ -923,6 +934,7 @@ class AgentAppRunner:
             query=query,
             session_scope=scope,
             binding_id=runtime.binding_id,
+            tool_labels=runtime.tool_labels,
         )
 
         terminal_usage = None
@@ -1076,6 +1088,7 @@ class AgentAppRunner:
         query: str | None,
         session_scope: AgentAppSessionScope,
         binding_id: str,
+        tool_labels: Mapping[str, I18nObjectDict] | None = None,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -1083,6 +1096,7 @@ class AgentAppRunner:
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
+            tool_labels=tool_labels,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         last_event_id: str | None = None
