@@ -57,6 +57,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.app.workflow.file_runtime import build_account_avatar_url
 from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
@@ -79,7 +80,6 @@ from fields.workflow_run_fields import (
 )
 from graphon.enums import NodeType
 from graphon.file import File
-from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -2141,15 +2141,10 @@ class WorkflowOnlineUsersApi(Resource):
 
                 if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
                     try:
-                        avatar = file_helpers.get_signed_file_url(avatar)
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to sign workflow online user avatar; using original value. "
-                            "app_id=%s avatar=%s error=%s",
-                            app_id,
-                            avatar,
-                            exc,
-                        )
+                        avatar = build_account_avatar_url(avatar=avatar, account_id=user_id)
+                    except ValueError:
+                        logger.warning("Failed to sign workflow online user avatar for app %s", app_id, exc_info=True)
+                        avatar = None
 
                 users.append({"user_id": user_id, "username": username, "avatar": avatar})
             results.append({"app_id": app_id, "users": users})

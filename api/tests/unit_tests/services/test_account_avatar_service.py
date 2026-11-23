@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
@@ -41,20 +43,21 @@ def test_resolve_returns_owned_signed_url(
     sqlite_session_factory: sessionmaker[Session],
     mocker: MockerFixture,
 ) -> None:
+    file_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
-        session.add(make_upload_file(file_id="file-1"))
+        session.add(make_upload_file(file_id=file_id, extension="png", mime_type="image/png"))
     get_owned_url = mocker.spy(files, "get_owned_signed_url")
     sign_url = mocker.patch(
-        "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
+        "services.account_avatar_file_gateway.get_signed_avatar_url",
         return_value="https://signed.example/avatar",
     )
     service = AccountAvatarService(files=files)
 
-    result = service.resolve(_context(), "file-1")
+    result = service.resolve(_context(), file_id)
 
     assert result == "https://signed.example/avatar"
-    sign_url.assert_called_once_with(upload_file_id="file-1")
-    get_owned_url.assert_called_once_with(account_id="account-1", upload_file_id="file-1")
+    sign_url.assert_called_once_with(upload_file_id=file_id, account_id="account-1")
+    get_owned_url.assert_called_once_with(account_id="account-1", upload_file_id=file_id)
 
 
 @pytest.mark.parametrize("exists", [False, True])
@@ -63,10 +66,13 @@ def test_resolve_rejects_missing_or_unowned_file(
     sqlite_session_factory: sessionmaker[Session],
     exists: bool,
 ) -> None:
+    file_id = str(uuid4())
     if exists:
         with sqlite_session_factory.begin() as session:
-            session.add(make_upload_file(file_id="file-1", created_by="another-account"))
+            session.add(
+                make_upload_file(file_id=file_id, created_by="another-account", extension="png", mime_type="image/png")
+            )
     service = AccountAvatarService(files=files)
 
     with pytest.raises(AvatarFileNotFoundError):
-        service.resolve(_context(), "file-1")
+        service.resolve(_context(), file_id)

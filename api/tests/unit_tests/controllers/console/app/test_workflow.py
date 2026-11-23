@@ -1209,12 +1209,12 @@ class TestWorkflowCases:
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
         signed_avatar_url = "https://files.example.com/signed/avatar-1"
-        signed_ids: list[str] = []
+        signed_avatars: list[tuple[str, str]] = []
         queries: list[tuple[list[str], str, Session]] = []
         actors: list[tuple[str, str]] = []
 
-        def sign_avatar(file_id: str) -> str:
-            signed_ids.append(file_id)
+        def sign_avatar(*, avatar: str, account_id: str) -> str:
+            signed_avatars.append((avatar, account_id))
             return signed_avatar_url
 
         class WorkflowQueries:
@@ -1231,7 +1231,7 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+        monkeypatch.setattr(workflow_module, "build_account_avatar_url", sign_avatar)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
         redis_result = [
@@ -1321,7 +1321,7 @@ class TestWorkflowCases:
         assert pipeline_transactions == [False]
         assert redis_keys == [f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"]
         assert executions == [True]
-        assert signed_ids == ["avatar-file-id"]
+        assert signed_avatars == [("avatar-file-id", "u-1")]
         assert queries == [([app_id_1, app_id_2], "tenant-1", unbound_session)]
         assert actors == [("tenant-1", "account-1")]
 

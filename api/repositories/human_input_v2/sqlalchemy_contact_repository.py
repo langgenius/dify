@@ -30,6 +30,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
 )
 from models.model import UploadFile
+from repositories.account_avatar import validated_account_avatar
 from repositories.human_input_v2.contact import (
     CandidateId,
     Contact,
@@ -459,7 +460,7 @@ class SQLAlchemyContactRepository:
                 sa.literal(ContactType.WORKSPACE.value).label(_CONTACT_TYPE),
                 Account.name.label(_NAME),
                 Account.email.label(_EMAIL),
-                sa.cast(Account.avatar, sa.String(255)).label(_AVATAR_FILE_ID),
+                sa.cast(validated_account_avatar(), sa.String(255)).label(_AVATAR_FILE_ID),
                 HumanInputContactIdentity.created_at.label(_CREATED_AT),
             )
             .select_from(TenantAccountJoin)
@@ -477,7 +478,7 @@ class SQLAlchemyContactRepository:
                 sa.literal(ContactType.PLATFORM.value).label(_CONTACT_TYPE),
                 Account.name.label(_NAME),
                 Account.email.label(_EMAIL),
-                sa.cast(Account.avatar, sa.String(255)).label(_AVATAR_FILE_ID),
+                sa.cast(validated_account_avatar(), sa.String(255)).label(_AVATAR_FILE_ID),
                 HumanInputContactIdentity.created_at.label(_CREATED_AT),
             )
             .select_from(HumanInputPlatformContactWorkspaceEntry)
@@ -521,7 +522,11 @@ class SQLAlchemyContactRepository:
     @staticmethod
     def _organization_candidates_query(keyword: str):
         statement = (
-            sa.select(HumanInputContactIdentity, Account)
+            sa.select(
+                HumanInputContactIdentity,
+                Account,
+                validated_account_avatar().label(_AVATAR_FILE_ID),
+            )
             .join(Account, Account.id == HumanInputContactIdentity.account_id)
             .where(
                 HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
@@ -554,13 +559,15 @@ class SQLAlchemyContactRepository:
         )
 
     @staticmethod
-    def _candidate_from_row(row: Row[tuple[HumanInputContactIdentity, Account]]) -> OrganizationCandidate:
-        identity, account = row
+    def _candidate_from_row(
+        row: Row[tuple[HumanInputContactIdentity, Account, str | None]],
+    ) -> OrganizationCandidate:
+        identity, account, avatar_file_id = row
         return OrganizationCandidate(
             id=CandidateId(identity.id),
             name=account.name,
             email=account.email,
-            avatar_file_id=account.avatar,
+            avatar_file_id=avatar_file_id,
             created_at=ensure_naive_utc(identity.created_at),
         )
 

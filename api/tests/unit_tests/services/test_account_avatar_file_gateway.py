@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -35,16 +36,17 @@ def test_gateway_signs_only_an_avatar_owned_by_the_account(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    _persist_upload_file(sqlite_session, file_id="file-1", account_id="account-1")
+    file_id = str(uuid4())
+    _persist_upload_file(sqlite_session, file_id=file_id, account_id="account-1")
     gateway = SQLAlchemyAccountAvatarFileGateway(session_factory=sqlite_session_factory)
 
     with patch(
-        "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
+        "services.account_avatar_file_gateway.get_signed_avatar_url",
         return_value="https://signed.example/avatar",
     ) as signer:
-        owned_url = gateway.get_owned_signed_url(account_id="account-1", upload_file_id="file-1")
-        unowned_url = gateway.get_owned_signed_url(account_id="account-2", upload_file_id="file-1")
+        owned_url = gateway.get_owned_signed_url(account_id="account-1", upload_file_id=file_id)
+        unowned_url = gateway.get_owned_signed_url(account_id="account-2", upload_file_id=file_id)
 
     assert owned_url == "https://signed.example/avatar"
     assert unowned_url is None
-    signer.assert_called_once_with(upload_file_id="file-1")
+    signer.assert_called_once_with(upload_file_id=file_id, account_id="account-1")

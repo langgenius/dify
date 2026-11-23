@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import override
+from uuid import UUID
 
 from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,11 +18,13 @@ from models.account import (
     TenantAccountJoin,
     TenantStatus,
 )
+from models.model import UploadFile
+from repositories.account_avatar import owned_avatar_file_conditions
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
-from services.account_errors import AccountNormalizedEmailAlreadyInUseError
+from services.account_errors import AccountNormalizedEmailAlreadyInUseError, AvatarFileNotFoundError
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountAuthenticationSnapshot,
@@ -267,10 +270,24 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             if account is None:
                 return None
 
+            avatar = changes.avatar
+            if avatar and not avatar.startswith(("http://", "https://")):
+                try:
+                    avatar = str(UUID(avatar))
+                except ValueError as error:
+                    raise AvatarFileNotFoundError from error
+                owned_avatar_id = session.scalar(
+                    select(UploadFile.id)
+                    .where(*owned_avatar_file_conditions(account_id=account_id, file_id=avatar))
+                    .limit(1)
+                )
+                if owned_avatar_id is None:
+                    raise AvatarFileNotFoundError
+
             if changes.name is not None:
                 account.name = changes.name
             if changes.avatar is not None:
-                account.avatar = changes.avatar
+                account.avatar = avatar
             if changes.interface_language is not None:
                 account.interface_language = changes.interface_language
             if changes.interface_theme is not None:

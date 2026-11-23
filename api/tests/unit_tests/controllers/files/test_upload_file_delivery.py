@@ -1,17 +1,29 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+from urllib.parse import urlsplit
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 import controllers.files.upload_file_delivery as module
+from core.app.workflow.file_runtime import get_signed_avatar_url
+from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX
+from models.enums import CreatorUserRole
+from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from services.errors.file import UnsupportedFileTypeError as UnsupportedFileTypeServiceError
 from services.upload_file_delivery_service import (
     UploadFileDelivery,
     UploadFileDeliveryNotFoundError,
     UploadFileDeliveryRecord,
+    UploadFileDeliveryService,
+    UploadFileStorage,
 )
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _delivery(
@@ -35,6 +47,31 @@ def _delivery(
 
 
 _SIGNED_QUERY = "/?timestamp=123&nonce=abc&sign=sig"
+_AVATAR_FILE_ID = UUID("11111111-1111-1111-1111-111111111111")
+_AVATAR_OWNER_ID = "22222222-2222-2222-2222-222222222222"
+_AVATAR_SIGNED_QUERY = f"/?timestamp=120&nonce={ACCOUNT_AVATAR_NONCE_PREFIX}{_AVATAR_OWNER_ID}&sign=sig"
+
+
+@dataclass(frozen=True)
+class _PreviewApplicationServices:
+    upload_file_delivery: UploadFileDeliveryService
+
+
+@pytest.fixture
+def preview_storage(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> Mock:
+    config_overrides(FILES_ACCESS_TIMEOUT=300, FILES_URL="", SECRET_KEY="unit-secret")
+    storage = Mock(spec=UploadFileStorage)
+    storage.load_stream.return_value = iter([b"data"])
+    service = UploadFileDeliveryService(
+        files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory),
+        storage=storage,
+    )
+    monkeypatch.setattr(module, "application_services", lambda: _PreviewApplicationServices(service))
+    return storage
 
 
 @pytest.mark.parametrize(
@@ -168,6 +205,107 @@ class TestFilePreviewApi:
             response = module.FilePreviewApi().get("file-id")
 
         assert response.headers["Accept-Ranges"] == "bytes"
+
+    @pytest.mark.parametrize(("request_time", "max_age"), [(160, 60), (400, 20)])
+    def test_avatar_preview_cache_is_private_and_bounded(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
+        preview_storage: Mock,
+        request_time: int,
+        max_age: int,
+    ) -> None:
+        monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 160)
+        upload = make_upload_file(
+            file_id=str(_AVATAR_FILE_ID),
+            created_by=_AVATAR_OWNER_ID,
+            name="avatar.png",
+            extension="png",
+            mime_type="image/png",
+        )
+        with sqlite_session_factory.begin() as session:
+            session.add(upload)
+        signed_url = get_signed_avatar_url(upload_file_id=str(_AVATAR_FILE_ID), account_id=_AVATAR_OWNER_ID)
+        assert signed_url is not None
+
+        monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: request_time)
+        with app.test_request_context(f"/?{urlsplit(signed_url).query}"):
+            response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
+
+        assert response.headers["Cache-Control"] == f"private, max-age={max_age}, must-revalidate"
+        preview_storage.load_stream.assert_called_once_with("uploads/file-1")
+
+    @pytest.mark.parametrize(
+        ("creator", "role", "extension", "mime_type"),
+        [
+            ("33333333-3333-3333-3333-333333333333", CreatorUserRole.ACCOUNT, "png", "image/png"),
+            (_AVATAR_OWNER_ID, CreatorUserRole.END_USER, "png", "image/png"),
+            (_AVATAR_OWNER_ID, CreatorUserRole.ACCOUNT, "png", "text/plain"),
+            (_AVATAR_OWNER_ID, CreatorUserRole.ACCOUNT, "svg", "image/svg+xml"),
+        ],
+        ids=("other-owner", "other-creator-role", "mime-mismatch", "active-image"),
+    )
+    def test_avatar_preview_rejects_ineligible_uploads_before_storage(
+        self,
+        app: Flask,
+        sqlite_session_factory: sessionmaker[Session],
+        preview_storage: Mock,
+        creator: str,
+        role: CreatorUserRole,
+        extension: str,
+        mime_type: str,
+    ) -> None:
+        upload = make_upload_file(
+            file_id=str(_AVATAR_FILE_ID),
+            created_by=creator,
+            created_by_role=role,
+            name=f"avatar.{extension}",
+            extension=extension,
+            mime_type=mime_type,
+        )
+        with sqlite_session_factory.begin() as session:
+            session.add(upload)
+        signed_url = get_signed_avatar_url(upload_file_id=str(_AVATAR_FILE_ID), account_id=_AVATAR_OWNER_ID)
+        assert signed_url is not None
+
+        with (
+            app.test_request_context(f"/?{urlsplit(signed_url).query}"),
+            pytest.raises(NotFound, match="File not found or signature is invalid"),
+        ):
+            module.FilePreviewApi().get(_AVATAR_FILE_ID)
+
+        preview_storage.load_stream.assert_not_called()
+        preview_storage.load_once.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("query", "name", "extension"),
+        [
+            (_SIGNED_QUERY, "avatar.png", "png"),
+            (f"{_AVATAR_SIGNED_QUERY}&as_attachment=true", "avatar.png", "png"),
+            (_AVATAR_SIGNED_QUERY, "avatar.svg", "png"),
+        ],
+        ids=("generic-signature", "attachment", "active-download"),
+    )
+    @patch.object(module, "application_services")
+    def test_non_inline_avatar_responses_are_not_cached(
+        self,
+        mock_application_services: Mock,
+        app: Flask,
+        query: str,
+        name: str,
+        extension: str,
+    ) -> None:
+        mock_application_services.return_value.upload_file_delivery.get_signed_file_preview.return_value = _delivery(
+            mime_type="image/png",
+            name=name,
+            extension=extension,
+        )
+
+        with app.test_request_context(query):
+            response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
+
+        assert "Cache-Control" not in response.headers
 
     @patch.object(module, "application_services")
     def test_zero_size_omits_content_length(self, mock_application_services, app: Flask):

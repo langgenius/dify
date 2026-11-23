@@ -8,6 +8,7 @@ import time
 import urllib.parse
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Literal, override
+from uuid import UUID
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
@@ -18,11 +19,18 @@ from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
+from graphon.file.runtime import peek_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
+from libs.account_avatar import ACCOUNT_AVATAR_NONCE_PREFIX
 
 if TYPE_CHECKING:
     from dify_app import DifyApp
     from graphon.file import File
+
+
+_ACCOUNT_AVATAR_PREVIEW_PURPOSE = "account-avatar-preview"
+_ACCOUNT_AVATAR_WINDOW_SECONDS = 60
+_ACCOUNT_AVATAR_CLOCK_SKEW_SECONDS = 5
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
@@ -112,6 +120,11 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         uri = self.resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
         return bind_file_uri(uri, self._base_url(for_external=for_external))
 
+    def resolve_avatar_file_url(self, *, upload_file_id: str, account_id: str) -> str:
+        """Sign an account-scoped avatar preview. Delivery must verify the upload's ownership."""
+        uri = self._resolve_upload_file_uri(upload_file_id=upload_file_id, avatar_account_id=account_id)
+        return bind_file_uri(uri, self._base_url(for_external=True))
+
     def resolve_upload_file_uri(
         self,
         *,
@@ -120,9 +133,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     ) -> str:
         """Resolve a signed UploadFile URI without selecting an origin."""
 
+        return self._resolve_upload_file_uri(upload_file_id=upload_file_id, as_attachment=as_attachment)
+
+    def _resolve_upload_file_uri(
+        self, *, upload_file_id: str, as_attachment: bool = False, avatar_account_id: str | None = None
+    ) -> str:
         self._assert_upload_file_access(upload_file_id=upload_file_id)
         uri = f"/files/{upload_file_id}/file-preview"
-        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        query = self._sign_query(upload_file_id=upload_file_id, avatar_account_id=avatar_account_id)
         if as_attachment:
             query["as_attachment"] = "true"
         return f"{uri}?{urllib.parse.urlencode(query)}"
@@ -148,11 +166,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         nonce: str,
         sign: str,
     ) -> bool:
-        payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
+        is_avatar = preview_kind == "file" and nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX)
+        purpose = _ACCOUNT_AVATAR_PREVIEW_PURPOSE if is_avatar else f"{preview_kind}-preview"
+        payload = f"{purpose}|{file_id}|{timestamp}|{nonce}"
         recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
-        if sign != base64.urlsafe_b64encode(recalculated).decode():
+        if not hmac.compare_digest(sign.encode(), base64.urlsafe_b64encode(recalculated)):
             return False
-        return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+        age = int(time.time()) - int(timestamp)
+        return age <= dify_config.FILES_ACCESS_TIMEOUT and (not is_avatar or age >= -_ACCOUNT_AVATAR_CLOCK_SKEW_SECONDS)
 
     @staticmethod
     def _base_url(*, for_external: bool) -> str:
@@ -164,12 +185,21 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode()
 
-    def _sign_query(self, *, payload: str) -> dict[str, str]:
-        timestamp = str(int(time.time()))
-        nonce = os.urandom(16).hex()
-        sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
+    def _sign_query(self, *, upload_file_id: str, avatar_account_id: str | None) -> dict[str, str]:
+        timestamp = int(time.time())
+        if avatar_account_id is not None:
+            # Round down without consuming more than half of the signature lifetime.
+            window = min(_ACCOUNT_AVATAR_WINDOW_SECONDS, max(1, dify_config.FILES_ACCESS_TIMEOUT // 2))
+            timestamp -= timestamp % window
+            nonce = f"{ACCOUNT_AVATAR_NONCE_PREFIX}{avatar_account_id}"
+            purpose = _ACCOUNT_AVATAR_PREVIEW_PURPOSE
+        else:
+            nonce = os.urandom(16).hex()
+            purpose = "file-preview"
+        payload = f"{purpose}|{upload_file_id}|{timestamp}|{nonce}"
+        sign = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
         return {
-            "timestamp": timestamp,
+            "timestamp": str(timestamp),
             "nonce": nonce,
             "sign": base64.urlsafe_b64encode(sign).decode(),
         }
@@ -213,6 +243,36 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             tool_file = self._file_access_controller.get_tool_file(session=session, file_id=tool_file_id)
             if tool_file is None:
                 raise ValueError(f"Tool file {tool_file_id} not found")
+
+
+def get_signed_avatar_url(*, upload_file_id: str, account_id: str) -> str | None:
+    """Sign a valid file reference for its expected account through the active Dify runtime."""
+    try:
+        file_id = str(UUID(upload_file_id))
+        owner_id = str(UUID(account_id))
+    except ValueError:
+        return None
+    runtime = peek_workflow_file_runtime()
+    if isinstance(runtime, DifyWorkflowFileRuntime):
+        return runtime.resolve_avatar_file_url(upload_file_id=file_id, account_id=owner_id)
+    return None
+
+
+def build_account_avatar_url(*, avatar: str | None, account_id: str) -> str | None:
+    """Keep external avatar URLs and scope uploaded avatar references to their account."""
+    if not avatar:
+        return None
+    if avatar.startswith(("http://", "https://")):
+        return avatar
+    return get_signed_avatar_url(upload_file_id=avatar, account_id=account_id)
+
+
+def avatar_preview_cache_max_age(*, timestamp: str, nonce: str) -> int | None:
+    """Return remaining private-cache seconds for an already verified avatar signature."""
+    if not nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX):
+        return None
+    age = max(0, int(time.time()) - int(timestamp))
+    return min(_ACCOUNT_AVATAR_WINDOW_SECONDS, max(0, dify_config.FILES_ACCESS_TIMEOUT - age))
 
 
 def create_dify_workflow_file_runtime() -> DifyWorkflowFileRuntime:

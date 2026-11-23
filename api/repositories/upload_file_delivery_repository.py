@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantCustomConfigDict
 from models.model import UploadFile
+from repositories.account_avatar import owned_avatar_file_conditions
 from services.upload_file_delivery_service import (
     UploadFileDeliveryNotFoundError,
     UploadFileDeliveryQuery,
@@ -25,6 +26,15 @@ class UploadFileDeliveryQueryRepository(UploadFileDeliveryQuery):
     def get_by_id(self, *, file_id: str) -> UploadFileDeliveryRecord | None:
         with self._session_factory() as session:
             row = session.execute(self._file_query().where(UploadFile.id == file_id).limit(1)).one_or_none()
+
+        return self._to_record(row)
+
+    @override
+    def get_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDeliveryRecord | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                self._file_query().where(*owned_avatar_file_conditions(file_id=file_id, account_id=account_id))
+            ).one_or_none()
 
         return self._to_record(row)
 

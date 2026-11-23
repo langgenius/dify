@@ -1304,7 +1304,7 @@ class TestWorkflowCollaborationService:
         socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
 
         with patch(
-            "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
+            "services.account_avatar_file_gateway.get_signed_avatar_url",
             return_value="https://example.com/signed-avatar.png",
         ) as sign_avatar:
             assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
@@ -1314,7 +1314,7 @@ class TestWorkflowCollaborationService:
             assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
                 "owner": "https://example.com/signed-avatar.png"
             }
-            sign_avatar.assert_called_once_with(upload_file_id=avatar_id)
+            sign_avatar.assert_called_once_with(upload_file_id=avatar_id, account_id="owner")
 
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service

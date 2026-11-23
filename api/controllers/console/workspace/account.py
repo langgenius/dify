@@ -11,6 +11,7 @@ from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import (
     AvatarUrlResponse,
     SimpleResultDataResponse,
@@ -325,6 +326,8 @@ class AccountProfileApi(Resource):
             account = application_services().accounts.profile.update(request_context, args.to_changes())
         except account_errors.AccountNotFoundError as error:
             raise AccountNotFound() from error
+        except account_errors.AvatarFileNotFoundError as error:
+            raise InvalidArgumentError("Avatar file is invalid.") from error
         return dump_response(AccountResponse, account)
 
 
