@@ -65,7 +65,7 @@ export const TagSearchContentView = ({
 
   return (
     <>
-      <ComboboxInputGroup>
+      <ComboboxInputGroup className="mb-1">
         <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
         <ComboboxInput
           aria-label={placeholder}
