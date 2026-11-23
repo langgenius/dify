@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from jsonschema.validators import validator_for
 from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -402,6 +403,263 @@ def test_output_layer_rejects_remote_ref_under_keyword_named_schema_map_entry(ma
     config = DifyOutputLayerConfig(json_schema=_keyword_named_schema_map_ref_schema(map_keyword, remote=True))
     with pytest.raises(ValueError, match="Remote \\$ref values are not supported"):
         _ = _output(config)
+
+
+def test_output_layer_preserves_ref_and_sibling_object_constraints_via_all_of() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$defs": {
+            "Base": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+        "properties": {
+            "item": {
+                "$ref": "#/$defs/Base",
+                "description": "Extended widget",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            }
+        },
+        "required": ["item"],
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    assert "$defs" not in output_schema
+    item_schema = output_schema["properties"]["item"]
+    assert item_schema["description"] == "Extended widget"
+    assert item_schema["allOf"] == [
+        {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+        {"properties": {"name": {"type": "string"}}, "required": ["name"]},
+    ]
+
+    exposed_validator = validator_for(output_schema)(output_schema)
+    valid_payload = {"item": {"id": "1", "name": "alpha"}}
+    missing_id_payload = {"item": {"name": "alpha"}}
+    missing_name_payload = {"item": {"id": "1"}}
+
+    assert exposed_validator.is_valid(valid_payload)
+    assert output_adapter.validate_python(valid_payload) == valid_payload
+    assert not exposed_validator.is_valid(missing_id_payload)
+    assert not exposed_validator.is_valid(missing_name_payload)
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python(missing_id_payload)
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python(missing_name_payload)
+
+
+def test_output_layer_preserves_ref_numeric_bound_when_sibling_is_looser() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$defs": {"Positive": {"type": "integer", "minimum": 0}},
+        "properties": {"score": {"$ref": "#/$defs/Positive", "minimum": -10}},
+        "required": ["score"],
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    exposed_validator = validator_for(output_schema)(output_schema)
+    assert exposed_validator.is_valid({"score": 5})
+    assert output_adapter.validate_python({"score": 5}) == {"score": 5}
+    assert not exposed_validator.is_valid({"score": -5})
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python({"score": -5})
+
+
+def test_output_layer_keeps_unevaluated_properties_beside_all_of_for_ref_siblings() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$defs": {
+            "Base": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+        "properties": {
+            "item": {
+                "$ref": "#/$defs/Base",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+                "unevaluatedProperties": False,
+            }
+        },
+        "required": ["item"],
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    item_schema = output_schema["properties"]["item"]
+    assert item_schema["unevaluatedProperties"] is False
+    assert "allOf" in item_schema
+
+    exposed_validator = validator_for(output_schema)(output_schema)
+    valid_payload = {"item": {"id": "1", "name": "alpha"}}
+    extra_prop_payload = {"item": {"id": "1", "name": "alpha", "extra": True}}
+
+    assert exposed_validator.is_valid(valid_payload)
+    assert output_adapter.validate_python(valid_payload) == valid_payload
+    assert not exposed_validator.is_valid(extra_prop_payload)
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python(extra_prop_payload)
+
+
+def test_output_layer_keeps_pure_annotation_siblings_flat_on_ref() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$defs": {
+            "Widget": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+        "properties": {
+            "widget": {
+                "$ref": "#/$defs/Widget",
+                "description": "Primary widget",
+                "examples": [{"id": "w1"}],
+            }
+        },
+        "required": ["widget"],
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    assert output_schema["properties"]["widget"] == {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+        "description": "Primary widget",
+        "examples": [{"id": "w1"}],
+    }
+    assert output_adapter.validate_python({"widget": {"id": "w1"}}) == {"widget": {"id": "w1"}}
+
+
+def test_output_layer_strips_root_defs_and_preserves_root_ref_siblings() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$ref": "#/$defs/Base",
+        "properties": {"extra": {"type": "integer"}},
+        "required": ["extra"],
+        "$defs": {
+            "Base": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    assert "$defs" not in output_schema
+    assert output_schema["type"] == "object"
+    assert output_schema["title"] == "final_output"
+    assert output_schema["allOf"] == [
+        {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+        {"properties": {"extra": {"type": "integer"}}, "required": ["extra"]},
+    ]
+
+    exposed_validator = validator_for(output_schema)(output_schema)
+    assert exposed_validator.is_valid({"id": "1", "extra": 2})
+    assert output_adapter.validate_python({"id": "1", "extra": 2}) == {"id": "1", "extra": 2}
+    assert not exposed_validator.is_valid({"extra": 2})
+    assert not exposed_validator.is_valid({"id": "1"})
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python({"extra": 2})
+
+
+def test_output_layer_ignores_ref_siblings_under_draft7_schema() -> None:
+    schema: dict[str, JsonValue] = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "$defs": {
+            "Widget": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+        "properties": {
+            "widget": {
+                "$ref": "#/$defs/Widget",
+                "required": ["other"],
+                "properties": {"other": {"type": "string"}},
+            }
+        },
+        "required": ["widget"],
+    }
+    output_contract = _output(DifyOutputLayerConfig(json_schema=schema))
+    output_adapter = TypeAdapter(_validated_output_type(output_contract.output_type))
+    output_schema = output_adapter.json_schema()
+
+    assert "$defs" not in output_schema
+    assert output_schema["properties"]["widget"] == {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+    }
+
+    exposed_validator = validator_for(output_schema)(output_schema)
+    assert exposed_validator.is_valid({"widget": {"id": "w1"}})
+    assert output_adapter.validate_python({"widget": {"id": "w1"}}) == {"widget": {"id": "w1"}}
+    assert not exposed_validator.is_valid({"widget": {"other": "x"}})
+    with pytest.raises(ValidationError, match="Output does not match JSON Schema"):
+        _ = output_adapter.validate_python({"widget": {"other": "x"}})
+
+
+def test_output_layer_runs_agent_with_ref_and_sibling_constraints() -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "$defs": {
+            "Base": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+                "required": ["id"],
+            }
+        },
+        "properties": {
+            "item": {
+                "$ref": "#/$defs/Base",
+                "properties": {"name": {"type": "string"}},
+                "required": ["name"],
+            }
+        },
+        "required": ["item"],
+    }
+    config = DifyOutputLayerConfig(json_schema=schema)
+    output_contract = _output(config)
+
+    def model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages
+        output_tool = next(tool for tool in info.output_tools if tool.name == "final_output")
+        assert "$defs" not in output_tool.parameters_json_schema
+        assert output_tool.parameters_json_schema["properties"]["item"] == {
+            "allOf": [
+                {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
+                {"properties": {"name": {"type": "string"}}, "required": ["name"]},
+            ]
+        }
+        return ModelResponse(parts=[ToolCallPart("final_output", {"item": {"id": "widget-1", "name": "alpha"}})])
+
+    agent = create_agent(
+        FunctionModel(model),
+        toolsets=[],
+        capabilities=[],
+        output_type=output_contract.output_type,
+    )
+    with asyncio.Runner():
+        result = agent.run_sync("Return an extended item.", deps=deps_for("output", config))
+    assert result.output == {"item": {"id": "widget-1", "name": "alpha"}}
 
 
 def _output(config):
