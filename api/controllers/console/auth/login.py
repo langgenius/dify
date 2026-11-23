@@ -183,10 +183,12 @@ class WebAppAccountSessionResponse(ResponseModel):
 def _personal_portal_target(redirect_url: str | None) -> str:
     """Return a validated portal target, defaulting to My Apps when absent.
 
-    Reject invalid supplied targets before issuing any login cookies. Both success
-    and failure preserve the Console origin and deployment base-path boundary.
+    The URL is untrusted; resolve it using only configured frontend bases. Reject
+    non-portal destinations before issuing any login cookies.
     """
-    target = resolve_personal_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
+    target = resolve_personal_login_redirect(
+        redirect_url, app_web_url=dify_config.APP_WEB_URL, console_web_url=dify_config.CONSOLE_WEB_URL
+    )
     if target is None:
         raise ValueError("Invalid personal portal login target.")
     return target

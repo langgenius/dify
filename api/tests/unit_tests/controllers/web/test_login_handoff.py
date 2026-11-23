@@ -97,13 +97,14 @@ def handoff(
     return SimpleNamespace(app=app, services=services, signer=signer, login=login, clock=clock, commands=commands)
 
 
-def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: SimpleNamespace) -> None:
+@pytest.mark.parametrize("return_url", [RETURN_URL, "/chatbot/app-a?input=a%26b#message"])
+def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: SimpleNamespace, return_url: str) -> None:
     client = handoff.app.test_client()
     client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
     response = client.get(
         "/console/api/login",
         base_url="https://console.example.com",
-        query_string={"mode": "end_user", "app_code": "app-a", "redirect_url": RETURN_URL, "code_challenge": CHALLENGE},
+        query_string={"mode": "end_user", "app_code": "app-a", "redirect_url": return_url, "code_challenge": CHALLENGE},
     )
     assert response.status_code == 200
     assert response.json["logged_in"] is True
@@ -254,10 +255,16 @@ def test_no_console_session_reports_logged_out(handoff: SimpleNamespace) -> None
 
 
 @pytest.mark.parametrize(
-    "target", [None, "/connections?q=a%26b#details", "https://console.example.com/my-apps?sort=recent"]
+    ("target", "expected"),
+    [
+        (None, "https://apps.example.net/my-apps"),
+        ("/connections?q=a%26b#details", "https://apps.example.net/connections?q=a%26b#details"),
+        ("https://apps.example.net/my-apps?sort=recent", "https://apps.example.net/my-apps?sort=recent"),
+        ("https://console.example.com/my-apps?sort=recent", "https://console.example.com/my-apps?sort=recent"),
+    ],
 )
 def test_personal_portal_login_reuses_console_session_without_app_handoff(
-    handoff: SimpleNamespace, target: str | None
+    handoff: SimpleNamespace, target: str | None, expected: str
 ) -> None:
     client = handoff.app.test_client()
     client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
@@ -267,7 +274,7 @@ def test_personal_portal_login_reuses_console_session_without_app_handoff(
         query_string={"mode": "end_user", **({"redirect_url": target} if target is not None else {})},
     )
     assert response.status_code == 200
-    assert response.json == {"logged_in": True, "redirect_url": target or "/my-apps"}
+    assert response.json == {"logged_in": True, "redirect_url": expected}
     assert handoff.commands.call_count == 0
     cookie = client.get_cookie("__Host-webapp_access_token", domain="console.example.com")
     assert cookie is not None
@@ -312,18 +319,16 @@ def test_personal_portal_login_refreshes_without_workspace(handoff: SimpleNamesp
         query_string={"mode": "end_user", **({"redirect_url": target} if target is not None else {})},
     )
     assert response.status_code == 200
-    assert response.json == {"logged_in": True, "redirect_url": target or "/my-apps"}
+    assert response.json == {"logged_in": True, "redirect_url": f"https://apps.example.net{target or '/my-apps'}"}
     auth.refresh.assert_called_once_with("old-refresh", mode=LoginMode.END_USER)
     assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
     assert client.get_cookie("__Host-refresh_token", domain="console.example.com").value == "new-refresh"
     assert handoff.commands.call_count == 0
 
 
-def test_personal_portal_login_preserves_console_base_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    from configs import dify_config
-
-    monkeypatch.setattr(dify_config, "CONSOLE_WEB_URL", "https://console.example.com/dify")
-    assert console_login._personal_portal_target(None) == "/dify/my-apps"
+def test_personal_portal_login_falls_back_to_configured_console_base_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, APP_WEB_URL="", CONSOLE_WEB_URL="https://console.example.com/dify")
+    assert console_login._personal_portal_target("/my-apps") == "https://console.example.com/dify/my-apps"
 
 
 @pytest.mark.parametrize(
@@ -425,8 +430,13 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
     handoff.services.accounts = SimpleNamespace(oauth=service)
     monkeypatch.setattr(oauth, "application_services", lambda: handoff.services)
     client = handoff.app.test_client()
-    resume_query = {"mode": "end_user", "app_code": "app-a", "redirect_url": RETURN_URL, "code_challenge": CHALLENGE}
-    resume = f"https://console.example.com/signin?{urlencode(resume_query)}"
+    resume_query = {
+        "is_end_user": "1",
+        "app_code": "app-a",
+        "redirect_url": "/chatbot/app-a?input=a%26b#message",
+        "code_challenge": CHALLENGE,
+    }
+    resume = f"/signin?{urlencode(resume_query)}"
     response = client.get(
         "/console/api/oauth/login/github",
         base_url="https://console.example.com",
@@ -449,8 +459,11 @@ def test_oauth_returns_through_webapp_signin_with_pkce_handoff(
         query_string={"code": "provider-code", "state": state},
     )
     assert response.status_code == 302
-    assert response.headers["Location"] == resume
-    response = client.get("/console/api/login", base_url="https://console.example.com", query_string=resume_query)
+    assert response.headers["Location"] == f"https://console.example.com{resume}"
+    session_query = {key: value for key, value in resume_query.items() if key != "is_end_user"}
+    response = client.get(
+        "/console/api/login", base_url="https://console.example.com", query_string={**session_query, "mode": "end_user"}
+    )
     assert response.status_code == 200
     target = urlsplit(response.json["redirect_url"])
     assert target.netloc == "apps.example.net"
@@ -502,7 +515,7 @@ def test_oauth_personal_portal_sets_verified_cookie_and_logout_clears_it(
         query_string={"code": "provider-code", "state": state},
     )
     assert response.status_code == 302
-    assert response.headers["Location"] == (target or "https://console.example.com/my-apps")
+    assert response.headers["Location"] == f"https://apps.example.net{target or '/my-apps'}"
     cookie = client.get_cookie("__Host-webapp_access_token", domain="console.example.com")
     assert cookie is not None
     claims = handoff.signer.verify(cookie.value)
@@ -591,7 +604,9 @@ def test_concurrent_oauth_attempts_keep_separate_state_and_share_account_session
             query_string={"code": f"code-{index}", "state": state},
         )
         assert response.status_code == 302
-        assert response.headers["Location"] == (target if modes[index] == "end_user" else "/apps?oauth_new_user=false")
+        assert response.headers["Location"] == (
+            target if modes[index] == "end_user" else "https://console.example.com/apps?oauth_new_user=false"
+        )
         assert service.callback_calls[-1].mode == modes[index]
         assert client.get_cookie(cookie, domain="console.example.com") is None
         assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
