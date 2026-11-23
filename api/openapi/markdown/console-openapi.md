@@ -21740,13 +21740,14 @@ authorizes execution. Names/descriptions are author guidance, not authority.
 
 #### AgentLogExportCreatePayload
 
-Submit the same unpaginated filters used by the export preview.
+Submit unpaginated preview filters and their display labels for the export.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_ids | [ string (uuid) ] | Include logs from these workspace accounts | No |
 | end | string | Exclusive end time in the account timezone (YYYY-MM-DD HH:MM) | No |
 | end_user_ids | [ string (uuid) ] | Include logs from these end users | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | sources | [ string ] | Source IDs from the Agent Logs filters | No |
 | start | string | Inclusive start time in the account timezone (YYYY-MM-DD HH:MM) | No |
 
@@ -21779,6 +21780,7 @@ Agent log export file not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | filters | [AgentLogExportFilters](#agentlogexportfilters) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -25447,6 +25449,7 @@ The conversation has no message from which to generate a name.
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
 | end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | keyword | string | Search keyword | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
@@ -25484,6 +25487,7 @@ Submitted filters for the export, with any date bounds in UTC.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -32770,6 +32774,16 @@ Paginated response body for organization candidate search.
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LogExportIdentityLabel
+
+A display label captured by the requester for an identity in the export filters.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string (uuid) |  | Yes |
+| label | string |  | Yes |
+| source | [ConsoleLogIdentitySource](#consolelogidentitysource) |  | Yes |
+
 #### LogExportLimitReachedError
 
 There is already an export for this requester and app, or the workspace export limit was reached.
@@ -40011,7 +40025,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 #### WorkflowLogExportCreatePayload
 
-Submit the same unpaginated filters used by the export preview.
+Submit unpaginated preview filters and their display labels for the export.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -40019,6 +40033,7 @@ Submit the same unpaginated filters used by the export preview.
 | created_at__after | string | Inclusive lower bound on log creation time | No |
 | created_at__before | string | Inclusive upper bound on log creation time | No |
 | end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | keyword | string | Search keyword for Workflow Logs | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter | No |
 
@@ -40068,6 +40083,7 @@ Submitted filters for the export, with log time bounds in UTC.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | filters | [WorkflowLogExportFiltersResponse](#workflowlogexportfiltersresponse) |  | Yes |
+| identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
