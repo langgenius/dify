@@ -20,8 +20,10 @@ class LogExportRedisIo:
     cache: dict[str, str]
     get: MagicMock
     reject_submission: bool = False
+    claim_error: Exception | None = None
     renew_calls: int = 0
     renew_error: Exception | None = None
+    finish_error: Exception | None = None
 
 
 @pytest.fixture
@@ -45,6 +47,8 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         return 1
 
     def claim(*, keys: tuple[str, str, str], args: list[Any]) -> int:
+        if (error := io.claim_error) is not None:
+            raise error
         key = keys[0]
         if json.loads(cache[key])["status"] == "processing":
             return -1
@@ -52,6 +56,8 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         return 1
 
     def finish(*, keys: tuple[str, str, str], args: list[Any]) -> int:
+        if (error := io.finish_error) is not None:
+            raise error
         cache[keys[0]] = args[2]
         return 1
 

@@ -54,7 +54,7 @@ class LogExportLimitReachedError(Exception):
 
 
 class LogExportLeaseBusyError(Exception):
-    """The worker cannot take or confirm lease ownership and should retry."""
+    """The worker should retry because task state or lease ownership cannot be confirmed."""
 
 
 class LogExportTask[FiltersT](BaseModel):
@@ -108,7 +108,7 @@ class LogExportTaskStore[FiltersT](Protocol):
         ...
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
-        """Return a live task for the exact workspace and app, or None if absent or expired."""
+        """Load the scoped live task or None if absent or expired. Signal retry on temporary unavailability."""
         ...
 
     def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> LogExportTask[FiltersT] | None:
@@ -124,7 +124,7 @@ class LogExportTaskStore[FiltersT](Protocol):
         ...
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
-        """Publish a terminal state and release capacity only while the given state or attempt is owned."""
+        """Publish and release capacity if owned, return False on loss, or raise on a write error."""
         ...
 
 
@@ -183,7 +183,7 @@ def prepare_log_export_task[FiltersT](
         except LogExportLeaseBusyError:
             raise
         except Exception as exc:
-            if not _mark_failed(processing, tasks):
+            if _mark_failed(processing, tasks) is False:
                 raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
             raise
         if not tasks.finish(processing, status=LogExportStatus.READY, storage_key=storage_key):
@@ -194,7 +194,7 @@ def prepare_log_export_task[FiltersT](
 def _renew_export_lease[FiltersT](
     task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]
 ) -> Generator[None]:
-    """Retry failed heartbeat calls while exporting and stop when the worker loses the lease or exits."""
+    """Retry temporary heartbeat failures and stop on lease loss, a permanent error, or worker exit."""
     stopped = Event()
 
     def renew() -> None:
@@ -202,8 +202,10 @@ def _renew_export_lease[FiltersT](
             try:
                 if not tasks.renew(task):
                     return
-            except Exception:
+            except Exception as exc:
                 logger.exception("Failed to renew log export lease: task=%s attempt=%s", task.task_id, task.attempt)
+                if not isinstance(exc, LogExportLeaseBusyError):
+                    return
 
     heartbeat = Thread(target=renew, name="log-export-lease", daemon=True)
     heartbeat.start()
@@ -214,12 +216,12 @@ def _renew_export_lease[FiltersT](
         heartbeat.join(timeout=5)
 
 
-def _mark_failed[FiltersT](task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]) -> bool:
-    """Record failure if still owned, preserving the exception that led to this update."""
+def _mark_failed[FiltersT](task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]) -> bool | None:
+    """Record failure if owned, return False on loss, or log the write error and return None."""
     try:
         return tasks.finish(task, status=LogExportStatus.FAILED)
     except Exception:
         logger.exception(
             "Failed to record log export failure: tenant=%s app=%s task=%s", task.tenant_id, task.app_id, task.task_id
         )
-        return False
+        return None

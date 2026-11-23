@@ -3,7 +3,6 @@
 import logging
 
 from celery import shared_task
-from redis.exceptions import RedisError
 
 from extensions.ext_application_services import application_services
 from services.retention.log_export_task import LogExportKind, LogExportLeaseBusyError
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
     queue="retention",
     acks_late=True,
     reject_on_worker_lost=True,
-    autoretry_for=(LogExportLeaseBusyError, RedisError),
+    autoretry_for=(LogExportLeaseBusyError,),
     retry_backoff=5,
     retry_backoff_max=60,
     max_retries=None,

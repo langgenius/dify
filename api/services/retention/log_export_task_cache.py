@@ -1,14 +1,17 @@
 """Persist temporary export tasks and each requester's latest task in Redis."""
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from redis.exceptions import (
     AuthenticationError,
     AuthorizationError,
-    ClusterDownError,
+    ClusterError,
     ConnectionError,
     ReadOnlyError,
+    SlotNotCoveredError,
     TimeoutError,
     TryAgainError,
 )
@@ -103,6 +106,26 @@ return 1
 """
 
 
+@contextmanager
+def _translate_transient_redis_errors() -> Generator[None]:
+    """Translate temporary Redis I/O failures into the export worker's retry signal."""
+    try:
+        yield
+    except (AuthenticationError, AuthorizationError):
+        # redis-py subclasses ConnectionError for credential failures.
+        raise
+    except (
+        ConnectionError,
+        TimeoutError,
+        OSError,
+        ClusterError,
+        SlotNotCoveredError,
+        ReadOnlyError,
+        TryAgainError,
+    ) as exc:
+        raise LogExportLeaseBusyError("Redis is temporarily unavailable for log export.") from exc
+
+
 class RedisLogExportTasks[FiltersT]:
     """Scope temporary export tasks to their application family, workspace and app."""
 
@@ -151,8 +174,10 @@ class RedisLogExportTasks[FiltersT]:
             raise LogExportLimitReachedError()
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
-        """Load the matching live task for the workspace and app."""
-        raw = self._redis.get(self._key(tenant_id=tenant_id, app_id=app_id, task_id=task_id))
+        """Load the matching live task, signaling a retry when Redis is temporarily unavailable."""
+        key = self._key(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
+        with _translate_transient_redis_errors():
+            raw = self._redis.get(key)
         if raw is None:
             return None
         task = self._task_type.model_validate_json(raw)
@@ -181,19 +206,18 @@ class RedisLogExportTasks[FiltersT]:
             updated = task.model_copy(
                 update={"status": LogExportStatus.PROCESSING, "attempt": task.attempt + 1, "claim_token": token}
             )
-        claim = self._redis.register_script(_CLAIM_LOG_EXPORT_TASK)
-        result = claim(
-            keys=self._execution_keys(task),
-            args=[
-                task.status.value,
-                task.attempt,
-                updated.model_dump_json(),
-                _MAX_EXPORT_ATTEMPTS,
-                _LEASE_SECONDS,
-                f"{task.app_id}:{task.requested_by}",
-                token,
-            ],
-        )
+        args = [
+            task.status.value,
+            task.attempt,
+            updated.model_dump_json(),
+            _MAX_EXPORT_ATTEMPTS,
+            _LEASE_SECONDS,
+            f"{task.app_id}:{task.requested_by}",
+            token,
+        ]
+        with _translate_transient_redis_errors():
+            claim = self._redis.register_script(_CLAIM_LOG_EXPORT_TASK)
+            result = claim(keys=self._execution_keys(task), args=args)
         if result == -1:
             raise LogExportLeaseBusyError("The log export claim is busy or has changed.")
         return updated if result else None
@@ -203,28 +227,20 @@ class RedisLogExportTasks[FiltersT]:
         if task.claim_token is None:
             return False
         task_key, lease_key, _ = self._execution_keys(task)
-        try:
+        with _translate_transient_redis_errors():
             renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
             return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
-        except (AuthenticationError, AuthorizationError):
-            # redis-py subclasses ConnectionError for credential failures.
-            raise
-        except (ConnectionError, TimeoutError, ReadOnlyError, ClusterDownError, TryAgainError) as exc:
-            raise LogExportLeaseBusyError("Could not renew the log export lease.") from exc
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
         """Finish the expected pending state or the processing attempt that owns the lease token."""
         updated = task.model_copy(update={"status": status, "storage_key": storage_key})
-        finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
-        return bool(
-            finish(
-                keys=self._execution_keys(task),
-                args=[
-                    task.status.value,
-                    task.attempt,
-                    updated.model_dump_json(),
-                    f"{task.app_id}:{task.requested_by}",
-                    task.claim_token or "",
-                ],
-            )
-        )
+        args = [
+            task.status.value,
+            task.attempt,
+            updated.model_dump_json(),
+            f"{task.app_id}:{task.requested_by}",
+            task.claim_token or "",
+        ]
+        with _translate_transient_redis_errors():
+            finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
+            return bool(finish(keys=self._execution_keys(task), args=args))
