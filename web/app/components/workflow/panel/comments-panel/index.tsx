@@ -107,6 +107,11 @@ const CommentsPanel = () => {
               render={
                 <IconButton
                   variant={hasActiveFilter ? 'ghost-accent' : 'default'}
+                  className={
+                    hasActiveFilter
+                      ? 'data-popup-open:bg-state-accent-hover'
+                      : 'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary'
+                  }
                   aria-label={t(($) => $['comments.aria.filterComments'], {
                     ns: 'workflowComments',
                   })}
