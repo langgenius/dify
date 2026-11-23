@@ -226,7 +226,6 @@ describe('dev proxy CLI', () => {
     async (operation) => {
       // Arrange
       const tempDir = await createTempDir()
-      const port = await getFreePort()
       const firstTarget = await startTextServer('first target')
       const secondTarget = await startTextServer('second target')
 
@@ -243,6 +242,8 @@ describe('dev proxy CLI', () => {
     `,
       )
 
+      // Bind both target listeners before picking the port for the child process.
+      const port = await getFreePort()
       let output = ''
       const child = spawnCli(
         [
