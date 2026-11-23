@@ -6,9 +6,11 @@ from io import BytesIO
 import pytest
 from flask import Flask
 from flask.ctx import RequestContext
+from pydantic import ValidationError
 from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
+from controllers.openapi._models import WorkflowRunPayload
 from controllers.openapi._multipart import body_from_request, folder_streams
 from controllers.openapi._upload import UploadParts
 
@@ -33,6 +35,31 @@ def _multipart(app: Flask, data: Mapping[str, object]) -> RequestContext:
 def test_json_request_passes_through(app: Flask) -> None:
     with app.test_request_context("/x", method="POST", json={"inputs": {"q": "hi"}}):
         assert body_from_request(file_fields=_FILE_FIELDS) == {"inputs": {"q": "hi"}}
+
+
+@pytest.mark.parametrize("body", [[], False, 0, ""])
+def test_non_object_json_is_not_replaced_by_an_empty_body(app: Flask, body: object) -> None:
+    with app.test_request_context("/x", method="POST", json=body):
+        parsed = body_from_request()
+
+    with pytest.raises(ValidationError):
+        WorkflowRunPayload.model_validate(parsed)
+
+
+def test_json_null_is_not_replaced_by_an_empty_body(app: Flask) -> None:
+    with app.test_request_context("/x", method="POST", data="null", content_type="application/json"):
+        parsed = body_from_request()
+
+    with pytest.raises(ValidationError):
+        WorkflowRunPayload.model_validate(parsed)
+
+
+def test_malformed_json_is_not_replaced_by_an_empty_body(app: Flask) -> None:
+    with app.test_request_context("/x", method="POST", data="{", content_type="application/json"):
+        parsed = body_from_request()
+
+    with pytest.raises(ValidationError):
+        WorkflowRunPayload.model_validate(parsed)
 
 
 def test_multipart_places_every_part_name_shape(app: Flask) -> None:
