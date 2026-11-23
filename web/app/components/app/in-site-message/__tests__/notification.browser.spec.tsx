@@ -152,6 +152,38 @@ it('renders parsed copy and safe links, then dismisses through the real keyboard
   expect(api.dismiss).toHaveBeenCalledExactlyOnceWith({ body: { notification_id: 'notice-1' } })
 })
 
+it('keeps the opener only for same-origin links that open in a new tab', async () => {
+  const link = (text: string, data: unknown) => ({ action: 'link', data, text, type: 'outline' })
+  api.list.mockResolvedValue({
+    should_show: true,
+    notifications: [
+      notice(
+        JSON.stringify({
+          main: 'Link targets',
+          actions: [
+            link('Relative demo', '/collaboration-demo'),
+            link('Absolute demo', `${window.location.origin}/collaboration-demo`),
+            link('External site', 'https://example.com/collaboration-demo'),
+            link('Configured rel', { href: '/collaboration-demo', rel: 'noopener' }),
+          ],
+        }),
+      ),
+    ],
+  })
+  const { screen } = await setup()
+  await expect.element(screen.getByText('Link targets')).toBeVisible()
+  for (const [name, rel] of [
+    ['Relative demo', 'opener'],
+    ['Absolute demo', 'opener'],
+    ['External site', 'noopener noreferrer'],
+    ['Configured rel', 'noopener'],
+  ]) {
+    const anchor = screen.getByRole('link', { name })
+    await expect.element(anchor).toHaveAttribute('target', '_blank')
+    await expect.element(anchor).toHaveAttribute('rel', rel)
+  }
+})
+
 it.each([
   { body: 'raw body text', content: 'raw body text' },
   {

@@ -49,6 +49,20 @@ function normalizeLinkData(data: unknown): { href: string; rel?: string; target?
   }
 }
 
+function isSameOriginHref(href: string): boolean {
+  try {
+    return new URL(href, window.location.href).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
+function resolveLinkRel(href: string, target: string, rel?: string): string | undefined {
+  if (rel) return rel
+  if (target !== '_blank') return undefined
+  return isSameOriginHref(href) ? 'opener' : 'noopener noreferrer'
+}
+
 const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
 
 function resolveButtonVariant(type: InSiteMessageButtonType) {
@@ -130,7 +144,7 @@ function InSiteMessage({
                 key={`${item.type}-${item.action}-${item.text}`}
                 href={linkData.href}
                 target={target}
-                rel={linkData.rel || (target === '_blank' ? 'noopener noreferrer' : undefined)}
+                rel={resolveLinkRel(linkData.href, target, linkData.rel)}
                 className={className}
                 onClick={() => handleAction(item)}
               >
