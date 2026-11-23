@@ -178,6 +178,11 @@ def test_start_run_maps_service_errors_to_http_status(
 
 def test_run_detail_and_cancel_use_persisted_scoped_run(sqlite_session: Session) -> None:
     run = _evaluation_run(sqlite_session, target_type=EvaluationTargetType.KNOWLEDGE_BASE)
+    run.config_snapshot = json.dumps({"evaluation_model_provider": "provider-1", "evaluation_model": "run-model"})
+    config = sqlite_session.get(EvaluationConfiguration, run.evaluation_config_id)
+    assert config is not None
+    config.evaluation_model_provider = "provider-2"
+    config.evaluation_model = "current-model"
     item = EvaluationRunItem(
         evaluation_run_id=run.id,
         item_index=1,
@@ -197,6 +202,8 @@ def test_run_detail_and_cancel_use_persisted_scoped_run(sqlite_session: Session)
         query=controller.EvaluationRunDetailQuery(),
     )
     assert detail["run"]["id"] == run.id
+    assert detail["run"]["evaluation_model_provider"] == "provider-1"
+    assert detail["run"]["evaluation_model"] == "run-model"
     assert detail["items"]["data"][0]["inputs"] == {"query": "hello"}
 
     cancelled = controller._cancel_run(

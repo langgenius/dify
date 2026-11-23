@@ -10,7 +10,7 @@ import {
   getStepByStepTourMenuContentProps,
   useStepByStepTourControlledMenu,
 } from '@/app/components/step-by-step-tour/menu'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 
 type Props = {
   canConnectExternalDataset: boolean

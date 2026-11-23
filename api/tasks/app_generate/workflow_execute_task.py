@@ -177,7 +177,10 @@ class _AppRunner:
 
         user = self._resolve_user()
 
-        with self._setup_flask_context(user), self._session_factory(expire_on_commit=False) as session:
+        with (
+            self._setup_flask_context(user),
+            self._session_factory(expire_on_commit=False) as session,
+        ):
             try:
                 response = self._run_app(
                     app=app,

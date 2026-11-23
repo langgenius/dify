@@ -20,10 +20,10 @@ const ListEmpty = ({ title, description, icon }: ListEmptyProps) => {
               className="i-custom-vender-solid-development-variable-02 size-5 shrink-0 text-text-accent"
             />
           )}
-          <VerticalLine className="absolute top-1/2 -right-px -translate-y-1/4" />
-          <VerticalLine className="absolute top-1/2 -left-px -translate-y-1/4" />
-          <HorizontalLine className="absolute top-0 left-3/4 -translate-x-1/4 -translate-y-1/2" />
-          <HorizontalLine className="absolute top-full left-3/4 -translate-x-1/4 -translate-y-1/2" />
+          <VerticalLine className="absolute -inset-e-px top-1/2 -translate-y-1/4" />
+          <VerticalLine className="absolute -inset-s-px top-1/2 -translate-y-1/4" />
+          <HorizontalLine className="absolute inset-s-3/4 top-0 -translate-x-1/4 -translate-y-1/2" />
+          <HorizontalLine className="absolute inset-s-3/4 top-full -translate-x-1/4 -translate-y-1/2" />
         </div>
       </div>
       <div className="flex flex-col items-start gap-1 self-stretch">

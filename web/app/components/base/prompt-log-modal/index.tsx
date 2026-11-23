@@ -38,7 +38,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCanc
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular ps-6 pe-5">
         <div className="text-base font-semibold text-text-primary">PROMPT LOG</div>
         <div className="flex items-center">
           {currentLogItem.log?.length === 1 && (

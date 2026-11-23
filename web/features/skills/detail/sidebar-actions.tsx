@@ -26,7 +26,7 @@ import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillArchiveBlob } from '../client'
 import { getSkillErrorCode } from '../error'
-import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
+import { SkillReferencesList, SkillReferencesListSkeleton } from '../references'
 
 function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({

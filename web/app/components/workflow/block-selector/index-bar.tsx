@@ -21,7 +21,7 @@ export function IndexBar({ letters, itemRefs, className }: IndexBarProps) {
     >
       <div
         aria-hidden
-        className="absolute top-0 left-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]"
+        className="absolute inset-s-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]"
       />
       {letters.map((letter) => (
         <button
