@@ -1,26 +1,24 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ResetPasswordPage from '../page'
 
-const navigation = vi.hoisted(() => ({
-  push: vi.fn(),
-  search: '',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: navigation.push }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
+let navigation: TestNavigation
 
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/reset-password' })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <ResetPasswordPage />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ResetPasswordPage />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -29,8 +27,6 @@ const fake = setupFakeApi(() => ({
 }))
 
 beforeEach(() => {
-  navigation.push.mockReset()
-  navigation.search = ''
   localStorage.removeItem(COUNT_DOWN_KEY)
 })
 
@@ -51,9 +47,9 @@ it('submits the labelled email form with Enter and preserves the reset session',
       body: { email: 'user@example.com', language: 'en-US' },
     }),
   )
-  await vi.waitFor(() => expect(navigation.push).toHaveBeenCalled())
+  await vi.waitFor(() => expect(navigation.router.push).toHaveBeenCalled())
   expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe(String(COUNT_DOWN_TIME_MS))
-  expect(navigation.push).toHaveBeenCalledWith(
+  expect(navigation.router.push).toHaveBeenCalledWith(
     '/reset-password/check-code?token=reset-token&email=user%2540example.com',
   )
 })

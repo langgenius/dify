@@ -2,20 +2,15 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createWavFixture } from '@/test/browser-media'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TtsAutoPlay } from '@/types/app'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import VoiceSettings from '../voice-settings'
 
-const navigation = vi.hoisted(() => ({ params: {} as { appId?: string; agentId?: string } }))
 // The contracts require UUID app and agent ids.
 const appId = '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b'
 const agentId = '6f7a8b9c-0d1e-4f2a-8b3c-4d5e6f7a8b9c'
 vi.unmock('react-i18next')
-// boundary: route identity is supplied without bootstrapping Next routing.
-vi.mock('@/next/navigation', () => ({
-  useParams: () => navigation.params,
-  usePathname: () => '/configuration',
-}))
 
 const voices = [
   { name: 'Alloy', value: 'alloy' },
@@ -32,8 +27,12 @@ const fake = setupFakeApi(() => ({
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  navigation.params = { appId }
 })
+
+function routeTo(params: { appId?: string; agentId?: string }) {
+  const { NavigationProvider } = createTestNavigation({ url: '/configuration', params })
+  return NavigationProvider
+}
 
 function Settings({ disabled = false }: { disabled?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -50,19 +49,24 @@ function Settings({ disabled = false }: { disabled?: boolean }) {
 it.each(['app', 'agent'] as const)(
   'loads %s voices and keeps native keyboard selections and autoplay across reopening',
   async (route) => {
-    navigation.params = route === 'app' ? { appId } : { agentId }
+    const Route = routeTo(route === 'app' ? { appId } : { agentId })
     const voiceList =
       route === 'app'
         ? fake.console.apps.byAppId.textToAudio.voices.get
         : fake.console.agent.byAgentId.textToAudio.voices.get
-    const { screen, store } = await renderFeature(<Settings />, {
-      text2speech: {
-        enabled: true,
-        language: 'en-US',
-        voice: 'alloy',
-        autoPlay: TtsAutoPlay.disabled,
+    const { screen, store } = await renderFeature(
+      <Route>
+        <Settings />
+      </Route>,
+      {
+        text2speech: {
+          enabled: true,
+          language: 'en-US',
+          voice: 'alloy',
+          autoPlay: TtsAutoPlay.disabled,
+        },
       },
-    })
+    )
     const trigger = screen.getByRole('button', { name: 'Settings', exact: true })
     await trigger.click()
     const voice = screen.getByRole('combobox', { name: 'Voice', exact: true })
@@ -110,15 +114,18 @@ it.each(['app', 'agent'] as const)(
 )
 
 it('auditions the displayed fallback voice with the real language catalog and native audio', async () => {
-  navigation.params = { agentId }
+  const Route = routeTo({ agentId })
   const wav = createWavFixture({ duration: 10 })
   onTestFinished(wav.revoke)
   fake.console.agent.byAgentId.textToAudio.post.mockReturnValue(
     new Blob([Uint8Array.from(wav.bytes)], { type: 'audio/wav' }),
   )
-  const { screen } = await renderFeature(<Settings />, {
-    text2speech: { enabled: true, language: '', voice: 'removed-voice' },
-  })
+  const { screen } = await renderFeature(
+    <Route>
+      <Settings />
+    </Route>,
+    { text2speech: { enabled: true, language: '', voice: 'removed-voice' } },
+  )
   await screen.getByRole('button', { name: 'Settings', exact: true }).click()
   await expect
     .element(screen.getByRole('combobox', { name: 'Language', exact: true }))
@@ -139,8 +146,13 @@ it('auditions the displayed fallback voice with the real language catalog and na
 })
 
 it('keeps voices unloaded without a route identity and honors a disabled settings trigger', async () => {
-  navigation.params = {}
-  const { screen, rerender } = await renderFeature(<Settings />, { text2speech: { enabled: true } })
+  const Route = routeTo({})
+  const { screen, rerender } = await renderFeature(
+    <Route>
+      <Settings />
+    </Route>,
+    { text2speech: { enabled: true } },
+  )
   const trigger = screen.getByRole('button', { name: 'Settings', exact: true })
   await trigger.click()
   await expect
@@ -151,7 +163,11 @@ it('keeps voices unloaded without a route identity and honors a disabled setting
   await screen.getByRole('button', { name: 'Close', exact: true }).click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  await rerender(<Settings disabled />)
+  await rerender(
+    <Route>
+      <Settings disabled />
+    </Route>,
+  )
   await expect.element(trigger).toBeDisabled()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()

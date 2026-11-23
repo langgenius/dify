@@ -1,4 +1,5 @@
 import type { TenantAccountRole } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { TestNavigation } from '@/test/next-navigation'
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -10,13 +11,11 @@ import { seedFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import CollaborationDemoPage from '../page'
 
-const api = vi.hoisted(() => ({ replace: vi.fn() }))
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }) }))
+let navigation: TestNavigation
 
 const appPage = (app?: { id: string; name: string; updated_at: number }) => ({
   data: app ? [{ ...app, mode: 'workflow' as const, icon_url: null }] : [],
@@ -36,18 +35,22 @@ async function renderDemo(
   seedAccountProfileQuery(queryClient)
   seedCurrentWorkspaceQuery(queryClient, { role })
   seedFeatures(queryClient, { workflow_collaboration_enabled: true })
+  navigation = createTestNavigation({ url: `/collaboration-demo?${searchParams}` })
+  const { NavigationProvider } = navigation
   return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter searchParams={searchParams}>
-        <HotkeysProvider>
-          <DirectionProvider direction={direction}>
-            <div dir={direction} style={{ height: 900 }}>
-              <CollaborationDemoPage />
-            </div>
-          </DirectionProvider>
-        </HotkeysProvider>
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter searchParams={searchParams}>
+          <HotkeysProvider>
+            <DirectionProvider direction={direction}>
+              <div dir={direction} style={{ height: 900 }}>
+                <CollaborationDemoPage />
+              </div>
+            </DirectionProvider>
+          </HotkeysProvider>
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -131,7 +134,7 @@ it('walks the guide, playback and end panel from the keyboard', async () => {
     .element(endPanel.getByRole('button', { name: 'collaborationDemo.end.close' }))
     .toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  expect(api.replace).toHaveBeenCalledWith('/apps')
+  expect(navigation.router.replace).toHaveBeenCalledWith('/apps')
 
   await userEvent.keyboard('{Tab}')
   await expect
@@ -329,7 +332,7 @@ it('closes a demo tab opened from the product and goes to Studio otherwise', asy
 
   await exit.click()
   expect(close).not.toHaveBeenCalled()
-  expect(api.replace).toHaveBeenCalledWith('/apps')
+  expect(navigation.router.replace).toHaveBeenCalledWith('/apps')
 
   vi.spyOn(window, 'opener', 'get').mockReturnValue(window)
   await exit.click()

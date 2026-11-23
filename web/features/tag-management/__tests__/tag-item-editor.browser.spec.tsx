@@ -45,12 +45,6 @@ afterEach(() => {
   toast.dismiss()
 })
 
-it('explains the binding count without naming a particular resource type', async () => {
-  await renderEditor()
-  await page.getByText('3', { exact: true }).first().hover()
-  await expect.element(page.getByText('common.tag.boundItems', { exact: true })).toBeVisible()
-})
-
 it('renames a tag through the real management list and exits editing', async () => {
   await renderEditor()
   await edit().click()

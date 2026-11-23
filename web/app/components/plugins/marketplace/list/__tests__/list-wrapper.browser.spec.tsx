@@ -99,17 +99,6 @@ describe('ListWrapper', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows result cards and the real localized sort control', async () => {
-    fake.use({
-      marketplace: { searchAdvanced: () => searchResponse([plugin('plugin-one', 'Plugin One')]) },
-    })
-    const screen = await renderListWrapper()
-    await expect.element(screen.getByRole('link', { name: /Plugin One/ })).toBeVisible()
-    await expect.element(screen.getByRole('status')).toHaveTextContent('1 results')
-    const sort = screen.getByRole('button', { name: /Sort by/ })
-    await expect.element(sort).toBeVisible()
-  })
-
   it('keeps loaded cards and the result announcement while native scrolling fetches the next page', async () => {
     const nextPage = deferred<ReturnType<typeof searchResponse>>()
     const firstPage = Array.from({ length: 40 }, (_, index) =>

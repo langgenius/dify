@@ -9,22 +9,13 @@ import {
 } from '../../audio-btn/__tests__/audio-browser-test-env'
 import AudioBtn from '../index'
 
-const api = vi.hoisted(() => ({
+const api = {
   stream: vi.fn<(url: string, source: string, body: unknown) => Response | Promise<Response>>(),
-  params: {} as Record<string, string>,
-  pathname: '/',
-}))
+}
 vi.unmock('react-i18next')
-// boundary: supply route identity without bootstrapping Next.
-vi.mock('@/next/navigation', () => ({
-  useParams: () => api.params,
-  usePathname: () => api.pathname,
-}))
 
 beforeEach(async () => {
   await page.viewport(800, 600)
-  api.params = { appId: 'app-1' }
-  api.pathname = '/apps/app-1/chat'
   api.stream.mockReset()
   // Public web apps call the public API; console routes stand for installed-app sources.
   const respond =
@@ -61,12 +52,13 @@ beforeEach(async () => {
 it.each(audioRoutes)(
   'plays the answer through the $route endpoint with the requested voice',
   async ({ params, pathname, url, source, route }) => {
-    api.params = params
-    api.pathname = pathname
     api.stream.mockResolvedValue(audioResponse())
     const id = `new-route-${route}`
     onTestFinished(() => destroyPlayer(id))
-    const screen = await renderAudio(<AudioBtn id={id} value="Read this answer" voice="alloy" />)
+    const screen = await renderAudio(<AudioBtn id={id} value="Read this answer" voice="alloy" />, {
+      params,
+      pathname,
+    })
     const play = screen.getByRole('button', { name: 'Play', exact: true })
     await play.hover()
     await expect.element(screen.getByText('Play', { exact: true })).toBeVisible()

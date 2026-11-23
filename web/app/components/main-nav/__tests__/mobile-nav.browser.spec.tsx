@@ -12,26 +12,10 @@ import common from '@/i18n/locales/en-US/common.json'
 import contacts from '@/i18n/locales/en-US/contacts.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { MainNavMobileBar } from '../mobile-nav'
 
 vi.unmock('react-i18next')
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async () => {
-  const { useSyncExternalStore } = await import('react')
-  const subscribe = (notify: () => void) => {
-    window.addEventListener('popstate', notify)
-    return () => window.removeEventListener('popstate', notify)
-  }
-  return {
-    usePathname: () =>
-      useSyncExternalStore(
-        subscribe,
-        () => window.location.pathname,
-        () => window.location.pathname,
-      ),
-  }
-})
 
 // boundary: Next Link needs an app-router runtime; the anchor preserves native click semantics here.
 vi.mock('@/next/link', () => ({
@@ -47,10 +31,6 @@ vi.mock('@/next/link', () => ({
 
 const menuName = common['navigation.primary']
 
-beforeEach(() => {
-  window.history.replaceState({}, '', '/apps')
-})
-
 async function openMenu() {
   await page.viewport(390, 720)
   const i18n = createInstance()
@@ -64,6 +44,7 @@ async function openMenu() {
     features: { enable_skill: false },
     systemFeatures: { enable_marketplace: false },
   })
+  const router = createTestNavigation({ url: '/apps' })
   const screen = await render(
     <ConsoleQuery>
       <I18nextProvider i18n={i18n}>
@@ -74,12 +55,13 @@ async function openMenu() {
         </NuqsTestingAdapter>
       </I18nextProvider>
     </ConsoleQuery>,
+    { wrapper: router.NavigationProvider },
   )
   const trigger = screen.getByRole('button', { name: menuName })
   await userEvent.click(trigger)
   const drawer = screen.getByRole('dialog', { name: menuName })
   await expect.element(drawer).toBeVisible()
-  return { drawer, screen, trigger }
+  return { drawer, router, screen, trigger }
 }
 
 it('closes after following a client-side link', async () => {
@@ -109,9 +91,8 @@ it('keeps modified and non-navigation actions open until the real close control 
 })
 
 it('closes for public route changes and real desktop viewport transitions', async () => {
-  const { screen, trigger } = await openMenu()
-  window.history.pushState({}, '', '/datasets')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  const { router, screen, trigger } = await openMenu()
+  router.navigate('/datasets')
   await expect.element(screen.getByRole('dialog', { name: menuName })).not.toBeInTheDocument()
 
   await userEvent.click(trigger)

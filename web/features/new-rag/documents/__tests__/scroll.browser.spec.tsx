@@ -5,15 +5,11 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture } from '@/test/knowledge-space'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { KnowledgeSpaceShell } from '../../space/shell'
 import { DocumentResultsSurface } from '../results/surface'
 import { DocumentsStateBoundary } from '../state/boundary'
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/new/space-1/documents',
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 // The unit renderer omits the shell's overflow boundary. This exercises the actual composed
 // shell and results surfaces, including native keyboard scrolling and pagination hit testing.
@@ -89,18 +85,23 @@ it.each([
       features: { enable_knowledge_fs: true },
       knowledgeFsFeatures: { upload_enabled: true },
     })
+    const { NavigationProvider } = createTestNavigation({
+      url: '/datasets/new/space-1/documents',
+    })
     const screen = await render(
-      <QueryClientTestProvider queryClient={queryClient}>
-        <QueryTestingAdapter>
-          <div className="flex h-dvh min-h-0 flex-col">
-            <KnowledgeSpaceShell knowledgeSpaceId="space-1">
-              <DocumentsStateBoundary knowledgeSpaceId="space-1">
-                <DocumentResultsSurface />
-              </DocumentsStateBoundary>
-            </KnowledgeSpaceShell>
-          </div>
-        </QueryTestingAdapter>
-      </QueryClientTestProvider>,
+      <NavigationProvider>
+        <QueryClientTestProvider queryClient={queryClient}>
+          <QueryTestingAdapter>
+            <div className="flex h-dvh min-h-0 flex-col">
+              <KnowledgeSpaceShell knowledgeSpaceId="space-1">
+                <DocumentsStateBoundary knowledgeSpaceId="space-1">
+                  <DocumentResultsSurface />
+                </DocumentsStateBoundary>
+              </KnowledgeSpaceShell>
+            </div>
+          </QueryTestingAdapter>
+        </QueryClientTestProvider>
+      </NavigationProvider>,
     )
     await expect.element(screen.getByText('common.api.actionFailed')).toBeInTheDocument()
     const loadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })

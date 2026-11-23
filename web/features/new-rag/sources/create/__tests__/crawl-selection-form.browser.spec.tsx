@@ -4,15 +4,17 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { SyncPolicyValue } from '../../setup/sync-policy-field'
 import type { Source, SourceWorkflowRun } from '../../source-models'
+import type { TestNavigation } from '@/test/next-navigation'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
-const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+let navigation: TestNavigation
 const settingsState = {
   configurationState: 'active' as 'active' | 'setup-required',
 }
@@ -59,11 +61,6 @@ const settingsResponse = (): KnowledgeFsSettingsResponse => {
     revision: 1,
   }
 }
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/new/space-1/sources/new/website',
-  useRouter: () => routerMock,
-}))
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -191,10 +188,14 @@ async function renderSelectionForm({
     )
   }
   const { wrapper: QueryProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/datasets/new/space-1/sources/new/website' })
+  const { NavigationProvider } = navigation
   return render(
-    <QueryProvider>
-      <SourceSetup />
-    </QueryProvider>,
+    <NavigationProvider>
+      <QueryProvider>
+        <SourceSetup />
+      </QueryProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -225,13 +226,15 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
+    const configure = page.getByRole('button', {
+      name: 'modelProvider.modelProvider.selector.configure',
+    })
+    await expect.element(configure).toBeVisible()
     expect(
       fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
     ).not.toHaveBeenCalled()
-    await user.click(
-      page.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
-    )
-    expect(routerMock.push).toHaveBeenCalledWith(
+    await user.click(configure)
+    expect(navigation.router.push).toHaveBeenCalledWith(
       '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources%2Fnew%2Fwebsite&capability=ingest',
     )
   })
@@ -343,7 +346,7 @@ describe('CrawlSelectionForm', () => {
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       })
     await vi.waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+      expect(navigation.router.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
@@ -434,7 +437,7 @@ describe('CrawlSelectionForm', () => {
         .calls[1]?.[0].headers,
     )
     await vi.waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+      expect(navigation.router.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))

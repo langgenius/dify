@@ -81,6 +81,9 @@ it('confirms and dismisses only the nested picker inside a dialog', async () => 
   await userEvent.keyboard('{ArrowDown}')
   await expect.element(search).toHaveAttribute('aria-activedescendant', candidate.element().id)
   await userEvent.keyboard('{Enter}')
+  await expect
+    .element(picker.getByRole('radio', { name: 'app.iconPicker.color.red' }))
+    .toHaveTextContent('😎')
   expect(onSubmit).not.toHaveBeenCalled()
   await picker.getByRole('button', { name: 'app.iconPicker.ok' }).click()
   await expect.element(picker).not.toBeInTheDocument()

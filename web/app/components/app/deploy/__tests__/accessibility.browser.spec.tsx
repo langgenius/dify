@@ -15,12 +15,6 @@ import {
 
 vi.unmock('react-i18next')
 
-// boundary: isolated Browser specs do not provide the Next route params runtime.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ appId: 'deploy-audit' }),
-}))
-
 it('verifies every reported menu sentinel redirects focus and allows keyboard exit in both directions', async () => {
   const screen = await renderDeploy()
   const trigger = screen.getByRole('button', { name: 'Deploy', exact: true })

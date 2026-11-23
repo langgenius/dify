@@ -7,10 +7,7 @@ import {
   renderSources as render,
 } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
-import { navigationMock, resetSourceServer, routerMock, sourceResponses } from './source-server'
-
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
+import { resetSourceServer, routeState, sourceResponses } from './source-server'
 
 beforeEach(() => {
   resetSourceServer()
@@ -22,7 +19,7 @@ afterEach(() => {
 
 describe('Sources: initial-source', () => {
   it('polls an empty list every two seconds while awaiting the Initial Source', async () => {
-    navigationMock.awaitInitialSource = 'operation-1'
+    routeState.awaitInitialSource = 'operation-1'
     sourceResponses.data = { pages: [{ items: [] }] }
 
     const { queryClient } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -37,7 +34,7 @@ describe('Sources: initial-source', () => {
   })
 
   it('waits for the Initial Source created by the requested operation', async () => {
-    navigationMock.awaitInitialSource = 'operation-1'
+    routeState.awaitInitialSource = 'operation-1'
     sourceResponses.data = {
       pages: [
         {
@@ -65,7 +62,7 @@ describe('Sources: initial-source', () => {
   })
 
   it('clears the one-shot URL signal once the requested Initial Source appears', async () => {
-    navigationMock.awaitInitialSource = 'operation-1'
+    routeState.awaitInitialSource = 'operation-1'
     sourceResponses.data = {
       pages: [
         {
@@ -82,10 +79,10 @@ describe('Sources: initial-source', () => {
       ],
     }
 
-    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { navigation } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await vi.waitFor(async () => {
-      expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources', {
+      expect(navigation.router.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources', {
         scroll: false,
       })
     })
@@ -94,7 +91,7 @@ describe('Sources: initial-source', () => {
   it('stops awaiting the Initial Source after ten minutes and keeps manual refresh available', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
-      navigationMock.awaitInitialSource = 'operation-1'
+      routeState.awaitInitialSource = 'operation-1'
       sourceResponses.data = { pages: [{ items: [] }] }
 
       const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)

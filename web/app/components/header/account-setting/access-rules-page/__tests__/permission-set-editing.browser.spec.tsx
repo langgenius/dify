@@ -1,5 +1,8 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { render } from 'vitest-browser-react'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleQuery } from '@/service/console'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
@@ -22,12 +25,12 @@ const catalogFor = (type: AccessPolicyResourceType) => ({
     },
   ],
 })
-const notify = vi.hoisted(() => ({ error: vi.fn() }))
-// boundary: Observe notifications that outlive the settings section without mounting the app toaster.
-vi.mock('@/app/notifications', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/notifications')>()
-  return { ...actual, toast: { ...actual.toast, error: notify.error } }
-})
+// The app toaster is a separate root so its notifications outlive the settings section.
+async function renderToaster() {
+  await render(<AppToaster />)
+  onTestFinished(() => toast.dismiss())
+}
+const errorToast = (name: string) => page.getByRole('dialog', { name })
 let rules: ReturnType<typeof ruleFor>[]
 function installAccessRuleApi() {
   const list = async () => rulePage(rules)
@@ -210,6 +213,7 @@ it('protects the actual delete, supports retry, and returns focus before the lis
   rules = [ruleFor('app')]
   const first = hold(removePolicy())
   const retry = hold(removePolicy())
+  await renderToaster()
   const { screen } = await setup('app')
   const menu = screen.getByRole('button', { name: 'common.operation.moreActions' })
   await menu.click()
@@ -238,7 +242,7 @@ it('protects the actual delete, supports retry, and returns focus before the lis
     .element(dialog.getByRole('alert'))
     .toHaveTextContent('Could not delete this permission set')
   await expect.element(cancel).toBeEnabled()
-  expect(notify.error).not.toHaveBeenCalled()
+  await expect.element(errorToast('Could not delete this permission set')).not.toBeInTheDocument()
   await userEvent.keyboard('{Enter}')
   await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
 
@@ -281,6 +285,7 @@ it('keeps Escape and menu focus return available during an ordinary list refresh
 it('reports a deletion failure if the settings section closes during the request', async () => {
   rules = [ruleFor('app')]
   const request = hold(removePolicy())
+  await renderToaster()
   const { screen } = await setup('app')
   await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
   await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
@@ -292,7 +297,7 @@ it('reports a deletion failure if the settings section closes during the request
   await screen.unmount()
   await request.arrived
   request.reject(apiError({ status: 500, message: 'Permission set deletion failed' }))
-  await expect.poll(() => notify.error.mock.calls).toEqual([['Permission set deletion failed']])
+  await expect.element(errorToast('Permission set deletion failed')).toBeVisible()
 })
 
 it('returns focus to the section heading in view after deleting a low row', async () => {

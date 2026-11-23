@@ -1,22 +1,26 @@
 import type { DemoEndState } from '../../end-state'
+import type { TestNavigation } from '@/test/next-navigation'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { render } from 'vitest-browser-react'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DemoEndPanel } from '../demo-end-panel'
 
-const api = vi.hoisted(() => ({ replace: vi.fn(), urlUpdate: vi.fn() }))
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }) }))
+const api = { urlUpdate: vi.fn() }
+let navigation: TestNavigation
 
 const app = { id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }
 
 async function renderPanel(state: DemoEndState) {
   const onReplay = vi.fn()
   const onExit = vi.fn()
+  navigation = createTestNavigation({ url: '/collaboration-demo' })
+  const { NavigationProvider } = navigation
   const panel = (current: DemoEndState) => (
-    <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
-      <DemoEndPanel state={current} onReplay={onReplay} onExit={onExit} />
-    </NuqsTestingAdapter>
+    <NavigationProvider>
+      <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
+        <DemoEndPanel state={current} onReplay={onReplay} onExit={onExit} />
+      </NuqsTestingAdapter>
+    </NavigationProvider>
   )
   const screen = await render(panel(state))
   return {
@@ -87,7 +91,7 @@ it('sends users back to the workspace when collaboration is unavailable', async 
     screen.getByRole('button', { name: 'collaborationDemo.end.close' }).elements(),
   ).toHaveLength(0)
   await screen.getByRole('button', { name: 'collaborationDemo.end.backToWorkspace' }).click()
-  expect(api.replace).toHaveBeenCalledWith('/apps')
+  expect(navigation.router.replace).toHaveBeenCalledWith('/apps')
 })
 
 it('leaves the demo through Close', async () => {
