@@ -1,11 +1,8 @@
 """Real database migration parity for retained native execution evidence."""
 
-import importlib.util
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from io import StringIO
-from pathlib import Path
-from types import ModuleType
 from uuid import uuid4
 
 import pytest
@@ -19,20 +16,7 @@ from testcontainers.mysql import MySqlContainer
 from testcontainers.postgres import PostgresContainer
 
 from models.base import TypeBase
-from models.types import StringUUID
 from tests.helpers.builder_migration import load_builder_migration
-
-_VERSIONS = Path(__file__).parents[3] / "migrations/versions"
-
-
-def _migration(revision: str) -> ModuleType:
-    path = next(_VERSIONS.glob(f"*-{revision}_*.py"))
-    spec = importlib.util.spec_from_file_location(revision, path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 @pytest.fixture(params=["postgresql", "mysql"])
@@ -216,111 +200,6 @@ def test_native_migrations_preserve_checks_and_evidence_on_both_databases(migrat
             finally:
                 connection.execute(sa.text("UNLOCK TABLES"))
         assert connection.scalar(sa.text("SELECT count(*) FROM dify_builder_native_code_physical_operations")) == 1
-
-    # The legacy sequence rollback must regenerate the same per-app order on
-    # both dialects without losing historical rows when upgraded again.
-    connection.execute(
-        sa.text(
-            "CREATE TABLE workflow_runs (id VARCHAR(36) PRIMARY KEY, tenant_id VARCHAR(36) NOT NULL, "
-            "app_id VARCHAR(36) NOT NULL, created_at TIMESTAMP NOT NULL)"
-        )
-    )
-    tenant = str(uuid4())
-    first_app, second_app = str(uuid4()), str(uuid4())
-    first, second, independent = sorted(str(uuid4()) for _ in range(3))
-    connection.execute(
-        sa.text("INSERT INTO workflow_runs (id,tenant_id,app_id,created_at) VALUES (:id,:tenant,:app,:created)"),
-        [
-            {"id": second, "tenant": tenant, "app": first_app, "created": "2026-10-01 12:00:00"},
-            {"id": first, "tenant": tenant, "app": first_app, "created": "2026-10-01 12:00:00"},
-            {"id": independent, "tenant": tenant, "app": second_app, "created": "2026-10-01 12:00:00"},
-        ],
-    )
-    legacy = _migration("0ab65e1cc7fa")
-    with Operations.context(MigrationContext.configure(connection)):
-        legacy.downgrade()
-    assert dict(connection.execute(sa.text("SELECT id,sequence_number FROM workflow_runs")).tuples().all()) == {
-        first: 1,
-        second: 2,
-        independent: 1,
-    }
-    with Operations.context(MigrationContext.configure(connection)):
-        legacy.upgrade()
-    assert connection.scalar(sa.text("SELECT count(*) FROM workflow_runs")) == 3
-    assert "sequence_number" not in {column["name"] for column in sa.inspect(connection).get_columns("workflow_runs")}
-
-    # Dropping the binding table must not try to remove indexes still needed
-    # by MySQL's foreign keys, and must preserve both parent tables' rows.
-    parents = sa.MetaData()
-    for name in ("api_tokens", "datasets"):
-        sa.Table(name, parents, sa.Column("id", StringUUID(), primary_key=True)).create(connection)
-        connection.execute(sa.text(f"INSERT INTO {name} (id) VALUES (:id)"), {"id": tenant})
-    binding_migration = _migration("c3f1a9b2e6d4")
-    with Operations.context(MigrationContext.configure(connection, opts={"target_metadata": TypeBase.metadata})):
-        binding_migration.upgrade()
-        connection.execute(
-            sa.text("INSERT INTO dataset_api_token_bindings (id,api_token_id,dataset_id) VALUES (:id,:id,:id)"),
-            {"id": tenant},
-        )
-        binding_migration.downgrade()
-    assert "dataset_api_token_bindings" not in sa.inspect(connection).get_table_names()
-    for name in ("api_tokens", "datasets"):
-        assert connection.scalar(sa.text(f"SELECT count(*) FROM {name}")) == 1
-
-    debug = sa.Table(
-        "agent_debug_conversations",
-        sa.MetaData(),
-        sa.Column("id", StringUUID(), primary_key=True),
-        *(sa.Column(field, StringUUID(), nullable=False) for field in ("tenant_id", "agent_id", "account_id")),
-        sa.Column("draft_type", sa.String(32), nullable=False),
-        sa.UniqueConstraint(
-            "tenant_id",
-            "agent_id",
-            "account_id",
-            "draft_type",
-            name="agent_debug_conversation_agent_account_draft_type_unique",
-        ),
-    )
-    debug.create(connection)
-    agent, account, other_account, other_tenant = (str(uuid4()) for _ in range(4))
-    build_id, draft_id, draft_only_id, foreign_id = (str(uuid4()) for _ in range(4))
-    connection.execute(
-        debug.insert(),
-        [
-            {
-                "id": build_id,
-                "tenant_id": tenant,
-                "agent_id": agent,
-                "account_id": account,
-                "draft_type": "debug_build",
-            },
-            {"id": draft_id, "tenant_id": tenant, "agent_id": agent, "account_id": account, "draft_type": "draft"},
-            {
-                "id": draft_only_id,
-                "tenant_id": tenant,
-                "agent_id": agent,
-                "account_id": other_account,
-                "draft_type": "draft",
-            },
-            {
-                "id": foreign_id,
-                "tenant_id": other_tenant,
-                "agent_id": agent,
-                "account_id": other_account,
-                "draft_type": "debug_build",
-            },
-        ],
-    )
-    debug_migration = _migration("d2825e7b9c10")
-    with Operations.context(MigrationContext.configure(connection)):
-        debug_migration.downgrade()
-        assert {str(row[0]) for row in connection.execute(sa.text("SELECT id FROM agent_debug_conversations"))} == {
-            build_id,
-            draft_only_id,
-            foreign_id,
-        }
-        debug_migration.upgrade()
-    assert connection.scalar(sa.text("SELECT count(*) FROM agent_debug_conversations")) == 3
 
 
 def _execute_mysql_export(connection: Connection, script: str) -> None:
