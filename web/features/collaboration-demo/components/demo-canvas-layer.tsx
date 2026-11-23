@@ -17,10 +17,10 @@ import { CollaboratorCursor } from '@/app/components/workflow/collaboration/comp
 import { NodeEditorAvatars } from '@/app/components/workflow/collaboration/components/node-editors'
 import {
   CommentComposerActions,
+  CommentComposerField,
   CommentComposerFrame,
 } from '@/app/components/workflow/comment/comment-composer'
 import { CommentMarker } from '@/app/components/workflow/comment/comment-marker'
-import { highlightMentions } from '@/app/components/workflow/comment/mention-highlight'
 import {
   commentDraftPlacement,
   commentThreadPlacement,
@@ -51,20 +51,26 @@ function DraftInput({
   placeholder: string
 }) {
   const messageContent = useMessageContent()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const message = draft && demoMessages.find(({ id }) => id === draft.message)
   const text = message ? messageContent(message) : ''
   const typed = draft ? text.slice(0, Math.round(text.length * draft.progress)) : ''
 
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (textarea) textarea.scrollTop = textarea.scrollHeight
+  }, [typed])
+
   return (
-    <div inert className="flex items-end body-sm-regular leading-4.5">
-      <div className="max-h-22 min-w-0 flex-1 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary">
-        {typed ? (
-          highlightMentions(typed, mentionNames)
-        ) : (
-          <span className="text-components-input-text-placeholder">{placeholder}</span>
-        )}
-      </div>
-      <CommentComposerActions canSend={Boolean(typed)} />
+    <div inert>
+      <CommentComposerField
+        ref={textareaRef}
+        readOnly
+        value={typed}
+        mentionNames={mentionNames}
+        placeholder={placeholder}
+        actions={<CommentComposerActions canSend={Boolean(typed)} />}
+      />
     </div>
   )
 }
