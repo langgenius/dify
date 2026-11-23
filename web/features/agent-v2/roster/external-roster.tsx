@@ -22,13 +22,13 @@ import { useQueryStates } from 'nuqs'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { toExternalAgentListItem } from '@/features/agent-v2/external-agent/model'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import { consoleQuery } from '@/service/console'
+import { AgentRosterSkeleton } from './components/agent-roster-skeleton'
 import { ConnectExternalAgent } from './components/connect-external-agent'
 import { ExternalAgentActions } from './components/external-agent-actions'
 import { ExternalAgentList } from './components/external-agent-list'
@@ -40,7 +40,7 @@ const EMPTY_STATUS_COUNTS = {
 } as const
 
 export function ExternalRoster() {
-  const { t } = useTranslation(['agentRoster', 'common'])
+  const { t } = useTranslation(['agentRoster'])
   const queryClient = useQueryClient()
   const workspace = useAtomValue(currentWorkspaceAtom)
   const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
@@ -230,15 +230,7 @@ export function ExternalRoster() {
       <div className="flex min-h-0 flex-1 flex-col max-md:min-h-64">
         {capabilities.isError || list.isLoadingError ? null : capabilities.isPending ||
           list.isPending ? (
-          <div
-            role="status"
-            className="grid gap-2.5 px-2 pt-2 sm:grid-cols-2 sm:px-8 lg:grid-cols-4"
-          >
-            <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
-            {[0, 1, 2, 3].map((item) => (
-              <SkeletonRectangle key={item} className="h-43 rounded-xl" />
-            ))}
-          </div>
+          <AgentRosterSkeleton className="px-2 pt-2 sm:px-8" />
         ) : (
           <div className="min-h-0 flex-1">
             <ExternalAgentList

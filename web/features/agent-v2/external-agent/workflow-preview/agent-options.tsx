@@ -11,12 +11,14 @@ import { toExternalAgentListItem } from '../model'
 
 export function ExternalAgentOptions({
   keyword,
+  showInitialLoading,
   tagIds = [],
   showEmpty,
   allowDisabled = false,
   onSelect,
 }: {
   keyword: string
+  showInitialLoading: boolean
   tagIds?: string[]
   showEmpty: boolean
   allowDisabled?: boolean
@@ -43,7 +45,7 @@ export function ExternalAgentOptions({
     }),
   )
   if (agents.isPending || capabilities.isPending || workspaceLoading)
-    return <WorkflowAgentSelectorSkeleton />
+    return showInitialLoading ? <WorkflowAgentSelectorSkeleton /> : null
   if (agents.isError || capabilities.isError)
     return (
       <p role="status" className="p-3 system-xs-regular text-text-tertiary">

@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
@@ -39,9 +39,13 @@ export function WorkflowAgentSelectorContent({
   const appId = useAtomValue(editorAppIdAtom)
   const [source, setSource] = useState<AgentSource>('all')
   const [search, setSearch] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
   const { inputProps, canClear, clearProps } = useSearchInput({
     value: search,
-    onValueChange: setSearch,
+    onValueChange: (value) => {
+      setHasSearched(true)
+      setSearch(value)
+    },
   })
   const keyword = useDebounce(search.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
@@ -76,11 +80,12 @@ export function WorkflowAgentSelectorContent({
       enabled: source !== 'external',
       gcTime: 0,
       staleTime: 0,
+      placeholderData: keepPreviousData,
     }),
   )
   const difyAgents =
     source === 'external' ? [] : (agentsQuery.data?.pages.flatMap((page) => page.data) ?? [])
-  const isLoading = source !== 'external' && agentsQuery.isPending
+  const isLoading = !hasSearched && source !== 'external' && agentsQuery.isPending
   const hasDifyError = source !== 'external' && agentsQuery.isError
   const isKeywordCurrent = search.trim() === keyword
   const isDifyEmpty =
@@ -220,6 +225,7 @@ export function WorkflowAgentSelectorContent({
                 {showExternal && onSelectExternal && (
                   <ExternalAgentOptions
                     keyword={keyword}
+                    showInitialLoading={!hasSearched}
                     tagIds={tagIds}
                     showEmpty={isKeywordCurrent && (source === 'external' || isDifyEmpty)}
                     onSelect={async (agent) => {

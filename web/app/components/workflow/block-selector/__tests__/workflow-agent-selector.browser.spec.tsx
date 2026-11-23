@@ -1,4 +1,3 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ExternalAgentListResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
@@ -20,7 +19,11 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { AgentBlockItem } from '../agent-selector'
 import { BlockClassification } from '../types'
 
-const difyAgent: AgentInviteOptionResponse = {
+type AgentInviteOptionsResponse = Awaited<
+  ReturnType<typeof import('@/service/console').consoleClient.agent.inviteOptions.get>
+>
+
+const difyAgent: AgentInviteOptionsResponse['data'][number] = {
   id: 'dify-agent-1',
   name: 'Research Agent',
   description: 'Researches public information.',
@@ -29,6 +32,13 @@ const difyAgent: AgentInviteOptionResponse = {
   icon: '🤖',
   icon_background: '#FFFFFF',
   active_config_snapshot_id: 'snapshot-1',
+  active_config_is_published: false,
+  hidden_app_backed: false,
+  in_current_workflow_count: 0,
+  is_in_current_workflow: false,
+  published_node_reference_count: 0,
+  published_reference_count: 0,
+  tags: [],
   agent_kind: 'dify_agent',
   scope: 'roster',
   source: 'workflow',
@@ -36,7 +46,7 @@ const difyAgent: AgentInviteOptionResponse = {
 }
 
 const mocks = vi.hoisted(() => ({
-  fetchAgents: vi.fn(),
+  fetchAgents: vi.fn<typeof import('@/service/console').consoleClient.agent.inviteOptions.get>(),
   fetchExternal: vi.fn<typeof import('@/service/console').consoleClient.externalAgents.get>(),
 }))
 // boundary: restore real translations so this fixture's I18nextProvider supplies rendered labels.
@@ -59,26 +69,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         ),
       'externalAgents.get': mocks.fetchExternal,
       'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),
-      'agent.inviteOptions.get': (
-        input: Parameters<typeof actual.consoleClient.agent.inviteOptions.get>[0],
-      ) => {
-        mocks.fetchAgents(input)
-        const keyword = input?.query?.keyword?.toLowerCase() ?? ''
-        const data = [difyAgent].filter((agent) => agent.name.toLowerCase().includes(keyword))
-        const page = input?.query?.page ?? 1
-        if (input?.query?.tag_ids?.includes('research')) {
-          return {
-            data: [{ ...difyAgent, id: `match-${page}`, name: `Research match ${page}` }],
-            has_more: page === 1,
-            limit: 8,
-            page,
-            total: 2,
-          }
-        }
-        if (input?.query?.tag_ids?.length)
-          return { data: [], has_more: false, limit: 8, page, total: 0 }
-        return { data, has_more: false, limit: 8, page, total: data.length }
-      },
+      'agent.inviteOptions.get': mocks.fetchAgents,
     }),
   }
 })
@@ -145,7 +136,23 @@ async function setup(
 }
 
 beforeEach(({ onTestFinished }) => {
-  mocks.fetchAgents.mockClear()
+  mocks.fetchAgents.mockReset().mockImplementation(async (input) => {
+    const keyword = input?.query?.keyword?.toLowerCase() ?? ''
+    const data = [difyAgent].filter((agent) => agent.name.toLowerCase().includes(keyword))
+    const page = input?.query?.page ?? 1
+    if (input?.query?.tag_ids?.includes('research')) {
+      return {
+        data: [{ ...difyAgent, id: `match-${page}`, name: `Research match ${page}` }],
+        has_more: page === 1,
+        limit: 8,
+        page,
+        total: 2,
+      }
+    }
+    if (input?.query?.tag_ids?.length)
+      return { data: [], has_more: false, limit: 8, page, total: 0 }
+    return { data, has_more: false, limit: 8, page, total: data.length }
+  })
   mocks.fetchExternal.mockReset().mockImplementation(async (input) => {
     const items = [
       createExternalAgentAsset({ tags: [{ id: 'research', name: 'Research', type: 'agent' }] }),
@@ -220,19 +227,54 @@ it('filters the active source while sharing the search and avoiding Dify request
   await expect.element(picker.getByRole('button', { name: /Document Review Agent/ })).toBeVisible()
 })
 
-it('keeps external agents visible while a new search is pending', async () => {
+it('loads each source independently on first open and keeps both previous results without skeletons during search', async () => {
+  const initialDify = createDeferred<AgentInviteOptionsResponse>()
+  const initialExternal = createDeferred<ExternalAgentListResponse>()
+  mocks.fetchAgents.mockImplementationOnce(() => initialDify.promise)
+  mocks.fetchExternal.mockImplementationOnce(() => initialExternal.promise)
   const { picker } = await setup()
+  const loading = picker.getByRole('status', { name: 'Loading', exact: true })
+  await expect.element(loading.nth(0)).toBeVisible()
+  await expect.element(loading.nth(1)).toBeVisible()
+  expect(loading.elements()).toHaveLength(2)
+  initialDify.resolve({ data: [difyAgent], has_more: false, limit: 8, page: 1, total: 1 })
+  const previousDifyAgent = picker.getByRole('button', { name: /^Research Agent/ })
+  await expect.element(previousDifyAgent).toBeVisible()
+  expect(loading.elements()).toHaveLength(1)
+  initialExternal.resolve({
+    items: [createExternalAgentAsset()],
+    total: 1,
+    enabled_count: 1,
+    disabled_count: 0,
+    limit: 20,
+    page: 1,
+  })
   const previousAgent = picker.getByRole('button', { name: /Contract Review Agent/ })
   await expect.element(previousAgent).toBeVisible()
+  await expect.element(loading).not.toBeInTheDocument()
 
+  const difyResponse = createDeferred<AgentInviteOptionsResponse>()
   const response = createDeferred<ExternalAgentListResponse>()
+  mocks.fetchAgents.mockImplementationOnce(() => difyResponse.promise)
   mocks.fetchExternal.mockImplementationOnce(() => response.promise)
   await picker.getByRole('searchbox', { name: 'Search agents', exact: true }).fill('document')
+  await expect
+    .poll(() => mocks.fetchAgents.mock.lastCall?.[0])
+    .toEqual({ query: { app_id: 'workflow-app', limit: 8, page: 1, keyword: 'document' } })
   await expect
     .poll(() => mocks.fetchExternal.mock.lastCall?.[0])
     .toEqual({ query: { page: 1, limit: 20, keyword: 'document' } })
   await expect.element(previousAgent).toBeVisible()
+  await expect.element(previousDifyAgent).toBeVisible()
+  await expect.element(loading).not.toBeInTheDocument()
 
+  difyResponse.resolve({
+    data: [{ ...difyAgent, id: 'dify-agent-2', name: 'Document Research Agent' }],
+    has_more: false,
+    limit: 8,
+    page: 1,
+    total: 1,
+  })
   response.resolve({
     items: [
       createExternalAgentAsset({
@@ -247,7 +289,68 @@ it('keeps external agents visible while a new search is pending', async () => {
     page: 1,
   })
   await expect.element(previousAgent).not.toBeInTheDocument()
+  await expect.element(previousDifyAgent).not.toBeInTheDocument()
+  await expect
+    .element(picker.getByRole('button', { name: /Document Research Agent/ }))
+    .toBeVisible()
   await expect.element(picker.getByRole('button', { name: /Document Review Agent/ })).toBeVisible()
+})
+
+it('suppresses initial skeletons after searching across tab remounts and clearing until the picker is reopened', async () => {
+  const initialDify = createDeferred<AgentInviteOptionsResponse>()
+  const initialExternal = createDeferred<ExternalAgentListResponse>()
+  const searchedDify = createDeferred<AgentInviteOptionsResponse>()
+  const searchedExternal = createDeferred<ExternalAgentListResponse>()
+  mocks.fetchAgents.mockImplementation((input) =>
+    input?.query?.keyword ? searchedDify.promise : initialDify.promise,
+  )
+  mocks.fetchExternal.mockImplementation((input) =>
+    input?.query?.keyword ? searchedExternal.promise : initialExternal.promise,
+  )
+  const { picker, trigger } = await setup()
+  const search = picker.getByRole('searchbox', { name: 'Search agents', exact: true })
+  const loading = picker.getByRole('status', { name: 'Loading', exact: true })
+  await expect.element(loading.nth(1)).toBeVisible()
+  await search.fill('unloaded')
+  await expect.element(loading).not.toBeInTheDocument()
+  await expect.poll(() => mocks.fetchAgents.mock.lastCall?.[0]?.query?.keyword).toBe('unloaded')
+  await expect.poll(() => mocks.fetchExternal.mock.lastCall?.[0]?.query?.keyword).toBe('unloaded')
+  for (const source of ['Dify', 'External', 'All']) {
+    await picker.getByRole('tab', { name: source, exact: true }).click()
+    await expect
+      .element(picker.getByRole('tab', { name: source, exact: true }))
+      .toHaveAttribute('aria-selected', 'true')
+    await expect.element(loading).not.toBeInTheDocument()
+  }
+  await picker.getByRole('button', { name: 'Clear', exact: true }).click()
+  await expect.element(search).toHaveValue('')
+  await expect.element(loading).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(picker).not.toBeInTheDocument()
+  await trigger.click()
+  await expect.element(picker).toBeVisible()
+  await expect.element(loading.nth(0)).toBeVisible()
+  await expect.element(loading.nth(1)).toBeVisible()
+  expect(loading.elements()).toHaveLength(2)
+  initialDify.resolve({ data: [difyAgent], has_more: false, limit: 8, page: 1, total: 1 })
+  initialExternal.resolve({
+    items: [createExternalAgentAsset()],
+    total: 1,
+    enabled_count: 1,
+    disabled_count: 0,
+    limit: 20,
+    page: 1,
+  })
+  searchedDify.resolve({ data: [], has_more: false, limit: 8, page: 1, total: 0 })
+  searchedExternal.resolve({
+    items: [],
+    total: 0,
+    enabled_count: 0,
+    disabled_count: 0,
+    limit: 20,
+    page: 1,
+  })
+  await expect.element(loading).not.toBeInTheDocument()
 })
 
 it('shows the All search empty state only after both sources return no matches', async () => {
