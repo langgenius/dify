@@ -697,7 +697,7 @@ def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pyt
     ("responses", "expected_request_count"),
     [
         ([httpx.Response(500, json={"error": "test-only"})], 1),
-        ([RuntimeError("test-only unexpected Graph failure")], 1),
+        ([httpx.ReadError("private Graph transport detail")], 1),
         (
             [
                 httpx.Response(
@@ -724,12 +724,13 @@ def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pyt
             2,
         ),
     ],
-    ids=("http-failure", "unexpected-failure", "untrusted-next-link", "malformed-later-page"),
+    ids=("http-failure", "transport-failure", "untrusted-next-link", "malformed-later-page"),
 )
 def test_graph_boundary_never_publishes_partial_directory(
     monkeypatch: pytest.MonkeyPatch,
     responses: list[httpx.Response | Exception],
     expected_request_count: int,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     monkeypatch.setattr(remote_fetcher, "make_request", lambda *_args, **_kwargs: httpx.Response(404))
     adapter, _, graph_boundary = _adapter(monkeypatch, graph_responses=responses)
@@ -739,6 +740,10 @@ def test_graph_boundary_never_publishes_partial_directory(
     assert isinstance(result, DirectoryReadFailure)
     assert "test-only-partial" not in result.reason
     assert len(graph_boundary.requests) == expected_request_count
+
+    assert caplog.text.count("im_provider=ms_teams operation=read_directory provider_error_code=None") == 1
+    assert "private Graph transport detail" not in caplog.text
+    assert "test-only-partial" not in caplog.text
 
 
 @pytest.mark.parametrize(

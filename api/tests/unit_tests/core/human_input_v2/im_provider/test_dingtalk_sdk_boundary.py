@@ -431,6 +431,7 @@ def test_public_directory_discards_late_partial_state_and_detects_bad_cursor(
 def test_public_messaging_returns_one_safe_failure_without_replay(
     monkeypatch: pytest.MonkeyPatch,
     provider_response: object,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     adapter, provider, robot, _http = _adapter(
         monkeypatch,
@@ -444,6 +445,9 @@ def test_public_messaging_returns_one_safe_failure_without_replay(
     assert result == MessageSendingError("DingTalk message acceptance could not be confirmed.")
     assert len(provider.calls) == 1
     assert len(robot.calls) == 1
+
+    assert caplog.text.count("im_provider=ding_talk operation=send_text provider_error_code=None") == 1
+    assert "private transport detail" not in caplog.text
 
 
 @pytest.mark.parametrize(

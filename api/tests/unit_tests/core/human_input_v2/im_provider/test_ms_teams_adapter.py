@@ -799,9 +799,7 @@ def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops
     assert graph_client.get.call_count == 2
 
 
-def test_directory_normalizes_unexpected_failure_without_provider_details(
-    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_directory_surfaces_unexpected_failure(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -815,13 +813,13 @@ def test_directory_normalizes_unexpected_failure_without_provider_details(
             "tid": _credentials().tenant_id,
         },
     )
-    graph_client.get.side_effect = RuntimeError("sensitive graph response")
+    failure = RuntimeError("unexpected Graph error")
+    graph_client.get.side_effect = failure
 
-    result = adapter.directory.read_directory()
+    with pytest.raises(RuntimeError) as raised:
+        adapter.directory.read_directory()
 
-    assert isinstance(result, DirectoryReadFailure)
-    assert "sensitive graph response" not in result.reason
-    assert "sensitive graph response" not in caplog.text
+    assert raised.value is failure
 
 
 @pytest.mark.parametrize(
@@ -931,6 +929,7 @@ def test_text_send_requires_typed_exact_provider_acceptance(
     conversation_response: object,
     message_response: object,
     expected_send_count: int,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
@@ -957,6 +956,9 @@ def test_text_send_requires_typed_exact_provider_acceptance(
     assert isinstance(result, MessageSendingError)
     create_conversation.assert_called_once()
     assert send_to_conversation.call_count == expected_send_count
+
+    stage = "send_to_conversation" if expected_send_count else "create_conversation"
+    assert caplog.text.count(f"operation=send_text.{stage} provider_error_code=None http_status=None") == 1
 
 
 def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_io(mocker: MockerFixture) -> None:

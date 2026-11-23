@@ -17,7 +17,7 @@ from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_rejection
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_failure
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -285,7 +285,7 @@ def _log_api_rejection(error: WeChatClientException, operation: str) -> None:
     """Log the WeCom SDK error code and HTTP status for an API rejection."""
     upstream = error.response
     code = error.errcode
-    log_provider_rejection(
+    log_provider_failure(
         logger,
         IMProvider.WE_COM,
         operation,
@@ -301,7 +301,11 @@ def _try_get_access_token(token_provider: AccessTokenProvider) -> str | None:
     except WeChatClientException as error:
         _log_api_rejection(error, "get_access_token")
         return None
-    except (httpx.HTTPError, RequestsRequestError, JSONDecodeError, ValidationError):
+    except httpx.HTTPStatusError as error:
+        log_provider_failure(logger, IMProvider.WE_COM, "get_access_token", http_status=error.response.status_code)
+        return None
+    except (httpx.RequestError, RequestsRequestError, JSONDecodeError, ValidationError):
+        log_provider_failure(logger, IMProvider.WE_COM, "get_access_token")
         return None
 
 
@@ -326,6 +330,7 @@ class _WeComDirectory(IMDirectory):
             _log_api_rejection(error, "read_directory")
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
         except (RequestsRequestError, ValidationError, _DirectoryBoundaryError, AvatarReadError):
+            log_provider_failure(logger, IMProvider.WE_COM, "read_directory")
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
 
     def _read_complete_directory(self, access_token: str) -> Directory:
@@ -413,13 +418,13 @@ class _WeComMessaging(IMMessaging):
             _log_api_rejection(error, "send_text")
             return failure
         except (RequestsRequestError, ValidationError):
+            log_provider_failure(logger, IMProvider.WE_COM, "send_text")
             return failure
-        if any(
+        if not response.msgid.strip() or any(
             _optional_non_blank(invalid_target) is not None
             for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
         ):
-            return failure
-        if not response.msgid.strip():
+            log_provider_failure(logger, IMProvider.WE_COM, "send_text")
             return failure
         return MessageAccepted(
             MessageLocator(

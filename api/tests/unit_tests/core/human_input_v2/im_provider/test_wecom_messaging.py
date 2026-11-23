@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from functools import partial
 
+import httpx
 import pytest
 from requests import Response
 from requests.exceptions import ConnectionError as RequestsConnectionError
@@ -177,6 +178,7 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
 def test_messaging_returns_one_safe_failure_without_replay(
     monkeypatch: pytest.MonkeyPatch,
     provider_response: object,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
     token_client = _TokenClient(_token_response())
@@ -192,6 +194,10 @@ def test_messaging_returns_one_safe_failure_without_replay(
     assert "fake raw provider detail" not in result.reason
     assert "fake transport detail" not in result.reason
     assert "fake-secret-001" not in result.reason
+
+    assert caplog.text.count("im_provider=we_com operation=send_text") == 1
+    assert "fake raw provider detail" not in caplog.text
+    assert "fake transport detail" not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -252,11 +258,32 @@ def test_messaging_does_not_attempt_creation_when_token_acquisition_fails(
 
 
 @pytest.mark.parametrize("operation", ["read_directory", "send_text"])
-def test_operations_handle_the_same_token_rejection(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, operation: str
+@pytest.mark.parametrize(
+    ("error", "code", "status"),
+    [
+        (WeChatClientException(40013, "private provider detail"), 40013, None),
+        (httpx.ReadError("private provider detail"), None, None),
+        (
+            httpx.HTTPStatusError(
+                "private provider detail",
+                request=httpx.Request("GET", "https://example.invalid/"),
+                response=httpx.Response(403),
+            ),
+            None,
+            403,
+        ),
+    ],
+)
+def test_operations_log_expected_token_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    operation: str,
+    error: Exception,
+    code: int | None,
+    status: int | None,
 ) -> None:
     wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
-    token_client = _TokenClient(WeChatClientException(40013, "private provider detail"))
+    token_client = _TokenClient(error)
     messaging_client = _MessagingClient(_message_response())
     _install_clients(monkeypatch, token_client, messaging_client)
     adapter = wecom_module.WeComIMProviderAdapter(_credentials())
@@ -272,7 +299,7 @@ def test_operations_handle_the_same_token_rejection(
 
     assert token_client.fetch_calls == 1
     assert messaging_client.message.calls == []
-    assert "operation=get_access_token provider_error_code=40013" in caplog.text
+    assert caplog.text.count(f"operation=get_access_token provider_error_code={code} http_status={status}") == 1
     assert "private provider detail" not in caplog.text
 
 
