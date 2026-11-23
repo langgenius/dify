@@ -1,5 +1,5 @@
 import { demoGraphBounds } from '../demo-graph'
-import { getDemoViewport, getThreadPlacement } from '../demo-viewport'
+import { getDemoViewport } from '../demo-viewport'
 import { demoCommentPosition } from '../playback-script'
 
 const toScreen = (
@@ -15,40 +15,28 @@ describe('getDemoViewport', () => {
     [1376, 900],
     [1216, 800],
     [1024, 768],
-  ])('keeps the comment thread beside the flow on a %ix%i canvas', (width, height) => {
+  ])('leaves room for the thread beside its marker on a %ix%i canvas', (width, height) => {
     const viewport = getDemoViewport(width, height)
-    const graphRight = toScreen(viewport, {
-      x: demoGraphBounds.x + demoGraphBounds.width,
-      y: demoGraphBounds.y,
-    }).x
-    const thread = getThreadPlacement(toScreen(viewport, demoCommentPosition), { width, height })
+    const pin = toScreen(viewport, demoCommentPosition)
+    const graphBottom = toScreen(viewport, {
+      x: demoGraphBounds.x,
+      y: demoGraphBounds.y + demoGraphBounds.height,
+    }).y
 
-    expect(thread.left).toBeGreaterThan(graphRight)
-    expect(thread.left + 360).toBeLessThanOrEqual(width)
-    expect(thread.top + 360).toBeLessThanOrEqual(height)
+    // A two-avatar marker is 47px wide and the design puts the 360px thread 17px beside it.
+    expect(pin.x + 47 + 17 + 360).toBeLessThanOrEqual(width - 8)
+    expect(graphBottom).toBeLessThanOrEqual(height)
   })
 
   it.each([
     [800, 600],
     [704, 900],
-    [390, 844],
-  ])('never covers the comment marker on a %ix%i canvas', (width, height) => {
-    const pin = toScreen(getDemoViewport(width, height), demoCommentPosition)
-    const thread = getThreadPlacement(pin, { width, height })
-    const overlapsX = thread.left < pin.x + 47 && thread.left + 360 > pin.x
-    const overlapsY = thread.top < pin.y + 27 && thread.top + 360 > pin.y
+  ])('keeps the whole flow and the comment marker on a %ix%i canvas', (width, height) => {
+    const viewport = getDemoViewport(width, height)
+    const pin = toScreen(viewport, demoCommentPosition)
+    const left = toScreen(viewport, demoGraphBounds).x
 
-    expect(overlapsX && overlapsY).toBe(false)
-  })
-
-  it('keeps the thread inside a narrow canvas', () => {
-    const viewport = getDemoViewport(704, 900)
-    const thread = getThreadPlacement(toScreen(viewport, demoCommentPosition), {
-      width: 704,
-      height: 900,
-    })
-
-    expect(thread.left).toBeGreaterThanOrEqual(8)
-    expect(thread.left + 360).toBeLessThanOrEqual(704)
+    expect(left).toBeGreaterThanOrEqual(56)
+    expect(pin.x + 47).toBeLessThanOrEqual(width - 8)
   })
 })

@@ -48,7 +48,7 @@ async function renderDemo(role: TenantAccountRole) {
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
         <HotkeysProvider>
-          <div className="h-[900px]">
+          <div style={{ height: 900 }}>
             <CollaborationDemoPage />
           </div>
         </HotkeysProvider>
@@ -218,4 +218,25 @@ it('makes the comment marker reopen the thread once playback has finished', asyn
   await expect
     .element(screen.getByRole('button', { name: 'collaborationDemo.thread.close' }))
     .toHaveFocus()
+})
+
+it('opens the thread beside its marker and closes it for a replay', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+  await userEvent.keyboard('{Tab}{Enter}')
+
+  const thread = screen.getByRole('dialog', { name: 'workflowComments.comments.panelTitle' })
+  await expect.poll(() => getComputedStyle(thread.element()).opacity).toBe('1')
+  await userEvent.keyboard('{Shift>}{Tab}{/Shift}{Enter}')
+  const marker = screen.getByRole('button', { name: /collaborationDemo\.thread\.open/ })
+  await expect.element(marker).toHaveFocus()
+  const markerBox = marker.element().getBoundingClientRect()
+  await userEvent.keyboard('{Enter}')
+  await expect.poll(() => getComputedStyle(thread.element()).opacity).toBe('1')
+  const threadBox = thread.element().getBoundingClientRect()
+  expect(threadBox.left - markerBox.right).toBeCloseTo(17, 0)
+  expect(document.querySelector('.react-flow')!.scrollTop).toBe(0)
+
+  await screen.getByRole('button', { name: 'collaborationDemo.playback.replay' }).click()
+  await expect.element(thread).not.toBeInTheDocument()
 })

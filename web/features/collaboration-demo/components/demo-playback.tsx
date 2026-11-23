@@ -20,7 +20,7 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
   const playback = usePlayback(demoDuration)
   const [threadOpen, setThreadOpen] = useState(true)
-  const reopenedRef = useRef(false)
+  const [threadReopened, setThreadReopened] = useState(false)
   const pauseRef = useRef<HTMLButtonElement>(null)
   const pauseButtonRef = useMergedRefs(pauseRef, focusOnMount)
   const frame = getPlaybackFrame(playback.seconds, reducedMotion)
@@ -28,14 +28,9 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
   useHotkey('Escape', playback.pause, { enabled: playback.playing })
 
   const changeThreadOpen = (open: boolean) => {
-    reopenedRef.current = open
+    setThreadReopened(open)
     if (!open && !playback.finished) pauseRef.current?.focus()
     setThreadOpen(open)
-  }
-  const focusReopenedThread = (element: HTMLButtonElement | null) => {
-    if (!element || !reopenedRef.current) return
-    reopenedRef.current = false
-    element.focus()
   }
 
   return (
@@ -61,13 +56,14 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
         threadOpen={threadOpen}
         onThreadOpenChange={changeThreadOpen}
         markerRef={focusOnMount}
-        threadCloseRef={focusReopenedThread}
+        focusThread={threadReopened}
       />
       {playback.finished ? (
         <DemoEndPanel
           state={endState}
           onReplay={() => {
             setThreadOpen(true)
+            setThreadReopened(false)
             playback.restart()
           }}
         />
