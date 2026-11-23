@@ -203,4 +203,3 @@ def test_workspace_bindings_rejects_json_null_before_replacing_bindings(
 
     assert error.value.code == 422
     assert domain.transport.requests == []
-
