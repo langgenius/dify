@@ -1,12 +1,15 @@
 """Document cleanup keeps SQL transactions closed during external index deletion."""
 
 import json
-from unittest.mock import MagicMock
+from contextlib import nullcontext
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -233,6 +236,63 @@ def test_economy_cleanup_preserves_unrelated_keyword_entries(
     assert json.loads(keyword_table.keyword_table)["__data__"]["table"] == {"term": ["unrelated-node"]}
     sqlite_session.expire_all()
     assert sqlite_session.get(DocumentSegmentSummary, summary_id) is None
+
+
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
+def test_parent_child_cleanup_removes_child_keywords_for_both_index_techniques(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    vector: MagicMock,
+    technique: IndexTechniqueType,
+) -> None:
+    dataset, document, _, _, child = graph
+    child_id = child.id
+    dataset.indexing_technique = technique
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    row = DatasetKeywordTable(
+        dataset_id=dataset.id,
+        data_source_type="database",
+        keyword_table=json.dumps({"__data__": {"table": {"term": ["child-node", "unrelated-node"]}}}),
+    )
+    sqlite_session.add(row)
+    sqlite_session.commit()
+    with patch.object(cleanup.redis_client, "lock", return_value=nullcontext()):
+        cleanup.clean_document_indexes(
+            dataset_id=dataset.id,
+            document_ids=[document.id],
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+            new_session=session_factory.create_session,
+        )
+
+    sqlite_session.refresh(row)
+    assert json.loads(row.keyword_table)["__data__"]["table"] == {"term": ["unrelated-node"]}
+    if technique == IndexTechniqueType.HIGH_QUALITY:
+        vector.delete_by_ids.assert_called_once_with(["summary-node", "child-node"])
+    else:
+        vector.delete_by_ids.assert_not_called()
+    sqlite_session.expire_all()
+    assert sqlite_session.get(ChildChunk, child_id) is None
+
+
+def test_high_quality_parent_child_cleanup_does_not_create_an_empty_keyword_table(
+    graph: tuple[Dataset, Document, DocumentSegment, DocumentSegmentSummary, ChildChunk],
+    sqlite_session: Session,
+    vector: MagicMock,
+) -> None:
+    dataset, document, _, _, _ = graph
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    sqlite_session.commit()
+    with patch.object(cleanup.redis_client, "lock", return_value=nullcontext()) as lock:
+        cleanup.clean_document_indexes(
+            dataset_id=dataset.id,
+            document_ids=[document.id],
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+            new_session=session_factory.create_session,
+        )
+
+    vector.delete_by_ids.assert_called_once_with(["summary-node", "child-node"])
+    lock.assert_not_called()
+    assert sqlite_session.scalar(select(DatasetKeywordTable)) is None
 
 
 def test_legacy_summary_delete_does_not_commit_callers_transaction(
