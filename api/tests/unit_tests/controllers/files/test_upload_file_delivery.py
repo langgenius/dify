@@ -1,5 +1,5 @@
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
 from inspect import unwrap
 from unittest.mock import Mock, patch
 from urllib.parse import urlsplit
@@ -21,7 +21,6 @@ from services.upload_file_delivery_service import (
     UploadFileDeliveryNotFoundError,
     UploadFileDeliveryRecord,
     UploadFileDeliveryService,
-    UploadFileStorage,
 )
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -57,15 +56,27 @@ class _PreviewApplicationServices:
     upload_file_delivery: UploadFileDeliveryService
 
 
+@dataclass
+class _PreviewStorage:
+    reads: list[tuple[str, str]] = field(default_factory=list)
+
+    def load_stream(self, filename: str) -> Iterator[bytes]:
+        self.reads.append(("stream", filename))
+        return iter([b"data"])
+
+    def load_once(self, filename: str) -> bytes:
+        self.reads.append(("once", filename))
+        return b"data"
+
+
 @pytest.fixture
 def preview_storage(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
-) -> Mock:
+) -> _PreviewStorage:
     config_overrides(FILES_ACCESS_TIMEOUT=300, FILES_URL="", SECRET_KEY="unit-secret")
-    storage = Mock(spec=UploadFileStorage)
-    storage.load_stream.return_value = iter([b"data"])
+    storage = _PreviewStorage()
     service = UploadFileDeliveryService(
         files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory),
         storage=storage,
@@ -212,7 +223,7 @@ class TestFilePreviewApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session_factory: sessionmaker[Session],
-        preview_storage: Mock,
+        preview_storage: _PreviewStorage,
         request_time: int,
         max_age: int,
     ) -> None:
@@ -234,7 +245,7 @@ class TestFilePreviewApi:
             response = module.FilePreviewApi().get(_AVATAR_FILE_ID)
 
         assert response.headers["Cache-Control"] == f"private, max-age={max_age}, must-revalidate"
-        preview_storage.load_stream.assert_called_once_with("uploads/file-1")
+        assert preview_storage.reads == [("stream", "uploads/file-1")]
 
     @pytest.mark.parametrize(
         ("creator", "role", "extension", "mime_type"),
@@ -250,7 +261,7 @@ class TestFilePreviewApi:
         self,
         app: Flask,
         sqlite_session_factory: sessionmaker[Session],
-        preview_storage: Mock,
+        preview_storage: _PreviewStorage,
         creator: str,
         role: CreatorUserRole,
         extension: str,
@@ -275,8 +286,7 @@ class TestFilePreviewApi:
         ):
             module.FilePreviewApi().get(_AVATAR_FILE_ID)
 
-        preview_storage.load_stream.assert_not_called()
-        preview_storage.load_once.assert_not_called()
+        assert not preview_storage.reads
 
     @pytest.mark.parametrize(
         ("query", "name", "extension"),

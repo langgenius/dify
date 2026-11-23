@@ -1,9 +1,10 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { Query } from '@tanstack/react-query'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
-import { avatarUrlStaleTime } from '@/utils/avatar'
+import { shouldRefreshAvatarUrls } from '@/utils/avatar'
 
 export type UserProfileWithMeta = {
   profile: GetAccountProfileResponse
@@ -12,6 +13,9 @@ export type UserProfileWithMeta = {
     currentEnv: string | null
   }
 }
+
+const refetchForAvatarExpiry = ({ state }: Query<UserProfileWithMeta>): true | 'always' =>
+  shouldRefreshAvatarUrls([state.data?.profile.avatar_url]) ? 'always' : true
 
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
@@ -34,6 +38,8 @@ export const userProfileQueryOptions = () =>
         },
       }
     },
-    staleTime: avatarUrlStaleTime<UserProfileWithMeta>(({ profile }) => [profile.avatar_url]),
+    refetchOnMount: refetchForAvatarExpiry,
+    refetchOnWindowFocus: refetchForAvatarExpiry,
+    refetchOnReconnect: refetchForAvatarExpiry,
     retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
   })

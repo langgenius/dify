@@ -1,5 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { createHttpError } from '@/service/http-error'
 import { userProfileQueryOptions } from '../client'
 
@@ -69,6 +69,38 @@ it('keeps response headers local to concurrent profile requests', async () => {
   } finally {
     first.clear()
     second.clear()
+  }
+})
+
+it('refreshes an expiring signed avatar on mount even when the profile is still fresh', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+  const options = userProfileQueryOptions()
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(125_000)
+  onTestFinished(() => clock.mockRestore())
+  const file = '/files/avatar/file-preview?nonce=account-avatar-v2%3Aaccount-1'
+  const cachedAvatar = `${file}&timestamp=100&sign=cached&expires_at=130`
+  const refreshedAvatar = `${file}&timestamp=125&sign=refreshed&expires_at=155`
+  request.mockResolvedValueOnce(Response.json({ ...profile, avatar_url: refreshedAvatar }))
+  client.setQueryData(
+    options.queryKey,
+    {
+      profile: { ...profile, avatar_url: cachedAvatar },
+      meta: { currentVersion: null, currentEnv: null },
+    },
+    { updatedAt: 100_000 },
+  )
+
+  const observer = new QueryObserver(client, options)
+  expect(observer.getCurrentResult().isStale).toBe(false)
+  const unsubscribe = observer.subscribe(() => {})
+  try {
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().data?.profile.avatar_url).toBe(refreshedAvatar),
+    )
+    expect(request).toHaveBeenCalledOnce()
+  } finally {
+    unsubscribe()
+    client.clear()
   }
 })
 
