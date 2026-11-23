@@ -1,6 +1,5 @@
 import asyncio
 from dataclasses import dataclass
-from types import SimpleNamespace
 
 import pytest
 from pydantic import BaseModel, ValidationError
@@ -27,6 +26,11 @@ class _TextMessage:
 @dataclass
 class _LLMResponse:
     message: _TextMessage
+
+
+@dataclass
+class _StructuredResponse:
+    structured_output: dict[str, object]
 
 
 class _LLMModel:
@@ -70,9 +74,9 @@ def test_dify_model_wrapper_uses_tenant_model_and_validates_structured_output(mo
     structured_calls: list[dict[str, object]] = []
     structured_output: dict[str, object] = {"verdict": 1}
 
-    def fake_structured_output(**kwargs: object) -> SimpleNamespace:
+    def fake_structured_output(**kwargs: object) -> _StructuredResponse:
         structured_calls.append(kwargs)
-        return SimpleNamespace(structured_output=structured_output)
+        return _StructuredResponse(structured_output=structured_output)
 
     monkeypatch.setattr(
         "core.llm_generator.output_parser.structured_output.invoke_llm_with_structured_output",

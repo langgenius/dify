@@ -1486,6 +1486,20 @@ def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> No
     }
 
 
+def test_extract_llm_context_selector_mapping_skips_unusable_context_configs() -> None:
+    """Disabled and malformed context selectors never become metric evidence sources."""
+    workflow = _workflow_with_nodes(
+        [
+            ("llm-disabled", {"type": "llm", "context": {"enabled": False, "variable_selector": ["llm-1", "text"]}}),
+            ("llm-unconfigured", {"type": "llm"}),
+            ("llm-short", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1"]}}),
+            ("llm-invalid", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", 42]}}),
+        ]
+    )
+
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {}
+
+
 def test_validate_knowledge_base_config_rejects_external_provider(sqlite_session: Session) -> None:
     _persist_dataset(sqlite_session, provider="external")
     config = EvaluationConfigData(

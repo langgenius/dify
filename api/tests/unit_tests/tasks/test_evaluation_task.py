@@ -129,6 +129,8 @@ def test_collect_selected_contexts_accepts_text_arrays_without_stringifying_othe
     assert _collect_selected_contexts(node_results, ["start", "files"]) == []
     assert _collect_selected_contexts(node_results, ["start", "number"]) == []
     assert _collect_selected_contexts(node_results, ["sys", "user_id"]) == []
+    assert _collect_selected_contexts(node_results, ["start"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "texts", "content"]) == []
 
 
 def test_collect_selected_contexts_preserves_retrieval_summary_before_content() -> None:
