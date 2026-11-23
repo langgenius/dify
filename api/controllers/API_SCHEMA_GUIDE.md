@@ -95,22 +95,23 @@ query failure behavior stay unchanged. A missing field or failed request must no
 be interpreted as confirmed same-origin configuration. WebApp availability is
 independent of whether Account login is enabled; this URL grants no access.
 
-### Console sign-in return targets
+### Console login return targets
 
-Console auth pages accept root-relative `redirect_url` values, such as `/apps` or
-`/my-apps?sort=recent#details`. Without the End User flag, relative targets stay on
-Console. With `is_end_user=1`, Console sign-in uses the existing `mode=end_user`
-login contract, which resolves the final destination against `APP_WEB_URL`, falling
-back to `CONSOLE_WEB_URL`. These bases come from deployment configuration, not the
-API request host. The deployment prefix may be omitted or included once in a relative
-target. Query strings and fragments are preserved.
+`GET /console/api/login` and `GET /console/api/oauth/login/{provider}` accept
+root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
+`is_end_user` is a frontend navigation hint; clients select the existing
+`mode=end_user` API contract to request End User login.
 
-The flag does not grant an Account session. The server still checks the login mode
-and permits only personal portal routes or an App-bound PKCE handoff. A relative
-OAuth resume URL for `/signin` always resolves to Console; the nested return URL
-is resolved after sign-in. Explicit, previously valid absolute returns still work.
-Personal portal sessions still require the Web API to receive the session cookie;
-split API subdomains must use the deployment's shared `COOKIE_DOMAIN`.
+Console OAuth resolves relative returns against `CONSOLE_WEB_URL`. End User
+portal and App returns use `APP_WEB_URL`, falling back to `CONSOLE_WEB_URL` when
+unset. OAuth resume URLs for `/signin` still use the Console base so clients can
+finish the handoff after sign-in. These bases come from deployment configuration,
+not the API request host. Relative targets can omit the deployment prefix or
+include it once, and query strings and fragments are preserved.
+
+End User admission and route restrictions still apply. App returns require a
+PKCE-bound handoff, and a personal portal session requires its cookie to reach
+the Web API. Previously allowed absolute portal URLs on Console continue to work.
 
 ### Agent tracing deployment discovery exception
 

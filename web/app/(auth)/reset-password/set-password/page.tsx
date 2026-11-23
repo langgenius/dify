@@ -18,7 +18,6 @@ import {
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getEndUserSignInUrl } from '@/app/(auth)/signin/utils/end-user-login'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -52,9 +51,6 @@ const ChangePasswordForm = () => {
       params.set('token', searchParams.get('invite_token') as string)
       return `/activate?${params.toString()}`
     }
-
-    const endUserSignIn = getEndUserSignInUrl(searchParams)
-    if (endUserSignIn) return endUserSignIn
 
     const redirectUrl = searchParams.get('redirect_url')
     if (redirectUrl) {

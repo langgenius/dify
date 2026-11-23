@@ -35,7 +35,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const changePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 const validPassword = 'ValidPass123!'
-const codeChallenge = 'a'.repeat(43)
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
   '/signin?redirect_url=%2Fapps%3Ftemplate-id%3Dtemplate-1%26utm_source%3Ddify_blog'
@@ -143,11 +142,6 @@ it.each([
     scenario: 'redirect target',
     search: `token=reset-token&redirect_url=${encodeURIComponent(redirectUrl)}`,
     href: encodedSigninUrl,
-  },
-  {
-    scenario: 'End User handoff',
-    search: `token=reset-token&is_end_user=1&redirect_url=%2Fchat%2Fapp&app_code=app&code_challenge=${codeChallenge}`,
-    href: `/signin?is_end_user=1&redirect_url=%2Fchat%2Fapp&app_code=app&code_challenge=${codeChallenge}`,
   },
   {
     scenario: 'invite activation',

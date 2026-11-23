@@ -7,52 +7,17 @@ import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
-import CheckCode from '../check-code/page'
 import NormalForm from '../normal-form'
 
 const navigation = vi.hoisted(() => ({
-  push: vi.fn<(href: string) => void>(),
   replace: vi.fn(),
-  replaceDocument: vi.fn(),
   search: '',
 }))
 
-const login = vi.hoisted(() => ({
-  get: vi.fn(),
-  post: vi.fn(),
-  sendCode: vi.fn(),
-  verifyCode: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: navigation.push, replace: navigation.replace }),
+  useRouter: () => ({ replace: navigation.replace }),
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
-
-// boundary: keep the generated Console client and query policy, but never contact the API.
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input: unknown) => {
-      if (path.join('.') === 'login.get') return login.get(input)
-      if (path.join('.') === 'login.post') return login.post(input)
-      if (path.join('.') === 'emailCodeLogin.post') return login.sendCode(input)
-      if (path.join('.') === 'emailCodeLogin.validity.post') return login.verifyCode(input)
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
-
-// boundary: a full navigation would leave the test runner; keep same-origin router handling real.
-vi.mock('@/utils/login-redirect.client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/login-redirect.client')>()
-  return {
-    ...actual,
-    replaceLoginRedirect: (...args: Parameters<typeof actual.replaceLoginRedirect>) => {
-      if (args[0].kind === 'absolute') navigation.replaceDocument(args[0].href)
-      else actual.replaceLoginRedirect(...args)
-    },
-  }
-})
 
 type ProfileState =
   | 'pending'
@@ -131,22 +96,9 @@ const invitation: InvitationData = {
   },
 }
 
-const webappUrl = 'https://webapp.example.test/web'
-const endUserReturnPath = '/connections?sort=recent&q=a%26b#details'
-const endUserSearch = new URLSearchParams({
-  is_end_user: '1',
-  redirect_url: endUserReturnPath,
-}).toString()
-
 beforeEach(() => {
-  navigation.push.mockReset()
   navigation.replace.mockReset()
-  navigation.replaceDocument.mockReset()
   navigation.search = ''
-  login.get.mockReset().mockResolvedValue({ logged_in: false, redirect_url: null })
-  login.post.mockReset().mockResolvedValue({ result: 'success' })
-  login.sendCode.mockReset().mockResolvedValue({ result: 'success', data: 'code-token' })
-  login.verifyCode.mockReset().mockResolvedValue({ result: 'success' })
 })
 
 it('renders the native sign-in controls while the login probe is pending', async () => {
@@ -178,98 +130,6 @@ it.each([
   await renderForm({ profile: { id: 'account-id', email: 'invitee@example.com' } })
 
   await vi.waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/'))
-})
-
-it('keeps a Console relative target on Console even when WebApp has a separate origin', async () => {
-  navigation.search = 'redirect_url=%2Fapps%3Ftag%3Dworkflow%23recent&is_end_user=0'
-
-  await renderForm({
-    profile: { id: 'account-id', email: 'builder@example.com' },
-    systemFeatures: { webapp_url: webappUrl },
-  })
-
-  await vi.waitFor(() =>
-    expect(navigation.replace).toHaveBeenCalledWith('/apps?tag=workflow#recent'),
-  )
-  expect(login.get).not.toHaveBeenCalled()
-})
-
-it('exchanges an existing End User session and follows the resolved WebApp destination', async () => {
-  navigation.search = endUserSearch
-  login.get.mockResolvedValue({ logged_in: true, redirect_url: `${webappUrl}${endUserReturnPath}` })
-
-  await renderForm({ systemFeatures: { webapp_url: webappUrl } })
-
-  await vi.waitFor(() =>
-    expect(navigation.replaceDocument).toHaveBeenCalledWith(`${webappUrl}${endUserReturnPath}`),
-  )
-  expect(login.get).toHaveBeenCalledWith({
-    query: { mode: 'end_user', redirect_url: endUserReturnPath },
-  })
-  expect(navigation.replace).not.toHaveBeenCalled()
-})
-
-it('resumes End User sign-in after password authentication without changing the relative target', async () => {
-  navigation.search = endUserSearch
-  const screen = await renderForm({ systemFeatures: { webapp_url: webappUrl } })
-
-  await userEvent.fill(screen.getByLabelText('login.email'), 'end-user@example.com')
-  await userEvent.fill(screen.getByLabelText('login.password'), 'Example123!')
-  await userEvent.click(screen.getByRole('button', { name: 'login.signBtn' }))
-
-  await vi.waitFor(() =>
-    expect(navigation.replaceDocument).toHaveBeenCalledWith(
-      `${window.location.origin}/signin?${endUserSearch}`,
-    ),
-  )
-  expect(login.post).toHaveBeenCalledWith({
-    body: expect.objectContaining({ email: 'end-user@example.com', mode: 'end_user' }),
-  })
-})
-
-it('preserves a relative End User target through email verification without carrying credentials back', async () => {
-  navigation.search = endUserSearch
-  const signIn = await renderForm({
-    systemFeatures: { enable_email_password_login: false, enable_email_code_login: true },
-  })
-  await userEvent.fill(signIn.getByLabelText('login.email'), 'end-user@example.com')
-  await userEvent.click(signIn.getByRole('button', { name: 'login.signup.verifyMail' }))
-  await expect.poll(() => navigation.push.mock.lastCall?.[0]).toMatch(/^\/signin\/check-code\?/)
-  expect(login.sendCode).toHaveBeenCalledWith({
-    body: expect.objectContaining({ email: 'end-user@example.com', mode: 'end_user' }),
-  })
-
-  const checkCodeUrl = navigation.push.mock.lastCall![0]
-  navigation.search = new URL(checkCodeUrl, window.location.origin).search
-  await signIn.unmount()
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
-  const verification = await render(
-    <ConsoleProvider>
-      <CheckCode />
-    </ConsoleProvider>,
-  )
-  await userEvent.fill(verification.getByLabelText('login.checkCode.verificationCode'), '123456')
-  await userEvent.click(verification.getByRole('button', { name: 'login.checkCode.verify' }))
-
-  await vi.waitFor(() =>
-    expect(navigation.replaceDocument).toHaveBeenCalledWith(
-      `${window.location.origin}/signin?${endUserSearch}`,
-    ),
-  )
-  expect(login.verifyCode).toHaveBeenCalledWith({
-    body: expect.objectContaining({ mode: 'end_user', token: 'code-token' }),
-  })
-})
-
-it('keeps OAuth resume on Console while carrying the relative End User return URL', async () => {
-  navigation.search = endUserSearch
-  const screen = await renderForm({ systemFeatures: { enable_social_oauth_login: true } })
-
-  const github = screen.getByRole('link', { name: 'login.withGitHub' })
-  await expect.element(github).toBeVisible()
-  const { searchParams } = new URL((github.element() as HTMLAnchorElement).href)
-  expect(searchParams.get('mode')).toBe('end_user')
-  expect(searchParams.get('redirect_url')).toBe(`/signin?${endUserSearch}`)
 })
 
 it('redirects the matching signed-in account to invitation settings without requiring a workspace profile', async () => {

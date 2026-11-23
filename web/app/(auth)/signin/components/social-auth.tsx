@@ -7,7 +7,6 @@ import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
 import { getBrowserTimezone } from '@/utils/timezone'
 import style from '../page.module.css'
-import { getEndUserSignInUrl } from '../utils/end-user-login'
 
 export default function SocialAuth() {
   const { t } = useTranslation(['login'])
@@ -16,10 +15,7 @@ export default function SocialAuth() {
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
-    const endUserSignIn = getEndUserSignInUrl(searchParams)
-    const params = endUserSignIn
-      ? new URLSearchParams({ mode: 'end_user', redirect_url: endUserSignIn })
-      : new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams.toString())
     const timezone = getBrowserTimezone()
     if (timezone) params.set('timezone', timezone)
     params.set('language', locale)
