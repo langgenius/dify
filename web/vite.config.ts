@@ -185,6 +185,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
+              'next/dist/shared/lib/app-router-context.shared-runtime',
+              'next/dist/shared/lib/hooks-client-context.shared-runtime',
+              'next/navigation',
               'next/script',
               'react-textarea-autosize',
             ],
