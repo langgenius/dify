@@ -9,11 +9,9 @@ import translations from '@/i18n/locales/fr-FR/workflow.json'
 import { consoleQuery } from '@/service/console'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import WorkflowDraftConflict from '../conflict-dialog'
 
-const { fetchDraft } = vi.hoisted(() => ({ fetchDraft: vi.fn() }))
-
-vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: fetchDraft }))
 // boundary: load the real fr-FR workflow copy so the long discard label is measured at its production length.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -25,6 +23,7 @@ it('keeps the discard choice readable and makes Enter defer an automatically ope
   // Real layout catches clipping of the destructive action's long label. Native
   // Enter verifies that an automatically opened conflict cannot discard by default.
   await page.viewport(320, 640)
+  onTestFinished(guardUnexpectedFetch())
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
@@ -53,7 +52,6 @@ it('keeps the discard choice readable and makes Enter defer an automatically ope
   await expect.element(defer).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(fetchDraft).not.toHaveBeenCalled()
   expect(store.getState().hasWorkflowDraftConflict).toBe(true)
 
   await screen.getByRole('button', { name: translations['draftConflict.resolve'] }).click()

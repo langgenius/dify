@@ -2,6 +2,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import CreateAppPromptDialog from '..'
 import { promptDefaultModel, promptModelProviders } from '../../__tests__/model-fixtures'
 
@@ -28,8 +29,6 @@ const longPrompt = Array.from(
 ).join('\n')
 
 describe('Builder prompt input', () => {
-  afterEach(() => vi.restoreAllMocks())
-
   it('grows with a long prompt, caps scrolling above the actions, and resizes AI results at narrow widths', async () => {
     // The unit environment cannot reveal clipped prompts or actions scrolling out of reach.
     // Render the production starter and its real model improvement hook to cover both paths.
@@ -47,12 +46,15 @@ describe('Builder prompt input', () => {
       }).queryKey,
       { data: promptModelProviders },
     )
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const request = input instanceof Request ? input : new Request(input)
-      if (new URL(request.url).pathname.endsWith('/workflow-generate/improve'))
-        return Response.json({ instruction: longPrompt, changed: true })
-      throw new Error(`Unexpected request: ${request.url}`)
-    })
+    onTestFinished(
+      installFakeApi({
+        console: {
+          workflowGenerate: {
+            improve: { post: () => ({ instruction: longPrompt, changed: true }) },
+          },
+        },
+      }),
+    )
     const onCreate = vi.fn()
     const screen = await render(
       <Wrapper>

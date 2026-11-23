@@ -20,7 +20,7 @@ import DifyBuilderComposer from '@/features/dify-builder/composer'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { nodes, viewport } from './canvas-navigation-data'
+import { appId, nodes, viewport } from './canvas-navigation-data'
 
 // Canvas tree for canvas-navigation.browser.spec.tsx. That spec declares the module
 // boundaries this tree runs behind; import this file only after those mocks.
@@ -84,9 +84,9 @@ export function Fixture({
     }).queryClient
     query.setQueryData(
       consoleQuery.apps.byAppId.get.queryKey({
-        input: { params: { app_id: 'builder-navigation-app' } },
+        input: { params: { app_id: appId } },
       }),
-      createAppDetailFixture({ id: 'builder-navigation-app', mode: 'workflow' }),
+      createAppDetailFixture({ id: appId, mode: 'workflow' }),
     )
     for (const toolsQuery of [
       consoleQuery.workspaces.current.tools.builtin.get,
@@ -126,7 +126,7 @@ export function Fixture({
         <EditorResourceScope
           resource={{
             kind: 'app',
-            appId: 'builder-navigation-app',
+            appId,
             mode: 'workflow',
             collaborationEnabled: collaborationRecovery,
           }}

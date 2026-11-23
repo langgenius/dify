@@ -8,7 +8,7 @@ import 'reactflow/dist/style.css'
 
 let onCursorUpdate: ((cursors: Record<string, CursorPosition>) => void) | undefined
 
-// Cursor updates cross the realtime transport boundary.
+// boundary: cursor updates come from the realtime transport.
 vi.mock('../../core/collaboration-manager', () => ({
   collaborationManager: {
     onCursorUpdate: (callback: NonNullable<typeof onCursorUpdate>) => {
