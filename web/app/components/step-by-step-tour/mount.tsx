@@ -25,6 +25,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
+import { waitForAccessibleElement } from '@/app/components/base/coachmark/wait-for-accessible-element'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -71,7 +72,6 @@ import {
 } from './target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from './tasks'
 import { useStepByStepTourTarget } from './use-tour-target'
-import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 type StepByStepTourTask = (typeof STEP_BY_STEP_TOUR_TASKS)[number]
 
