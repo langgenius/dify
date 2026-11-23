@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type {
   CursorPosition,
   OnlineUser,
@@ -13,7 +12,7 @@ type UserCursorsProps = {
   onlineUsers: OnlineUser[]
 }
 
-const UserCursors: FC<UserCursorsProps> = ({ cursors, myUserId, onlineUsers }) => {
+function UserCursors({ cursors, myUserId, onlineUsers }: UserCursorsProps) {
   const { x, y, zoom } = useViewport()
 
   return (
