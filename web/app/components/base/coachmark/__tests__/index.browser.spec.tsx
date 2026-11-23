@@ -242,6 +242,49 @@ it('waits for declared highlight parts and ignores elements that appear later in
   expect(coachmark.element().getBoundingClientRect().top).toBeCloseTo(popupTop, 0)
 })
 
+it('moves the spotlight when a layout class changes on a target ancestor', async () => {
+  function AncestorLayoutDemo({ shifted }: { shifted: boolean }) {
+    const [target, setTarget] = useState<HTMLElement | null>(null)
+
+    return (
+      <>
+        <style>{`
+          .coachmark-shifted { transform: translateX(96px); }
+          [data-testid="spotlight"] { position: fixed; }
+        `}</style>
+        <div className={shifted ? 'coachmark-shifted' : undefined}>
+          <div>
+            <button ref={setTarget} type="button">
+              Nested target
+            </button>
+          </div>
+        </div>
+        <Coachmark defaultOpen target={target} modal={false}>
+          <CoachmarkPortal>
+            <CoachmarkSpotlight data-testid="spotlight" />
+            <CoachmarkPositioner>
+              <CoachmarkPopup>
+                <CoachmarkTitle>Start here</CoachmarkTitle>
+                <CoachmarkClose>Skip</CoachmarkClose>
+              </CoachmarkPopup>
+            </CoachmarkPositioner>
+          </CoachmarkPortal>
+        </Coachmark>
+      </>
+    )
+  }
+
+  const screen = await render(<AncestorLayoutDemo shifted={false} />)
+  const target = screen.getByRole('button', { name: 'Nested target' }).element()
+  const spotlight = screen.getByTestId('spotlight').element()
+  const initialOffset = spotlight.getBoundingClientRect().left - target.getBoundingClientRect().left
+
+  await screen.rerender(<AncestorLayoutDemo shifted />)
+  await expect
+    .poll(() => spotlight.getBoundingClientRect().left - target.getBoundingClientRect().left)
+    .toBe(initialOffset)
+})
+
 it('opens with highlight parts without waiting on animation frames', async () => {
   const part = document.createElement('div')
   part.dataset.part = ''
