@@ -1,18 +1,18 @@
-"""One parse layer for request bodies on ``/openapi/v1``.
+"""One parse layer for request bodies on `/openapi/v1`.
 
 JSON requests validate as-is. Multipart requests become the same dict shape: every
 non-file part is JSON text under its own name, every file part is named for the body
-field it fills and lands there as a ``FileStorage``. The same Pydantic model validates
+field it fills and lands there as a `FileStorage`. The same Pydantic model validates
 both; handlers never see the difference.
 
-File part names are the field, optionally one key, optionally a ``[]`` list marker::
+File part names are the field, optionally one key, optionally a `[]` list marker::
 
     file              -> body["file"] = part
     files[doc]        -> body["files"]["doc"] = part
     files[pages][]    -> body["files"]["pages"] = [part, ...]
     attachments[]     -> body["attachments"] = [part, ...]
 
-Only the fields the model declares with ``UploadPart`` may carry file parts, so a
+Only the fields the model declares with `UploadPart` may carry file parts, so a
 stray part can never land in a plain JSON field.
 """
 
@@ -60,9 +60,14 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
     target[leaf] = value
 
 
-def body_from_request(*, file_fields: Collection[str] = ()) -> dict[str, Any]:
+def body_from_request(*, file_fields: Collection[str] = ()) -> Any:
     if request.mimetype != "multipart/form-data":
-        return request.get_json(silent=True) or {}
+        body = request.get_json(silent=True)
+        if body is not None:
+            return body
+        # Keep an absent body compatible with models whose fields all have defaults,
+        # but let malformed JSON and an explicit JSON null fail model validation.
+        return {} if not request.get_data(cache=True) else body
     body: dict[str, Any] = {name: _json_part(name, raw, file_fields=file_fields) for name, raw in request.form.items()}
     for name in request.files:
         _place(body, name, request.files.getlist(name), file_fields=file_fields)
