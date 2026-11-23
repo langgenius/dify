@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 
-export function usePlayback(duration: number) {
+/** Plays `duration` seconds once `active`, starting from the beginning. */
+export function usePlayback(duration: number, active = true) {
   const [playback, setPlayback] = useState({ seconds: 0, playing: true })
 
   useEffect(() => {
-    if (!playback.playing) return
+    if (!active || !playback.playing) return
 
     let frame = 0
     let last = performance.now()
@@ -19,11 +20,11 @@ export function usePlayback(duration: number) {
     }
     frame = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(frame)
-  }, [duration, playback.playing])
+  }, [active, duration, playback.playing])
 
   return {
     seconds: playback.seconds,
-    playing: playback.playing,
+    playing: active && playback.playing,
     finished: playback.seconds >= duration,
     play: () => setPlayback((current) => ({ ...current, playing: current.seconds < duration })),
     pause: () => setPlayback((current) => ({ ...current, playing: false })),

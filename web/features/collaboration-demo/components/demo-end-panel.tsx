@@ -13,28 +13,28 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { useExitDemo } from '../use-exit-demo'
 
 type DemoEndPanelProps = {
   state: DemoEndState
   onReplay: () => void
+  onExit: () => void
 }
 
-export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
+export function DemoEndPanel({ state, onReplay, onExit }: DemoEndPanelProps) {
   const { t } = useTranslation(['collaborationDemo'])
   const router = useRouter()
-  const exitDemo = useExitDemo()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const upgradeRef = useRef<HTMLButtonElement>(null)
   const [pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
   const pricingWasOpenRef = useRef(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const pendingPrimaryFocusedRef = useRef(false)
-  const focusReadyPrimary = (element: HTMLElement | null) => {
+  const focusReadyAction = (element: HTMLElement | null) => {
     if (!element || !pendingPrimaryFocusedRef.current) return
     pendingPrimaryFocusedRef.current = false
     element.focus()
   }
-  const upgradeButtonRef = useMergedRefs(upgradeRef, focusReadyPrimary)
+  const upgradeButtonRef = useMergedRefs(upgradeRef, focusReadyAction)
   const primaryLink = buttonVariants({ variant: 'primary', size: 'medium' })
 
   useEffect(() => {
@@ -50,6 +50,13 @@ export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
   }, [pricing])
 
   const { kind } = state
+  const settled = kind !== 'loading' && kind !== 'appsLoading'
+
+  useEffect(() => {
+    if (!settled || !pendingPrimaryFocusedRef.current) return
+    pendingPrimaryFocusedRef.current = false
+    closeRef.current?.focus()
+  }, [settled])
   const tryNowLabel = t(($) => $['end.enabled.action'])
   const title =
     kind === 'upgrade' || kind === 'upgradeContactAdmin'
@@ -127,7 +134,7 @@ export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
         )}
         {state.kind === 'tryNow' && (
           <Link
-            ref={focusReadyPrimary}
+            ref={focusReadyAction}
             href={`/app/${state.app.id}/workflow`}
             className={primaryLink}
           >
@@ -135,12 +142,12 @@ export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
           </Link>
         )}
         {kind === 'appsError' && (
-          <Link ref={focusReadyPrimary} href="/apps" className={primaryLink}>
+          <Link ref={focusReadyAction} href="/apps" className={primaryLink}>
             {t(($) => $['end.goToStudio'])}
           </Link>
         )}
         {kind === 'createApp' && (
-          <Link ref={focusReadyPrimary} href={createWorkflowAppHref} className={primaryLink}>
+          <Link ref={focusReadyAction} href={createWorkflowAppHref} className={primaryLink}>
             {t(($) => $['end.createWorkflow'])}
           </Link>
         )}
@@ -150,11 +157,13 @@ export function DemoEndPanel({ state, onReplay }: DemoEndPanelProps) {
           </Button>
         )}
         {kind === 'unavailable' ? (
-          <Button ref={focusReadyPrimary} variant="primary" onClick={() => router.replace('/apps')}>
+          <Button ref={focusReadyAction} variant="primary" onClick={() => router.replace('/apps')}>
             {t(($) => $['end.backToWorkspace'])}
           </Button>
         ) : (
-          <Button onClick={exitDemo}>{t(($) => $['end.close'])}</Button>
+          <Button ref={closeRef} onClick={onExit}>
+            {t(($) => $['end.close'])}
+          </Button>
         )}
         <Button variant="ghost" onClick={onReplay}>
           <span aria-hidden className="i-ri-restart-line size-4" />

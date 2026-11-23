@@ -202,7 +202,7 @@ export function DemoCanvasLayer({
       </div>
 
       <Popover open={frame.marker === 'composing' && Boolean(marker)}>
-        <PopoverPortal container={layer}>
+        <PopoverPortal>
           <PopoverPositioner anchor={marker} {...commentDraftPlacement} {...popupBounds}>
             <PopoverPopup
               inert
@@ -250,7 +250,7 @@ export function DemoCanvasLayer({
           markerTriggerRef.current?.focus()
         }}
       >
-        <PopoverPortal container={layer}>
+        <PopoverPortal>
           <PopoverPositioner anchor={marker} {...commentThreadPlacement} {...popupBounds}>
             <CommentThreadPopup
               ref={setPopup}

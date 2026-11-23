@@ -10,14 +10,21 @@ vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }
 
 const app = { id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }
 
-async function renderPanel(state: DemoEndState, searchParams = '') {
+async function renderPanel(state: DemoEndState) {
   const onReplay = vi.fn()
-  const screen = await render(
-    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={api.urlUpdate}>
-      <DemoEndPanel state={state} onReplay={onReplay} />
-    </NuqsTestingAdapter>,
+  const onExit = vi.fn()
+  const panel = (current: DemoEndState) => (
+    <NuqsTestingAdapter onUrlUpdate={api.urlUpdate}>
+      <DemoEndPanel state={current} onReplay={onReplay} onExit={onExit} />
+    </NuqsTestingAdapter>
   )
-  return { screen, onReplay }
+  const screen = await render(panel(state))
+  return {
+    screen,
+    onReplay,
+    onExit,
+    rerender: (next: DemoEndState) => screen.rerender(panel(next)),
+  }
 }
 
 beforeEach(() => {
@@ -83,25 +90,19 @@ it('sends users back to the workspace when collaboration is unavailable', async 
   expect(api.replace).toHaveBeenCalledWith('/apps')
 })
 
-it('closes a demo tab opened from the product and falls back to the apps list otherwise', async () => {
-  const close = vi.spyOn(window, 'close').mockImplementation(() => {})
-  const { screen } = await renderPanel({ kind: 'createApp' })
+it('leaves the demo through Close', async () => {
+  const { screen, onExit } = await renderPanel({ kind: 'createApp' })
 
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
-  expect(close).not.toHaveBeenCalled()
-  expect(api.replace).toHaveBeenCalledWith('/apps')
-
-  vi.spyOn(window, 'opener', 'get').mockReturnValue(window)
-  api.replace.mockClear()
-  await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
-  expect(close).toHaveBeenCalledOnce()
+  expect(onExit).toHaveBeenCalledOnce()
 })
 
-it('closes a demo tab opened from the in-site notification', async () => {
-  const close = vi.spyOn(window, 'close').mockImplementation(() => {})
-  const { screen } = await renderPanel({ kind: 'createApp' }, '?source=notification')
+it('keeps focus in the panel when a focused loading action resolves to none', async () => {
+  const { screen, rerender } = await renderPanel({ kind: 'loading' })
+  const close = screen.getByRole('button', { name: 'collaborationDemo.end.close' })
+  await expect.element(close).toBeVisible()
 
-  await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
-
-  expect(close).toHaveBeenCalledOnce()
+  screen.getByRole('button', { name: 'collaborationDemo.end.enabled.action' }).element().focus()
+  await rerender({ kind: 'readOnly', role: 'normal' })
+  await expect.element(close).toHaveFocus()
 })

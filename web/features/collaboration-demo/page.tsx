@@ -1,20 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
-import { DemoPlayback } from './components/demo-playback'
+import { DemoStage } from './components/demo-stage'
 import { DemoStepGuide } from './components/demo-step-guide'
-import { createDemoGraph } from './demo-graph'
-import { DemoViewportFit } from './demo-viewport'
 import { useDemoOutcome } from './use-demo-outcome'
 import { useExitDemo } from './use-exit-demo'
 
 type Step = 'members' | 'comment' | 'playing'
 
 export default function CollaborationDemoPage() {
-  const { t } = useTranslation(['collaborationDemo'])
   const exitDemo = useExitDemo()
   const endState = useDemoOutcome()
   const [step, setStep] = useState<Step>('members')
@@ -33,20 +28,7 @@ export default function CollaborationDemoPage() {
         onCommentModeChange={(pressed) => pressed && setStep('playing')}
         commentToolRef={setCommentTarget}
       />
-      <WorkflowPreview
-        {...createDemoGraph({
-          start: t(($) => $['nodes.start']),
-          checkOrder: t(($) => $['nodes.checkOrder']),
-          lookupRefund: t(($) => $['nodes.lookupRefund']),
-          generateReply: t(($) => $['nodes.generateReply']),
-          refundStatus: t(($) => $['nodes.refundStatus']),
-          askOrder: t(($) => $['nodes.askOrder']),
-        })}
-        miniMapToRight
-      >
-        <DemoViewportFit />
-        {step === 'playing' && <DemoPlayback endState={endState} />}
-      </WorkflowPreview>
+      <DemoStage playing={step === 'playing'} endState={endState} onExit={exitDemo} />
       <DemoStepGuide
         step={step}
         target={step === 'members' ? membersTarget : commentTarget}
