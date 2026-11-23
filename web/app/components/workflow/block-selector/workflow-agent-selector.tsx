@@ -18,6 +18,7 @@ import { ExternalAgentOptions } from '@/features/agent-v2/external-agent/workflo
 import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { WorkflowAgentSelectorSkeleton } from './workflow-agent-selector-skeleton'
 
 type AgentSource = 'all' | 'dify' | 'external'
 
@@ -81,7 +82,10 @@ export function WorkflowAgentSelectorContent({
     source === 'external' ? [] : (agentsQuery.data?.pages.flatMap((page) => page.data) ?? [])
   const isLoading = source !== 'external' && agentsQuery.isPending
   const hasDifyError = source !== 'external' && agentsQuery.isError
-  const isEmpty = !isLoading && !hasDifyError && difyAgents.length === 0 && !showExternal
+  const isKeywordCurrent = search.trim() === keyword
+  const isDifyEmpty =
+    agentsQuery.isSuccess && !agentsQuery.isPlaceholderData && difyAgents.length === 0
+  const showDifyEmpty = isKeywordCurrent && isDifyEmpty && !showExternal
   const sources: AgentSource[] = onSelectExternal ? ['all', 'dify', 'external'] : ['all', 'dify']
 
   const selectDifyAgent = (agent: AgentInviteOptionResponse) => {
@@ -161,7 +165,7 @@ export function WorkflowAgentSelectorContent({
           >
             {source === tab && (
               <>
-                {isLoading && <DifyAgentSelectorSkeleton />}
+                {isLoading && <WorkflowAgentSelectorSkeleton />}
                 {hasDifyError && (
                   <p role="status" className="px-3 py-2 system-sm-regular text-text-tertiary">
                     {t(($) => $['roster.loadingError'])}
@@ -217,15 +221,16 @@ export function WorkflowAgentSelectorContent({
                   <ExternalAgentOptions
                     keyword={keyword}
                     tagIds={tagIds}
+                    showEmpty={isKeywordCurrent && (source === 'external' || isDifyEmpty)}
                     onSelect={async (agent) => {
                       const selected = await onSelectExternal(agent)
                       if (selected !== false) onRequestClose()
                     }}
                   />
                 )}
-                {isEmpty && (
+                {showDifyEmpty && (
                   <p role="status" className="px-3 py-2 system-sm-regular text-text-tertiary">
-                    {search.trim() || tagIds.length
+                    {keyword || tagIds.length
                       ? t(($) => $['roster.emptySearch'])
                       : t(($) => $['roster.empty'])}
                   </p>
@@ -263,18 +268,5 @@ export function WorkflowAgentSelectorContent({
       </div>
       <div ref={tagPortalRef} />
     </>
-  )
-}
-
-function DifyAgentSelectorSkeleton() {
-  return (
-    <div aria-hidden className="space-y-1 p-2">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="flex h-8 items-center gap-2 opacity-20">
-          <span className="size-6 rounded-md bg-text-quaternary" />
-          <span className="h-2 w-32 rounded-xs bg-text-quaternary" />
-        </div>
-      ))}
-    </div>
   )
 }
