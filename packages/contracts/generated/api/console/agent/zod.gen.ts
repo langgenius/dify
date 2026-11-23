@@ -1593,6 +1593,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -3956,6 +3957,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**

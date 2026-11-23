@@ -24,7 +24,7 @@ import { consoleQuery } from '@/service/console'
 import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
-import { tracingQueryParamName, tracingQueryParser } from './query-params'
+import { tracingSearchParams } from './query-params'
 import { usesAgentTracePipeline } from './resource'
 import { TracingIcon } from './tracing-icon'
 
@@ -37,7 +37,7 @@ type TracingConfigurationProps = {
 
 export function TracingConfiguration({ resource, readOnly }: TracingConfigurationProps) {
   const { t } = useTranslation(['app', 'common'])
-  const [destination, setDestination] = useQueryState(tracingQueryParamName, tracingQueryParser)
+  const [destination, setDestination] = useQueryState('tracing', tracingSearchParams.tracing)
   const statusQuery = useQuery(
     resource.kind === 'agent'
       ? consoleQuery.agent.byAgentId.trace.get.queryOptions({

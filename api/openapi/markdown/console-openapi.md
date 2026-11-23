@@ -452,7 +452,11 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
-**Return visible Workflow-callable Agents and their current workflow usage**
+**Return visible Workflow-callable Agents matching validated tag filters**
+
+Preconditions: Console admission supplies the active workspace identity.
+Postconditions: repeated tag_ids are validated as UUIDs and passed with
+name/pagination filters; the response contains detached Agent tags.
 
 #### Parameters
 
@@ -462,6 +466,7 @@ Check if activation token is valid
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Agent tag IDs; every selected tag must match | No | [ string (uuid) ] |
 
 #### Responses
 
@@ -14573,7 +14578,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "agent", "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -14583,6 +14588,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tags
+**Create a validated tag only after authorization for its pool; conflicts preserve existing tags**
+
 #### Request Body
 
 | Required | Schema |
@@ -14597,6 +14604,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
+**Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14611,6 +14620,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /tags/{tag_id}
+**Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -21622,6 +21633,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
+| tags | [ [Tag](#tag) ] | Workspace Agent tags, independent of Studio App tags | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
@@ -21635,6 +21647,7 @@ Supported icon storage formats for Agent roster entries.
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| tag_ids | [ string (uuid) ] | Agent tag IDs; every selected tag must match | No |
 
 #### AgentInviteOptionsResponse
 
@@ -38329,7 +38342,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
+| type | [TagType](#tagtype) | Tag type filter | Yes |
 
 #### TagListResponse
 
