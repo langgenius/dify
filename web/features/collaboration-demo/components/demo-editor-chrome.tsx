@@ -6,8 +6,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { MiniMap, useViewport } from 'reactflow'
-import { useDemoViewport } from '../demo-viewport'
 import { DemoMembers } from './demo-members'
 
 type DemoHeaderProps = {
@@ -72,36 +70,6 @@ export function DemoToolbar({
           {label}
         </TooltipContent>
       </Tooltip>
-    </div>
-  )
-}
-
-export function DemoCanvasCorner() {
-  const { zoom } = useViewport()
-  useDemoViewport()
-
-  return (
-    <div inert aria-hidden className="absolute inset-e-2 bottom-2 z-10">
-      <MiniMap
-        style={{ width: 102, height: 72 }}
-        maskColor="var(--color-workflow-minimap-bg)"
-        nodeClassName="bg-workflow-minimap-block"
-        nodeStrokeWidth={3}
-        className="absolute! bottom-10! z-9 m-0! h-18.25! w-25.75! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
-      />
-      <div className="h-9 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]">
-        <div className="flex h-8 w-24.5 items-center justify-between rounded-lg">
-          <span className="flex size-8 items-center justify-center rounded-lg">
-            <span className="i-ri-zoom-out-line size-4 text-text-tertiary" />
-          </span>
-          <span className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary">
-            {Math.round(zoom * 100)}%
-          </span>
-          <span className="flex size-8 items-center justify-center rounded-lg">
-            <span className="i-ri-zoom-in-line size-4 text-text-tertiary" />
-          </span>
-        </div>
-      </div>
     </div>
   )
 }

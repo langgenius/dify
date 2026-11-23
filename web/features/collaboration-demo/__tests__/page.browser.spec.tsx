@@ -282,3 +282,24 @@ it('keeps the thread open when playback controls are pressed while paused', asyn
     .toHaveFocus()
   await expect.element(close).toBeInTheDocument()
 })
+
+it('zooms the canvas with the comment pinned to it and frames it again for a replay', async () => {
+  const screen = await renderDemo('owner')
+  await startPlayback(screen)
+  await userEvent.keyboard('{Tab}{Enter}')
+  const marker = screen.getByRole('button', { name: /collaborationDemo\.thread\.open/ })
+  await expect.element(marker).toBeVisible()
+  const framed = marker.element().getBoundingClientRect()
+
+  document
+    .querySelector('.react-flow__pane')!
+    .dispatchEvent(
+      new WheelEvent('wheel', { deltaY: -400, clientX: 400, clientY: 400, bubbles: true }),
+    )
+  await expect.poll(() => marker.element().getBoundingClientRect().left).not.toBe(framed.left)
+
+  await screen.getByRole('button', { name: 'collaborationDemo.playback.replay' }).click()
+  await screen.getByRole('button', { name: 'collaborationDemo.playback.skip' }).click()
+  await expect.poll(() => marker.element().getBoundingClientRect().left).toBeCloseTo(framed.left, 0)
+  expect(marker.element().getBoundingClientRect().top).toBeCloseTo(framed.top, 0)
+})

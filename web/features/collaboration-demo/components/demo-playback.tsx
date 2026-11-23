@@ -7,6 +7,7 @@ import { useHotkey } from '@tanstack/react-hotkeys'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { demoUsers } from '../demo-users'
+import { useFitDemoViewport } from '../demo-viewport'
 import { demoDuration, demoMessages, getPlaybackFrame } from '../playback-script'
 import { useMessageContent } from '../use-message-content'
 import { usePlayback } from '../use-playback'
@@ -20,6 +21,7 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
   const messageContent = useMessageContent()
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
   const playback = usePlayback(demoDuration)
+  const fitViewport = useFitDemoViewport()
   const [threadOpen, setThreadOpen] = useState(true)
   const [threadReopened, setThreadReopened] = useState(false)
   const frame = getPlaybackFrame(playback.seconds, reducedMotion)
@@ -69,6 +71,7 @@ export function DemoPlayback({ endState }: { endState: DemoEndState }) {
           onReplay={() => {
             setThreadOpen(true)
             setThreadReopened(false)
+            fitViewport()
             playback.restart()
           }}
         />

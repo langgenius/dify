@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { DemoCanvasCorner, DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
+import { DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
 import { DemoPlayback } from './components/demo-playback'
 import { DemoStepGuide } from './components/demo-step-guide'
 import { createDemoGraph } from './demo-graph'
+import { DemoViewportFit } from './demo-viewport'
 import { useDemoOutcome } from './use-demo-outcome'
 import { useExitDemo } from './use-exit-demo'
 
@@ -41,10 +42,9 @@ export default function CollaborationDemoPage() {
           refundStatus: t(($) => $['nodes.refundStatus']),
           askOrder: t(($) => $['nodes.askOrder']),
         })}
-        showControls={false}
-        interactive={false}
+        miniMapToRight
       >
-        <DemoCanvasCorner />
+        <DemoViewportFit />
         {step === 'playing' && <DemoPlayback endState={endState} />}
       </WorkflowPreview>
       <DemoStepGuide
