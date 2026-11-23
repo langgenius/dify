@@ -7,6 +7,7 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
+from services.evaluation_service import EvaluationService
 from services.model_billing_dependency_adapters import PluginAgentStrategySelectorQuery, TypedModelDependencyExtractor
 from services.model_billing_dependency_inventory import ModelBillingDependencyInventory
 from services.model_billing_dependency_provenance import (
@@ -34,7 +35,10 @@ def build_model_billing_dependencies(*, database_client: sessionmaker[Session]) 
         documents=CompositeModelDependencyDocuments(
             (
                 ConsoleAppRepository(session_factory=database_client).collect_model_dependency_documents,
-                AgentAppRepository(session_factory=database_client).collect_model_dependency_documents,
+                AgentAppRepository(
+                    session_factory=database_client,
+                    stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+                ).collect_model_dependency_documents,
                 KnowledgeModelDependencyDocuments(
                     datasets=SQLAlchemyDatasetRepository(session_factory=database_client)
                 ).collect,

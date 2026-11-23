@@ -38,20 +38,19 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async () => {
   const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    consoleQuery: createTanstackQueryUtils(
-      {
-        apps: {
-          byAppId: {
-            export: { get: mocks.exportAppDsl },
-            workflows: {
-              draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
-            },
-          },
+  const consoleClient = {
+    apps: {
+      byAppId: {
+        export: { get: mocks.exportAppDsl },
+        workflows: {
+          draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
         },
       },
-      { path: ['console'] },
-    ),
+    },
+  }
+  return {
+    consoleClient,
+    consoleQuery: createTanstackQueryUtils(consoleClient, { path: ['console'] }),
   }
 })
 
@@ -436,6 +435,39 @@ describe('useExportWorkflowAppDsl', () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
   })
+
+  it.each(['check', 'download'] as const)(
+    'does not report an error when the dialog cancels the %s',
+    async (stage) => {
+      const controller = new AbortController()
+      mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })
+      const transport = stage === 'check' ? mocks.getEnvironmentVariables : mocks.exportAppDsl
+      transport.mockImplementationOnce(
+        (_input, { signal }: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+          }),
+      )
+      const { result } = renderHook(() => useExportWorkflowAppDsl(), { wrapper: createWrapper() })
+      let request: ReturnType<typeof result.current.exportWorkflowAppDsl>
+      await act(async () => {
+        request = result.current.exportWorkflowAppDsl({
+          appId: 'workflow-app-id',
+          appName: 'Support Workflow',
+          feedback: 'dialog',
+          signal: controller.signal,
+        })
+      })
+      await waitFor(() => expect(transport).toHaveBeenCalledTimes(1))
+      await act(async () => {
+        controller.abort()
+        await expect(request).resolves.toEqual({ status: 'cancelled' })
+      })
+      await waitFor(() => expect(result.current.isExporting).toBe(false))
+      expect(result.current.errorMessage).toBeUndefined()
+      expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    },
+  )
 
   it('checks generated workflow environment variables before exporting', async () => {
     mocks.getEnvironmentVariables.mockResolvedValue({ items: [] })

@@ -14,7 +14,6 @@ import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ResizeHandle from '@/app/components/base/resize-handle'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
@@ -31,8 +30,13 @@ import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/sto
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import {
+  NodeEditorAvatars,
+  NodePanelEditingFrame,
+} from '@/app/components/workflow/collaboration/components/node-editors'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { getNodeEditors } from '@/app/components/workflow/collaboration/utils/node-editors'
 import {
   editorAppIdAtom,
   editorResourceAtom,
@@ -142,18 +146,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     }
   }, [id, isConnected, currentUserPresence])
 
-  const viewingUsers = useMemo(() => {
-    const presence = nodePanelPresence?.[id]
-    if (!presence) return []
-
-    return Object.values(presence)
-      .filter((viewer) => viewer.userId && viewer.userId !== currentUserPresence.userId)
-      .map((viewer) => ({
-        id: viewer.userId,
-        name: viewer.username,
-        avatar_url: viewer.avatar || null,
-      }))
-  }, [currentUserPresence.userId, id, nodePanelPresence])
+  const [latestEditor, ...otherEditors] = useMemo(
+    () => getNodeEditors(nodePanelPresence, id, currentUserPresence.userId),
+    [currentUserPresence.userId, id, nodePanelPresence],
+  )
 
   const showSingleRunPanel = useStore((s) => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -639,7 +635,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         tabIndex={-1}
         value={tabType}
         onValueChange={(selectedValue) => setTabType(selectedValue)}
-        className="flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+        className="relative flex h-full flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
         style={
           {
             width: `${nodePanelWidth}px`,
@@ -647,6 +643,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
           } as CSSProperties
         }
       >
+        <NodePanelEditingFrame editor={latestEditor} />
         <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (
@@ -657,9 +654,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
             ) : (
               <TitleInput value={data.title || ''} onBlur={handleTitleBlur} />
             )}
-            {viewingUsers.length > 0 && (
-              <div className="ms-3 shrink-0">
-                <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
+            {otherEditors.length > 0 && (
+              <div className="ms-3 flex shrink-0">
+                <NodeEditorAvatars editors={otherEditors} />
               </div>
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">

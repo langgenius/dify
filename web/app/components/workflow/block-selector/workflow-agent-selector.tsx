@@ -2,6 +2,8 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { AgentRosterNodeData } from './types'
 import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -9,10 +11,11 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { SearchInput } from '@/app/components/base/search-input'
+import { SearchInputClear } from '@/app/components/base/search-input'
+import { useSearchInput } from '@/app/components/base/search-input/use-search-input'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { ExternalAgentOptions } from '@/features/agent-v2/external-agent/workflow-preview/agent-options'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 
@@ -35,6 +38,11 @@ export function WorkflowAgentSelectorContent({
   const appId = useAtomValue(editorAppIdAtom)
   const [source, setSource] = useState<AgentSource>('all')
   const [search, setSearch] = useState('')
+  const { inputProps, canClear, clearProps } = useSearchInput({
+    value: search,
+    onValueChange: setSearch,
+  })
+  const searchGroupRef = useRef<HTMLDivElement>(null)
   const keyword = useDebounce(search.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
   const tagPortalRef = useRef<HTMLDivElement>(null)
@@ -82,24 +90,43 @@ export function WorkflowAgentSelectorContent({
   return (
     <>
       <div className="p-2">
-        <SearchInput
-          value={search}
-          onValueChange={setSearch}
-          aria-label={t(($) => $['roster.searchLabel'])}
-          placeholder={t(($) => $['roster.nodeSelector.searchAgentsPlaceholder'])}
-        />
-        {source !== 'external' && (
-          <div className="mt-1">
-            <TagFilter
-              type="agent"
-              value={tagIds}
-              onChange={setTagIds}
-              portalProps={{ container: tagPortalRef }}
-              showTagManagement={false}
-              triggerClassName="max-w-none"
+        <InputGroup ref={searchGroupRef}>
+          <InputGroupInput
+            {...inputProps}
+            name="query"
+            autoComplete="off"
+            enterKeyHint="search"
+            aria-label={t(($) => $['roster.searchLabel'])}
+            placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'])}
+          />
+          <InputGroupAddon className="ps-1.75 pe-1.25">
+            <span
+              aria-hidden
+              className="i-ri-search-line size-4 text-components-input-text-placeholder"
             />
-          </div>
-        )}
+          </InputGroupAddon>
+          <InputGroupAddon align="inline-end" className="max-w-1/2 gap-1 ps-0.75 pe-0.5">
+            {canClear && (
+              <SearchInputClear
+                {...clearProps}
+                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+              />
+            )}
+            {source !== 'external' && (
+              <>
+                <Separator decorative orientation="vertical" className="h-3.5" />
+                <TagFilter
+                  type="agent"
+                  value={tagIds}
+                  onChange={setTagIds}
+                  inputGroupRef={searchGroupRef}
+                  portalProps={{ container: tagPortalRef }}
+                  showTagManagement={false}
+                />
+              </>
+            )}
+          </InputGroupAddon>
+        </InputGroup>
       </div>
       <Tabs
         value={source}

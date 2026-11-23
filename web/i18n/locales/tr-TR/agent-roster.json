@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "Bir ajan seç",
   "roster.nodeSelector.manageInAgentConsole": "Agents'da yönet",
   "roster.nodeSelector.searchAgentsPlaceholder": "Ajan ara…",
-  "roster.nodeSelector.searchPlaceholder": "Ara…",
+  "roster.nodeSelector.searchPlaceholder": "Ajanları ara…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Harici",
   "roster.nodeSelector.startFromScratch": "Sıfırdan Başla",

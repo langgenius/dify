@@ -206,7 +206,7 @@ const ChatVariablePanel = () => {
       render={
         <div
           className={cn(
-            'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+            'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg-alt',
           )}
         />
       }
@@ -276,7 +276,7 @@ const ChatVariablePanel = () => {
               </div>
             </div>
           </div>
-          <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+          <div className="absolute inset-e-9.5 -top-1 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
         </div>
       </CollapsiblePanel>
       <div className="shrink-0 px-4 pt-2 pb-3">

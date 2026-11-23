@@ -12,7 +12,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, Protocol, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -39,6 +39,7 @@ from models.agent import (
 )
 from models.dataset import DatasetCollectionBinding
 from models.enums import AppStatus, TagType
+from models.evaluation import EvaluationTargetType
 from models.model import (
     App,
     AppAnnotationSetting,
@@ -52,6 +53,7 @@ from models.model import (
 )
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -99,6 +101,14 @@ from services.openapi.visibility import apply_openapi_gate
 logger = logging.getLogger(__name__)
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
+
+
+class StageTargetEvaluationCleanup(Protocol):
+    """Stage target evaluation cleanup in an existing transaction, deferring external effects until commit."""
+
+    def __call__(self, *, session: Session, tenant_id: str, target_type: str, target_id: str) -> None:
+        """Delete evaluation records in the caller's session without committing it."""
+        ...
 
 
 def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
@@ -1198,8 +1208,15 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         return app
 
     @classmethod
-    def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage App deletion and Agent cleanup within the caller's transaction.
+    def delete_app_record(
+        cls,
+        app: App,
+        *,
+        account_id: str | None,
+        session: Session,
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+    ) -> AppDeletion:
+        """Stage App deletion, evaluation cleanup, and Agent resource retirement in the caller's transaction.
 
         Preconditions: app belongs to the admitted tenant. Postconditions: the
         backing roster Agent is locked before cleanup, archived without Agent
@@ -1216,6 +1233,13 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)
                 .with_for_update()
                 .execution_options(populate_existing=True)
+            )
+        if backing_agent is not None:
+            stage_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
             )
         workflow_agent_ids = set(
             session.scalars(
@@ -1274,7 +1298,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             backing_agent.updated_at = now
 
         retired_binding_ids: list[str] = []
-        retired_snapshot_ids: list[str] = []
         if backing_agent is not None:
             bindings = session.scalars(
                 select(AgentWorkspaceBinding).where(
@@ -1285,12 +1308,20 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             retired_binding_ids = [binding.id for binding in bindings]
 
         session.delete(app)
-        result = AppDeletion(
-            app_event,
-            workflow_agent_ids,
-            [],
-            retired_binding_ids,
-            retired_snapshot_ids,
-            backing_agent.id if backing_agent else None,
+        resources = AgentWorkspaceRepository(session=session)
+        for binding_id in retired_binding_ids:
+            resources.retire_binding(tenant_id=app.tenant_id, binding_id=binding_id)
+        retired_snapshot_ids = (
+            resources.retire_home_snapshots_for_agent(tenant_id=app.tenant_id, agent_id=backing_agent.id)
+            if backing_agent is not None
+            else []
         )
-        return result
+        retired_workspace_ids = resources.retire_all_for_app(tenant_id=app.tenant_id, app_id=app.id)
+        return AppDeletion(
+            app=app_event,
+            workflow_agent_ids=workflow_agent_ids,
+            workspace_ids=retired_workspace_ids,
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+            backing_agent_id=backing_agent.id if backing_agent else None,
+        )

@@ -35,7 +35,7 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
@@ -90,7 +90,6 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -1562,30 +1561,29 @@ class TestWorkflowServiceCases:
             ):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
-        def test_publish_workflow_trigger_limit_exceeded(
+        @pytest.mark.parametrize(
+            ("trigger_types", "exceeds_limit"),
+            [
+                (["trigger-webhook", "trigger-schedule"], False),
+                (["trigger-webhook", "trigger-schedule", "trigger-plugin"], True),
+            ],
+        )
+        def test_publish_workflow_enforces_sandbox_trigger_limit(
             self,
             workflow_service: WorkflowService,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
+            trigger_types: list[str],
+            exceeds_limit: bool,
         ):
+            """Cloud Sandbox may publish up to two trigger nodes; a third one is rejected."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            """
-            Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
-
-            Free/sandbox tier users have limits on the number of trigger nodes.
-            This prevents resource abuse while allowing users to test the feature.
-            The limit is enforced at publish time, not during draft editing.
-            """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
-            # Trigger nodes enable event-driven automation which consumes resources
             graph = {
                 "nodes": [
-                    {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
-                    {"id": "trigger-2", "data": {"type": "trigger-schedule"}},
-                    {"id": "trigger-3", "data": {"type": "trigger-plugin"}},
+                    {"id": f"trigger-{index}", "data": {"type": trigger_type}}
+                    for index, trigger_type in enumerate(trigger_types)
                 ],
                 "edges": [],
             }
@@ -1594,12 +1592,16 @@ class TestWorkflowServiceCases:
             sqlite_session.commit()
 
             with (
-                patch("services.workflow_service.BillingService") as mock_billing_service,
+                patch("services.workflow_service.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+                patch("services.workflow_service.app_published_workflow_was_updated"),
             ):
-                mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
-
-                with pytest.raises(TriggerNodeLimitExceededError):
-                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                if exceeds_limit:
+                    with pytest.raises(TriggerNodeLimitExceededError) as exc_info:
+                        workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert (exc_info.value.count, exc_info.value.limit) == (3, 2)
+                else:
+                    workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                    assert workflow.version != Workflow.VERSION_DRAFT
 
         # ==================== Version Management Tests ====================
         # These tests verify listing and managing published workflow versions

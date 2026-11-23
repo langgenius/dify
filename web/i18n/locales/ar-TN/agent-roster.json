@@ -289,7 +289,7 @@
   "roster.nodeSelector.dialogLabel": "اختر وكيلاً",
   "roster.nodeSelector.manageInAgentConsole": "إدارة في Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "البحث عن الوكلاء…",
-  "roster.nodeSelector.searchPlaceholder": "بحث…",
+  "roster.nodeSelector.searchPlaceholder": "ابحث عن الوكلاء…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "خارجي",
   "roster.nodeSelector.startFromScratch": "البدء من الصفر",

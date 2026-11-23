@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "选择 Agent",
   "roster.nodeSelector.manageInAgentConsole": "在 Agents 中管理",
   "roster.nodeSelector.searchAgentsPlaceholder": "搜索 Agent…",
-  "roster.nodeSelector.searchPlaceholder": "搜索…",
+  "roster.nodeSelector.searchPlaceholder": "搜索 Agent…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "外部",
   "roster.nodeSelector.startFromScratch": "从空白开始",

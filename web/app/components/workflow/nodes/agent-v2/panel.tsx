@@ -26,14 +26,12 @@ import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/ed
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import { useWorkflow } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
+import { AgentRosterConfigurationPanel } from '@/features/agent-v2/agent-editor/roster-panel'
+import { WorkflowInlineAgentEditor } from '@/features/agent-v2/agent-editor/workflow-panel'
 import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { consoleQuery } from '@/service/console'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import {
-  WorkflowInlineAgentConfigureWorkspace,
-  WorkflowRosterAgentOrchestratePanelContent,
-} from './components/agent-orchestrate-panel-content'
 import { AgentOutputRoutes } from './components/agent-output-routes'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { OutputEditCard } from './components/agent-output-variables/edit-card'
@@ -41,6 +39,7 @@ import { createDraft, isDefaultOutput } from './components/agent-output-variable
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentSessionContinuityField } from './components/agent-session-continuity-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { WorkflowAgentMetadataFilter } from './components/knowledge-metadata-filter'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import {
   useAgentRosterDetail,
@@ -727,7 +726,8 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
-                <WorkflowInlineAgentConfigureWorkspace
+                <WorkflowInlineAgentEditor
+                  metadataFilter={WorkflowAgentMetadataFilter}
                   agentId={inlineAgentId ?? undefined}
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
@@ -739,7 +739,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   open={isAgentPanelOpen}
                 />
               ) : (
-                <WorkflowRosterAgentOrchestratePanelContent
+                <AgentRosterConfigurationPanel
                   agentId={rosterAgentId}
                   nodeId={id}
                   open={isAgentPanelOpen}

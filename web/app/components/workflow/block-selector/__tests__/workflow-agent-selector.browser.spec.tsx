@@ -337,7 +337,17 @@ it('keeps the tag popup above Dify results and pages through tagged agents in Al
   await picker.getByRole('tab', { name: 'Dify', exact: true }).click()
   const candidate = picker.getByRole('button', { name: /Research Agent/ })
   await expect.element(candidate).toBeVisible()
-  await picker.getByRole('combobox', { name: 'Tags' }).click()
+  const tagFilter = picker.getByRole('combobox', { name: 'Tags' })
+  const searchBounds = picker
+    .getByRole('searchbox', { name: 'Search agents' })
+    .element()
+    .getBoundingClientRect()
+  const tagBounds = tagFilter.element().getBoundingClientRect()
+  const searchCenterY = searchBounds.top + searchBounds.height / 2
+  expect(searchCenterY).toBeGreaterThan(tagBounds.top)
+  expect(searchCenterY).toBeLessThan(tagBounds.bottom)
+  expect(searchBounds.right).toBeLessThanOrEqual(tagBounds.left)
+  await tagFilter.click()
   const popup = page.getByRole('dialog', { name: 'Tags', exact: true })
   const option = popup.getByRole('option', { name: 'Research', exact: true })
   await expect.element(option).toBeVisible()

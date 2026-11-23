@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { TagSelector } from '@/features/tag-management/components/tag-selector'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
 
 export function KnowledgeSpaceCardTags({

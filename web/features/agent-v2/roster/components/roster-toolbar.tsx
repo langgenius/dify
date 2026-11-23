@@ -8,7 +8,7 @@ import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segm
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import {
   rosterCreatedByMeQueryParser,
   rosterFilterQueryParser,

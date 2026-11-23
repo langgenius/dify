@@ -50,6 +50,7 @@ async function openAgentSelector() {
   seedTags(queryClient, [
     { id: 'research', name: 'Research', type: 'agent', binding_count: '2' },
     { id: 'finance', name: 'Finance', type: 'agent', binding_count: '1' },
+    { id: 'support', name: 'Support', type: 'agent', binding_count: '1' },
   ])
   await render(
     <Wrapper>
@@ -125,10 +126,17 @@ it('combines the workflow search and tags, pages through matching candidates and
 
   await openAgentSelector()
   const search = page.getByRole('searchbox')
+  const tags = page.getByRole('combobox', { name: 'common.tag.placeholder' })
+  await expect.element(tags).toBeVisible()
+  const searchBounds = search.element().getBoundingClientRect()
+  const tagBounds = tags.element().getBoundingClientRect()
+  const searchCenterY = searchBounds.top + searchBounds.height / 2
+  expect(searchCenterY).toBeGreaterThan(tagBounds.top)
+  expect(searchCenterY).toBeLessThan(tagBounds.bottom)
+  expect(searchBounds.right).toBeLessThanOrEqual(tagBounds.left)
   await search.fill('Company')
   await expect.element(page.getByRole('menuitem', { name: 'Company agent' })).toBeVisible()
   await userEvent.tab()
-  const tags = page.getByRole('combobox', { name: 'common.tag.placeholder' })
   await expect.element(tags).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await page.getByRole('option', { name: 'Research' }).click()
@@ -143,7 +151,9 @@ it('combines the workflow search and tags, pages through matching candidates and
     query: { app_id: 'workflow-1', keyword: 'Company', limit: 8, page: 2, tag_ids: ['research'] },
   })
 
-  await page.getByRole('combobox', { name: 'Research' }).click()
+  const selectedTag = page.getByRole('combobox', { name: 'Research' })
+  await expect.element(selectedTag).toHaveTextContent('Research')
+  await selectedTag.click()
   await page.getByRole('option', { name: 'Finance' }).click()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('status')).toHaveTextContent('agentRoster.roster.emptySearch')

@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "Chọn một tác nhân",
   "roster.nodeSelector.manageInAgentConsole": "Quản lý trong Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "Tìm kiếm tác nhân…",
-  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm…",
+  "roster.nodeSelector.searchPlaceholder": "Tìm kiếm tác nhân…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Bên ngoài",
   "roster.nodeSelector.startFromScratch": "Bắt đầu từ đầu",

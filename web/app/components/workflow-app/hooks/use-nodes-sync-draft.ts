@@ -18,7 +18,6 @@ import {
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
@@ -36,6 +35,7 @@ import {
   isExternalAgentWorkflowBinding,
   isExternalAgentWorkflowPreviewData,
 } from '@/features/agent-v2/external-agent/workflow-preview/types'
+import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'

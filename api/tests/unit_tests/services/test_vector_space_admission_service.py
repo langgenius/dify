@@ -14,7 +14,8 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from enums import CloudPlan, DeploymentEdition
 from models.dataset import Dataset
-from services.billing_client import billing
+from services.billing_service import _VectorSpaceQuota
+from services.errors.billing import BillingUpstreamUnavailableError
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     VectorSpaceAdmissionError,
@@ -28,7 +29,6 @@ from services.vector_space_admission_service import (
     get_vector_space_admission_error_fields,
     parse_vector_space_estimate_limits,
 )
-from tests.helpers import billing_builders as builders
 from tests.helpers.unit.model_factories import make_dataset
 
 _MEBIBYTE = 1024 * 1024
@@ -121,7 +121,7 @@ def _check_estimate(
         ),
         patch(
             "services.vector_space_admission_service.BillingService.get_vector_space",
-            return_value=builders.vector_space(size=usage_mb, limit=plan_limit_mb),
+            return_value=_VectorSpaceQuota(size=usage_mb, limit=plan_limit_mb),
         ),
         patch("services.vector_space_admission_service.redis_client", redis),
     ):
@@ -247,7 +247,7 @@ def test_admission_is_cloud_only(sqlite_session: Session, config_overrides: Call
     service = VectorSpaceAdmissionService()
     with (
         patch("services.vector_space_admission_service.Vector.resolve_vector_type") as resolve_vector_type,
-        patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
+        patch("services.vector_space_admission_service.FeatureService.get_workspace_plan") as get_workspace_plan,
     ):
         service._ensure_can_write(
             dataset=_dataset(sqlite_session),
@@ -257,14 +257,14 @@ def test_admission_is_cloud_only(sqlite_session: Session, config_overrides: Call
         )
 
     resolve_vector_type.assert_not_called()
-    get_info.assert_not_called()
+    get_workspace_plan.assert_not_called()
 
 
 def test_admission_skips_non_tidb_vector_backends(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     with (
         patch("services.vector_space_admission_service.Vector.resolve_vector_type", return_value=VectorType.QDRANT),
-        patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
+        patch("services.vector_space_admission_service.FeatureService.get_workspace_plan") as get_workspace_plan,
     ):
         service._ensure_can_write(
             dataset=_dataset(sqlite_session),
@@ -273,7 +273,7 @@ def test_admission_skips_non_tidb_vector_backends(sqlite_session: Session) -> No
             session=sqlite_session,
         )
 
-    get_info.assert_not_called()
+    get_workspace_plan.assert_not_called()
 
 
 def test_sandbox_allows_60_mb_estimate(sqlite_session: Session) -> None:
@@ -377,7 +377,7 @@ def test_usage_lookup_is_refreshed_for_each_document(sqlite_session: Session) ->
         ),
         patch(
             "services.vector_space_admission_service.BillingService.get_vector_space",
-            side_effect=[builders.vector_space(size=40.0, limit=50), builders.vector_space(size=50.0, limit=50)],
+            side_effect=[_VectorSpaceQuota(size=40.0, limit=50), _VectorSpaceQuota(size=50.0, limit=50)],
         ) as get_vector_space,
         patch("services.vector_space_admission_service.redis_client", redis),
     ):
@@ -626,47 +626,44 @@ def test_2060_mb_estimate_rejects_sandbox_but_allows_pro(sqlite_session: Session
     _check_estimate(sqlite_session, CloudPlan.PROFESSIONAL, 2060)
 
 
-def test_billing_plan_lookup_excludes_vector_space_and_is_cached() -> None:
+def test_billing_plan_lookup_is_cached() -> None:
     service = VectorSpaceAdmissionService()
     with patch(
-        "services.vector_space_admission_service.BillingService.get_info",
-        return_value=builders.subscription_info("professional"),
-    ) as get_info:
+        "services.vector_space_admission_service.FeatureService.get_workspace_plan",
+        return_value=CloudPlan.PROFESSIONAL,
+    ) as get_workspace_plan:
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
 
-    get_info.assert_called_once_with("tenant-1", exclude_vector_space=True)
+    get_workspace_plan.assert_called_once_with("tenant-1")
 
 
-def test_unknown_billing_plan_is_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+def test_billing_plan_lookup_failure_is_unavailable() -> None:
     service = VectorSpaceAdmissionService()
-    upstream_plan = "unexpected-private-plan"
-    with patch(
-        "services.vector_space_admission_service.BillingService.get_info",
-        return_value=builders.subscription_info(
-            subscription=builders.subscription_plan().model_copy(update={"plan": upstream_plan})
+    with (
+        patch(
+            "services.vector_space_admission_service.FeatureService.get_workspace_plan",
+            side_effect=BillingUpstreamUnavailableError("billing unavailable"),
         ),
+        pytest.raises(VectorSpaceAdmissionUnavailableError),
     ):
-        assert service._get_plan("tenant-1") is None
-
-    assert "unknown plan tenant_id=tenant-1" in caplog.text
-    assert upstream_plan not in caplog.text
+        service._get_plan("tenant-1")
 
 
 @pytest.mark.parametrize(
     "quota",
     [
-        billing.VectorSpaceQuota(size=0, limit=50, usage_unknown=True),
-        billing.VectorSpaceQuota(size=0, limit=-1, usage_unknown=True),
-        billing.VectorSpaceQuota(size=-0.1, limit=50),
-        billing.VectorSpaceQuota(size=float("nan"), limit=50),
-        billing.VectorSpaceQuota(size=float("inf"), limit=50),
-        billing.VectorSpaceQuota(size=float("-inf"), limit=50),
-        billing.VectorSpaceQuota(size=0, limit=-2),
+        _VectorSpaceQuota(size=0, limit=50, usage_unknown=True),
+        _VectorSpaceQuota(size=0, limit=-1, usage_unknown=True),
+        _VectorSpaceQuota(size=-0.1, limit=50),
+        _VectorSpaceQuota(size=float("nan"), limit=50),
+        _VectorSpaceQuota(size=float("inf"), limit=50),
+        _VectorSpaceQuota(size=float("-inf"), limit=50),
+        _VectorSpaceQuota(size=0, limit=-2),
     ],
 )
 def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
-    sqlite_session: Session, quota: billing.VectorSpaceQuota
+    sqlite_session: Session, quota: _VectorSpaceQuota
 ) -> None:
     """Given a typed unusable quota, reject the write before embedding or reservation."""
     service = VectorSpaceAdmissionService()

@@ -6,7 +6,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@t
 import { useDebounce } from 'ahooks'
 import { useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterList } from './components/agent-roster-list'
 import { RosterToolbar } from './components/roster-toolbar'
@@ -156,7 +156,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
         state={listState}
         onOpenTagManagement={openTagManagement}
       />
-      <TagManagementModal
+      <TagManagementDialog
         type="agent"
         show={tagManagementOpen}
         onClose={() => setTagManagementOpen(false)}

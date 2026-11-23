@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "エージェントを選択",
   "roster.nodeSelector.manageInAgentConsole": "Agents で管理",
   "roster.nodeSelector.searchAgentsPlaceholder": "エージェントを検索…",
-  "roster.nodeSelector.searchPlaceholder": "検索…",
+  "roster.nodeSelector.searchPlaceholder": "エージェントを検索…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "外部",
   "roster.nodeSelector.startFromScratch": "ゼロから始める",

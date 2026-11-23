@@ -455,7 +455,7 @@ class TestWorkspaceCreditPoolCases:
                 {"w1": "sandbox", "w2": "professional"},
                 [],
             ),
-            (DeploymentEdition.COMMUNITY, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
+            (DeploymentEdition.COMMUNITY, {}, {"w1": "sandbox", "w2": "sandbox"}, ["w1", "w2"]),
             (DeploymentEdition.ENTERPRISE, {}, {"w1": "sandbox", "w2": "sandbox"}, []),
         ],
     )
@@ -469,13 +469,16 @@ class TestWorkspaceCreditPoolCases:
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=edition)
         bulk_query = Mock(return_value=bulk)
-        features = FeatureModel()
-        features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        feature_query = Mock(return_value=features)
+        plan_lookups: list[str] = []
+
+        def get_workspace_plan(workspace_id: str) -> CloudPlan | None:
+            plan_lookups.append(workspace_id)
+            return CloudPlan.PROFESSIONAL if edition == DeploymentEdition.CLOUD else None
+
         monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
-        monkeypatch.setattr(gateways.FeatureService, "get_features", feature_query)
+        monkeypatch.setattr(gateways.FeatureService, "get_workspace_plan", get_workspace_plan)
         assert DeploymentWorkspacePlanGateway().resolve_many(["w1", "w2"]) == expected
-        assert [call.args[0] for call in feature_query.call_args_list] == fallback_ids
+        assert plan_lookups == fallback_ids
         assert bulk_query.call_count == int(edition == DeploymentEdition.CLOUD)
 
     @staticmethod
@@ -486,7 +489,7 @@ class TestWorkspaceCreditPoolCases:
         bulk_query = Mock(side_effect=RuntimeError("private upstream subscription detail"))
         features = Mock(side_effect=AssertionError("List failure must not trigger more billing requests"))
         monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
-        monkeypatch.setattr(gateways.FeatureService, "get_features", features)
+        monkeypatch.setattr(gateways.FeatureService, "get_workspace_plan", features)
 
         assert DeploymentWorkspacePlanGateway().resolve_many(["w1", "w2"]) == {"w1": None, "w2": None}
         bulk_query.assert_called_once_with(("w1", "w2"))
@@ -498,7 +501,7 @@ class TestWorkspaceCreditPoolCases:
         bulk_query = Mock(side_effect=AssertionError("No workspaces to resolve"))
         features = Mock(side_effect=AssertionError("No workspaces to resolve"))
         monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
-        monkeypatch.setattr(gateways.FeatureService, "get_features", features)
+        monkeypatch.setattr(gateways.FeatureService, "get_workspace_plan", features)
         assert DeploymentWorkspacePlanGateway().resolve_many([]) == {}
         bulk_query.assert_not_called()
         features.assert_not_called()

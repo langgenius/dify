@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "에이전트 선택",
   "roster.nodeSelector.manageInAgentConsole": "Agents에서 관리",
   "roster.nodeSelector.searchAgentsPlaceholder": "에이전트 검색…",
-  "roster.nodeSelector.searchPlaceholder": "검색…",
+  "roster.nodeSelector.searchPlaceholder": "에이전트 검색…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "외부",
   "roster.nodeSelector.startFromScratch": "처음부터 시작",

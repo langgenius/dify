@@ -4,7 +4,7 @@ import { ORPCError } from '@orpc/client'
 import { cache } from 'react'
 import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
-import { getPluginIconInMarketplace } from '../utils'
+import { getPluginIconInMarketplace } from '../plugin-card-adapter'
 import {
   adaptCreatorProfile,
   parseCreatorSortField,

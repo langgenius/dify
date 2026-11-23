@@ -59,6 +59,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
+from services.evaluation_service import EvaluationService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
@@ -853,7 +854,10 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
     monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
 
-    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]

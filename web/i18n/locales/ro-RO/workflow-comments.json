@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "Previous comment",
   "comments.aria.replyActions": "Reply actions",
   "comments.aria.resolveComment": "Resolve",
-  "comments.confirm.deleteReplyDesc": "This reply will be removed permanently.",
   "comments.confirm.deleteReplyTitle": "Delete this reply?",
   "comments.confirm.deleteThreadDesc": "This action will permanently delete the thread and all its replies. This cannot be undone.",
   "comments.confirm.deleteThreadTitle": "Delete this thread?",
@@ -19,12 +18,14 @@
   "comments.filter.all": "Toate",
   "comments.filter.onlyYourThreads": "Doar discuțiile tale",
   "comments.filter.showResolved": "Afișează rezolvatele",
-  "comments.loading": "Loading…",
   "comments.noComments": "No comments yet",
   "comments.panelTitle": "Comment",
   "comments.placeholder.add": "Add a comment",
   "comments.placeholder.editComment": "Editează comentariul",
   "comments.placeholder.editReply": "Edit reply",
   "comments.placeholder.reply": "Reply",
-  "comments.reply": "Reply"
+  "comments.replyCount_few": "{{count}} răspunsuri",
+  "comments.replyCount_one": "{{count}} răspuns",
+  "comments.replyCount_other": "{{count}} de răspunsuri",
+  "comments.status.notSent": "Netrimis"
 }

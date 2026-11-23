@@ -6,6 +6,7 @@ import type { AgentRosterNodeData } from './types'
 import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { InputGroupAddon } from '@langgenius/dify-ui/input-group'
 import {
   Menu,
   MenuContent,
@@ -19,6 +20,7 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -31,7 +33,7 @@ import {
   editorResourceKindAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
@@ -78,7 +80,7 @@ export function AgentSelectorMenuContent({
       side={side}
       align={align}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-      className="w-60 not-[[role=menu]]:overflow-visible"
+      className="w-80 max-w-(--available-width) not-[[role=menu]]:overflow-visible"
     >
       <AgentSelectorList onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
     </MenuContent>
@@ -95,6 +97,7 @@ function AgentSelectorList({
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
+  const searchGroupRef = useRef<HTMLDivElement>(null)
   const tagPortalRef = useRef<HTMLDivElement>(null)
   const agentsQuery = useInfiniteQuery(
     consoleQuery.agent.inviteOptions.get.infiniteOptions({
@@ -136,7 +139,7 @@ function AgentSelectorList({
 
   return (
     <>
-      <MenuInputGroup>
+      <MenuInputGroup ref={searchGroupRef} className="mx-2 mt-1 mb-2 min-w-0 pe-0">
         <span
           aria-hidden
           className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
@@ -145,16 +148,18 @@ function AgentSelectorList({
           aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
+        <InputGroupAddon align="inline-end" className="max-w-1/2 gap-1 ps-0 pe-0.5">
+          <Separator decorative orientation="vertical" className="h-3.5" />
+          <TagFilter
+            type="agent"
+            value={tagIds}
+            onChange={setTagIds}
+            inputGroupRef={searchGroupRef}
+            portalProps={{ container: tagPortalRef }}
+            showTagManagement={false}
+          />
+        </InputGroupAddon>
       </MenuInputGroup>
-      <div className="mx-1 mb-1">
-        <TagFilter
-          type="agent"
-          value={tagIds}
-          onChange={setTagIds}
-          portalProps={{ container: tagPortalRef }}
-          showTagManagement={false}
-        />
-      </div>
       {/* A persistent live region announces reliably. The skeleton already shows loading, so that
           status is announced but not displayed. */}
       <div

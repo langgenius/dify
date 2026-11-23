@@ -18,6 +18,7 @@ from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.billing_service import BillingInfo, TenantFeatureQuotaInfo, _VectorSpaceQuota
 from services.entities.feature_entities import FeatureModel, LimitationModel
+from services.errors.billing import BillingUpstreamUnavailableError
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 from tests.helpers import billing_builders as builders
@@ -140,6 +141,55 @@ def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
 
     assert FeatureService.can_use_evaluation("tenant-1") is expected
     assert plan_lookups == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+
+
+@pytest.mark.parametrize("plan", list(CloudPlan))
+def test_get_workspace_plan_reads_one_cloud_subscription(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], plan: CloudPlan
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    calls: list[tuple[str, bool]] = []
+
+    def get_info(tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
+        calls.append((tenant_id, exclude_vector_space))
+        payload = builders.subscription_info(plan.value).model_dump(exclude_none=True)
+        return _legacy_subscription.validate_python(payload)
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    assert FeatureService.get_workspace_plan("tenant-1") is plan
+    assert calls == [("tenant-1", True)]
+
+
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
+def test_get_workspace_plan_is_none_outside_cloud(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    def get_info(*_args: object, **_kwargs: object) -> BillingInfo:
+        raise AssertionError("billing must not be queried")
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    assert FeatureService.get_workspace_plan("tenant-1") is None
+
+
+def test_get_workspace_plan_propagates_billing_failures(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    error = BillingUpstreamUnavailableError("billing unavailable")
+
+    def get_info(*_args: object, **_kwargs: object) -> BillingInfo:
+        raise error
+
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        FeatureService.get_workspace_plan("tenant-1")
+
+    assert exc_info.value is error
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))

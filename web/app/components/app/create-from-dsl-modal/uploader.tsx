@@ -181,7 +181,7 @@ export function Uploader({
                     aria-describedby={hint ? hintId : undefined}
                     variant="ghost-accent"
                     size="small"
-                    className="ml-1 h-6 px-1 text-sm font-normal hover:bg-transparent hover:not-data-disabled:underline"
+                    className="ms-1 h-6 px-1 text-sm font-normal hover:bg-transparent hover:not-data-disabled:underline"
                     disabled={disabled}
                     onClick={selectHandle}
                   >
@@ -195,7 +195,7 @@ export function Uploader({
                 )}
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+            {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
           </div>
         )}
         {file && (
@@ -213,7 +213,7 @@ export function Uploader({
             <div className="flex items-center justify-center p-3">
               <span aria-hidden className={cn(fileIconClassName, 'size-6 shrink-0')} />
             </div>
-            <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
+            <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pe-2">
               <span
                 id={fileNameId}
                 className="font-inter max-w-full truncate text-xs leading-4 font-medium text-text-secondary"
@@ -229,7 +229,7 @@ export function Uploader({
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className="flex shrink-0 items-center pr-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+            <div className="flex shrink-0 items-center pe-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
               <IconButton
                 ref={removeButtonRef}
                 variant="ghost"

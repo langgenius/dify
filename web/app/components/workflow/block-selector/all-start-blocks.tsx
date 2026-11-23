@@ -294,7 +294,7 @@ function AllStartBlocks({
               ) : (
                 <>
                   <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-                  <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+                  <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
                 </>
               )}
             </Link>

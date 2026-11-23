@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "เลือกตัวแทน",
   "roster.nodeSelector.manageInAgentConsole": "จัดการใน Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "ค้นหาตัวแทน…",
-  "roster.nodeSelector.searchPlaceholder": "ค้นหา…",
+  "roster.nodeSelector.searchPlaceholder": "ค้นหาตัวแทน…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "ภายนอก",
   "roster.nodeSelector.startFromScratch": "เริ่มต้นจากศูนย์",

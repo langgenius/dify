@@ -280,7 +280,7 @@
   "roster.nodeSelector.dialogLabel": "Seleziona un agente",
   "roster.nodeSelector.manageInAgentConsole": "Gestisci in Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "Cerca agenti…",
-  "roster.nodeSelector.searchPlaceholder": "Cerca…",
+  "roster.nodeSelector.searchPlaceholder": "Cerca agenti…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Esterno",
   "roster.nodeSelector.startFromScratch": "Inizia da zero",

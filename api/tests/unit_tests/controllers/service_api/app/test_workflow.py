@@ -42,8 +42,8 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from services import billing_service
 from services.app_generate_service import AppGenerateService
-from services.billing_client import transport
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -559,7 +559,8 @@ class TestWorkflowCases:
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
-            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BILLING_API_URL="http://billing/v1")
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            monkeypatch.setattr(BillingService, "base_url", "http://billing/v1")
             payload = builders.subscription_info().model_dump()
             del payload["subscription"]["plan"]
 
@@ -569,7 +570,7 @@ class TestWorkflowCases:
             monkeypatch.setattr(AppGenerateService, "generate", unexpected_generation)
             api = WorkflowRunByIdApi()
             with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
-                monkeypatch.setattr(transport, "_http_client", client)
+                monkeypatch.setattr(billing_service, "_http_client", client)
                 with (
                     app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
                     pytest.raises(BillingUpstreamInvalidResponseError),

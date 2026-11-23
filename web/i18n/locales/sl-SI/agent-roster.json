@@ -283,7 +283,7 @@
   "roster.nodeSelector.dialogLabel": "Izberite agenta",
   "roster.nodeSelector.manageInAgentConsole": "Upravljaj v Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "Iskanje agentov…",
-  "roster.nodeSelector.searchPlaceholder": "Išči…",
+  "roster.nodeSelector.searchPlaceholder": "Išči agente…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Zunanji",
   "roster.nodeSelector.startFromScratch": "Začni iz nič",

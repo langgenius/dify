@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "Agent seçimi",
   "roster.nodeSelector.manageInAgentConsole": "Agentlər bölməsində idarə et",
   "roster.nodeSelector.searchAgentsPlaceholder": "Agentləri axtarın…",
-  "roster.nodeSelector.searchPlaceholder": "Axtar…",
+  "roster.nodeSelector.searchPlaceholder": "Agentləri axtar…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Xarici",
   "roster.nodeSelector.startFromScratch": "Sıfırdan başla",

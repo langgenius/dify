@@ -61,12 +61,20 @@ class TestJinja2TransformCallerSandbox:
         assert "unsafe" in str(exc_info.value).lower() or "security" in str(exc_info.value).lower()
 
     def test_renders_safe_template(self) -> None:
+        """Verify that the generated scripts substitute inputs and frame the result on stdout."""
         runner, preload = Jinja2TemplateTransformer.transform_caller(
             "Hello {{ name }}, you are {{ age }} years old!",
             {"name": "Alice", "age": 30},
         )
         output = _exec_scripts(runner, preload)
-        assert "Hello Alice, you are 30 years old!" in output
+        assert output == "<<RESULT>>Hello Alice, you are 30 years old!<<RESULT>>\n"
+
+    def test_runner_script_placeholders(self) -> None:
+        """Verify that the raw runner has a template slot, an inputs slot, and two result tags."""
+        runner = Jinja2TemplateTransformer.get_runner_script()
+        assert runner.count(Jinja2TemplateTransformer._template_b64_placeholder) == 1
+        assert runner.count(Jinja2TemplateTransformer._inputs_placeholder) == 1
+        assert runner.count(Jinja2TemplateTransformer._result_tag) == 2
 
     def test_renders_template_with_special_characters(self) -> None:
         """Render quotes and multiline textarea inputs through the generated script (#26818)."""

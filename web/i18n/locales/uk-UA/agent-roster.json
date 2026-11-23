@@ -283,7 +283,7 @@
   "roster.nodeSelector.dialogLabel": "Виберіть агента",
   "roster.nodeSelector.manageInAgentConsole": "Керувати в Agents",
   "roster.nodeSelector.searchAgentsPlaceholder": "Пошук агентів…",
-  "roster.nodeSelector.searchPlaceholder": "Пошук…",
+  "roster.nodeSelector.searchPlaceholder": "Пошук агентів…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "Зовнішні",
   "roster.nodeSelector.startFromScratch": "Почати з нуля",

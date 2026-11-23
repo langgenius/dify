@@ -546,10 +546,10 @@ class WorkflowRunArchiver:
             # On error, skip all tenants in this batch
             return set()
 
-        # Filter to paid tenants (any plan except SANDBOX)
+        paid_plans = {plan for plan in CloudPlan if plan.is_paid}
         paid = set()
         for tid, info in bulk_info.items():
-            if info and info.get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
+            if info and info.get("plan") in paid_plans:
                 paid.add(tid)
 
         return paid

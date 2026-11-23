@@ -496,7 +496,8 @@ class BillingService:
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod
-    def is_cloud_paid_plan(cls, tenant_id: str) -> bool:
+    def get_cloud_plan(cls, tenant_id: str) -> CloudPlan:
+        """Read a Cloud tenant's plan without querying vector quota, translating upstream failures."""
         try:
             info = cls.get_info(tenant_id, exclude_vector_space=True)
         except (httpx.RequestError, _BillingHTTPStatusError) as error:
@@ -504,10 +505,8 @@ class BillingService:
         except (ValidationError, json.JSONDecodeError, UnicodeDecodeError) as error:
             raise BillingUpstreamInvalidResponseError from error
         if isinstance(info, billing.GetSubscriptionInfoReply):
-            plan = info.subscription.plan
-        else:
-            plan = info["subscription"]["plan"]
-        return plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+            return CloudPlan(info.subscription.plan)
+        return CloudPlan(info["subscription"]["plan"])
 
     @classmethod
     def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:

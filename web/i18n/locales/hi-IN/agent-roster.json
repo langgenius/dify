@@ -277,7 +277,7 @@
   "roster.nodeSelector.dialogLabel": "एक एजेंट चुनें",
   "roster.nodeSelector.manageInAgentConsole": "Agents में प्रबंधित करें",
   "roster.nodeSelector.searchAgentsPlaceholder": "एजेंट खोजें…",
-  "roster.nodeSelector.searchPlaceholder": "खोजें…",
+  "roster.nodeSelector.searchPlaceholder": "एजेंट खोजें…",
   "roster.nodeSelector.source.dify": "Dify",
   "roster.nodeSelector.source.external": "बाहरी",
   "roster.nodeSelector.startFromScratch": "शुरुआत से आरंभ करें",
