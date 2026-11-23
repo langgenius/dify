@@ -6,11 +6,9 @@ import { marketplaceLinks } from '@/features/marketplace/links'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { BuiltinMarketplacePanel } from '../builtin-marketplace-panel'
-
-// boundary: Next routing is unavailable in the standalone browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 const plugin = createMarketplacePluginFixture({ label: { en_US: 'Weather Tool' }, tags: [] })
 const collection: MarketplaceCollection = {
@@ -78,6 +76,7 @@ async function renderPanel(keywords = '', tagFilterValue: string[] = [], belowFo
         </div>
       </UrlState>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/tools' }).NavigationProvider },
   )
   return screen
 }

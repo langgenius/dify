@@ -1,16 +1,9 @@
-import { createContext } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import FormContent from '../form'
-
-const RouteTokenContext = createContext('v2-token')
-
-vi.mock('@/next/navigation', async () => {
-  const { use } = await import('react')
-  return { useParams: () => ({ token: use(RouteTokenContext) }) }
-})
 
 beforeEach(async () => {
   await page.viewport(1000, 800)
@@ -47,24 +40,23 @@ beforeEach(async () => {
 
 it('replaces an edited form and verification proof when the route token changes', async () => {
   const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  const view = await render(
-    <Wrapper>
-      <RouteTokenContext value="v2-token">
+  const navigation = createTestNavigation({
+    url: '/form-v2/v2-token',
+    params: { token: 'v2-token' },
+  })
+  const { NavigationProvider } = navigation
+  await render(
+    <NavigationProvider>
+      <Wrapper>
         <FormContent />
-      </RouteTokenContext>
-    </Wrapper>,
+      </Wrapper>
+    </NavigationProvider>,
   )
   await page.getByRole('textbox', { name: 'Review v2-token' }).fill('Previous draft')
   const otp = page.getByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
   await otp.fill('123456')
 
-  await view.rerender(
-    <Wrapper>
-      <RouteTokenContext value="next-token">
-        <FormContent />
-      </RouteTokenContext>
-    </Wrapper>,
-  )
+  navigation.navigate('/form-v2/next-token', { params: { token: 'next-token' } })
 
   await expect
     .element(page.getByRole('textbox', { name: 'Review next-token' }))

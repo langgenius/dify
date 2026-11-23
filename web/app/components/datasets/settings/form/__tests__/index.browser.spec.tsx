@@ -17,16 +17,11 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
 
 vi.unmock('react-i18next')
-// boundary: routing is outside the settings journey; keep the real dataset layout and refetch owner.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/settings',
-  useRouter: () => ({ replace: vi.fn() }),
-  useParams: () => ({ datasetId: TEST_DATASET_ID }),
-}))
 
 const scanPolicyOff = {
   enabled: false,
@@ -127,6 +122,12 @@ async function setup(
         </NuqsTestingAdapter>
       </I18nextProvider>
     </Wrapper>,
+    {
+      wrapper: createTestNavigation({
+        url: `/datasets/${TEST_DATASET_ID}/settings`,
+        params: { datasetId: TEST_DATASET_ID },
+      }).NavigationProvider,
+    },
   )
   await expect
     .element(screen.getByRole('textbox', { name: 'Knowledge Name', exact: true }))

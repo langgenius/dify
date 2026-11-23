@@ -147,6 +147,7 @@ Browser specs serve API data from the fake API in `web/test/fake-api.ts`, never 
 - Shared test helpers must have no import-time side effects: no `beforeEach`/`afterEach` registration, global or fetch stubbing, or assertions. Render helpers accept initial store state and injected props and return the real stores and query client. When two or more specs need the same query-cache seed, extract a side-effect-free preset under `web/test/`, distinct from `__mocks__`, that seeds only the client passed in.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
 - For `nuqs` behavior, use the helpers in `web/test/nuqs-testing.tsx` and assert URL updates. Mock `nuqs` only when URL synchronization is explicitly outside the test contract.
+- In Browser specs, keep `@/next/navigation` real: render inside the `NavigationProvider` from `createTestNavigation` in `web/test/next-navigation.tsx`, which supplies Next's router, pathname, search-param and route-param contexts. Assert navigation through its recorded `router` spies; they do not move the URL, because a route change replaces the page in the app. Use `navigate` for a URL change the component did not start. Pass `segments` for `useSelectedLayoutSegment(s)`.
 - Do not add another test runner, DOM environment, or network interception library without a demonstrated project-level need.
 
 ## Workflow

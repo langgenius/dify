@@ -3,16 +3,7 @@ import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source } from './source-fixtures'
-import {
-  permissionState,
-  resetSourceServer,
-  routerMock,
-  settingsState,
-  sourceResponses,
-} from './source-server'
-
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
+import { permissionState, resetSourceServer, settingsState, sourceResponses } from './source-server'
 
 let fake: SourceApi
 beforeEach(() => {
@@ -146,7 +137,7 @@ describe('Sources: source-access', () => {
     settingsState.configurationState = 'setup-required'
     sourceResponses.data = { pages: [{ items: [source({})] }] }
 
-    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { navigation } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page
       .getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -166,7 +157,7 @@ describe('Sources: source-access', () => {
         name: 'modelProvider.modelProvider.selector.configure',
       })
       .click()
-    expect(routerMock.push).toHaveBeenCalledWith(
+    expect(navigation.router.push).toHaveBeenCalledWith(
       `/datasets/new/space-1/settings?returnTo=${encodeURIComponent(`/datasets/new/space-1/sources${window.location.search}`)}&capability=source_sync`,
     )
   })

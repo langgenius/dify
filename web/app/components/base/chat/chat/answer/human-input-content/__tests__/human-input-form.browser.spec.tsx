@@ -8,11 +8,10 @@ import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const currentTimestamp = Math.floor(Date.now() / 1000)
 
@@ -43,7 +42,12 @@ async function renderWithQueries(ui: React.ReactElement) {
   const { wrapper: Query } = createConsoleQueryWrapper({
     accountProfile: { email: 'reviewer@example.com' },
   })
-  return render(<Query>{ui}</Query>)
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
+  return render(
+    <NavigationProvider>
+      <Query>{ui}</Query>
+    </NavigationProvider>,
+  )
 }
 
 const uploadedFile = (body: unknown) => (body as FormData).get('file') as File

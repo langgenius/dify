@@ -119,6 +119,26 @@ describe('Browser spec policy', () => {
     ])
   })
 
+  it('rejects navigation mocks unless the spec is allowlisted', () => {
+    const source = [
+      "vi.mock('@/next/navigation', () => ({}))",
+      "vi.mock('next/navigation', () => ({}))",
+      "vi.mock('../../next/navigation', () => ({}))",
+    ].join('\n')
+    const rejected = analyzeBrowserSpec('app/x/example.browser.spec.tsx', source)
+    const allowed = analyzeBrowserSpec('app/x/example.browser.spec.tsx', source, {
+      navigationMockAllowlist: [{ path: 'app/x/example.browser.spec.tsx', reason: 'SSR flush' }],
+    })
+
+    expect(rejected.violations.map(({ kind, line }) => [kind, line])).toEqual([
+      ['navigation-mock', 1],
+      ['navigation-mock', 2],
+      ['navigation-mock', 3],
+    ])
+    expect(allowed.violations).toEqual([])
+    expect(allowed.observedNavigationAllowance).toBe(true)
+  })
+
   it('rejects service mocks even with a boundary reason', () => {
     const result = analyzeBrowserSpec(
       'app/example.browser.spec.tsx',
@@ -302,6 +322,7 @@ describe('Browser spec policy', () => {
           },
         ],
         lineAllowlist: [],
+        navigationMockAllowlist: [],
       })
 
       expect(result).toEqual({ violations: [], staleAllowances: [] })
@@ -334,6 +355,9 @@ describe('Browser spec policy', () => {
         lineAllowlist: [
           { path: 'app/missing.browser.spec.ts', reason: 'legacy missing oversized suite' },
         ],
+        navigationMockAllowlist: [
+          { path: 'app/missing.browser.spec.ts', reason: 'legacy missing navigation mock' },
+        ],
       })
 
       expect(result.violations).toEqual([
@@ -343,6 +367,7 @@ describe('Browser spec policy', () => {
       expect(result.staleAllowances).toEqual([
         'stale mock allowlist: app/missing.browser.spec.ts :: ../missing #1',
         'stale line allowlist: app/missing.browser.spec.ts',
+        'stale navigation mock allowlist: app/missing.browser.spec.ts',
       ])
     } finally {
       rmSync(webRoot, { recursive: true, force: true })
