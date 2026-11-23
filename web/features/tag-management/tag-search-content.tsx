@@ -53,9 +53,7 @@ export const TagSearchContentView = ({
   const isCardTagSelector = allowCreate && (type === 'agent' || type === 'app')
   const placeholder = canCreate
     ? t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
-    : isCardTagSelector
-      ? t(($) => $['tag.searchTags'], { ns: 'common' })
-      : t(($) => $['placeholder.search'], { ns: 'common' })
+    : t(($) => $['tag.searchTags'], { ns: 'common' })
   const showEmptyCatalog = isCardTagSelector && isTagCatalogEmpty
   const emptyMessage = showEmptyCatalog
     ? canCreate
@@ -65,7 +63,7 @@ export const TagSearchContentView = ({
 
   return (
     <>
-      <ComboboxInputGroup className="mb-1">
+      <ComboboxInputGroup className="mb-1 in-data-dify-combobox-popup:mx-2 in-data-dify-combobox-popup:mt-2">
         <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
         <ComboboxInput
           aria-label={placeholder}

@@ -9,6 +9,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroupAddon } from '@langgenius/dify-ui/input-group'
 import {
   Menu,
+  MenuClear,
   MenuContent,
   MenuFilterProvider,
   MenuInput,
@@ -33,7 +34,7 @@ import {
   editorResourceKindAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { TagFilter } from '@/features/tag-management/tag-filter'
+import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
@@ -97,7 +98,6 @@ function AgentSelectorList({
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
-  const searchGroupRef = useRef<HTMLDivElement>(null)
   const tagPortalRef = useRef<HTMLDivElement>(null)
   const agentsQuery = useInfiniteQuery(
     consoleQuery.agent.inviteOptions.get.infiniteOptions({
@@ -139,24 +139,25 @@ function AgentSelectorList({
 
   return (
     <>
-      <MenuInputGroup ref={searchGroupRef} className="mx-2 mt-1 mb-2 min-w-0 pe-0">
-        <span
-          aria-hidden
-          className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-        />
+      <MenuInputGroup className="mx-2 mt-1 mb-2 min-w-0 gap-0 px-0">
         <MenuInput
           aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
-        <InputGroupAddon align="inline-end" className="max-w-1/2 gap-1 ps-0 pe-0.5">
+        <InputGroupAddon className="ps-1.75 pe-1.25">
+          <span
+            aria-hidden
+            className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          />
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end" className="gap-1 ps-0.75 pe-0.5">
+          <MenuClear />
           <Separator decorative orientation="vertical" className="h-3.5" />
-          <TagFilter
+          <CompactTagFilter
             type="agent"
             value={tagIds}
             onChange={setTagIds}
-            inputGroupRef={searchGroupRef}
-            portalProps={{ container: tagPortalRef }}
-            showTagManagement={false}
+            container={tagPortalRef}
           />
         </InputGroupAddon>
       </MenuInputGroup>

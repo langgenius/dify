@@ -15,7 +15,7 @@ import { SearchInputClear } from '@/app/components/base/search-input'
 import { useSearchInput } from '@/app/components/base/search-input/use-search-input'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { ExternalAgentOptions } from '@/features/agent-v2/external-agent/workflow-preview/agent-options'
-import { TagFilter } from '@/features/tag-management/tag-filter'
+import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 
@@ -42,7 +42,6 @@ export function WorkflowAgentSelectorContent({
     value: search,
     onValueChange: setSearch,
   })
-  const searchGroupRef = useRef<HTMLDivElement>(null)
   const keyword = useDebounce(search.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
   const tagPortalRef = useRef<HTMLDivElement>(null)
@@ -90,7 +89,7 @@ export function WorkflowAgentSelectorContent({
   return (
     <>
       <div className="p-2">
-        <InputGroup ref={searchGroupRef}>
+        <InputGroup>
           <InputGroupInput
             {...inputProps}
             name="query"
@@ -105,7 +104,7 @@ export function WorkflowAgentSelectorContent({
               className="i-ri-search-line size-4 text-components-input-text-placeholder"
             />
           </InputGroupAddon>
-          <InputGroupAddon align="inline-end" className="max-w-1/2 gap-1 ps-0.75 pe-0.5">
+          <InputGroupAddon align="inline-end" className="gap-1 ps-0.75 pe-0.5">
             {canClear && (
               <SearchInputClear
                 {...clearProps}
@@ -115,13 +114,11 @@ export function WorkflowAgentSelectorContent({
             {source !== 'external' && (
               <>
                 <Separator decorative orientation="vertical" className="h-3.5" />
-                <TagFilter
+                <CompactTagFilter
                   type="agent"
                   value={tagIds}
                   onChange={setTagIds}
-                  inputGroupRef={searchGroupRef}
-                  portalProps={{ container: tagPortalRef }}
-                  showTagManagement={false}
+                  container={tagPortalRef}
                 />
               </>
             )}

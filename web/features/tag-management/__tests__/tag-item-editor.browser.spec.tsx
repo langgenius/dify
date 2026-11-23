@@ -34,9 +34,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 const baseTag: Tag = { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '3' }
-function renderEditor(bindingCount = '3') {
+function renderEditor(bindingCount = '3', name = baseTag.name) {
   mocks.tags = [
-    { ...baseTag, binding_count: bindingCount },
+    { ...baseTag, name, binding_count: bindingCount },
     { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
   ]
   return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, mocks.tags)
@@ -58,6 +58,30 @@ it('explains the binding count without naming a particular resource type', async
   await page.getByText('3', { exact: true }).first().hover()
   await expect.element(page.getByText('common.tag.boundItems', { exact: true })).toBeVisible()
 })
+
+it.each([
+  { width: 1512, name: '長い日本語のタグ名'.repeat(5) },
+  { width: 320, name: 'W'.repeat(50) },
+])(
+  'keeps actions reachable and the full tag name editable at $width px',
+  async ({ width, name }) => {
+    await page.viewport(width, 800)
+    await renderEditor('3', name)
+    const dialog = page.getByRole('dialog', { name: 'common.tag.manageTags' })
+    const removeButton = dialog.getByRole('button', { name: `common.operation.remove ${name}` })
+    await expect.element(removeButton).toBeVisible()
+    const { x, y, width: buttonWidth, height } = removeButton.element().getBoundingClientRect()
+    expect(
+      removeButton
+        .element()
+        .contains(document.elementFromPoint(x + buttonWidth / 2, y + height / 2)),
+    ).toBe(true)
+    await dialog.getByRole('button', { name: `common.operation.edit ${name}` }).click()
+    await expect
+      .element(dialog.getByRole('textbox', { name: `common.operation.rename ${name}` }))
+      .toHaveValue(name)
+  },
+)
 
 it('renames a tag through the real management list and exits editing', async () => {
   await renderEditor()

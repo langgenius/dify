@@ -1,6 +1,6 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxPortalProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
-import type { RefObject } from 'react'
+import type { PopoverPortalProps } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -12,9 +12,11 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { CompactTagFilterTrigger } from './compact-tag-filter-trigger'
+import { TagFilterPopover } from './tag-filter-popover'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['filter']> = (
@@ -24,8 +26,6 @@ const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['
 
 type TagFilterProps = {
   iconOnly?: boolean
-  /** Embed the trigger as a chip and align its popup with the whole search field. */
-  inputGroupRef?: RefObject<HTMLDivElement | null>
   type: TagType
   value: string[]
   onChange: (v: string[]) => void
@@ -35,9 +35,61 @@ type TagFilterProps = {
   showLeadingIcon?: boolean
   triggerClassName?: string
 }
+function useWorkspaceTags(type: TagType) {
+  return useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type,
+        },
+      },
+    }),
+  )
+}
+
+export function CompactTagFilter({
+  type,
+  value,
+  onChange,
+  container,
+}: Pick<TagFilterProps, 'type' | 'value' | 'onChange'> & {
+  container?: PopoverPortalProps['container']
+}) {
+  const { t } = useTranslation(['common'])
+  const { data: tagList = [] } = useWorkspaceTags(type)
+  const options = tagList
+    .filter((tag) => tag.type === type)
+    .map((tag) => ({ name: tag.id, label: tag.name }))
+  const names = new Map(options.map(({ name, label }) => [name, label]))
+  const selectedLabels = value.flatMap((id) => names.get(id) ?? [])
+  const placeholder = t(($) => $['tag.placeholder'], { ns: 'common' })
+  const label =
+    value.length && selectedLabels.length !== value.length
+      ? t(($) => $['dynamicSelect.selected'], { ns: 'common', count: value.length })
+      : selectedLabels.join(', ') || placeholder
+  return (
+    <TagFilterPopover
+      options={options}
+      value={value}
+      onValueChange={onChange}
+      label={placeholder}
+      searchLabel={t(($) => $['tag.searchTags'], { ns: 'common' })}
+      emptyText={t(($) => $['tag.noTag'], { ns: 'common' })}
+      container={container}
+    >
+      <CompactTagFilterTrigger
+        selectedLabels={selectedLabels}
+        selectedCount={value.length}
+        label={label}
+        clearLabel={t(($) => $['operation.clear'], { ns: 'common' })}
+        onClear={() => onChange([])}
+      />
+    </TagFilterPopover>
+  )
+}
+
 export const TagFilter = ({
   iconOnly = false,
-  inputGroupRef,
   type,
   value,
   onChange,
@@ -50,17 +102,8 @@ export const TagFilter = ({
   const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const triggerRef = useRef<HTMLButtonElement>(null)
 
-  const { data: tagList = [] } = useQuery(
-    consoleQuery.tags.get.queryOptions({
-      input: {
-        query: {
-          type,
-        },
-      },
-    }),
-  )
+  const { data: tagList = [] } = useWorkspaceTags(type)
 
   const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
   const tagOptions = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
@@ -104,109 +147,75 @@ export const TagFilter = ({
       onInputValueChange={setInputValue}
       filter={tagFilterComboboxFilter}
     >
-      <div className="relative min-w-0">
-        {inputGroupRef ? (
-          <ComboboxTrigger
-            ref={triggerRef}
-            aria-label={triggerLabel}
-            className={cn(
-              'flex h-7 max-w-full cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-transparent ps-1.5 pe-2 text-text-tertiary hover:bg-state-base-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover',
-              !!value.length &&
-                'border-components-button-secondary-border bg-components-button-secondary-bg pe-6 text-text-secondary shadow-xs',
-            )}
-          >
-            <span aria-hidden className="i-ri-price-tag-3-line size-4 shrink-0" />
-            {!!value.length && (
-              <span className="flex min-w-0 items-center gap-0.5 system-sm-medium">
-                <span className="truncate">{currentTagName ?? selectedCountLabel}</span>
-                {currentTagName && value.length > 1 && (
-                  <span className="shrink-0">+{value.length - 1}</span>
-                )}
-              </span>
-            )}
-          </ComboboxTrigger>
-        ) : (
-          <ComboboxTrigger
-            aria-label={triggerLabel}
-            className={cn(
-              'flex h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal py-0 text-start system-sm-regular whitespace-nowrap select-none',
-              iconOnly
-                ? 'h-6! w-6! max-w-6! min-w-6! shrink-0 justify-center px-0! py-0!'
-                : 'max-w-60 min-w-28 px-2',
-              !!value.length && !iconOnly && 'pe-6 shadow-xs',
-              triggerClassName,
-            )}
-          >
-            {iconOnly ? (
-              <span
-                aria-hidden
-                className={cn(
-                  'i-ri-price-tag-3-line size-4',
-                  value.length ? 'text-text-accent' : 'text-text-tertiary',
-                )}
-              />
-            ) : (
-              <span className="flex w-full min-w-0 items-center gap-1">
-                {showLeadingIcon && (
-                  <span className="p-px">
-                    <span
-                      className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary"
-                      aria-hidden="true"
-                    />
-                  </span>
-                )}
-                <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
-                  {!value.length && placeholderLabel}
-                  {!!value.length && (currentTagName ?? selectedCountLabel)}
+      <div className="relative">
+        <ComboboxTrigger
+          aria-label={triggerLabel}
+          className={cn(
+            'flex h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal py-0 text-start system-sm-regular whitespace-nowrap select-none',
+            iconOnly
+              ? 'h-6! w-6! max-w-6! min-w-6! shrink-0 justify-center px-0! py-0!'
+              : 'max-w-60 min-w-28 px-2',
+            !!value.length && !iconOnly && 'pe-6 shadow-xs',
+            triggerClassName,
+          )}
+        >
+          {iconOnly ? (
+            <span
+              aria-hidden
+              className={cn(
+                'i-ri-price-tag-3-line size-4',
+                value.length ? 'text-text-accent' : 'text-text-tertiary',
+              )}
+            />
+          ) : (
+            <span className="flex w-full min-w-0 items-center gap-1">
+              {showLeadingIcon && (
+                <span className="p-px">
+                  <span
+                    className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary"
+                    aria-hidden="true"
+                  />
                 </span>
-                {currentTagName && value.length > 1 && (
-                  <span className="shrink-0 text-xs/4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
-                )}
-                {!value.length && (
-                  <span className="shrink-0 p-px">
-                    <span
-                      aria-hidden
-                      className="i-ri-arrow-down-s-line size-3.5 text-text-tertiary"
-                    />
-                  </span>
-                )}
+              )}
+              <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
+                {!value.length && placeholderLabel}
+                {!!value.length && (currentTagName ?? selectedCountLabel)}
               </span>
-            )}
-          </ComboboxTrigger>
-        )}
+              {currentTagName && value.length > 1 && (
+                <span className="shrink-0 text-xs/4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
+              )}
+              {!value.length && (
+                <span className="shrink-0 p-px">
+                  <span
+                    aria-hidden
+                    className="i-ri-arrow-down-s-line size-3.5 text-text-tertiary"
+                  />
+                </span>
+              )}
+            </span>
+          )}
+        </ComboboxTrigger>
         {!!value.length && (
           <IconButton
             size="xs"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className={cn(
-              'group/clear absolute inset-e-2 top-1/2 -translate-y-1/2',
-              inputGroupRef && 'inset-e-1.5',
-            )}
+            className="group/clear absolute inset-e-2 top-1/2 -translate-y-1/2"
             onClick={(event) => {
               event.stopPropagation()
-              if (inputGroupRef) triggerRef.current?.focus()
               onChange([])
             }}
           >
             <span
               aria-hidden="true"
-              className={cn(
-                'size-3.5 group-hover/clear:text-text-secondary',
-                inputGroupRef
-                  ? 'i-ri-close-circle-fill text-text-quaternary'
-                  : 'i-custom-vender-solid-general-x-circle text-text-tertiary',
-              )}
+              className="i-custom-vender-solid-general-x-circle size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
             />
           </IconButton>
         )}
         <ComboboxPortal {...portalProps}>
-          <ComboboxPositioner anchor={inputGroupRef}>
+          <ComboboxPositioner>
             <ComboboxPopup
               aria-label={triggerLabel}
-              className={cn(
-                'rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]',
-                !inputGroupRef && 'w-60',
-              )}
+              className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
             >
               <TagSearchContent
                 type={type}
