@@ -31,7 +31,6 @@ import {
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
-  legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
@@ -333,9 +332,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                           }),
                         }),
                         context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
-                        context.client.invalidateQueries({
                           queryKey: consoleQuery.datasets.get.key(),
                         }),
                       ]),
@@ -347,9 +343,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   mutationOptions: {
                     onSuccess: (_data, variables, _result, context) => {
                       return Promise.all([
-                        context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
                         context.client.invalidateQueries({
                           queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                             input: { params: { pipeline_id: variables.params.pipeline_id } },
@@ -1705,9 +1698,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                         }),
                       }),
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.get.key({
                           input: { params: variables.params },
                         }),
@@ -1738,9 +1728,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       data,
                     )
                     return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                           input: { params: { app_id: variables.params.app_id } },
@@ -2496,9 +2483,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 mutationOptions: {
                   onSuccess: (_data, variables, _result, context) => {
                     return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                           input: { params: { snippet_id: variables.params.snippet_id } },

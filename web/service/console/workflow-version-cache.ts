@@ -12,9 +12,6 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 
-// Transitional key until the editor version list uses generated query options.
-export const legacyWorkflowVersionHistoryKey = ['workflow', 'versionHistory'] as const
-
 function syncWorkflowVersionMetadata(
   version: WorkflowVersion | undefined,
   updatedWorkflow: WorkflowResponse,

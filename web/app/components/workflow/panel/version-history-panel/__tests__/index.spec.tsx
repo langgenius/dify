@@ -1,11 +1,15 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { QueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { fullWorkflowAccessControl } from '../../../hooks-store/store'
 import { WorkflowVersion } from '../../../types'
 
@@ -13,88 +17,92 @@ const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
-const mockRestoreWorkflow = vi.fn()
-const mockDeleteWorkflow = vi.fn()
-const mockUpdateWorkflow = vi.fn()
-const mockInvalidateAppWorkflow = vi.fn()
+const mockRestoreWorkflow = vi.hoisted(() => vi.fn())
+const mockDeleteWorkflow = vi.hoisted(() => vi.fn())
+const mockUpdateWorkflow = vi.hoisted(() => vi.fn())
+const mockFetchVersions = vi.hoisted(() => vi.fn())
 const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
-const mockFetchNextPage = vi.fn()
 const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }))
 let mockPlanType: CloudPlan = 'professional'
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
-let mockPublishedEnvironments: FetchWorkflowDraftResponse['environments']
+let mockPublishedEnvironments: WorkflowVersionListItem['environments']
 let mockHasNextPage = false
-let mockIsFetching = false
 
-const createVersionHistory = (
-  overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'version-id',
-  version: WorkflowVersion.Draft,
-  graph: { nodes: [], edges: [] },
-  features: {
-    opening_statement: '',
-    suggested_questions: [],
-    suggested_questions_after_answer: { enabled: false },
-    text_to_speech: { enabled: false },
-    speech_to_text: { enabled: false },
-    retriever_resource: { enabled: false },
-    sensitive_word_avoidance: { enabled: false },
-    file_upload: { image: { enabled: false } },
-  },
-  created_at: Date.now() / 1000,
-  created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  hash: 'test-hash',
-  updated_at: Date.now() / 1000,
-  updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  tool_published: false,
-  environment_variables: [],
-  marked_name: '',
-  marked_comment: '',
-  ...overrides,
+const createVersionHistory = ({
+  environments,
+  ...overrides
+}: Partial<WorkflowResponse> & Pick<WorkflowVersionListItem, 'environments'> = {}) => ({
+  ...createWorkflowResponseFixture({
+    id: 'version-id',
+    version: WorkflowVersion.Draft,
+    features: {
+      opening_statement: '',
+      suggested_questions: [],
+      suggested_questions_after_answer: { enabled: false },
+      text_to_speech: { enabled: false },
+      speech_to_text: { enabled: false },
+      retriever_resource: { enabled: false },
+      sensitive_word_avoidance: { enabled: false },
+      file_upload: { image: { enabled: false } },
+    },
+    created_at: Math.floor(Date.now() / 1000),
+    created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    hash: 'test-hash',
+    updated_at: Math.floor(Date.now() / 1000),
+    updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    ...overrides,
+  }),
+  environments,
 })
 
-let mockCurrentVersion: FetchWorkflowDraftResponse | null = null
+let mockCurrentVersion: WorkflowVersionListItem | null = null
 
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useDeleteWorkflow: () => mockDeleteWorkflow,
-  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
-  useInvalidateAllLastRun: () => vi.fn(),
-  useResetWorkflowVersionHistory: () => vi.fn(),
-  useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useWorkflowVersionHistory: () => ({
-    data: {
-      pages: [
-        {
-          items: [
-            createVersionHistory({
-              id: 'draft-version-id',
-              version: WorkflowVersion.Draft,
-            }),
-            createVersionHistory({
-              id: 'published-version-id',
-              version: '2024-01-01T00:00:00Z',
-              marked_name: 'v1.0',
-              marked_comment: 'First release',
-              environments: mockPublishedEnvironments,
-            }),
-          ],
-        },
-      ],
-    },
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-    isFetching: mockIsFetching,
-  }),
-}))
+// boundary: version history API responses
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.get': mockFetchVersions,
+      'apps.byAppId.workflows.byWorkflowId.patch': mockUpdateWorkflow,
+      'apps.byAppId.workflows.byWorkflowId.delete': mockDeleteWorkflow,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.byWorkflowId.restore.post': mockRestoreWorkflow,
+    }),
+  }
+})
+
+const createVersionPage = (page: number) => ({
+  items:
+    page === 1
+      ? [
+          createVersionHistory({
+            id: 'draft-version-id',
+            version: WorkflowVersion.Draft,
+          }),
+          createVersionHistory({
+            id: 'published-version-id',
+            version: '2024-01-01T00:00:00Z',
+            marked_name: 'v1.0',
+            marked_comment: 'First release',
+            environments: mockPublishedEnvironments,
+          }),
+        ]
+      : [],
+  page,
+  limit: 10,
+  has_more: page === 1 && mockHasNextPage,
+})
 
 vi.mock('../../../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
@@ -109,7 +117,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
     versionInfo,
     onPublish,
   }: {
-    versionInfo: FetchWorkflowDraftResponse
+    versionInfo: Pick<WorkflowResponse, 'id'>
     onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
   }) => (
     <button
@@ -127,31 +135,28 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
   ),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (...args: unknown[]) => Response.json(await mockUpdateWorkflow(...args)),
-}))
-
 let renderedStore: ReturnType<typeof renderWorkflowComponent>['store']
 
 const selectAction = async (name: RegExp) => {
   const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+  await user.click(await screen.findByRole('button', { name: 'common.operation.more' }))
   await user.click(await screen.findByRole('menuitem', { name }))
 }
 
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFetchVersions.mockImplementation(async (input: { query: { page: number } }) =>
+      createVersionPage(input.query.page),
+    )
     mockDeleteWorkflow.mockResolvedValue(undefined)
-    mockRestoreWorkflow.mockResolvedValue(undefined)
-    mockUpdateWorkflow.mockResolvedValue(undefined)
+    mockRestoreWorkflow.mockResolvedValue(createWorkflowResponseFixture())
+    mockUpdateWorkflow.mockResolvedValue(createWorkflowResponseFixture())
     mockCurrentVersion = null
     mockPlanType = 'professional'
     deploymentEdition = 'CLOUD'
     mockPublishedEnvironments = undefined
     mockHasNextPage = false
-    mockIsFetching = false
   })
 
   it('should expose close and pagination actions as accessible buttons', async () => {
@@ -161,8 +166,13 @@ describe('VersionHistoryPanel', () => {
 
     render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
-    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
-    expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
+    await user.click(await screen.findByRole('button', { name: 'workflow.common.loadMore' }))
+    await waitFor(() =>
+      expect(mockFetchVersions).toHaveBeenLastCalledWith({
+        params: { app_id: 'app-1' },
+        query: { limit: 10, user_id: undefined, named_only: false, page: 2 },
+      }),
+    )
 
     await waitFor(() => {
       expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
@@ -182,7 +192,7 @@ describe('VersionHistoryPanel', () => {
 
       render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
-      expect(mockHandleLoadBackupDraft).toHaveBeenCalled()
+      await waitFor(() => expect(mockHandleLoadBackupDraft).toHaveBeenCalled())
       expect(mockHandleRestoreFromPublishedWorkflow).not.toHaveBeenCalled()
     })
 
@@ -192,9 +202,10 @@ describe('VersionHistoryPanel', () => {
 
       render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
+      const publishedVersion = await screen.findByRole('button', { name: 'v1.0' })
       vi.clearAllMocks()
 
-      await user.click(screen.getByRole('button', { name: 'v1.0' }))
+      await user.click(publishedVersion)
 
       expect(mockHandleRestoreFromPublishedWorkflow).toHaveBeenCalled()
       expect(mockHandleLoadBackupDraft).not.toHaveBeenCalled()
@@ -217,7 +228,10 @@ describe('VersionHistoryPanel', () => {
 
     await waitFor(() => {
       expect(renderedStore.getState().currentVersion?.id).toBe('published-version-id')
-      expect(mockRestoreWorkflow).toHaveBeenCalledWith('published-version-id')
+      expect(mockRestoreWorkflow).toHaveBeenCalledWith(
+        { params: { app_id: 'app-1', workflow_id: 'published-version-id' } },
+        { context: { silent: true } },
+      )
       expect(renderedStore.getState().isRestoring).toBe(false)
       expect(renderedStore.getState().backupDraft).toBeUndefined()
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
@@ -287,10 +301,20 @@ describe('VersionHistoryPanel', () => {
     render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
     await selectAction(/operation\.delete/)
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
-    await waitFor(() => expect(mockDeleteWorkflow).toHaveBeenCalledWith('published-version-id'))
+    await waitFor(() =>
+      expect(mockDeleteWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+      }),
+    )
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    if (failed) expect(mockToast.error).toHaveBeenCalledWith('Delete failed')
-    else expect(mockToast.error).not.toHaveBeenCalled()
+    if (failed) {
+      expect(mockToast.error).toHaveBeenCalledWith('Delete failed')
+      expect(mockFetchVersions).toHaveBeenCalledOnce()
+    } else {
+      expect(mockToast.error).not.toHaveBeenCalled()
+      // A successful delete refreshes the version list.
+      await waitFor(() => expect(mockFetchVersions.mock.calls.length).toBeGreaterThan(1))
+    }
   })
 
   it('should keep restore mode backup state when restore request fails', async () => {
@@ -332,23 +356,26 @@ describe('VersionHistoryPanel', () => {
     })
     const { VersionHistoryPanel } = await import('../index')
 
-    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
+    const { queryClient } = render(<VersionHistoryPanel latestVersionId="published-version-id" />)
+    const publishedWorkflowKey = appWorkflowQueryOptions('app-1').queryKey
+    queryClient.setQueryData(publishedWorkflowKey, createWorkflowResponseFixture())
 
     await selectAction(/editVersionInfo/)
     await user.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
-      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        expect.stringContaining('/apps/app-1/workflows/published-version-id'),
-        expect.anything(),
-        expect.objectContaining({ request: expect.objectContaining({ method: 'PATCH' }) }),
-      )
-      expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+        body: { marked_name: 'Updated release', marked_comment: 'Updated notes' },
+      })
+      expect(queryClient.getQueryState(publishedWorkflowKey)?.isInvalidated).toBe(true)
     })
   })
 })
 
-function render(ui: ReactElement) {
+function render(ui: ReactElement): ReturnType<typeof renderWorkflowComponent> & {
+  queryClient: QueryClient
+} {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
     features: { billing: { subscription: { plan: mockPlanType } } },
@@ -377,5 +404,5 @@ function render(ui: ReactElement) {
     },
   })
   renderedStore = rendered.store
-  return rendered
+  return { ...rendered, queryClient }
 }

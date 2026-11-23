@@ -3505,14 +3505,6 @@
       "count": 2
     }
   },
-  "web/service/use-workflow.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6

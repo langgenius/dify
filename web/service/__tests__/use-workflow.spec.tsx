@@ -22,10 +22,15 @@ import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-q
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
+import { useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
+  lastRunQueryKey,
+  lastRunQueryOptions,
+  restoreWorkflowMutationOptions,
+  workflowVersionHistoryInfiniteOptions,
+  workflowVersionHistoryKey,
 } from '../workflow-queries'
 
 const mockWorkflowResponse = vi.hoisted(() => vi.fn())
@@ -248,9 +253,12 @@ describe('useUpdateWorkflow', () => {
 
   it('should invalidate workflow version history after updating version information', async () => {
     const queryClient = createQueryClient()
-    const legacyHistoryKey = ['workflow', 'versionHistory', 'app-1']
+    const editorHistoryKey = workflowVersionHistoryInfiniteOptions(
+      { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+      { limit: 10, namedOnly: true },
+    ).queryKey
     const generatedHistoryKey = appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey
-    queryClient.setQueryData(legacyHistoryKey, { items: [] })
+    queryClient.setQueryData(editorHistoryKey, { pages: [], pageParams: [] })
     queryClient.setQueryData(generatedHistoryKey, { pages: [], pageParams: [] })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useUpdateWorkflow(), {
@@ -273,11 +281,8 @@ describe('useUpdateWorkflow', () => {
     )
     const sentRequest = mockRequest.mock.calls[0]?.[2]?.request
     expect(await sentRequest?.json()).toEqual({ marked_name: 'Release 1', marked_comment: 'Notes' })
-    expect(queryClient.getQueryState(legacyHistoryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(editorHistoryKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(generatedHistoryKey)?.isInvalidated).toBe(true)
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['workflow', 'versionHistory'],
-    })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
         input: { params: { app_id: 'app-1' } },
@@ -542,7 +547,7 @@ describe('useUpdateWorkflow', () => {
   })
 })
 
-describe('useRestoreWorkflow', () => {
+describe('restoreWorkflowMutationOptions', () => {
   const resources = [
     {
       resource: { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'advanced-chat' },
@@ -565,7 +570,7 @@ describe('useRestoreWorkflow', () => {
       mockRequest.mockResolvedValue(
         Response.json({ result: 'success', hash: 'restored-hash', updated_at: 1 }),
       )
-      const { result } = renderHook(() => useRestoreWorkflow(resource), {
+      const { result } = renderHook(() => useMutation(restoreWorkflowMutationOptions(resource)), {
         wrapper: createWrapper(createQueryClient()),
       })
       await act(async () => {
@@ -579,6 +584,65 @@ describe('useRestoreWorkflow', () => {
       expect(new URL(url).pathname).toBe(`/console/api${path}/workflows/version-1/restore`)
       expect(options?.request?.method).toBe('POST')
       expect(options?.silent).toBe(true)
+    },
+  )
+})
+
+describe('workflow editor cache keys', () => {
+  const resources = [
+    {
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'owner', mode: 'workflow' },
+      other: { kind: 'app', collaborationEnabled: false, appId: 'other', mode: 'workflow' },
+    },
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' },
+      other: { kind: 'knowledge-pipeline', pipelineId: 'other' },
+    },
+    {
+      resource: { kind: 'snippet', snippetId: 'owner' },
+      other: { kind: 'snippet', snippetId: 'other' },
+    },
+  ] satisfies { resource: EditorResource; other: EditorResource }[]
+
+  it.each(resources)(
+    'resets every filtered $resource.kind version list without touching other owners',
+    async ({ resource, other }) => {
+      const queryClient = createQueryClient()
+      const allVersions = workflowVersionHistoryInfiniteOptions(resource, { limit: 10 }).queryKey
+      const namedVersions = workflowVersionHistoryInfiniteOptions(resource, {
+        limit: 10,
+        userId: 'user-1',
+        namedOnly: true,
+      }).queryKey
+      const otherVersions = workflowVersionHistoryInfiniteOptions(other, { limit: 10 }).queryKey
+      const page = { pages: [{ items: [], page: 1, limit: 10, has_more: false }], pageParams: [1] }
+      for (const key of [allVersions, namedVersions, otherVersions])
+        queryClient.setQueryData(key, page)
+
+      await queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) })
+
+      expect(queryClient.getQueryData(allVersions)).toBeUndefined()
+      expect(queryClient.getQueryData(namedVersions)).toBeUndefined()
+      expect(queryClient.getQueryData(otherVersions)).toEqual(page)
+    },
+  )
+
+  it.each(resources)(
+    'scopes $resource.kind last-run invalidation to one node or the whole owner',
+    async ({ resource, other }) => {
+      const queryClient = createQueryClient()
+      const nodeA = lastRunQueryOptions(resource, 'node-a').queryKey
+      const nodeB = lastRunQueryOptions(resource, 'node-b').queryKey
+      const otherNode = lastRunQueryOptions(other, 'node-a').queryKey
+      for (const key of [nodeA, nodeB, otherNode]) queryClient.setQueryData(key, { id: 'run' })
+
+      await queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, 'node-a') })
+      expect(queryClient.getQueryState(nodeA)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(nodeB)?.isInvalidated).toBe(false)
+
+      await queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) })
+      expect(queryClient.getQueryState(nodeB)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(otherNode)?.isInvalidated).toBe(false)
     },
   )
 })
