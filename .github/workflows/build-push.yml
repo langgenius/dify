@@ -230,6 +230,74 @@ jobs:
         run: |
           docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"
 
+  deploy-app-builder:
+    needs: create-manifest
+    if: github.event_name == 'push' && github.repository == 'langgenius/dify' && github.ref == 'refs/heads/deploy/app-builder'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-app-builder
+      cancel-in-progress: false
+    env:
+      APP_BUILDER_INSTANCE_ID: ${{ vars.APP_BUILDER_EC2_INSTANCE_ID }}
+      AWS_REGION: us-east-1
+      AWS_PAGER: ''
+      DOCKERHUB_USER: ''
+      DOCKERHUB_TOKEN: ''
+    steps:
+      - name: Authenticate to App Builder staging
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.APP_BUILDER_AWS_ROLE_ARN }}
+          role-session-name: app-builder-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: Deploy the published revision
+        shell: bash
+        run: |
+          command_id=$(
+            aws ssm send-command \
+              --document-name lg-app-builder-deploy \
+              --document-version '1' \
+              --instance-ids "$APP_BUILDER_INSTANCE_ID" \
+              --parameters "Revision=$GITHUB_SHA,RunNumber=$GITHUB_RUN_NUMBER" \
+              --timeout-seconds 180 \
+              --query Command.CommandId --output text
+          )
+          echo "SSM command: $command_id"
+
+          error_file="$RUNNER_TEMP/app-builder-ssm-error"
+          for ((attempt = 0; attempt < 115; attempt++)); do
+            if invocation=$(aws ssm get-command-invocation \
+              --command-id "$command_id" --instance-id "$APP_BUILDER_INSTANCE_ID" \
+              --output json 2>"$error_file"); then
+              case "$(jq -r .Status <<< "$invocation")" in
+                Success)
+                  jq -r .StandardOutputContent <<< "$invocation"
+                  exit 0
+                  ;;
+                Pending|InProgress|Delayed) ;;
+                *)
+                  jq -r '.StatusDetails, .StandardOutputContent, .StandardErrorContent' <<< "$invocation"
+                  exit 1
+                  ;;
+              esac
+            elif ! grep -q InvocationDoesNotExist "$error_file"; then
+              cat "$error_file" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for App Builder deployment $command_id" >&2
+          exit 1
+
+      - name: Verify public HTTPS
+        run: curl --fail --silent --show-error --location --max-time 15 --retry 4 --retry-all-errors --output /dev/null https://app-builder.gpt5o.uk/
+
   sync-e2b-template:
     needs: create-manifest
     runs-on: ubuntu-24.04
