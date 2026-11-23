@@ -74,7 +74,7 @@ test.skip('packed SDK installs and works outside the workspace with npm and offi
         '--package-lock=false',
         tarball,
         'typescript@7.1.0-beta',
-        'vite@8.3.6',
+        'vite@8.3.8',
       ],
       directory,
     )

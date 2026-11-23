@@ -63,10 +63,13 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
   expect(search.element().getBoundingClientRect().width).toBeGreaterThan(100)
   await dialog.getByRole('checkbox', { name: 'Built-in' }).nth(19).click()
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
-  expect(
-    responses.call.mock.calls.find(([operation]) => operation.endsWith('.post'))?.[1].body
-      .resource_scope.resources,
-  ).toEqual([{ resource_id: '019a0000-0000-7000-8000-000000000019', resource_type: 'app' }])
+  await expect
+    .poll(
+      () =>
+        responses.call.mock.calls.find(([operation]) => operation.endsWith('.post'))?.[1].body
+          .resource_scope.resources,
+    )
+    .toEqual([{ resource_id: '019a0000-0000-7000-8000-000000000019', resource_type: 'app' }])
   await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue('Long selection')
   const bounds = dialog.element().getBoundingClientRect()
   expect(bounds.left).toBeGreaterThanOrEqual(0)

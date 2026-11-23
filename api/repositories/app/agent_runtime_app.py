@@ -1,12 +1,28 @@
-"""Resolve Agent runtime Apps in a caller-owned SQLAlchemy session."""
+"""Persist backing Agents and resolve their runtime Apps in a caller-owned session."""
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
-from models.agent import APP_BACKED_AGENT_SOURCES, WORKFLOW_ONLY_AGENT_SOURCES, Agent, AgentScope, AgentStatus
+from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    WORKFLOW_ONLY_AGENT_SOURCES,
+    Agent,
+    AgentConfigDraftType,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentIconType,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+)
+from models.agent_config_entities import AgentSoulConfig
+from models.agent_soul_state import agent_soul_has_model
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, IconType
+from repositories.app.agent_debug_conversations import get_or_create_agent_debug_conversation
 
 
 def create_hidden_backing_app(
@@ -134,3 +150,80 @@ def resolve_agent_runtime_app(session: Session, *, tenant_id: str, agent_id: str
     if created:
         session.commit()
     return find_runtime_app(session, tenant_id=tenant_id, app_id=app_id)
+
+
+def create_backing_agent_for_app(
+    session: Session,
+    *,
+    tenant_id: str,
+    account_id: str,
+    app_id: str,
+    name: str,
+    description: str = "",
+    role: str = "",
+    icon_type: AgentIconType | None = None,
+    icon: str | None = None,
+    icon_background: str | None = None,
+    source: AgentSource = AgentSource.AGENT_APP,
+    initial_soul: AgentSoulConfig | None = None,
+    revision_operation: AgentConfigRevisionOperation = AgentConfigRevisionOperation.CREATE_VERSION,
+) -> Agent:
+    """Stage the backing Agent, initial snapshot, revision and Build conversation for a resolved App.
+
+    Importers may supply a Soul and source. An absent Soul seeds an empty
+    configuration. The caller commits or rolls back all rows with the App.
+    """
+    soul = initial_soul or AgentSoulConfig()
+    agent = Agent(
+        tenant_id=tenant_id,
+        name=name,
+        description=description,
+        role=role,
+        icon_type=icon_type,
+        icon=icon,
+        icon_background=icon_background,
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=source,
+        status=AgentStatus.ACTIVE,
+        app_id=app_id,
+        backing_app_id=app_id,
+        created_by=account_id,
+        updated_by=account_id,
+    )
+    session.add(agent)
+    session.flush()
+
+    version = AgentConfigSnapshot(
+        tenant_id=tenant_id,
+        agent_id=agent.id,
+        version=1,
+        config_snapshot=soul,
+        home_snapshot_id=None,
+        created_by=account_id,
+    )
+    session.add(version)
+    session.flush()
+
+    revision = AgentConfigRevision(
+        tenant_id=tenant_id,
+        agent_id=agent.id,
+        current_snapshot_id=version.id,
+        revision=1,
+        operation=revision_operation,
+        created_by=account_id,
+    )
+    session.add(revision)
+    agent.active_config_snapshot_id = version.id
+    agent.active_config_has_model = agent_soul_has_model(soul)
+    agent.active_config_is_published = False
+    session.flush()
+    get_or_create_agent_debug_conversation(
+        session,
+        tenant_id=tenant_id,
+        agent_id=agent.id,
+        backing_app_id=app_id,
+        account_id=account_id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+    )
+    return agent
