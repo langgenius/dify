@@ -1,7 +1,7 @@
 import type { CursorPosition } from '../../types/collaboration'
 import { act } from 'react'
-import { cdp } from 'vite-plus/test/browser'
 import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
+import { cdp } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import UserCursors from '../user-cursors'
 import 'reactflow/dist/style.css'

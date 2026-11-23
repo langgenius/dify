@@ -690,7 +690,8 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                 >
                   <WorkflowChildren />
                   {isCollaborationEnabled &&
-                    (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
+                    (collaborationGraphState.appId !== appId ||
+                      !collaborationGraphState.isReady) && (
                       <div
                         data-testid="collaboration-graph-loading"
                         className={cn(
@@ -709,7 +710,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                               <span>
                                 {joinFailure === 'denied'
                                   ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                                  : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
+                                  : t(($) => $['collaboration.joinUnavailable'], {
+                                      ns: 'workflow',
+                                    })}
                               </span>
                               {joinFailure !== 'session_unavailable' && (
                                 <Button
