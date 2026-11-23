@@ -21,6 +21,8 @@ export function createExternalAgentAsset(
     icon_background: '#E0E7FF',
     icon_url: null,
     reference_count: null,
+    tags: [],
+    permission_keys: [],
     enabled: true,
     tracing_enabled: true,
     metadata_revision: 1,

@@ -97,6 +97,8 @@ export function toExternalAgentListItem(
     enabled: asset.enabled,
     connectedByMe: asset.created_by === currentAccountId,
     referenceCount: asset.reference_count,
+    tags: asset.tags,
+    permissionKeys: asset.permission_keys,
     createdAt: Date.parse(asset.created_at),
     updatedAt: Date.parse(asset.updated_at),
   }

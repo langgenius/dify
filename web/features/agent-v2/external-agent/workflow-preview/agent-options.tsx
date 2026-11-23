@@ -10,10 +10,12 @@ import { toExternalAgentListItem } from '../model'
 
 export function ExternalAgentOptions({
   keyword,
+  tagIds = [],
   allowDisabled = false,
   onSelect,
 }: {
   keyword: string
+  tagIds?: string[]
   allowDisabled?: boolean
   onSelect: (agent: ExternalAgentAssetResponse) => void
 }) {
@@ -24,7 +26,14 @@ export function ExternalAgentOptions({
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
   const agents = useInfiniteQuery(
     consoleQuery.externalAgents.get.infiniteOptions({
-      input: (page) => ({ query: { page, limit: 20, ...(keyword ? { keyword } : {}) } }),
+      input: (page) => ({
+        query: {
+          page,
+          limit: 20,
+          ...(keyword ? { keyword } : {}),
+          ...(tagIds.length ? { tag_ids: tagIds } : {}),
+        },
+      }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
     }),
@@ -84,7 +93,9 @@ export function ExternalAgentOptions({
       })}
       {items.length === 0 && (
         <p role="status" className="p-3 system-xs-regular text-text-tertiary">
-          {keyword ? t(($) => $['roster.emptySearch']) : t(($) => $['roster.empty'])}
+          {keyword || tagIds.length
+            ? t(($) => $['roster.emptySearch'])
+            : t(($) => $['roster.empty'])}
         </p>
       )}
       {agents.hasNextPage && (

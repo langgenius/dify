@@ -33,7 +33,13 @@ export async function createRosterFixture({
   role = 'owner',
   searchParams = '',
   pageOwner = false,
-}: { role?: 'owner' | 'editor' | 'normal'; searchParams?: string; pageOwner?: boolean } = {}) {
+  workspacePermissionKeys = [],
+}: {
+  role?: 'owner' | 'editor' | 'normal'
+  searchParams?: string
+  pageOwner?: boolean
+  workspacePermissionKeys?: string[]
+} = {}) {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -44,6 +50,7 @@ export async function createRosterFixture({
   const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role, id: '99999999-9999-4999-8999-999999999999' },
     accountProfile: { id: '11111111-1111-4111-8111-111111111111' },
+    workspacePermissionKeys,
   })
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({
     hasMemory: true,

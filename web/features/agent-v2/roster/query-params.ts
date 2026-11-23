@@ -13,6 +13,7 @@ export const rosterQueryParamNames = {
 
 export const externalRosterQueryParsers = {
   external_keyword: parseAsString.withDefault(''),
+  external_tag_ids: parseAsArrayOf(parseAsString, ';').withDefault([]),
   external_status: parseAsStringLiteral(['all', 'enabled', 'disabled']).withDefault('all'),
   external_connected_by_me: parseAsBoolean.withDefault(false),
   external_sort_by: parseAsStringLiteral([

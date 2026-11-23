@@ -1,5 +1,7 @@
 'use client'
 
+import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/external-agents/types.gen'
+import type { Ref } from 'react'
 import type { ExternalAgentActionRequest } from './external-agent-actions'
 import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,15 +21,18 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
+import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import {
   getExternalAgentMonitoringPath,
   getExternalAgentOverviewPath,
 } from '@/features/agent-v2/external-agent/routes'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { ExternalAgentEmptySearch } from './external-agent-empty-search'
+import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 export type ExternalAgentListItem = {
   key: string
@@ -40,6 +45,8 @@ export type ExternalAgentListItem = {
   createdAt: number
   updatedAt: number
   referenceCount?: number | null
+  tags: ExternalAgentAssetResponse['tags']
+  permissionKeys: ExternalAgentAssetResponse['permission_keys']
   apps?: readonly { id?: string; name: string; kind: 'workflow' | 'chatflow' }[]
 }
 
@@ -49,16 +56,20 @@ type ExternalAgentListProps = {
   onClearFilters: () => void
   onAction?: (request: ExternalAgentActionRequest) => void
   canReadDetails?: boolean
+  onOpenTagManagement: () => void
+  viewportRef?: Ref<HTMLDivElement>
 }
 
 function ExternalAgentCard({
   agent,
   onAction,
   canReadDetails,
+  onOpenTagManagement,
 }: {
   agent: ExternalAgentListItem
   onAction: ExternalAgentListProps['onAction']
   canReadDetails: boolean
+  onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -67,6 +78,7 @@ function ExternalAgentCard({
   const statusId = useId()
   const itemRef = useRef<HTMLLIElement>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const canEditTags = getAgentACLCapabilities(agent.permissionKeys).canEdit
   const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
     onAction?.({
       kind,
@@ -83,7 +95,7 @@ function ExternalAgentCard({
       ref={itemRef}
       aria-labelledby={nameId}
       className={cn(
-        'group relative flex h-36.5 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md motion-reduce:transition-none',
+        'group relative flex h-43 min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow focus-within:bg-components-card-bg-alt hover:bg-components-card-bg-alt hover:shadow-md has-data-popup-open:bg-components-card-bg-alt has-data-popup-open:shadow-md motion-reduce:transition-none',
         !agent.enabled && 'opacity-60',
       )}
     >
@@ -120,6 +132,21 @@ function ExternalAgentCard({
           </p>
         </div>
       </Link>
+      <div className="px-3">
+        {canEditTags ? (
+          <TagSelector
+            type="agent"
+            targetId={agent.key}
+            contextLabel={agent.name}
+            value={agent.tags}
+            canBindOrUnbindTags
+            requiresTargetEditPermission
+            onOpenTagManagement={onOpenTagManagement}
+          />
+        ) : (
+          <ReadOnlyAgentTags agent={agent} />
+        )}
+      </div>
       {!agent.enabled && (
         <span id={statusId} className="pointer-events-none absolute inset-e-0 top-[-0.5px]">
           <CornerLabel
@@ -253,6 +280,8 @@ export function ExternalAgentList({
   onClearFilters,
   onAction,
   canReadDetails = true,
+  onOpenTagManagement,
+  viewportRef,
 }: ExternalAgentListProps) {
   const { t } = useTranslation(['agentRoster'])
 
@@ -262,7 +291,11 @@ export function ExternalAgentList({
 
   return (
     <ScrollArea className="h-full">
-      <ScrollAreaViewport className="h-full" aria-label={t(($) => $['roster.tabs.external'])}>
+      <ScrollAreaViewport
+        ref={viewportRef}
+        className="h-full"
+        aria-label={t(($) => $['roster.tabs.external'])}
+      >
         <ScrollAreaContent className="px-2 pt-2 pb-4 sm:px-8">
           {agents.length > 0 ? (
             <ul
@@ -275,6 +308,7 @@ export function ExternalAgentList({
                   agent={agent}
                   onAction={onAction}
                   canReadDetails={canReadDetails}
+                  onOpenTagManagement={onOpenTagManagement}
                 />
               ))}
             </ul>

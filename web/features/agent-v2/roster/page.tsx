@@ -27,6 +27,7 @@ export default function RosterPage() {
         ? { keyword: null, filter: null, tag_ids: null, created_by_me: null, sort_by: null }
         : {
             external_keyword: null,
+            external_tag_ids: null,
             external_status: null,
             external_connected_by_me: null,
             external_sort_by: null,

@@ -5,10 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SearchInputClear } from '@/app/components/base/search-input'
@@ -44,9 +44,21 @@ export function WorkflowAgentSelectorContent({
   })
   const keyword = useDebounce(search.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
+  const tagCatalog = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: { query: { type: 'agent' } },
+      enabled: tagIds.length > 0,
+    }),
+  )
+  useEffect(() => {
+    if (!tagCatalog.isSuccess || tagCatalog.isFetching) return
+    const available = new Set(tagCatalog.data.map((tag) => tag.id))
+    if (tagIds.every((id) => available.has(id))) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- A deleted shared tag must not remain an invisible picker filter.
+    setTagIds((ids) => ids.filter((id) => available.has(id)))
+  }, [tagCatalog.data, tagCatalog.isSuccess, tagCatalog.isFetching, tagIds])
   const tagPortalRef = useRef<HTMLDivElement>(null)
-  const showExternal =
-    Boolean(onSelectExternal) && (source === 'external' || (source === 'all' && !tagIds.length))
+  const showExternal = Boolean(onSelectExternal) && source !== 'dify'
   const agentsQuery = useInfiniteQuery(
     consoleQuery.agent.inviteOptions.get.infiniteOptions({
       input: (page: number) => ({
@@ -111,17 +123,13 @@ export function WorkflowAgentSelectorContent({
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
               />
             )}
-            {source !== 'external' && (
-              <>
-                <Separator decorative orientation="vertical" className="h-3.5" />
-                <CompactTagFilter
-                  type="agent"
-                  value={tagIds}
-                  onChange={setTagIds}
-                  container={tagPortalRef}
-                />
-              </>
-            )}
+            <Separator decorative orientation="vertical" className="h-3.5" />
+            <CompactTagFilter
+              type="agent"
+              value={tagIds}
+              onChange={setTagIds}
+              container={tagPortalRef}
+            />
           </InputGroupAddon>
         </InputGroup>
       </div>
@@ -208,6 +216,7 @@ export function WorkflowAgentSelectorContent({
                 {showExternal && onSelectExternal && (
                   <ExternalAgentOptions
                     keyword={keyword}
+                    tagIds={tagIds}
                     onSelect={async (agent) => {
                       const selected = await onSelectExternal(agent)
                       if (selected !== false) onRequestClose()

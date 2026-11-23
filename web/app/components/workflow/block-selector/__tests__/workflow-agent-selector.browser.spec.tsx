@@ -144,10 +144,14 @@ beforeEach(({ onTestFinished }) => {
   mocks.fetchAgents.mockClear()
   mocks.fetchExternal.mockReset().mockImplementation(async (input) => {
     const items = [
-      createExternalAgentAsset(),
+      createExternalAgentAsset({ tags: [{ id: 'research', name: 'Research', type: 'agent' }] }),
       createExternalAgentAsset({
         id: '44444444-4444-4444-8444-444444444444',
         name: 'Document Review Agent',
+        tags: [
+          { id: 'research', name: 'Research', type: 'agent' },
+          { id: 'finance', name: 'Finance', type: 'agent' },
+        ],
       }),
       createExternalAgentAsset({
         id: '55555555-5555-4555-8555-555555555555',
@@ -156,8 +160,9 @@ beforeEach(({ onTestFinished }) => {
       }),
     ].filter(
       (agent) =>
-        !input?.query?.keyword ||
-        agent.name.toLowerCase().includes(input.query.keyword.toLowerCase()),
+        (!input?.query?.keyword ||
+          agent.name.toLowerCase().includes(input.query.keyword.toLowerCase())) &&
+        (input?.query?.tag_ids ?? []).every((id) => agent.tags.some((tag) => tag.id === id)),
     )
     return {
       items,
@@ -368,9 +373,10 @@ it('keeps the tag popup above Dify results and pages through tagged agents in Al
   await userEvent.keyboard('{Escape}')
   await picker.getByRole('tab', { name: 'All', exact: true }).click()
   await expect.element(picker.getByRole('button', { name: /Research match 1/ })).toBeVisible()
-  await expect
-    .element(picker.getByRole('button', { name: /Contract Review Agent/ }))
-    .not.toBeInTheDocument()
+  await expect.element(picker.getByRole('button', { name: /Contract Review Agent/ })).toBeVisible()
+  expect(mocks.fetchExternal).toHaveBeenLastCalledWith({
+    query: { page: 1, limit: 20, tag_ids: ['research'] },
+  })
   await picker.getByRole('button', { name: 'Load more', exact: true }).click()
   await expect.element(picker.getByRole('button', { name: /Research match 2/ })).toBeVisible()
   expect(mocks.fetchAgents).toHaveBeenLastCalledWith({
@@ -398,6 +404,11 @@ it('keeps the tag popup above Dify results and pages through tagged agents in Al
       },
     ])
   await picker.getByRole('tab', { name: 'External', exact: true }).click()
-  await expect.element(picker.getByRole('button', { name: /Contract Review Agent/ })).toBeVisible()
-  await expect.element(selectedTags).not.toBeInTheDocument()
+  await expect
+    .element(picker.getByRole('button', { name: /Contract Review Agent/ }))
+    .not.toBeInTheDocument()
+  await expect.element(selectedTags).toBeVisible()
+  expect(mocks.fetchExternal).toHaveBeenLastCalledWith({
+    query: { page: 1, limit: 20, tag_ids: ['research', 'finance', 'support'] },
+  })
 })

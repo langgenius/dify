@@ -506,6 +506,39 @@ describe('consoleQuery transport context', () => {
     expect(url.searchParams.get('keyword')).toBe('Research')
   })
 
+  it('sends every External Agent tag as a repeated key together with the existing roster filters', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        items: [],
+        total: 0,
+        enabled_count: 0,
+        disabled_count: 0,
+        limit: 20,
+        page: 1,
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const options = consoleQuery.externalAgents.get.queryOptions({
+      input: {
+        query: {
+          keyword: 'Review',
+          connected_by_me: true,
+          enabled: false,
+          tag_ids: ['research', 'finance'],
+        },
+      },
+    })
+    await options.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const url = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(url.pathname).toBe('/console/api/external-agents')
+    expect(url.searchParams.getAll('tag_ids')).toEqual(['research', 'finance'])
+    expect(url.searchParams.has('tag_ids[0]')).toBe(false)
+    expect(url.searchParams.get('keyword')).toBe('Review')
+    expect(url.searchParams.get('connected_by_me')).toBe('true')
+    expect(url.searchParams.get('enabled')).toBe('false')
+  })
+
   it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1 }), {
