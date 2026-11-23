@@ -1382,10 +1382,12 @@ def _execute_evaluation_runner(
                 node_run_results.append(node_result)
                 dataset_items.append(run_data.input_list[position])
                 dataset_indices.append(run_data.input_list[position].index)
+                context_selector = run_data.llm_context_selector_mapping.get(node_info.node_id)
                 context_list.append(
-                    _collect_retrieval_contexts(
-                        mapping,
-                        run_data.llm_context_node_mapping.get(node_info.node_id, []),
+                    _collect_selected_contexts(mapping, context_selector)
+                    if context_selector is not None
+                    else _collect_retrieval_contexts(
+                        mapping, run_data.llm_context_node_mapping.get(node_info.node_id, [])
                     )
                 )
 
@@ -1630,6 +1632,30 @@ def _stamp_and_merge(
             for metric in result.metrics:
                 metric.node_info = node_info
         _merge_result(results_by_index, dataset_index, result)
+
+
+def _collect_selected_contexts(node_results: dict[str, NodeRunResult], selector: Sequence[str]) -> list[str]:
+    """Read the selected source output as evidence for an LLM metric.
+
+    A valid selector starts with a source node and output name. Missing or
+    unsupported values yield no evidence; text and retrieval chunks retain
+    their source content without adding a placeholder.
+    """
+    if len(selector) < 2:
+        return []
+    node_result = node_results.get(selector[0])
+    if node_result is None:
+        return []
+    value: Any = node_result.outputs
+    for key in selector[1:]:
+        if not isinstance(value, Mapping):
+            return []
+        value = value.get(key)
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, list):
+        return [str(item["content"]) for item in value if isinstance(item, Mapping) and item.get("content")]
+    return []
 
 
 def _collect_retrieval_contexts(

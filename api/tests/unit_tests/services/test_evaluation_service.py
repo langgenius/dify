@@ -1469,10 +1469,21 @@ def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> No
                 "llm-1",
                 {"type": "llm", "context": {"enabled": True, "variable_selector": ["retrieval-1", "result"]}},
             ),
+            (
+                "llm-2",
+                {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", "text"]}},
+            ),
         ]
     )
 
-    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {"llm-1": ["retrieval-1"]}
+    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {
+        "llm-1": ["retrieval-1"],
+        "llm-2": ["llm-1"],
+    }
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {
+        "llm-1": ["retrieval-1", "result"],
+        "llm-2": ["llm-1", "text"],
+    }
 
 
 def test_validate_knowledge_base_config_rejects_external_provider(sqlite_session: Session) -> None:
