@@ -54,9 +54,10 @@ from repositories.app.agent_runtime_app import (
     ensure_workflow_agent_backing_app,
     resolve_agent_runtime_app,
 )
-from repositories.app.console_repository import ConsoleAppRepository, console_app_actor
+from repositories.app.console_repository import ConsoleAppRepository, StageTargetEvaluationCleanup, console_app_actor
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
+from repositories.tag_repository import TagRepository
 from services.agent.app_composer_store import (
     AgentComposerAgentMissingError,
     AgentComposerCandidateSource,
@@ -64,20 +65,7 @@ from services.agent.app_composer_store import (
     AgentComposerSnapshotMissingError,
     AgentComposerState,
 )
-from services.agent.errors import AgentNameConflictError, AgentNotFoundError
-from services.agent.roster_service import AgentRosterService
-from services.app.agent_app_contracts import (
-    AgentApiAccess,
-    AgentApiAccessChange,
-    AgentAppAccessNotReadyError,
-    AgentAppDetail,
-    AgentAppListItem,
-    AgentAppListPage,
-    AgentAppNameConflictError,
-    AgentAppNotFoundError,
-    AgentReferencingWorkflow,
-)
-from services.app.agent_build_session_store import (
+from services.agent.build_session_store import (
     AgentBuildAgentNotFoundError,
     AgentBuildApplied,
     AgentBuildApplyChangedError,
@@ -92,6 +80,19 @@ from services.app.agent_build_session_store import (
     AgentBuildRefresh,
     AgentBuildSandbox,
 )
+from services.agent.errors import AgentNameConflictError, AgentNotFoundError
+from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import (
+    AgentApiAccess,
+    AgentApiAccessChange,
+    AgentAppAccessNotReadyError,
+    AgentAppDetail,
+    AgentAppListItem,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+    AgentReferencingWorkflow,
+)
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -104,8 +105,12 @@ from services.entities.app_entities import (
 
 
 class AgentAppRepository:
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+    ) -> None:
+        """Use the supplied session factory and preserve evaluation cleanup within App deletion."""
         self._session_factory = session_factory
+        self._stage_evaluation_cleanup = stage_evaluation_cleanup
 
     def create_agent_app(
         self,
@@ -151,7 +156,10 @@ class AgentAppRepository:
     ) -> AgentAppListPage:
         """Load an admitted account's Agent App page and commit its Build conversations together.
 
-        A None visibility set leaves the App filters unrestricted by Agent id.
+        Preconditions: params contains validated filters for the admitted workspace.
+        Postconditions: tags, totals and publication counts reflect the same Agent
+        tag filters; Studio tags never appear on Agent cards. A None visibility
+        set leaves the App filters unrestricted by Agent id.
         The editor mapping's unique key prevents concurrent duplicate mappings.
         A write or projection failure rolls back the page's conversation changes.
         """
@@ -175,6 +183,9 @@ class AgentAppRepository:
                 session, tenant_id=tenant_id, app_ids=[app.id for app in page.items]
             )
             agent_ids = [agent.id for agent in agents.values()]
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=tenant_id, tag_type="agent", target_ids=agent_ids
+            )
             references = load_published_references_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             reference_counts = load_reference_counts_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             items: list[AgentAppListItem] = []
@@ -195,7 +206,11 @@ class AgentAppRepository:
                 )
                 items.append(
                     AgentAppListItem(
-                        app=replace(app_record(app, session=session), has_draft_trigger=app.has_draft_trigger),
+                        app=replace(
+                            app_record(app, session=session),
+                            has_draft_trigger=app.has_draft_trigger,
+                            tags=tags.get(agent.id, []) if agent else [],
+                        ),
                         agent_id=agent.id if agent else None,
                         backing_app_id=backing_app_id,
                         role=(agent.role or "") if agent else None,
@@ -273,10 +288,22 @@ class AgentAppRepository:
                 resource_type=ResourceAccessTokenResourceType.APP,
                 resource_id=app.id,
             )
-            return ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
+            return ConsoleAppRepository.delete_app_record(
+                app,
+                account_id=context.account_id,
+                session=session,
+                stage_evaluation_cleanup=self._stage_evaluation_cleanup,
+            )
 
     def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
-        """Return the tenant Agent's detached detail, materializing a hidden runtime App if needed."""
+        """Return an admitted Agent's detached detail and its independent Agent tags.
+
+        Preconditions: context is admitted to the active workspace and agent_id
+        passed Agent visibility checks. Postconditions: the runtime App is
+        materialized when needed, tags use the canonical Agent identity rather
+        than Studio App bindings, and missing or foreign Agents raise
+        AgentAppNotFoundError without returning another workspace's metadata.
+        """
         with self._session_factory() as session:
             app = resolve_agent_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
             if app is None:
@@ -290,7 +317,12 @@ class AgentAppRepository:
             )
             if agent is None:
                 raise AgentAppNotFoundError
-            record = app_record(app, session=session, projection="detail-with-site")
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=context.active_workspace_id, tag_type="agent", target_ids=[agent.id]
+            )
+            record = replace(
+                app_record(app, session=session, projection="detail-with-site"), tags=tags.get(agent.id, [])
+            )
             # The legacy response view detects old Agent configurations here,
             # including its existing mode update and commit.
             should_mask_agent_mode = bool(

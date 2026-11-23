@@ -21,18 +21,18 @@ const EnvNav = () => {
 
   return (
     <div
-      className={`mr-1 flex h-5.5 items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[currentEnv]} `}
+      className={`me-1 flex h-5.5 items-center rounded-md border px-2 text-xs font-medium ${headerEnvClassName[currentEnv]} `}
     >
       {currentEnv === 'TESTING' && (
         <>
           <span aria-hidden className="i-custom-vender-solid-education-beaker-02 size-3" />
-          <div className="ml-1">{t(($) => $['environment.testing'], { ns: 'common' })}</div>
+          <div className="ms-1">{t(($) => $['environment.testing'], { ns: 'common' })}</div>
         </>
       )}
       {currentEnv === 'DEVELOPMENT' && (
         <>
           <span aria-hidden className="i-custom-vender-solid-development-terminal-square size-3" />
-          <div className="ml-1">{t(($) => $['environment.development'], { ns: 'common' })}</div>
+          <div className="ms-1">{t(($) => $['environment.development'], { ns: 'common' })}</div>
         </>
       )}
     </div>

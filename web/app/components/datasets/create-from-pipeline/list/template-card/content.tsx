@@ -22,7 +22,7 @@ const Content = ({ name, description, iconInfo, chunkStructure }: ContentProps) 
       <div className="flex items-center gap-x-3 p-4 pb-2">
         <div className="relative shrink-0">
           <AppIcon size="large" icon={iconInfo} />
-          <div className="absolute -right-1 -bottom-1 z-10">
+          <div className="absolute -inset-e-1 -bottom-1 z-10">
             <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         </div>

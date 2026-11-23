@@ -7,7 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { ModalContextProvider } from '@/context/modal-context-provider'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
@@ -214,9 +214,10 @@ async function setup(
   await act(async () =>
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
-        <ModalContextProvider>
+        <>
           <Harness modelList={modelList} onSelect={onSelect} onHide={onHide} {...props} />
-        </ModalContextProvider>
+          <ModelCredentialDialog />
+        </>
       </NuqsTestingAdapter>,
       {
         queryClient,

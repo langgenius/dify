@@ -9,7 +9,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
 from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_roster_queries import find_agent_draft
-from services.app.agent_build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
+from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
 
 
 def find_agent_snapshot(

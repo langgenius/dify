@@ -261,7 +261,7 @@ const Authorized = ({
                   <div
                     className={cn(
                       'px-3 pt-1 pb-0.5 system-xs-medium text-text-tertiary',
-                      showItemSelectedIcon && 'pl-7',
+                      showItemSelectedIcon && 'ps-7',
                     )}
                   >
                     OAuth
@@ -287,7 +287,7 @@ const Authorized = ({
                   <div
                     className={cn(
                       'px-3 pt-1 pb-0.5 system-xs-medium text-text-tertiary',
-                      showItemSelectedIcon && 'pl-7',
+                      showItemSelectedIcon && 'ps-7',
                     )}
                   >
                     API Keys

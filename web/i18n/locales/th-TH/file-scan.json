@@ -2,7 +2,6 @@
   "dialog.addTitle": "เพิ่มตัวสแกน",
   "dialog.apiKey": "คีย์ API",
   "dialog.apiSecret": "API Secret",
-  "dialog.clamavHint": "ClamAV ทำงานอยู่ภายในระบบที่ติดตั้งนี้ ที่อยู่ของบริการกำหนดโดยผู้ดูแลระบบที่ติดตั้ง",
   "dialog.dataNotice": "เนื้อหาไฟล์จะถูกส่งไปยังบริการนี้",
   "dialog.editTitle": "แก้ไขตัวสแกน",
   "dialog.endpoint": "ปลายทาง (ไม่บังคับ)",

@@ -1,3 +1,4 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal, NoReturn
 from urllib import parse
@@ -36,6 +37,7 @@ from controllers.console.workspace.error import (
     MemberCannotOperateSelfError,
     MemberNotFoundError,
     MemberRoleAlreadyAssignedError,
+    PendingInvitationNotFoundError,
 )
 from controllers.console.workspace.rbac.schemas import _AccessControlLanguageQuery
 from enums.account import TenantAccountRole
@@ -66,6 +68,10 @@ class MemberInvitePayload(BaseModel):
         return list(dict.fromkeys(email.lower() for email in emails))
 
 
+class PendingInvitationRevokePayload(BaseModel):
+    email: EmailStr
+
+
 class MemberRoleUpdatePayload(BaseModel):
     role: str
 
@@ -81,6 +87,16 @@ class OwnerTransferCheckPayload(BaseModel):
 
 class OwnerTransferPayload(BaseModel):
     token: str
+
+
+class PendingWorkspaceInvitationResponse(ResponseModel):
+    email: str
+    role: TenantAccountRole
+    expires_at: datetime
+
+
+class PendingWorkspaceInvitationListResponse(ResponseModel):
+    invitations: list[PendingWorkspaceInvitationResponse]
 
 
 class MemberInviteSuccessResponse(ResponseModel):
@@ -128,6 +144,7 @@ register_enum_models(console_ns, TenantAccountRole)
 register_schema_models(
     console_ns,
     MemberInvitePayload,
+    PendingInvitationRevokePayload,
     MemberRoleUpdatePayload,
     OwnerTransferEmailPayload,
     OwnerTransferCheckPayload,
@@ -138,6 +155,8 @@ register_response_schema_models(
     AccountWithRoleResponse,
     AccountWithRoleListResponse,
     MemberActionResponse,
+    PendingWorkspaceInvitationListResponse,
+    PendingWorkspaceInvitationResponse,
     MemberInviteErrorResponse,
     MemberInviteResponse,
     MemberInviteSuccessResponse,
@@ -176,6 +195,50 @@ class MemberListApi(Resource):
             for member in members
         ]
         return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), HTTPStatus.OK
+
+
+@console_ns.route("/workspaces/<uuid:workspace_id>/members/pending-invitations")
+class PendingWorkspaceInvitationListApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PendingWorkspaceInvitationListResponse.__name__])
+    @error_responses(ForbiddenError)
+    @console_account_admission()
+    def get(self, request_context: RequestContext, workspace_id: UUID):
+        """List pending invitations for the active workspace."""
+        if str(workspace_id) != request_context.active_workspace_id:
+            raise ForbiddenError()
+        try:
+            invitations = application_services().workspaces.invitations.list_pending(request_context)
+        except NoPermissionError as error:
+            raise ForbiddenError() from error
+        return dump_response(
+            PendingWorkspaceInvitationListResponse,
+            {
+                "invitations": [
+                    {"email": invitation.email, "role": invitation.role, "expires_at": invitation.expires_at}
+                    for invitation in invitations
+                ]
+            },
+        ), HTTPStatus.OK
+
+
+@console_ns.route("/workspaces/<uuid:workspace_id>/members/pending-invitations/revoke")
+class PendingWorkspaceInvitationRevokeApi(Resource):
+    @console_ns.expect(console_ns.models[PendingInvitationRevokePayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @error_responses(ForbiddenError, PendingInvitationNotFoundError)
+    @console_account_admission()
+    def post(self, request_context: RequestContext, workspace_id: UUID):
+        """Revoke an email's invitation: links stop working, a pending member is removed, the seat is freed."""
+        if str(workspace_id) != request_context.active_workspace_id:
+            raise ForbiddenError()
+        args = PendingInvitationRevokePayload.model_validate(console_ns.payload or {})
+        try:
+            application_services().workspaces.invitations.revoke_pending(request_context, args.email)
+        except NoPermissionError as error:
+            raise ForbiddenError() from error
+        except workspace_errors.PendingInvitationNotFoundError as error:
+            raise PendingInvitationNotFoundError() from error
+        return dump_response(SimpleResultResponse, {"result": "success"}), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/invite-email")

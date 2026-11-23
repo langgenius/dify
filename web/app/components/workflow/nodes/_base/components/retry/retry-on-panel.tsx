@@ -66,7 +66,7 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
         <div className="flex h-10 items-center justify-between px-4 py-2">
           <label
             htmlFor={retryEnabledId}
-            className="mr-0.5 cursor-pointer system-sm-semibold-uppercase text-text-secondary"
+            className="me-0.5 cursor-pointer system-sm-semibold-uppercase text-text-secondary"
           >
             {retryOnFailureLabel}
           </label>
@@ -80,11 +80,11 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
           <div className="px-4 pb-2">
             <Fieldset className="mb-1 flex w-full items-center">
               <FieldsetLegend className="sr-only">{maxRetriesLabel}</FieldsetLegend>
-              <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">
+              <div className="me-2 grow system-xs-medium-uppercase text-text-secondary">
                 {maxRetriesLabel}
               </div>
               <Slider
-                className="mr-3 w-27"
+                className="me-3 w-27"
                 value={retry_config?.max_retries || 3}
                 onValueChange={handleMaxRetriesChange}
                 min={1}
@@ -120,11 +120,11 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
             </Fieldset>
             <Fieldset className="flex items-center">
               <FieldsetLegend className="sr-only">{retryIntervalLabel}</FieldsetLegend>
-              <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">
+              <div className="me-2 grow system-xs-medium-uppercase text-text-secondary">
                 {retryIntervalLabel}
               </div>
               <Slider
-                className="mr-3 w-27"
+                className="me-3 w-27"
                 value={retry_config?.retry_interval || 1000}
                 onValueChange={handleRetryIntervalChange}
                 min={100}

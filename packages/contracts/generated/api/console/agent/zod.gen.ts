@@ -954,6 +954,8 @@ export const zWorkflowPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
+  kind: z.string().nullish(),
+  type: z.string(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
@@ -1603,6 +1605,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -2283,12 +2286,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -2341,6 +2346,8 @@ export const zAgentAppPartial = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3116,6 +3123,8 @@ export const zAgentAppDetailWithSite = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3827,6 +3836,8 @@ export const zAgentAppPartialWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 /**
@@ -3909,6 +3920,8 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullable(),
   use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullable(),
+  workflow_kind: z.string().nullish(),
+  workflow_type: z.string().nullish(),
 })
 
 export const zGetAgentQuery = z.object({
@@ -3956,6 +3969,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**

@@ -18,7 +18,7 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
-from services.app.agent_build_session_store import AgentDraftSummary
+from services.agent.build_session_store import AgentDraftSummary
 
 
 def find_agent_draft(
