@@ -39,7 +39,7 @@ export function CollaboratorPill({
           <CollaboratorAvatar
             collaborator={collaborator}
             size="sm"
-            className="ring-1 ring-components-panel-bg"
+            className="border border-components-panel-bg"
           />
         )
         return (
@@ -56,7 +56,7 @@ export function CollaboratorPill({
         <>
           <span
             aria-hidden
-            className="-ms-1 flex size-6 items-center justify-center rounded-full bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white ring-1 ring-components-panel-bg select-none"
+            className="-ms-1 flex size-6 items-center justify-center rounded-full border border-components-panel-bg bg-components-icon-bg-midnight-solid text-2xs leading-3 font-semibold text-white select-none"
           >
             +{overflowCount}
           </span>

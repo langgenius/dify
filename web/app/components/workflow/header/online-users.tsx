@@ -101,7 +101,7 @@ const OnlineUsers = () => {
             >
               <CollaboratorAvatar
                 size="sm"
-                className="ring-1 ring-components-panel-bg"
+                className="border border-components-panel-bg"
                 collaborator={{
                   id: currentUser.id,
                   name: currentUser.name || fallbackUsername,
