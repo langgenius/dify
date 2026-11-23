@@ -94,10 +94,10 @@ it('creates trimmed values and saves the draft before navigating, blocking dupli
     body: { graph },
   })
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
-  expect(createSnippet).toHaveBeenCalledOnce()
   expect(router.push).not.toHaveBeenCalled()
   sync.resolve({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
   await expect.element(dialog).not.toBeInTheDocument()
+  expect(createSnippet).toHaveBeenCalledOnce()
   expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
 })
 

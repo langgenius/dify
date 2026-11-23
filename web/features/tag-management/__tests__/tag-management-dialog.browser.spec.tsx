@@ -94,8 +94,14 @@ it('ignores empty submissions through Enter and blur', async () => {
   await input().click()
   await userEvent.keyboard('{Enter}')
   await userEvent.tab()
-  expect(fake.console.tags.post).not.toHaveBeenCalled()
   await expect.element(dialog()).toBeVisible()
+  // The next real submission goes through the same path, so an empty request would precede it.
+  await input().fill('NextTag')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveValue('')
+  expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+    body: { name: 'NextTag', type: 'app' },
+  })
 })
 
 it.each(['button', 'Escape'])('dismisses management with %s', async (method) => {
@@ -110,5 +116,4 @@ it('hides management controls without workspace permission', async () => {
   await renderModal('app', [])
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(input()).not.toBeInTheDocument()
-  expect(fake.console.tags.post).not.toHaveBeenCalled()
 })

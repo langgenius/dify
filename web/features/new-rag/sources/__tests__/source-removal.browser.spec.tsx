@@ -30,10 +30,12 @@ describe('Source removal confirmation', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.removeSource' }).click()
 
+    const confirm = page.getByRole('button', { name: 'knowledgeSources.removeSource' })
+    await expect.element(confirm).toBeVisible()
     expect(
       fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,
     ).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: 'knowledgeSources.removeSource' }).click()
+    await confirm.click()
     await vi.waitFor(async () =>
       expect(
         fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,

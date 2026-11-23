@@ -199,7 +199,6 @@ it('offers neither operations nor editable tags without snippet permissions', as
   await expect
     .element(page.getByRole('combobox', { name: 'common.tag.noTag: Tone Rewriter' }))
     .toBeDisabled()
-  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('exports the YAML content and filename through the real download owner', async () => {

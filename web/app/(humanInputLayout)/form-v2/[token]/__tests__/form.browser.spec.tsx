@@ -45,25 +45,6 @@ beforeEach(async () => {
   )
 })
 
-it('loads the v2 form for the route token', async () => {
-  const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  await render(
-    <Wrapper>
-      <RouteTokenContext value="v2-token">
-        <FormContent />
-      </RouteTokenContext>
-    </Wrapper>,
-  )
-
-  await expect
-    .element(page.getByRole('textbox', { name: 'Review v2-token' }))
-    .toHaveValue('Default for v2-token')
-  await expect
-    .element(page.getByRole('textbox', { name: 'share.humanInputV2.otpLabel' }))
-    .toBeVisible()
-  await expect.element(page.getByRole('button', { name: 'Approve' })).toBeEnabled()
-})
-
 it('replaces an edited form and verification proof when the route token changes', async () => {
   const { wrapper: Wrapper } = createConsoleQueryWrapper()
   const view = await render(

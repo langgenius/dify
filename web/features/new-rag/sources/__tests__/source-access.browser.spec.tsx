@@ -154,12 +154,13 @@ describe('Sources: source-access', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }).click()
 
-    expect(
-      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
-    ).not.toHaveBeenCalled()
     const dialog = page.getByRole('dialog', {
       name: 'knowledgeSpace.overview.attention.modelReadiness.title',
     })
+    await expect.element(dialog).toBeVisible()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+    ).not.toHaveBeenCalled()
     await dialog
       .getByRole('button', {
         name: 'modelProvider.modelProvider.selector.configure',

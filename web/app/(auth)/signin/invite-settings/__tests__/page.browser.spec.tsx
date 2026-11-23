@@ -24,6 +24,7 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
   useSearchParams: () => new URLSearchParams('invite_token=invite-token'),
 }))
+// boundary: pin the browser timezone so the default invitation timezone is deterministic.
 vi.mock('@/utils/timezone', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/timezone')>()),
   getBrowserTimezone: () => 'Asia/Taipei',

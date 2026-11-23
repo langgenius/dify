@@ -52,6 +52,8 @@ async function renderForm({
       queryFn: () => new Promise(() => {}),
     })
   } else if (profile === 'signed-out') {
+    // Seed the settled 401 instead of serving it: a served 401 triggers the token refresh, and its
+    // failure redirects the page to /signin, which only an end-to-end run can follow.
     queryClient.setQueryDefaults(profileOptions.queryKey, { retryOnMount: false })
     queryClient
       .getQueryCache()

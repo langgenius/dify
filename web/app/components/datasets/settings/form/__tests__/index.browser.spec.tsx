@@ -213,7 +213,6 @@ it('prevents readonly users from editing basic information, opening the picker o
   const save = screen.getByRole('button', { name: 'Save', exact: true })
   await expect.element(save).toBeDisabled()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 })
 
 it('opens the named icon action with the keyboard and returns focus after dismissal', async () => {

@@ -225,12 +225,14 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
+    const configure = page.getByRole('button', {
+      name: 'modelProvider.modelProvider.selector.configure',
+    })
+    await expect.element(configure).toBeVisible()
     expect(
       fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
     ).not.toHaveBeenCalled()
-    await user.click(
-      page.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
-    )
+    await user.click(configure)
     expect(routerMock.push).toHaveBeenCalledWith(
       '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources%2Fnew%2Fwebsite&capability=ingest',
     )
