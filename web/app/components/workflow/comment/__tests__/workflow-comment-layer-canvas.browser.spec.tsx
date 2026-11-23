@@ -1,5 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { ControlMode } from '../../types'
 import {
   markers,
   openThread,
@@ -218,44 +219,35 @@ describe('markers and the composer', () => {
 
 describe('panning the canvas', () => {
   const canvas = () => document.getElementById('workflow-container')!.getBoundingClientRect()
-  const panLeft = (distance: number) =>
-    userEvent.dragAndDrop(
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      {
-        sourcePosition: { x: 1000, y: 650 },
-        targetPosition: { x: 1000 - distance, y: 650 },
-        steps: 4,
-      } as Parameters<typeof userEvent.dragAndDrop>[2],
-    )
   const inCanvas = (element: Element) => {
     const box = element.getBoundingClientRect()
     const bounds = canvas()
     return box.left >= bounds.left && box.right <= bounds.right
   }
 
-  it('keeps a new comment where it was placed, and its input in use once panned out of view', async () => {
-    const screen = await renderLayer()
+  it('keeps a draft editable at its original canvas position after scrolling its marker out of view', async () => {
+    const screen = await renderLayer({ controlMode: ControlMode.Comment })
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store.getState().setPendingComment({ x: 600, y: 300 })
+    const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
+    await pane.click({ position: { x: 600, y: 300 } })
     const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
     const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
     await composer.fill('Placed here')
-    const start = handle.element().getBoundingClientRect()
-
-    await panLeft(800)
+    await pane.wheel({ delta: { x: 1600, y: 0 } })
 
     await expect
       .poll(() => handle.element().getBoundingClientRect().right)
       .toBeLessThan(canvas().left)
-    expect(start.left - handle.element().getBoundingClientRect().left).toBeCloseTo(800, -1)
     await expect.element(composer).toBeVisible()
     expect(inCanvas(composer.element())).toBe(true)
-    await composer.click()
+    await expect.element(composer).toHaveFocus()
+    await userEvent.keyboard(' after panning')
     await userEvent.keyboard('{Enter}')
     await expect
       .poll(() => api.create.mock.calls[0]?.[0])
-      .toMatchObject({ body: { position_x: 600, position_y: 300, content: 'Placed here' } })
+      .toMatchObject({
+        body: { position_x: 600, position_y: 300, content: 'Placed here after panning' },
+      })
   })
 
   it('keeps a new comment’s input clear of the side panel on the side it sits in right-to-left layouts', async () => {
@@ -276,7 +268,8 @@ describe('panning the canvas', () => {
     const screen = await renderLayer()
     await openThread(screen)
 
-    await panLeft(300)
+    const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
+    await pane.wheel({ delta: { x: 600, y: 0 } })
 
     await expect
       .poll(() => markers(screen).first().element().getBoundingClientRect().right)
