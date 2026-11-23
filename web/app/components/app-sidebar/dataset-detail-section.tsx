@@ -6,8 +6,8 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -74,8 +74,11 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     return !datasetRes.is_published
   }, [datasetRes])
 
-  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
-    useEvaluationAccess()
+  const { data: evaluationEntry } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  )
+  const isEvaluationVisible = evaluationEntry?.visible ?? false
+  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const navigation = useMemo(() => {
     if (!datasetId) return []
 

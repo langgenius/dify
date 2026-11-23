@@ -2,9 +2,9 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
+import { renderWithTags } from '@/test/tag-management'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagSelector } from '../components/tag-selector'
-import { renderWithTags } from './render-browser'
+import { TagSelector } from '../tag-selector'
 
 const mocks = vi.hoisted(() => ({
   tags: [] as Tag[],

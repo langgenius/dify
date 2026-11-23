@@ -2,9 +2,9 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { ComponentProps } from 'react'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { renderWithTags } from '@/test/tag-management'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import { TagFilter } from '../components/tag-filter'
-import { renderWithTags } from './render-browser'
+import { TagFilter } from '../tag-filter'
 
 const tags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },

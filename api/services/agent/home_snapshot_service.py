@@ -25,6 +25,7 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspaceOwnerType,
 )
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.errors import (
     AgentBuildSandboxNotFoundError,
     AgentHomeSnapshotCreateFailedError,
@@ -131,18 +132,10 @@ class AgentHomeSnapshotService:
 
     @classmethod
     def retire_all_for_agent(cls, *, session: Session, tenant_id: str, agent_id: str) -> list[str]:
-        rows = session.scalars(
-            select(AgentHomeSnapshot).where(
-                AgentHomeSnapshot.tenant_id == tenant_id,
-                AgentHomeSnapshot.agent_id == agent_id,
-            )
-        ).all()
-        now = naive_utc_now()
-        for row in rows:
-            if row.status == AgentWorkingResourceStatus.ACTIVE:
-                row.status = AgentWorkingResourceStatus.RETIRED
-                row.retired_at = now
-        return [row.id for row in rows]
+        """Stage retirement of the tenant Agent's home snapshots in the caller's transaction."""
+        return AgentWorkspaceRepository(session=session).retire_home_snapshots_for_agent(
+            tenant_id=tenant_id, agent_id=agent_id
+        )
 
     @classmethod
     def retire_all_for_tenant(cls, *, session: Session, tenant_id: str) -> list[str]:

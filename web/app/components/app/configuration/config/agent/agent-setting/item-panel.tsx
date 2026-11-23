@@ -24,7 +24,7 @@ const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) 
     >
       <div className="flex items-center">
         {icon}
-        <div id={titleId} className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">
+        <div id={titleId} className="ms-3 me-1 text-sm/6 font-semibold text-text-secondary">
           {name}
         </div>
         <Infotip>

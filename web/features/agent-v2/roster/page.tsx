@@ -8,7 +8,7 @@ import { useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterList } from './components/agent-roster-list'
@@ -190,7 +190,7 @@ export default function RosterPage() {
         state={listState}
         onOpenTagManagement={openTagManagement}
       />
-      <TagManagementModal
+      <TagManagementDialog
         type="agent"
         show={tagManagementOpen}
         onClose={() => setTagManagementOpen(false)}

@@ -1,7 +1,7 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
-import { TagTriggerContent } from '@/features/tag-management/components/tag-trigger-content'
+import { TagTriggerContent } from '@/features/tag-management/tag-trigger-content'
 
 export function ReadOnlyAgentTags({ agent }: { agent: Pick<AgentAppPartial, 'name' | 'tags'> }) {
   const { t } = useTranslation(['common'])
