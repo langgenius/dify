@@ -31,7 +31,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
-import { ExternalAgentEmptySearch } from './external-agent-empty-search'
+import { ExternalAgentEmptyState } from './external-agent-empty-state'
 import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 export type ExternalAgentListItem = {
@@ -285,8 +285,8 @@ export function ExternalAgentList({
 }: ExternalAgentListProps) {
   const { t } = useTranslation(['agentRoster'])
 
-  if (agents.length === 0 && filtered) {
-    return <ExternalAgentEmptySearch onClearFilters={onClearFilters} />
+  if (agents.length === 0) {
+    return <ExternalAgentEmptyState onClearFilters={filtered ? onClearFilters : undefined} />
   }
 
   return (
@@ -297,35 +297,20 @@ export function ExternalAgentList({
         aria-label={t(($) => $['roster.tabs.external'])}
       >
         <ScrollAreaContent className="px-2 pt-2 pb-4 sm:px-8">
-          {agents.length > 0 ? (
-            <ul
-              aria-label={t(($) => $['roster.listLabel'])}
-              className={cn(MAIN_NAV_APP_CARD_GRID_CLASS_NAME, 'gap-2.5')}
-            >
-              {agents.map((agent) => (
-                <ExternalAgentCard
-                  key={agent.key}
-                  agent={agent}
-                  onAction={onAction}
-                  canReadDetails={canReadDetails}
-                  onOpenTagManagement={onOpenTagManagement}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div
-              role="status"
-              className="flex min-h-64 flex-col items-center justify-center gap-3 text-text-tertiary"
-            >
-              <span
-                aria-hidden
-                className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg"
-              >
-                <span className="i-ri-robot-2-line size-6" />
-              </span>
-              <p className="system-sm-regular">{t(($) => $['external.empty'])}</p>
-            </div>
-          )}
+          <ul
+            aria-label={t(($) => $['roster.listLabel'])}
+            className={cn(MAIN_NAV_APP_CARD_GRID_CLASS_NAME, 'gap-2.5')}
+          >
+            {agents.map((agent) => (
+              <ExternalAgentCard
+                key={agent.key}
+                agent={agent}
+                onAction={onAction}
+                canReadDetails={canReadDetails}
+                onOpenTagManagement={onOpenTagManagement}
+              />
+            ))}
+          </ul>
         </ScrollAreaContent>
       </ScrollAreaViewport>
       <ScrollAreaScrollbar>

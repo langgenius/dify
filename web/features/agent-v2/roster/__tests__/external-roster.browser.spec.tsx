@@ -210,9 +210,7 @@ it('keeps a failed initial list distinct from empty results without a query erro
   await expect.element(page.getByRole('status')).not.toBeInTheDocument()
   await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
-  await expect
-    .element(page.getByText('No external agents yet', { exact: true }))
-    .not.toBeInTheDocument()
+  await expect.element(page.getByText('No agent yet', { exact: true })).not.toBeInTheDocument()
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('button', { name: 'Retry', exact: true }))
