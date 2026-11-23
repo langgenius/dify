@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, HTTPException
 
 from controllers.console import flask_admission
 from controllers.console.app import advanced_prompt_template, agent_app_access, agent_app_feature
@@ -86,6 +86,28 @@ def test_features_parse_full_state_and_drop_soul_fields(app: Flask, services: Se
         )
     assert result == {"result": "success"}
     assert services.agent_apps.features.calls == [(CONTEXT, str(AGENT_ID), {"opening_statement": "Hi"})]
+
+
+@pytest.mark.parametrize("body", [b"{", b" ", b"null", b"false", b"0", b'""', b"[]"])
+def test_invalid_request_body_does_not_update_features(app: Flask, services: Services, body: bytes) -> None:
+    view = unwrap(agent_app_feature.AgentAppFeatureConfigResource.post)
+
+    with app.test_request_context("/", method="POST", data=body, content_type="application/json"):
+        with pytest.raises(HTTPException) as exc_info:
+            view(agent_app_feature.AgentAppFeatureConfigResource(), CONTEXT, AGENT_ID)
+
+    assert exc_info.value.code == 422
+    assert services.agent_apps.features.calls == []
+
+
+def test_empty_request_body_keeps_feature_defaults_behavior(app: Flask, services: Services) -> None:
+    view = unwrap(agent_app_feature.AgentAppFeatureConfigResource.post)
+
+    with app.test_request_context("/", method="POST"):
+        result = view(agent_app_feature.AgentAppFeatureConfigResource(), CONTEXT, AGENT_ID)
+
+    assert result == {"result": "success"}
+    assert services.agent_apps.features.calls == [(CONTEXT, str(AGENT_ID), {})]
 
 
 @pytest.mark.parametrize("role", list(TenantAccountRole))
