@@ -69,6 +69,7 @@ def _oauth_admission(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
         ENABLE_SOCIAL_OAUTH_LOGIN=True,
         CONSOLE_WEB_URL=CONSOLE_WEB_URL,
+        APP_WEB_URL="",
     )
 
 
@@ -193,7 +194,7 @@ def test_callback_passes_stable_values_and_serializes_session_cookies(
         response = narrowed(OAuthCallback().get("github"), Response)
 
     assert response.status_code == 302
-    assert response.headers["Location"] == "/apps?oauth_new_user=false"
+    assert response.headers["Location"] == f"{CONSOLE_WEB_URL}/apps?oauth_new_user=false"
     assert service.callback_calls == [
         OAuthCallbackCommand(
             provider="github",
@@ -386,8 +387,8 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
     config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com")
     service = FakeOAuthService(callback_error=OAuthRegistrationError("Try again"))
     _install_service(monkeypatch, service)
-    target = "https://apps.example.com/chatbot/app-code?input=a%26b#message"
-    resume = f"{CONSOLE_WEB_URL}/signin?{urlencode({'mode': 'end_user', 'redirect_url': target})}"
+    target = "/chatbot/app-code?input=a%26b#message"
+    resume = f"/signin?{urlencode({'is_end_user': '1', 'redirect_url': target})}"
     state = _end_user_state(resume)
     with app.test_request_context(
         "/oauth/authorize/github",
@@ -398,14 +399,16 @@ def test_callback_retry_keeps_end_user_mode_and_web_app_return_target(
     destination = urlsplit(response.headers["Location"])
     assert destination.netloc == "console.example.com"
     assert destination.path == "/signin"
-    assert parse_qs(destination.query) == {"message": ["Try again"], "mode": ["end_user"], "redirect_url": [target]}
+    assert parse_qs(destination.query) == {"message": ["Try again"], "is_end_user": ["1"], "redirect_url": [target]}
 
 
-@pytest.mark.parametrize("target", ["https://evil.example/signin", "/apps", "//evil.example/signin", None])
+@pytest.mark.parametrize(
+    "target", ["https://evil.example/signin", "/apps", "/chatbot/app-code", "//evil.example/signin", None]
+)
 def test_end_user_oauth_falls_back_to_personal_portal(
     app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], target: str | None
 ) -> None:
-    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True)
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.com/web")
     service = FakeOAuthService()
     _install_service(monkeypatch, service)
     with app.test_request_context("/oauth/login/github", query_string={"mode": "end_user", "redirect_url": target}):
@@ -414,7 +417,7 @@ def test_end_user_oauth_falls_back_to_personal_portal(
     encoded_state = service.authorization_calls[0][1].state
     assert encoded_state is not None
     state = decode_account_oauth_state(encoded_state)
-    assert state.context["redirect_url"] == f"{CONSOLE_WEB_URL}/my-apps"
+    assert state.context["redirect_url"] == "https://apps.example.com/web/my-apps"
 
 
 @pytest.mark.parametrize("path", ["/my-apps", "/connections?sort=recent#details"])
@@ -438,11 +441,8 @@ def test_end_user_oauth_returns_to_personal_portal_with_session(
     assert any("webapp_access_token=personal-login" in cookie for cookie in response.headers.getlist("Set-Cookie"))
 
 
-@pytest.mark.parametrize("path", ["/signin?mode=end_user", "/my-apps"])
-@pytest.mark.parametrize("base_path", ["", "/dify"])
-def test_end_user_oauth_preserves_relative_return_targets(
-    config_overrides: Callable[..., None], path: str, base_path: str
-) -> None:
-    config_overrides(CONSOLE_WEB_URL=f"{CONSOLE_WEB_URL}{base_path}")
-    target = f"{base_path}{path}"
-    assert oauth_controller._end_user_return_target(target) == target
+@pytest.mark.parametrize("prefix", ["", "/console"])
+def test_end_user_oauth_resumes_relative_signin_on_console(config_overrides: Callable[..., None], prefix: str) -> None:
+    config_overrides(CONSOLE_WEB_URL=f"{CONSOLE_WEB_URL}/console", APP_WEB_URL="https://apps.example.com/web")
+    path = "/signin?is_end_user=1&redirect_url=%2Fmy-apps"
+    assert oauth_controller._end_user_return_target(f"{prefix}{path}") == f"{CONSOLE_WEB_URL}/console{path}"

@@ -95,6 +95,31 @@ query failure behavior stay unchanged. A missing field or failed request must no
 be interpreted as confirmed same-origin configuration. WebApp availability is
 independent of whether Account login is enabled; this URL grants no access.
 
+### Console login return targets
+
+`GET /console/api/login` and `GET /console/api/oauth/login/{provider}` accept
+root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
+`is_end_user` is a frontend navigation hint; clients select the existing
+`mode=end_user` API contract to request End User login.
+
+Both relative paths and absolute URLs are untrusted input. Absolute targets must
+match the configured origin exactly: same scheme, host, and effective port. The
+resolver rejects credentials in the authority, protocol-relative references,
+backslashes, control characters, and dot segments (including percent-encoded
+ones), and it rebuilds the response URL from the configured origin instead of
+echoing the supplied host. Route restrictions then apply to the resolved path.
+
+Console OAuth resolves relative returns against `CONSOLE_WEB_URL`. End User
+portal and App returns use `APP_WEB_URL`, falling back to `CONSOLE_WEB_URL` when
+unset. OAuth resume URLs for `/signin` still use the Console base so clients can
+finish the handoff after sign-in. These bases come from deployment configuration,
+not the API request host. Relative targets can omit the deployment prefix or
+include it once, and query strings and fragments are preserved.
+
+End User admission and route restrictions still apply. App returns require a
+PKCE-bound handoff, and a personal portal session requires its cookie to reach
+the Web API. Previously allowed absolute portal URLs on Console continue to work.
+
 ### Agent tracing deployment discovery exception
 
 `agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication
