@@ -8154,6 +8154,11 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /external-agents
+**Read admitted assets using repeat-encoded UUID tags before pagination**
+
+The shared parser preserves every tag_ids value; all selected tags must
+match. Invalid IDs fail before the service and do not start a task.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -8165,6 +8170,7 @@ Delete an API key for a dataset
 | page | query |  | No | integer, <br>**Default:** 1 |
 | sort_by | query |  | No | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at |
 | sort_order | query |  | No | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc |
+| tag_ids | query | Shared Agent tag IDs; every selected tag must match | No | [ string (uuid) ] |
 
 #### Responses
 
@@ -28010,9 +28016,11 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | metadata_revision | integer |  | Yes |
 | name | string |  | Yes |
 | overrides | [ string ] |  | Yes |
+| permission_keys | [ string ] | Effective Agent resource ACL keys; External control-plane role gates remain independent. | Yes |
 | reference_count | integer | Distinct readable current App references on list rows; null withholds details. | Yes |
 | role | string |  | Yes |
 | row_version | integer |  | Yes |
+| tags | [ [ExternalAgentTagResponse](#externalagenttagresponse) ] | Current labels from the shared workspace Agent pool. | Yes |
 | tenant_id | string |  | Yes |
 | test_display_generation | integer |  | Yes |
 | tracing_enabled | boolean |  | Yes |
@@ -28107,6 +28115,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | page | integer, <br>**Default:** 1 |  | No |
 | sort_by | [ExternalAssetSortBy](#externalassetsortby) |  | No |
 | sort_order | [ExternalAssetSortOrder](#externalassetsortorder) |  | No |
+| tag_ids | [ string (uuid) ] | Shared Agent tag IDs; every selected tag must match | No |
 
 #### ExternalAgentListResponse
 
@@ -28140,6 +28149,14 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | Yes |
+
+#### ExternalAgentTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ExternalAgentTimeoutPolicy
 

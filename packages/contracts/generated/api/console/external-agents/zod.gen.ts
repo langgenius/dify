@@ -54,45 +54,6 @@ export const zExternalAgentSwitchPayload = z.object({
 })
 
 /**
- * ExternalAgentAssetResponse
- */
-export const zExternalAgentAssetResponse = z.object({
-  active_connection_revision_id: z.string(),
-  created_at: z.iso.datetime(),
-  created_by: z.string(),
-  deleted_at: z.iso.datetime().nullable(),
-  description: z.string(),
-  enabled: z.boolean(),
-  icon: z.string().nullable(),
-  icon_background: z.string().nullable(),
-  icon_type: z.string().nullable(),
-  icon_url: z.string().nullable(),
-  id: z.string(),
-  metadata_revision: z.int(),
-  name: z.string(),
-  overrides: z.array(z.string()),
-  reference_count: z.int().nullable(),
-  role: z.string(),
-  row_version: z.int(),
-  tenant_id: z.string(),
-  test_display_generation: z.int(),
-  tracing_enabled: z.boolean(),
-  updated_at: z.iso.datetime(),
-})
-
-/**
- * ExternalAgentListResponse
- */
-export const zExternalAgentListResponse = z.object({
-  disabled_count: z.int(),
-  enabled_count: z.int(),
-  items: z.array(zExternalAgentAssetResponse),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * ExternalAgentInfoPayload
  */
 export const zExternalAgentInfoPayload = z.object({
@@ -231,6 +192,56 @@ export const zExternalAgentVerificationResponse = z.object({
   interface_url: z.string(),
   verification_id: z.string(),
   warnings: zExternalAgentConnectionWarningsResponse,
+})
+
+/**
+ * ExternalAgentTagResponse
+ */
+export const zExternalAgentTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ExternalAgentAssetResponse
+ */
+export const zExternalAgentAssetResponse = z.object({
+  active_connection_revision_id: z.string(),
+  created_at: z.iso.datetime(),
+  created_by: z.string(),
+  deleted_at: z.iso.datetime().nullable(),
+  description: z.string(),
+  enabled: z.boolean(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: z.string().nullable(),
+  icon_url: z.string().nullable(),
+  id: z.string(),
+  metadata_revision: z.int(),
+  name: z.string(),
+  overrides: z.array(z.string()),
+  permission_keys: z.array(z.string()),
+  reference_count: z.int().nullable(),
+  role: z.string(),
+  row_version: z.int(),
+  tags: z.array(zExternalAgentTagResponse),
+  tenant_id: z.string(),
+  test_display_generation: z.int(),
+  tracing_enabled: z.boolean(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * ExternalAgentListResponse
+ */
+export const zExternalAgentListResponse = z.object({
+  disabled_count: z.int(),
+  enabled_count: z.int(),
+  items: z.array(zExternalAgentAssetResponse),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -494,6 +505,7 @@ export const zGetExternalAgentsQuery = z.object({
   page: z.int().gte(1).optional().default(1),
   sort_by: z.enum(['created_at', 'updated_at']).optional().default('updated_at'),
   sort_order: z.enum(['asc', 'desc']).optional().default('desc'),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**

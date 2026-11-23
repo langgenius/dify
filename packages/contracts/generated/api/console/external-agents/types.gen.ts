@@ -111,9 +111,11 @@ export type ExternalAgentAssetResponse = {
   metadata_revision: number
   name: string
   overrides: Array<string>
+  permission_keys: Array<string>
   reference_count: number | null
   role: string
   row_version: number
+  tags: Array<ExternalAgentTagResponse>
   tenant_id: string
   test_display_generation: number
   tracing_enabled: boolean
@@ -258,6 +260,12 @@ export type ExternalAgentConnectionResponse = {
   verified_at: string
 }
 
+export type ExternalAgentTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
 export type ExternalMetricDayResponse = {
   date: string
   metrics: ExternalMetricValuesResponse
@@ -352,6 +360,7 @@ export type GetExternalAgentsData = {
     page?: number
     sort_by?: 'created_at' | 'updated_at'
     sort_order?: 'asc' | 'desc'
+    tag_ids?: Array<string>
   }
   url: '/external-agents'
 }
