@@ -68,3 +68,55 @@ def test_freeze_startup_objects_can_be_turned_off(monkeypatch: pytest.MonkeyPatc
 def test_freeze_startup_objects_is_off_unless_configured() -> None:
     # Shorter full collections come with more of them; deployments opt in for the shorter pauses.
     assert DeploymentConfig.model_fields["GC_FREEZE_AFTER_STARTUP"].default is False
+
+
+_STARTUP_HOOKS = {
+    "gunicorn-post-worker-init": """\
+        import runpy
+        gunicorn_conf = runpy.run_path("gunicorn.conf.py")
+
+        def start():
+            gunicorn_conf["post_worker_init"](object())
+    """,
+    "celery-worker-ready": """\
+        from celery.signals import worker_ready
+        import extensions.ext_celery
+
+        def start():
+            worker_ready.send(sender=object())
+    """,
+}
+
+
+@pytest.mark.parametrize("hook", sorted(_STARTUP_HOOKS))
+def test_cycles_created_after_a_startup_hook_are_still_collected(hook: str) -> None:
+    # A real hook in a child process, so freezing never touches the test runner's heap.
+    script = textwrap.dedent(_STARTUP_HOOKS[hook]) + textwrap.dedent("""\
+        import gc
+        import weakref
+
+        class Probe:
+            pass
+
+        held_at_startup = Probe()
+        start()
+        assert gc.get_freeze_count() > 0, "the hook did not freeze the startup objects"
+        assert not any(obj is held_at_startup for obj in gc.get_objects())
+
+        created_later = Probe()
+        created_later.cycle = created_later
+        created_later_ref = weakref.ref(created_later)
+        del created_later
+        gc.collect()
+        assert created_later_ref() is None, "a cycle created after startup was not collected"
+    """)
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=Path(__file__).parents[3],
+        env={**os.environ, "PYTHONPATH": str(Path(__file__).parents[3]), "GC_FREEZE_AFTER_STARTUP": "true"},
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
