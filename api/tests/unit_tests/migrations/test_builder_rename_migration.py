@@ -1,47 +1,26 @@
-"""The Builder rename retains indexes and unique constraints on both databases."""
+"""Builder storage is created directly with its final names on both dialects."""
 
-import importlib.util
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
+from tests.helpers.builder_migration import load_builder_migration
+
 
 @pytest.mark.parametrize("dialect", ["postgresql", "mysql"])
-def test_builder_rename_exports_dialect_specific_index_and_constraint_renames(dialect: str) -> None:
-    path = (
-        Path(__file__).parents[3]
-        / "migrations/versions/2026_08_23_1200-df1b0114de40_rename_workflow_copilot_to_dify_builder.py"
-    )
-    spec = importlib.util.spec_from_file_location("builder_rename", path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
+def test_builder_storage_exports_final_indexes_and_constraints(dialect: str) -> None:
+    migration = load_builder_migration()
     output = StringIO()
-    migration.__dict__["op"] = Operations(
+    with Operations.context(
         MigrationContext.configure(dialect_name=dialect, opts={"as_sql": True, "output_buffer": output})
-    )
-    migration.upgrade()
-    migration.downgrade()
+    ):
+        migration._create_builder_storage()
+        migration._drop_builder_storage()
     sql = output.getvalue()
-    if dialect == "mysql":
-        assert (
-            "ALTER TABLE dify_builder_sessions RENAME INDEX workflow_copilot_session_tenant_idx "
-            "TO dify_builder_session_tenant_idx" in sql
-        )
-        assert (
-            "ALTER TABLE dify_builder_sessions RENAME INDEX dify_builder_session_tenant_idx "
-            "TO workflow_copilot_session_tenant_idx" in sql
-        )
-        assert (
-            "RENAME INDEX workflow_copilot_conversation_item_session_seq_key "
-            "TO dify_builder_conversation_item_session_seq_key" in sql
-        )
-        assert "ALTER INDEX" not in sql
-        assert "RENAME CONSTRAINT" not in sql
-    else:
-        assert 'ALTER INDEX "workflow_copilot_session_tenant_idx" RENAME TO "dify_builder_session_tenant_idx"' in sql
-        assert 'RENAME CONSTRAINT "workflow_copilot_session_pkey" TO "dify_builder_session_pkey"' in sql
+    assert "workflow_copilot_" not in sql
+    assert "CREATE TABLE dify_builder_sessions" in sql
+    assert "CREATE INDEX dify_builder_session_tenant_idx" in sql
+    assert "CONSTRAINT dify_builder_conversation_item_session_seq_key UNIQUE" in sql
+    assert "DROP TABLE dify_builder_sessions" in sql

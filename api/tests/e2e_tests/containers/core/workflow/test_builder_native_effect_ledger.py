@@ -16,6 +16,7 @@ from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import DispatchPermit, Outcome, PolicyStop, WaitReason
 from services.dify_builder.native_testing.authorization import EffectApprovalDecision
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
+from tests.helpers.builder_migration import load_builder_migration
 
 if TYPE_CHECKING:
     from multiprocessing.connection import Connection as ProcessConnection
@@ -52,12 +53,9 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTest, PendingOwner
 
 
-import importlib.util
 import multiprocessing
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-from types import ModuleType
 from uuid import uuid4
 
 import pytest
@@ -180,24 +178,6 @@ class LedgerCase:
         return effect
 
 
-def _migration(filename: str) -> ModuleType:
-    path = Path(__file__).parents[5] / "migrations/versions" / filename
-    spec = importlib.util.spec_from_file_location("native_ledger_migration_" + filename, path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
-    return migration
-
-
-def _native_migration() -> ModuleType:
-    return _migration("2026_10_14_1200-c67e12a904bf_add_builder_native_testing.py")
-
-
-def _request_migration() -> ModuleType:
-    return _migration("2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py")
-
-
 def _assert_single_request_state_check(connection: Connection, *, native: bool) -> None:
     """Check the real physical constraint, including SQLAlchemy PG truncation."""
     checks = inspect(connection).get_check_constraints("dify_builder_execution_requests")
@@ -266,7 +246,7 @@ def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
         # Consumers require these three back immediately; their owning fixtures still
         # replace them through the real later migrations. Teardown no longer needs every
         # create_all table, because it truncates only what currently exists -- the Code
-        # child dropped above belongs to migration 7d2b9c4e61a8, which this fixture does
+        # physical Code child dropped above is installed by the phase this fixture does
         # not run, and test_builder_native_code_physical_state owns its lifecycle.
         for table in ("effect_dispatch_claims", "payload_objects", "invocation_states"):
             db.metadata.tables["dify_builder_native_" + table].create(connection)
@@ -275,14 +255,15 @@ def migrated_native_tables(flask_app_with_containers: DifyApp) -> None:
         # naming convention; never hand-create or conditionally drop the CHECK.
         context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
         with Operations.context(context):
-            _request_migration().downgrade()
-            _request_migration().upgrade()
+            migration = load_builder_migration()
+            migration._drop_execution_requests()
+            migration._create_execution_requests()
             _assert_single_request_state_check(connection, native=False)
-            _native_migration().upgrade()
-            _migration("2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py").upgrade()
+            migration._create_native_ledger()
+            migration._add_canvas_path()
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
-        connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
+        connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:builder-native-ledger'"))
 
 
 def raw_ledger_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -> LedgerCase:
@@ -327,7 +308,7 @@ def raw_ledger_case(native_owner: _fixture_types_0.NativeOwner, no_live: None) -
     with factory.begin() as session:
         assert (
             session.scalar(text("SELECT obj_description('dify_builder_native_attempts'::regclass)"))
-            == "ci-alembic:c67e12a904bf"
+            == "ci-alembic:builder-native-ledger"
         )
         session.add(Tenant(name="other tenant", status=TenantStatus.NORMAL))
         session.add(
@@ -677,8 +658,7 @@ def test_sql_checks_reject_overspend_and_invalid_outcome(ledger_case: LedgerCase
 def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers: DifyApp, starting_schema: str) -> None:
     from extensions.ext_database import db
 
-    migration = _native_migration()
-    predecessor = _request_migration()
+    migration = load_builder_migration()
     schema = "native_migration_" + uuid4().hex
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         assert connection.dialect.name == "postgresql"
@@ -689,7 +669,7 @@ def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers:
             if starting_schema == "predecessor":
                 require_instance(DifyBuilderTestInput.__table__, Table).create(connection)
                 operations.drop_column("dify_builder_test_inputs", "http_fixtures")
-                predecessor.upgrade()
+                migration._create_execution_requests()
                 _assert_single_request_state_check(connection, native=False)
                 _assert_waiting_policy(connection, native=False)
             else:
@@ -698,25 +678,25 @@ def test_native_migration_upgrade_downgrade_reupgrade(flask_app_with_containers:
                 # The model already has the new index; remove just that index
                 # so upgrade tests replacing its convention-named CHECK.
                 operations.drop_index("builder_native_waiting_idx", table_name="dify_builder_execution_requests")
-            migration.upgrade()
+            migration._create_native_ledger()
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
             assert "dify_builder_native_attempts" in inspect(connection).get_table_names(schema=schema)
-            migration.downgrade()
+            migration._drop_native_ledger()
             _assert_single_request_state_check(connection, native=False)
             _assert_waiting_policy(connection, native=False)
             assert "dify_builder_native_attempts" not in inspect(connection).get_table_names(schema=schema)
             # Schema-qualified downgrade must not remove the public race trigger.
             assert connection.scalar(text("SELECT to_regprocedure('public.builder_native_immutable_ledger()')"))
-            migration.upgrade()
+            migration._create_native_ledger()
             _assert_single_request_state_check(connection, native=True)
             _assert_waiting_policy(connection, native=True)
             if starting_schema == "predecessor":
-                migration.downgrade()
-                predecessor.downgrade()
+                migration._drop_native_ledger()
+                migration._drop_execution_requests()
                 assert "dify_builder_execution_requests" not in inspect(connection).get_table_names(schema=schema)
-                predecessor.upgrade()
-                migration.upgrade()
+                migration._create_execution_requests()
+                migration._create_native_ledger()
                 _assert_single_request_state_check(connection, native=True)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))

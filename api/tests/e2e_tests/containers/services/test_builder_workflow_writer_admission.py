@@ -53,6 +53,7 @@ from services.dify_builder.app_metadata import NativeAppMetadata
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.task_controls import ExecutionFence, execution_scope, require_active
+from tests.helpers.builder_migration import load_builder_migration
 
 type Infrastructure = tuple[sessionmaker[SqlSession], Redis[bytes]]
 type Enqueued = tuple[str, Action, Actor, str]
@@ -435,20 +436,18 @@ def test_expired_same_session_token_cannot_commit_late_native_write(harness: Har
 
 
 def test_workflow_writer_migration_upgrade_and_downgrade(infrastructure: Infrastructure) -> None:
-    from importlib import import_module
-
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
     from sqlalchemy import inspect, text
 
     factory, _redis = infrastructure
     schema = "writer_migration_" + uuid4().hex
-    migration = import_module("migrations.versions.2026_10_30_1200-5b73e0c8f124_builder_workflow_writer")
+    migration = load_builder_migration()
     with factory.kw["bind"].begin() as connection:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
         with Operations.context(MigrationContext.configure(connection)):
-            migration.upgrade()
+            migration._create_workflow_writers()
             inspector = inspect(connection)
             assert inspector.get_pk_constraint("dify_builder_workflow_writers")["constrained_columns"] == [
                 "tenant_id",
@@ -460,7 +459,7 @@ def test_workflow_writer_migration_upgrade_and_downgrade(infrastructure: Infrast
             assert {index["name"] for index in inspector.get_indexes("dify_builder_workflow_writers")} == {
                 "builder_workflow_writer_session_idx",
             }
-            migration.downgrade()
+            migration._drop_workflow_writers()
             assert not inspect(connection).has_table("dify_builder_workflow_writers")
         connection.execute(text(f'DROP SCHEMA "{schema}"'))
 

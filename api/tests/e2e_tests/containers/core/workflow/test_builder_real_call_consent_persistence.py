@@ -14,16 +14,13 @@ every race below runs against migration-built constraints, not model metadata.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import multiprocessing
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
-from pathlib import Path
 from threading import Event, Thread
 from time import monotonic, sleep
-from types import ModuleType
 from uuid import uuid4
 
 import pytest
@@ -77,6 +74,7 @@ from tests.e2e_tests.containers.core.workflow.test_builder_execution_policy_pers
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
+from tests.helpers.builder_migration import load_builder_migration
 
 PROVIDER = "langgenius/dify-gmail/dify-gmail"
 PLUGIN = "langgenius/dify-gmail"
@@ -86,47 +84,25 @@ SYNTHETIC_ARTIFACT = f"{PLUGIN}:9.9.9@{'f' * 64}"
 SYNTHETIC_SCHEMA = "e" * 64
 SYNTHETIC_AUDIT = "synthetic-ci-audit-revision"
 APPROVED = GmailReadParameters(message_id="18cab_1", include_body=False, include_attachments=False)
-MIGRATION = "migrations/versions/2026_10_11_1200-d82f9a6c31e0_add_builder_real_call_consents.py"
-EXECUTION_MIGRATION = "migrations/versions/2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py"
 # Table comments written only by ``migrated_builder_tables`` after each actual migration built the table.
 MIGRATED_TABLES = {
-    "dify_builder_execution_requests": "ci-alembic:c84e6a217b90",
-    "dify_builder_real_call_consents": "ci-alembic:d82f9a6c31e0",
+    "dify_builder_execution_requests": "ci-alembic:builder-execution-requests",
+    "dify_builder_real_call_consents": "ci-alembic:builder-real-call-consents",
 }
-
-
-def _migration(relative: str, name: str) -> ModuleType:
-    path = Path(__file__).parents[5] / relative
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
-    return migration
 
 
 @pytest.fixture(scope="module", autouse=True)
 def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
-    """Rebuild the shared database's Builder sidecar tables through their actual migrations.
+    """Rebuild the shared database's Builder sidecar tables through the consolidated migration.
 
     Drops the ``create_all`` execution-request and consent tables (no foreign key references
     them; the per-test cleanup leaves them empty) and the request migration's added test-input
-    column, then applies the actual request, consent, and canvas column migrations
+    column, then applies the request, consent, and canvas phases
     against the ``public`` schema every test here uses, and marks the rebuilt tables.
     """
     from extensions.ext_database import db
 
-    execution = _migration(EXECUTION_MIGRATION, "builder_execution_migration_for_ci_tables")
-    consent = _migration(MIGRATION, "builder_real_call_consent_migration_for_ci_tables")
-    canvas_path = _migration(
-        "migrations/versions/2026_11_10_1200-c34e2f7b5a10_builder_native_canvas_path.py",
-        "builder_canvas_path_migration_for_ci_tables",
-    )
-    assert (execution.revision, consent.revision, consent.down_revision) == (
-        "c84e6a217b90",
-        "d82f9a6c31e0",
-        "c84e6a217b90",
-    )
+    migration = load_builder_migration()
     with flask_app_with_containers.app_context():
         db.session.remove()
         with db.engine.begin() as connection:
@@ -136,9 +112,9 @@ def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
             connection.execute(text("DROP TABLE IF EXISTS dify_builder_execution_requests"))
             connection.execute(text("ALTER TABLE dify_builder_test_inputs DROP COLUMN IF EXISTS http_fixtures"))
             with Operations.context(MigrationContext.configure(connection)):
-                execution.upgrade()
-                consent.upgrade()
-                canvas_path.upgrade()
+                migration._create_execution_requests()
+                migration._create_real_call_consents()
+                migration._add_canvas_path()
             for table, marker in MIGRATED_TABLES.items():
                 connection.execute(text(f"COMMENT ON TABLE {table} IS '{marker}'"))
 
@@ -826,13 +802,7 @@ def test_real_postgres_consent_migration_upgrade_downgrade(flask_app_with_contai
     """The actual migration in an isolated schema: constraints, index, downgrade and re-upgrade."""
     from extensions.ext_database import db
 
-    path = Path(__file__).parents[5] / MIGRATION
-    spec = importlib.util.spec_from_file_location("builder_real_call_consent_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
-    assert (migration.revision, migration.down_revision) == ("d82f9a6c31e0", "c84e6a217b90")
+    migration = load_builder_migration()
     schema = "builder_consent_migration_" + uuid4().hex
     table = "dify_builder_real_call_consents"
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
@@ -840,7 +810,7 @@ def test_real_postgres_consent_migration_upgrade_downgrade(flask_app_with_contai
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
         with Operations.context(MigrationContext.configure(connection)):
-            migration.upgrade()
+            migration._create_real_call_consents()
             inspector = inspect(connection)
             columns = {column["name"] for column in inspector.get_columns(table, schema=schema)}
             assert columns == {column.name for column in DifyBuilderRealCallConsent.__table__.columns}
@@ -873,9 +843,9 @@ def test_real_postgres_consent_migration_upgrade_downgrade(flask_app_with_contai
                 connection.execute(insert, {**identity, "digest": "0" * 64, "refresh": 1})
             nested.rollback()
             connection.execute(insert, {**identity, "digest": "0" * 64, "refresh": 0})
-            migration.downgrade()
+            migration._drop_real_call_consents()
             assert table not in inspect(connection).get_table_names(schema=schema)
-            migration.upgrade()
+            migration._create_real_call_consents()
             assert table in inspect(connection).get_table_names(schema=schema)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
