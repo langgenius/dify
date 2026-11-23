@@ -686,6 +686,8 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     model_instance.provider_model_bundle.configuration.tenant_id = request.caller.tenant_id
     prepared = _prepare(service, request, model_instance)
     provider_configuration = SimpleNamespace(
+        tenant_id=request.caller.tenant_id,
+        provider=SimpleNamespace(provider=model_instance.provider),
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
         system_configuration=SimpleNamespace(

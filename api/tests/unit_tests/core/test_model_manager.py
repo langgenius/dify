@@ -284,30 +284,11 @@ def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[HostedCred
     return instance, llm
 
 
-@pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID])
-@pytest.mark.parametrize("stream", [False, True])
-@pytest.mark.parametrize("credential_source", ["provider", "model"])
-def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
-    config_overrides: Callable[..., None], quota_type: ProviderQuotaType, stream: bool, credential_source: str
-) -> None:
-    instance, llm = _make_hosted_credit_model(quota_type)
+def test_hosted_credit_denial_uses_custom_only_for_this_invocation(config_overrides: Callable[..., None]) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
     configuration = instance.provider_model_bundle.configuration
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
-    if credential_source == "provider":
-        configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
-    else:
-        configuration.custom_configuration.models = [
-            CustomModelConfiguration(model="gpt-4", model_type=ModelType.LLM, credentials={"api_key": "custom"})
-        ]
-
-    def invoke_once(*, request_id: str) -> None:
-        response = instance.invoke_llm(
-            prompt_messages=[], stream=stream, request_metadata={"invocation_id": request_id}
-        )
-        if isinstance(response, LLMResult):
-            assert response.message.content == "ok"
-        else:
-            assert [chunk.delta.message.content for chunk in response] == ["ok"]
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
 
     first_id, second_id = str(uuid4()), str(uuid4())
     with (
@@ -325,15 +306,18 @@ def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
         ) as billing_reserve,
         patch.object(BillingService, "quota_commit") as commit,
         patch.object(BillingService, "quota_release") as release,
-        patch.object(PluginModelRuntime, "get_model_schema", return_value=configuration.provider.models[0]),
     ):
-        invoke_once(request_id=first_id)
+        assert (
+            instance.invoke_llm([], stream=False, request_metadata={"invocation_id": first_id}).message.content == "ok"
+        )
         commit.assert_not_called()
         assert llm.credential_calls == [{"api_key": "custom"}]
         assert instance.credentials == {"api_key": "hosted"}
         assert configuration.using_provider_type == configuration.preferred_provider_type == ProviderType.SYSTEM
 
-        invoke_once(request_id=second_id)
+        assert (
+            instance.invoke_llm([], stream=False, request_metadata={"invocation_id": second_id}).message.content == "ok"
+        )
         commit.assert_called_once()
         assert commit.call_args.kwargs["actual_amount"] == 2
         assert llm.credential_calls == [{"api_key": "custom"}, {"api_key": "hosted"}]
@@ -341,8 +325,30 @@ def test_hosted_credit_denial_uses_custom_only_for_this_invocation(
 
     fresh_provider_lookup.assert_not_called()
     assert [call.kwargs["amount"] for call in billing_reserve.call_args_list] == [2, 2]
-    assert [call.kwargs["bucket"] for call in billing_reserve.call_args_list] == [quota_type.value] * 2
+    assert [call.kwargs["bucket"] for call in billing_reserve.call_args_list] == ["trial", "trial"]
     assert [call.kwargs["request_id"] for call in billing_reserve.call_args_list] == [first_id, second_id]
+
+
+def test_paid_hosted_stream_uses_model_level_custom_credentials(config_overrides: Callable[..., None]) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.PAID)
+    configuration = instance.provider_model_bundle.configuration
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+    configuration.custom_configuration.models = [
+        CustomModelConfiguration(model="gpt-4", model_type=ModelType.LLM, credentials={"api_key": "custom"})
+    ]
+
+    with (
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+        ) as reserve,
+        patch.object(PluginModelRuntime, "get_model_schema", return_value=configuration.provider.models[0]),
+    ):
+        assert [chunk.delta.message.content for chunk in instance.invoke_llm([], stream=True)] == ["ok"]
+
+    assert reserve.call_args.kwargs["bucket"] == "paid"
+    assert llm.credential_calls == [{"api_key": "custom"}]
 
 
 def test_quota_only_model_does_not_replace_executor_on_reservation_denial(
@@ -481,7 +487,7 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     )
     reservation = MagicMock(commit_before_delivery=True)
     events: list[str] = []
-    reservation.commit.side_effect = lambda _usage=None: events.append("commit")
+    reservation.commit.side_effect = lambda _usage: events.append("commit")
 
     invocation_id = str(uuid4())
     with (

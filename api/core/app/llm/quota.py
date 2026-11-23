@@ -145,10 +145,8 @@ def reserve_model_quota_for_model(
     created_by: CreditUsageCreatedByInput = None,
 ) -> ModelQuotaReservation:
     """Resolve the current provider and reserve its system-hosted quota before invocation."""
-    return _reserve_resolved_model_quota(
-        tenant_id=tenant_id,
-        provider=provider,
-        provider_configuration=_get_provider_configuration(tenant_id=tenant_id, provider=provider),
+    return reserve_model_quota_for_configuration(
+        _get_provider_configuration(tenant_id=tenant_id, provider=provider),
         model_type=model_type,
         model=model,
         request_id=request_id,
@@ -158,46 +156,21 @@ def reserve_model_quota_for_model(
 
 
 def reserve_model_quota_for_configuration(
-    configuration: ProviderConfiguration,
-    *,
-    model_type: ModelType,
-    model: str,
-    request_id: str | None,
-    app_type: CreditUsageAppTypeInput,
-    created_by: CreditUsageCreatedByInput,
-) -> ModelQuotaReservation:
-    """Reserve against the System configuration that supplied the invocation's credentials.
-
-    The configuration is already resolved for the model's tenant. Re-selecting the provider
-    here could select Custom while the caller still holds System credentials. Billing, not
-    the selected route, determines whether the live credit balance covers this call.
-    """
-    if configuration.using_provider_type != ProviderType.SYSTEM:
-        raise ValueError("A System configuration is required to reserve hosted model quota.")
-    return _reserve_resolved_model_quota(
-        tenant_id=configuration.tenant_id,
-        provider=configuration.provider.provider,
-        provider_configuration=configuration,
-        model_type=model_type,
-        model=model,
-        request_id=request_id,
-        app_type=app_type,
-        created_by=created_by,
-    )
-
-
-def _reserve_resolved_model_quota(
-    *,
-    tenant_id: str,
-    provider: str,
     provider_configuration: ProviderConfiguration,
+    *,
     model_type: ModelType,
     model: str,
     request_id: str | None,
     app_type: CreditUsageAppTypeInput,
     created_by: CreditUsageCreatedByInput,
 ) -> ModelQuotaReservation:
-    """Reserve for an already tenant-matched route, with no hosted charge for a Custom route."""
+    """Reserve quota for the supplied, tenant-bound route without reselecting credentials.
+
+    Custom routes incur no hosted charge. Billing evaluates the live balance for System
+    credit routes, even if it changed since the configuration was resolved.
+    """
+    tenant_id = provider_configuration.tenant_id
+    provider = provider_configuration.provider.provider
     effective_app_type = normalize_credit_usage_app_type(app_type)
     effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(

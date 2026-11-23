@@ -2,12 +2,10 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    Concatenate,
     Literal,
     Optional,
     ParamSpec,
@@ -58,7 +56,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
-T = TypeVar("T")
 
 
 class LLMModerationPolicy(Protocol):
@@ -588,48 +585,6 @@ class ModelInstance:
         )
 
 
-@dataclass(frozen=True)
-class _PreparedModelInvocation:
-    """A selected executor and its settlement, if the invocation consumes hosted quota."""
-
-    model: ModelInstance
-    reservation: "ModelQuotaReservation | None"
-
-    def commit(self, usage: LLMUsage | None = None) -> None:
-        """Settle executed work without charging an unmetered invocation."""
-        if self.reservation is not None:
-            if usage is None:
-                self.reservation.commit()
-            else:
-                self.reservation.commit(usage)
-
-    def stream(self, chunks: Iterable[T], *, usage_for: Callable[[T], LLMUsage | None] | None = None) -> Generator[T]:
-        """Forward unmetered output or deliver only after the selected reservation has settled.
-
-        Buffer streams that report usage only when the reservation needs terminal usage.
-        An unmetered stream is delegated directly so cancellation reaches its producer.
-        """
-        if self.reservation is None:
-            yield from chunks
-            return
-
-        buffered = [] if usage_for is not None and not self.reservation.commit_before_delivery else None
-        usage = None
-        for chunk in chunks:
-            chunk_usage = usage_for(chunk) if usage_for is not None else None
-            if chunk_usage is not None:
-                usage = chunk_usage
-            if buffered is None:
-                self.commit(usage)
-                yield chunk
-            else:
-                buffered.append(chunk)
-
-        if buffered is not None:
-            self.commit(usage)
-            yield from buffered
-
-
 class QuotaManagedModelInstance(ModelInstance):
     """Reserve and settle hosted quota before delivering model results."""
 
@@ -712,21 +667,23 @@ class QuotaManagedModelInstance(ModelInstance):
             reservation_kwargs["created_by"] = created_by
         return self.reserve_quota(**reservation_kwargs)
 
-    def _prepare_invocation(self, request_metadata: Mapping[str, object] | None) -> _PreparedModelInvocation:
-        """Reserve quota for this executor without invoking it; reservation failures propagate."""
-        return _PreparedModelInvocation(model=self, reservation=self._reserve_quota_for_request(request_metadata))
+    def _prepare_invocation(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "ModelQuotaReservation | ModelInstance":
+        """Reserve hosted quota before inference; a subclass may return an unmetered executor instead."""
+        return self._reserve_quota_for_request(request_metadata)
 
     @contextmanager
     def _admitted_invocation(
         self, request_metadata: Mapping[str, object] | None
-    ) -> Generator[_PreparedModelInvocation]:
-        """Own the prepared invocation until completion, releasing any unsettled quota on exit."""
-        invocation = self._prepare_invocation(request_metadata)
+    ) -> "Generator[ModelQuotaReservation | ModelInstance]":
+        """Release any unsettled reservation when the hosted invocation ends."""
+        admission = self._prepare_invocation(request_metadata)
         try:
-            yield invocation
+            yield admission
         finally:
-            if invocation.reservation is not None:
-                self.release_quota_safely(invocation.reservation)
+            if not isinstance(admission, ModelInstance):
+                self.release_quota_safely(admission)
 
     @staticmethod
     def release_quota_safely(reservation) -> None:
@@ -736,18 +693,25 @@ class QuotaManagedModelInstance(ModelInstance):
             logger.exception("Failed to release model quota reservation")
 
     def _invoke_with_quota(
-        self, function: Callable[Concatenate[ModelInstance, P], R], /, *args: P.args, **kwargs: P.kwargs
+        self,
+        function: Callable[P, R],
+        fallback_method: Callable[[ModelInstance], Callable[P, R]],
+        /,
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> R:
-        """Invoke a base-class non-streaming capability once, settling only hosted invocations."""
+        """Call the hosted method or its unmetered counterpart once, settling only hosted work."""
         request_metadata = kwargs.get("request_metadata")
         effective_request_metadata = self._resolve_request_metadata(
             request_metadata if isinstance(request_metadata, Mapping) else None
         )
         if effective_request_metadata is not None:
             kwargs["request_metadata"] = effective_request_metadata
-        with self._admitted_invocation(effective_request_metadata) as invocation:
-            response = function(invocation.model, *args, **kwargs)
-            invocation.commit()
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            if isinstance(admission, ModelInstance):
+                return fallback_method(admission)(*args, **kwargs)
+            response = function(*args, **kwargs)
+            admission.commit()
             return response
 
     @override
@@ -780,9 +744,9 @@ class QuotaManagedModelInstance(ModelInstance):
             )
 
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        with self._admitted_invocation(effective_request_metadata) as invocation:
-            response = ModelInstance._invoke_llm(
-                invocation.model,
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission._invoke_llm if isinstance(admission, ModelInstance) else super()._invoke_llm
+            response = invoke(
                 prompt_messages=normalized_prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -793,7 +757,8 @@ class QuotaManagedModelInstance(ModelInstance):
             )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
-            invocation.commit(response.usage)
+            if not isinstance(admission, ModelInstance):
+                admission.commit(response.usage)
             return response
 
     def _invoke_llm_stream(
@@ -807,9 +772,9 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        with self._admitted_invocation(effective_request_metadata) as invocation:
-            response = ModelInstance._invoke_llm(
-                invocation.model,
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission._invoke_llm if isinstance(admission, ModelInstance) else super()._invoke_llm
+            response = invoke(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -821,7 +786,29 @@ class QuotaManagedModelInstance(ModelInstance):
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
 
-            yield from invocation.stream(response, usage_for=lambda chunk: chunk.delta.usage)
+            if isinstance(admission, ModelInstance):
+                yield from response
+                return
+
+            usage: LLMUsage | None = None
+            if admission.commit_before_delivery:
+                for chunk in response:
+                    chunk_usage = chunk.delta.usage
+                    if chunk_usage is not None:
+                        usage = chunk_usage
+                    admission.commit(usage)
+                    yield chunk
+                return
+
+            buffered_chunks = []
+            for chunk in response:
+                chunk_usage = chunk.delta.usage
+                if chunk_usage is not None:
+                    usage = chunk_usage
+                buffered_chunks.append(chunk)
+
+            admission.commit(usage)
+            yield from buffered_chunks
 
     @override
     def invoke_text_embedding(
@@ -832,7 +819,8 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
-            ModelInstance.invoke_text_embedding,
+            super().invoke_text_embedding,
+            lambda fallback: fallback.invoke_text_embedding,
             texts=texts,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -847,7 +835,8 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
-            ModelInstance.invoke_multimodal_embedding,
+            super().invoke_multimodal_embedding,
+            lambda fallback: fallback.invoke_multimodal_embedding,
             multimodel_documents=multimodel_documents,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -864,7 +853,8 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
-            ModelInstance.invoke_rerank,
+            super().invoke_rerank,
+            lambda fallback: fallback.invoke_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -883,7 +873,8 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
         return self._invoke_with_quota(
-            ModelInstance.invoke_multimodal_rerank,
+            super().invoke_multimodal_rerank,
+            lambda fallback: fallback.invoke_multimodal_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -893,11 +884,21 @@ class QuotaManagedModelInstance(ModelInstance):
 
     @override
     def invoke_moderation(self, text: str, *, request_metadata: Mapping[str, object] | None = None) -> bool:
-        return self._invoke_with_quota(ModelInstance.invoke_moderation, text=text, request_metadata=request_metadata)
+        return self._invoke_with_quota(
+            super().invoke_moderation,
+            lambda fallback: fallback.invoke_moderation,
+            text=text,
+            request_metadata=request_metadata,
+        )
 
     @override
     def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
-        return self._invoke_with_quota(ModelInstance.invoke_speech2text, file=file, request_metadata=request_metadata)
+        return self._invoke_with_quota(
+            super().invoke_speech2text,
+            lambda fallback: fallback.invoke_speech2text,
+            file=file,
+            request_metadata=request_metadata,
+        )
 
     @override
     def invoke_tts(
@@ -917,14 +918,16 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None = None,
     ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        with self._admitted_invocation(effective_request_metadata) as invocation:
-            response = ModelInstance.invoke_tts(
-                invocation.model,
-                content_text=content_text,
-                voice=voice,
-                request_metadata=effective_request_metadata,
-            )
-            yield from invocation.stream(response)
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission.invoke_tts if isinstance(admission, ModelInstance) else super().invoke_tts
+            response = invoke(content_text=content_text, voice=voice, request_metadata=effective_request_metadata)
+            if isinstance(admission, ModelInstance):
+                yield from response
+                return
+
+            for chunk in response:
+                admission.commit()
+                yield chunk
 
 
 class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
@@ -951,7 +954,9 @@ class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
         )
 
     @override
-    def _prepare_invocation(self, request_metadata: Mapping[str, object] | None) -> _PreparedModelInvocation:
+    def _prepare_invocation(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "ModelQuotaReservation | ModelInstance":
         """Prefer hosted admission; keep its error if the same model cannot run on Custom."""
         try:
             return super()._prepare_invocation(request_metadata)
@@ -959,7 +964,7 @@ class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
             custom = self._resolve_custom_model(request_metadata)
             if custom is None:
                 raise
-            return _PreparedModelInvocation(model=custom, reservation=None)
+            return custom
 
     def _resolve_custom_model(self, request_metadata: Mapping[str, object] | None) -> ModelInstance | None:
         """Resolve workspace credentials for the same model without invoking or changing the hosted instance.
