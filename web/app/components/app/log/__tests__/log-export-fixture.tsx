@@ -65,6 +65,7 @@ export async function openExport(
     ? {
         task_id: previousTaskId,
         status: 'processing',
+        identity_labels: [{ id: endUserId, label: 'user-1024', source: 'end-user' }],
         filters: {
           start: '2026-11-16T00:00:00Z',
           end: '2026-11-19T23:59:59Z',
@@ -127,6 +128,7 @@ export async function openExport(
         task = {
           task_id: requests.length === 1 ? taskId : crypto.randomUUID(),
           status: 'pending',
+          identity_labels: filters.identity_labels ?? [],
           filters: {
             start: filters.start ? `${filters.start.replace(' ', 'T')}:00Z` : null,
             end: filters.end ? `${filters.end.replace(' ', 'T')}:59Z` : null,

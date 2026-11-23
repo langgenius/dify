@@ -76,6 +76,7 @@ from services.retention.conversation.log_export_service import (
 )
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportIdentityLabel,
     LogExportLimitReachedError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
@@ -144,6 +145,8 @@ class ConversationLogExportPreviewQuery(ChatConversationFilterQuery):
 class ConversationLogExportCreatePayload(ChatConversationFilterQuery):
     model_config = ConfigDict(extra="forbid")
 
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+
 
 class _ConversationLogValidationError(BaseHTTPException):
     error_code = "unprocessable_entity"
@@ -193,6 +196,7 @@ class ConversationLogExportFiltersResponse(ResponseModel):
 
 class ConversationLogExportLatestTaskResponse(ConversationLogExportStatusResponse):
     filters: ConversationLogExportFiltersResponse
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class ConversationLogExportLatestResponse(ResponseModel):
@@ -499,7 +503,10 @@ class ConversationLogExportApi(Resource):
         filters = _log_export_filters(payload, scope.timezone)
         try:
             task = application_services().conversation_log_exports.create_task(
-                scope=scope, requested_by=request_context.account_id, filters=filters
+                scope=scope,
+                requested_by=request_context.account_id,
+                filters=filters,
+                identity_labels=payload.identity_labels,
             )
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc

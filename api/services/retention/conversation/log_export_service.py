@@ -15,12 +15,14 @@ from services.entities.conversation_entities import (
 from services.retention.log_export_csv import CsvRowProgress, write_log_export_csv
 from services.retention.log_export_task import (
     LogExportDownload,
+    LogExportIdentityLabel,
     LogExportStatus,
     LogExportTask,
     LogExportTaskNotFoundError,
     LogExportTaskStore,
     OpenLogExportFile,
     StoreLogExportFile,
+    filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
     save_and_dispatch_log_export_task,
@@ -88,12 +90,17 @@ class ConversationLogExportService:
         return self._conversations.get_console_log_export_scope(context, app_id)
 
     def create_task(
-        self, *, scope: ConsoleConversationScope, requested_by: str, filters: ConsoleConversationLogFilters
+        self,
+        *,
+        scope: ConsoleConversationScope,
+        requested_by: str,
+        filters: ConsoleConversationLogFilters,
+        identity_labels: tuple[LogExportIdentityLabel, ...] = (),
     ) -> ConversationLogExportTask:
         """Save and dispatch a pending task for an admitted app and caller before returning its ID.
 
-        Require time filters converted from the caller's timezone to UTC. Propagate a
-        publication failure and mark the task failed if it is still pending.
+        Require time filters converted from the caller's timezone to UTC and keep labels for
+        selected identities. Propagate publication failures and mark the task failed if pending.
         """
         if scope.app_mode not in _LOG_CSV_LAYOUTS:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -102,6 +109,9 @@ class ConversationLogExportService:
             app_id=scope.app_id,
             requested_by=requested_by,
             filters=filters,
+            identity_labels=filter_log_export_identity_labels(
+                identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
+            ),
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

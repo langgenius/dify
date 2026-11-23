@@ -612,22 +612,6 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
- * ConversationLogExportCreatePayload
- */
-export const zConversationLogExportCreatePayload = z.object({
-  account_ids: z.array(z.uuid()).optional(),
-  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
-  end: z.string().nullish(),
-  end_user_ids: z.array(z.uuid()).optional(),
-  keyword: z.string().nullish(),
-  sort_by: z
-    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
-    .optional()
-    .default('-updated_at'),
-  start: z.string().nullish(),
-})
-
-/**
  * ConversationLogExportTaskResponse
  */
 export const zConversationLogExportTaskResponse = z.object({
@@ -2620,20 +2604,6 @@ export const zWorkflowExecutionStatus = z.enum([
 ])
 
 /**
- * WorkflowLogExportCreatePayload
- *
- * Submit the same unpaginated filters used by the export preview.
- */
-export const zWorkflowLogExportCreatePayload = z.object({
-  account_ids: z.array(z.uuid()).optional(),
-  created_at__after: z.iso.datetime().nullish(),
-  created_at__before: z.iso.datetime().nullish(),
-  end_user_ids: z.array(z.uuid()).optional(),
-  keyword: z.string().nullish(),
-  status: zWorkflowExecutionStatus.nullish(),
-})
-
-/**
  * SimpleAccountResponse
  */
 export const zSimpleAccountResponse = z.object({
@@ -3698,6 +3668,49 @@ export const zConversationLogIdentitySearchResponse = z.object({
 })
 
 /**
+ * LogExportIdentityLabel
+ *
+ * A display label captured by the requester for an identity in the export filters.
+ */
+export const zLogExportIdentityLabel = z.object({
+  id: z.uuid(),
+  label: z.string().max(255),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * ConversationLogExportCreatePayload
+ */
+export const zConversationLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  keyword: z.string().nullish(),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
+  start: z.string().nullish(),
+})
+
+/**
+ * WorkflowLogExportCreatePayload
+ *
+ * Submit unpaginated preview filters and their display labels for the export.
+ */
+export const zWorkflowLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  created_at__after: z.iso.datetime().nullish(),
+  created_at__before: z.iso.datetime().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  keyword: z.string().nullish(),
+  status: zWorkflowExecutionStatus.nullish(),
+})
+
+/**
  * WorkflowLogExportIdentityResponse
  */
 export const zWorkflowLogExportIdentityResponse = z.object({
@@ -4177,6 +4190,7 @@ export const zWorkflowLogExportFiltersResponse = z.object({
  */
 export const zWorkflowLogExportLatestTaskResponse = z.object({
   filters: zWorkflowLogExportFiltersResponse,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   status: zLogExportStatus,
   task_id: z.string(),
 })
@@ -4864,6 +4878,7 @@ export const zConversationLogExportFiltersResponse = z.object({
  */
 export const zConversationLogExportLatestTaskResponse = z.object({
   filters: zConversationLogExportFiltersResponse,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   status: zLogExportStatus,
   task_id: z.string(),
 })

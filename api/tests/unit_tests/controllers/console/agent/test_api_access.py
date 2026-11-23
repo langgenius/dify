@@ -414,6 +414,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
         query_string={"end_user_ids": end_user_id, "account_ids[0]": harness.account_id},
     )
     assert (preview.status_code, preview.json) == (HTTPStatus.OK, {"counts": {"log_count": 2, "row_count": 2}})
+    labels = [{"id": end_user_id, "source": "end-user", "label": "customer-001"}]
     response = harness.client.post(
         base,
         headers=harness.headers,
@@ -423,6 +424,7 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
             "account_ids": [harness.account_id],
             "start": "2026-07-23 15:00",
             "end": "2026-07-23 16:00",
+            "identity_labels": labels,
         },
     )
     assert response.status_code == HTTPStatus.ACCEPTED
@@ -490,6 +492,9 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     status = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
     assert (status.status_code, status.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "ready"})
     assert status.headers["Cache-Control"] == "no-store"
+    latest = harness.client.get(f"{base}/latest", headers=harness.headers)
+    assert latest.status_code == HTTPStatus.OK
+    assert latest.get_json()["task"]["identity_labels"] == labels
 
 
 def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_filters(harness: Harness) -> None:
@@ -516,7 +521,9 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
 
     latest = harness.client.get(f"{path}/latest", headers=harness.headers)
     assert (latest.status_code, latest.json) == (HTTPStatus.OK, {"task": None})
-    cache[task_prefix + task.task_id] = task.model_dump_json(exclude={"filters": {"account_ids"}})
+    cache[task_prefix + task.task_id] = task.model_dump_json(
+        exclude={"filters": {"account_ids"}, "identity_labels": True}
+    )
     cache[latest_prefix + harness.account_id] = task.task_id
     latest = harness.client.get(f"{path}/latest", headers=harness.headers)
     assert latest.status_code == HTTPStatus.OK
@@ -525,6 +532,7 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
         "task": {
             "task_id": task.task_id,
             "status": "processing",
+            "identity_labels": [],
             "filters": {
                 "sources": ["webapp"],
                 "end_user_ids": [end_user_id],

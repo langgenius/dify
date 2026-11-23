@@ -7,12 +7,13 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from threading import Event, Thread
 from typing import Protocol, Self, TextIO
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from libs.datetime_utils import utc_now
 from machinery.context import RequestContext
+from services.entities.conversation_entities import ConsoleLogIdentitySource
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
@@ -57,6 +58,27 @@ class LogExportLeaseBusyError(Exception):
     """The worker should retry because task state or lease ownership cannot be confirmed."""
 
 
+class LogExportIdentityLabel(BaseModel):
+    """A display label captured by the requester for an identity in the export filters."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: UUID
+    source: ConsoleLogIdentitySource
+    label: str = Field(max_length=255)
+
+
+def filter_log_export_identity_labels(
+    labels: tuple[LogExportIdentityLabel, ...], *, end_user_ids: tuple[str, ...], account_ids: tuple[str, ...]
+) -> tuple[LogExportIdentityLabel, ...]:
+    """Keep at most one display label per selected source and ID, using the normalized filters as scope."""
+    selected = {
+        ConsoleLogIdentitySource.END_USER: set(end_user_ids),
+        ConsoleLogIdentitySource.ACCOUNT: set(account_ids),
+    }
+    return tuple({(item.source, item.id): item for item in labels if str(item.id) in selected[item.source]}.values())
+
+
 class LogExportTask[FiltersT](BaseModel):
     """Persist an admitted export's state and carry its lease token only in the owning worker."""
 
@@ -69,14 +91,23 @@ class LogExportTask[FiltersT](BaseModel):
     filters: FiltersT
     created_at: datetime
     expires_at: datetime
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
     status: LogExportStatus = LogExportStatus.PENDING
     storage_key: str | None = None
     attempt: int = 0
     claim_token: str | None = Field(default=None, exclude=True, repr=False)
 
     @classmethod
-    def pending(cls, *, tenant_id: str, app_id: str, requested_by: str, filters: FiltersT) -> Self:
-        """Build a fresh pending task with UTC filters and a one-day expiration."""
+    def pending(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str,
+        requested_by: str,
+        filters: FiltersT,
+        identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+    ) -> Self:
+        """Build a one-day pending task with UTC filters and display labels for those filters."""
         created_at = utc_now()
         return cls(
             task_id=str(uuid4()),
@@ -84,6 +115,7 @@ class LogExportTask[FiltersT](BaseModel):
             app_id=app_id,
             requested_by=requested_by,
             filters=filters,
+            identity_labels=identity_labels,
             created_at=created_at,
             expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )

@@ -702,13 +702,17 @@ def test_get_conversation_log_export_status(
 def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     harness: _Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Recover the caller's newest live task with its original filters."""
+    """Recover the caller's newest live task with its filters and scoped identity labels."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     assert harness.get("export-latest").get_json() == {"task": None}
     harness.dispatch.side_effect = OSError("broker unavailable")
     assert harness.post_export({}).status_code == 500
     harness.dispatch.side_effect = None
     end_user_id = str(uuid4())
+    labels = [
+        {"id": end_user_id, "source": "end-user", "label": "customer-42"},
+        {"id": harness.account.id, "source": "account", "label": "Mia Chen"},
+    ]
     second = harness.post_export(
         {
             "keyword": "invoice",
@@ -718,6 +722,11 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
             "sort_by": "-created_at",
             "end_user_ids": [end_user_id],
             "account_ids": [harness.account.id],
+            "identity_labels": [
+                *labels,
+                {"id": end_user_id, "source": "account", "label": "Wrong source"},
+                {"id": str(uuid4()), "source": "end-user", "label": "Unselected user"},
+            ],
         }
     )
     assert second.status_code == 202
@@ -726,6 +735,7 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     assert latest.get_json() == {
         "task": {
             **second.get_json(),
+            "identity_labels": labels,
             "filters": {
                 "keyword": "invoice",
                 "start": "2024-01-15T06:30:00Z",

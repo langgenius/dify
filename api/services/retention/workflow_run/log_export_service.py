@@ -7,12 +7,14 @@ from datetime import datetime
 from graphon.enums import WorkflowExecutionStatus
 from services.retention.log_export_task import (
     LogExportDownload,
+    LogExportIdentityLabel,
     LogExportTask,
     LogExportTaskNotFoundError,
     LogExportTaskStore,
     OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
     save_and_dispatch_log_export_task,
@@ -62,14 +64,22 @@ class WorkflowLogExportService:
         self._open_csv = open_csv
 
     def create_task(
-        self, *, scope: WorkflowLogExportScope, requested_by: str, filters: WorkflowLogExportFilters
+        self,
+        *,
+        scope: WorkflowLogExportScope,
+        requested_by: str,
+        filters: WorkflowLogExportFilters,
+        identity_labels: tuple[LogExportIdentityLabel, ...] = (),
     ) -> WorkflowLogExportTask:
-        """Save and dispatch a pending task with the admitted scope and normalized filters."""
+        """Save and dispatch a pending task with its admitted scope, filters and selected labels."""
         task = WorkflowLogExportTask.pending(
             tenant_id=scope.tenant_id,
             app_id=scope.app_id,
             requested_by=requested_by,
             filters=filters,
+            identity_labels=filter_log_export_identity_labels(
+                identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
+            ),
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

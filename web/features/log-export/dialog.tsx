@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
-import type { LogExportPhase } from './use-log-export'
+import type { LogExportCreateErrorKind, LogExportPhase } from './use-log-export'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { ORPCError } from '@orpc/client'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -161,7 +160,7 @@ type LogExportDialogProps = {
   onOpenChange: (open: boolean) => void
   phase: LogExportPhase
   submitting: boolean
-  createError: Error | null
+  createErrorKind: LogExportCreateErrorKind
   pendingPreview: boolean
   counts?: { rows: number; logs?: number; conversations?: number }
   previewDescription: string
@@ -179,7 +178,7 @@ export function LogExportDialog({
   onOpenChange,
   phase,
   submitting,
-  createError,
+  createErrorKind,
   pendingPreview,
   counts,
   previewDescription,
@@ -226,9 +225,9 @@ export function LogExportDialog({
 
   let error
   if (retryStatus) error = t(($) => $['export.statusFailed'], { ns: 'appLog' })
-  else if (createError instanceof ORPCError && createError.code === 'log_export_limit_reached')
+  else if (createErrorKind === 'limit-reached')
     error = t(($) => $['export.limitReached'], { ns: 'appLog' })
-  else if (createError) error = t(($) => $['export.failed'], { ns: 'appLog' })
+  else if (createErrorKind === 'failed') error = t(($) => $['export.failed'], { ns: 'appLog' })
   else if (noMatches && phase === 'selecting')
     error = t(($) => $['export.noMatches'], { ns: 'appLog' })
 

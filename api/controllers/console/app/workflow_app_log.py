@@ -49,6 +49,7 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportIdentityLabel,
     LogExportLimitReachedError,
     LogExportStatus,
     LogExportTaskNotFoundError,
@@ -264,7 +265,9 @@ class WorkflowLogExportPreviewResponse(ResponseModel):
 
 
 class WorkflowLogExportCreatePayload(WorkflowLogExportPreviewQuery):
-    """Submit the same unpaginated filters used by the export preview."""
+    """Submit unpaginated preview filters and their display labels for the export."""
+
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class WorkflowLogExportTaskResponse(ResponseModel):
@@ -295,6 +298,7 @@ class WorkflowLogExportFiltersResponse(ResponseModel):
 
 class WorkflowLogExportLatestTaskResponse(WorkflowLogExportStatusResponse):
     filters: WorkflowLogExportFiltersResponse
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class WorkflowLogExportLatestResponse(ResponseModel):
@@ -448,6 +452,7 @@ class WorkflowLogExportApi(Resource):
                 scope=scope,
                 requested_by=request_context.account_id,
                 filters=payload.to_filters(),
+                identity_labels=payload.identity_labels,
             )
         except LogExportLimitReachedError as exc:
             raise LogExportLimitReachedHTTPError() from exc

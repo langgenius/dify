@@ -467,19 +467,6 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
- * AgentLogExportCreatePayload
- *
- * Submit the same unpaginated filters used by the export preview.
- */
-export const zAgentLogExportCreatePayload = z.object({
-  account_ids: z.array(z.uuid()).optional(),
-  end: z.string().nullish(),
-  end_user_ids: z.array(z.uuid()).optional(),
-  sources: z.array(z.string()).optional(),
-  start: z.string().nullish(),
-})
-
-/**
  * AgentLogExportTaskResponse
  */
 export const zAgentLogExportTaskResponse = z.object({
@@ -1935,36 +1922,34 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
 })
 
 /**
- * AgentLogExportFilters
- */
-export const zAgentLogExportFilters = z.object({
-  account_ids: z.array(z.string()).optional().default([]),
-  end: z.iso.datetime().nullable(),
-  end_user_ids: z.array(z.string()),
-  sources: z.array(z.string()),
-  start: z.iso.datetime().nullable(),
-})
-
-/**
- * AgentLogExportLatestTaskResponse
- */
-export const zAgentLogExportLatestTaskResponse = z.object({
-  filters: zAgentLogExportFilters,
-  status: zLogExportStatus,
-  task_id: z.string(),
-})
-
-/**
- * AgentLogExportLatestResponse
- */
-export const zAgentLogExportLatestResponse = z.object({
-  task: zAgentLogExportLatestTaskResponse.nullable(),
-})
-
-/**
  * ConsoleLogIdentitySource
  */
 export const zConsoleLogIdentitySource = z.enum(['account', 'end-user'])
+
+/**
+ * LogExportIdentityLabel
+ *
+ * A display label captured by the requester for an identity in the export filters.
+ */
+export const zLogExportIdentityLabel = z.object({
+  id: z.uuid(),
+  label: z.string().max(255),
+  source: zConsoleLogIdentitySource,
+})
+
+/**
+ * AgentLogExportCreatePayload
+ *
+ * Submit unpaginated preview filters and their display labels for the export.
+ */
+export const zAgentLogExportCreatePayload = z.object({
+  account_ids: z.array(z.uuid()).optional(),
+  end: z.string().nullish(),
+  end_user_ids: z.array(z.uuid()).optional(),
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  sources: z.array(z.string()).optional(),
+  start: z.string().nullish(),
+})
 
 /**
  * AgentLogIdentityOptionResponse
@@ -1980,6 +1965,34 @@ export const zAgentLogIdentityOptionResponse = z.object({
  */
 export const zAgentLogIdentitySearchResponse = z.object({
   data: z.array(zAgentLogIdentityOptionResponse),
+})
+
+/**
+ * AgentLogExportFilters
+ */
+export const zAgentLogExportFilters = z.object({
+  account_ids: z.array(z.string()).optional().default([]),
+  end: z.iso.datetime().nullable(),
+  end_user_ids: z.array(z.string()),
+  sources: z.array(z.string()),
+  start: z.iso.datetime().nullable(),
+})
+
+/**
+ * AgentLogExportLatestTaskResponse
+ */
+export const zAgentLogExportLatestTaskResponse = z.object({
+  filters: zAgentLogExportFilters,
+  identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * AgentLogExportLatestResponse
+ */
+export const zAgentLogExportLatestResponse = z.object({
+  task: zAgentLogExportLatestTaskResponse.nullable(),
 })
 
 /**

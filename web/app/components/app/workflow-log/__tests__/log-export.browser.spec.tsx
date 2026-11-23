@@ -78,6 +78,7 @@ async function renderLogs({
         task = {
           task_id: taskId,
           status: 'pending',
+          identity_labels: filters.identity_labels ?? [],
           filters: {
             created_at__after: filters.created_at__after ?? null,
             created_at__before: filters.created_at__before ?? null,
@@ -176,6 +177,10 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
         created_at__before: listFilters.get('created_at__before'),
         end_user_ids: [olderEndUserId],
         account_ids: [accountId],
+        identity_labels: [
+          { id: accountId, label: 'Mia Chen', source: 'account' },
+          { id: olderEndUserId, label: 'customer-042', source: 'end-user' },
+        ],
       },
     ])
 

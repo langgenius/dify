@@ -18,7 +18,7 @@ export function logIdentityLabels(
   options: LogIdentity[],
 ) {
   const label = (id: string, source: LogIdentity['source']) =>
-    options.find((identity) => identity.id === id && identity.source === source)?.label ?? id
+    options.find((identity) => identity.id === id && identity.source === source)?.label || id
   return [
     ...filters.end_user_ids.map((id) => label(id, 'end-user')),
     ...(filters.account_ids ?? []).map((id) => label(id, 'account')),

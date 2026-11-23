@@ -130,6 +130,7 @@ from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
+    LogExportIdentityLabel,
     LogExportLimitReachedError,
     LogExportStatus,
     LogExportTaskNotFoundError,
@@ -342,9 +343,11 @@ class AgentLogExportPreviewQuery(BaseModel):
 
 
 class AgentLogExportCreatePayload(AgentLogExportPreviewQuery):
-    """Submit the same unpaginated filters used by the export preview."""
+    """Submit unpaginated preview filters and their display labels for the export."""
 
     model_config = ConfigDict(extra="forbid")
+
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class AgentLogIdentitySearchQuery(BaseModel):
@@ -384,6 +387,7 @@ class AgentLogExportStatusResponse(ResponseModel):
 
 class AgentLogExportLatestTaskResponse(AgentLogExportStatusResponse):
     filters: AgentLogExportFilters
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class AgentLogExportLatestResponse(ResponseModel):
@@ -1146,7 +1150,9 @@ class AgentLogExportApi(Resource):
         _require_agent_log_export_access(context)
         try:
             payload = AgentLogExportCreatePayload.model_validate(request.get_json(silent=True))
-            task = application_services().agent_log_exports.create_task(context, str(agent_id), payload.to_query())
+            task = application_services().agent_log_exports.create_task(
+                context, str(agent_id), payload.to_query(), identity_labels=payload.identity_labels
+            )
         except ValidationError as exc:
             raise InvalidArgumentError(
                 exc.json(include_url=False, include_input=False, include_context=False)

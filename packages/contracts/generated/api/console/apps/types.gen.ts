@@ -623,6 +623,7 @@ export type ConversationLogExportCreatePayload = {
   annotation_status?: 'all' | 'annotated' | 'not_annotated'
   end?: string | null
   end_user_ids?: Array<string>
+  identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   start?: string | null
@@ -1204,6 +1205,7 @@ export type WorkflowLogExportCreatePayload = {
   created_at__after?: string | null
   created_at__before?: string | null
   end_user_ids?: Array<string>
+  identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   status?: WorkflowExecutionStatus | null
 }
@@ -2193,8 +2195,15 @@ export type MessageDetail = {
   workflow_run_id?: string | null
 }
 
+export type LogExportIdentityLabel = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
 export type ConversationLogExportLatestTaskResponse = {
   filters: ConversationLogExportFiltersResponse
+  identity_labels?: Array<LogExportIdentityLabel>
   status: LogExportStatus
   task_id: string
 }
@@ -2603,6 +2612,7 @@ export type WorkflowExecutionStatus =
 
 export type WorkflowLogExportLatestTaskResponse = {
   filters: WorkflowLogExportFiltersResponse
+  identity_labels?: Array<LogExportIdentityLabel>
   status: LogExportStatus
   task_id: string
 }

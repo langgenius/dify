@@ -420,6 +420,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
     assert missing.get_json()["code"] == "workflow_log_export_task_not_found"
 
     end_user_id = str(uuid4())
+    labels = [{"id": end_user_id, "source": "end-user", "label": "customer-042"}]
     submitted = export_client.client.post(
         export_client.path,
         headers=export_client.headers,
@@ -430,6 +431,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
             "created_at__before": "2026-01-03T00:00:00+08:00",
             "end_user_ids": [end_user_id],
             "account_ids": [export_client.account_id],
+            "identity_labels": labels,
         },
     )
     assert submitted.status_code == 202
@@ -441,6 +443,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
         "task": {
             "task_id": submitted.get_json()["task_id"],
             "status": "pending",
+            "identity_labels": labels,
             "filters": {
                 "keyword": "report",
                 "status": "succeeded",

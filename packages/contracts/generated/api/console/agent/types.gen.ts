@@ -454,6 +454,7 @@ export type AgentLogExportCreatePayload = {
   account_ids?: Array<string>
   end?: string | null
   end_user_ids?: Array<string>
+  identity_labels?: Array<LogExportIdentityLabel>
   sources?: Array<string>
   start?: string | null
 }
@@ -1221,8 +1222,15 @@ export type AgentTextToSpeechFeatureConfig = {
   [key: string]: unknown
 }
 
+export type LogExportIdentityLabel = {
+  id: string
+  label: string
+  source: ConsoleLogIdentitySource
+}
+
 export type AgentLogExportLatestTaskResponse = {
   filters: AgentLogExportFilters
+  identity_labels?: Array<LogExportIdentityLabel>
   status: LogExportStatus
   task_id: string
 }
@@ -1893,6 +1901,8 @@ export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
   [key: string]: unknown
 }
 
+export type ConsoleLogIdentitySource = 'account' | 'end-user'
+
 export type AgentLogExportFilters = {
   account_ids?: Array<string>
   end: string | null
@@ -1900,8 +1910,6 @@ export type AgentLogExportFilters = {
   sources: Array<string>
   start: string | null
 }
-
-export type ConsoleLogIdentitySource = 'account' | 'end-user'
 
 export type AgentLogFeedbackResponse = {
   content?: string | null

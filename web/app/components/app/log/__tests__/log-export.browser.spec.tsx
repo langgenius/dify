@@ -327,10 +327,8 @@ it('keeps the export dialog height stable while recounting after an identity cha
 })
 
 it('shares the Chatflow list filters with export while keeping a separate export draft', async () => {
-  const { screen, dialog, lastExport, listQueries, previews, requests } = await openExport(
-    false,
-    'advanced-chat',
-  )
+  const { screen, trigger, dialog, lastExport, listQueries, previews, requests, renderLogs } =
+    await openExport(false, 'advanced-chat')
   const identityLabel = 'appLog.table.header.endUser'
   const listIdentity = screen.getByRole('combobox', { name: identityLabel })
   const listSearch = screen.getByPlaceholder('common.operation.search')
@@ -432,9 +430,8 @@ it('shares the Chatflow list filters with export while keeping a separate export
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await expect.element(submit).toBeEnabled()
   await submit.click()
-  await expect
-    .element(lastExport.getByText('user-1024, customer-42, Mia Chen', { exact: true }))
-    .toBeVisible()
+  const savedIdentities = lastExport.getByText('user-1024, customer-42, Mia Chen', { exact: true })
+  await expect.element(savedIdentities).toBeVisible()
   await expect
     .poll(() => requests)
     .toEqual([
@@ -442,7 +439,29 @@ it('shares the Chatflow list filters with export while keeping a separate export
         annotation_status: 'not_annotated',
         end_user_ids: [endUserId, olderEndUser.id],
         account_ids: [accountId],
+        identity_labels: [
+          { id: endUserId, label: 'user-1024', source: 'end-user' },
+          { id: accountId, label: 'Mia Chen', source: 'account' },
+          olderEndUser,
+        ],
         sort_by: '-updated_at',
       },
     ])
+
+  await dialog.getByRole('button', { name: 'common.operation.close', exact: true }).first().click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await trigger.click()
+  await expect.element(exportIdentity.getByText(firstTwoIdentities, { exact: true })).toBeVisible()
+  await expect.element(savedIdentities).toBeVisible()
+
+  await exportIdentity.click()
+  await accountOption.click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(exportIdentity.getByText('user-1024', { exact: true })).toBeVisible()
+  await expect.element(savedIdentities).toBeVisible()
+
+  await screen.unmount()
+  const reopened = await renderLogs()
+  await reopened.trigger.click()
+  await expect.element(savedIdentities).toBeVisible()
 })

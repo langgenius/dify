@@ -6,12 +6,14 @@ from machinery.context import RequestContext
 from services.agent.observability_contracts import AgentLogExportFilters, AgentLogExportQuery, AgentObservability
 from services.retention.log_export_task import (
     LogExportDownload,
+    LogExportIdentityLabel,
     LogExportTask,
     LogExportTaskNotFoundError,
     LogExportTaskStore,
     OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
     save_and_dispatch_log_export_task,
@@ -41,14 +43,24 @@ class AgentLogExportService:
         self._write_csv = write_csv
         self._open_csv = open_csv
 
-    def create_task(self, context: RequestContext, agent_id: str, query: AgentLogExportQuery) -> AgentLogExportTask:
-        """Resolve the admitted scope and filters, then save and dispatch the pending task."""
+    def create_task(
+        self,
+        context: RequestContext,
+        agent_id: str,
+        query: AgentLogExportQuery,
+        *,
+        identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+    ) -> AgentLogExportTask:
+        """Save and dispatch a task with the admitted scope, resolved filters and selected labels."""
         filters = self._logs.resolve_log_export_filters(context, agent_id, query)
         task = AgentLogExportTask.pending(
             tenant_id=context.active_workspace_id,
             app_id=agent_id,  # Scope the shared task store by the Console Agent ID.
             requested_by=context.account_id,
             filters=filters,
+            identity_labels=filter_log_export_identity_labels(
+                identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
+            ),
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

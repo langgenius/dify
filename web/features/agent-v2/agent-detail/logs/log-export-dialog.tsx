@@ -84,13 +84,18 @@ export function AgentLogExportDialog({
           sources: task.filters.sources.map(
             (id) => sourceOptions.find((source) => source.id === id)?.app_name ?? id,
           ),
-          identities: logIdentityLabels(task.filters, [
-            ...selection.identities,
-            ...identityOptions,
-          ]),
+          identities: logIdentityLabels(task.filters, task.identity_labels ?? []),
         }
       }
-      onExport={() => create({ params, body: query })}
+      onExport={() =>
+        create({
+          params,
+          body: {
+            ...query,
+            identity_labels: selection.identities.length ? selection.identities : undefined,
+          },
+        })
+      }
     >
       <LogExportSelect
         label={t(($) => $['export.timeRange'], { ns: 'appLog' })}

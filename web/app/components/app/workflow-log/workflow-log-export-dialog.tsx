@@ -75,10 +75,15 @@ export function WorkflowLogExportDialog({
           statusLabel: latestStatus
             ? t(($) => $[`status.${latestStatus}`], { ns: 'appLog' })
             : undefined,
-          identities: logIdentityLabels(task.filters, [...(identities ?? []), ...identityOptions]),
+          identities: logIdentityLabels(task.filters, task.identity_labels ?? []),
         }
       }
-      onExport={() => create({ params, body: query })}
+      onExport={() =>
+        create({
+          params,
+          body: { ...query, identity_labels: identities?.length ? identities : undefined },
+        })
+      }
     >
       <LogExportSelect
         label={t(($) => $['export.timeRange'], { ns: 'appLog' })}

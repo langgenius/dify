@@ -1,8 +1,10 @@
 import type { DefaultError, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query'
+import { ORPCError } from '@orpc/client'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
 export type LogExportPhase = 'checking' | 'exporting' | 'retry-status' | 'selecting'
+export type LogExportCreateErrorKind = 'limit-reached' | 'failed' | null
 
 export const logExportRequest = { context: { silent: true } } as const
 
@@ -51,6 +53,13 @@ export function useLogExport<
   useEffect(() => {
     if (error && recoveredTask) reset()
   }, [error, recoveredTask, reset])
+  let createErrorKind: LogExportCreateErrorKind = null
+  if (error && !recoveredTask) {
+    createErrorKind =
+      error instanceof ORPCError && error.code === 'log_export_limit_reached'
+        ? 'limit-reached'
+        : 'failed'
+  }
 
   const phase: LogExportPhase =
     isPending || taskInProgress
@@ -79,7 +88,7 @@ export function useLogExport<
     dialogState: {
       phase,
       submitting: isPending,
-      createError: recoveredTask ? null : error,
+      createErrorKind,
       pendingPreview:
         preview.isPending || preview.isPlaceholderData || preview.fetchStatus !== 'idle',
       onRetryStatus: () => {
