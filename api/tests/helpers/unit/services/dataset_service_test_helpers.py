@@ -8,7 +8,6 @@ document, and segment service test modules that exercise
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Literal
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
@@ -17,7 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums import CloudPlan
@@ -345,7 +344,7 @@ def _make_rag_pipeline_retrieval_setting() -> RagPipelineRetrievalSetting:
 def _make_knowledge_configuration(
     *,
     chunk_structure: str = "paragraph",
-    indexing_technique: Literal["high_quality", "economy"] = "high_quality",
+    indexing_technique: IndexTechniqueType = IndexTechniqueType.HIGH_QUALITY,
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,
