@@ -217,6 +217,7 @@ def test_missing_text_context_fails_only_context_dependent_metric(context: list[
     assert [(metric.name, metric.value) for metric in result.metrics] == [("semantic_similarity", 1.0)]
     assert result.error is not None
     assert result.error.startswith("EVAL_CONTEXT_MISSING:")
+    assert "needs non-empty text context" in result.error
     assert safe_evaluation_error_text(result.error) == result.error
 
 
