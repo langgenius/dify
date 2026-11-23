@@ -40,7 +40,12 @@ it('shows a collaborator’s uploaded avatar and refreshes URLs when opening the
     </TooltipProvider>,
     { resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true } },
   )
-  await expect.element(screen.getByRole('button', { name: 'Bob' }).getByAltText('')).toBeVisible()
-  await screen.getByText('+2').click()
+  const trigger = screen.getByRole('button', {
+    name: 'workflow.collaboration.viewCollaborators:{"count":4}',
+  })
+  await expect.element(trigger.getByAltText('').first()).toBeVisible()
+  await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect.element(screen.getByRole('button', { name: 'Dana' }).getByAltText('')).toBeVisible()
 })

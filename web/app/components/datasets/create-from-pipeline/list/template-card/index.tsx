@@ -1,14 +1,4 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
@@ -29,15 +19,14 @@ import EditPipelineInfo from './edit-pipeline-info'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
-  showMoreOperations?: boolean
+  onDelete?: (id: string) => void
   type: 'customized' | 'built-in'
 }
 
-const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
+const TemplateCard = ({ pipeline, onDelete, type }: TemplateCardProps) => {
   const { t } = useTranslation(['common', 'datasetPipeline'])
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
 
   const queryClient = useQueryClient()
   const { refetch: getPipelineTemplateInfo } = useQuery(
@@ -135,34 +124,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     )
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
 
-  const handleDelete = useCallback(() => {
-    setShowConfirmDelete(true)
-  }, [])
-
-  const onCancelDelete = useCallback(() => {
-    setShowConfirmDelete(false)
-  }, [])
-
-  const { mutate: deletePipeline } = useMutation(
-    consoleQuery.rag.pipeline.customized.templates.byTemplateId.delete.mutationOptions(),
-  )
-
-  const onConfirmDelete = useCallback(() => {
-    deletePipeline(
-      { params: { template_id: pipeline.id } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
-              input: { query: { type: 'customized' } },
-            }),
-          })
-          setShowConfirmDelete(false)
-        },
-      },
-    )
-  }, [pipeline.id, deletePipeline, queryClient])
-
   return (
     <div className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
@@ -174,10 +135,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       <Dialog>
         <Actions
           onApplyTemplate={handleUseTemplate}
-          showMoreOperations={showMoreOperations}
           openEditModal={openEditModal}
           handleExportDSL={handleExportDSL}
-          handleDelete={handleDelete}
+          onDelete={onDelete ? () => onDelete(pipeline.id) : undefined}
         />
         <DialogContent
           // oxlint-disable-next-line shadcn/no-restyle -- Full-page template preview keeps its larger radius.
@@ -204,26 +164,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           </DialogContent>
         </Dialog>
       )}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['deletePipeline.title'], { ns: 'datasetPipeline' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['deletePipeline.content'], { ns: 'datasetPipeline' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

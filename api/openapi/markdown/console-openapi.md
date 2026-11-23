@@ -673,6 +673,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
+**Discard the caller's draft and report success even if it was already absent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -688,6 +690,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
+**Return the admitted account's existing Build draft, or 404 when none exists**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1205,6 +1209,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
+**Reset the admitted account's Build conversation and return the new empty conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -16248,7 +16254,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/test-channels
-**List current Workspace test channels without granting channel management or app execution permissions**
+**List test identifiers for an authenticated workspace member in every edition**
+
+Discovery grants no channel-management or app-execution permissions and
+performs no writes or provider I/O. Storage failures propagate normally.
 
 #### Responses
 

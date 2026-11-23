@@ -1,5 +1,5 @@
 'use client'
-import type { Plugin } from '@/app/components/plugins/types.ts'
+import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'

@@ -114,6 +114,8 @@
   "collaboration.joinDenied": "Tidak dapat bergabung dalam kolaborasi. Periksa akses dan paket ruang kerja Anda, lalu buka kembali editor.",
   "collaboration.joinUnavailable": "Tidak dapat terhubung ke kolaborasi. Perubahan pada kanvas ini mungkin belum disimpan.",
   "collaboration.reloadPage": "Muat Ulang Halaman",
+  "collaboration.userEditing": "{{name}} sedang mengedit",
+  "collaboration.viewCollaborators": "Lihat {{count}} kolaborator",
   "common.accessAPIReference": "Referensi API Akses",
   "common.accessPointDescription": "Konfigurasikan aplikasi web, API, MCP, dan pemicu",
   "common.addBlock": "Tambahkan Node",

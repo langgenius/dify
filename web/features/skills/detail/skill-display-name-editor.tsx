@@ -1,31 +1,27 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './shared'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import {
-  getErrorCode,
-  getErrorDetailString,
-  invalidateSkillDetail,
-  runSkillFileMutation,
-  setSkillDetailCache,
-} from './shared'
+import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
+import { invalidateSkillDetail, setSkillDetailCache } from './cache'
+import { runSkillDraftMutation } from './mutations'
 
 export function SkillDisplayNameEditor({
   detail,
   editing,
-  fileMutationCoordinator,
+  draftMutationCoordinator,
   onEditingChange,
   readonly,
   skillId,
 }: {
   detail: SkillDetailResponse
   editing: boolean
-  fileMutationCoordinator: SkillFileMutationCoordinator
+  draftMutationCoordinator: SkillDraftMutationCoordinator
   onEditingChange: (editing: boolean) => void
   readonly: boolean
   skillId: string
@@ -74,8 +70,8 @@ export function SkillDisplayNameEditor({
 
     submittingRef.current = true
     try {
-      const nextDetail = await runSkillFileMutation(
-        fileMutationCoordinator,
+      const nextDetail = await runSkillDraftMutation(
+        draftMutationCoordinator,
         async (expectedUpdatedAt) => {
           return metadataMutation.mutateAsync({
             params: {
@@ -103,10 +99,10 @@ export function SkillDisplayNameEditor({
     } catch (error) {
       setDraftName(displayName)
 
-      if (getErrorCode(error) === 'skill_name_conflict') {
+      if (getSkillErrorCode(error) === 'skill_name_conflict') {
         toast.error(
           t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(error, 'name') ?? '',
+            name: getSkillErrorDetailString(error, 'name') ?? '',
           }),
         )
       } else {

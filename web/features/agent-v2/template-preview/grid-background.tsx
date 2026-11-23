@@ -1,4 +1,4 @@
-import { AgentBuildGridTexture } from '../agent-detail/configure/components/build-grid-texture'
+import { AgentBuildGridTexture } from '../agent-editor/build-grid-texture'
 
 export function AgentTemplateGridBackground() {
   return (

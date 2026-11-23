@@ -11,7 +11,6 @@
   "comments.aria.previousComment": "Vorheriger Kommentar",
   "comments.aria.replyActions": "Antwortaktionen",
   "comments.aria.resolveComment": "Kommentar abschließen",
-  "comments.confirm.deleteReplyDesc": "Diese Antwort wird dauerhaft entfernt.",
   "comments.confirm.deleteReplyTitle": "Diese Antwort löschen?",
   "comments.confirm.deleteThreadDesc": "Dadurch werden der Thread und alle Antworten dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
   "comments.confirm.deleteThreadTitle": "Diesen Thread löschen?",
@@ -19,12 +18,13 @@
   "comments.filter.all": "Alle",
   "comments.filter.onlyYourThreads": "Nur deine Threads",
   "comments.filter.showResolved": "Gelöste anzeigen",
-  "comments.loading": "Laden…",
   "comments.noComments": "Noch keine Kommentare",
   "comments.panelTitle": "Kommentar",
   "comments.placeholder.add": "Kommentar hinzufügen",
   "comments.placeholder.editComment": "Kommentar bearbeiten",
   "comments.placeholder.editReply": "Antwort bearbeiten",
   "comments.placeholder.reply": "Antworten",
-  "comments.reply": "Antworten"
+  "comments.replyCount_one": "{{count}} Antwort",
+  "comments.replyCount_other": "{{count}} Antworten",
+  "comments.status.notSent": "Nicht gesendet"
 }
