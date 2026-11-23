@@ -95,6 +95,23 @@ query failure behavior stay unchanged. A missing field or failed request must no
 be interpreted as confirmed same-origin configuration. WebApp availability is
 independent of whether Account login is enabled; this URL grants no access.
 
+### Console sign-in return targets
+
+Console auth pages accept root-relative `redirect_url` values, such as `/apps` or
+`/my-apps?sort=recent#details`. Without the End User flag, relative targets stay on
+Console. With `is_end_user=1`, Console sign-in uses the existing `mode=end_user`
+login contract, which resolves the final destination against `APP_WEB_URL`, falling
+back to `CONSOLE_WEB_URL`. These bases come from deployment configuration, not the
+API request host. The deployment prefix may be omitted or included once in a relative
+target. Query strings and fragments are preserved.
+
+The flag does not grant an Account session. The server still checks the login mode
+and permits only personal portal routes or an App-bound PKCE handoff. A relative
+OAuth resume URL for `/signin` always resolves to Console; the nested return URL
+is resolved after sign-in. Explicit, previously valid absolute returns still work.
+Personal portal sessions still require the Web API to receive the session cookie;
+split API subdomains must use the deployment's shared `COOKIE_DOMAIN`.
+
 ### Agent tracing deployment discovery exception
 
 `agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication

@@ -22,6 +22,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type CheckCodeFormValues = {
@@ -37,6 +38,7 @@ export default function CheckCode() {
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const isEndUser = !invite_token && isEndUserSignIn(searchParams)
   const language = i18n.language
   const [loading, setLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
@@ -69,6 +71,7 @@ export default function CheckCode() {
           language,
           timezone: getBrowserTimezone(),
           ...(invite_token ? { invite_token } : {}),
+          ...(isEndUser ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
         },
       })
@@ -83,9 +86,11 @@ export default function CheckCode() {
           queryClient.removeQueries({ queryKey: consoleQuery.activate.check.get.key() })
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          const profileQueryOptions = userProfileQueryOptions()
-          await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
-          await queryClient.query(profileQueryOptions)
+          if (!isEndUser) {
+            const profileQueryOptions = userProfileQueryOptions()
+            await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
+            await queryClient.query(profileQueryOptions)
+          }
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }
@@ -107,6 +112,7 @@ export default function CheckCode() {
         body: {
           email,
           language: locale,
+          ...(isEndUser ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
         },
       })

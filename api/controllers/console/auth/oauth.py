@@ -56,7 +56,7 @@ from services.entities.account_oauth_entities import (
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
-from services.web_login_redirect import resolve_personal_login_redirect
+from services.web_login_redirect import resolve_console_login_redirect, resolve_personal_login_redirect
 
 
 class OAuthLoginQuery(BaseModel):
@@ -118,12 +118,11 @@ def _redirect_with_console_session(tokens: AccountSessionTokens, target_url: str
     return response
 
 
-def _oauth_callback_target(result: OAuthCallbackResult, requested_redirect: str | None, mode: LoginMode) -> str:
-    if mode == LoginMode.END_USER:
-        return _end_user_return_target(requested_redirect)
+def _console_callback_target(result: OAuthCallbackResult, requested_redirect: str | None) -> str:
+    """Return to the Console after successful OAuth or continue a workspace invitation."""
     if isinstance(result, OAuthInvitationResult):
         query = urllib.parse.urlencode({"invite_token": result.invite_token})
-        return f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?{query}"
+        return f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin/invite-settings?{query}"
 
     target_url = _safe_console_redirect_target(requested_redirect)
     parsed = urllib.parse.urlsplit(target_url)
@@ -132,28 +131,28 @@ def _oauth_callback_target(result: OAuthCallbackResult, requested_redirect: str 
     return urllib.parse.urlunsplit(parsed._replace(query=query))
 
 
-def _end_user_return_target(redirect_url: str | None) -> str:
-    """Preserve trusted personal or sign-in targets; fall back to My Apps on invalid input.
+def _personal_portal_redirect(redirect_url: str | None) -> str | None:
+    """Return a validated personal portal destination, or None for invalid input."""
+    return resolve_personal_login_redirect(
+        redirect_url, app_web_url=dify_config.APP_WEB_URL, console_web_url=dify_config.CONSOLE_WEB_URL
+    )
 
-    Preconditions: the redirect is untrusted and deployment URLs are trusted.
-    Postconditions: no external origin or path outside the configured portal and
-    sign-in routes is returned, and accepted query strings and fragments survive.
-    """
-    personal_portal = f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/my-apps"
-    if not redirect_url:
-        return personal_portal
-    personal_target = resolve_personal_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
-    if personal_target is not None:
-        return personal_target
-    target = _safe_console_redirect_target(redirect_url)
-    parsed = urllib.parse.urlsplit(target)
-    console = urllib.parse.urlsplit(dify_config.CONSOLE_WEB_URL)
-    if (parsed.scheme or parsed.netloc) and _url_origin(target) != _url_origin(dify_config.CONSOLE_WEB_URL):
-        return personal_portal
-    base_path = console.path.rstrip("/")
-    if parsed.path != f"{base_path}/signin":
-        return personal_portal
-    return target
+
+def _end_user_signin_target(redirect_url: str) -> str | None:
+    """Allow the Console sign-in route to resume an App handoff after OAuth."""
+    target = resolve_console_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
+    if target is not None:
+        console_path = urllib.parse.urlsplit(dify_config.CONSOLE_WEB_URL).path.rstrip("/")
+        if urllib.parse.urlsplit(target).path == f"{console_path}/signin":
+            return target
+    return None
+
+
+def _end_user_return_target(redirect_url: str | None) -> str:
+    """Resume on Console sign-in or return to the WebApp portal; never bypass App PKCE."""
+    if redirect_url and (resume := _end_user_signin_target(redirect_url)) is not None:
+        return resume
+    return _personal_portal_redirect(redirect_url) or _personal_portal_redirect(None) or "/my-apps"
 
 
 def _oauth_state_cookie(provider: str, nonce: str) -> str:
@@ -161,44 +160,18 @@ def _oauth_state_cookie(provider: str, nonce: str) -> str:
 
 
 def _safe_console_redirect_target(redirect_url: str | None) -> str:
-    if not redirect_url:
-        return dify_config.CONSOLE_WEB_URL
-
-    if "\\" in redirect_url or any(ord(char) <= 32 or ord(char) == 127 for char in redirect_url):
-        return dify_config.CONSOLE_WEB_URL
-
-    try:
-        parsed_url = urllib.parse.urlsplit(redirect_url)
-    except ValueError:
-        return dify_config.CONSOLE_WEB_URL
-    if parsed_url.username is not None or parsed_url.password is not None:
-        return dify_config.CONSOLE_WEB_URL
-    normalized_path = redirect_url.lstrip().replace("\\", "/")
-    if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
-        return redirect_url
-
-    redirect_origin = _url_origin(redirect_url)
-    if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
-        return redirect_url
-    return dify_config.CONSOLE_WEB_URL
-
-
-def _url_origin(url: str) -> tuple[str, str, int] | None:
-    parsed_url = urllib.parse.urlsplit(url)
-    if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:
-        return None
-    try:
-        port = parsed_url.port
-    except ValueError:
-        return None
-    if port is None:
-        port = 443 if parsed_url.scheme == "https" else 80
-    return parsed_url.scheme, parsed_url.hostname, port
+    """Resolve an untrusted Console target, defaulting to the configured Console home."""
+    target = (
+        resolve_console_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
+        if redirect_url
+        else None
+    )
+    return target or dify_config.CONSOLE_WEB_URL or "/"
 
 
 def _signin_redirect(message: str, **params: str) -> Response:
     query = urllib.parse.urlencode({"message": message, **params})
-    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?{query}")
+    return redirect(f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin?{query}")
 
 
 @console_ns.route("/oauth/login/<provider>")
@@ -286,20 +259,22 @@ class OAuthCallback(Resource):
             oauth_state = decode_oauth_state(req_data.state)
         require_login_mode(mode, invite_token=oauth_state.get("invite_token"))
         requested_redirect = oauth_state.get("redirect_url")
-        return_params = {}
-        if mode == LoginMode.END_USER:
-            requested_redirect = _end_user_return_target(requested_redirect)
-        elif requested_redirect:
-            return_params = {"redirect_url": _safe_console_redirect_target(requested_redirect)}
+        end_user_target = _end_user_return_target(requested_redirect) if mode == LoginMode.END_USER else None
 
         def signin_redirect(message: str, **params: str) -> Response:
-            if mode == LoginMode.END_USER:
-                target = urllib.parse.urlsplit(requested_redirect or "")
-                query = f"{target.query}&" if target.query else ""
-                query += urllib.parse.urlencode({"message": message})
-                response = redirect(urllib.parse.urlunsplit(target._replace(query=query)))
+            """Keep retry navigation on Console sign-in, preserving validated return context."""
+            if end_user_target is not None:
+                if (resume := _end_user_signin_target(end_user_target)) is not None:
+                    target = urllib.parse.urlsplit(resume)
+                    query = f"{target.query}&" if target.query else ""
+                    query += urllib.parse.urlencode({"message": message})
+                    response = redirect(urllib.parse.urlunsplit(target._replace(query=query)))
+                else:
+                    response = _signin_redirect(message, is_end_user="1", redirect_url=end_user_target)
             else:
-                response = _signin_redirect(message, **return_params, **params)
+                if requested_redirect:
+                    params["redirect_url"] = _safe_console_redirect_target(requested_redirect)
+                response = _signin_redirect(message, **params)
             if state_cookie is not None:
                 response.delete_cookie(state_cookie)
             return response
@@ -347,12 +322,9 @@ class OAuthCallback(Resource):
         except OAuthRegistrationError as exc:
             return signin_redirect(exc.description)
 
-        target_url = _oauth_callback_target(result, requested_redirect, mode)
+        target_url = end_user_target or _console_callback_target(result, requested_redirect)
         response = _redirect_with_console_session(result.tokens, target_url)
-        if (
-            mode == LoginMode.END_USER
-            and resolve_personal_login_redirect(target_url, console_web_url=dify_config.CONSOLE_WEB_URL) is not None
-        ):
+        if end_user_target is not None and _personal_portal_redirect(end_user_target) is not None:
             session = application_services().web_login_handoff.personal_session(result.tokens.access_token)
             set_webapp_access_token_to_cookie(response, session.access_token, expires_at=session.expires_at)
         if state_cookie is not None:

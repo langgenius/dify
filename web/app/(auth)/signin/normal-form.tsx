@@ -1,8 +1,9 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -18,6 +19,11 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
+import {
+  getEndUserLoginQuery,
+  isEndUserSignIn,
+  resolveEndUserAccountRedirect,
+} from './utils/end-user-login'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 type AuthType = 'code' | 'password'
@@ -31,17 +37,40 @@ function NormalForm() {
   const message = decodeURIComponent(searchParams.get('message') || '')
   const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
   const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
+  const isEndUser = !isInviteLink && isEndUserSignIn(searchParams)
+  const endUserQuery = isEndUser ? getEndUserLoginQuery(searchParams) : null
+  const endUserSession = useQuery(
+    consoleQuery.login.get.queryOptions({
+      input: endUserQuery ? { query: endUserQuery } : skipToken,
+      context: { silent: true, handleUnauthorizedLocally: true },
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    }),
+  )
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
   const { data: userResp, error: probeError } = useQuery({
     ...userProfileQueryOptions(),
-    enabled: !isInviteLink,
+    enabled: !isInviteLink && !isEndUser,
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
-  const isLoggedIn = !isInviteLink && !!userResp && !probeError
+  const isLoggedIn = !isInviteLink && !isEndUser && !!userResp && !probeError
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const acceptedEndUserSession =
+    !endUserSession.isFetching && endUserSession.data?.logged_in ? endUserSession.data : null
+  const endUserHref =
+    acceptedEndUserSession && typeof window !== 'undefined'
+      ? resolveEndUserAccountRedirect(
+          acceptedEndUserSession.redirect_url,
+          systemFeatures.webapp_url,
+          window.location.origin,
+        )
+      : null
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
     systemFeatures.deployment_edition === 'ENTERPRISE'
@@ -66,7 +95,7 @@ function NormalForm() {
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
-  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
+  const hasSsoLogin = !isEndUser && systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -82,9 +111,18 @@ function NormalForm() {
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
   const shouldRedirectLoggedInUser = isInviteLink ? isInvitationForCurrentAccount : isLoggedIn
-  const isLoading = shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+  // The End User probe may refresh cookies, so do not race it with a new sign-in.
+  const isLoading =
+    (isEndUser && (endUserSession.isPending || endUserSession.isFetching || !!endUserHref)) ||
+    shouldRedirectLoggedInUser ||
+    (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
+    if (isEndUser) {
+      if (endUserHref)
+        replaceLoginRedirect({ kind: 'absolute', href: endUserHref }, router.replace, basePath)
+      return
+    }
     if (isInviteLink) {
       if (!isInvitationForCurrentAccount) return
       router.replace(`/signin/invite-settings?${searchParams.toString()}`)
@@ -93,11 +131,25 @@ function NormalForm() {
     if (!isLoggedIn) return
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
+  }, [
+    endUserHref,
+    isEndUser,
+    isInvitationForCurrentAccount,
+    isInviteLink,
+    isLoggedIn,
+    router,
+    searchParams,
+  ])
 
   useEffect(() => {
     if (message) toast.error(message)
   }, [message])
+
+  if (
+    isEndUser &&
+    (!endUserQuery || endUserSession.isError || (acceptedEndUserSession && !endUserHref))
+  )
+    return <AppUnavailable className="size-auto" isUnknownReason />
 
   if (isLoading) {
     return <LoadingPlaceholder />
@@ -242,7 +294,7 @@ function NormalForm() {
             </>
           )}
 
-          {systemFeatures.is_allow_register && authType === 'password' && (
+          {!isEndUser && systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
               <Link className="text-text-accent" href={signupHref}>
