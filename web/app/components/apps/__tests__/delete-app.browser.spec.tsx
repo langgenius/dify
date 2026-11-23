@@ -13,6 +13,7 @@ import navigation from '@/i18n/locales/en-US/navigation.json'
 import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -23,6 +24,7 @@ const api = vi.hoisted(() => ({
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
 }))
+const systemFeatures = { rbac_enabled: true, enable_learn_app: false }
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -40,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.starred.get': api.starred,
       'apps.byAppId.delete': api.delete,
       'features.get': async () => zGetFeaturesResponse.parse({}),
+      'systemFeatures.get': async () => createSystemFeaturesFixture(systemFeatures),
       'tags.get': async () => [],
       'workspaces.current.members.get': async () => ({ accounts: [] }),
     }),
@@ -83,10 +86,7 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     accountProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
     features: {},
-    systemFeatures: {
-      rbac_enabled: true,
-      enable_learn_app: false,
-    },
+    systemFeatures,
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>

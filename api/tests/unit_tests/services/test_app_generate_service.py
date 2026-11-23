@@ -1188,7 +1188,7 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
 
     class TestGetWorkspaceMaxActiveRequests:
-        def test_reads_limit_from_current_workspace(self, mocker: MockerFixture):
+        def test_reads_limit_from_current_workspace(self, mocker: MockerFixture) -> None:
             app = _make_app(AppMode.CHAT)
             tenant = Tenant(name="Workspace")
             tenant.max_active_requests = 9
@@ -1198,7 +1198,7 @@ class TestAppGenerateServiceCases:
                 assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 9
                 get_tenant.assert_called_once_with(Tenant, "tenant-id")
 
-        def test_missing_workspace_is_unlimited(self, mocker: MockerFixture):
+        def test_missing_workspace_is_unlimited(self, mocker: MockerFixture) -> None:
             app = _make_app(AppMode.CHAT)
             with Session() as session:
                 mocker.patch.object(session, "get", return_value=None)
