@@ -1,5 +1,7 @@
 import datetime
 import json
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any
 from unittest.mock import patch
 
@@ -1524,9 +1526,18 @@ class TestPluginRuntimeCases:
             response.request = httpx.Request(method, url)
             return response
 
+        @contextmanager
+        def stream[**P](*args: P.args, **kwargs: P.kwargs) -> Generator[httpx.Response]:
+            with httpx.stream(*args, **kwargs) as response:
+                method, url = kwargs["method"], kwargs["url"]
+                assert isinstance(method, str)
+                assert isinstance(url, str)
+                response.request = httpx.Request(method, url)
+                yield response
+
         with (
             patch("core.plugin.impl.base._httpx_client.request", side_effect=request),
-            patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
+            patch("core.plugin.impl.base._httpx_client.stream", side_effect=stream),
         ):
             yield
 
@@ -2509,7 +2520,7 @@ class TestPluginRuntimeCases:
                 first_result = next(results)
                 assert first_result.value == "valid"
 
-                with pytest.raises(ValueError, match="\\{invalid json\\}"):
+                with pytest.raises(PluginDaemonInternalServerError, match="Invalid response from plugin daemon"):
                     next(results)
 
         def test_request_with_bytes_data(self, plugin_client, mock_config):
