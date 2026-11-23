@@ -1,6 +1,7 @@
 import type { CoachmarkModal, CoachmarkProps } from '..'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { useRef, useState } from 'react'
-import { userEvent } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Coachmark,
@@ -97,6 +98,27 @@ it('opens below the target and focuses the initial focus element', async () => {
   const targetRect = screen.getByText('First target').element().getBoundingClientRect()
   expect(coachmark.element().getBoundingClientRect().top).toBeGreaterThan(targetRect.bottom)
 })
+
+it.each(['ltr', 'rtl'] as const)(
+  'lines the popup up with the start of the target in %s',
+  async (direction) => {
+    await page.viewport(1280, 720)
+    document.documentElement.dir = direction
+    onTestFinished(() => document.documentElement.removeAttribute('dir'))
+    const screen = await render(
+      <DirectionProvider direction={direction}>
+        <Demo />
+      </DirectionProvider>,
+    )
+
+    const coachmark = screen.getByRole('dialog', { name: 'Start here' })
+    await expect.element(coachmark).toBeVisible()
+    const target = screen.getByText('First target').element().getBoundingClientRect()
+    const popup = coachmark.element().getBoundingClientRect()
+    if (direction === 'rtl') expect(Math.abs(popup.right - target.right)).toBeLessThanOrEqual(1)
+    else expect(Math.abs(popup.left - target.left)).toBeLessThanOrEqual(1)
+  },
+)
 
 it('reports only Escape and the close part, and stays open until the owner closes it', async () => {
   const onOpenChange = vi.fn()

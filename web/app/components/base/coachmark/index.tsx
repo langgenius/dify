@@ -13,6 +13,7 @@ import type {
 import type { ReactNode, RefObject } from 'react'
 import type { ShownStep } from './use-shown-step'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useDirection } from '@langgenius/dify-ui/direction-provider'
 import {
   Popover,
   PopoverArrow,
@@ -224,6 +225,7 @@ type CoachmarkPositionerProps = Omit<
 function CoachmarkPositioner({ className, side = 'bottom', ...props }: CoachmarkPositionerProps) {
   const { gliding, step } = useCoachmarkContext()
   const { anchorRect, highlightRect } = step
+  const direction = useDirection()
   const inline = side === 'inline-end' || side === 'inline-start'
 
   const anchoring = useMemo(() => {
@@ -237,13 +239,21 @@ function CoachmarkPositioner({ className, side = 'bottom', ...props }: Coachmark
       return { anchor: { getBoundingClientRect: () => rect }, alignOffset: 0 }
     }
 
+    if (direction === 'rtl') {
+      const arrowRight = anchorRect.left + anchorRect.width - 28
+      const rect = new DOMRect(arrowRight - 2, highlightRect.top, 2, highlightRect.height)
+      return {
+        anchor: { getBoundingClientRect: () => rect },
+        alignOffset: arrowRight - (highlightRect.left + highlightRect.width),
+      }
+    }
     const arrowLeft = anchorRect.left + 28
     const rect = new DOMRect(arrowLeft, highlightRect.top, 2, highlightRect.height)
     return {
       anchor: { getBoundingClientRect: () => rect },
       alignOffset: highlightRect.left - arrowLeft,
     }
-  }, [inline, highlightRect, anchorRect])
+  }, [direction, inline, highlightRect, anchorRect])
 
   return (
     <PopoverPositioner
