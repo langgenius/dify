@@ -81,14 +81,26 @@ function observeLayout(
   const resizeObserver =
     typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(onChange)
   resizeElements.forEach((element) => resizeObserver?.observe(element))
-  const mutationObserver = new MutationObserver(onChange)
-  mutationTargets.forEach(([node, options]) => mutationObserver.observe(node, options))
+  const mutationObservers = new Map<string, MutationObserver>()
+  mutationTargets.forEach(([node, options]) => {
+    const key = [
+      options.attributes ? 'attributes' : '',
+      options.childList ? 'childList' : '',
+      options.attributeFilter?.join(',') ?? '',
+    ].join(':')
+    let observer = mutationObservers.get(key)
+    if (!observer) {
+      observer = new MutationObserver(onChange)
+      mutationObservers.set(key, observer)
+    }
+    observer.observe(node, options)
+  })
   window.addEventListener('resize', onChange)
   window.addEventListener('scroll', onChange, true)
 
   return () => {
     resizeObserver?.disconnect()
-    mutationObserver.disconnect()
+    mutationObservers.forEach((observer) => observer.disconnect())
     window.removeEventListener('resize', onChange)
     window.removeEventListener('scroll', onChange, true)
   }
@@ -206,14 +218,17 @@ export function useShownStep(
     }
 
     const attributeOptions = { attributeFilter: LAYOUT_ATTRIBUTES, attributes: true }
+    const layoutAncestors = new Set<HTMLElement>()
+    for (const element of [step.target, ...step.parts]) {
+      for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement)
+        layoutAncestors.add(ancestor)
+    }
     const stopObserving = observeLayout(
       schedule,
       [step.target, ...step.parts],
       [
         [document.body, { childList: true, subtree: true }],
-        ...[step.target, ...step.parts, ...step.parts.map((part) => part.parentElement)]
-          .filter((node): node is HTMLElement => !!node)
-          .map((node): [Node, MutationObserverInit] => [node, attributeOptions]),
+        ...[...layoutAncestors].map((node): [Node, MutationObserverInit] => [node, attributeOptions]),
       ],
     )
 
