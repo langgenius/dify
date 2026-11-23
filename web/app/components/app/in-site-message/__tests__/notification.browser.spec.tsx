@@ -13,7 +13,10 @@ vi.unmock('react-i18next')
 const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.notification.get>(),
   dismiss: vi.fn<typeof consoleClient.notification.dismiss.post>(),
+  pathname: '/apps',
 }))
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
+vi.mock('@/next/navigation', () => ({ usePathname: () => api.pathname }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -62,6 +65,7 @@ beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
   api.list.mockReset().mockResolvedValue({ should_show: false, notifications: [] })
   api.dismiss.mockReset().mockResolvedValue({ result: 'success' })
+  api.pathname = '/apps'
 })
 
 it('keeps cloud notifications unavailable in Community even when the service has a notice', async () => {
@@ -70,6 +74,16 @@ it('keeps cloud notifications unavailable in Community even when the service has
   await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
   await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
   expect(api.list).not.toHaveBeenCalled()
+})
+
+it('stays off the collaboration demo it links to without dismissing the notice', async () => {
+  api.pathname = '/collaboration-demo'
+  api.list.mockResolvedValue({ should_show: true, notifications: [notice('Cloud update')] })
+  const { screen } = await setup()
+  await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
+  await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
+  expect(api.list).not.toHaveBeenCalled()
+  expect(api.dismiss).not.toHaveBeenCalled()
 })
 
 it('replaces the displayed notice when the real interface language changes', async () => {
