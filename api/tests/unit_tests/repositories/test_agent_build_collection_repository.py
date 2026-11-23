@@ -19,8 +19,15 @@ from libs.datetime_utils import naive_utc_now
 from models.agent import AgentBuildCollectionRequest, AgentWorkspace, AgentWorkspaceBinding
 from repositories.agent_build_collection_repository import AgentBuildCollectionRepository
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.app.agent_app_repository import AgentAppRepository
+from services.agent.build_session_store import AgentBuildApplyChangedError
 from services.agent.workspace_service import AgentWorkspaceService
-from tasks.collect_agent_resources_task import reconcile_agent_build_collections
+from services.evaluation_service import EvaluationService
+from tasks.collect_agent_resources_task import (
+    collect_agent_resources,
+    enqueue_agent_resource_collection,
+    reconcile_agent_build_collections,
+)
 from tests.unit_tests.controllers.console.agent.test_agent_build_session import (
     BuildState,
     _RecordingBackendClient,
@@ -239,6 +246,111 @@ def test_reconcile_dispatches_each_pending_binding_once_per_batch(harness: Harne
         assert {(row.binding_id, row.attempt_count, row.last_error) for row in rows} == {
             (binding_id, 1, None) for binding_id in binding_ids
         }
+
+
+def test_invalid_retry_bounds_and_empty_pending_are_explicit(harness: Harness) -> None:
+    repository = AgentBuildCollectionRepository(harness.sessions)
+    assert repository.pending_binding_ids(tenant_id=harness.tenant_id, binding_ids=set()) == set()
+    with pytest.raises(ValueError, match="retry bounds"):
+        repository.claim_next(retry_interval_seconds=-1.0)
+    with pytest.raises(ValueError, match="retry bounds"):
+        repository.claim_next(retry_interval_seconds=0.0, max_attempts=0)
+    with pytest.raises(ValueError, match="batch size"):
+        reconcile_agent_build_collections(batch_size=0)
+    with pytest.raises(ValueError, match="batch size"):
+        reconcile_agent_build_collections(batch_size=101)
+
+
+def test_reconcile_retains_failed_and_exhausted_attempts(
+    harness: Harness, build_state: BuildState, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _retire_and_stage(harness, build_state)
+    repository = AgentBuildCollectionRepository(harness.sessions)
+    first = repository.claim_next(
+        tenant_id=harness.tenant_id,
+        binding_id=build_state.binding_id,
+        retry_interval_seconds=0.0,
+        max_attempts=1,
+    )
+    assert first is not None
+    second_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        session.add(AgentBuildCollectionRequest(tenant_id=harness.tenant_id, binding_id=second_id))
+
+    def broker_unavailable(**_kwargs: object) -> None:
+        raise RuntimeError("test broker unavailable")
+
+    monkeypatch.setattr(collect_agent_resources, "delay", broker_unavailable)
+    outcome = reconcile_agent_build_collections(retry_interval_seconds=0.0, max_attempts=1)
+    assert outcome == {"published": 0, "failed": 1, "exhausted": 2}
+    with harness.sessions() as session:
+        rows = session.scalars(select(AgentBuildCollectionRequest)).all()
+        assert {row.binding_id for row in rows} == {build_state.binding_id, second_id}
+        assert all(row.attempt_count == 1 for row in rows)
+        assert (
+            session.scalar(
+                select(AgentBuildCollectionRequest.last_error).where(
+                    AgentBuildCollectionRequest.binding_id == second_id
+                )
+            )
+            == "RuntimeError"
+        )
+
+
+def test_enqueue_does_not_bypass_an_exhausted_build_claim(harness: Harness, monkeypatch: pytest.MonkeyPatch) -> None:
+    binding_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        session.add(
+            AgentBuildCollectionRequest(
+                tenant_id=harness.tenant_id,
+                binding_id=binding_id,
+                attempt_count=100,
+                last_attempt_at=naive_utc_now() - timedelta(minutes=10),
+            )
+        )
+    delay_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(collect_agent_resources, "delay", lambda **kwargs: delay_calls.append(kwargs))
+    enqueue_agent_resource_collection(tenant_id=harness.tenant_id, binding_ids=[binding_id])
+    assert delay_calls == []
+    with harness.sessions() as session:
+        pending = session.scalar(select(AgentBuildCollectionRequest))
+        assert pending is not None
+        assert pending.attempt_count == 100
+
+
+def test_apply_maps_binding_loss_after_revalidation(
+    harness: Harness, build_state: BuildState, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = AgentAppRepository(
+        session_factory=harness.sessions,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
+    source = repository.prepare_build_apply(
+        tenant_id=harness.tenant_id,
+        agent_id=build_state.agent_id,
+        account_id=harness.account_id,
+    )
+
+    def retire_after_revalidation(session: Session, **_kwargs: object) -> list[str]:
+        retired = AgentWorkspaceRepository(session=session).retire_binding(
+            tenant_id=harness.tenant_id,
+            binding_id=build_state.binding_id,
+        )
+        assert retired == build_state.binding_id
+        return []
+
+    monkeypatch.setattr(AgentAppRepository, "_retire_preview_bindings", staticmethod(retire_after_revalidation))
+    with harness.sessions() as session:
+        with pytest.raises(AgentBuildApplyChangedError):
+            repository._stage_build_apply(
+                session,
+                tenant_id=harness.tenant_id,
+                agent_id=build_state.agent_id,
+                account_id=harness.account_id,
+                source=source,
+                snapshot=None,
+            )
+        session.rollback()
 
 
 def test_collection_request_migration_upgrade_and_downgrade(tmp_path: Path) -> None:
