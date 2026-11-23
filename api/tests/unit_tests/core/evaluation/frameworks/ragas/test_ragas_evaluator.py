@@ -3,6 +3,7 @@
 import sys
 from dataclasses import dataclass
 from types import ModuleType
+from typing import override
 
 import pytest
 
@@ -126,6 +127,77 @@ def test_build_ragas_metrics_preserves_canonical_names(monkeypatch: pytest.Monke
     assert metrics[1].embeddings is embeddings
     assert metrics[2].embeddings is embeddings
     assert metrics[4].embeddings is embeddings
+
+
+def test_installed_ragas_evaluates_legacy_semantic_similarity_without_provider_io() -> None:
+    """The pinned Ragas release evaluates the existing metric through Dify adapters.
+
+    Precondition: the Evaluation dependency group is installed; embeddings are deterministic.
+    Postcondition: all seven legacy metric classes load, and semantic similarity
+    returns a score without calling a provider or changing the public metric name.
+    """
+    from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbeddingsWrapper
+    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+
+    class DeterministicEmbeddings(DifyEmbeddingsWrapper):
+        @override
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] if text == "same" else [0.0, 1.0] for text in texts]
+
+        @override
+        def embed_query(self, text: str) -> list[float]:
+            return self.embed_documents([text])[0]
+
+    evaluator = RagasEvaluator(RagasConfig())
+    embeddings = DeterministicEmbeddings("tenant")
+    names = [
+        "faithfulness",
+        "answer_relevancy",
+        "answer_correctness",
+        "semantic_similarity",
+        "context_precision",
+        "context_recall",
+        "context_relevance",
+    ]
+    assert [metric.name for metric in evaluator._build_ragas_metrics(names, embeddings)] == names
+
+    result = evaluator._evaluate_with_ragas(
+        [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="same", expected_output="same")],
+        ["semantic_similarity"],
+        DifyModelWrapper("provider", "model", "tenant"),
+        embeddings,
+        EvaluationCategory.LLM,
+    )[0]
+
+    assert result.error is None
+    assert [(metric.name, metric.value) for metric in result.metrics] == [("semantic_similarity", 1.0)]
+
+
+def test_installed_ragas_evaluates_legacy_tool_call_accuracy_without_provider_io() -> None:
+    """The pinned Ragas release scores a reference tool trace through Dify's adapter.
+
+    Precondition: the expected and actual tool calls are identical.
+    Postcondition: the reference-based score is one with no model I/O or error.
+    """
+    call = AgentToolCall(name="weather", arguments={"city": "Paris"})
+    result = RagasEvaluator(RagasConfig()).evaluate_agent(
+        [
+            AgentEvaluationItem(
+                index=1,
+                inputs={"task": "Check weather"},
+                output="Sunny",
+                tool_calls=[call],
+                expected_tool_calls=[call],
+            )
+        ],
+        ["tool_call_accuracy"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.error is None
+    assert [(metric.name, metric.value) for metric in result.metrics] == [("tool_call_accuracy", 1.0)]
 
 
 def test_evaluate_with_ragas_uses_bounded_transient_retry_config(monkeypatch: pytest.MonkeyPatch) -> None:
