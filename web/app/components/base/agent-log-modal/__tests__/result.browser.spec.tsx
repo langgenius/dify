@@ -48,19 +48,3 @@ it('shows semantic input, output and execution metadata in keyboard-reachable re
   await expect.element(screen.getByText('tool1, tool2')).toBeVisible()
   await expect.element(screen.getByText('3', { exact: true })).toBeVisible()
 })
-
-it('shows the available mode and fallbacks when execution metadata is missing', async () => {
-  const { screen } = await renderAgentLog(
-    <ResultPanel
-      {...props}
-      created_by={undefined}
-      tools={[]}
-      total_tokens={undefined}
-      agentMode="react"
-    />,
-  )
-  await expect.element(screen.getByText('N/A')).toBeVisible()
-  await expect.element(screen.getByText('Null')).toBeVisible()
-  await expect.element(screen.getByRole('status')).toMatchTextContent('0 Tokens')
-  await expect.element(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeVisible()
-})

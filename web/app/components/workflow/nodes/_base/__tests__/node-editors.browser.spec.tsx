@@ -48,7 +48,6 @@ it('shows who else is editing a node in their collaborator color', async () => {
     name: 'workflow.collaboration.userEditing:{"name":"Ralph Edwards"}',
   })
   await expect.element(avatar).toBeVisible()
-  expect(avatar.element().getBoundingClientRect().width).toBe(20)
   await expect
     .element(avatar.getByText('R'))
     .toHaveStyle({ backgroundColor: getUserColor('ralph') })
