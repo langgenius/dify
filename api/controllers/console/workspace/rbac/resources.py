@@ -11,7 +11,6 @@ from controllers.common.rbac import rbac_language
 from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import validate_request
 from controllers.console.workspace.rbac.schemas import (
     _AccessControlLanguageQuery,
     _DeleteMemberBindingsRequest,
@@ -21,6 +20,7 @@ from controllers.console.workspace.rbac.schemas import (
     _WorkspaceMatrixQuery,
     pagination_options,
 )
+from controllers.console.wraps import validate_request
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from machinery.context import RequestContext
