@@ -7,7 +7,6 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from configs import dify_config
 from controllers.common.errors import (
     ConversationNotFoundHTTPError,
     ForbiddenError,
@@ -34,7 +33,6 @@ from controllers.console.app.error import (
 from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
-from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -70,6 +68,7 @@ from services.entities.conversation_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
+from services.feature_service import FeatureService
 from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
     UnsupportedConversationLogExportModeError,
@@ -241,9 +240,7 @@ def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> 
     except NoPermissionError as exc:
         raise UnauthorizedError(str(exc)) from exc
 
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
-        scope.tenant_id
-    ):
+    if FeatureService.requires_paid_plan_for_log_export() and not is_cloud_edition_billing_paid_plan(scope.tenant_id):
         raise PaidPlanRequiredError()
     return scope
 

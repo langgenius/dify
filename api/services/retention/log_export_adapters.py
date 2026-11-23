@@ -5,16 +5,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TextIO
 
-from configs import dify_config
-from enums import DeploymentEdition
 from extensions.ext_storage import storage
-from extensions.storage.storage_type import StorageType
 from services.retention.log_export_task import (
     LogExportDownload,
     LogExportFileNotFoundError,
     LogExportKind,
     LogExportTask,
 )
+from services.system_feature_service import SystemFeatureService
 
 
 def dispatch_log_export[FiltersT](task: LogExportTask[FiltersT], *, export_kind: LogExportKind) -> None:
@@ -42,8 +40,7 @@ def store_log_export_csv(storage_key: str, write_csv: Callable[[TextIO], int]) -
 
 def open_log_export_csv(storage_key: str, expires_in: int, filename: str) -> LogExportDownload:
     """Sign the Cloud S3 download or open the CSV through the configured storage."""
-    # Self-hosted S3 endpoints can be private to the API container.
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.STORAGE_TYPE == StorageType.S3:
+    if SystemFeatureService.use_presigned_log_export_downloads():
         if not storage.exists(storage_key):
             raise LogExportFileNotFoundError()
         return storage.generate_presigned_url(

@@ -8,7 +8,6 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer, field_validator
 
-from configs import dify_config
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import PlainApp, RBACCheck
@@ -30,7 +29,6 @@ from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan
-from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -47,6 +45,7 @@ from models import App
 from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
+from services.feature_service import FeatureService
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
@@ -330,9 +329,7 @@ def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> 
     if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
         raise ForbiddenError()
     scope = _get_workflow_log_scope(request_context, app_id)
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
-        scope.tenant_id
-    ):
+    if FeatureService.requires_paid_plan_for_log_export() and not is_cloud_edition_billing_paid_plan(scope.tenant_id):
         raise PaidPlanRequiredError()
     return scope
 

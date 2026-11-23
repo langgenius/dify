@@ -9,7 +9,6 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, PaidPlanRequiredError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
@@ -62,7 +61,6 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
@@ -128,6 +126,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.entities.conversation_entities import ConsoleLogIdentitySource
+from services.feature_service import FeatureService
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
@@ -1093,7 +1092,7 @@ def _require_agent_log_export_access(context: RequestContext) -> None:
     """Require a workspace Owner or Admin with the Cloud log export entitlement when applicable."""
     if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
         raise ForbiddenError()
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
+    if FeatureService.requires_paid_plan_for_log_export() and not is_cloud_edition_billing_paid_plan(
         context.active_workspace_id
     ):
         raise PaidPlanRequiredError()
