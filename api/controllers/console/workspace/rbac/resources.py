@@ -11,6 +11,7 @@ from controllers.common.rbac import rbac_language
 from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import validate_request
 from controllers.console.workspace.rbac.schemas import (
     _AccessControlLanguageQuery,
     _DeleteMemberBindingsRequest,
@@ -229,7 +230,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
         @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
         @console_ns.response(200, "Success", console_ns.models[dto.AccessMatrixItem.__name__])
         def put(self, context: RequestContext, policy_id):
-            body = _ReplaceBindingsRequest.model_validate(console_ns.payload or {})
+            body = validate_request(_ReplaceBindingsRequest)
             return dump_response(
                 dto.AccessMatrixItem,
                 application_services().rbac.resources.replace_workspace_bindings(
