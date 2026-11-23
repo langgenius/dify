@@ -37,6 +37,11 @@ def test_json_request_passes_through(app: Flask) -> None:
         assert body_from_request(file_fields=_FILE_FIELDS) == {"inputs": {"q": "hi"}}
 
 
+def test_empty_json_request_body_defaults_to_an_empty_object(app: Flask) -> None:
+    with app.test_request_context("/x", method="POST", data=b"", content_type="application/json"):
+        assert body_from_request() == {}
+
+
 @pytest.mark.parametrize("body", [[], False, 0, ""])
 def test_non_object_json_is_not_replaced_by_an_empty_body(app: Flask, body: object) -> None:
     with app.test_request_context("/x", method="POST", json=body):
