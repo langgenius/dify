@@ -1,30 +1,10 @@
-import type {
-  KnowledgeFsGoldenQuestionListResponse,
-  KnowledgeFsGoldenQuestionResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsGoldenQuestionResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryClient } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { hold, setupFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { GoldenQuestionsPanel } from '../golden-questions-panel'
-
-const { listQuestions, saveQuestion } = vi.hoisted(() => ({
-  listQuestions: vi.fn(),
-  saveQuestion: vi.fn(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get': listQuestions,
-      'knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch': saveQuestion,
-    }),
-  }
-})
 
 const question = {
   annotation: 'Original annotation',
@@ -37,13 +17,28 @@ const question = {
   updated_at: '2026-07-28T00:00:00Z',
 } satisfies KnowledgeFsGoldenQuestionResponse
 
+const fake = setupFakeApi({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          goldenQuestions: {
+            get: () => ({ data: [question], next_cursor: null }),
+            byQuestionId: { patch: () => question },
+          },
+        },
+      },
+    },
+  },
+})
+const goldenQuestions = () => fake.console.knowledgeFs.spaces.byControlSpaceId.goldenQuestions
+
 it('closes after saving and reopens with the saved value while the list refreshes', async () => {
-  const refresh = createDeferred<KnowledgeFsGoldenQuestionListResponse>()
   const savedQuestion = { ...question, annotation: 'Updated annotation' }
-  onTestFinished(() => refresh.resolve({ data: [savedQuestion], next_cursor: null }))
-  listQuestions.mockResolvedValueOnce({ data: [question], next_cursor: null })
-  listQuestions.mockReturnValueOnce(refresh.promise)
-  saveQuestion.mockResolvedValueOnce(savedQuestion)
+  const { get: listQuestions, byQuestionId } = goldenQuestions()
+  listQuestions.mockReturnValueOnce({ data: [question], next_cursor: null })
+  const refresh = hold(listQuestions)
+  byQuestionId.patch.mockReturnValueOnce(savedQuestion)
   const client = createConsoleQueryClient()
   onTestFinished(() => client.clear())
   const screen = await render(
@@ -68,9 +63,22 @@ it('closes after saving and reopens with the saved value while the list refreshe
   await dialog.getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }).click()
 
   await expect.element(dialog).not.toBeInTheDocument()
+  await refresh.arrived
   expect(listQuestions).toHaveBeenCalledTimes(2)
+  expect(byQuestionId.patch).toHaveBeenCalledExactlyOnceWith({
+    params: { control_space_id: 'space-1', question_id: question.id },
+    body: {
+      annotation: 'Draft annotation',
+      evidence_text: '',
+      expected_evidence_ids: [],
+      match_policy: question.match_policy,
+      question: question.question,
+      tags: question.tags,
+    },
+  })
 
   await actions.click()
   await edit.click()
   await expect.element(annotation).toHaveValue(savedQuestion.annotation)
+  refresh.resolve({ data: [savedQuestion], next_cursor: null })
 })

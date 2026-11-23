@@ -157,6 +157,8 @@ it('keeps the delete dialog pending after its starred source unmounts until both
     await expect.element(actions('Starred', next.name)).toHaveFocus()
   } finally {
     refresh.resolve(appPage([next]))
+    // Unmount first: clearing under mounted queries refetches data the test only seeded.
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -198,6 +200,7 @@ it.each(['pointer', 'keyboard'] as const)(
       await expect.element(screen.getByRole('menu')).toBeVisible()
       expect(fake.console.apps.byAppId.delete).not.toHaveBeenCalled()
     } finally {
+      screen.unmount()
       queryClient.clear()
     }
   },
@@ -221,6 +224,7 @@ it('hands focus from the card context menu to deletion and restores the card lin
     await expect.element(link).toHaveFocus()
     expect(fake.console.apps.byAppId.delete).not.toHaveBeenCalled()
   } finally {
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -250,6 +254,7 @@ it('focuses the next card after deletion without moving the catalog scroll posit
     expect(element.scrollTop).toBe(scrollTopBefore)
     expect(element.scrollTop).toBeGreaterThan(0)
   } finally {
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -272,6 +277,7 @@ it('returns focus to the empty catalog when its last app is deleted without an e
     await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
   } finally {
     noMotionStyle.remove()
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -298,6 +304,7 @@ it.each([
       .element(screen.getByRole('button', { name: `Star app: ${apps[focused]!.name}` }))
       .toHaveFocus()
   } finally {
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -315,6 +322,7 @@ it('falls back to the viewport when the source starred section disappears', asyn
     await expect.element(screen.getByRole('link', { name: remaining.name })).toBeVisible()
     await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
   } finally {
+    screen.unmount()
     queryClient.clear()
   }
 })
@@ -335,6 +343,7 @@ it('focuses the next card primary control when that card has no actions', async 
       .element(screen.getByRole('button', { name: remaining.name, exact: true }))
       .toHaveFocus()
   } finally {
+    screen.unmount()
     queryClient.clear()
   }
 })
