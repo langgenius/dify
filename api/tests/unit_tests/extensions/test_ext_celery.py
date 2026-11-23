@@ -181,6 +181,32 @@ def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Ce
         task.pop_request()
 
 
+def test_build_collection_reconciliation_uses_retention_queue() -> None:
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        try:
+            build_reconciliation = celery_app.conf["beat_schedule"]["reconcile_agent_build_collections"]
+            assert build_reconciliation == {
+                "task": "tasks.collect_agent_resources_task.reconcile_agent_build_collections",
+                "schedule": timedelta(minutes=1),
+                "options": {"queue": "retention", "expires": 55},
+            }
+            reconcile_task = celery_app.tasks[build_reconciliation["task"]]
+            assert reconcile_task.queue == "retention"
+            assert reconcile_task.time_limit == 60
+            assert reconcile_task.soft_time_limit == 55
+            assert reconcile_task.ignore_result is True
+        finally:
+            celery_app.close()
+
+
 class TestCelerySslCases:
     @staticmethod
     @pytest.fixture(autouse=True)

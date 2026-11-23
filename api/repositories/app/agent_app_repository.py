@@ -32,6 +32,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import build_initial_agent_soul
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from repositories.agent_build_collection_repository import AgentBuildCollectionRepository
 from repositories.agent_drafts import agent_soul_matches_active_config, get_or_create_agent_draft, save_agent_draft
 from repositories.agent_roster_queries import (
     find_agent_draft,
@@ -620,10 +621,15 @@ class AgentAppRepository:
             base_snapshot_id=source.base_snapshot_id,
         )
         retired = self._retire_preview_bindings(session, agent=agent, draft=shared)
-        workspaces = AgentWorkspaceRepository(session=session)
-        binding_id = workspaces.retire_binding(tenant_id=tenant_id, binding_id=current.sandbox.binding_id)
-        if binding_id is None:
-            raise AgentBuildApplyChangedError
+        try:
+            binding_id = self._retire_build_binding(
+                session,
+                draft,
+                app_id=agent.backing_app_id or agent.app_id,
+                require_generation=True,
+            )
+        except AgentBuildBindingUnavailableError as exc:
+            raise AgentBuildApplyChangedError from exc
         if snapshot is not None:
             session.add(
                 AgentHomeSnapshot(id=snapshot.id, tenant_id=tenant_id, agent_id=agent_id, snapshot_ref=snapshot.ref)
@@ -729,9 +735,11 @@ class AgentAppRepository:
     ) -> str:
         """Stage retirement of the exact draft-owned binding, failing if it cannot be retired.
 
-        Discard requires a matching generation and reports a mismatch as an
-        unavailable binding. Refresh can reset an owned binding from an older
-        generation.
+        Discard, forced checkout, and Apply require a matching generation and
+        report a mismatch as an unavailable binding. Refresh can reset an owned
+        binding from an older generation. Success leaves both retirement and
+        its durable collection intent in the caller's transaction. Failures add
+        no durable intent; this helper never commits.
         """
         binding = AgentAppRepository._get_build_binding(
             session, draft, app_id=app_id, require_generation=require_generation, for_update=True
@@ -741,6 +749,11 @@ class AgentAppRepository:
         )
         if retired_binding_id is None:
             raise AgentBuildBindingUnavailableError
+        AgentBuildCollectionRepository.stage(
+            session=session,
+            tenant_id=draft.tenant_id,
+            binding_id=retired_binding_id,
+        )
         return retired_binding_id
 
     @staticmethod

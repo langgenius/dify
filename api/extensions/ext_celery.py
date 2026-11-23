@@ -415,6 +415,12 @@ def init_app(app: DifyApp) -> Celery:
 
     if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
         imports.append("tasks.enterprise_telemetry_task")
+
+    beat_schedule["reconcile_agent_build_collections"] = {
+        "task": "tasks.collect_agent_resources_task.reconcile_agent_build_collections",
+        "schedule": timedelta(minutes=1),
+        "options": {"queue": "retention", "expires": 55},
+    }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
