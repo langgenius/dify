@@ -277,6 +277,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             session_scope,
             home_snapshot_id=bundle.snapshot.home_snapshot_id,
         )
+        current_session_snapshot = stored_session.session_snapshot
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
@@ -295,7 +296,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         binding_id=stored_session.binding_id,
                         backend_binding_ref=stored_session.backend_binding_ref,
                         attempt=attempt,
-                        session_snapshot=stored_session.session_snapshot,
+                        session_snapshot=current_session_snapshot,
                     )
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:
@@ -398,12 +399,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 )
                 return
 
-            self._save_session_snapshot(
+            snapshot_persisted = self._save_session_snapshot(
                 session_scope=session_scope,
                 binding_id=stored_session.binding_id,
                 snapshot=terminal_event.session_snapshot,
                 metadata=metadata,
             )
+            if snapshot_persisted:
+                # Output validation may retry this node. Only advance the in-memory
+                # recovery point after the same snapshot is durably persisted.
+                current_session_snapshot = terminal_event.session_snapshot
 
             success_event = terminal_event
             if custom_outputs:
@@ -742,7 +747,14 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         binding_id: str,
         snapshot: SessionSnapshot | None,
         metadata: dict[str, Any],
-    ) -> None:
+    ) -> bool:
+        """Persist a session recovery point without failing the node.
+
+        ``snapshot`` may be ``None`` for terminal events without resumable
+        state. A ``True`` result means the store accepted the value; ``False``
+        means the existing recovery point remains authoritative. In both cases
+        metadata records the persistence outcome and store errors stay isolated.
+        """
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
@@ -752,6 +764,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
             metadata["agent_backend"] = agent_backend
+            return True
         except Exception:
             logger.warning(
                 "Failed to persist workflow Agent Binding session snapshot: "
@@ -767,6 +780,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_backend["session_snapshot_persisted"] = False
             agent_backend["session_snapshot_persist_error"] = "workflow_agent_workspace_store_error"
             metadata["agent_backend"] = agent_backend
+            return False
 
     @staticmethod
     def _patch_event_with_defaults(
