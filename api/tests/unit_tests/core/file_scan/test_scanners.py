@@ -300,6 +300,29 @@ def test_metadefender_reports_pending_with_the_data_id_and_resumes_without_uploa
     assert [call[0] for call in http.calls] == ["GET"]
 
 
+def test_metadefender_scan_once_does_not_wait_for_the_first_verdict(monkeypatch: pytest.MonkeyPatch) -> None:
+    scanner, http = _metadefender(monkeypatch, httpx.Response(200, json={"data_id": "d1"}))
+
+    pending = scanner.scan_once(_target())
+
+    assert (pending.status, pending.problem, pending.external_id) == (
+        ScanStatus.UNAVAILABLE,
+        ScanProblem.PENDING,
+        "d1",
+    )
+    assert [call[0] for call in http.calls] == ["POST"]
+
+    scanner, http = _metadefender(monkeypatch, _result(255))
+    resumed = scanner.scan_once(_target(), external_id="d1")
+
+    assert (resumed.status, resumed.problem, resumed.external_id) == (
+        ScanStatus.UNAVAILABLE,
+        ScanProblem.PENDING,
+        "d1",
+    )
+    assert [call[0] for call in http.calls] == ["GET"]
+
+
 @pytest.mark.parametrize(
     ("code", "status", "problem"),
     [
