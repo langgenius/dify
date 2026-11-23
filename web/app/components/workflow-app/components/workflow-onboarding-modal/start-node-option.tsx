@@ -21,7 +21,7 @@ function StartNodeOption({
     <button
       type="button"
       className={cn(
-        'flex h-40 w-70 cursor-pointer flex-col gap-2 rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-4 text-left shadow-sm transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'flex h-40 w-70 cursor-pointer flex-col gap-2 rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-4 text-start shadow-sm transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         className,
       )}
       {...buttonProps}

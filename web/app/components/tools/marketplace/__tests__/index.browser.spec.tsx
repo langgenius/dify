@@ -5,31 +5,14 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { marketplaceLinks } from '@/features/marketplace/links'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Marketplace from '../index'
 
 const requests = vi.hoisted(() => ({ push: vi.fn() }))
 // boundary: Next routing is unavailable in the standalone browser page.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: requests.push }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': () => ({ plugins: [] }),
-    }),
-  }
-})
 async function renderMarketplaceOwner(ui: React.ReactElement, canInstall = true) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
@@ -135,5 +118,22 @@ it('navigates to the collection search with its filters', async () => {
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              permission: {
+                fetch: {
+                  get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+                },
+              },
+              list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+            },
+          },
+        },
+      },
+    }),
+  )
 })

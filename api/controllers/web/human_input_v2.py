@@ -20,9 +20,9 @@ from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from core.db.session_factory import session_factory
-from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import TenantId
 from fields.base import ResponseModel
+from fields.human_input_v2 import ResolvedForm, build_resolved_form_response
 from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip, to_timestamp
 from models.model import App, EndUser
@@ -82,7 +82,7 @@ class WebAppHumanInputV2FormApi(WebApiResource):
         return dump_response(
             WebAppHumanInputV2FormDefinitionResponse,
             {
-                "resolved_form": form.resolved_form,
+                "resolved_form": build_resolved_form_response(form.resolved_form),
                 "expiration_time": to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
             },
         )

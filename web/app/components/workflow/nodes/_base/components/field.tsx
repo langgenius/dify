@@ -54,7 +54,7 @@ const Field: FC<Props> = ({
             {warningDot && (
               <span
                 aria-hidden
-                className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary"
+                className="absolute -inset-s-2.25 top-1/2 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary"
               />
             )}
             {title}{' '}
@@ -66,7 +66,7 @@ const Field: FC<Props> = ({
           </div>
           {!!tooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipTrigger aria-labelledby={titleId} className="ms-1" />
               <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           )}

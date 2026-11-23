@@ -7,6 +7,7 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum } from '@/app/components/workflow/types'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { TEST_AGENT_ID } from '@/test/console/ids'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -18,7 +19,7 @@ export const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2Nod
   title: 'Agent',
   desc: '',
   type: BlockEnum.AgentV2,
-  agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
+  agent_binding: { binding_type: 'roster_agent', agent_id: TEST_AGENT_ID },
   agent_node_kind: 'dify_agent',
   version: '2',
   ...overrides,
@@ -42,7 +43,7 @@ export function createPanelEnvironment({
   })
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
   queryClient.setQueryData(
-    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: TEST_AGENT_ID } } }),
     createAgentFixture({ name: 'Nadia', role: 'Researcher', description: 'Clarification Drafter' }),
   )
   let flow: ReactFlowInstance<AgentV2NodeType>

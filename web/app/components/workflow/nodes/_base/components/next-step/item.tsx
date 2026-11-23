@@ -27,14 +27,14 @@ const Item = ({ nodeId, sourceHandle, data }: ItemProps) => {
 
   return (
     <div className="group relative flex h-9 cursor-pointer items-center rounded-lg border-[0.5px] border-divider-regular bg-background-default px-2 text-xs text-text-secondary shadow-xs last-of-type:mb-0 hover:bg-background-default-hover">
-      <BlockIcon type={data.type} toolIcon={toolIcon} className="mr-1.5 shrink-0" />
+      <BlockIcon type={data.type} toolIcon={toolIcon} className="me-1.5 shrink-0" />
       <div className="grow truncate system-xs-medium text-text-secondary" title={data.title}>
         {data.title}
       </div>
       {!nodesReadOnly && (
         <>
           <Button
-            className="mr-1 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+            className="me-1 shrink-0 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
             size="small"
             onClick={() => handleNodeSelect(nodeId)}
           >

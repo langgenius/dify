@@ -185,7 +185,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               >
                 {currentNodeVar.var.name}
               </div>
-              <div className="ml-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
+              <div className="ms-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
@@ -247,7 +247,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
+                  <span className="ms-[2.5px] me-[4.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
                   <span>
                     {t(($) => $['debug.variableInspect.edited'], { ns: 'workflowDebug' })}
                   </span>

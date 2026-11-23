@@ -24,7 +24,7 @@ import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
-import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -44,7 +44,7 @@ function LegacyList() {
   const { t } = useTranslation(['dataset'])
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
@@ -143,7 +143,7 @@ function LegacyList() {
         onCreatorsChange={(value) => void setCreatorIDs(value)}
         onIncludeAllChange={toggleIncludeAll}
         onKeywordsChange={setKeywords}
-        onOpenTagManagement={() => setShowTagManagementModal(true)}
+        onOpenTagManagement={() => setShowTagManagementDialog(true)}
         onTagsChange={setTagFilterValue}
         stepByStepTourCreateMenuOpen={
           activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
@@ -175,7 +175,7 @@ function LegacyList() {
           isFetchingNextPage={datasetListQuery.isFetchingNextPage}
           isLoading={datasetListQuery.isLoading}
           isPlaceholderData={datasetListQuery.isPlaceholderData}
-          onOpenTagManagement={() => setShowTagManagementModal(true)}
+          onOpenTagManagement={() => setShowTagManagementDialog(true)}
           stepByStepTourActionMenuHighlightPart={
             STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
           }
@@ -183,10 +183,10 @@ function LegacyList() {
           stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
         />
       )}
-      <TagManagementModal
+      <TagManagementDialog
         type="knowledge"
-        show={showTagManagementModal}
-        onClose={() => setShowTagManagementModal(false)}
+        show={showTagManagementDialog}
+        onClose={() => setShowTagManagementDialog(false)}
         onTagsChange={invalidDatasetList}
       />
     </div>

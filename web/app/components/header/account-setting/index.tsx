@@ -35,7 +35,7 @@ import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import IpPoliciesPage from './ip-policies-page'
-import MembersPage from './members-page'
+import { MembersPage } from './members-page'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
 import ResourceAccessTokenPage from './resource-access-token-page'
@@ -136,7 +136,7 @@ export default function AccountSetting({
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
       description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
       docLink: {
-        href: docLink('/use-dify/nodes/human-input'),
+        href: docLink('/use-dify/workspace/channels/overview'),
         label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
       },
       icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,

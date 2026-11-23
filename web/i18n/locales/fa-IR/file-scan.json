@@ -2,7 +2,6 @@
   "dialog.addTitle": "افزودن اسکنر",
   "dialog.apiKey": "کلید API",
   "dialog.apiSecret": "رمز API",
-  "dialog.clamavHint": "ClamAV درون همین استقرار اجرا می‌شود. نشانی آن را مدیر استقرار تعیین می‌کند.",
   "dialog.dataNotice": "محتوای فایل‌ها به این سرویس ارسال می‌شود.",
   "dialog.editTitle": "ویرایش اسکنر",
   "dialog.endpoint": "نقطه پایانی (اختیاری)",

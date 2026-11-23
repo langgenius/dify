@@ -21,10 +21,14 @@ const getResetInDays = (resetDate: number) => {
   return diff >= 0 ? diff : undefined
 }
 
-// Apps, members, document uploads and annotations use 0 for unlimited.
+// Normalize a quota with the getter for its field before checking it, so 0 and -1 keep their meaning.
+export const isQuotaReached = ({ usage, limit }: BillingQuota) =>
+  limit !== 'unlimited' && usage >= limit
+
+// Apps, members, document uploads and annotations use 0 for unlimited; the API enforces positive limits only.
 export const getCountQuota = ({ size, limit }: LimitationModel): BillingQuota => ({
   usage: size,
-  limit: limit === 0 ? 'unlimited' : limit,
+  limit: limit <= 0 ? 'unlimited' : limit,
 })
 
 export const getVectorSpaceQuota = ({ size, limit }: VectorSpaceLimitationModel): BillingQuota => ({

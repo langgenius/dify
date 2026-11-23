@@ -2,7 +2,6 @@
   "dialog.addTitle": "Skaner əlavə et",
   "dialog.apiKey": "API açarı",
   "dialog.apiSecret": "API sirri",
-  "dialog.clamavHint": "ClamAV bu quraşdırmanın daxilində işləyir. Onun ünvanını quraşdırma administratoru təyin edir.",
   "dialog.dataNotice": "Faylların məzmunu bu xidmətə göndərilir.",
   "dialog.editTitle": "Skaneri redaktə et",
   "dialog.endpoint": "Son nöqtə (istəyə bağlı)",

@@ -3,31 +3,11 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi, route } from '@/test/fake-api'
 import PluginAuthInAgent from '../plugin-auth-in-agent'
 import { createCredential, credentialInfo, pluginPayload } from './credential-fixtures'
 
-const api = vi.hoisted(() => ({ info: vi.fn<() => Promise<ReturnType<typeof credentialInfo>>>() }))
-// boundary: legacy credential-info GET has no generated operation; replace its response only.
-vi.mock('@/service/base', () => ({
-  get: (url: string) => {
-    if (url.startsWith('/workspaces/current/tool-provider/builtin/test-provider/credential/info'))
-      return api.info()
-    throw new Error(`Unexpected GET: ${url}`)
-  },
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
-        async () => [
-          { type: 'secret-input', name: 'api_key', label: { en_US: 'API key' }, required: true },
-        ],
-    }),
-  }
-})
+type CredentialInfo = ReturnType<typeof credentialInfo>
 
 function AgentCredential({ initialId }: { initialId?: string }) {
   const [credentialId, setCredentialId] = useState(initialId)
@@ -40,11 +20,52 @@ function AgentCredential({ initialId }: { initialId?: string }) {
   )
 }
 
-async function setup(initialId?: string) {
+async function setup(
+  initialId?: string,
+  info: CredentialInfo | Promise<CredentialInfo> = credentialInfo(),
+) {
   const { queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   })
   onTestFinished(() => queryClient.clear())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            toolProvider: {
+              builtin: {
+                byProvider: {
+                  credential: {
+                    schema: {
+                      byCredentialType: {
+                        get: () => [
+                          {
+                            type: 'secret-input',
+                            name: 'api_key',
+                            label: { en_US: 'API key' },
+                            required: true,
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      routes: [
+        route(
+          'GET',
+          'console',
+          '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
+          () => info,
+        ),
+      ],
+    }),
+  )
   return render(
     <QueryClientTestProvider queryClient={queryClient}>
       <AgentCredential initialId={initialId} />
@@ -52,11 +73,8 @@ async function setup(initialId?: string) {
   )
 }
 
-beforeEach(() => api.info.mockReset().mockResolvedValue(credentialInfo()))
-
 it('opens API authorization when the provider has no credentials', async () => {
-  api.info.mockResolvedValue(credentialInfo([]))
-  await setup()
+  await setup(undefined, credentialInfo([]))
   const authorize = page.getByRole('button', { name: 'plugin.auth.useApiAuth' })
   await expect.element(authorize).toBeEnabled()
   authorize.element().focus()
@@ -107,13 +125,13 @@ it('replaces a removed credential without keeping the removed label', async () =
 })
 
 it('keeps an unavailable selected credential visible but refuses to reselect it', async () => {
-  api.info.mockResolvedValue(
+  await setup(
+    'restricted',
     credentialInfo([
       createCredential({ id: 'restricted', name: 'Restricted key', not_allowed_to_use: true }),
       createCredential({ id: 'available', name: 'Available key', is_default: false }),
     ]),
   )
-  await setup('restricted')
   const trigger = page.getByRole('button', { name: /Restricted key.*plugin.auth.unavailable/ })
   await trigger.click()
   const popup = page.getByRole('dialog', { name: 'plugin.auth.authorizations' })

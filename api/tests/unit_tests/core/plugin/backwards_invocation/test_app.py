@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from dataclasses import dataclass
 from typing import cast
 
@@ -87,8 +88,8 @@ def _end_user(
 
 
 class TestBaseBackwardsInvocation:
-    def test_convert_to_event_stream_with_generator_and_error(self):
-        def _stream():
+    def test_convert_to_event_stream_with_generator_and_error(self) -> None:
+        def _stream() -> Generator[_Chunk | dict[str, int] | str]:
             yield _Chunk(value=1)
             yield {"x": 2}
             yield "ignored"
@@ -104,7 +105,7 @@ class TestBaseBackwardsInvocation:
         assert second["data"]["x"] == 2
         assert error["error"] == "boom"
 
-    def test_convert_to_event_stream_with_non_generator(self):
+    def test_convert_to_event_stream_with_non_generator(self) -> None:
         chunks = list(BaseBackwardsInvocation.convert_to_event_stream({"ok": True}))
         payload = json.loads(chunks[0].decode())
         assert payload["data"] == {"ok": True}
@@ -126,7 +127,7 @@ class TestPluginAppBackwardsInvocation:
         self.end_users = _EndUserProvisioner()
         mocker.patch("core.plugin.backwards_invocation.app.create_session", side_effect=sqlite_session_factory)
 
-    def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
+    def test_fetch_app_info_workflow_path(self, mocker: MockerFixture) -> None:
         variable = {"type": "text-input", "variable": "foo", "label": "Foo", "required": False}
         workflow = _workflow()
         workflow.features = json.dumps({"feature": "v"})
@@ -144,7 +145,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"data": {"mapped": True}}
         mapper.assert_called_once_with(features_dict={"feature": "v"}, user_input_form=[{"text-input": variable}])
 
-    def test_fetch_app_info_model_config_path(self, mocker: MockerFixture):
+    def test_fetch_app_info_model_config_path(self, mocker: MockerFixture) -> None:
         model_config_dict = {"user_input_form": [{"name": "bar"}], "k": "v"}
         app = _app(mode=AppMode.COMPLETION)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
@@ -168,7 +169,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.COMPLETION, "invoke_completion_app"),
         ],
     )
-    def test_invoke_app_routes_by_mode(self, mocker: MockerFixture, mode, route_method):
+    def test_invoke_app_routes_by_mode(self, mocker: MockerFixture, mode: AppMode, route_method: str) -> None:
         app = _app(mode=mode)
         user = _end_user()
         workflow = _workflow()
@@ -194,7 +195,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"routed": True}
         assert route.call_count == 1
 
-    def test_invoke_app_uses_end_user_when_user_id_missing(self, mocker: MockerFixture):
+    def test_invoke_app_uses_end_user_when_user_id_missing(self, mocker: MockerFixture) -> None:
         app = _app(mode=AppMode.WORKFLOW)
         end_user = _end_user()
         workflow = _workflow()
@@ -222,7 +223,7 @@ class TestPluginAppBackwardsInvocation:
         assert route.call_args.args[1] is workflow
         assert route.call_args.args[2] is end_user
 
-    def test_invoke_app_missing_query_for_chat_raises(self, mocker: MockerFixture):
+    def test_invoke_app_missing_query_for_chat_raises(self, mocker: MockerFixture) -> None:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=_app(mode=AppMode.CHAT))
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=_end_user())
 
@@ -241,7 +242,7 @@ class TestPluginAppBackwardsInvocation:
                 end_users=self.end_users,
             )
 
-    def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
+    def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture) -> None:
         mocker.patch.object(
             PluginAppBackwardsInvocation,
             "_get_app",
@@ -271,7 +272,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.CHAT, "core.plugin.backwards_invocation.app.ChatAppGenerator.generate"),
         ],
     )
-    def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode, generator_path):
+    def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode: AppMode, generator_path: str) -> None:
         app = _app(mode=mode)
         spy = mocker.patch(generator_path, return_value={"result": "ok"})
 
@@ -290,7 +291,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"result": "ok"}
         assert spy.call_count == 1
 
-    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(self, mocker: MockerFixture):
+    def test_invoke_chat_app_advanced_chat_injects_pause_state_config(self, mocker: MockerFixture) -> None:
         workflow = _workflow()
         workflow.created_by = "owner-id"
 
@@ -326,7 +327,7 @@ class TestPluginAppBackwardsInvocation:
         assert isinstance(pause_state_config, PauseStateLayerConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
-    def test_invoke_chat_app_advanced_chat_without_workflow_raises(self, mocker: MockerFixture):
+    def test_invoke_chat_app_advanced_chat_without_workflow_raises(self, mocker: MockerFixture) -> None:
         app = _app(mode=AppMode.ADVANCED_CHAT)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=None)
         with pytest.raises(ValueError, match="unexpected app type"):
@@ -342,7 +343,7 @@ class TestPluginAppBackwardsInvocation:
                 session=self.session,
             )
 
-    def test_invoke_chat_app_unexpected_mode_raises(self):
+    def test_invoke_chat_app_unexpected_mode_raises(self) -> None:
         app = _app(mode=cast(AppMode, "invalid"))
         with pytest.raises(ValueError, match="unexpected app type"):
             PluginAppBackwardsInvocation.invoke_chat_app(
@@ -357,7 +358,7 @@ class TestPluginAppBackwardsInvocation:
                 session=self.session,
             )
 
-    def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture):
+    def test_invoke_workflow_app_injects_pause_state_config(self, mocker: MockerFixture) -> None:
         workflow = _workflow()
         workflow.created_by = "owner-id"
 
@@ -388,7 +389,7 @@ class TestPluginAppBackwardsInvocation:
         assert isinstance(pause_state_config, PauseStateLayerConfig)
         assert pause_state_config.state_owner_user_id == "owner-id"
 
-    def test_invoke_app_workflow_without_workflow_raises(self, mocker: MockerFixture):
+    def test_invoke_app_workflow_without_workflow_raises(self, mocker: MockerFixture) -> None:
         app = _app(mode=AppMode.WORKFLOW)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=_end_user())
@@ -408,7 +409,7 @@ class TestPluginAppBackwardsInvocation:
                 end_users=self.end_users,
             )
 
-    def test_invoke_completion_app(self, mocker: MockerFixture):
+    def test_invoke_completion_app(self, mocker: MockerFixture) -> None:
         spy = mocker.patch(
             "core.plugin.backwards_invocation.app.CompletionAppGenerator.generate", return_value={"ok": 1}
         )
@@ -419,7 +420,7 @@ class TestPluginAppBackwardsInvocation:
         assert result == {"ok": 1}
         assert spy.call_count == 1
 
-    def test_get_user_returns_end_user(self):
+    def test_get_user_returns_end_user(self) -> None:
         app = _app()
         end_user = EndUser(
             id="uid",
@@ -434,12 +435,13 @@ class TestPluginAppBackwardsInvocation:
         self.session.commit()
 
         user = PluginAppBackwardsInvocation._get_user("uid", app)
+        assert isinstance(user, EndUser)
 
         assert user.id == "uid"
         assert user.tenant_id == app.tenant_id
         assert user.app_id == app.id
 
-    def test_get_user_returns_end_user_by_session_id(self):
+    def test_get_user_returns_end_user_by_session_id(self) -> None:
         app = _app()
         end_user = EndUser(
             id="session-user",
@@ -457,7 +459,7 @@ class TestPluginAppBackwardsInvocation:
 
         assert user.id == "session-user"
 
-    def test_get_user_rejects_end_user_from_another_app(self):
+    def test_get_user_rejects_end_user_from_another_app(self) -> None:
         app = _app()
         end_user = EndUser(
             id="uid",
@@ -474,7 +476,7 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid", app)
 
-    def test_get_user_rejects_nonmatching_session_id(self):
+    def test_get_user_rejects_nonmatching_session_id(self) -> None:
         app = _app()
         end_user = EndUser(
             id="session-user",
@@ -491,7 +493,7 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("wecom-sender-1", app)
 
-    def test_get_user_falls_back_to_account_user(self):
+    def test_get_user_falls_back_to_account_user(self) -> None:
         app = _app()
         tenant = Tenant(name="Plugin tenant")
         tenant.id = app.tenant_id
@@ -505,7 +507,7 @@ class TestPluginAppBackwardsInvocation:
 
         assert user.id == "account-user"
 
-    def test_get_user_rejects_account_from_another_tenant(self):
+    def test_get_user_rejects_account_from_another_tenant(self) -> None:
         app = _app()
         tenant = Tenant(name="Plugin tenant")
         tenant.id = "other-tenant"
@@ -518,7 +520,7 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user(account.id, app)
 
-    def test_get_user_raises_when_user_not_found(self):
+    def test_get_user_raises_when_user_not_found(self) -> None:
         app = _app()
         other_tenant_user = EndUser(
             id="uid",
@@ -535,7 +537,7 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid", app)
 
-    def test_invoke_app_creates_end_user_for_unknown_external_user_id(self, mocker: MockerFixture):
+    def test_invoke_app_creates_end_user_for_unknown_external_user_id(self, mocker: MockerFixture) -> None:
         app = _app(mode=AppMode.WORKFLOW)
         end_user = _end_user(session_id="wecom-sender-1")
         workflow = _workflow()
@@ -563,7 +565,7 @@ class TestPluginAppBackwardsInvocation:
         assert self.end_users.calls == [(app.tenant_id, app.id, "wecom-sender-1")]
         assert route.call_args.args[2] is end_user
 
-    def test_get_app_returns_app(self):
+    def test_get_app_returns_app(self) -> None:
         app_obj = _app(app_id="app", tenant_id="tenant")
         self.session.add(app_obj)
         self.session.commit()
@@ -572,15 +574,15 @@ class TestPluginAppBackwardsInvocation:
         assert result.id == app_obj.id
         assert result.tenant_id == app_obj.tenant_id
 
-    def test_get_app_raises_when_missing(self):
+    def test_get_app_raises_when_missing(self) -> None:
         self.session.add(_app(app_id="app", tenant_id="other-tenant"))
         self.session.commit()
 
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
-    def test_get_app_raises_when_query_fails(self):
-        def fail_query(*_args, **_kwargs):
+    def test_get_app_raises_when_query_fails(self) -> None:
+        def fail_query(*_args: object, **_kwargs: object) -> None:
             raise RuntimeError("db down")
 
         event.listen(self.sqlite_engine, "before_cursor_execute", fail_query, once=True)
@@ -588,7 +590,7 @@ class TestPluginAppBackwardsInvocation:
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
 
-    def test_get_workflow_stays_inside_app_boundary(self):
+    def test_get_workflow_stays_inside_app_boundary(self) -> None:
         workflow = _workflow()
         other_workflow = _workflow(workflow_id="workflow-other", tenant_id="other-tenant")
         self.session.add_all([workflow, other_workflow])
@@ -600,7 +602,7 @@ class TestPluginAppBackwardsInvocation:
         assert result.id == workflow.id
         assert result.tenant_id == app.tenant_id
 
-    def test_get_workflow_rejects_workflow_from_another_tenant(self):
+    def test_get_workflow_rejects_workflow_from_another_tenant(self) -> None:
         workflow = _workflow(tenant_id="other-tenant")
         self.session.add(workflow)
         self.session.commit()
@@ -608,7 +610,7 @@ class TestPluginAppBackwardsInvocation:
 
         assert PluginAppBackwardsInvocation._get_workflow(app) is None
 
-    def test_get_workflow_rejects_workflow_from_another_app(self):
+    def test_get_workflow_rejects_workflow_from_another_app(self) -> None:
         workflow = _workflow(app_id="other-app")
         self.session.add(workflow)
         self.session.commit()
@@ -616,7 +618,7 @@ class TestPluginAppBackwardsInvocation:
 
         assert PluginAppBackwardsInvocation._get_workflow(app) is None
 
-    def test_get_app_model_config_dict_uses_explicit_session_for_annotation_reply(self, mocker: MockerFixture):
+    def test_get_app_model_config_dict_uses_explicit_session_for_annotation_reply(self, mocker: MockerFixture) -> None:
         annotation_reply = {"enabled": False}
         app_model_config = AppModelConfig(app_id="app-1", user_input_form=json.dumps([{"name": "bar"}]))
         app_model_config.id = "config-1"
@@ -637,7 +639,7 @@ class TestPluginAppBackwardsInvocation:
         assert isinstance(queried_session, Session)
         assert queried_app_id == "app-1"
 
-    def test_get_app_model_config_dict_rejects_config_from_another_app(self):
+    def test_get_app_model_config_dict_rejects_config_from_another_app(self) -> None:
         app_model_config = AppModelConfig(app_id="other-app", user_input_form=json.dumps([{"name": "bar"}]))
         app_model_config.id = "config-1"
         self.session.add(app_model_config)

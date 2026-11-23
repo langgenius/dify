@@ -32,6 +32,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")
 _TENANT_B = TenantId("00000000-0000-0000-0000-000000000102")
+_EMPTY_TENANT = TenantId("00000000-0000-0000-0000-000000000103")
 _ADMIN_ACCOUNT = AccountId("00000000-0000-0000-0000-000000000199")
 _MISSING_CONTACT = ContactId("00000000-0000-0000-0000-000000000999")
 
@@ -215,10 +216,32 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
             "foreign-platform@example.com",
             AccountStatus.ACTIVE,
         ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000291"),
+            ContactId("00000000-0000-0000-0000-000000000391"),
+            "Pending Platform",
+            "pending@example.com",
+            AccountStatus.PENDING,
+        ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000292"),
+            ContactId("00000000-0000-0000-0000-000000000392"),
+            "Uninitialized Member",
+            "uninitialized@example.com",
+            AccountStatus.UNINITIALIZED,
+        ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000293"),
+            ContactId("00000000-0000-0000-0000-000000000393"),
+            "Closed Member",
+            "closed@example.com",
+            AccountStatus.CLOSED,
+        ),
     )
     account_rows: list[object] = [
         _tenant(_TENANT_A, "Tenant A"),
         _tenant(_TENANT_B, "Tenant B"),
+        _tenant(_EMPTY_TENANT, "Empty Tenant"),
         _account(
             _ADMIN_ACCOUNT,
             name="Admin",
@@ -268,6 +291,20 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
             _platform_entry(_TENANT_A, ids.platform_echo, created_at=_NOW + timedelta(minutes=5)),
             _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000207")),
             _platform_entry(_TENANT_B, ids.foreign_platform, created_at=_NOW + timedelta(minutes=9)),
+            _membership(_TENANT_B, AccountId("00000000-0000-0000-0000-000000000202")),
+            _platform_entry(_TENANT_B, ids.workspace_shared, created_at=_NOW),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000391"), created_at=_NOW),
+            _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000292")),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000392"), created_at=_NOW),
+            _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000293")),
+            _membership(_TENANT_A, _ADMIN_ACCOUNT),
+            _platform_entry(_TENANT_A, _MISSING_CONTACT, created_at=_NOW),
+            _account_identity(
+                AccountId("00000000-0000-0000-0000-000000000294"),
+                ContactId("00000000-0000-0000-0000-000000000394"),
+                _NOW,
+            ),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000394"), created_at=_NOW),
             *external_shared,
             *external_foxtrot,
             *foreign_external,
@@ -281,17 +318,26 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
 
 
 @pytest.mark.parametrize(
-    ("query", "expected_attribute"),
+    ("tenant_id", "query", "expected_attribute"),
     [
-        (ContactQuery(), "visible"),
-        (ContactQuery(keyword="  SHARED  "), "shared"),
-        (ContactQuery(contact_type=ContactType.WORKSPACE), "workspace"),
-        (ContactQuery(contact_type=ContactType.PLATFORM), "platform"),
-        (ContactQuery(contact_type=ContactType.EXTERNAL), "external"),
+        (_TENANT_A, ContactQuery(), "visible"),
+        (_TENANT_A, ContactQuery(keyword="  SHARED  "), "shared"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.WORKSPACE), "workspace"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.PLATFORM), "platform"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.EXTERNAL), "external"),
+        (_TENANT_A, ContactQuery(keyword="  "), "visible"),
+        (_TENANT_A, ContactQuery(keyword="  SHARED  ", contact_type=ContactType.WORKSPACE), "shared_workspace"),
+        (_TENANT_A, ContactQuery(keyword="shared", contact_type=ContactType.PLATFORM), "shared_platform"),
+        (_TENANT_A, ContactQuery(keyword="shared", contact_type=ContactType.EXTERNAL), "shared_external"),
+        (_TENANT_A, ContactQuery(keyword="BETA@EXAMPLE.COM"), "email"),
+        (_TENANT_A, ContactQuery(keyword="no-such-contact"), "empty"),
+        (_TENANT_B, ContactQuery(), "foreign_tenant"),
+        (_EMPTY_TENANT, ContactQuery(), "empty"),
     ],
 )
 def test_count_and_list_apply_identical_filters(
     contact_repository_context: _RepositoryContext,
+    tenant_id: TenantId,
     query: ContactQuery,
     expected_attribute: str,
 ) -> None:
@@ -302,14 +348,21 @@ def test_count_and_list_apply_identical_filters(
         "workspace": {ids.workspace_shared, ids.workspace_delta},
         "platform": {ids.platform_beta, ids.platform_echo},
         "external": {ids.external_shared, ids.external_foxtrot},
+        "shared_workspace": {ids.workspace_shared},
+        "shared_platform": {ids.platform_echo},
+        "shared_external": {ids.external_shared},
+        "email": {ids.platform_beta},
+        "empty": set(),
+        "foreign_tenant": {ids.workspace_shared, ids.platform_beta, ids.foreign_platform, ids.foreign_external},
     }
     with contact_repository_context.sessions() as session:
         repository = SQLAlchemyContactRepository(session)
-        contact_page = repository.list_contact(_TENANT_A, page=1, limit=100, query=query)
-        count = repository.count_contact(_TENANT_A, query)
+        contact_page = repository.list_contact(tenant_id, page=1, limit=100, query=query)
+        count = repository.count_contact(tenant_id, query)
 
     expected_ids = expected_by_attribute[expected_attribute]
     assert count == len(expected_ids)
+    assert len(contact_page.items) == len(expected_ids)
     assert {contact.id for contact in contact_page.items} == expected_ids
 
 
@@ -406,6 +459,15 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
     contact_repository_context: _RepositoryContext,
 ) -> None:
     ids = contact_repository_context.contact_ids
+    account_ids = (
+        AccountId("00000000-0000-0000-0000-000000000201"),
+        AccountId("00000000-0000-0000-0000-000000000202"),
+        AccountId("00000000-0000-0000-0000-000000000207"),
+        AccountId("00000000-0000-0000-0000-000000000208"),
+        AccountId("00000000-0000-0000-0000-000000000209"),
+        _ADMIN_ACCOUNT,
+        AccountId("00000000-0000-0000-0000-000000000299"),
+    )
     requested_ids = (
         ids.workspace_shared,
         ids.platform_beta,
@@ -438,6 +500,10 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
             _TENANT_B,
             (ids.foreign_platform, ids.foreign_external),
         )
+        contacts_by_account = repository.get_contacts_by_account_ids(_TENANT_A, (*account_ids, account_ids[0]))
+        assert repository.get_contacts_by_account_ids(_TENANT_A, ()) == {}
+        for account_id in account_ids:
+            assert repository.get_contact_by_account_id(_TENANT_A, account_id) == contacts_by_account.get(account_id)
 
     returned_ids = {contact.id for contact in contacts}
     assert returned_ids == {ids.workspace_shared, ids.platform_beta}
@@ -453,6 +519,10 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
     }
     assert {contact.id for contact in foreign_contacts} == {ids.foreign_platform, ids.foreign_external}
     assert foreign_availability == {ids.foreign_platform: True, ids.foreign_external: True}
+    assert {account_id: contact.id for account_id, contact in contacts_by_account.items()} == {
+        account_ids[0]: ids.workspace_shared,
+        account_ids[1]: ids.platform_beta,
+    }
 
 
 def test_account_and_external_contacts_with_one_normalized_email_both_match(
@@ -470,17 +540,32 @@ def test_account_and_external_contacts_with_one_normalized_email_both_match(
     assert len(contacts) == 2
 
 
+@pytest.mark.parametrize(
+    ("tenant_id", "shared_type", "beta_type"),
+    [
+        (_TENANT_A, ContactType.WORKSPACE, ContactType.PLATFORM),
+        (_TENANT_B, ContactType.PLATFORM, ContactType.WORKSPACE),
+    ],
+)
 def test_membership_takes_precedence_over_platform_visibility(
     contact_repository_context: _RepositoryContext,
+    tenant_id: TenantId,
+    shared_type: ContactType,
+    beta_type: ContactType,
 ) -> None:
     contact_id = contact_repository_context.contact_ids.workspace_shared
 
     with contact_repository_context.sessions() as session:
-        contact = SQLAlchemyContactRepository(session).get_contacts_by_id(_TENANT_A, contact_id)
+        repository = SQLAlchemyContactRepository(session)
+        contact = repository.get_contacts_by_id(tenant_id, contact_id)
+        beta = repository.get_contacts_by_id(tenant_id, contact_repository_context.contact_ids.platform_beta)
 
     assert contact is not None
     assert contact.id == contact_id
-    assert contact.type is ContactType.WORKSPACE
+    assert contact.type is shared_type
+    assert beta is not None
+    assert beta.id == contact_repository_context.contact_ids.platform_beta
+    assert beta.type is beta_type
 
 
 def test_organization_candidate_count_list_keyword_and_pagination_share_one_candidate_set(
