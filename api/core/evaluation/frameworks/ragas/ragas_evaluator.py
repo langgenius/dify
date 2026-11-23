@@ -395,18 +395,33 @@ async def _score_ragas_metric(metric: Any, kwargs: dict[str, Any]) -> Any:
 async def _score_ragas_items(
     items: list[EvaluationItemInput], metrics: list[Any], category: EvaluationCategory
 ) -> list[tuple[list[EvaluationMetric], list[str]]]:
-    """Score rows with bounded concurrency while preserving input and metric order."""
+    """Score rows with bounded concurrency while preserving input and metric order.
+
+    Precondition: each requested metric has a declared Ragas field mapping.
+    Postcondition: a missing text context fails only metrics requiring it;
+    other row metrics still score, and no provider request uses empty evidence.
+    """
     semaphore = asyncio.Semaphore(_RAGAS_MAX_WORKERS)
 
     async def score_one(item_index: int, metric: Any) -> tuple[int, EvaluationMetric | None, str | None]:
         item = items[item_index]
+        fields = _RAGAS_METRIC_FIELDS[metric.name]
+        if "retrieved_contexts" in fields and not any(context.strip() for context in item.context or []):
+            failure = new_public_evaluation_error(EvaluationErrorCode.CONTEXT_MISSING)
+            logger.info(
+                "RAGAS metric %s has no usable text context for item %d (error_id=%s)",
+                metric.name,
+                item.index,
+                failure.error_id,
+            )
+            return item_index, None, failure.text
         inputs = {
             "user_input": _format_input(item.inputs, category),
             "response": item.output,
             "reference": item.expected_output or "",
             "retrieved_contexts": item.context or [],
         }
-        kwargs = {field: inputs[field] for field in _RAGAS_METRIC_FIELDS[metric.name]}
+        kwargs = {field: inputs[field] for field in fields}
         async with semaphore:
             try:
                 with use_plugin_daemon_request_timeout(_RAGAS_METRIC_TIMEOUT_SECONDS):

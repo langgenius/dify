@@ -16,6 +16,7 @@ class EvaluationErrorCode(StrEnum):
 
     MODEL_REQUEST_FAILED = "EVAL_MODEL_REQUEST_FAILED"
     METRIC_FAILED = "EVAL_METRIC_FAILED"
+    CONTEXT_MISSING = "EVAL_CONTEXT_MISSING"
     UNSUPPORTED_METRIC = "EVAL_UNSUPPORTED_METRIC"
     CUSTOM_EVALUATOR_FAILED = "EVAL_CUSTOM_EVALUATOR_FAILED"
     TARGET_FAILED = "EVAL_TARGET_FAILED"
@@ -33,6 +34,9 @@ _PUBLIC_MESSAGES = {
         "Evaluation model request failed. Check the model configuration and retry."
     ),
     EvaluationErrorCode.METRIC_FAILED: "Metric evaluation failed. Check the evaluation configuration and retry.",
+    EvaluationErrorCode.CONTEXT_MISSING: (
+        "No usable text context was available for this metric. Check the selected context variable."
+    ),
     EvaluationErrorCode.UNSUPPORTED_METRIC: "The selected metric is not supported by this evaluator.",
     EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED: "Custom evaluator failed. Check its workflow and retry.",
     EvaluationErrorCode.TARGET_FAILED: "Target execution failed. Check the target configuration and retry.",

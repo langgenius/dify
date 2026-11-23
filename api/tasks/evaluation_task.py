@@ -1637,9 +1637,9 @@ def _stamp_and_merge(
 def _collect_selected_contexts(node_results: dict[str, NodeRunResult], selector: Sequence[str]) -> list[str]:
     """Read the selected source output as evidence for an LLM metric.
 
-    A valid selector starts with a source node and output name. Missing or
-    unsupported values yield no evidence; text and retrieval chunks retain
-    their source content without adding a placeholder.
+    Precondition: a valid selector starts with a source node and output name.
+    Postcondition: only non-empty text or retrieval chunk content is returned,
+    in source order; missing or unsupported values yield no evidence.
     """
     if len(selector) < 2:
         return []
@@ -1654,7 +1654,13 @@ def _collect_selected_contexts(node_results: dict[str, NodeRunResult], selector:
     if isinstance(value, str):
         return [value] if value.strip() else []
     if isinstance(value, list):
-        return [str(item["content"]) for item in value if isinstance(item, Mapping) and item.get("content")]
+        contexts: list[str] = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                contexts.append(item)
+            elif isinstance(item, Mapping) and item.get("content"):
+                contexts.append(str(item["content"]))
+        return contexts
     return []
 
 
