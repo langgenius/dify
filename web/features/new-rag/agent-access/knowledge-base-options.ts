@@ -7,6 +7,8 @@ export type KnowledgeBaseOption = {
   id: string
   name: string
   description: string | null
+  icon?: string | null
+  iconBackground?: string | null
 }
 
 /** Knowledge bases the member can open in this workspace: what a connection may be granted. */
@@ -27,6 +29,8 @@ export function useKnowledgeBaseOptions(enabled = true) {
         id: space.control_space_id,
         name: space.technical_summary?.name ?? space.control_space_id,
         description: space.technical_summary?.description ?? null,
+        icon: space.technical_summary?.icon,
+        iconBackground: space.technical_summary?.icon_background,
       })) ?? []
   return { options, query }
 }

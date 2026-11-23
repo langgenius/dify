@@ -9,6 +9,7 @@ import secrets
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -504,3 +505,31 @@ def test_expired_personal_tokens_stop_working(world: World) -> None:
         assert grant is not None
         grant.expires_at = datetime.now(UTC) - timedelta(minutes=1)
     assert service.authenticate(created["token"]) == KnowledgeAgentAuthFailure(401, "invalid_token")
+
+
+def test_personal_tokens_may_never_expire_or_take_a_custom_lifetime(world: World) -> None:
+    service = world.service
+
+    def create(days: object) -> dict[str, object]:
+        return service.create_personal_token(
+            account=world.member_account,
+            tenant_id=world.tenant,
+            body={"name": "CI", "knowledge_base_ids": ["kb-handbook"], "expires_in_days": days},
+        )
+
+    never = create(None)
+    never_grant = cast(dict[str, object], never["grant"])
+    never_token = cast(str, never["token"])
+    assert never_grant["expires_at"] is None
+    # The owner tells tokens apart by their last characters; the token itself is not kept.
+    assert never_grant["token_hint"] == never_token[-4:]
+    assert not isinstance(service.authenticate(never_token), KnowledgeAgentAuthFailure)
+
+    custom = cast(dict[str, object], create(45)["grant"])
+    remaining = cast(datetime, custom["expires_at"]) - datetime.now(UTC)
+    assert timedelta(days=44, hours=23) < remaining <= timedelta(days=45)
+
+    for invalid in (0, 366, True, "30"):
+        with pytest.raises(KnowledgeAgentAccessError) as error:
+            create(invalid)
+        assert error.value.code == "invalid_expiry"

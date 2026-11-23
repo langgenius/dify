@@ -66,10 +66,11 @@ export type KnowledgeAgentGrantResponse = {
   last_used_at?: string | null
   name: string
   scopes: Array<string>
+  token_hint?: string | null
 }
 
 export type KnowledgeAgentTokenPayload = {
-  expires_in_days?: number
+  expires_in_days?: number | null
   knowledge_base_ids: Array<string>
   name: string
 }

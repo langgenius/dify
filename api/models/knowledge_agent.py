@@ -74,6 +74,8 @@ class KnowledgeAgentGrant(TypeBase):
     expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    # Last characters of a personal token, shown so its owner can tell tokens apart.
+    token_hint: Mapped[str | None] = mapped_column(sa.String(8), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
     )

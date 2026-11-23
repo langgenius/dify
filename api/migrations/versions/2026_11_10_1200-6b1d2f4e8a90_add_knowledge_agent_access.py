@@ -62,6 +62,7 @@ def upgrade():
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("token_hint", sa.String(length=8), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="knowledge_agent_grant_pkey"),
         sa.CheckConstraint("kind IN ('oauth', 'personal')", name="knowledge_agent_grant_kind_ck"),

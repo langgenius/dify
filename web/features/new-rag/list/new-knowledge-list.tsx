@@ -33,7 +33,6 @@ import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
-import { AgentConnectionsButton } from '../agent-access/agent-connections-dialog'
 import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
 import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
@@ -278,7 +277,6 @@ export function NewKnowledgeList() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <AgentConnectionsButton />
           {canCreate && (
             <Link
               href="/datasets/new/create"

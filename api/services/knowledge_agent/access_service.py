@@ -76,6 +76,9 @@ _DCR_IDLE_RETENTION = timedelta(days=30)
 _DCR_PER_IP_PER_HOUR = 20
 _CODE_REPLAY_MEMORY_SECONDS = 600
 _TOUCH_INTERVAL = timedelta(minutes=5)
+TOKEN_HINT_LENGTH = 4
+# The shared bearer table requires an expiry; a personal token that never expires gets this one.
+_NEVER_EXPIRES = datetime(2999, 12, 31, tzinfo=UTC)
 _MAX_REDIRECT_URIS = 10
 _CODE_KEY = "knowledge_agent:code:{hash}"
 _CODE_USED_KEY = "knowledge_agent:code_used:{hash}"
@@ -875,6 +878,7 @@ class KnowledgeAgentAccessService:
                 "knowledge_base_ids": spaces.get(grant.id, []),
                 "created_at": _aware(grant.created_at),
                 "expires_at": _aware(grant.expires_at),
+                "token_hint": grant.token_hint,
                 "last_used_at": _aware(grant.last_used_at),
                 **(
                     {
@@ -915,15 +919,18 @@ class KnowledgeAgentAccessService:
         name = body.get("name").strip() if isinstance(body.get("name"), str) else ""
         if not name or len(name) > 100:
             raise KnowledgeAgentAccessError(422, "invalid_name", "Give the token a name of at most 100 characters")
+        # An explicit null asks for a token that never expires; leaving the field out takes the default.
         days = body.get("expires_in_days", PERSONAL_TOKEN_DEFAULT_DAYS)
-        if not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= PERSONAL_TOKEN_MAX_DAYS:
+        if days is not None and (
+            not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= PERSONAL_TOKEN_MAX_DAYS
+        ):
             raise KnowledgeAgentAccessError(
-                422, "invalid_expiry", f"expires_in_days must be between 1 and {PERSONAL_TOKEN_MAX_DAYS}"
+                422, "invalid_expiry", f"expires_in_days must be null or between 1 and {PERSONAL_TOKEN_MAX_DAYS}"
             )
         space_ids = self._check_knowledge_bases(
             account_id=account.id, tenant_id=tenant_id, raw=body.get("knowledge_base_ids")
         )
-        expires_at = self._now() + timedelta(days=days)
+        expires_at = None if days is None else self._now() + timedelta(days=days)
         with self._sessions.begin() as session:
             grant = self._create_grant(
                 session,
@@ -936,7 +943,9 @@ class KnowledgeAgentAccessService:
                 client_ref=None,
                 expires_at=expires_at,
             )
-            token = self._upsert_bearer(session, grant, expires_at)
+            # The bearer row needs a date; the grant, which is what gets checked, carries "never".
+            token = self._upsert_bearer(session, grant, expires_at or _NEVER_EXPIRES)
+            grant.token_hint = token[-TOKEN_HINT_LENGTH:]
             grant_id = grant.id
         with self._sessions() as session:
             [view] = self._grant_views(session, (KnowledgeAgentGrant.id == grant_id,), with_account=False)

@@ -16,10 +16,17 @@ import { ServiceApi } from '../extra-info/service-api'
 type Props = {
   apiReferenceUrl?: string
   className?: string
+  /** Shown before the API links, e.g. the MCP Connector of Agent Knowledge Bases. */
+  extraActions?: ReactNode
   viewSwitcher?: ReactNode
 }
 
-export function KnowledgeListTitleBar({ apiReferenceUrl, className, viewSwitcher }: Props) {
+export function KnowledgeListTitleBar({
+  apiReferenceUrl,
+  className,
+  extraActions,
+  viewSwitcher,
+}: Props) {
   const { t } = useTranslation(['dataset'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canConnectExternalDataset = hasPermission(
@@ -39,6 +46,7 @@ export function KnowledgeListTitleBar({ apiReferenceUrl, className, viewSwitcher
           {viewSwitcher}
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
+          {extraActions}
           {canConnectExternalDataset && (
             <Button
               variant="ghost"

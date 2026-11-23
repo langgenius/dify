@@ -3,8 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
-import { AgentConnectionsDialog } from '../agent-connections-dialog'
+import { McpConnectorPanel } from '../mcp-connector-panel'
 
+// boundary: the workspace role comes from the app shell; a member sees no workspace section.
 vi.mock('@/context/workspace-state', async () => {
   const { atom } = await import('jotai')
   return { isCurrentWorkspaceManagerAtom: atom(false) }
@@ -28,49 +29,57 @@ const mine: KnowledgeAgentMineResponse = {
       created_at: '2026-11-01T00:00:00Z',
       expires_at: '2026-12-01T00:00:00Z',
       last_used_at: null,
+      token_hint: 'V3q6',
     },
   ],
 }
 
-const renderDialog = async (onOpenChange = vi.fn()) => {
+const renderPanel = async (onOpenChange = vi.fn()) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
   queryClient.setQueryData(consoleQuery.knowledgeFs.agentAccess.get.queryKey(), mine)
   await render(
     <QueryClientProvider client={queryClient}>
-      <AgentConnectionsDialog open onOpenChange={onOpenChange} />
+      <McpConnectorPanel open onOpenChange={onOpenChange} />
     </QueryClientProvider>,
   )
   return onOpenChange
 }
 
-describe('AgentConnectionsDialog in the browser', () => {
+describe('McpConnectorPanel in the browser', () => {
   afterEach(async () => {
     await page.viewport(1280, 800)
   })
 
-  it('fits a phone screen: long commands truncate inside their rows instead of widening the dialog', async () => {
+  it('fits a phone screen: long commands and names truncate instead of widening the panel', async () => {
     await page.viewport(390, 844)
-    await renderDialog()
+    await renderPanel()
 
-    const dialog = page.getByRole('dialog')
-    await expect.element(dialog).toBeVisible()
-    const element = dialog.element()
+    const panel = page.getByRole('dialog')
+    await expect.element(panel).toBeVisible()
+    const element = panel.element()
     expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth)
     expect(element.getBoundingClientRect().width).toBeLessThanOrEqual(390)
 
-    const command = page
-      .getByText(`claude mcp add --transport http dify-knowledge ${MCP_URL}`)
-      .element()
+    const command = page.getByText(`claude mcp add --transport http knowledge ${MCP_URL}`).element()
     expect(command.scrollWidth).toBeGreaterThan(command.clientWidth)
     expect(getComputedStyle(command).textOverflow).toBe('ellipsis')
+    // The row's actions stay reachable next to a name that does not fit.
+    await expect
+      .element(page.getByRole('button', { name: /agents\.deleteNamedToken/ }))
+      .toBeInViewport()
   })
 
-  it('closes with Escape', async () => {
-    const onOpenChange = await renderDialog()
+  it('opens beside the page at desktop width and closes with Escape', async () => {
+    await page.viewport(1280, 800)
+    const onOpenChange = await renderPanel()
 
-    await expect.element(page.getByRole('dialog')).toBeVisible()
+    const panel = page.getByRole('dialog')
+    await expect.element(panel).toBeVisible()
+    const box = panel.element().getBoundingClientRect()
+    expect(box.width).toBe(600)
+    expect(Math.round(box.right)).toBe(1280)
     await userEvent.keyboard('{Escape}')
 
     expect(onOpenChange.mock.calls[0]?.[0]).toBe(false)

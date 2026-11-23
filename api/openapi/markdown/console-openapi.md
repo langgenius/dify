@@ -29303,13 +29303,14 @@ The OAuth authorization request the agent opened the consent page with.
 | account | [KnowledgeAgentGrantAccountResponse](#knowledgeagentgrantaccountresponse) |  | No |
 | client_name | string |  | No |
 | created_at | dateTime |  | Yes |
-| expires_at | string |  | No |
+| expires_at | string | Absent for a token that never expires | No |
 | id | string |  | Yes |
 | kind | string, <br>**Available values:** "oauth", "personal" | *Enum:* `"oauth"`, `"personal"` | Yes |
 | knowledge_base_ids | [ string ] |  | Yes |
 | last_used_at | string |  | No |
 | name | string |  | Yes |
 | scopes | [ string ] |  | Yes |
+| token_hint | string | Last characters of a personal token | No |
 
 #### KnowledgeAgentGrantUpdatePayload
 
@@ -29338,7 +29339,7 @@ The OAuth authorization request the agent opened the consent page with.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| expires_in_days | integer, <br>**Default:** 30 |  | No |
+| expires_in_days | integer | Days until the token expires; null for a token that never expires | No |
 | knowledge_base_ids | [ string ] |  | Yes |
 | name | string |  | Yes |
 

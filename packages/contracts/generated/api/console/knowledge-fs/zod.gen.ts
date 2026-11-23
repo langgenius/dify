@@ -52,7 +52,7 @@ export const zKnowledgeAgentGrantUpdatePayload = z.object({
  * KnowledgeAgentTokenPayload
  */
 export const zKnowledgeAgentTokenPayload = z.object({
-  expires_in_days: z.int().gte(1).lte(90).optional().default(30),
+  expires_in_days: z.int().gte(1).lte(365).nullish().default(30),
   knowledge_base_ids: z.array(z.string()).min(1).max(100),
   name: z.string().min(1).max(100),
 })
@@ -716,6 +716,7 @@ export const zKnowledgeAgentGrantResponse = z.object({
   last_used_at: z.iso.datetime().nullish(),
   name: z.string(),
   scopes: z.array(z.string()),
+  token_hint: z.string().nullish(),
 })
 
 /**

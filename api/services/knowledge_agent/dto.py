@@ -24,7 +24,8 @@ class KnowledgeAgentGrantResponse(ResponseModel):
     scopes: list[str]
     knowledge_base_ids: list[str]
     created_at: datetime
-    expires_at: datetime | None = None
+    expires_at: datetime | None = Field(default=None, description="Absent for a token that never expires")
+    token_hint: str | None = Field(default=None, description="Last characters of a personal token")
     last_used_at: datetime | None = None
     account: KnowledgeAgentGrantAccountResponse | None = None
 
@@ -93,7 +94,9 @@ class KnowledgeAgentAuthorizationPayload(KnowledgeAgentAuthorizationQuery):
 class KnowledgeAgentTokenPayload(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     knowledge_base_ids: list[str] = Field(min_length=1, max_length=100)
-    expires_in_days: int = Field(default=30, ge=1, le=90)
+    expires_in_days: int | None = Field(
+        default=30, ge=1, le=365, description="Days until the token expires; null for a token that never expires"
+    )
 
     model_config = ConfigDict(extra="forbid")
 
