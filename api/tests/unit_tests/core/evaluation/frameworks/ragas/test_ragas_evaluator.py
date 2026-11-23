@@ -4,7 +4,7 @@ import asyncio
 import sys
 from dataclasses import dataclass
 from types import ModuleType, SimpleNamespace
-from typing import cast, override
+from typing import override
 
 import pytest
 
@@ -45,8 +45,17 @@ class _FakeToolCallAccuracy:
         self.name = name
 
     def score(self, **kwargs: object) -> SimpleNamespace:
-        actual_calls = cast(list[_FakeRagasData], kwargs["user_input"])[1].tool_calls
-        expected_calls = cast(list[_FakeRagasData], kwargs["reference_tool_calls"])
+        """Require a message trace and tool calls; return whether actual calls match the reference."""
+        user_input = kwargs["user_input"]
+        reference_tool_calls = kwargs["reference_tool_calls"]
+        assert isinstance(user_input, list)
+        assert len(user_input) > 1
+        actual_message = user_input[1]
+        assert isinstance(actual_message, _FakeRagasData)
+        assert isinstance(reference_tool_calls, list)
+        expected_calls = [call for call in reference_tool_calls if isinstance(call, _FakeRagasData)]
+        assert len(expected_calls) == len(reference_tool_calls)
+        actual_calls = actual_message.tool_calls
         return SimpleNamespace(
             value=float(
                 [(call.name, call.args) for call in actual_calls] == [(call.name, call.args) for call in expected_calls]
@@ -150,8 +159,11 @@ def test_installed_ragas_faithfulness_uses_dify_structured_model(monkeypatch: py
     response_schemas: list[str] = []
 
     def fake_structured_output(**kwargs: object) -> SimpleNamespace:
-        schema = cast(dict[str, object], kwargs["json_schema"])
-        title = cast(str, schema["title"])
+        """Require a titled schema; return the corresponding deterministic judge response."""
+        schema = kwargs["json_schema"]
+        assert isinstance(schema, dict)
+        title = schema["title"]
+        assert isinstance(title, str)
         response_schemas.append(title)
         if title == "StatementGeneratorOutput":
             return SimpleNamespace(structured_output={"statements": ["Paris is in France."]})
@@ -271,8 +283,12 @@ def test_installed_ragas_scores_remaining_collections_metrics(monkeypatch: pytes
     }
 
     def fake_structured_output(**kwargs: object) -> SimpleNamespace:
-        schema = cast(dict[str, object], kwargs["json_schema"])
-        return SimpleNamespace(structured_output=responses[cast(str, schema["title"])])
+        """Require a titled schema; return the matching deterministic metric response."""
+        schema = kwargs["json_schema"]
+        assert isinstance(schema, dict)
+        title = schema["title"]
+        assert isinstance(title, str)
+        return SimpleNamespace(structured_output=responses[title])
 
     monkeypatch.setattr(
         "core.llm_generator.output_parser.structured_output.invoke_llm_with_structured_output",

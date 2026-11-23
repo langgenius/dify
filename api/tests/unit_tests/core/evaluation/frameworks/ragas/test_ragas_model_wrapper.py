@@ -1,7 +1,6 @@
 import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import cast
 
 import pytest
 from pydantic import BaseModel, ValidationError
@@ -13,6 +12,7 @@ from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbedd
 from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 
@@ -91,7 +91,12 @@ def test_dify_model_wrapper_uses_tenant_model_and_validates_structured_output(mo
         "required": ["verdict"],
         "additionalProperties": False,
     }
-    assert [message.content for message in cast(list[SimpleNamespace], structured_calls[0]["prompt_messages"])] == [
+    prompt_messages = structured_calls[0]["prompt_messages"]
+    assert isinstance(prompt_messages, list)
+    assert len(prompt_messages) == 2
+    assert isinstance(prompt_messages[0], SystemPromptMessage)
+    assert isinstance(prompt_messages[1], UserPromptMessage)
+    assert [message.content for message in prompt_messages] == [
         "You are an evaluation judge. Follow the requested output format exactly.",
         "judge this",
     ]
