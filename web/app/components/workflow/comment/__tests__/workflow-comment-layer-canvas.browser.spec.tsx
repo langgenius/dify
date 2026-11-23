@@ -219,16 +219,6 @@ describe('markers and the composer', () => {
 
 describe('panning the canvas', () => {
   const canvas = () => document.getElementById('workflow-container')!.getBoundingClientRect()
-  const panLeft = (distance: number) =>
-    userEvent.dragAndDrop(
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      {
-        sourcePosition: { x: 1000, y: 650 },
-        targetPosition: { x: 1000 - distance, y: 650 },
-        steps: 4,
-      } as Parameters<typeof userEvent.dragAndDrop>[2],
-    )
   const inCanvas = (element: Element) => {
     const box = element.getBoundingClientRect()
     const bounds = canvas()
@@ -278,7 +268,8 @@ describe('panning the canvas', () => {
     const screen = await renderLayer()
     await openThread(screen)
 
-    await panLeft(300)
+    const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
+    await pane.wheel({ delta: { x: 600, y: 0 } })
 
     await expect
       .poll(() => markers(screen).first().element().getBoundingClientRect().right)
