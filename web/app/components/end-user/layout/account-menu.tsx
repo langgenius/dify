@@ -15,7 +15,7 @@ import {
 import { getAvatarInitial } from '@/utils/avatar'
 import { basePath } from '@/utils/var'
 
-export default function AccountMenu() {
+export default function AccountMenu({ showProfileError = true }: { showProfileError?: boolean }) {
   const { t } = useTranslation(['app', 'common'])
   const authSession = useSyncExternalStore(
     subscribeWebAppAuthSession,
@@ -66,7 +66,7 @@ export default function AccountMenu() {
         alignOffset={4}
         className="w-60 max-w-80 overflow-hidden p-0"
       >
-        {profile.isError && (
+        {showProfileError && profile.isError && (
           <MenuGroup className="py-1">
             <p
               role="alert"
