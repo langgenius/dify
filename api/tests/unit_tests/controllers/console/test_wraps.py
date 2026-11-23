@@ -776,7 +776,7 @@ class TestValidateRequest:
     class Payload(BaseModel):
         token: dict[str, str]
 
-        class OptionalPayload(BaseModel):
+    class OptionalPayload(BaseModel):
         name: str | None = None
 
     @pytest.mark.parametrize("body", [b"{", b"null", b"false", b"0", b'""', b"[]", b'"value"', b"[1]"])
@@ -802,7 +802,7 @@ class TestValidateRequest:
 
         assert exc_info.value.code == 422
 
-@pytest.mark.parametrize("http_method", ["POST", "PUT"])
+    @pytest.mark.parametrize("http_method", ["POST", "PUT"])
     def test_rejected_input_is_redacted_from_response_and_logs(
         self, caplog: pytest.LogCaptureFixture, http_method: str
     ) -> None:
