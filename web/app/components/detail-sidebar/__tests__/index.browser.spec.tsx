@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { DetailSidebarMode } from '../cookie'
+import type { TestNavigation } from '@/test/next-navigation'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { useHydrateAtoms } from 'jotai/utils'
 import Cookies from 'js-cookie'
@@ -11,6 +12,7 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '../cookie'
@@ -29,22 +31,7 @@ vi.mock('@/config', async (importOriginal) => ({
   ZENDESK_WIDGET_KEY: 'zendesk-key',
 }))
 
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async () => {
-  const { useSyncExternalStore } = await import('react')
-  const subscribe = (notify: () => void) => {
-    window.addEventListener('popstate', notify)
-    return () => window.removeEventListener('popstate', notify)
-  }
-  return {
-    usePathname: () =>
-      useSyncExternalStore(
-        subscribe,
-        () => window.location.pathname,
-        () => window.location.pathname,
-      ),
-  }
-})
+let navigation: TestNavigation
 
 function InitialDetailSidebarMode({
   children,
@@ -74,6 +61,7 @@ async function renderSidebar({
   seedCurrentWorkspaceQuery(queryClient)
   seedSystemFeatures(queryClient, { deployment_edition: plan ? 'CLOUD' : 'COMMUNITY' })
   if (plan) seedFeatures(queryClient, { billing: { subscription: { plan } } })
+  navigation = createTestNavigation({ url: '/app/app-1/overview' })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <NuqsTestingAdapter>
@@ -106,6 +94,7 @@ async function renderSidebar({
         </ThemeProvider>
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
+    { wrapper: navigation.NavigationProvider },
   )
   return screen
 }
@@ -113,7 +102,6 @@ async function renderSidebar({
 beforeEach(() => {
   vi.clearAllMocks()
   boundary.openZendesk.mockResolvedValue(undefined)
-  window.history.replaceState({}, '', '/app/app-1/overview')
   Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
 })
 
@@ -160,8 +148,7 @@ it('uses the real compact viewport without overwriting the desktop preference', 
   await expect.element(screen.getByText('Expanded content')).toBeVisible()
   expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
 
-  window.history.pushState({}, '', '/app/app-1/logs')
-  window.dispatchEvent(new PopStateEvent('popstate'))
+  navigation.navigate('/app/app-1/logs')
   await expect.element(screen.getByText('Collapsed content')).toBeVisible()
   expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBeUndefined()
 })

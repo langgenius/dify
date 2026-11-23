@@ -1,6 +1,7 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import type { CodeBasedExtensionItem, ExternalDataTool } from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
+import type { CodeBasedExtensionItem } from '@/service/console/code-based-extension-query'
 import { LanguagesSupported } from '@/i18n/language'
 
 type Provider = {
