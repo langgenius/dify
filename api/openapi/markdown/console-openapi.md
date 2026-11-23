@@ -27962,6 +27962,10 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| icon | string | Current App emoji, image upload ID or link; null when unset. | Yes |
+| icon_background | string | Current App icon background; null when unset. | Yes |
+| icon_type | string | Current App icon type; null when unset. | Yes |
+| icon_url | string | Refreshable signed image URL; null for non-image or unavailable files. | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | node_ids | [ string ] |  | Yes |

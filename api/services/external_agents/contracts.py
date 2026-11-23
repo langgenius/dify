@@ -192,12 +192,21 @@ class AssetPage:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ExternalAssetAppReference:
-    """One readable current draft/published App reference, never historical usage."""
+    """One readable current App with its live icon, never historical usage.
+
+    Nullable icon metadata follows the existing App protocol; None means unset.
+    icon_url is a fresh image capability, or None for non-image/unavailable files.
+    Repository reads return no capability; the application admits files first.
+    """
 
     app_id: str
     name: str
     mode: str
     node_ids: tuple[str, ...]
+    icon_type: str | None
+    icon: str | None
+    icon_background: str | None
+    icon_url: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -335,6 +344,7 @@ class ExternalAssetStore(Protocol):
         """Read current draft/published references and possible in-flight work.
 
         Scope every query to the tenant and asset; filter App rows by app_ids.
+        Include current App icon metadata in that same query, never signed URLs.
         The aggregate boolean may include hidden Apps but must not reveal their
         identifiers or counts. Include unresolved ContextSlots whose Invocation
         bodies expired. This is an advisory read, never a lease or delete lock.

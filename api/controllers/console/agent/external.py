@@ -168,6 +168,10 @@ class ExternalAgentAppReferenceResponse(ResponseModel):
     name: str
     mode: str
     node_ids: tuple[str, ...]
+    icon_type: str | None = Field(description="Current App icon type; null when unset.")
+    icon: str | None = Field(description="Current App emoji, image upload ID or link; null when unset.")
+    icon_background: str | None = Field(description="Current App icon background; null when unset.")
+    icon_url: str | None = Field(description="Refreshable signed image URL; null for non-image or unavailable files.")
 
 
 class ExternalAgentReferencesResponse(ResponseModel):
