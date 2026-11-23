@@ -78,10 +78,10 @@ const WorkflowPreview = ({
           maskColor="var(--color-workflow-minimap-bg)"
           className={cn(
             'absolute! bottom-14! z-9 m-0! h-18! w-25.5! rounded-lg! border-[0.5px]! border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!',
-            miniMapToRight ? 'right-4!' : 'left-4!',
+            miniMapToRight ? 'inset-e-4!' : 'inset-s-4!',
           )}
         />
-        <div className="absolute bottom-4 left-4 z-9 mt-1 flex items-center gap-2">
+        <div className="absolute inset-s-4 bottom-4 z-9 mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>

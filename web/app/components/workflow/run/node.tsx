@@ -152,10 +152,10 @@ const NodePanel: FC<Props> = ({
                 aria-expanded={hideProcessDetail ? undefined : !collapseState}
                 aria-controls={hideProcessDetail ? undefined : detailsId}
                 className={cn(
-                  'flex w-full items-center rounded-[10px] pr-3 pl-1 text-left',
+                  'flex w-full items-center rounded-[10px] ps-1 pe-3 text-start',
                   !hideProcessDetail &&
                     'cursor-pointer focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                  hideInfo ? 'py-2 pl-2' : 'py-1.5',
+                  hideInfo ? 'py-2 ps-2' : 'py-1.5',
                   !collapseState && (hideInfo ? 'pb-1!' : 'pb-1.5!'),
                 )}
                 onClick={hideProcessDetail ? undefined : () => setCollapseState(!collapseState)}
@@ -164,14 +164,14 @@ const NodePanel: FC<Props> = ({
                   <RiArrowRightSLine
                     aria-hidden="true"
                     className={cn(
-                      'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                      'me-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                       !collapseState && 'rotate-90',
                     )}
                   />
                 )}
                 <BlockIcon
                   size={inMessage ? 'xs' : 'sm'}
-                  className={cn('mr-2 shrink-0', inMessage && 'mr-1!')}
+                  className={cn('me-2 shrink-0', inMessage && 'me-1!')}
                   type={nodeInfo.node_type}
                   toolIcon={nodeInfo.extras?.icon || nodeInfo.extras}
                 />
@@ -197,20 +197,20 @@ const NodePanel: FC<Props> = ({
                 {nodeInfo.status === 'succeeded' && (
                   <RiCheckboxCircleFill
                     aria-hidden="true"
-                    className="ml-2 size-3.5 shrink-0 text-text-success"
+                    className="ms-2 size-3.5 shrink-0 text-text-success"
                   />
                 )}
                 {nodeInfo.status === 'failed' && (
                   <RiErrorWarningFill
                     aria-hidden="true"
-                    className="ml-2 size-3.5 shrink-0 text-text-destructive"
+                    className="ms-2 size-3.5 shrink-0 text-text-destructive"
                   />
                 )}
                 {nodeInfo.status === 'stopped' && (
                   <RiAlertFill
                     aria-hidden="true"
                     className={cn(
-                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      'ms-2 size-4 shrink-0 text-text-warning-secondary',
                       inMessage && 'size-3.5',
                     )}
                   />
@@ -219,7 +219,7 @@ const NodePanel: FC<Props> = ({
                   <RiPauseCircleFill
                     aria-hidden="true"
                     className={cn(
-                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      'ms-2 size-4 shrink-0 text-text-warning-secondary',
                       inMessage && 'size-3.5',
                     )}
                   />
@@ -228,14 +228,14 @@ const NodePanel: FC<Props> = ({
                   <RiAlertFill
                     aria-hidden="true"
                     className={cn(
-                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      'ms-2 size-4 shrink-0 text-text-warning-secondary',
                       inMessage && 'size-3.5',
                     )}
                   />
                 )}
                 {nodeInfo.status === 'running' && (
                   <div className="flex shrink-0 items-center text-[13px] leading-4 font-medium text-text-accent">
-                    <span className="mr-2 text-xs font-normal">{statusLabels.running}</span>
+                    <span className="me-2 text-xs font-normal">{statusLabels.running}</span>
                     <RiLoader2Line aria-hidden="true" className="size-3.5 animate-spin" />
                   </div>
                 )}

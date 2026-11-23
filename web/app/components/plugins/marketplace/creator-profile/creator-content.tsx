@@ -166,11 +166,11 @@ export default function CreatorContent({
               aria-label={`${t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })} ${selectedSort.label}`}
               className="flex h-8 items-center rounded-lg px-2 hover:bg-state-base-hover"
             >
-              <span className="mr-1 system-sm-regular text-text-tertiary">
+              <span className="me-1 system-sm-regular text-text-tertiary">
                 {t(($) => $['marketplace.creatorProfile.sortBy'], { ns: 'plugin' })}
               </span>
               <span className="system-sm-medium text-text-secondary">{selectedSort.label}</span>
-              <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
+              <span aria-hidden className="ms-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
             </MenuTrigger>
             <MenuContent className="min-w-[176px]">
               <MenuRadioGroup<CreatorSortField>
@@ -184,10 +184,10 @@ export default function CreatorContent({
                     key={option.value}
                     value={option.value}
                     closeOnClick
-                    className="justify-between px-3 pr-2 system-md-regular text-text-primary"
+                    className="justify-between px-3 pe-2 system-md-regular text-text-primary"
                   >
                     {option.label}
-                    <MenuRadioItemIndicator className="ml-2" />
+                    <MenuRadioItemIndicator className="ms-2" />
                   </MenuRadioItem>
                 ))}
               </MenuRadioGroup>

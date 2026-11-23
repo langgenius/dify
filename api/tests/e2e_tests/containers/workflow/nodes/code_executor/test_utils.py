@@ -72,18 +72,6 @@ def get_python3_imports():
     return Python3CodeProvider, Python3TemplateTransformer
 
 
-def get_jinja2_imports():
-    """
-    Lazy import function for Jinja2-specific modules.
-
-    Returns:
-        tuple: (None, Jinja2TemplateTransformer) classes
-    """
-    from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
-
-    return None, Jinja2TemplateTransformer
-
-
 class CodeExecutorTestMixin:
     """
     Mixin class providing lazy import methods for code executor tests.
@@ -119,8 +107,3 @@ class CodeExecutorTestMixin:
     def python3_imports(self):
         """Property to get Python3-specific classes."""
         return get_python3_imports()
-
-    @property
-    def jinja2_imports(self):
-        """Property to get Jinja2-specific classes."""
-        return get_jinja2_imports()

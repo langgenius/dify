@@ -1,35 +1,24 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { relative, resolve } from 'node:path'
-
-const testFilePattern = /\.(?:spec|test)\.[cm]?[jt]sx?$/
 const interactivePrimitiveMockPattern =
   /vi\.mock\(\s*['"]@langgenius\/dify-ui\/(?:alert-dialog|avatar|button|dialog|menu|pagination|popover|select|slider|switch|textarea|tooltip)['"]/
 const interactiveWrapperMockPattern =
   /vi\.mock\(\s*['"][^'"]*(?:block-selector|plugin-version-picker|time-picker|prompt-editor)(?:\/index)?['"]/
 
-const collectTestFiles = (directory: string): string[] => {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = resolve(directory, entry.name)
-    if (entry.isDirectory()) return collectTestFiles(path)
-    return testFilePattern.test(entry.name) ? [path] : []
-  })
-}
+// A glob import keeps every test file in the module graph, so `--changed` reruns this spec for them.
+const testSources = import.meta.glob<string>(
+  '/{__tests__,app,features}/**/*.{spec,test}.{js,jsx,ts,tsx,cjs,cts,mjs,mts}',
+  { eager: true, query: '?raw', import: 'default' },
+)
 
 describe('interactive component mock boundary', () => {
   it('keeps Dify UI primitives and feature-owned interactive wrappers real', () => {
-    const webRoot = process.cwd()
-    const testFiles = ['__tests__', 'app', 'features'].flatMap((directory) =>
-      collectTestFiles(resolve(webRoot, directory)),
-    )
-    const violations = testFiles.flatMap((file) => {
-      const source = readFileSync(file, 'utf8')
+    const violations = Object.entries(testSources).flatMap(([file, source]) => {
       if (
         !interactivePrimitiveMockPattern.test(source) &&
         !interactiveWrapperMockPattern.test(source)
       ) {
         return []
       }
-      return [relative(webRoot, file)]
+      return [file.slice(1)]
     })
 
     expect(violations).toEqual([])

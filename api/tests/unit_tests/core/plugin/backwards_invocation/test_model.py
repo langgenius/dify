@@ -681,13 +681,14 @@ def test_model_invocation_preserves_billing_origin(
         ),
     )
     provider_result = (item for item in [chunk]) if model_type == ModelType.LLM else Marker("provider-result")
+    runtime_method = "_invoke_llm" if model_type == ModelType.LLM else provider_method
     with (
         patch("core.model_manager.create_plugin_provider_manager", return_value=provider_manager),
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch.object(type(dify_config), "get_model_credits", return_value=3),
         patch.object(ProviderConfiguration, "get_current_credentials", return_value={"api_key": "local-test-only"}),
         patch.object(ProviderConfiguration, "get_provider_model", return_value=None),
-        patch.object(ModelInstance, provider_method, return_value=provider_result),
+        patch.object(ModelInstance, runtime_method, return_value=provider_result),
         patch.object(transport, "_send", side_effect=billing_transport),
     ):
         response = invoke_method("synthetic-end-user", _model_billing_attribution_tenant(), payload)

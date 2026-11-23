@@ -307,7 +307,7 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True)
+    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
     def get(self, request_context: RequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)

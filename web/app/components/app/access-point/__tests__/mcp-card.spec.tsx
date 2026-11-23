@@ -2,7 +2,7 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import type { PublishedWorkflow } from '../shared/utils'
 import { zAppMcpServerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -177,6 +177,72 @@ describe('MCPAccessPointCard', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+  })
+
+  it('rotates once, leaves the card in charge after Escape, and uses the returned URL', async () => {
+    const user = userEvent.setup()
+    const request = createDeferredPromise<ReturnType<typeof zAppMcpServerResponse.parse>>()
+    mocks.serverDetail.data = { id: 'server-1', server_code: 'old-url', status: 'active' }
+    mocks.refreshServerCode.mockReturnValueOnce(request.promise)
+    renderCard()
+
+    const regenerate = screen.getByRole('button', { name: /appInfo.regenerate$/ })
+    await user.click(regenerate)
+    const dialog = within(screen.getByRole('alertdialog'))
+    const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
+    confirm.focus()
+    await act(async () => {
+      confirm.click()
+      confirm.click()
+    })
+    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+    expect(mocks.refreshServerCode).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: appInfo.id },
+    })
+    expect(confirm).toHaveFocus()
+    expect(dialog.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
+    await user.keyboard('{Enter}{Escape}')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(mocks.refreshServerCode).toHaveBeenCalledTimes(1)
+    expect(regenerate).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeDisabled()
+
+    mocks.serverDetail.isPending = true
+    await act(async () =>
+      request.resolve(
+        zAppMcpServerResponse.parse({
+          ...mocks.serverDetail.data,
+          server_code: 'new-url',
+          name: '',
+          description: '',
+          parameters: {},
+        }),
+      ),
+    )
+    expect(await screen.findByText(/mcp\/server\/new-url\/mcp/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeEnabled()
+  })
+
+  it('shows a failed rotation and allows retrying the same confirmation', async () => {
+    const user = userEvent.setup()
+    const failed = createDeferredPromise<never>()
+    const retry = createDeferredPromise<never>()
+    mocks.serverDetail.data = { id: 'server-1', server_code: 'old-url', status: 'active' }
+    mocks.refreshServerCode.mockReturnValueOnce(failed.promise).mockReturnValueOnce(retry.promise)
+    renderCard()
+
+    await user.click(screen.getByRole('button', { name: /appInfo.regenerate$/ }))
+    const confirm = within(screen.getByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.confirm',
+    })
+    await user.click(confirm)
+    await act(async () => failed.reject(new Error('Rotation failed')))
+    await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Rotation failed')
+    expect(confirm).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(mocks.refreshServerCode).toHaveBeenCalledTimes(2)
+    await act(async () => retry.reject(new Error('Retry failed')))
   })
 
   it('rolls back a failed status change and shows only an error toast', async () => {

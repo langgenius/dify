@@ -141,4 +141,32 @@ describe('result metric columns', () => {
       0.4, 0.9, 1,
     ])
   })
+
+  it('always shows Custom Evaluator in English below the metric name', () => {
+    const resource = buildStateFromEvaluationConfig('apps', 'app-1', {
+      evaluation_framework: 'ragas',
+      default_metrics: [],
+    })
+    const customMetric = {
+      name: 'score',
+      value: 0.8,
+      node_info: { node_id: 'evaluator-app', title: 'customized', type: 'customized' },
+    }
+    const item = createItem({
+      metrics: [{ name: 'score', value: 0.2, node_info: nodeInfo }, customMetric],
+    })
+
+    const columns = getMetricColumns(resource, [item])
+
+    expect(columns.map(({ label, nodeLabel }) => [label, nodeLabel])).toEqual([
+      ['Score', 'General Answer'],
+      ['Score', 'Custom Evaluator'],
+    ])
+    expect(columns.map((column) => getMetricValue(item.metrics ?? [], column))).toEqual([0.2, 0.8])
+    expect(
+      getMetricColumns(resource, [createItem({ metrics: [customMetric] })]).map(
+        ({ label, nodeLabel }) => [label, nodeLabel],
+      ),
+    ).toEqual([['Score', 'Custom Evaluator']])
+  })
 })
