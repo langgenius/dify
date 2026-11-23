@@ -217,7 +217,7 @@ class TestFilePreviewApi:
 
         assert response.headers["Accept-Ranges"] == "bytes"
 
-    @pytest.mark.parametrize(("request_time", "max_age"), [(160, 60), (400, 20)])
+    @pytest.mark.parametrize(("request_time", "max_age"), [(160, 260), (400, 20), (420, 0)])
     def test_avatar_preview_cache_is_private_and_bounded(
         self,
         app: Flask,

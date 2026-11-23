@@ -754,8 +754,9 @@ describe('consoleQuery workspace member avatar freshness', () => {
     const upload = '22222222-2222-2222-2222-222222222222'
     const params = new URLSearchParams({
       timestamp: String(issuedAt),
-      nonce: `account-avatar-v2:${owner}`,
+      nonce: 'opaque',
       sign: `${'A'.repeat(43)}=`,
+      issued_before: String(issuedAt + 60),
       expires_at: String(issuedAt + 300),
     })
     queryClient.setQueryData(
@@ -790,8 +791,9 @@ describe('consoleQuery workflow comment avatar freshness', () => {
   const owner = '11111111-1111-1111-1111-111111111111'
   const avatarUrl = `https://files.example.com/files/avatar/file-preview?${new URLSearchParams({
     timestamp: String(issuedAt),
-    nonce: `account-avatar-v2:${owner}`,
+    nonce: 'opaque',
     sign: `${'A'.repeat(43)}=`,
+    issued_before: String(issuedAt + 60),
     expires_at: String(expiresAt),
   })}`
   const avatarAccount = {

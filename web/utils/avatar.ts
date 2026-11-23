@@ -1,8 +1,7 @@
+import { DEFAULT_QUERY_STALE_TIME_MS } from '@/app/get-query-client'
+
 const avatarInitialSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
 
-const ACCOUNT_AVATAR_NONCE_PREFIX = 'account-avatar-v2:'
-const MAX_AVATAR_SIGNING_WINDOW_SECONDS = 60
-const DEFAULT_QUERY_STALE_TIME_MS = 5 * 60 * 1000
 const AVATAR_REFRESH_MARGIN_MS = 5 * 1000
 
 type AvatarUrl = string | null | undefined
@@ -10,11 +9,10 @@ type AvatarUrl = string | null | undefined
 type QueryWithData<T> = {
   state: {
     data: T | undefined
-    dataUpdatedAt: number
   }
 }
 
-export const getAvatarSignatureTimes = (url: AvatarUrl) => {
+export const getAvatarUrlTiming = (url: AvatarUrl) => {
   if (!url) return undefined
 
   try {
@@ -22,25 +20,17 @@ export const getAvatarSignatureTimes = (url: AvatarUrl) => {
     if (!parsedUrl.pathname.endsWith('/file-preview')) return undefined
 
     const query = parsedUrl.searchParams
-    if (!query.get('nonce')?.startsWith(ACCOUNT_AVATAR_NONCE_PREFIX)) return undefined
-
-    const timestamp = Number(query.get('timestamp'))
+    const issuedBefore = Number(query.get('issued_before'))
     const expiresAt = Number(query.get('expires_at'))
     if (
-      !Number.isSafeInteger(timestamp) ||
-      timestamp <= 0 ||
+      !Number.isSafeInteger(issuedBefore) ||
+      issuedBefore <= 0 ||
       !Number.isSafeInteger(expiresAt) ||
-      expiresAt <= timestamp
+      expiresAt < issuedBefore
     )
       return undefined
 
-    const lifetime = expiresAt - timestamp
-    // Match the server's signing window, which also shortens for small configured lifetimes.
-    const signingWindow = Math.min(
-      MAX_AVATAR_SIGNING_WINDOW_SECONDS,
-      Math.max(1, Math.floor(lifetime / 2)),
-    )
-    return { timestamp, expiresAt, signingWindow }
+    return { issuedBefore, expiresAt }
   } catch {
     return undefined
   }
@@ -49,12 +39,12 @@ export const getAvatarSignatureTimes = (url: AvatarUrl) => {
 const getAvatarFreshness = (urls: Iterable<AvatarUrl>): number | undefined => {
   let freshness: number | undefined
   for (const url of urls) {
-    const signature = getAvatarSignatureTimes(url)
-    if (signature) {
-      const { timestamp, expiresAt, signingWindow } = signature
+    const timing = getAvatarUrlTiming(url)
+    if (timing) {
+      // Use the latest possible issuance to allow the same refresh delay throughout the window.
       const ms = Math.max(
         0,
-        (expiresAt - timestamp - signingWindow) * 1000 - AVATAR_REFRESH_MARGIN_MS,
+        (timing.expiresAt - timing.issuedBefore) * 1000 - AVATAR_REFRESH_MARGIN_MS,
       )
       freshness = freshness === undefined ? ms : Math.min(freshness, ms)
     }

@@ -77,9 +77,9 @@ it('refreshes an expiring signed avatar on mount even when the profile is still 
   const options = userProfileQueryOptions()
   const clock = vi.spyOn(Date, 'now').mockReturnValue(125_000)
   onTestFinished(() => clock.mockRestore())
-  const file = '/files/avatar/file-preview?nonce=account-avatar-v2%3Aaccount-1'
-  const cachedAvatar = `${file}&timestamp=100&sign=cached&expires_at=130`
-  const refreshedAvatar = `${file}&timestamp=125&sign=refreshed&expires_at=155`
+  const file = '/files/avatar/file-preview?nonce=opaque'
+  const cachedAvatar = `${file}&issued_before=115&sign=cached&expires_at=130`
+  const refreshedAvatar = `${file}&issued_before=140&sign=refreshed&expires_at=155`
   request.mockResolvedValueOnce(Response.json({ ...profile, avatar_url: refreshedAvatar }))
   client.setQueryData(
     options.queryKey,
@@ -112,9 +112,9 @@ it('refreshes a hydrated signed avatar on its first client mount', async () => {
   const clock = vi.spyOn(Date, 'now').mockReturnValue(serverPrefetchedAt + 120_000)
   onTestFinished(() => clock.mockRestore())
   const cachedAvatar =
-    '/files/avatar/file-preview?nonce=account-avatar-v2%3Aaccount-1&timestamp=4941&sign=cached&expires_at=5241'
+    '/files/avatar/file-preview?nonce=opaque&issued_before=5001&sign=cached&expires_at=5241'
   const refreshedAvatar =
-    '/files/avatar/file-preview?nonce=account-avatar-v2%3Aaccount-1&timestamp=5240&sign=refreshed&expires_at=5540'
+    '/files/avatar/file-preview?nonce=opaque&issued_before=5300&sign=refreshed&expires_at=5540'
   serverClient.setQueryData(
     options.queryKey,
     {
@@ -142,14 +142,14 @@ it('refreshes a hydrated signed avatar on its first client mount', async () => {
   }
 })
 
-it('anchors a slow browser response to its network receipt time', async () => {
+it('anchors avatar freshness to receipt time when the browser clock runs behind', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
   const options = userProfileQueryOptions()
   const clock = vi.spyOn(Date, 'now').mockReturnValue(5_000_000)
   onTestFinished(() => clock.mockRestore())
-  const file = '/files/avatar/file-preview?nonce=account-avatar-v2%3Aaccount-1'
-  const cachedAvatar = `${file}&timestamp=5061&sign=cached&expires_at=5361`
-  const refreshedAvatar = `${file}&timestamp=5296&sign=refreshed&expires_at=5596`
+  const file = '/files/avatar/file-preview?nonce=opaque'
+  const cachedAvatar = `${file}&issued_before=5121&sign=cached&expires_at=5361`
+  const refreshedAvatar = `${file}&issued_before=5356&sign=refreshed&expires_at=5596`
   client.setQueryData(
     options.queryKey,
     {

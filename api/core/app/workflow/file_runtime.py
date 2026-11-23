@@ -187,6 +187,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
     def _sign_query(self, *, upload_file_id: str, avatar_account_id: str | None) -> dict[str, str]:
         timestamp = int(time.time())
+        window = None
         if avatar_account_id is not None:
             # Round down without consuming more than half of the signature lifetime.
             window = min(_ACCOUNT_AVATAR_WINDOW_SECONDS, max(1, dify_config.FILES_ACCESS_TIMEOUT // 2))
@@ -203,8 +204,9 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             "nonce": nonce,
             "sign": base64.urlsafe_b64encode(sign).decode(),
         }
-        if avatar_account_id is not None:
-            # Let clients refresh cached responses before the embedded URL expires.
+        if window is not None:
+            # Client hints stay constant within the bucket and do not affect verification.
+            query["issued_before"] = str(timestamp + window)
             query["expires_at"] = str(timestamp + dify_config.FILES_ACCESS_TIMEOUT)
         return query
 
@@ -276,7 +278,7 @@ def avatar_preview_cache_max_age(*, timestamp: str, nonce: str) -> int | None:
     if not nonce.startswith(ACCOUNT_AVATAR_NONCE_PREFIX):
         return None
     age = max(0, int(time.time()) - int(timestamp))
-    return min(_ACCOUNT_AVATAR_WINDOW_SECONDS, max(0, dify_config.FILES_ACCESS_TIMEOUT - age))
+    return max(0, dify_config.FILES_ACCESS_TIMEOUT - age)
 
 
 def create_dify_workflow_file_runtime() -> DifyWorkflowFileRuntime:

@@ -3,8 +3,8 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useAvatarSrc } from '../use-avatar-src'
 
 const file = 'https://files.example.com/avatar.png'
-const signedAvatarUrl = (timestamp: number, expiresAt: number) =>
-  `/files/avatar-id/file-preview?nonce=account-avatar-v2%3Aaccount-id&timestamp=${timestamp}&expires_at=${expiresAt}&sign=${timestamp}`
+const signedAvatarUrl = (issuedBefore: number, expiresAt: number) =>
+  `/files/avatar-id/file-preview?nonce=opaque&issued_before=${issuedBefore}&expires_at=${expiresAt}&sign=${issuedBefore}`
 
 const renderAvatars = (...urls: string[]) => {
   const { wrapper } = createConsoleQueryWrapper()
@@ -20,9 +20,9 @@ describe('useAvatarSrc', () => {
 
   it('keeps the shared URL until a replacement window reaches its expiry', () => {
     const timestamp = 1_800_000_000
-    const shared = signedAvatarUrl(timestamp, timestamp + 300)
-    const early = signedAvatarUrl(timestamp + 180, timestamp + 480)
-    const replacement = signedAvatarUrl(timestamp + 240, timestamp + 540)
+    const shared = signedAvatarUrl(timestamp + 60, timestamp + 300)
+    const early = signedAvatarUrl(timestamp + 240, timestamp + 480)
+    const replacement = signedAvatarUrl(timestamp + 300, timestamp + 540)
     const { result } = renderAvatars(shared, early, replacement)
 
     expect(result.current.map((avatar) => avatar.src)).toEqual([shared, shared, replacement])
@@ -32,8 +32,8 @@ describe('useAvatarSrc', () => {
     const timestamp = 1_880_000_000
     const clock = vi.spyOn(Date, 'now').mockReturnValue((timestamp + 95 + clockSkew * 3600) * 1000)
     onTestFinished(() => clock.mockRestore())
-    const shared = signedAvatarUrl(timestamp, timestamp + 95)
-    const fresh = signedAvatarUrl(timestamp + 94, timestamp + 189)
+    const shared = signedAvatarUrl(timestamp + 47, timestamp + 95)
+    const fresh = signedAvatarUrl(timestamp + 141, timestamp + 189)
     const { result } = renderAvatars(shared, fresh)
 
     expect(result.current.map((avatar) => avatar.src)).toEqual([shared, fresh])

@@ -1,7 +1,7 @@
 import type { AvatarImageProps } from '@langgenius/dify-ui/avatar'
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { getAvatarSignatureTimes } from '@/utils/avatar'
+import { getAvatarUrlTiming } from '@/utils/avatar'
 
 type LoadingStatus = Parameters<NonNullable<AvatarImageProps['onLoadingStatusChange']>>[0]
 
@@ -17,14 +17,13 @@ const avatarSrcOptions = (file: string | undefined, received: string | undefined
 
 function hasNewerReplacement(shared: string | undefined, received: string | undefined) {
   if (shared === received) return false
-  const sharedTimes = getAvatarSignatureTimes(shared)
-  const receivedTimes = getAvatarSignatureTimes(received)
+  const sharedTiming = getAvatarUrlTiming(shared)
+  const receivedTiming = getAvatarUrlTiming(received)
   return (
-    sharedTimes !== undefined &&
-    receivedTimes !== undefined &&
-    receivedTimes.timestamp > sharedTimes.timestamp &&
-    receivedTimes.expiresAt > sharedTimes.expiresAt &&
-    receivedTimes.timestamp + receivedTimes.signingWindow >= sharedTimes.expiresAt
+    sharedTiming !== undefined &&
+    receivedTiming !== undefined &&
+    receivedTiming.expiresAt > sharedTiming.expiresAt &&
+    receivedTiming.issuedBefore >= sharedTiming.expiresAt
   )
 }
 

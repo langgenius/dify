@@ -46,7 +46,7 @@ const nextFrames = async (count: number) => {
 describe('reading a thread', () => {
   it('refreshes expiring canvas and thread avatars on focus with a slow browser clock', async () => {
     const avatarUrl = (timestamp: number) =>
-      `/files/avatar/file-preview?timestamp=${timestamp}&nonce=account-avatar-v2%3Aauthor&sign=sig&expires_at=${timestamp + 300}`
+      `/files/avatar/file-preview?nonce=opaque&sign=sig&issued_before=${timestamp + 60}&expires_at=${timestamp + 300}`
     const receivedAt = Date.now() - 235_000
     const serverOffset = 120_000
     const oldAvatar = avatarUrl(Math.floor((receivedAt + serverOffset) / 1000) - 59)

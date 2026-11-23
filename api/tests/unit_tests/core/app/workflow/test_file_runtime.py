@@ -220,24 +220,28 @@ def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(
     assert query["timestamp"] == ["1700000000"]
 
 
+@pytest.mark.parametrize(("access_timeout", "window"), [(300, 60), (7, 3)])
 def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
+    access_timeout: int,
+    window: int,
 ) -> None:
     config_overrides(
         SECRET_KEY="unit-secret",
         FILES_URL="https://files.example.com",
-        FILES_ACCESS_TIMEOUT=300,
+        FILES_ACCESS_TIMEOUT=access_timeout,
     )
-    now = 120
+    timestamp = 120
+    now = timestamp
     monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: now)
     runtime = _build_runtime()
     account_id = "11111111-1111-1111-1111-111111111111"
 
     first = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
-    now = 179
+    now = timestamp + window - 1
     same_bucket = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
-    now = 180
+    now = timestamp + window
     next_bucket = runtime.resolve_avatar_file_url(upload_file_id="upload-file-id", account_id=account_id)
 
     assert same_bucket == first
@@ -247,12 +251,14 @@ def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
     next_query = parse_qs(urlparse(next_bucket).query)
     assert parsed.netloc == "files.example.com"
     assert parsed.path == "/files/upload-file-id/file-preview"
-    assert query["timestamp"] == ["120"]
+    assert query["timestamp"] == [str(timestamp)]
     assert query["nonce"] == [f"account-avatar-v2:{account_id}"]
-    assert query["expires_at"] == ["420"]
-    assert next_query["timestamp"] == ["180"]
+    assert query["issued_before"] == [str(timestamp + window)]
+    assert query["expires_at"] == [str(timestamp + access_timeout)]
+    assert next_query["timestamp"] == [query["issued_before"][0]]
     assert next_query["nonce"] == query["nonce"]
-    assert next_query["expires_at"] == ["480"]
+    assert next_query["issued_before"] == [str(timestamp + 2 * window)]
+    assert next_query["expires_at"] == [str(timestamp + window + access_timeout)]
 
     def verify_first() -> bool:
         return runtime.verify_preview_signature(
@@ -279,13 +285,13 @@ def test_resolve_avatar_file_url_is_stable_within_a_bucket_and_expires_normally(
         sign=query["sign"][0],
     )
 
-    now = 115
+    now = timestamp - 5
     assert verify_first()
-    now = 114
+    now = timestamp - 6
     assert not verify_first()
-    now = 420
+    now = timestamp + access_timeout
     assert verify_first()
-    now = 421
+    now += 1
     assert not verify_first()
 
 
@@ -305,7 +311,7 @@ def test_resolve_upload_file_url_keeps_fresh_generic_nonces(
     assert first != second
     assert parse_qs(urlparse(first).query)["nonce"] == ["01" * 16]
     assert parse_qs(urlparse(second).query)["nonce"] == ["02" * 16]
-    assert "expires_at" not in parse_qs(urlparse(first).query)
+    assert {"expires_at", "issued_before"}.isdisjoint(parse_qs(urlparse(first).query))
 
 
 def test_verify_preview_signature_validates_signature_and_expiration(
