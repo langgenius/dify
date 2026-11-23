@@ -185,7 +185,7 @@ def test_external_archive_removes_only_its_shared_agent_bindings(control: Contro
 
 def test_asset_mutation_responses_keep_current_tags_and_acl_projection(control: ControlPlane) -> None:
     """Shared asset response DTOs never replace a real tag set with a fabricated empty value."""
-    external = control.database[3]
+    external = control.create(metadata={"name": "Tagged presentation"}).resource_id
     tag_id = label(control, "Persist in response")
     bind(control, external, tag_id)
     current = control.assets.detail(control.context, external)["asset"]
@@ -196,7 +196,8 @@ def test_asset_mutation_responses_keep_current_tags_and_acl_projection(control: 
         changes={"description": "New info"},
     )
     disabled = control.assets.set_enabled(control.context, external, False)
-    for result in (changed, disabled):
+    traced = control.assets.set_tracing(control.context, external, True)
+    for result in (changed, disabled, traced):
         assert [tag.id for tag in result.tags] == [tag_id]
         assert "agent.acl.edit" in result.permission_keys
 
