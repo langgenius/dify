@@ -23,7 +23,7 @@ from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
 
 from controllers.console import flask_admission
 from controllers.console.app import (
@@ -1689,3 +1689,15 @@ class TestCreateAppPayloadCases:
         def test_rejects_unknown_mode(self):
             with pytest.raises(ValidationError):
                 CreateAppPayload.model_validate({"name": "X", "mode": "not-a-mode"})
+
+
+class TestAppIconMalformedJson:
+    @pytest.mark.parametrize("body", [b"{", b"null", b"false", b"0", b'""', b"[]", b'"value"', b"[1]"])
+    def test_icon_rejects_non_object_json_before_clearing_icon(
+        self, app: Flask, boundary: AppBoundary, body: bytes
+    ) -> None:
+        with app.test_request_context("/", method="POST", data=body, content_type="application/json"):
+            with pytest.raises(UnprocessableEntity):
+                invoke(controller.AppIconApi, controller.AppIconApi.post, app_id=_CONSOLE_APP_API_APP_ID)
+
+        assert boundary.calls == []
