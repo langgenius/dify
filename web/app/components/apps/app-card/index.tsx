@@ -14,7 +14,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -221,10 +221,11 @@ export const AppCard = memo(
           </AppCardInteractions>
         )}
         <div className="absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
-          <AppCardTags
-            appId={app.id}
-            appName={app.name}
-            tags={app.tags ?? []}
+          <TagSelector
+            type="app"
+            targetId={app.id}
+            contextLabel={app.name}
+            value={app.tags ?? []}
             canBindOrUnbindTags={canBindOrUnbindTags}
             onOpenTagManagement={onOpenTagManagement}
           />
