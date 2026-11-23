@@ -6,19 +6,10 @@ import { useState } from 'react'
 import { useKeyPress } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import Recipients from '../components/recipients'
-import {
-  contact,
-  contactApi,
-  organizationContact,
-  resetContactApi,
-  testConsoleQuery,
-} from './fixtures/contact-api'
-
-vi.mock('@/service/console', async () => ({
-  consoleQuery: (await import('./fixtures/contact-api')).testConsoleQuery,
-}))
+import { contact, contactApi, organizationContact, resetContactApi } from './fixtures/contact-api'
 
 // The variable picker needs the full workflow editor context and has its own spec.
 // boundary: render only its real trigger so the footer's Tab order matches production.
@@ -52,14 +43,36 @@ function Harness({
 }
 
 async function renderRecipients(initial?: HumanInputV2Recipient[]) {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        features: { get: () => contactApi.features() },
+        workspaces: {
+          current: {
+            summary: {
+              get: () => ({
+                id: 'workspace-1',
+                name: 'QA workspace',
+                role: 'owner',
+                plan: null,
+                credits: null,
+              }),
+            },
+            humanInput: {
+              v2: {
+                contacts: { get: () => contactApi.contacts() },
+                contactOptions: {
+                  get: (input) => contactApi.options({ query: input?.query ?? {} }),
+                  batch: { get: (input) => contactApi.batch(input) },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const client = createTestQueryClient()
-  client.setQueryData(testConsoleQuery.workspaces.current.summary.get.queryKey(), {
-    id: 'workspace-1',
-    name: 'QA workspace',
-    role: 'owner',
-    plan: null,
-    credits: null,
-  })
   const store = createStore()
   store.set(queryClientAtom, client)
   const observe = vi.fn()

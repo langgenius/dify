@@ -1,8 +1,7 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createAccessPolicyFixture } from '@/test/fixtures/access-policy'
 import {
   permissionFor,
@@ -12,48 +11,75 @@ import {
   rulePage,
 } from './access-rule-fixture'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.workspaces.current.rbac.workspace.apps.accessPolicy.get>(),
-  create: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.post>(),
-  notifyError: vi.fn(),
-  remove: vi.fn<typeof consoleClient.workspaces.current.rbac.accessPolicies.byPolicyId.delete>(),
-  permissions: vi.fn<typeof consoleClient.workspaces.current.rbac.myPermissions.get>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.workspace.apps.accessPolicy.get': api.list,
-      'workspaces.current.rbac.workspace.datasets.accessPolicy.get': api.list,
-      'workspaces.current.rbac.workspace.agents.accessPolicy.get': api.list,
-      'workspaces.current.rbac.accessPolicies.post': api.create,
-      'workspaces.current.rbac.accessPolicies.byPolicyId.delete': api.remove,
-      'workspaces.current.rbac.myPermissions.get': api.permissions,
-    }),
-  }
+// The journey refetches the catalog the fixture seeds; answer with the same permissions.
+const catalogFor = (type: AccessPolicyResourceType) => ({
+  groups: [
+    {
+      group_key: `${type}_acl`,
+      group_name: type,
+      description: '',
+      permissions: [{ key: permissionFor(type), name: 'Edit configuration', description: '' }],
+    },
+  ],
 })
+const notify = vi.hoisted(() => ({ error: vi.fn() }))
 // boundary: Observe notifications that outlive the settings section without mounting the app toaster.
 vi.mock('@/app/notifications', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/notifications')>()
-  return { ...actual, toast: { ...actual.toast, error: api.notifyError } }
+  return { ...actual, toast: { ...actual.toast, error: notify.error } }
 })
 let rules: ReturnType<typeof ruleFor>[]
+function installAccessRuleApi() {
+  const list = async () => rulePage(rules)
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          rbac: {
+            workspace: {
+              apps: { accessPolicy: { get: list } },
+              datasets: { accessPolicy: { get: list } },
+              agents: { accessPolicy: { get: list } },
+            },
+            accessPolicies: {
+              post: async ({ body }) => {
+                const policy = createAccessPolicyFixture({ ...body, id: 'created-rule' })
+                rules = [...rules, { policy, accounts: [], roles: [] }]
+                return policy
+              },
+              byPolicyId: {
+                delete: async ({ params }) => {
+                  rules = rules.filter((rule) => rule.policy.id !== params.policy_id)
+                  return { result: 'success' }
+                },
+              },
+            },
+            myPermissions: {
+              get: () => ({
+                workspace: { permission_keys: [] },
+                app: { default_permission_keys: [], overrides: [] },
+                dataset: { default_permission_keys: [], overrides: [] },
+              }),
+            },
+            rolePermissions: {
+              catalog: {
+                app: { get: () => catalogFor('app') },
+                dataset: { get: () => catalogFor('dataset') },
+                agent: { get: () => catalogFor('agent') },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+}
+let fake: ReturnType<typeof installAccessRuleApi>
+const removePolicy = () => fake.console.workspaces.current.rbac.accessPolicies.byPolicyId.delete
+const listAppPolicies = () => fake.console.workspaces.current.rbac.workspace.apps.accessPolicy.get
 beforeEach(() => {
-  api.list.mockReset().mockImplementation(async () => rulePage(rules))
-  api.create.mockReset().mockImplementation(async ({ body }) => {
-    const policy = createAccessPolicyFixture({ ...body, id: 'created-rule' })
-    rules = [...rules, { policy, accounts: [], roles: [] }]
-    return policy
-  })
-  api.notifyError.mockReset()
-  api.remove.mockReset()
-  api.permissions.mockReset().mockResolvedValue({
-    workspace: { permission_keys: [] },
-    app: { default_permission_keys: [], overrides: [] },
-    dataset: { default_permission_keys: [], overrides: [] },
-  })
+  fake = installAccessRuleApi()
+  onTestFinished(fake)
 })
 async function setup(type: AccessPolicyResourceType = 'agent', canManage = true) {
   const view = await renderAccessRule(type, canManage)
@@ -88,14 +114,18 @@ it.each(resources)(
     await confirm.click()
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(screen.getByText('Custom rule', { exact: true })).toBeVisible()
-    expect(api.create).toHaveBeenCalledExactlyOnceWith({
-      body: {
-        name: 'Custom rule',
-        description: 'Can edit',
-        resource_type: type,
-        permission_keys: [permissionFor(type)],
-      },
-    })
+    expect(
+      fake.console.workspaces.current.rbac.accessPolicies.post,
+    ).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: {
+          name: 'Custom rule',
+          description: 'Can edit',
+          resource_type: type,
+          permission_keys: [permissionFor(type)],
+        },
+      }),
+    )
   },
 )
 
@@ -131,7 +161,9 @@ it('opens built-in Agent rules read-only through their real row action', async (
 
 it('preserves a failed Agent permission-set draft for retry through the real mutation', async () => {
   rules = [ruleFor('agent')]
-  api.create.mockRejectedValueOnce(new Error('Unavailable'))
+  fake.console.workspaces.current.rbac.accessPolicies.post.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
+  )
   const { screen } = await setup()
   await screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }).click()
   const dialog = screen.getByRole('dialog')
@@ -171,15 +203,13 @@ it('closes the open mutation dialog after a real permission refetch revokes mana
   await expect
     .element(screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }))
     .not.toBeInTheDocument()
-  expect(api.create).not.toHaveBeenCalled()
+  expect(fake.console.workspaces.current.rbac.accessPolicies.post).not.toHaveBeenCalled()
 })
 
 it('protects the actual delete, supports retry, and returns focus before the list refresh', async () => {
   rules = [ruleFor('app')]
-  const first = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
-  const retry = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
-  const refresh = createDeferred<ReturnType<typeof rulePage>>()
-  api.remove.mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise)
+  const first = hold(removePolicy())
+  const retry = hold(removePolicy())
   const { screen } = await setup('app')
   const menu = screen.getByRole('button', { name: 'common.operation.moreActions' })
   await menu.click()
@@ -200,26 +230,29 @@ it('protects the actual delete, supports retry, and returns focus before the lis
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(cancel).toBeDisabled()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { policy_id: 'app-rule' } })
+  expect(await first.arrived).toEqual({ params: { policy_id: rules[0]!.policy.id } })
+  expect(removePolicy()).toHaveBeenCalledOnce()
 
-  first.reject(new Error('Could not delete this permission set'))
+  first.reject(apiError({ status: 500, message: 'Could not delete this permission set' }))
   await expect
     .element(dialog.getByRole('alert'))
     .toHaveTextContent('Could not delete this permission set')
   await expect.element(cancel).toBeEnabled()
-  expect(api.notifyError).not.toHaveBeenCalled()
+  expect(notify.error).not.toHaveBeenCalled()
   await userEvent.keyboard('{Enter}')
   await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
 
-  api.list.mockReturnValue(refresh.promise)
-  retry.resolve({ result: 'success' })
+  await retry.arrived
+  const refresh = hold(listAppPolicies())
+  const deleted = rules[0]!.policy.name
+  retry.release()
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(screen.getByText(rules[0]!.policy.name)).not.toBeInTheDocument()
+  await expect.element(screen.getByText(deleted)).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: /^permission.accessRule.appTitle/ }))
     .toHaveFocus()
-  expect(api.remove).toHaveBeenCalledTimes(2)
-  refresh.resolve(rulePage([]))
+  expect(removePolicy()).toHaveBeenCalledTimes(2)
+  refresh.release()
 })
 
 it('keeps Escape and menu focus return available during an ordinary list refresh', async () => {
@@ -230,8 +263,7 @@ it('keeps Escape and menu focus return available during an ordinary list refresh
   await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
   const dialog = screen.getByRole('alertdialog')
   await expect.element(dialog).toBeVisible()
-  const refresh = createDeferred<ReturnType<typeof rulePage>>()
-  api.list.mockReturnValueOnce(refresh.promise)
+  const refresh = hold(listAppPolicies())
   const fetching = queryClient.invalidateQueries({
     queryKey: consoleQuery.workspaces.current.rbac.workspace.apps.accessPolicy.get.key(),
   })
@@ -241,15 +273,14 @@ it('keeps Escape and menu focus return available during an ordinary list refresh
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(menu).toHaveFocus()
-  expect(api.remove).not.toHaveBeenCalled()
-  refresh.resolve(rulePage(rules))
+  expect(removePolicy()).not.toHaveBeenCalled()
+  refresh.release()
   await fetching
 })
 
 it('reports a deletion failure if the settings section closes during the request', async () => {
   rules = [ruleFor('app')]
-  const request = createDeferred<Awaited<ReturnType<typeof api.remove>>>()
-  api.remove.mockReturnValueOnce(request.promise)
+  const request = hold(removePolicy())
   const { screen } = await setup('app')
   await screen.getByRole('button', { name: 'common.operation.moreActions' }).click()
   await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
@@ -259,21 +290,17 @@ it('reports a deletion failure if the settings section closes during the request
     .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
     .toBeDisabled()
   await screen.unmount()
-  request.reject(new Error('Permission set deletion failed'))
-  await expect.poll(() => api.notifyError.mock.calls).toEqual([['Permission set deletion failed']])
+  await request.arrived
+  request.reject(apiError({ status: 500, message: 'Permission set deletion failed' }))
+  await expect.poll(() => notify.error.mock.calls).toEqual([['Permission set deletion failed']])
 })
 
 it('returns focus to the section heading in view after deleting a low row', async () => {
   await page.viewport(1100, 245)
   rules = Array.from({ length: 8 }, (_, index) => {
     const rule = ruleFor('app', `Permission set ${index + 1}`)
-    rule.policy.id = `app-rule-${index + 1}`
+    rule.policy.id = `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`
     return rule
-  })
-  const removed = rules.at(-1)!
-  api.remove.mockImplementation(async () => {
-    rules = rules.filter((rule) => rule !== removed)
-    return { result: 'success' }
   })
   const { screen } = await setup('app')
   const heading = screen.getByRole('button', { name: /^permission.accessRule.appTitle/ })

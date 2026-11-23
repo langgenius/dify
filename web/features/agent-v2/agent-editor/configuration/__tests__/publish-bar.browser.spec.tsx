@@ -14,24 +14,14 @@ import common from '@/i18n/locales/en-US/common.json'
 import workflowHistory from '@/i18n/locales/en-US/workflow-history.json'
 import { consoleQuery } from '@/service/console'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { installFakeApi } from '@/test/fake-api'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 vi.unmock('react-i18next')
-// boundary: generated Console transport supplies the referenced-workflow server response.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.byAgentId.referencingWorkflows.get': async () => ({ data: [] }),
-    }),
-  }
-})
-
+const agentId = '00000000-0000-4000-8000-000000000001'
 const successTitle = 'Changes published'
 const dismissLabel = 'Dismiss publish guidance'
 
@@ -45,14 +35,19 @@ async function setup() {
   })
   const queryClient = createTestQueryClient()
   const store = createStore()
-  const input = { params: { agent_id: 'agent-1' } }
+  onTestFinished(
+    installFakeApi({
+      console: { agent: { byAgentId: { referencingWorkflows: { get: () => ({ data: [] }) } } } },
+    }),
+  )
+  const input = { params: { agent_id: agentId } }
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
     zAgentAppComposerResponse.parse({
       active_config_is_published: false,
       active_config_snapshot: null,
       agent: {
-        id: 'agent-1',
+        id: agentId,
         name: 'Agent',
         description: '',
         scope: 'roster',
@@ -67,6 +62,7 @@ async function setup() {
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.get.queryKey({ input }),
     createAgentFixture({
+      id: agentId,
       access_ready: true,
       enable_site: true,
       site: createAppSiteFixture({
@@ -91,7 +87,7 @@ async function setup() {
           <input aria-label="Other editor" />
           <div className="w-96">
             <AgentConfigurePublishBar
-              agentId="agent-1"
+              agentId={agentId}
               isPublishing={isPublishing}
               onPublish={async () => {
                 const draft = store.get(agentComposerDraftAtom)

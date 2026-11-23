@@ -3,23 +3,13 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { CloudPlanCard } from '../plan-card'
 import { PlanFeatureInfotip } from '../plan-card/features'
 
-const api = vi.hoisted(() => ({
-  subscription: vi.fn<typeof consoleClient.billing.subscription.get>(),
+const fake = setupFakeApi(() => ({
+  console: { billing: { subscription: { get: async () => ({ url: '' }) } } },
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'billing.subscription.get': api.subscription,
-    }),
-  }
-})
-beforeEach(() => api.subscription.mockReset())
 
 it('keeps both education checkout actions inside the dialog on a narrow phone', async () => {
   await page.viewport(320, 700)
@@ -89,14 +79,14 @@ it.each(['professional', 'sandbox'] as const)(
     // boundary: keep checkout pending to observe the actual loading button.
     const request =
       createDeferred<Awaited<ReturnType<typeof consoleClient.billing.subscription.get>>>()
-    api.subscription.mockReturnValue(request.promise)
+    fake.console.billing.subscription.get.mockReturnValue(request.promise)
     try {
       await action.click()
       await expect.element(action).toHaveAttribute('aria-disabled', 'true')
       await expect.element(action).toHaveFocus()
       expect(colors()).toEqual(ready)
       await userEvent.keyboard('{Enter}')
-      expect(api.subscription).toHaveBeenCalledTimes(1)
+      await expect.poll(() => fake.console.billing.subscription.get).toHaveBeenCalledTimes(1)
     } finally {
       request.resolve({ url: '' })
     }
