@@ -9,7 +9,7 @@ IO; they never fabricate ORM construction or bypass an application constructor.
 import copy
 import json
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import override
@@ -576,7 +576,8 @@ def test_managers_metadata_noop_actual_reset_switches_and_delete_are_persisted(
     same = control.assets.update_info(
         control.context, agent_id=agent, expected_revision=before.metadata_revision, changes={"description": ""}
     )
-    assert same == before
+    assert control.store.get_asset(tenant_id=control.context.active_workspace_id, agent_id=agent) == before
+    assert asdict(same) == control.assets.detail(control.context, agent)["asset"]
     edited = control.assets.update_info(
         control.context,
         agent_id=agent,
