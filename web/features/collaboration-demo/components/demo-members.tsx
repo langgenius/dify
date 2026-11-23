@@ -23,8 +23,15 @@ export function DemoMembers({ listed, pillRef }: DemoMembersProps) {
         aria-label={t(($) => $['members.label'], {
           names: new Intl.ListFormat(i18n.language).format(members.map(({ name }) => name)),
         })}
-        collaborators={members}
-      />
+      >
+        {members.map((member, index) => (
+          <CollaboratorAvatar
+            key={member.id}
+            collaborator={member}
+            style={{ zIndex: members.length - index }}
+          />
+        ))}
+      </CollaboratorPill>
       {listed && (
         <ul
           data-collaboration-demo-members

@@ -4,11 +4,12 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { uniqBy } from 'es-toolkit'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCardSummary from '@/app/components/app/app-card-summary'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { CollaboratorAvatarStack } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -105,17 +106,14 @@ export const AppCard = memo(
     }, [app.mode, app.workflow_kind, t])
 
     const onlinePresenceUsers = useMemo(() => {
-      return onlineUsers
-        .map((user, index) => {
-          const id = user.user_id || user.sid || `${app.id}-online-${index}`
-          const name = user.username || user.user_id || user.sid || `${index + 1}`
-          return {
-            id,
-            name,
-            avatar_url: user.avatar || null,
-          }
-        })
-        .filter((user) => Boolean(user.id))
+      return uniqBy(
+        onlineUsers.map((user, index) => ({
+          id: user.user_id || user.sid || `${app.id}-online-${index}`,
+          name: user.username || user.user_id || user.sid || `${index + 1}`,
+          avatarUrl: user.avatar || null,
+        })),
+        (user) => user.id,
+      )
     }, [app.id, onlineUsers])
     const appNameId = useId()
     const appDescriptionId = useId()
@@ -138,11 +136,10 @@ export const AppCard = memo(
         >
           {onlinePresenceUsers.length > 0 && (
             <div className="ms-3 flex shrink-0 items-start">
-              <UserAvatarList
-                users={onlinePresenceUsers}
+              <CollaboratorAvatarStack
+                collaborators={onlinePresenceUsers}
                 size="xxs"
                 maxVisible={3}
-                className="justify-end"
               />
             </div>
           )}
