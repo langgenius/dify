@@ -159,6 +159,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.externalAgents.get.key(),
                   }),
+                  refreshAgentTagCatalogs(consoleQuery, context.client),
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.externalAgents.byAgentId.get.queryKey({
                       input: { params: variables.params },
@@ -3697,6 +3698,10 @@ export function invalidateTaggedResources(
       query.agent.get.key(),
       query.agent.inviteOptions.get.key(),
       query.agent.byAgentId.get.key(
+        targetId ? { input: { params: { agent_id: targetId } } } : undefined,
+      ),
+      query.externalAgents.get.key(),
+      query.externalAgents.byAgentId.get.key(
         targetId ? { input: { params: { agent_id: targetId } } } : undefined,
       ),
     ])

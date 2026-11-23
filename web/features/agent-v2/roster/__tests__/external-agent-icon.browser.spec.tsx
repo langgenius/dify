@@ -42,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'files.upload.post': uploadImage,
+      'tags.get': async () => [],
       'externalAgents.capabilities.get': async () => createExternalAgentCapabilities(),
       'externalAgents.get': list,
       'externalAgents.byAgentId.get': detail,
