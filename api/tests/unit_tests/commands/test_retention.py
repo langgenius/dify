@@ -1,7 +1,14 @@
+import csv
 import datetime
 import logging
 import re
+import time
+from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import partial
+from io import StringIO
+from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
@@ -14,19 +21,29 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from commands import clean_expired_messages, retention
+from dify_app import DifyApp
+from extensions import ext_application_services, ext_commands
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.agent import Agent, AgentScope, AgentSource
+from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom, WorkflowRunTriggeredFrom
+from models.model import AppMode
 from models.workflow import (
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowType,
 )
+from services.retention.log_export_csv import write_log_export_csv
 from services.retention.workflow_run import bundle_archive_maintenance
 from services.retention.workflow_run.bundle_archive_maintenance import (
     BundleOperationResult,
     BundleOperationSummary,
 )
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 """Tests for workflow-run archive command database boundaries.
 
@@ -40,6 +57,276 @@ remain narrow external-boundary substitutions.
 _CURSOR_0 = "00000000-0000-0000-0000-000000000000"
 _CURSOR_1 = "00000000-0000-0000-0000-000000000001"
 _CURSOR_2 = "00000000-0000-0000-0000-000000000002"
+
+
+@pytest.fixture
+def log_export_cli() -> DifyApp:
+    """Register the real export command and use services bound to the unit database."""
+    app = DifyApp(__name__)
+    ext_application_services.init_app(app)
+    ext_commands.init_app(app)
+    return app
+
+
+@pytest.mark.parametrize("destination", ["local", "storage"])
+def test_export_app_logs_writes_console_csv_with_the_requested_filters(
+    log_export_cli: DifyApp,
+    sqlite_session_factory: sessionmaker[Session],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    destination: str,
+) -> None:
+    app = make_app(app_id=str(uuid4()), mode=AppMode.COMPLETION)
+    account = make_account(account_id=str(uuid4()))
+    lower_bound = datetime.datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, account])
+        for label, created_at, account_id in (
+            ("included", lower_bound, account.id),
+            ("upper bound", lower_bound + datetime.timedelta(days=1), account.id),
+            ("other account", lower_bound, str(uuid4())),
+        ):
+            conversation = make_conversation(
+                conversation_id=str(uuid4()),
+                app_id=app.id,
+                mode=app.mode,
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=account_id,
+            )
+            conversation.created_at = created_at
+            session.add(conversation)
+            session.add(
+                make_message(
+                    message_id=str(uuid4()),
+                    app_id=app.id,
+                    conversation_id=conversation.id,
+                    inputs={"title": label},
+                    query="",
+                    answer=f"Generated {label}",
+                    from_source=ConversationFromSource.CONSOLE,
+                    created_at=created_at + datetime.timedelta(days=2),
+                    currency="USD",
+                )
+            )
+
+    args = [
+        "export-app-logs",
+        "--app-id",
+        app.id,
+        "--start-from",
+        "2026-01-01",
+        "--end-before",
+        "2026-01-02",
+        "--account-id",
+        account.id,
+    ]
+    destination_path = tmp_path / "logs.csv"
+    if destination == "storage":
+        monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
+        args.extend(["--use-cloud-storage", "--filename", "logs"])
+    else:
+        args.extend(["--filename", str(tmp_path / "logs")])
+
+    with log_export_cli.app_context():
+        result = log_export_cli.test_cli_runner().invoke(args=args)
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert "1 CSV rows in " in result.output
+    with destination_path.open(encoding="utf-8-sig", newline="") as output:
+        (row,) = csv.DictReader(output)
+    assert (row["app_type"], row["account_id"], row["user_input"], row["app_response"]) == (
+        "Text Generator",
+        account.id,
+        '{"title": "included"}',
+        "Generated included",
+    )
+    assert {"agent_id", "conversation_id"}.isdisjoint(row)
+
+
+def test_export_app_logs_writes_workflow_logs(
+    log_export_cli: DifyApp, sqlite_session_factory: sessionmaker[Session], tmp_path: Path
+) -> None:
+    app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
+    account_id = str(uuid4())
+    run = WorkflowRun(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        workflow_id=str(uuid4()),
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.SCHEDULE,
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        version="1",
+        inputs='{"task":"report"}',
+        outputs='{"result":"ready"}',
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+    )
+    run.created_at = datetime.datetime(2026, 1, 1, 23)
+    log = WorkflowAppLog(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        workflow_id=run.workflow_id,
+        workflow_run_id=run.id,
+        created_from=WorkflowAppLogCreatedFrom.SERVICE_API,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+    )
+    log.created_at = datetime.datetime(2026, 1, 2)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, run, log])
+
+    path = tmp_path / "workflow.csv"
+    with log_export_cli.app_context():
+        result = log_export_cli.test_cli_runner().invoke(
+            args=[
+                "export-app-logs",
+                "--app-id",
+                app.id,
+                "--filename",
+                str(path),
+                "--start-from",
+                "2026-01-02",
+                "--end-before",
+                "2026-01-03",
+                "--account-id",
+                account_id,
+            ]
+        )
+
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert "1 CSV rows in " in result.output
+    with path.open(encoding="utf-8-sig", newline="") as output:
+        (row,) = csv.DictReader(output)
+    assert (row["app_type"], row["run_id"], row["account_id"], row["trigger_by"]) == (
+        "Workflow",
+        run.id,
+        account_id,
+        "schedule",
+    )
+
+
+@pytest.mark.parametrize("target_option", ["--agent-id", "--app-id"])
+def test_export_app_logs_writes_new_agent_logs(
+    log_export_cli: DifyApp, sqlite_session_factory: sessionmaker[Session], tmp_path: Path, target_option: str
+) -> None:
+    app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.AGENT)
+    agent = Agent(
+        id=str(uuid4()),
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        name="CLI Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+    )
+    end_user = make_end_user(end_user_id=str(uuid4()), tenant_id=app.tenant_id, app_id=app.id)
+    conversation = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=app.id,
+        mode=app.mode,
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user.id,
+    )
+    message = make_message(
+        message_id=str(uuid4()),
+        app_id=app.id,
+        conversation_id=conversation.id,
+        query="Hello",
+        answer="Hi",
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        from_end_user_id=end_user.id,
+        invoke_from=InvokeFrom.WEB_APP,
+        created_at=datetime.datetime(2026, 1, 2),
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, agent, end_user, conversation, message])
+
+    path = tmp_path / "agent.csv"
+    with log_export_cli.app_context():
+        result = log_export_cli.test_cli_runner().invoke(
+            args=[
+                "export-app-logs",
+                target_option,
+                agent.id if target_option == "--agent-id" else app.id,
+                "--filename",
+                str(path),
+                "--start-from",
+                "2026-01-02",
+                "--end-before",
+                "2026-01-03",
+                "--end-user-id",
+                end_user.id,
+            ]
+        )
+
+    assert result.exit_code == 0, (result.output, result.exception)
+    assert "1 CSV rows in " in result.output
+    with path.open(encoding="utf-8-sig", newline="") as output:
+        (row,) = csv.DictReader(output)
+    assert (row["app_type"], row["agent_id"], row["message_id"], row["source"]) == (
+        "New Agent",
+        agent.id,
+        message.id,
+        "WebApp",
+    )
+
+
+def test_export_app_logs_keeps_existing_file_when_the_app_is_missing(log_export_cli: DifyApp, tmp_path: Path) -> None:
+    existing = tmp_path / "logs.csv"
+    existing.write_text("completed export", encoding="utf-8")
+    with log_export_cli.app_context():
+        result = log_export_cli.test_cli_runner().invoke(
+            args=[
+                "export-app-logs",
+                "--app-id",
+                str(uuid4()),
+                "--end-before",
+                "2026-01-02",
+                "--filename",
+                str(existing),
+            ]
+        )
+
+    assert result.exit_code == 1
+    assert "App not found." in result.output
+    assert existing.read_text(encoding="utf-8") == "completed export"
+    assert list(tmp_path.iterdir()) == [existing]
+
+
+def test_log_export_progress_reports_waiting_and_written_rows(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    waiting, writing, uploading = Event(), Event(), Event()
+    reports = {
+        "Waiting for first CSV rows | 0 CSV rows written": waiting,
+        "Writing CSV | 1 CSV rows written": writing,
+        "Uploading CSV | 1 CSV rows written": uploading,
+    }
+    echo = click.echo
+
+    def capture_report(message: str, *, err: bool) -> None:
+        echo(message, err=err)
+        report = reports.get(message.partition(" | ")[2])
+        if err and report is not None:
+            report.set()
+
+    def rows() -> Iterator[dict[str, str]]:
+        assert waiting.wait(3), "No progress during the first read"
+        yield {"answer": "Hello\nworld"}
+        assert writing.wait(3), "No progress after the first CSV row"
+
+    monkeypatch.setattr(retention, "_LOG_EXPORT_PROGRESS_INTERVAL", 0.01)
+    monkeypatch.setattr(click, "echo", capture_report)
+    with retention._log_export_progress(time.perf_counter()) as update:
+        output = StringIO(newline="")
+        row_count = write_log_export_csv(
+            output, rows(), columns=("answer",), report_rows=partial(update, "Writing CSV")
+        )
+        update("Uploading CSV", row_count)
+        assert uploading.wait(3)
+
+    assert row_count == 1
+    assert list(csv.reader(StringIO(output.getvalue().removeprefix("\ufeff")))) == [["answer"], ["Hello\nworld"]]
+    assert capsys.readouterr().out == ""
 
 
 def _db_disconnect_error() -> OperationalError:

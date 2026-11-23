@@ -3,8 +3,13 @@ import logging
 import re
 import time
 import uuid
-from collections.abc import Callable
-from typing import TypedDict
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
+from functools import partial
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from threading import Event, Thread
+from typing import TextIO, TypedDict
 
 import click
 import sqlalchemy as sa
@@ -12,11 +17,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
+from services.agent.observability_contracts import AgentObservabilityNotFoundError
+from services.app.console_service import ConsoleAppNotFoundError
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from services.entities.conversation_entities import ConversationAnnotationStatus
+from services.retention.conversation.log_export_service import UnsupportedConversationLogExportModeError
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.log_export_adapters import store_log_export_csv
+from services.retention.log_export_command import LogExportCommandFilters, UnsupportedLogExportFilterError
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from services.retention.workflow_run.db_retry import run_with_db_retry
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
@@ -26,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 _HEX_PREFIXES = tuple("0123456789abcdef")
 _TARGET_MONTH_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+_LOG_EXPORT_PROGRESS_INTERVAL = 5.0
 
 
 class WorkflowRunArchivePlanRow(TypedDict):
@@ -1586,75 +1599,139 @@ def clean_expired_messages(
     click.echo(click.style("messages cleanup completed.", fg="green"))
 
 
-@click.command("export-app-messages", help="Export messages for an app to JSONL.GZ.")
-@click.option("--app-id", required=True, help="Application ID to export messages for.")
+@contextmanager
+def _log_export_progress(start_at: float) -> Generator[Callable[[str, int], None]]:
+    """Report the latest stage and CSV row count to stderr until the export exits."""
+    stopped = Event()
+    progress = ("Waiting for first CSV rows", 0)
+
+    def update(stage: str, rows_written: int) -> None:
+        """Save an immutable snapshot for the reporter without doing terminal I/O."""
+        nonlocal progress
+        progress = (stage, rows_written)
+
+    def report() -> None:
+        """Print elapsed time and progress even when the main thread is waiting on I/O."""
+        while not stopped.wait(_LOG_EXPORT_PROGRESS_INTERVAL):
+            stage, rows_written = progress
+            elapsed = time.perf_counter() - start_at
+            try:
+                click.echo(f"{elapsed:.1f}s | {stage} | {rows_written:,} CSV rows written", err=True)
+            except OSError:
+                return
+
+    reporter = Thread(target=report, name="log-export-progress", daemon=True)
+    reporter.start()
+    try:
+        yield update
+    finally:
+        stopped.set()
+        reporter.join()
+
+
+@click.command("export-app-logs", help="Export app or Agent logs using the Console CSV format.")
+@click.option("--app-id", type=click.UUID, help="App ID, including Workflow apps. Use --app-id or --agent-id.")
+@click.option("--agent-id", type=click.UUID, help="New Agent ID. Use --app-id or --agent-id.")
 @click.option(
     "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
-    help="Optional lower bound (inclusive) for created_at.",
+    help="Optional inclusive lower bound for log time (UTC).",
 )
 @click.option(
     "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     required=True,
-    help="Upper bound (exclusive) for created_at.",
+    help="Exclusive upper bound for log time (UTC).",
+)
+@click.option("--end-user-id", type=click.UUID, multiple=True, help="Internal end-user ID. Repeat to include more IDs.")
+@click.option("--account-id", type=click.UUID, multiple=True, help="Account ID. Repeat to include more IDs.")
+@click.option(
+    "--annotation-status",
+    type=click.Choice(["all", "annotated", "not_annotated"]),
+    default="all",
+    show_default=True,
+    help="Annotation filter for conversation apps.",
 )
 @click.option(
     "--filename",
+    type=click.Path(dir_okay=False, path_type=Path),
     required=True,
-    help="Base filename (relative path). Do not include suffix like .jsonl.gz.",
+    help="CSV destination. A .csv suffix is added if needed.",
 )
-@click.option("--use-cloud-storage", is_flag=True, default=False, help="Upload to cloud storage instead of local file.")
-@click.option("--batch-size", default=1000, show_default=True, help="Batch size for cursor pagination.")
-@click.option("--dry-run", is_flag=True, default=False, help="Scan only, print stats without writing any file.")
-def export_app_messages(
-    app_id: str,
+@click.option("--use-cloud-storage", is_flag=True, help="Use --filename as a relative key in the configured storage.")
+def export_app_logs(
+    app_id: uuid.UUID | None,
+    agent_id: uuid.UUID | None,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime,
-    filename: str,
+    end_user_id: tuple[uuid.UUID, ...],
+    account_id: tuple[uuid.UUID, ...],
+    annotation_status: ConversationAnnotationStatus,
+    filename: Path,
     use_cloud_storage: bool,
-    batch_size: int,
-    dry_run: bool,
-):
-    if start_from and start_from >= end_before:
+) -> None:
+    """Export live logs for a server operator and report progress and final counts.
+
+    Require exactly one app or Agent target, an ordered UTC interval and a destination.
+    Publish the CSV only after generation succeeds.
+    """
+    if (app_id is None) == (agent_id is None):
+        raise click.UsageError("Specify exactly one of --app-id and --agent-id.")
+    if start_from is not None and start_from >= end_before:
         raise click.UsageError("--start-from must be before --end-before.")
+    if end_before == datetime.datetime.min:
+        raise click.BadParameter("Must be after the earliest representable date.", param_hint="--end-before")
+    if use_cloud_storage and (filename.is_absolute() or ".." in filename.parts or "\\" in filename.as_posix()):
+        raise click.BadParameter("Expected a relative storage key without parent directories.", param_hint="--filename")
 
-    from services.retention.conversation.message_export_service import AppMessageExportService
+    filters = LogExportCommandFilters(
+        start=start_from,
+        end_before=end_before,
+        annotation_status=annotation_status,
+        end_user_ids=tuple(str(user_id) for user_id in end_user_id),
+        account_ids=tuple(str(user_id) for user_id in account_id),
+    )
+    target_id = str(app_id or agent_id)
+    exports = application_services().log_export_command
+    export = exports.write_agent_csv if agent_id is not None else exports.write_app_csv
 
-    try:
-        validated_filename = AppMessageExportService.validate_export_filename(filename)
-    except ValueError as e:
-        raise click.BadParameter(str(e), param_hint="--filename") from e
-
-    click.echo(click.style(f"export_app_messages: starting export for app {app_id}.", fg="green"))
+    if filename.suffix.lower() != ".csv":
+        filename = filename.with_name(f"{filename.name}.csv")
+    click.echo(f"Exporting CSV for {target_id}.")
     start_at = time.perf_counter()
-
     try:
-        service = AppMessageExportService(
-            app_id=app_id,
-            end_before=end_before,
-            filename=validated_filename,
-            start_from=start_from,
-            batch_size=batch_size,
-            use_cloud_storage=use_cloud_storage,
-            dry_run=dry_run,
-        )
-        stats = service.run()
+        with _log_export_progress(start_at) as update_progress:
 
-        elapsed = time.perf_counter() - start_at
-        click.echo(
-            click.style(
-                f"export_app_messages: completed in {elapsed:.2f}s\n"
-                f"  - Batches: {stats.batches}\n"
-                f"  - Total messages: {stats.total_messages}\n"
-                f"  - Messages with feedback: {stats.messages_with_feedback}\n"
-                f"  - Total feedbacks: {stats.total_feedbacks}",
-                fg="green",
-            )
-        )
-    except Exception as e:
-        elapsed = time.perf_counter() - start_at
-        logger.exception("export_app_messages failed")
-        click.echo(click.style(f"export_app_messages: failed after {elapsed:.2f}s - {e}", fg="red"))
-        raise
+            def write_csv(output: TextIO) -> int:
+                """Write the selected CSV to an open file and report cumulative data rows."""
+                count = export(
+                    target_id, filters=filters, output=output, report_rows=partial(update_progress, "Writing CSV")
+                )
+                if use_cloud_storage:
+                    output.flush()
+                    update_progress("Uploading CSV", count)
+                return count
+
+            if use_cloud_storage:
+                row_count = store_log_export_csv(filename.as_posix(), write_csv)
+            else:
+                filename.parent.mkdir(parents=True, exist_ok=True)
+                with TemporaryDirectory(dir=filename.parent) as directory:
+                    temporary_path = Path(directory) / "logs.csv"
+                    temporary_path.touch(mode=0o600)
+                    with temporary_path.open("w", encoding="utf-8", newline="") as output:
+                        row_count = write_csv(output)
+                    temporary_path.replace(filename)
+    except AgentObservabilityNotFoundError as exc:
+        raise click.ClickException("Agent or its runtime app not found.") from exc
+    except (
+        ConsoleAppNotFoundError,
+        UnsupportedConversationLogExportModeError,
+        UnsupportedLogExportFilterError,
+        OSError,
+    ) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    elapsed = time.perf_counter() - start_at
+    click.echo(f"{row_count:,} CSV rows in {elapsed:.2f}s ({filename}).")

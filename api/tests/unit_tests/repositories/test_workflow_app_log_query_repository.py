@@ -2,7 +2,9 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -17,8 +19,13 @@ from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunSta
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
+from repositories import workflow_app_log_query_repository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.workflow_app_log_query_service import WorkflowAppLogAccount, WorkflowAppLogEndUser
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
+from services.workflow_app_log_query_service import (
+    WorkflowAppLogAccount,
+    WorkflowAppLogEndUser,
+)
 
 
 def _log(
@@ -73,6 +80,88 @@ def _run(
     )
     run.created_at = created_at
     return run
+
+
+def test_export_counts_and_reads_live_runs_once_across_batches(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Match the Logs filters while excluding orphan logs and runs outside the app."""
+    monkeypatch.setattr(workflow_app_log_query_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
+    timestamp = datetime(2026, 1, 1)
+    user_log = _log("user", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    duplicate_log = _log(
+        "duplicate", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp
+    )
+    duplicate_log.workflow_run_id = user_log.workflow_run_id
+    account_log = _log(
+        "account",
+        created_by="account-id",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_at=timestamp + timedelta(days=1),
+    )
+    foreign_log = _log("foreign", created_by="user-id", created_by_role=CreatorUserRole.END_USER, created_at=timestamp)
+    foreign_run = _run(foreign_log.workflow_run_id, tenant_id="other-workspace")
+    account_run = _run(account_log.workflow_run_id, triggered_from=WorkflowRunTriggeredFrom.SCHEDULE)
+    account_run.status = WorkflowExecutionStatus.FAILED
+
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                user_log,
+                duplicate_log,
+                account_log,
+                foreign_log,
+                foreign_run,
+                _run(user_log.workflow_run_id),
+                account_run,
+                _run("unlogged-debug-run"),
+            ]
+        )
+    scope = WorkflowLogExportScope(tenant_id="tenant-1", app_id="app-1")
+    repository = WorkflowAppLogQueryRepository(session_factory=sqlite_session_factory)
+    filters = WorkflowLogExportFilters(end_user_ids=("user-id",), account_ids=("account-id",))
+    assert repository.count_log_export_rows(scope=scope, filters=filters) == 2
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    rows = []
+    for row in repository.iter_log_export_rows(scope=scope, filters=filters):
+        assert sqlite_engine.pool.checkedout() == 0
+        rows.append(row)
+    assert [(row.run_id, row.status, row.trigger_by) for row in rows] == [
+        (user_log.workflow_run_id, "succeeded", "service-api"),
+        (account_log.workflow_run_id, "failed", "schedule"),
+    ]
+    assert rows[1].account_id == "account-id"
+    assert json.loads(rows[0].inputs or "{}") == {"input": "value"}
+
+    failed = WorkflowLogExportFilters(status=WorkflowExecutionStatus.FAILED)
+    assert [row.run_id for row in repository.iter_log_export_rows(scope=scope, filters=failed)] == [
+        account_log.workflow_run_id
+    ]
+    after = WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1))
+    rows_after = list(repository.iter_log_export_rows(scope=scope, filters=after))
+    assert [(row.run_id, row.created_at) for row in rows_after] == [
+        (account_log.workflow_run_id, account_log.created_at)
+    ]
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(
+                keyword="value",
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                created_at_before=timestamp,
+            ),
+        )
+        == 1
+    )
+    assert (
+        repository.count_log_export_rows(
+            scope=scope,
+            filters=WorkflowLogExportFilters(created_at_after=timestamp + timedelta(days=1), end_user_ids=("user-id",)),
+        )
+        == 0
+    )
 
 
 def test_get_paginated_returns_detached_actor_records_by_role_when_ids_overlap(

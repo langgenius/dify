@@ -48,9 +48,9 @@ class OpenDALStorage(BaseStorage):
         logger.debug("file %s saved", filename)
 
     @override
-    def save_file(self, filename: str, source: Path) -> None:
+    def save_from_path(self, key: str, source: Path) -> None:
         """Copy a completed local file in chunks and finish the object before returning."""
-        with source.open("rb") as input_file, self.op.open(path=filename, mode="wb") as target:
+        with source.open("rb") as input_file, self.op.open(path=key, mode="wb") as target:
             shutil.copyfileobj(input_file, target, length=8 * 1024 * 1024)
 
     @override

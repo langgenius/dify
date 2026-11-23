@@ -1,48 +1,34 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import type { QueryParam } from './index'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import type { LogFilterOptions, QueryParam } from './log-filters'
+import type { LogIdentity } from '@/features/log-export/log-identity'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
-import { consoleQuery } from '@/service/console'
-import {
-  CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
-  CLOUD_SANDBOX_TIME_PERIOD_KEYS,
-  isLogTimePeriodRestricted,
-  resolveLogTimePeriodOption,
-  useCloudSandboxPlanStatus,
-} from './cloud-sandbox-retention'
-import { TIME_PERIOD_MAPPING } from './log-filters'
+import { LogIdentityField } from '@/features/log-export/log-identity-picker'
 
 type IFilterProps = {
   isChatMode?: boolean
   appId: string
+  filterOptions: LogFilterOptions
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  identityOptions?: LogIdentity[]
   actions?: ReactNode
 }
 
 const Filter: FC<IFilterProps> = ({
   isChatMode,
   appId,
+  filterOptions: { periods, annotations, hasAnnotationCount, clearedPeriod },
   queryParams,
   setQueryParams,
+  identityOptions,
   actions,
 }: IFilterProps) => {
-  const { data } = useQuery(
-    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
-    }),
-  )
   const { t } = useTranslation(['appLog', 'common'])
-  const planState = useCloudSandboxPlanStatus()
-  const isTimePeriodRestricted = isLogTimePeriodRestricted(planState)
-  const timePeriodEntries = Object.entries(TIME_PERIOD_MAPPING)
-    .filter(([key]) => !isTimePeriodRestricted || CLOUD_SANDBOX_TIME_PERIOD_KEYS.has(key))
-    .map(([key, option]) => [key, resolveLogTimePeriodOption(key, option, planState)] as const)
 
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
@@ -54,45 +40,34 @@ const Filter: FC<IFilterProps> = ({
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() =>
-          setQueryParams({
-            ...queryParams,
-            period: isTimePeriodRestricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
-          })
-        }
-        items={timePeriodEntries.map(([k, v]) => ({
-          value: k,
-          name: t(($) => $[`filter.period.${v.name}`], { ns: 'appLog' }),
-        }))}
+        onClear={() => setQueryParams({ ...queryParams, period: clearedPeriod })}
+        items={periods.map(({ value, label }) => ({ value, name: label }))}
       />
       <Chip
         className="min-w-37.5"
         panelClassName="w-[270px]"
-        disabled={!data}
+        disabled={!hasAnnotationCount}
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
           setQueryParams({
             ...queryParams,
-            annotation_status: item.value as QueryParam['annotation_status'],
+            annotation_status: item.value,
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
-        items={[
-          { value: 'all', name: t(($) => $['filter.annotation.all'], { ns: 'appLog' }) },
-          {
-            value: 'annotated',
-            name: t(($) => $['filter.annotation.annotated'], {
-              ns: 'appLog',
-              count: data?.count ?? 0,
-            }),
-          },
-          {
-            value: 'not_annotated',
-            name: t(($) => $['filter.annotation.not_annotated'], { ns: 'appLog' }),
-          },
-        ]}
+        items={annotations.map(({ value, label }) => ({ value, name: label }))}
       />
+      {identityOptions && (
+        <LogIdentityField
+          appId={appId}
+          options={identityOptions}
+          value={queryParams.identities ?? []}
+          onChange={(identities) => setQueryParams({ ...queryParams, identities })}
+          disabled={false}
+          applyOnClose
+        />
+      )}
       <SearchInput
         className="w-50"
         value={queryParams.keyword ?? ''}
@@ -122,7 +97,7 @@ const Filter: FC<IFilterProps> = ({
           />
         </>
       )}
-      {actions && <div className="ms-auto">{actions}</div>}
+      {actions ? <div className="ms-auto">{actions}</div> : null}
     </div>
   )
 }

@@ -63,12 +63,12 @@ class AwsS3Storage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
     @override
-    def save_file(self, filename: str, source: Path) -> None:
+    def save_from_path(self, key: str, source: Path) -> None:
         """Upload a completed local file with one multipart transfer at a time."""
         self.client.upload_file(
             str(source),
             self.bucket_name,
-            filename,
+            key,
             Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
         )
 
@@ -102,11 +102,14 @@ class AwsS3Storage(BaseStorage):
 
     @override
     def exists(self, filename):
+        """Return whether the key exists, propagating storage failures."""
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except ClientError:
-            return False
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise
 
     @override
     def delete(self, filename: str):

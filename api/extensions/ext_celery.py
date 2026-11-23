@@ -212,7 +212,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
-        "tasks.conversation_log_export_tasks",  # conversation log export preparation
+        "tasks.log_export_tasks",  # CSV log export preparation
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
         "tasks.human_input_im_card_tasks",  # post-submission IM card updates
         "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization

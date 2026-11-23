@@ -48,7 +48,7 @@ class ConversationQueryStore(Protocol):
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
     ) -> ConversationLogExportCounts | None:
-        """Count visible conversations and their messages for the admitted Console chat log scope.
+        """Count visible conversations and their messages for the admitted Console log scope.
 
         Recheck application ownership and mode. Return None if the count query times out.
         """
@@ -128,13 +128,13 @@ class ConversationQueryService:
     def search_console_log_identities(
         self, context: RequestContext, app_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Search an admitted chat app's identities with a validated nonblank keyword."""
+        """Search an admitted app's log identities with a validated nonblank keyword."""
         return self._conversations.search_console_log_identities(context, app_id, keyword=keyword)
 
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
     ) -> ConversationLogExportCounts | None:
-        """Return unpaginated counts for admitted Console chat logs, or None on a query timeout."""
+        """Return unpaginated counts for admitted Console logs, or None on a query timeout."""
         return self._conversations.get_console_log_export_counts(scope=scope, filters=filters)
 
     def get_page(

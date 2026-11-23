@@ -21,6 +21,12 @@ class AppNotFoundError(BaseHTTPException):
     code = 404
 
 
+class LogExportLimitReachedHTTPError(BaseHTTPException):
+    error_code = "log_export_limit_reached"
+    description = "There is already an export for this requester and app, or the workspace export limit was reached."
+    code = HTTPStatus.TOO_MANY_REQUESTS
+
+
 class ConversationLogExportTaskNotFoundHTTPError(BaseHTTPException):
     error_code = "conversation_log_export_task_not_found"
     description = "Conversation log export task not found."
@@ -36,6 +42,24 @@ class ConversationLogExportTaskNotReadyHTTPError(BaseHTTPException):
 class ConversationLogExportFileNotFoundHTTPError(BaseHTTPException):
     error_code = "conversation_log_export_file_not_found"
     description = "Conversation log export file not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WorkflowLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_found"
+    description = "Workflow log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WorkflowLogExportTaskNotReadyHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_task_not_ready"
+    description = "The Workflow log export is not ready for download."
+    code = HTTPStatus.CONFLICT
+
+
+class WorkflowLogExportFileNotFoundHTTPError(BaseHTTPException):
+    error_code = "workflow_log_export_file_not_found"
+    description = "Workflow log export file not found."
     code = HTTPStatus.NOT_FOUND
 
 

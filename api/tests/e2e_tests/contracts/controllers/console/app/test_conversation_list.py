@@ -35,7 +35,6 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from fields.conversation_fields import (
     ConversationPagination,
@@ -49,18 +48,20 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, DifySetup, Message, MessageAnnotation, MessageFeedback
 from models.utils.file_input_compat import restore_input_files
-from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
+from repositories.conversation_repository import ConversationRepository
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
-from services.retention.conversation import log_export_adapters
+from services.retention import log_export_adapters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
     ConversationLogExportStatus,
     ConversationLogExportTask,
 )
+from services.retention.log_export_task_cache import RedisLogExportTasks
+from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
-type _Kind = Literal["chat", "completion", "export-preview", "export-latest", "identity-options"]
+type _Kind = Literal["chat", "completion"]
 _CREATED_AT = datetime(2024, 1, 15, 6, 30, 0)
 
 
@@ -77,14 +78,18 @@ class _Harness:
     account: Account
     tenant: Tenant
     target: App
-    redis: Mock = field(default_factory=Mock)
+    redis: LogExportRedisIo
     dispatch: Mock = field(default_factory=Mock)
     sessions: list[Session] = field(default_factory=list)
     after_account_load: Callable[[], None] | None = None
 
+    def task_key(self, task_id: str) -> str:
+        """Locate stored task state for the admitted app."""
+        return f"conversation_log_export:{{{self.tenant.id}}}:{self.target.id}:{task_id}"
+
     def get(
         self,
-        kind: _Kind,
+        kind: str,
         *,
         query: Mapping[str, str | int | list[str]] | None = None,
         app_id: str | None = None,
@@ -144,7 +149,10 @@ class _Harness:
 
 @pytest.fixture
 def harness(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    log_export_redis: LogExportRedisIo,
 ) -> Iterator[_Harness]:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -191,16 +199,13 @@ def harness(
         return loaded
 
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    state = _Harness(app, sqlite_session_factory, account, tenant, target)
+    state = _Harness(app, sqlite_session_factory, account, tenant, target, log_export_redis)
 
     @event.listens_for(factory, "after_begin")
     def record_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
         assert all(not previous.in_transaction() and not previous.identity_map for previous in state.sessions)
         state.sessions.append(session)
 
-    redis_client = RedisClientWrapper()
-    for method in ("get", "setex", "register_script"):
-        setattr(redis_client, method, getattr(state.redis, method))
     conversations = ConversationRepository(session_factory=factory)
     app.extensions["application_services"] = _Services(
         conversation_queries=ConversationQueryService(
@@ -210,10 +215,12 @@ def harness(
         ),
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
-            tasks=RedisConversationLogExportTasks(redis=redis_client),
+            tasks=RedisLogExportTasks(
+                redis=state.redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+            ),
             dispatch=state.dispatch,
-            store_csv=Mock(),
-            open_csv=log_export_adapters.open_conversation_log_export_csv,
+            store_csv=log_export_adapters.store_log_export_csv,
+            open_csv=log_export_adapters.open_log_export_csv,
         ),
     )
     api = ExternalApi(app)
@@ -237,8 +244,11 @@ def harness(
 def created_export(harness: _Harness, monkeypatch: pytest.MonkeyPatch) -> tuple[str, ConversationLogExportTask]:
     """Create an admitted export and expose its persisted Redis key and task."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
-    assert harness.post_export({"keyword": "internal filter"}).status_code == 202
-    key, _, raw = harness.redis.setex.call_args_list[0].args
+    response = harness.post_export({"keyword": "internal filter"})
+    assert response.status_code == 202
+    key = harness.task_key(response.get_json()["task_id"])
+    raw = harness.redis.get(key)
+    harness.redis.get.reset_mock()
     return key, ConversationLogExportTask.model_validate_json(raw)
 
 
@@ -301,7 +311,7 @@ def _ids(response: TestResponse) -> list[str]:
 
 @pytest.mark.parametrize(
     ("mode", "expected_conversations", "expected_messages"),
-    [(AppMode.CHAT, 3, 4), (AppMode.ADVANCED_CHAT, 2, 3), (AppMode.AGENT_CHAT, 3, 4), (AppMode.AGENT, 3, 4)],
+    [(AppMode.CHAT, 3, 4), (AppMode.ADVANCED_CHAT, 2, 3), (AppMode.AGENT_CHAT, 3, 4)],
 )
 def test_conversation_export_preview_counts_all_messages_in_matched_conversations(
     harness: _Harness,
@@ -363,10 +373,11 @@ def test_conversation_export_preview_counts_all_messages_in_matched_conversation
     }
 
 
+@pytest.mark.parametrize(("kind", "mode"), [("chat", AppMode.ADVANCED_CHAT), ("completion", AppMode.COMPLETION)])
 def test_list_and_export_preview_filter_by_selected_identities(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind, mode: AppMode
 ) -> None:
-    harness.mode(AppMode.ADVANCED_CHAT)
+    harness.mode(mode)
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     selected_user_ids = [str(uuid4()), str(uuid4())]
     first, second = _conversation(harness), _conversation(harness)
@@ -390,7 +401,7 @@ def test_list_and_export_preview_filter_by_selected_identities(
         ({"account_ids": [harness.account.id]}, {account.id}),
         ({"end_user_ids": selected_user_ids, "account_ids": [harness.account.id]}, {first.id, second.id, account.id}),
     ):
-        page = harness.get("chat", query=query)
+        page = harness.get(kind, query=query)
         preview = harness.get("export-preview", query=query)
 
         assert set(_ids(page)) == expected
@@ -412,6 +423,9 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
     )
     partial_log = _conversation(harness)
     account_log = _conversation(harness, invoke_from="explore")
+    other_app_log = _conversation(harness, app_id=str(uuid4()), invoke_from="explore")
+    former_account = make_account(account_id=str(uuid4()), name="Support Agent", email="former@example.test")
+    other = make_account(account_id=str(uuid4()), name="Support Agent", email="other@example.test")
     with harness.factory.begin() as session:
         for index, (conversation, user_id) in enumerate(zip(conversations, user_ids, strict=True)):
             session.add(
@@ -436,22 +450,25 @@ def test_search_log_identities_matches_only_visible_logs_in_the_app(harness: _Ha
         stored_partial = session.get_one(Conversation, partial_log.id)
         stored_partial.from_end_user_id = partial_user_id
         stored_partial.from_account_id = None
-        session.get_one(Conversation, account_log.id).from_source = ConversationFromSource.CONSOLE
-        session.get_one(Account, harness.account.id).name = "Support Agent"
-        other = make_account(account_id=str(uuid4()), name="Support Admin", email="admin@example.test")
-        session.add(other)
+        for log, actor in ((account_log, former_account), (other_app_log, other)):
+            stored = session.get_one(Conversation, log.id)
+            stored.from_source = ConversationFromSource.CONSOLE
+            stored.from_end_user_id = None
+            stored.from_account_id = actor.id
+        session.add_all([former_account, other])
         session.add(TenantAccountJoin(tenant_id=harness.tenant.id, account_id=other.id))
 
     end_user = {"id": user_ids[0], "label": "customer-42", "source": "end-user"}
     partial_user = {"id": partial_user_id, "label": "other-customer-42", "source": "end-user"}
-    account = {"id": harness.account.id, "label": "Support Agent", "source": "account"}
+    account = {"id": former_account.id, "label": "Support Agent", "source": "account"}
     cases: tuple[tuple[str, list[dict[str, str]]], ...] = (
         (" customer-42 ", [end_user, partial_user]),
         ("42", [partial_user, end_user]),
         ("MER-4", [partial_user, end_user]),
         (user_ids[0], [end_user]),
         ("port ag", [account]),
-        (harness.account.id, [account]),
+        (former_account.id, [account]),
+        (other.id, []),
         ("%", []),
     )
     for keyword, expected in cases:
@@ -472,9 +489,44 @@ def test_log_identity_search_checks_app_and_account_admission(harness: _Harness)
     assert checks[0].locator.param == "app_id"
 
 
-@pytest.mark.parametrize("kind", ["chat", "export-preview"])
+@pytest.mark.parametrize("mode", [AppMode.COMPLETION, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+def test_app_logs_support_identity_search_preview_and_export(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, mode: AppMode
+) -> None:
+    """Use the same scoped endpoints for each exportable app mode."""
+    harness.mode(mode)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    log = _conversation(harness)
+    _conversation(harness)
+    end_user_id = str(uuid4())
+    with harness.factory.begin() as session:
+        session.add(
+            make_end_user(
+                end_user_id=end_user_id, tenant_id=harness.tenant.id, app_id=harness.target.id, session_id="writer-001"
+            )
+        )
+        session.get_one(Conversation, log.id).from_end_user_id = end_user_id
+
+    users = harness.get("identity-options", query={"keyword": "001"})
+    assert users.status_code == 200
+    assert users.get_json() == {"data": [{"id": end_user_id, "label": "writer-001", "source": "end-user"}]}
+
+    filters = {"keyword": "First answer", "end_user_ids": [end_user_id]}
+    preview = harness.get("export-preview", query=filters)
+    assert preview.status_code == 200
+    assert preview.get_json() == {"counts": {"conversation_count": 1, "message_count": 1}}
+    result = harness.post_export(filters)
+    assert result.status_code == 202
+    task = harness.dispatch.call_args.args[0]
+    assert task.filters.end_user_ids == (end_user_id,)
+    assert result.get_json() == {"task_id": task.task_id, "status": "pending"}
+
+
+@pytest.mark.parametrize("kind", ["chat", "completion", "export-preview"])
 def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind) -> None:
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    if kind == "completion":
+        harness.mode(AppMode.COMPLETION)
     response = harness.get(kind, query={"end_user_ids": ["invalid-user-id"]})
     assert response.status_code == 422
     assert response.get_json()["code"] == "unprocessable_entity"
@@ -486,8 +538,9 @@ def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pyte
     ("mode", "role", "status", "code"),
     [
         (AppMode.ADVANCED_CHAT, TenantAccountRole.EDITOR, 403, "forbidden"),
-        (AppMode.COMPLETION, TenantAccountRole.OWNER, 404, "app_not_found"),
+        (AppMode.COMPLETION, TenantAccountRole.EDITOR, 403, "forbidden"),
         (AppMode.WORKFLOW, TenantAccountRole.OWNER, 404, "app_not_found"),
+        (AppMode.AGENT, TenantAccountRole.OWNER, 404, "app_not_found"),
     ],
 )
 def test_conversation_export_checks_role_and_mode_before_billing(
@@ -522,7 +575,7 @@ def test_conversation_export_checks_role_and_mode_before_billing(
     response = harness.post_export({}) if create else harness.get("export-preview")
     assert response.status_code == status
     assert response.get_json()["code"] == code
-    harness.redis.setex.assert_not_called()
+    assert not harness.redis.cache
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
@@ -548,7 +601,7 @@ def test_conversation_export_checks_paid_plan_only_in_cloud(
     if edition == DeploymentEdition.CLOUD:
         assert response.status_code == 403
         assert response.get_json()["code"] == "paid_plan_required"
-        harness.redis.setex.assert_not_called()
+        assert not harness.redis.cache
     elif create:
         assert response.status_code == 202
         harness.dispatch.assert_called_once()
@@ -565,13 +618,9 @@ def test_create_conversation_log_export_persists_normalized_filters(
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
 
     def assert_saved_before_publish(task: ConversationLogExportTask) -> None:
-        stored, latest = harness.redis.setex.call_args_list
-        assert stored.args[2] == task.model_dump_json()
-        assert latest.args == (
-            f"conversation_log_export_latest:{task.tenant_id}:{task.app_id}:{task.requested_by}",
-            stored.args[1],
-            task.task_id,
-        )
+        assert harness.redis.get(harness.task_key(task.task_id)) == task.model_dump_json()
+        latest = f"conversation_log_export_latest:{{{task.tenant_id}}}:{task.app_id}:{task.requested_by}"
+        assert harness.redis.get(latest) == task.task_id
 
     harness.dispatch.side_effect = assert_saved_before_publish
     end_user_id = str(uuid4())
@@ -588,11 +637,11 @@ def test_create_conversation_log_export_persists_normalized_filters(
     )
 
     assert response.status_code == 202
-    key, ttl, raw = harness.redis.setex.call_args_list[0].args
+    key = harness.task_key(response.get_json()["task_id"])
+    ttl, raw = harness.redis.client.ttl(key), harness.redis.get(key)
     task = ConversationLogExportTask.model_validate_json(raw)
     harness.dispatch.assert_called_once_with(task)
     assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending"}
-    assert key == f"conversation_log_export:{harness.tenant.id}:{harness.target.id}:{task.task_id}"
     assert task.requested_by == harness.account.id
     assert task.status == "pending"
     assert task.expires_at - task.created_at == timedelta(days=1)
@@ -604,6 +653,11 @@ def test_create_conversation_log_export_persists_normalized_filters(
     assert task.filters.sort_by == "-created_at"
     assert task.filters.end_user_ids == (end_user_id,)
     assert task.filters.account_ids == (harness.account.id,)
+    harness.redis.reject_submission = True
+    blocked = harness.post_export({})
+    assert blocked.status_code == 429
+    assert blocked.get_json()["code"] == "log_export_limit_reached"
+    harness.dispatch.assert_called_once()
 
 
 def test_create_conversation_log_export_records_publish_failure(
@@ -616,12 +670,10 @@ def test_create_conversation_log_export_records_publish_failure(
     response = harness.post_export({})
     assert response.status_code == 500
 
-    update = harness.redis.register_script.return_value
-    update.assert_called_once()
-    old_status, raw = update.call_args.kwargs["args"]
-    assert update.call_args.kwargs["keys"] == [harness.redis.setex.call_args_list[0].args[0]]
-    assert old_status == "pending"
-    assert ConversationLogExportTask.model_validate_json(raw).status == "failed"
+    latest = harness.get("export-latest").get_json()
+    assert latest["task"]["status"] == "failed"
+    harness.dispatch.side_effect = None
+    assert harness.post_export({}).status_code == 202
 
 
 @pytest.mark.parametrize("status", list(ConversationLogExportStatus))
@@ -641,32 +693,40 @@ def test_get_conversation_log_export_status(
     response = harness.get_export_status(task.task_id)
 
     assert response.status_code == 200
+    assert response.cache_control.no_store
     assert response.get_json() == {"task_id": task.task_id, "status": status.value}
     harness.redis.get.assert_called_once_with(key)
-    assert harness.redis.setex.call_count == 2
     harness.dispatch.assert_called_once()
 
 
 def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     harness: _Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Recover the caller's newest live task with its original filters."""
+    """Recover the caller's newest live task with its filters and scoped identity labels."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
-    objects: dict[str, str] = {}
-    harness.redis.setex.side_effect = lambda key, _ttl, payload: objects.__setitem__(key, payload)
-    harness.redis.get.side_effect = lambda key: objects[key].encode() if key in objects else None
-
     assert harness.get("export-latest").get_json() == {"task": None}
-    assert harness.post_export({}).status_code == 202
+    harness.dispatch.side_effect = OSError("broker unavailable")
+    assert harness.post_export({}).status_code == 500
+    harness.dispatch.side_effect = None
     end_user_id = str(uuid4())
+    labels = [
+        {"id": end_user_id, "source": "end-user", "label": "customer-42"},
+        {"id": harness.account.id, "source": "account", "label": "Mia Chen"},
+    ]
     second = harness.post_export(
         {
             "keyword": "invoice",
             "start": "2024-01-15 14:30",
             "end": "2024-01-15 15:00",
             "annotation_status": "annotated",
+            "sort_by": "-created_at",
             "end_user_ids": [end_user_id],
             "account_ids": [harness.account.id],
+            "identity_labels": [
+                *labels,
+                {"id": end_user_id, "source": "account", "label": "Wrong source"},
+                {"id": str(uuid4()), "source": "end-user", "label": "Unselected user"},
+            ],
         }
     )
     assert second.status_code == 202
@@ -675,11 +735,13 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     assert latest.get_json() == {
         "task": {
             **second.get_json(),
+            "identity_labels": labels,
             "filters": {
                 "keyword": "invoice",
                 "start": "2024-01-15T06:30:00Z",
                 "end": "2024-01-15T07:00:59Z",
                 "annotation_status": "annotated",
+                "sort_by": "-created_at",
                 "end_user_ids": [end_user_id],
                 "account_ids": [harness.account.id],
             },
@@ -702,7 +764,7 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     assert replace(harness, account=other_account).get("export-latest").get_json() == {"task": None}
     assert harness.get("export-latest", app_id=other_app.id).get_json() == {"task": None}
 
-    del objects[harness.redis.setex.call_args_list[-2].args[0]]
+    harness.redis.client.delete(harness.task_key(second.get_json()["task_id"]))
     assert harness.get("export-latest").get_json() == {"task": None}
 
 
@@ -765,7 +827,7 @@ def test_get_conversation_log_export_status_checks_access_before_redis(
 def test_download_conversation_log_export_redirects_to_storage(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Authorize the navigation and sign the stored key without reading the CSV."""
@@ -776,12 +838,8 @@ def test_download_conversation_log_export_redirects_to_storage(
     harness.redis.get.return_value = task.model_copy(
         update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
     ).model_dump_json()
-    sign = Mock(return_value=url)
-    exists = Mock(return_value=True)
-    load = Mock()
-    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
-    monkeypatch.setattr(log_export_adapters.storage, "exists", exists)
-    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+    log_export_storage.generate_presigned_url.return_value = url
+    log_export_storage.exists.return_value = True
 
     response = harness.get_export_file(task.task_id)
 
@@ -789,14 +847,14 @@ def test_download_conversation_log_export_redirects_to_storage(
     assert response.headers["Location"] == url
     assert response.cache_control.no_store
     harness.redis.get.assert_called_once_with(key)
-    sign.assert_called_once_with(
+    log_export_storage.generate_presigned_url.assert_called_once_with(
         storage_key,
         expires_in=3600,
         content_type="text/csv; charset=utf-8",
         download_filename=f"conversation-logs-{task.task_id}.csv",
     )
-    exists.assert_called_once_with(storage_key)
-    load.assert_not_called()
+    log_export_storage.exists.assert_called_once_with(storage_key)
+    log_export_storage.load.assert_not_called()
 
 
 def test_download_conversation_log_export_requires_login(
@@ -814,7 +872,7 @@ def test_download_conversation_log_export_requires_login(
 def test_download_conversation_log_export_streams_and_closes_the_csv(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Stream a self-hosted export even when its S3 endpoint is private."""
@@ -837,8 +895,7 @@ def test_download_conversation_log_export_streams_and_closes_the_csv(
         finally:
             closed = True
 
-    load = Mock(return_value=chunks())
-    monkeypatch.setattr(log_export_adapters.storage, "load", load)
+    log_export_storage.load.return_value = chunks()
 
     with harness.get_export_file(task.task_id) as response:
         assert response.status_code == 200
@@ -850,7 +907,7 @@ def test_download_conversation_log_export_streams_and_closes_the_csv(
 
     assert closed
     harness.redis.get.assert_called_once_with(key)
-    load.assert_called_once_with(storage_key, stream=True)
+    log_export_storage.load.assert_called_once_with(storage_key, stream=True)
 
 
 @pytest.mark.parametrize(
@@ -861,27 +918,25 @@ def test_download_conversation_log_export_requires_a_ready_task(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
     status: ConversationLogExportStatus,
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     config_overrides: Callable[..., None],
 ) -> None:
     """Reject unfinished exports without opening storage."""
     config_overrides(STORAGE_TYPE=StorageType.S3)
     _, task = created_export
     harness.redis.get.return_value = task.model_copy(update={"status": status}).model_dump_json()
-    sign = Mock()
-    monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
     response = harness.get_export_file(task.task_id)
 
     assert response.status_code == 409
     assert response.get_json()["code"] == "conversation_log_export_task_not_ready"
-    sign.assert_not_called()
+    log_export_storage.generate_presigned_url.assert_not_called()
 
 
 @pytest.mark.parametrize("signed", [True, False], ids=["storage-url", "stream"])
 def test_download_conversation_log_export_reports_missing_csv(
     harness: _Harness,
     created_export: tuple[str, ConversationLogExportTask],
-    monkeypatch: pytest.MonkeyPatch,
+    log_export_storage: LogExportStorageIo,
     signed: bool,
     config_overrides: Callable[..., None],
 ) -> None:
@@ -890,19 +945,16 @@ def test_download_conversation_log_export_reports_missing_csv(
     harness.redis.get.return_value = task.model_copy(
         update={"status": ConversationLogExportStatus.READY, "storage_key": "private/export.csv"}
     ).model_dump_json()
-    sign = Mock() if signed else None
-    if sign is not None:
+    if signed:
         config_overrides(STORAGE_TYPE=StorageType.S3)
-        monkeypatch.setattr(log_export_adapters.storage, "generate_presigned_url", sign)
-        monkeypatch.setattr(log_export_adapters.storage, "exists", Mock(return_value=False))
+        log_export_storage.exists.return_value = False
     else:
-        monkeypatch.setattr(log_export_adapters.storage, "load", Mock(side_effect=FileNotFoundError))
+        log_export_storage.load.side_effect = FileNotFoundError
     response = harness.get_export_file(task.task_id)
 
     assert response.status_code == 404
     assert response.get_json()["code"] == "conversation_log_export_file_not_found"
-    if sign is not None:
-        sign.assert_not_called()
+    log_export_storage.generate_presigned_url.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -923,7 +975,7 @@ def test_create_conversation_log_export_rejects_unsupported_requests(
     assert response.status_code == status
     assert response.get_json()["code"] == code
     assert "invalid-user-id" not in response.get_json()["message"]
-    harness.redis.setex.assert_not_called()
+    assert not harness.redis.cache
 
 
 def test_conversation_export_preview_reports_count_query_timeout(
@@ -1030,10 +1082,13 @@ def test_invalid_query_returns_422(harness: _Harness, kind: _Kind, query: dict[s
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("kind", ["chat", "completion"])
+@pytest.mark.parametrize("kind", ["chat", "completion", "export-preview"])
 @pytest.mark.parametrize("query", [{"start": "bad"}, {"start": "2024-01-16 00:00", "end": "2024-01-15 00:00"}])
-def test_invalid_date_range_is_precise_400(harness: _Harness, kind: _Kind, query: dict[str, str | int]) -> None:
+def test_invalid_date_range_is_precise_400(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind, query: dict[str, str | int]
+) -> None:
     harness.mode(AppMode.COMPLETION if kind == "completion" else AppMode.CHAT)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     response = harness.get(kind, query=query)
     assert response.status_code == 400
     assert response.get_json()["code"] == "invalid_param"

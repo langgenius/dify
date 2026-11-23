@@ -25,11 +25,11 @@ const LogAnnotation: FC<Props> = ({ appId, pageType }) => {
     <div className="flex h-full flex-col px-6 pt-3">
       <div className="h-0 grow">
         {pageType === PageType.log && appDetail.mode !== 'workflow' && (
-          <Log appDetail={appDetail} />
+          <Log key={appDetail.id} appDetail={appDetail} />
         )}
         {pageType === PageType.annotation && <Annotation appDetail={appDetail} />}
         {pageType === PageType.log && appDetail.mode === 'workflow' && (
-          <WorkflowLog appDetail={appDetail} />
+          <WorkflowLog key={appDetail.id} appDetail={appDetail} />
         )}
       </div>
     </div>

@@ -1,6 +1,5 @@
 from datetime import datetime
 from http import HTTPStatus
-from itertools import chain
 from typing import Literal
 from uuid import UUID
 
@@ -8,7 +7,6 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from configs import dify_config
 from controllers.common.errors import (
     ConversationNotFoundHTTPError,
     ForbiddenError,
@@ -30,10 +28,11 @@ from controllers.console.app.error import (
     ConversationLogExportFileNotFoundHTTPError,
     ConversationLogExportTaskNotFoundHTTPError,
     ConversationLogExportTaskNotReadyHTTPError,
+    LogExportLimitReachedHTTPError,
 )
+from controllers.console.app.log_export_response import log_export_file_response
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
-from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -65,15 +64,21 @@ from services.entities.conversation_entities import (
     ConsoleConversationScope,
     ConsoleLogIdentitySource,
     ConversationAnnotationStatus,
+    ConversationSort,
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
+from services.feature_service import FeatureService
 from services.retention.conversation.log_export_service import (
-    ConversationLogExportFileNotFoundError,
     ConversationLogExportStatus,
-    ConversationLogExportTaskNotFoundError,
-    ConversationLogExportTaskNotReadyError,
     UnsupportedConversationLogExportModeError,
+)
+from services.retention.log_export_task import (
+    LogExportFileNotFoundError,
+    LogExportIdentityLabel,
+    LogExportLimitReachedError,
+    LogExportTaskNotFoundError,
+    LogExportTaskNotReadyError,
 )
 
 
@@ -84,6 +89,8 @@ class ConversationLogFilterQuery(BaseModel):
     annotation_status: Literal["annotated", "not_annotated", "all"] = Field(
         default="all", description="Annotation status filter"
     )
+    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
+    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
 
     @field_validator("start", "end", mode="before")
     @classmethod
@@ -106,8 +113,6 @@ class ChatConversationFilterQuery(ConversationLogFilterQuery):
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort field and direction"
     )
-    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
-    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
 
 
 class ChatConversationQuery(BaseConversationQuery, ChatConversationFilterQuery):
@@ -139,13 +144,15 @@ class ConversationLogExportPreviewQuery(ChatConversationFilterQuery):
 class ConversationLogExportCreatePayload(ChatConversationFilterQuery):
     model_config = ConfigDict(extra="forbid")
 
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+
 
 class _ConversationLogValidationError(BaseHTTPException):
     error_code = "unprocessable_entity"
     code = HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def _validate_log_query[QueryT: ChatConversationFilterQuery](model: type[QueryT]) -> QueryT:
+def _validate_log_query[QueryT: ConversationLogFilterQuery](model: type[QueryT]) -> QueryT:
     """Read repeated identity IDs and preserve the Console list's sanitized 422 response."""
     try:
         return query_params_from_request(model, list_fields=("end_user_ids", "account_ids"))
@@ -181,12 +188,14 @@ class ConversationLogExportFiltersResponse(ResponseModel):
     start: datetime | None
     end: datetime | None
     annotation_status: ConversationAnnotationStatus
+    sort_by: ConversationSort
     end_user_ids: tuple[str, ...]
     account_ids: tuple[str, ...]
 
 
 class ConversationLogExportLatestTaskResponse(ConversationLogExportStatusResponse):
     filters: ConversationLogExportFiltersResponse
+    identity_labels: tuple[LogExportIdentityLabel, ...] = ()
 
 
 class ConversationLogExportLatestResponse(ResponseModel):
@@ -219,21 +228,19 @@ def _log_export_filters(query: ChatConversationFilterQuery, timezone: str) -> Co
 
 
 def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> ConsoleConversationScope:
-    """Require Logs admission, privileged workspace role, an owned chat app and its export entitlement."""
+    """Require Logs admission, privileged workspace role, an owned app and its export entitlement."""
     # Export requires a privileged workspace role even when RBAC is enabled.
     if not TenantAccountRole.is_privileged_role(current_account_with_tenant().account.role):
         raise ForbiddenError()
 
     try:
-        scope = application_services().conversation_queries.get_console_scope(request_context, str(app_id), kind="chat")
+        scope = application_services().conversation_log_exports.get_scope(request_context, str(app_id))
     except ConsoleAppNotFoundError as exc:
         raise AppNotFoundError(str(exc)) from exc
     except NoPermissionError as exc:
         raise UnauthorizedError(str(exc)) from exc
 
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not is_cloud_edition_billing_paid_plan(
-        scope.tenant_id
-    ):
+    if FeatureService.requires_paid_plan_for_log_export() and not is_cloud_edition_billing_paid_plan(scope.tenant_id):
         raise PaidPlanRequiredError()
     return scope
 
@@ -278,6 +285,7 @@ class CompletionConversationApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
     )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        """Return the admitted Completion app's page of conversations matching the Logs filters."""
         queries = application_services().conversation_queries
         try:
             scope = queries.get_console_scope(request_context, str(app_id), kind="completion")
@@ -285,7 +293,7 @@ class CompletionConversationApi(Resource):
             raise AppNotFoundError(str(exc)) from exc
         except NoPermissionError as exc:
             raise UnauthorizedError(str(exc)) from exc
-        req_data = validate_request(CompletionConversationQuery)
+        req_data = _validate_log_query(CompletionConversationQuery)
         try:
             start, end = parse_time_range(req_data.start, req_data.end, scope.timezone)
         except ValueError as exc:
@@ -299,6 +307,8 @@ class CompletionConversationApi(Resource):
                     end=end.replace(second=59) if end else None,
                     annotation_status=req_data.annotation_status,
                     sort_by="-created_at",
+                    end_user_ids=tuple(str(user_id) for user_id in req_data.end_user_ids),
+                    account_ids=tuple(str(account_id) for account_id in req_data.account_ids),
                     page=req_data.page,
                     limit=req_data.limit,
                 ),
@@ -415,7 +425,7 @@ class ChatConversationApi(Resource):
 class ChatConversationIdentityOptionsApi(Resource):
     @error_responses(AppNotFoundError)
     @console_ns.doc("search_chat_conversation_identities")
-    @console_ns.doc(description="Search for end users or workspace accounts with visible chat logs in this app")
+    @console_ns.doc(description="Search for end users or workspace accounts with visible conversation logs in this app")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogIdentitySearchQuery)})
     @console_ns.response(
         HTTPStatus.OK, "Matching identities", console_ns.models[ConversationLogIdentitySearchResponse.__name__]
@@ -425,7 +435,7 @@ class ChatConversationIdentityOptionsApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),),
     )
     def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
-        """Return up to 20 matches per identity type for the admitted chat app."""
+        """Return up to 20 matches per identity type for the admitted app."""
         query = validate_request(ConversationLogIdentitySearchQuery)
         try:
             matches = application_services().conversation_queries.search_console_log_identities(
@@ -438,9 +448,9 @@ class ChatConversationIdentityOptionsApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/preview")
 class ConversationLogExportPreviewApi(Resource):
-    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError)
+    @error_responses(AppNotFoundError, ForbiddenError, PaidPlanRequiredError, _ConversationLogValidationError)
     @console_ns.doc("preview_conversation_log_export")
-    @console_ns.doc(description="Count the conversations and rows that match the application's chat Logs filters")
+    @console_ns.doc(description="Count the conversations and rows that match the application's Logs filters")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ConversationLogExportPreviewQuery)})
     @console_ns.response(
         HTTPStatus.OK, "Export preview", console_ns.models[ConversationLogExportPreviewResponse.__name__]
@@ -465,12 +475,13 @@ class ConversationLogExportApi(Resource):
         AppNotFoundError,
         ForbiddenError,
         InvalidArgumentError,
+        LogExportLimitReachedHTTPError,
         PaidPlanRequiredError,
         UnauthorizedError,
         _ConversationLogValidationError,
     )
     @console_ns.doc("create_conversation_log_export")
-    @console_ns.doc(description="Create a pending CSV export task for one chat app")
+    @console_ns.doc(description="Create a pending CSV export task for one conversation app")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ConversationLogExportCreatePayload.__name__])
     @console_ns.response(
@@ -489,10 +500,15 @@ class ConversationLogExportApi(Resource):
         filters = _log_export_filters(payload, scope.timezone)
         try:
             task = application_services().conversation_log_exports.create_task(
-                scope=scope, requested_by=request_context.account_id, filters=filters
+                scope=scope,
+                requested_by=request_context.account_id,
+                filters=filters,
+                identity_labels=payload.identity_labels,
             )
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc
+        except LogExportLimitReachedError as exc:
+            raise LogExportLimitReachedHTTPError() from exc
         return dump_response(ConversationLogExportTaskResponse, task), HTTPStatus.ACCEPTED
 
 
@@ -527,20 +543,26 @@ class ConversationLogExportTaskApi(Resource):
         AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
     )
     @console_ns.doc("get_conversation_log_export_status")
-    @console_ns.doc(description="Get the current status of a chat app's CSV export task")
+    @console_ns.doc(description="Get the current status of the application's CSV export task")
     @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
     @console_ns.response(
         HTTPStatus.OK, "Export task status", console_ns.models[ConversationLogExportStatusResponse.__name__]
     )
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
-    def get(self, request_context: RequestContext, app_id: UUID, task_id: UUID) -> dict[str, object]:
+    def get(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live export task for an admitted app."""
         scope = _resolve_log_export_scope(request_context, app_id)
         try:
             task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
-        except ConversationLogExportTaskNotFoundError as exc:
+        except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
-        return dump_response(ConversationLogExportStatusResponse, task)
+        return (
+            dump_response(ConversationLogExportStatusResponse, task),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")
@@ -572,22 +594,14 @@ class ConversationLogExportFileApi(Resource):
             download = application_services().conversation_log_exports.download_csv(
                 scope=scope, task_id=str(task_id), filename=filename
             )
-        except ConversationLogExportTaskNotFoundError as exc:
+        except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
-        except ConversationLogExportTaskNotReadyError as exc:
+        except LogExportTaskNotReadyError as exc:
             raise ConversationLogExportTaskNotReadyHTTPError() from exc
-        except ConversationLogExportFileNotFoundError as exc:
+        except LogExportFileNotFoundError as exc:
             raise ConversationLogExportFileNotFoundHTTPError() from exc
-        if isinstance(download, str):
-            response = Response(status=HTTPStatus.FOUND, headers={"Location": download})
-        else:
-            first_chunk, stream = download
-            response = Response(chain((first_chunk,), stream), mimetype="text/csv")
-            response.headers.set("Content-Disposition", "attachment", filename=filename)
-            response.call_on_close(stream.close)
-        response.cache_control.no_store = True
         # response-contract:ignore signed redirect or streamed CSV attachment
-        return response
+        return log_export_file_response(download, filename=filename)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

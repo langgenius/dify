@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import JsonValue
@@ -121,7 +122,9 @@ class ConsoleConversationFilters(ConsoleConversationLogFilters):
     limit: int
 
 
-type ConsoleLogIdentitySource = Literal["end-user", "account"]
+class ConsoleLogIdentitySource(StrEnum):
+    END_USER = "end-user"
+    ACCOUNT = "account"
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +156,7 @@ class ConversationLogExportRow:
     app_response: str
     feedback_rating: str | None
     feedback_content: str | None
+    input_variables: dict[str, JsonValue] | None
     status: str | None
 
 

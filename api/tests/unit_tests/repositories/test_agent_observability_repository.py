@@ -1,28 +1,31 @@
+import csv
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
+from io import StringIO
 from sqlite3 import Connection
 
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
 from sqlalchemy import Select, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from machinery.context import RequestContext
+from models.agent import Agent, AgentScope, AgentSource, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    InvokeFrom,
     MessageStatus,
 )
-from models.enums import InvokeFrom as _workflow_tool_agent_statistics_InvokeFrom
 from models.model import App, AppMode, Conversation, Message, MessageFeedback
 from models.workflow import (
     Workflow,
@@ -38,9 +41,13 @@ from repositories.agent_observability_repository import (
     AgentLogQueryParams,
     AgentObservabilityQueries,
     AgentStatisticsQueryParams,
+    SQLAlchemyAgentObservabilityRepository,
 )
+from services.agent.observability_contracts import AgentLogExportCounts, AgentLogExportQuery
+from services.entities.conversation_entities import ConsoleLogIdentity, ConsoleLogIdentitySource
+from services.retention.agent.log_export_csv import AgentLogCsvWriter
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 
 def _agent_observability_service_app(
@@ -464,11 +471,256 @@ class TestAgentObservabilityQueriesCases:
         }
 
     @staticmethod
+    def test_count_export_logs_matches_both_sources_and_deduplicates_overlapping_filters(
+        sqlite_session: Session,
+    ) -> None:
+        app = _agent_observability_service_app()
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        timestamp = datetime(2026, 7, 23, 7, 0, 19)
+        account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
+        account_execution.created_by_role = CreatorUserRole.ACCOUNT
+        debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
+        sqlite_session.add_all(
+            [
+                app,
+                workflow_app,
+                _agent_observability_service_conversation(),
+                _agent_observability_service_message(created_at=timestamp),
+                _agent_observability_service_message(message_id="second-message", created_at=timestamp),
+                debug_message,
+                _agent_observability_service_workflow_run(),
+                _agent_observability_service_node_execution(),
+                account_execution,
+                _agent_observability_service_workflow_binding(),
+            ]
+        )
+        sqlite_session.flush()
+        queries = AgentObservabilityQueries(sqlite_session)
+
+        assert queries.count_export_logs(
+            app=app, agent_id="agent-1", params=AgentLogQueryParams()
+        ) == AgentLogExportCounts(log_count=3, row_count=4)
+        for source in ("webapp:", "webapp:invalid", "workflow:"):
+            with pytest.raises(ValueError, match="Invalid structured log source ID"):
+                queries.count_export_logs(
+                    app=app, agent_id="agent-1", params=AgentLogQueryParams(sources=("all", source))
+                )
+        assert queries.count_export_logs(
+            app=app,
+            agent_id="agent-1",
+            params=AgentLogQueryParams(
+                sources=("webapp", "console", "workflow", "workflow"),
+                end_user_ids=("end-user-1",),
+                start=timestamp,
+            ),
+        ) == AgentLogExportCounts(log_count=2, row_count=3)
+        assert queries.count_export_logs(
+            app=app, agent_id="agent-1", params=AgentLogQueryParams(end=timestamp)
+        ) == AgentLogExportCounts(log_count=0, row_count=0)
+
+    @staticmethod
+    def test_write_agent_log_csv_matches_preview_across_sources_and_batches(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(observability_repository_module, "_LOG_EXPORT_BATCH_SIZE", 2)
+        timestamp = datetime(2026, 7, 23, 7, 0, 19)
+        app = _agent_observability_service_app(mode=AppMode.AGENT)
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        agent = Agent(
+            id="agent-1",
+            tenant_id=app.tenant_id,
+            name="Iris",
+            app_id=app.id,
+            created_by="account-1",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+        )
+        message = _agent_observability_service_message(created_at=timestamp)
+        message.query = "=1+1"
+        debug_message = _agent_observability_service_message(message_id="debug-message", created_at=timestamp)
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
+        execution = _agent_observability_service_node_execution()
+        execution.created_at = datetime(2026, 7, 23, 7, 0, 18)
+        execution.inputs = json.dumps(
+            {
+                "agent_backend_request": {
+                    "composition": {"layers": [{"name": "user_prompt", "config": {"text": "Workflow question"}}]}
+                }
+            }
+        )
+        execution.outputs = '{"output":"Workflow answer"}'
+        account_execution = _agent_observability_service_node_execution(execution_id="account-execution")
+        account_execution.created_at = datetime(2026, 7, 23, 7, 0, 20)
+        account_execution.created_by_role = CreatorUserRole.ACCOUNT
+        account_execution.created_by = "account-1"
+        old_feedback = _feedback(rating=FeedbackRating.DISLIKE)
+        old_feedback.updated_at = timestamp
+        latest_feedback = _feedback(content="Useful, thanks!\nI have a follow-up.")
+        latest_feedback.updated_at = datetime(2026, 7, 23, 7, 1)
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    app,
+                    workflow_app,
+                    agent,
+                    make_end_user(session_id="customer-001"),
+                    _agent_observability_service_conversation(),
+                    message,
+                    debug_message,
+                    _agent_observability_service_message(message_id="old-message", created_at=datetime(2025, 7, 23)),
+                    old_feedback,
+                    latest_feedback,
+                    _feedback(source=FeedbackFromSource.ADMIN, content="Operator feedback"),
+                    _agent_observability_service_workflow_run(),
+                    _agent_observability_service_workflow_binding(),
+                    execution,
+                    account_execution,
+                ]
+            )
+        logs = SQLAlchemyAgentObservabilityRepository(session_factory=sqlite_session_factory)
+        context = RequestContext(
+            request_id="request-1", trace_id=None, account_id="account-1", active_workspace_id="tenant-1"
+        )
+        filters = AgentLogExportQuery(
+            sources=("webapp", "console", "workflow"),
+            end_user_ids=("end-user-1",),
+            account_ids=("account-1",),
+            start="2026-07-23 07:00",
+            end="2026-07-23 07:01",
+        )
+        assert logs.count_export_logs(context, agent.id, filters) == AgentLogExportCounts(log_count=3, row_count=3)
+        resolved_filters = logs.resolve_log_export_filters(context, agent.id, filters)
+        output = StringIO(newline="")
+        assert AgentLogCsvWriter(logs=logs).write_csv(context, agent.id, filters=resolved_filters, output=output) == 3
+        assert output.getvalue().startswith("\ufeff")
+        reader = csv.DictReader(StringIO(output.getvalue().removeprefix("\ufeff")))
+        assert reader.fieldnames == [
+            "app_type",
+            "end_user_id",
+            "account_id",
+            "conversation_id",
+            "message_id",
+            "created_at",
+            "user_input",
+            "app_response",
+            "feedback_rating",
+            "feedback_content",
+            "status",
+            "source",
+            "agent_id",
+        ]
+        rows = {row["message_id"]: row for row in reader}
+
+        assert list(rows) == [execution.id, message.id, account_execution.id]
+        assert rows[message.id]["source"] == "WebApp"
+        assert rows[execution.id]["source"] == rows[account_execution.id]["source"] == "Workflow"
+        assert all(row["agent_id"] == agent.id and row["app_type"] == "New Agent" for row in rows.values())
+        webapp = rows[message.id]
+        assert webapp["end_user_id"] == "customer-001"
+        assert webapp["message_id"] == message.id
+        assert webapp["conversation_id"] == message.conversation_id
+        assert webapp["created_at"] == "2026-07-23T07:00:19+00:00"
+        assert webapp["user_input"] == "'=1+1"
+        assert webapp["app_response"] == "hi"
+        assert webapp["feedback_rating"] == "like"
+        assert webapp["feedback_content"] == "Useful, thanks!\nI have a follow-up."
+        workflow = rows[execution.id]
+        assert workflow["end_user_id"] == "customer-001"
+        assert workflow["conversation_id"] == workflow["message_id"] == execution.id
+        assert workflow["user_input"] == "Workflow question"
+        assert workflow["app_response"] == "Workflow answer"
+        assert workflow["feedback_rating"] == workflow["feedback_content"] == ""
+        assert rows[account_execution.id]["account_id"] == "account-1"
+        assert rows[account_execution.id]["end_user_id"] == ""
+
+    @staticmethod
+    def test_search_log_identities_matches_both_sources_and_excludes_unrelated_identities(
+        sqlite_session: Session,
+    ) -> None:
+        app = _agent_observability_service_app()
+        workflow_app = _agent_observability_service_app(app_id="workflow-app-1", mode=AppMode.WORKFLOW)
+        web_user = make_end_user(end_user_id="d653b0af-e245-4d40-9dcc-5581459c0d5d", session_id="customer-001")
+        workflow_user = make_end_user(end_user_id="workflow-user", session_id="workflow-001")
+        debug_user = make_end_user(end_user_id="debug-user", session_id="debug-001")
+        account = make_account(account_id="fb08850e-415d-4dd0-9daf-47ef2d146791", name="Operator-001")
+        account_user = make_end_user(end_user_id=account.id, session_id="account-001")
+        foreign_account = make_account(account_id="foreign-account", name="Foreign-001", email="foreign@example.com")
+        foreign_app = _agent_observability_service_app(app_id="foreign-app")
+        foreign_app.tenant_id = "other-tenant"
+        foreign_conversation = _agent_observability_service_conversation(
+            conversation_id="foreign-conversation", app_id=foreign_app.id
+        )
+        foreign_conversation.from_end_user_id = None
+        foreign_conversation.from_account_id = foreign_account.id
+        foreign_user = make_end_user(end_user_id="foreign-user", tenant_id="other-tenant", session_id="foreign-001")
+        unrelated_user = make_end_user(end_user_id="unrelated-user", session_id="unrelated-001")
+
+        web_conversation = _agent_observability_service_conversation()
+        web_conversation.from_end_user_id = web_user.id
+        debug_conversation = _agent_observability_service_conversation(conversation_id="debug-conversation")
+        debug_conversation.from_end_user_id = debug_user.id
+        debug_message = _agent_observability_service_message(
+            message_id="debug-message", conversation_id=debug_conversation.id
+        )
+        debug_message.invoke_from = InvokeFrom.DEBUGGER
+
+        executions = []
+        for user in (web_user, workflow_user, account_user, foreign_user):
+            execution = _agent_observability_service_node_execution(execution_id=f"execution-{user.id}")
+            execution.created_by = user.id
+            execution.created_by_role = CreatorUserRole.ACCOUNT if user is account_user else CreatorUserRole.END_USER
+            executions.append(execution)
+        sqlite_session.add_all(
+            [
+                app,
+                workflow_app,
+                web_user,
+                workflow_user,
+                debug_user,
+                account,
+                account_user,
+                foreign_account,
+                foreign_app,
+                foreign_conversation,
+                _agent_observability_service_message(
+                    message_id="foreign-message", conversation_id=foreign_conversation.id, app_id=foreign_app.id
+                ),
+                foreign_user,
+                unrelated_user,
+                web_conversation,
+                debug_conversation,
+                _agent_observability_service_message(),
+                debug_message,
+                _agent_observability_service_workflow_run(),
+                _agent_observability_service_workflow_binding(),
+                *executions,
+            ]
+        )
+        sqlite_session.flush()
+        queries = AgentObservabilityQueries(sqlite_session)
+        web_option = ConsoleLogIdentity(web_user.id, "customer-001", ConsoleLogIdentitySource.END_USER)
+        workflow_option = ConsoleLogIdentity(workflow_user.id, "workflow-001", ConsoleLogIdentitySource.END_USER)
+        account_option = ConsoleLogIdentity(account.id, account.name, ConsoleLogIdentitySource.ACCOUNT)
+
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="001") == (
+            web_option,
+            workflow_option,
+            account_option,
+        )
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="CUSTOMER") == (web_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword=web_user.id) == (web_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword=account.id) == (account_option,)
+        assert queries.search_log_identities(app=app, agent_id="agent-1", keyword="%") == ()
+
+    @staticmethod
     def test_list_webapp_conversation_logs_includes_feedback_rates(sqlite_session: Session) -> None:
         timestamp = datetime(2026, 7, 23, 7, 0, 19)
         app = _agent_observability_service_app(name="Agent WebApp")
         conversation = _agent_observability_service_conversation()
         conversation.name = "Feedback conversation"
+        conversation.from_end_user_id = None
+        conversation.from_account_id = "account-1"
         first_message = _agent_observability_service_message(created_at=timestamp)
         second_message = _agent_observability_service_message(message_id="message-2", created_at=timestamp)
         sqlite_session.add_all(
@@ -493,6 +745,7 @@ class TestAgentObservabilityQueriesCases:
 
         assert rows[0]["user_rate"] == 0.5
         assert rows[0]["operation_rate"] == 1.0
+        assert rows[0]["account_id"] == "account-1"
 
     @staticmethod
     def test_list_workflow_logs_uses_node_executions_without_messages(sqlite_session: Session) -> None:
@@ -519,6 +772,7 @@ class TestAgentObservabilityQueriesCases:
 
         assert rows[0]["id"] == "node-execution-1"
         assert rows[0]["source"]["app_name"] == "Marketing Department"
+        assert rows[0]["account_id"] is None
 
     @staticmethod
     @pytest.mark.parametrize("source_identity", ["persisted-binding", "source-version", "unique-legacy-binding"])
@@ -1045,6 +1299,7 @@ class TestAgentObservabilityQueriesCases:
         assert payload["conversation_id"] == "node-execution-1"
         assert payload["message_count"] == 1
         assert payload["end_user_id"] is None
+        assert payload["account_id"] == "account-1"
         assert payload["status"] == "failed"
         assert payload["unread"] is False
 
@@ -1178,7 +1433,7 @@ def _seed_nested_agent(sqlite_session: Session, *, workflow_type: WorkflowType) 
         message = _workflow_tool_agent_statistics_message(app_id=outer_app.id, created_at=datetime(2026, 7, 22, 8, 0))
         message.workflow_run_id = run.id
         message.from_source = ConversationFromSource.API
-        message.invoke_from = _workflow_tool_agent_statistics_InvokeFrom.WEB_APP
+        message.invoke_from = InvokeFrom.WEB_APP
         message.from_account_id = None
         message.from_end_user_id = "end-user-1"
         sqlite_session.add_all([conversation, message])

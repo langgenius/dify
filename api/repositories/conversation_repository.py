@@ -4,28 +4,27 @@ from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from uuid import UUID
 
-from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, or_, select, text, tuple_, update
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, tuple_, update
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from configs import dify_config
 from graphon.enums import WorkflowExecutionStatus
-from libs.datetime_utils import naive_utc_now, utc_now
+from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
 from machinery.context import RequestContext
-from models.account import Account, TenantAccountJoin
+from models.account import Account
 from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation, MessageFeedback
 from models.web import PinnedConversation
 from models.workflow import WorkflowRun
 from repositories.app.console_repository import find_console_app
 from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
+from repositories.log_export_count import execute_log_export_count
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
@@ -45,6 +44,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationRecord,
     ConsoleConversationScope,
     ConsoleLogIdentity,
+    ConsoleLogIdentitySource,
     ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationInputValue,
@@ -65,73 +65,15 @@ from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.retention.conversation.log_export_service import ConversationLogExportTask
-
-if TYPE_CHECKING:
-    from extensions.ext_redis import RedisClientWrapper
-    from services.retention.conversation.log_export_service import ConversationLogExportStatus
 
 _LOG_IDENTITY_SEARCH_LIMIT = 20
-_LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
 _LOG_EXPORT_BATCH_SIZE = 500
-_TRANSITION_LOG_EXPORT_TASK = """
-local current = redis.call("GET", KEYS[1])
-if not current or cjson.decode(current).status ~= ARGV[1] then
-    return 0
-end
-return redis.call("SET", KEYS[1], ARGV[2], "XX", "KEEPTTL") and 1 or 0
-"""
-
-
-class RedisConversationLogExportTasks:
-    """Store temporary app exports and claim each task atomically."""
-
-    def __init__(self, *, redis: "RedisClientWrapper") -> None:
-        """Bind the configured Redis client."""
-        self._redis = redis
-
-    @staticmethod
-    def _key(*, tenant_id: str, app_id: str, task_id: str) -> str:
-        """Scope a task key to its owning workspace and app."""
-        return f"conversation_log_export:{tenant_id}:{app_id}:{task_id}"
-
-    @staticmethod
-    def _latest_key(*, tenant_id: str, app_id: str, requested_by: str) -> str:
-        """Locate the latest task ID for one requester in the app."""
-        return f"conversation_log_export_latest:{tenant_id}:{app_id}:{requested_by}"
-
-    def save(self, task: ConversationLogExportTask) -> None:
-        """Save a task before exposing it as the latest, with the same TTL for both keys."""
-        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
-        self._redis.setex(key, ttl_seconds, task.model_dump_json())
-        latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
-        self._redis.setex(latest_key, ttl_seconds, task.task_id)
-
-    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
-        """Load the matching live task for the workspace and app."""
-        raw = self._redis.get(self._key(tenant_id=tenant_id, app_id=app_id, task_id=task_id))
-        if raw is None:
-            return None
-        task = ConversationLogExportTask.model_validate_json(raw)
-        if (task.tenant_id, task.app_id, task.task_id) != (tenant_id, app_id, task_id) or task.expires_at <= utc_now():
-            return None
-        return task
-
-    def get_latest(self, *, tenant_id: str, app_id: str, requested_by: str) -> ConversationLogExportTask | None:
-        """Follow the latest ID to a live task for the exact requester, app and workspace."""
-        raw = self._redis.get(self._latest_key(tenant_id=tenant_id, app_id=app_id, requested_by=requested_by))
-        if raw is None:
-            return None
-        task_id = raw.decode() if isinstance(raw, bytes) else raw
-        task = self.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        return task if task is not None and task.requested_by == requested_by else None
-
-    def transition(self, task: ConversationLogExportTask, *, from_status: "ConversationLogExportStatus") -> bool:
-        """Update only a task in the expected state, preserving its remaining TTL."""
-        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
-        transition = self._redis.register_script(_TRANSITION_LOG_EXPORT_TASK)
-        return bool(transition(keys=[key], args=[from_status.value, task.model_dump_json()]))
+_CONSOLE_APP_MODES_BY_KIND: dict[ConsoleConversationKind, frozenset[AppMode]] = {
+    "completion": frozenset({AppMode.COMPLETION}),
+    "chat": frozenset({AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}),
+}
+_CONSOLE_LOG_APP_MODES = _CONSOLE_APP_MODES_BY_KIND["completion"] | _CONSOLE_APP_MODES_BY_KIND["chat"]
+_CONVERSATION_EXPORT_APP_MODES = _CONSOLE_LOG_APP_MODES - {AppMode.AGENT}
 
 
 class ConversationRepository:
@@ -237,8 +179,17 @@ class ConversationRepository:
     def get_console_scope(
         self, context: RequestContext, app_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationScope:
+        return self._get_console_scope(context, app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind])
+
+    def get_console_log_export_scope(self, context: RequestContext, app_id: str) -> ConsoleConversationScope:
+        """Resolve the owned conversation app's mode and the caller's time zone for log export."""
+        return self._get_console_scope(context, app_id, allowed_modes=_CONVERSATION_EXPORT_APP_MODES)
+
+    def _get_console_scope(
+        self, context: RequestContext, app_id: str, *, allowed_modes: frozenset[AppMode]
+    ) -> ConsoleConversationScope:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(session=session, context=context, app_id=app_id, allowed_modes=allowed_modes)
             account = session.get(Account, context.account_id)
             if account is None:
                 raise NoPermissionError("The admitted account no longer exists.")
@@ -285,14 +236,16 @@ class ConversationRepository:
     def search_console_log_identities(
         self, context: RequestContext, app_id: str, *, keyword: str
     ) -> tuple[ConsoleLogIdentity, ...]:
-        """Find identities with visible app logs, matching labels by substring or IDs exactly."""
+        """Find visible log actors by label or ID, including former workspace members."""
         try:
             identity_id = str(UUID(keyword))
         except ValueError:
             identity_id = None
 
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind="chat")
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_LOG_APP_MODES
+            )
             visible_logs, _ = self._filter_console_conversations(
                 select(Conversation.id),
                 app_id=app.id,
@@ -323,9 +276,7 @@ class ConversationRepository:
             ).all()
             accounts = session.execute(
                 select(Account.id, Account.name)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
                 .where(
-                    TenantAccountJoin.tenant_id == app.tenant_id,
                     account_match,
                     visible_logs.where(
                         Conversation.from_source == ConversationFromSource.CONSOLE,
@@ -336,8 +287,14 @@ class ConversationRepository:
                 .limit(_LOG_IDENTITY_SEARCH_LIMIT)
             ).all()
             return (
-                *(ConsoleLogIdentity(identity, label, "end-user") for identity, label in end_users),
-                *(ConsoleLogIdentity(identity, label, "account") for identity, label in accounts),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.END_USER)
+                    for identity, label in end_users
+                ),
+                *(
+                    ConsoleLogIdentity(identity, label, ConsoleLogIdentitySource.ACCOUNT)
+                    for identity, label in accounts
+                ),
             )
 
     @staticmethod
@@ -413,9 +370,9 @@ class ConversationRepository:
     def get_console_log_export_counts(
         self, *, scope: ConsoleConversationScope, filters: ConsoleConversationLogFilters
     ) -> ConversationLogExportCounts | None:
-        """Count all matched chat conversations and their messages in one read statement.
+        """Count all matched conversations and their messages in one read statement.
 
-        Require a Console chat log scope. Recheck application ownership and mode before counting.
+        Require a Console conversation log scope. Recheck application ownership and mode before counting.
         Use a statement timeout on PostgreSQL and MySQL. Return None on timeout and release
         the read transaction on all paths.
         """
@@ -426,28 +383,22 @@ class ConversationRepository:
             matching, _ = self._filter_console_conversations(
                 select(Conversation.id), app_id=app.id, mode=app.mode, filters=filters
             )
+            if app.mode == AppMode.COMPLETION and filters.keyword:
+                # Completion list search can return the same conversation for multiple matching messages.
+                matching = matching.distinct()
             conversations = matching.subquery()
             # Count via the conversation_id index. A keyword selects the conversation,
             # and every message in that conversation contributes one export row.
             messages_per_conversation = (
                 select(func.count()).where(Message.conversation_id == conversations.c.id).scalar_subquery()
             )
-            counts = (
-                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0))
-                .select_from(conversations)
-                .prefix_with(f"/*+ MAX_EXECUTION_TIME({_LOG_EXPORT_COUNT_TIMEOUT_MS}) */", dialect="mysql")
+            counts = execute_log_export_count(
+                session,
+                select(func.count(), func.coalesce(func.sum(messages_per_conversation), 0)).select_from(conversations),
             )
-            dialect = session.get_bind().dialect.name
-            try:
-                if dialect == "postgresql":
-                    session.execute(text(f"SET LOCAL statement_timeout = {_LOG_EXPORT_COUNT_TIMEOUT_MS}"))
-                conversation_count, message_count = session.execute(counts).one()
-            except DBAPIError as exc:
-                if isinstance(exc.orig, QueryCanceled) or (
-                    dialect == "mysql" and exc.orig is not None and exc.orig.args and exc.orig.args[0] == 3024
-                ):
-                    return None
-                raise
+            if counts is None:
+                return None
+            conversation_count, message_count = counts
             return ConversationLogExportCounts(
                 conversation_count=int(conversation_count), message_count=int(message_count)
             )
@@ -536,6 +487,8 @@ class ConversationRepository:
                     mode=app.mode,
                     filters=filters,
                 )
+                if app.mode == AppMode.COMPLETION and filters.keyword:
+                    matches = matches.distinct()
                 conversation_ids = tuple(session.scalars(matches))
 
             statuses = (
@@ -585,6 +538,7 @@ class ConversationRepository:
                     Message.answer,
                     MessageFeedback.rating,
                     MessageFeedback.content,
+                    Message._inputs if app.mode == AppMode.COMPLETION else null(),
                 )
                 .select_from(Message)
                 .join(Conversation, Conversation.id == Message.conversation_id)
@@ -649,7 +603,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConsoleConversationDetailSource:
         with self._session_factory() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             conversation = self._get_console_conversation(
                 session=session, app_id=app.id, conversation_id=conversation_id
             )
@@ -695,7 +651,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> None:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             self._get_console_conversation(session=session, app_id=app.id, conversation_id=conversation_id)
             session.execute(
                 update(Conversation)
@@ -867,7 +825,9 @@ class ConversationRepository:
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
     ) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app = self._get_console_app(session=session, context=context, app_id=app_id, kind=kind)
+            app = self._get_console_app(
+                session=session, context=context, app_id=app_id, allowed_modes=_CONSOLE_APP_MODES_BY_KIND[kind]
+            )
             # Console log queries see all users; deletion still requires the
             # current account's Console conversation, as in the original API.
             conversation = self._get_conversation(
@@ -997,14 +957,9 @@ class ConversationRepository:
 
     @staticmethod
     def _get_console_app(
-        *, session: Session, context: RequestContext, app_id: str, kind: ConsoleConversationKind
+        *, session: Session, context: RequestContext, app_id: str, allowed_modes: frozenset[AppMode]
     ) -> App:
         app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
-        allowed_modes = (
-            {AppMode.COMPLETION}
-            if kind == "completion"
-            else {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}
-        )
         if app is None:
             raise ConsoleAppNotFoundError("App not found.")
         if app.mode not in allowed_modes:
