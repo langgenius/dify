@@ -339,6 +339,30 @@ describe('VersionHistoryPanel', () => {
     await waitFor(() => expect(screen.queryByText('v1.0')).not.toBeInTheDocument())
   })
 
+  it('keeps the draft backup for the whole history session and clears it on close', async () => {
+    const user = userEvent.setup()
+    // Like the editors' handler: loading the backup clears it.
+    mockHandleLoadBackupDraft.mockImplementation(() =>
+      renderedStore.setState({ backupDraft: undefined }),
+    )
+    const { VersionHistoryPanel } = await import('../index')
+    render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
+    // The draft row is selected when the panel opens.
+    await waitFor(() => expect(mockHandleLoadBackupDraft).toHaveBeenCalledOnce())
+    expect(renderedStore.getState().backupDraft).toBeDefined()
+
+    await user.click(await screen.findByRole('button', { name: 'v1.0' }))
+    await selectAction(/operation\.delete/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    // Deleting the previewed version shows the draft again from the kept backup.
+    await waitFor(() => expect(mockHandleLoadBackupDraft).toHaveBeenCalledTimes(2))
+    expect(renderedStore.getState().backupDraft).toBeDefined()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(renderedStore.getState().backupDraft).toBeUndefined()
+  })
+
   it('should keep restore mode backup state when restore request fails', async () => {
     const user = userEvent.setup()
     const { VersionHistoryPanel } = await import('../index')

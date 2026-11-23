@@ -111,20 +111,23 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
     }),
   )
 
+  // Showing the draft inside the history session loads the backup but keeps it, so the draft can be
+  // shown again after previewing or deleting another version. Leaving history clears it.
+  const showBackupDraft = useCallback(() => {
+    const { backupDraft } = workflowStore.getState()
+    handleLoadBackupDraft()
+    if (backupDraft) workflowStore.setState({ backupDraft })
+  }, [workflowStore, handleLoadBackupDraft])
+
   const handleVersionClick = useCallback(
     (item: WorkflowVersionListItem) => {
       if (item.id !== currentVersion?.id) {
         setCurrentVersion(item)
-        if (item.version === WorkflowVersion.Draft) handleLoadBackupDraft()
+        if (item.version === WorkflowVersion.Draft) showBackupDraft()
         else handleRestoreFromPublishedWorkflow(item)
       }
     },
-    [
-      currentVersion?.id,
-      setCurrentVersion,
-      handleLoadBackupDraft,
-      handleRestoreFromPublishedWorkflow,
-    ],
+    [currentVersion?.id, setCurrentVersion, showBackupDraft, handleRestoreFromPublishedWorkflow],
   )
 
   const handleNextPage = () => {
@@ -317,7 +320,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const handleDelete = useCallback(
     async (id: string) => {
       try {
-        // The generated delete mutation drops the version from the list and refreshes it.
+        // The generated delete mutation resets the version list.
         await deleteWorkflow(id)
         // A deleted version can no longer be previewed or restored: go back to the draft.
         if (currentVersion?.id === id) {
@@ -328,7 +331,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
             handleVersionClick(draft)
           } else {
             workflowStore.setState({ currentVersion: null })
-            handleLoadBackupDraft()
+            showBackupDraft()
           }
         }
         deleteAllInspectVars()
@@ -351,7 +354,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
       versionHistory?.pages,
       handleVersionClick,
       workflowStore,
-      handleLoadBackupDraft,
+      showBackupDraft,
     ],
   )
 

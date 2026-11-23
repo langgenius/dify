@@ -609,10 +609,21 @@ describe('generated workflow version deletion', () => {
     { resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' } satisfies EditorResource },
     { resource: { kind: 'snippet', snippetId: 'owner' } satisfies EditorResource },
   ])(
-    'drops the deleted $resource.kind version from cached lists right away',
+    'resets cached $resource.kind version lists so they reload from the first page',
     async ({ resource }) => {
       const queryClient = createQueryClient()
       const historyKey = workflowVersionHistoryInfiniteOptions(resource, { limit: 10 }).queryKey
+      const otherHistoryKey = workflowVersionHistoryInfiniteOptions(
+        { kind: 'app', appId: 'other', mode: 'workflow', collaborationEnabled: false },
+        { limit: 10 },
+      ).queryKey
+      const otherHistory = {
+        pages: [
+          { items: [createWorkflow({ id: 'other-1' })], has_more: false, limit: 10, page: 1 },
+        ],
+        pageParams: [1],
+      }
+      queryClient.setQueryData(otherHistoryKey, otherHistory)
       queryClient.setQueryData(historyKey, {
         pages: [
           {
@@ -632,9 +643,9 @@ describe('generated workflow version deletion', () => {
         await result.current('workflow-1')
       })
 
-      expect(
-        queryClient.getQueryData(historyKey)?.pages[0]?.items.map((workflow) => workflow.id),
-      ).toEqual(['workflow-2'])
+      // No stale pages remain, so a failed reload cannot show the deleted version or shift paging.
+      expect(queryClient.getQueryData(historyKey)).toBeUndefined()
+      expect(queryClient.getQueryData(otherHistoryKey)).toEqual(otherHistory)
     },
   )
 })
