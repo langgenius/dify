@@ -125,6 +125,8 @@ dify-trace-weave = { workspace = true }
 [tool.uv]
 default-groups = ["kms", "storage", "tools", "vdb-all", "trace-all"]
 package = false
+# Dify does not use Ragas' disk cache backend; omit its vulnerable dependency.
+exclude-dependencies = ["diskcache"]
 override-dependencies = [
     "litellm>=1.100.4,<2.0.0",
     "pyarrow>=23.0.1,<24.0.0",
