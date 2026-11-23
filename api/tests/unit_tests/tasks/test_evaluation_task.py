@@ -187,7 +187,10 @@ def test_workflow_faithfulness_receives_selected_llm_text_as_context(
         [
             {
                 "llm-1": NodeRunResult(outputs={"text": "Source answer"}),
-                "llm-2": NodeRunResult(process_data={"prompts": []}, outputs={"text": "Refined answer"}),
+                "llm-2": NodeRunResult(
+                    process_data={"prompts": [{"role": "system", "text": "Refine Source answer"}]},
+                    outputs={"text": "Refined answer"},
+                ),
             }
         ],
         _lease(run_data.evaluation_run_id),
