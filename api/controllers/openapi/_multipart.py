@@ -62,12 +62,12 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
 
 def body_from_request(*, file_fields: Collection[str] = ()) -> Any:
     if request.mimetype != "multipart/form-data":
-        body = request.get_json(silent=True)
-        if body is not None:
-            return body
+        json_body = request.get_json(silent=True)
+        if json_body is not None:
+            return json_body
         # Keep an absent body compatible with models whose fields all have defaults,
         # but let malformed JSON and an explicit JSON null fail model validation.
-        return {} if not request.get_data(cache=True) else body
+        return {} if not request.get_data(cache=True) else json_body
     body: dict[str, Any] = {name: _json_part(name, raw, file_fields=file_fields) for name, raw in request.form.items()}
     for name in request.files:
         _place(body, name, request.files.getlist(name), file_fields=file_fields)
