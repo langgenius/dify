@@ -19,7 +19,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import UploadFile
-from repositories.account_avatar import owned_avatar_file_conditions
+from repositories.account.avatar import owned_avatar_file_conditions
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository

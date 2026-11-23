@@ -30,7 +30,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
 )
 from models.model import UploadFile
-from repositories.account_avatar import validated_account_avatar
+from repositories.account.avatar import validated_account_avatar
 from repositories.human_input_v2.contact import (
     CandidateId,
     Contact,

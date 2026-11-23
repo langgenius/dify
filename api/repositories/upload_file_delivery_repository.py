@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantCustomConfigDict
 from models.model import UploadFile
-from repositories.account_avatar import owned_avatar_file_conditions
+from repositories.account.avatar import owned_avatar_file_conditions
 from services.upload_file_delivery_service import (
     UploadFileDeliveryNotFoundError,
     UploadFileDeliveryQuery,

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.workflow.file_runtime import get_signed_avatar_url
 from models.model import UploadFile
-from repositories.account_avatar import owned_avatar_file_conditions
+from repositories.account.avatar import owned_avatar_file_conditions
 from services.account_ports import AccountAvatarFileGateway
 
 

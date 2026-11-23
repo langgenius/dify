@@ -18,7 +18,7 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
-from repositories.account_avatar import validated_account_avatar
+from repositories.account.avatar import validated_account_avatar
 from repositories.human_input_v2 import sqlalchemy_contact_repository
 from repositories.human_input_v2.contact import (
     ContactError,
