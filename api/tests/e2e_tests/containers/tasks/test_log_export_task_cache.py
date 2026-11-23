@@ -108,6 +108,24 @@ def test_expired_lease_is_reclaimed_and_old_attempt_cannot_publish(application_r
     assert result.storage_key == "second.csv"
 
 
+def test_finish_requires_the_lease_token_for_the_same_attempt(application_redis: RedisClientWrapper) -> None:
+    """Reject publication with a foreign token even when the state and attempt match."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    store.save(task)
+    claim = store.claim(task)
+    assert claim is not None
+
+    foreign_claim = claim.model_copy(update={"claim_token": "wrong-token"})
+    assert not store.finish(foreign_claim, status=LogExportStatus.READY, storage_key="foreign.csv")
+    assert store.finish(claim, status=LogExportStatus.READY, storage_key="owned.csv")
+    result = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert result is not None
+    assert result.storage_key == "owned.csv"
+
+
 def test_repeated_worker_loss_stops_after_three_attempts(application_redis: RedisClientWrapper) -> None:
     """Terminalize repeatedly interrupted exports and free their workspace capacity."""
     store = RedisLogExportTasks(

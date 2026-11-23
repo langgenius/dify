@@ -54,7 +54,7 @@ class LogExportLimitReachedError(Exception):
 
 
 class LogExportLeaseBusyError(Exception):
-    """An active execution holds the lease, or the current execution lost it."""
+    """The worker cannot take or confirm lease ownership and should retry."""
 
 
 class LogExportTask[FiltersT](BaseModel):
@@ -120,7 +120,7 @@ class LogExportTaskStore[FiltersT](Protocol):
         ...
 
     def renew(self, task: LogExportTask[FiltersT]) -> bool:
-        """Extend only this execution's lease while the underlying task remains live."""
+        """Extend an owned lease, returning False on loss or raising LogExportLeaseBusyError if unavailable."""
         ...
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:

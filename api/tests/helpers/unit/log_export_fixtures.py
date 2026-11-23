@@ -19,6 +19,7 @@ class LogExportRedisIo:
     client: RedisClientWrapper
     cache: dict[str, str]
     get: MagicMock
+    renew: MagicMock
     reject_submission: bool = False
 
 
@@ -57,10 +58,11 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         """Permit registration when composing services, then fail if an unrelated script runs."""
         raise AssertionError("Unexpected Redis script execution in a log export test")
 
+    renew = MagicMock(return_value=1)
     scripts = {
         log_export_task_cache._SAVE_LOG_EXPORT_TASK: save,
         log_export_task_cache._CLAIM_LOG_EXPORT_TASK: claim,
-        log_export_task_cache._RENEW_LOG_EXPORT_TASK: lambda **_: 1,
+        log_export_task_cache._RENEW_LOG_EXPORT_TASK: renew,
         log_export_task_cache._FINISH_LOG_EXPORT_TASK: finish,
     }
     with (
@@ -70,7 +72,7 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         patch.object(client, "delete", side_effect=cache.pop),
         patch.object(client, "register_script", side_effect=lambda script: scripts.get(script, unconfigured_script)),
     ):
-        io = LogExportRedisIo(client, cache, get)
+        io = LogExportRedisIo(client, cache, get, renew)
         yield io
 
 

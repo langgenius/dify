@@ -3,6 +3,8 @@
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from redis.exceptions import RedisError
+
 from libs.datetime_utils import utc_now
 from services.retention.log_export_task import (
     LogExportLeaseBusyError,
@@ -189,12 +191,15 @@ class RedisLogExportTasks[FiltersT]:
         return updated if result else None
 
     def renew(self, task: LogExportTask[FiltersT]) -> bool:
-        """Extend a live lease only while the worker still owns its token."""
+        """Extend a live, owned lease or signal a retry when Redis cannot confirm it."""
         if task.claim_token is None:
             return False
         task_key, lease_key, _ = self._execution_keys(task)
-        renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
-        return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
+        try:
+            renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
+            return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
+        except RedisError as exc:
+            raise LogExportLeaseBusyError("Could not renew the log export lease.") from exc
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
         """Finish the expected pending state or the processing attempt that owns the lease token."""
