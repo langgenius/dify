@@ -54,8 +54,8 @@ type TestRouter = Omit<AppRouterInstance, 'push' | 'replace'> & {
 
 export type TestNavigation = {
   /**
-   * Records every navigation without moving the URL: in the app a route change replaces the page,
-   * so a mounted component never observes its own navigation. Assert the recorded calls instead.
+   * Records every navigation. A navigation within the current pathname updates the URL, as Next
+   * keeps that page mounted; one to another pathname does not, because it would replace the page.
    */
   router: TestRouter
   /** Provides Next's real navigation contexts, so `@/next/navigation` hooks stay unmocked. */
@@ -98,14 +98,19 @@ export function createTestNavigation({
     }
     listeners.forEach((listener) => listener())
   }
+  // Next keeps the page mounted when only the query changes, so apply those navigations; a new
+  // pathname would replace the page, which a mounted component never observes.
+  const followSameRoute = (href: string) => {
+    if (new URL(href, current).pathname === current.pathname) navigate(href)
+  }
   const subscribe = (listener: () => void) => {
     listeners.add(listener)
     return () => listeners.delete(listener)
   }
 
   const router: TestRouter = {
-    push: vi.fn<AppRouterInstance['push']>(),
-    replace: vi.fn<AppRouterInstance['replace']>(),
+    push: vi.fn<AppRouterInstance['push']>(followSameRoute),
+    replace: vi.fn<AppRouterInstance['replace']>(followSameRoute),
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
