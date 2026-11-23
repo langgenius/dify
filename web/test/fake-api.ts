@@ -345,25 +345,69 @@ const isFormBody = (contentType: string | undefined) =>
   )
 
 // The API reads form bodies only for uploads: the generated contracts give those bodies a
-// `Blob | File` field, and the oRPC client sends `FormData` only for bodies that contain one.
+// `z.custom<Blob | File>` field, and the oRPC client sends `FormData` only for bodies that
+// contain one. Read the schema's kind rather than probing it with a Blob: `unknown`, `any`,
+// records and objects accept a Blob too, but the API reads those bodies from JSON.
+type ZodNode = {
+  _zod?: {
+    def: {
+      type: string
+      shape?: Record<string, ZodNode>
+      options?: ZodNode[]
+      left?: ZodNode
+      right?: ZodNode
+      innerType?: ZodNode
+      element?: ZodNode
+      valueType?: ZodNode
+      in?: ZodNode
+    }
+  }
+  safeParse?: (value: unknown) => { success: boolean }
+}
+const WRAPPERS = new Set([
+  'optional',
+  'nullable',
+  'default',
+  'prefault',
+  'catch',
+  'readonly',
+  'nonoptional',
+])
+
+function isFileSchema(schema: ZodNode | undefined): boolean {
+  const def = schema?._zod?.def
+  if (!def) return false
+  if (WRAPPERS.has(def.type)) return isFileSchema(def.innerType)
+  if (def.type === 'pipe') return isFileSchema(def.in)
+  if (def.type === 'array') return isFileSchema(def.element)
+  // Named uploads, such as `files: { [name]: File | File[] }`.
+  if (def.type === 'record') return isFileSchema(def.valueType)
+  if (def.type === 'union') return Boolean(def.options?.length) && def.options!.every(isFileSchema)
+  if (def.type === 'file') return true
+  // A file check accepts a Blob and nothing shaped like JSON.
+  return (
+    def.type === 'custom' &&
+    Boolean(schema!.safeParse?.(new Blob()).success) &&
+    !schema!.safeParse?.({}).success
+  )
+}
+
+function hasFileField(schema: ZodNode | undefined): boolean {
+  const def = schema?._zod?.def
+  if (!def) return false
+  if (WRAPPERS.has(def.type)) return hasFileField(def.innerType)
+  if (def.type === 'pipe') return hasFileField(def.in)
+  if (def.type === 'union') return (def.options ?? []).some(hasFileField)
+  if (def.type === 'intersection') return hasFileField(def.left) || hasFileField(def.right)
+  if (def.type === 'object') return Object.values(def.shape ?? {}).some(isFileSchema)
+  return isFileSchema(schema)
+}
+
 function acceptsFormBody(procedure: unknown) {
-  type Schema = {
-    shape?: Record<string, Schema>
-    unwrap?: () => Schema
-    safeParse?: (value: unknown) => { success: boolean }
-  }
-  const unwrap = (schema: Schema | undefined) => {
-    let current = schema
-    while (current && !current.shape && current.unwrap) current = current.unwrap()
-    return current
-  }
-  const input = unwrap((procedure as { '~orpc': { inputSchema?: Schema } })['~orpc'].inputSchema)
-  const body = unwrap(input?.shape?.body)
-  if (!body) return false
-  const file = new Blob()
-  const acceptsFile = (schema: Schema | undefined) =>
-    Boolean(schema?.safeParse?.(file).success || schema?.safeParse?.([file]).success)
-  return body.shape ? Object.values(body.shape).some(acceptsFile) : acceptsFile(body)
+  const input = (procedure as { '~orpc': { inputSchema?: ZodNode } })['~orpc'].inputSchema
+  const def = input?._zod?.def
+  const shape = def?.type === 'object' ? def.shape : undefined
+  return hasFileField(shape?.body)
 }
 
 function createContractHandler(router: Record<string, unknown>, report: (problem: string) => void) {

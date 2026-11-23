@@ -838,6 +838,78 @@ describe('request shapes the Python API rejects', () => {
     )
   })
 
+  it('fails the test when a form body is sent to a JSON endpoint whose field accepts anything', async () => {
+    const appId = '019a0000-0000-7000-8000-000000000001'
+    const variableId = '019a0000-0000-7000-8000-0000000000b1'
+    const fake = installFakeApi({
+      console: {
+        apps: {
+          byAppId: {
+            workflows: {
+              draft: {
+                variables: { byVariableId: { patch: () => ({}) as never } },
+              },
+            },
+          },
+        },
+      },
+    })
+    const body = new FormData()
+    body.set('name', 'greeting')
+    body.set('value', 'hello')
+    const response = await fetch(
+      `http://localhost:5001/console/api/apps/${appId}/workflows/draft/variables/${variableId}`,
+      { method: 'PATCH', body },
+    )
+
+    // `value` is `unknown`, so it accepts a file, but the API reads this body only as JSON.
+    expect(response.status).toBe(415)
+    expect(
+      fake.console.apps.byAppId.workflows.draft.variables.byVariableId.patch,
+    ).not.toHaveBeenCalled()
+    await expect(fake()).rejects.toThrow(
+      /apps\.byAppId\.workflows\.draft\.variables\.byVariableId\.patch: sent a multipart\/form-data body, but the API reads this body as JSON/,
+    )
+  })
+
+  it('accepts a form body on an upload endpoint, whose body has a file field', async () => {
+    const uploaded = {
+      id: '019a0000-0000-7000-8000-0000000000c1',
+      name: 'report.pdf',
+      size: 4,
+    }
+    const fake = installFakeApi({ console: { files: { upload: { post: () => uploaded } } } })
+    const body = new FormData()
+    body.set('file', new File(['%PDF'], 'report.pdf', { type: 'application/pdf' }))
+    const response = await fetch('http://localhost:5001/console/api/files/upload', {
+      method: 'POST',
+      body,
+    })
+
+    expect(response.ok).toBe(true)
+    expect(await response.json()).toEqual(uploaded)
+    const [input] = fake.console.files.upload.post.mock.calls[0]!
+    expect(input.body.file).toBeInstanceOf(File)
+    await expect(fake()).resolves.toBeUndefined()
+  })
+
+  it('accepts a form body when one of the body variants is an upload', async () => {
+    // `apps/imports` takes either a JSON DSL payload or a form with the DSL file.
+    const imported = { id: 'import-1', status: 'completed' as const }
+    const fake = installFakeApi({ console: { apps: { imports: { post: () => imported } } } })
+    const body = new FormData()
+    body.set('file', new File(['version: 0.7.0'], 'app.yml', { type: 'application/yaml' }))
+    const response = await fetch('http://localhost:5001/console/api/apps/imports', {
+      method: 'POST',
+      body,
+    })
+
+    expect(response.ok).toBe(true)
+    const [input] = fake.console.apps.imports.post.mock.calls[0]!
+    expect((input.body as { file: unknown }).file).toBeInstanceOf(File)
+    await expect(fake()).resolves.toBeUndefined()
+  })
+
   it.each([
     ['without a Content-Type', new Blob([JSON.stringify(groupBody)]), /without a Content-Type/],
     ['as text/json', new Blob([JSON.stringify(groupBody)], { type: 'text/json' }), /as text\/json/],
