@@ -29,7 +29,7 @@ SIGNING_SECRET = "sanitized-signing-material"
 
 @dataclass(frozen=True, slots=True)
 class _QueuedResponse:
-    body: Mapping[str, object]
+    body: Mapping[str, object] | bytes
     status: int = 200
     headers: tuple[tuple[str, str], ...] = ()
 
@@ -61,7 +61,7 @@ class _SlackApiState:
     def enqueue(
         self,
         api_method: str,
-        body: Mapping[str, object],
+        body: Mapping[str, object] | bytes,
         *,
         status: int = 200,
         headers: tuple[tuple[str, str], ...] = (),
@@ -96,7 +96,11 @@ class _SlackApiHandler(BaseHTTPRequestHandler):
         api_method = self.path.removeprefix("/api/")
         recorded = _RecordedRequest(api_method, dict(self.headers.items()), request_body)
         response = self.server.state.respond(recorded)
-        response_body = json.dumps(response.body, separators=(",", ":")).encode()
+        response_body = (
+            response.body
+            if isinstance(response.body, bytes)
+            else json.dumps(response.body, separators=(",", ":")).encode()
+        )
         self.send_response(response.status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(response_body)))

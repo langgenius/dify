@@ -13,6 +13,7 @@ import logging
 from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from json import JSONDecodeError
 from typing import Literal, Protocol, override
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -24,6 +25,7 @@ from alibabacloud_dingtalk.robot_1_0.client import Client as RobotClient
 from alibabacloud_dingtalk.robot_1_0.models import BatchSendOTOHeaders, BatchSendOTORequest
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
+from darabonba.exceptions import RetryError as DaraRetryError
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -33,12 +35,14 @@ from pydantic import (
     ValidatorFunctionWrapHandler,
     field_validator,
 )
+from requests.exceptions import RequestException as RequestsRequestError
 from requests.exceptions import Timeout as RequestsTimeout
-from Tea.exceptions import TeaException
+from Tea.exceptions import RetryError as TeaRetryError
+from Tea.exceptions import TeaException, UnretryableException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
-from core.human_input_v2.im_integration.adapters.avatar import read_avatars
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_rejection
+from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import DingTalkCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -300,6 +304,40 @@ class _UrllibDirectoryHTTPClient(_DirectoryHTTPClient):
         return None
 
 
+def _handle_sdk_failure(error: TeaException, operation: str) -> None:
+    """Report HTTP rejections and surface unexpected exceptions wrapped by the SDK."""
+    # The SDK wraps any failure during a request, including programming errors.
+    if isinstance(error, UnretryableException) and not isinstance(
+        error.inner_exception, (TeaException, DaraRetryError, TeaRetryError, RequestsRequestError, JSONDecodeError)
+    ):
+        raise error
+    data = error.data
+    http_status = data.get("statusCode") if isinstance(data, Mapping) else None
+    code: object = error.code
+    # The gateway stringifies a missing code as "None".
+    if code in (None, "None"):
+        code = data.get("errcode") if isinstance(data, Mapping) else None
+    if code is not None or http_status is not None:
+        log_provider_rejection(
+            logger,
+            IMProvider.DING_TALK,
+            operation,
+            provider_error_code=code if isinstance(code, str) or type(code) is int else None,
+            http_status=http_status,
+        )
+
+
+def _try_get_access_token(token_provider: AccessTokenProvider) -> str | None:
+    """Get a token for either capability, or return None on an expected SDK failure."""
+    try:
+        return token_provider.get()
+    except TeaException as error:
+        _handle_sdk_failure(error, "get_access_token")
+        return None
+    except (IMProviderError, RequestsRequestError):
+        return None
+
+
 class _DingTalkDirectory(IMDirectory):
     def __init__(self, token_provider: AccessTokenProvider, http_client: _DirectoryHTTPClient) -> None:
         self._token_provider = token_provider
@@ -307,10 +345,13 @@ class _DingTalkDirectory(IMDirectory):
 
     @override
     def read_directory(self) -> Directory | DirectoryReadFailure:
+        """Return a complete directory or a safe failure for expected OAuth and HTTP errors."""
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
+            return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
         try:
-            access_token = self._token_provider.get()
             return self._read_complete_directory(access_token)
-        except Exception:
+        except (_DirectoryHTTPError, IMProviderError, OSError, ValidationError, AvatarReadError):
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
 
     def _read_complete_directory(self, access_token: str) -> Directory:
@@ -379,9 +420,8 @@ class _DingTalkMessaging(IMMessaging):
         failure = MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
         if subject is not None:
             body = f"{subject}\n\n{body}"
-        try:
-            access_token = self._token_provider.get()
-        except Exception:
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
             return failure
         try:
             response = self._client.batch_send_otowith_options(
@@ -400,33 +440,20 @@ class _DingTalkMessaging(IMMessaging):
                 ),
             )
             accepted_response = _MessageSendResponse.model_validate(response)
-            return MessageAccepted(
-                MessageLocator(
-                    _DingTalkLocatorPayload(
-                        v=1,
-                        p=IMProvider.DING_TALK,
-                        process_query_key=accepted_response.body.process_query_key,
-                    ).encode()
-                )
-            )
         except TeaException as error:
-            data = error.data
-            http_status = data.get("statusCode") if isinstance(data, Mapping) else None
-            code = error.code
-            # The gateway stringifies a missing code as "None".
-            if code in (None, "", "None"):
-                legacy_code = data.get("errcode") if isinstance(data, Mapping) else None
-                code = legacy_code if type(legacy_code) is int else None
-            log_send_rejection(
-                logger,
-                IMProvider.DING_TALK,
-                "send_text",
-                provider_error_code=code,
-                http_status=http_status,
+            _handle_sdk_failure(error, "send_text")
+            return failure
+        except (RequestsRequestError, ValidationError):
+            return failure
+        return MessageAccepted(
+            MessageLocator(
+                _DingTalkLocatorPayload(
+                    v=1,
+                    p=IMProvider.DING_TALK,
+                    process_query_key=accepted_response.body.process_query_key,
+                ).encode()
             )
-            return failure
-        except Exception:
-            return failure
+        )
 
 
 class DingTalkIMProviderAdapter:

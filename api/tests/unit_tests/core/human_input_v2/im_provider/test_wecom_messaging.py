@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import importlib
+from functools import partial
 
 import pytest
 from requests import Response
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
+    DirectoryReadFailure,
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
@@ -168,7 +171,7 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
         {"errcode": 0, "errmsg": "ok"},
         {"errcode": 40003, "errmsg": "fake raw provider detail"},
         WeChatClientException(40003, "fake raw provider detail"),
-        OSError("fake transport detail"),
+        RequestsConnectionError("fake transport detail"),
     ],
 )
 def test_messaging_returns_one_safe_failure_without_replay(
@@ -197,13 +200,13 @@ def test_messaging_returns_one_safe_failure_without_replay(
         (40003, 200, 40003),
         (48002, None, 48002),
         (None, 403, None),
-        ("Bearer private-response-token", 429, None),
+        (2**40, 429, 2**40),
     ],
 )
 def test_messaging_logs_safe_send_rejection_without_replay(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
-    errcode: int | str | None,
+    errcode: int | None,
     http_status: int | None,
     logged_code: int | None,
 ) -> None:
@@ -246,3 +249,49 @@ def test_messaging_does_not_attempt_creation_when_token_acquisition_fails(
     assert token_client.fetch_calls == 1
     assert messaging_client.message.calls == []
     assert access_tokens == [None]
+
+
+@pytest.mark.parametrize("operation", ["read_directory", "send_text"])
+def test_operations_handle_the_same_token_rejection(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, operation: str
+) -> None:
+    wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
+    token_client = _TokenClient(WeChatClientException(40013, "private provider detail"))
+    messaging_client = _MessagingClient(_message_response())
+    _install_clients(monkeypatch, token_client, messaging_client)
+    adapter = wecom_module.WeComIMProviderAdapter(_credentials())
+
+    if operation == "read_directory":
+        assert adapter.directory.read_directory() == DirectoryReadFailure(
+            "WeCom directory could not be read completely."
+        )
+    else:
+        assert adapter.messaging.send_text(ProviderUserId("fake-user-001"), "Exact body") == MessageSendingError(
+            "WeCom message acceptance could not be confirmed."
+        )
+
+    assert token_client.fetch_calls == 1
+    assert messaging_client.message.calls == []
+    assert "operation=get_access_token provider_error_code=40013" in caplog.text
+    assert "private provider detail" not in caplog.text
+
+
+@pytest.mark.parametrize("operation", ["read_directory", "send_text", "get_access_token"])
+def test_operations_surface_unexpected_failure(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    failure = RuntimeError("unexpected SDK failure")
+    wecom_module = importlib.import_module("core.human_input_v2.im_integration.adapters.wecom")
+    token_client = _TokenClient(_token_response() if operation == "send_text" else failure)
+    messaging_client = _MessagingClient(failure)
+    _install_clients(monkeypatch, token_client, messaging_client)
+    adapter = wecom_module.WeComIMProviderAdapter(_credentials())
+
+    call = (
+        adapter.directory.read_directory
+        if operation == "read_directory"
+        else partial(adapter.messaging.send_text, ProviderUserId("fake-user-001"), "Exact body")
+    )
+    with pytest.raises(RuntimeError) as raised:
+        call()
+
+    assert raised.value is failure
+    assert len(messaging_client.message.calls) == (1 if operation == "send_text" else 0)

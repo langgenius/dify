@@ -522,7 +522,7 @@ def test_im_template_test_logs_safe_send_rejection(
     context.adapter.close.assert_called_once()
     assert "im_provider=slack" in caplog.text
     assert "operation=send_text" in caplog.text
-    assert "provider_error_code=channel_not_found" in caplog.text
+    assert "provider_error_code='channel_not_found'" in caplog.text
     assert "http_status=200" in caplog.text
     assert "private" not in caplog.text
     assert "https://console.example.com/human-input/" not in caplog.text

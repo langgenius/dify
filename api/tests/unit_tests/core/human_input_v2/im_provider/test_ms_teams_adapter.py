@@ -26,6 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.response import HTTPResponse
 
 from core.human_input import ButtonStyle
@@ -872,7 +873,10 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
     assert connector.config.retry_policy.retries == 0
 
 
-def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("error_type", [RequestsConnectionError, RuntimeError])
+def test_text_send_does_not_replay_transport_or_unexpected_failures(
+    mocker: MockerFixture, error_type: type[Exception]
+) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -894,12 +898,16 @@ def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: 
         id="sanitized-conversation",
         service_url="https://smba.trafficmanager.net/teams/",
     )
-    send_to_conversation.side_effect = RuntimeError("sensitive provider response")
+    failure = error_type("sensitive provider response")
+    send_to_conversation.side_effect = failure
 
-    result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
-
-    assert isinstance(result, MessageSendingError)
-    assert "sensitive provider response" not in result.reason
+    if isinstance(failure, RuntimeError):
+        with pytest.raises(RuntimeError) as raised:
+            adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+        assert raised.value is failure
+    else:
+        result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+        assert result == MessageSendingError("Microsoft Teams message acceptance could not be confirmed.")
     create_conversation.assert_called_once()
     send_to_conversation.assert_called_once()
 

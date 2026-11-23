@@ -735,7 +735,7 @@ def test_directory_discards_partial_entries_when_a_later_page_fails() -> None:
         _send_response(filtered=["sanitized-user"]),
         _send_response(flow_controlled=["sanitized-user"]),
         _send_response(invalid=["sanitized-user"]),
-        _ProviderError(status_code=500),
+        TeaException({"code": "InternalError", "data": {"statusCode": 500}}),
     ],
 )
 def test_messaging_requires_complete_acceptance_and_persistable_reference(response: object) -> None:
@@ -1061,7 +1061,9 @@ def test_directory_rejects_missing_or_repeated_pagination_cursor() -> None:
 def test_directory_token_failure_does_not_call_http() -> None:
     http_client = _http_client(lambda _request: pytest.fail("unexpected HTTP call"))
 
-    result = _DingTalkDirectory(_FakeTokenProvider(RuntimeError("fake token detail")), http_client).read_directory()
+    result = _DingTalkDirectory(
+        _FakeTokenProvider(TeaException({"code": "TokenRejected"})), http_client
+    ).read_directory()
 
     assert result == DirectoryReadFailure("DingTalk directory could not be read completely.")
 
@@ -1250,7 +1252,7 @@ def test_messaging_rejects_malformed_or_partial_sdk_responses_once(response: obj
 
 
 def test_messaging_token_failure_performs_no_mutation() -> None:
-    token_provider = _FakeTokenProvider(RuntimeError("fake token failure"))
+    token_provider = _FakeTokenProvider(TeaException({"code": "TokenRejected"}))
     robot = _FakeRobotClient()
 
     result = _DingTalkMessaging("fake-client-id-001", token_provider, robot).send_text(

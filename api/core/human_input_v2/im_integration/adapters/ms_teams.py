@@ -18,7 +18,12 @@ from urllib.parse import quote, urlsplit
 from uuid import UUID
 
 import httpx
-from azure.core.exceptions import ClientAuthenticationError, ServiceRequestTimeoutError, ServiceResponseTimeoutError
+from azure.core.exceptions import (
+    ClientAuthenticationError,
+    DeserializationError,
+    ServiceRequestTimeoutError,
+    ServiceResponseTimeoutError,
+)
 from azure.core.pipeline import PipelineResponse
 from azure.core.pipeline.transport import HttpResponse as AzureLegacyHttpResponse
 from azure.core.rest import HttpRequest as AzureHttpRequest
@@ -40,14 +45,15 @@ from botframework.connector.auth import (
     MicrosoftAppCredentials,
     SimpleCredentialProvider,
 )
-from msrest.exceptions import HttpOperationError
+from msrest.exceptions import ClientRequestError, HttpOperationError, TokenExpiredError
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
 from requests import Response as RequestsResponse
+from requests.exceptions import RequestException as RequestsRequestError
 from requests.exceptions import Timeout as RequestsTimeout
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_rejection
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import MSTeamsCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -685,7 +691,7 @@ class _MSTeamsMessaging(IMMessaging):
             response = error.response
             envelope = error.error
             detail = envelope.error if isinstance(envelope, ErrorResponse) else None
-            log_send_rejection(
+            log_provider_rejection(
                 logger,
                 IMProvider.MS_TEAMS,
                 f"{operation}.{stage}",
@@ -693,8 +699,13 @@ class _MSTeamsMessaging(IMMessaging):
                 http_status=response.status_code if isinstance(response, RequestsResponse) else None,
             )
             return failure
-        except Exception:
-            _log_safe_error("Unexpected Microsoft Teams message creation failure")
+        except PermissionError as error:
+            if not str(error).startswith(_BOT_TOKEN_REJECTION_PREFIX):
+                raise
+            _log_safe_error("Microsoft Teams Connector credentials were rejected")
+            return failure
+        except (ClientRequestError, RequestsRequestError, TokenExpiredError, DeserializationError):
+            _log_safe_error("Microsoft Teams Connector request failed")
             return failure
 
 

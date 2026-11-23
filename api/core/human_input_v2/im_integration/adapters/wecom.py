@@ -11,13 +11,14 @@ from typing import Annotated, Literal, Protocol, override
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr, ValidationError, field_validator
 from requests import Response as RequestsResponse
+from requests.exceptions import RequestException as RequestsRequestError
 from requests.exceptions import Timeout as RequestsTimeout
 from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
-from core.human_input_v2.im_integration.adapters.avatar import read_avatars
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_rejection
+from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -280,6 +281,30 @@ class _SDKAccessTokenProvider(AccessTokenProvider):
         return _fetch_access_token(_new_client(self._credentials))
 
 
+def _log_api_rejection(error: WeChatClientException, operation: str) -> None:
+    """Log the WeCom SDK error code and HTTP status for an API rejection."""
+    upstream = error.response
+    code = error.errcode
+    log_provider_rejection(
+        logger,
+        IMProvider.WE_COM,
+        operation,
+        provider_error_code=code if type(code) is int else None,
+        http_status=upstream.status_code if isinstance(upstream, (RequestsResponse, httpx.Response)) else None,
+    )
+
+
+def _try_get_access_token(token_provider: AccessTokenProvider) -> str | None:
+    """Get a token for either capability, or return None on an expected API failure."""
+    try:
+        return token_provider.get()
+    except WeChatClientException as error:
+        _log_api_rejection(error, "get_access_token")
+        return None
+    except (httpx.HTTPError, RequestsRequestError, JSONDecodeError, ValidationError):
+        return None
+
+
 class _WeComDirectory(IMDirectory):
     def __init__(
         self,
@@ -291,15 +316,20 @@ class _WeComDirectory(IMDirectory):
 
     @override
     def read_directory(self) -> Directory | DirectoryReadFailure:
+        """Return a complete directory or a safe failure for expected WeCom errors."""
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
+            return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
         try:
-            return self._read_complete_directory()
-        # Provider SDKs may surface transport and decoding failures through
-        # different exception classes. Directory never exposes partial state.
-        except Exception:
+            return self._read_complete_directory(access_token)
+        except WeChatClientException as error:
+            _log_api_rejection(error, "read_directory")
+            return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
+        except (RequestsRequestError, ValidationError, _DirectoryBoundaryError, AvatarReadError):
             return DirectoryReadFailure(_DIRECTORY_READ_FAILED)
 
-    def _read_complete_directory(self) -> Directory:
-        access_token = self._token_provider.get()
+    def _read_complete_directory(self, access_token: str) -> Directory:
+        """Read the entire agent scope with an acquired token or propagate its failure."""
         client = _new_client(self._credentials, access_token=access_token)
         scope = _AgentResponse.model_validate(client.agent.get(int(self._credentials.agent_id)))
         if scope.agentid != int(self._credentials.agent_id):
@@ -367,11 +397,10 @@ class _WeComMessaging(IMMessaging):
         failure = MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
         if subject is not None:
             body = f"{subject}\n\n{body}"
-        try:
-            access_token = self._token_provider.get()
-            client = _new_client(self._credentials, access_token=access_token)
-        except Exception:
+        access_token = _try_get_access_token(self._token_provider)
+        if access_token is None:
             return failure
+        client = _new_client(self._credentials, access_token=access_token)
         try:
             response = _MessageSendResponse.model_validate(
                 client.message.send_text(
@@ -380,37 +409,27 @@ class _WeComMessaging(IMMessaging):
                     body,
                 )
             )
-            if any(
-                _optional_non_blank(invalid_target) is not None
-                for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
-            ):
-                return failure
-            if not response.msgid.strip():
-                return failure
-            return MessageAccepted(
-                MessageLocator(
-                    _WeComLocatorPayload(
-                        v=1,
-                        p=IMProvider.WE_COM,
-                        message_id=response.msgid,
-                    ).encode()
-                )
-            )
         except WeChatClientException as error:
-            upstream = error.response
-            code = error.errcode
-            log_send_rejection(
-                logger,
-                IMProvider.WE_COM,
-                "send_text",
-                provider_error_code=code if type(code) is int else None,
-                http_status=upstream.status_code if isinstance(upstream, RequestsResponse) else None,
+            _log_api_rejection(error, "send_text")
+            return failure
+        except (RequestsRequestError, ValidationError):
+            return failure
+        if any(
+            _optional_non_blank(invalid_target) is not None
+            for invalid_target in (response.invaliduser, response.invalidparty, response.invalidtag)
+        ):
+            return failure
+        if not response.msgid.strip():
+            return failure
+        return MessageAccepted(
+            MessageLocator(
+                _WeComLocatorPayload(
+                    v=1,
+                    p=IMProvider.WE_COM,
+                    message_id=response.msgid,
+                ).encode()
             )
-            return failure
-        # One mutation attempt is the maximum; every SDK/transport/response
-        # failure is normalized without replay or Provider material.
-        except Exception:
-            return failure
+        )
 
 
 class WeComIMProviderAdapter:

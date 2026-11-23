@@ -46,7 +46,7 @@ from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._send_logging import log_send_rejection
+from core.human_input_v2.im_integration.adapters._provider_logging import log_provider_rejection
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 from core.human_input_v2.im_integration.adapters.entities import (
@@ -102,6 +102,7 @@ from core.human_input_v2.resolved_form import (
 logger = logging.getLogger(__name__)
 # The Web SDK can log raw response bodies, including on JSON decoding errors.
 _WEB_SDK_LOGGER = logging.Logger(f"{__name__}.web_sdk", level=logging.CRITICAL + 1)
+_SDK_NON_JSON_ERROR_PREFIX = "Received a response in a non-JSON format: "
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = None) -> None:
@@ -753,7 +754,9 @@ class _SlackDirectory(IMDirectory):
                     return Directory(tuple(entries))
                 seen_cursors.add(next_cursor)
                 cursor = next_cursor
-        except (SlackClientError, AvatarReadError):
+        except (SlackClientError, AvatarReadError) as error:
+            if isinstance(error, SlackApiError):
+                _log_api_rejection(error, "read_directory")
             return DirectoryReadFailure("Slack directory could not be read completely.")
 
     @staticmethod
@@ -797,11 +800,14 @@ class _SlackDirectory(IMDirectory):
         return _SlackDirectoryPagination(next_cursor or None)
 
 
-def _log_send_rejection(error: SlackApiError, operation: str) -> None:
-    """Log a failed post with only its Slack error identifier and HTTP status."""
+def _log_api_rejection(error: SlackApiError, operation: str) -> None:
+    """Log the Slack API error code and status for a directory or send request."""
     # SlackResponse.get raises on binary responses. The status is still usable.
     code = _slack_error_code(error) if isinstance(error.response.data, Mapping) else None
-    log_send_rejection(
+    # On JSON decode failure the SDK substitutes its own message containing the raw body.
+    if code is not None and code.startswith(_SDK_NON_JSON_ERROR_PREFIX):
+        code = None
+    log_provider_rejection(
         logger,
         IMProvider.SLACK,
         operation,
@@ -835,7 +841,7 @@ class _SlackMessaging(IMMessaging):
                 )
         except SlackClientError as error:
             if isinstance(error, SlackApiError):
-                _log_send_rejection(error, "send_text")
+                _log_api_rejection(error, "send_text")
             return MessageSendingError("Slack message acceptance could not be confirmed.")
         return _accepted_message(response)
 
@@ -881,7 +887,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
             )
         except SlackClientError as error:
             if isinstance(error, SlackApiError):
-                _log_send_rejection(error, "send_card")
+                _log_api_rejection(error, "send_card")
             return MessageSendingError("Slack card acceptance could not be confirmed.")
         return _accepted_message(response)
 

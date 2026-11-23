@@ -570,7 +570,7 @@ def test_real_connector_sends_h1_subject_and_body_with_extended_markdown(
         ("create", "BotNotInConversationRoster", 403, "BotNotInConversationRoster"),
         ("send", "BadArgument", 400, "BadArgument"),
         ("send", None, 429, None),
-        ("send", "Bearer private-response-token", 403, None),
+        ("send", "Connector.Policy/Rejected-v2", 403, "Connector.Policy/Rejected-v2"),
     ],
 )
 def test_real_connector_logs_safe_send_rejection_without_replay(
@@ -603,7 +603,7 @@ def test_real_connector_logs_safe_send_rejection_without_replay(
     provider_operation = "send_to_conversation" if stage == "send" else "create_conversation"
     assert "im_provider=ms_teams" in caplog.text
     assert f"operation={operation}.{provider_operation}" in caplog.text
-    assert f"provider_error_code={logged_code}" in caplog.text
+    assert f"provider_error_code={logged_code!r}" in caplog.text
     assert f"http_status={http_status}" in caplog.text
     assert "private" not in caplog.text
 
