@@ -77,15 +77,11 @@ How we prioritize:
 
 ### AI-assisted contributions
 
-AI tools are welcome. The problem is not the tool, but work the author cannot stand behind. Reviewing a pull request or triaging an issue takes maintainer time, so every submission should be worth more to the project than it costs to review.
+AI tools are welcome, but you are responsible for understanding and verifying every change you submit. Describe the problem, your solution, and actual test results in your own words.
 
-- **Own your change.** Understand every line you submit and be able to explain it without the AI. Run the relevant tests yourself before asking for review.
-- **Write in your own words.** Describe the problem, your solution, and the actual test commands and results yourself. Do not paste raw model output into issues, pull requests, or review replies.
-- **Disclose AI use.** If AI tools did a meaningful part of the work, say so in the PR description and name the tool.
-- **Keep the queue small.** Contributors without write access may have at most **3 open non-draft pull requests** at a time. Finish or close one before opening another. Draft pull requests do not count.
-- **Verify before reporting.** Only open issues for problems you have reproduced or confirmed. Search for existing issues and pull requests first, and do not file one issue per AI finding.
+Contributors without write access may have at most **3 open non-draft pull requests** at a time. Draft pull requests do not count.
 
-We close submissions that do not follow these rules without detailed review, including bulk or scripted issues and pull requests. Accounts that repeatedly ignore them may be blocked from the repository.
+Unreviewed or repetitive low-quality submissions may be closed, and accounts that repeatedly submit them may be blocked from the repository.
 
 ### Setup the project
 
