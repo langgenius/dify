@@ -19,6 +19,7 @@ from core.evaluation.entities.judgment_entity import (
     JudgmentConfig,
     JudgmentResult,
 )
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from graphon.utils.condition.processor import _evaluate_condition  # pyright: ignore[reportPrivateUsage]
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,10 @@ class JudgmentProcessor:
           1. Extract ``(node_id, metric_name)`` from ``variable_selector``.
           2. Look up the metric value from ``metric_values``.
           3. Delegate comparison to the workflow condition engine.
+
+        Precondition: condition has a validated selector and comparison operator.
+        Postcondition: the result captures pass/fail with only public error text;
+        unexpected comparison exceptions remain in server logs.
         """
         selector = condition.variable_selector
         if len(selector) < 2:
@@ -141,12 +146,14 @@ class JudgmentProcessor:
                 actual_value=actual_value,
                 passed=passed,
             )
-        except Exception as e:
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.JUDGMENT_FAILED)
             logger.warning(
-                "Judgment condition evaluation failed for [%s, %s]: %s",
+                "Judgment condition evaluation failed for [%s, %s] (error_id=%s)",
                 node_id,
                 metric_name,
-                str(e),
+                failure.error_id,
+                exc_info=True,
             )
             return JudgmentConditionResult(
                 variable_selector=selector,
@@ -154,5 +161,5 @@ class JudgmentProcessor:
                 expected_value=condition.value,
                 actual_value=actual_value,
                 passed=False,
-                error=str(e),
+                error=failure.text,
             )

@@ -499,17 +499,17 @@ class TestFeatureService:
             # CLOUD-only: the Console education endpoints 404 on every other edition.
             assert result.education.enabled is False
 
-            # Verify default limitations
+            # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 1
+            assert result.members.limit == 0
             assert result.apps.size == 0
-            assert result.apps.limit == 10
+            assert result.apps.limit == 0
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == 5
+            assert result.vector_space.limit == -1
             assert result.documents_upload_quota.size == 0
-            assert result.documents_upload_quota.limit == 50
+            assert result.documents_upload_quota.limit == 0
             assert result.annotation_quota_limit.size == 0
-            assert result.annotation_quota_limit.limit == 10
+            assert result.annotation_quota_limit.limit == 0
 
             # Verify no enterprise features
             assert result.workspace_members.enabled is False
@@ -588,13 +588,13 @@ class TestFeatureService:
             assert result.model_load_balancing_enabled is False
             assert result.education.enabled is False
 
-            # Verify default limitations
+            # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 1
+            assert result.members.limit == 0
             assert result.apps.size == 0
-            assert result.apps.limit == 10
+            assert result.apps.limit == 0
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == 5
+            assert result.vector_space.limit == -1
 
             # Verify mock interactions
             mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_called_once_with(

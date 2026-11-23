@@ -5,13 +5,13 @@ import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
 } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
+import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { consoleClient } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
 import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'

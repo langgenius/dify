@@ -31,7 +31,7 @@ type MultiSelectFieldProps = {
 
 const LoadingIndicator = () => (
   <RiLoader4Line
-    className="mr-1 size-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none"
+    className="me-1 size-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none"
     aria-hidden="true"
   />
 )
@@ -47,7 +47,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   value,
 }) => {
   const textClassName = cn(
-    'block truncate text-left system-sm-regular',
+    'block truncate text-start system-sm-regular',
     isLoading
       ? 'text-components-input-text-placeholder'
       : value.length > 0
@@ -84,7 +84,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
                   <DifySelectItem
                     key={item.value}
                     value={item.value}
-                    className="h-auto py-2 pr-9 pl-3"
+                    className="h-auto py-2 ps-3 pe-9"
                   >
                     <div className="flex min-w-0 items-center">
                       {item.icon && (
@@ -93,7 +93,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
                           alt=""
                           width={16}
                           height={16}
-                          className="mr-2 size-4 shrink-0"
+                          className="me-2 size-4 shrink-0"
                         />
                       )}
                       <SelectItemText>{item.name}</SelectItemText>

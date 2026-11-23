@@ -42,11 +42,11 @@ function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
               'h-7 max-w-32 justify-start text-text-tertiary focus-visible:ring-inset',
               !selectedTagsLength && 'size-7 min-h-0 justify-center p-0',
               !!selectedTagsLength &&
-                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-7 pl-1 shadow-xs shadow-shadow-shadow-3',
+                'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 ps-1 pe-7 shadow-xs shadow-shadow-shadow-3',
               !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 pl-0.5')}>
+            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 ps-0.5')}>
               <span
                 aria-hidden
                 className={cn(
@@ -82,7 +82,7 @@ function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
             ns: 'pluginTags',
             tags: triggerLabel,
           })}
-          className="absolute right-0.5 focus-visible:ring-inset"
+          className="absolute inset-e-0.5 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
             onTagsChange([])

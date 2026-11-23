@@ -668,6 +668,8 @@ export type EvaluationRunResponse = {
   dataset_file_id?: string | null
   error?: string | null
   evaluation_config_id: string
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
   failed_items: number
   id: string
   metrics_summary?: {

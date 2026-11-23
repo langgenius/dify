@@ -32,7 +32,7 @@ export const StepOnePreview = memo(
   }: StepOnePreviewProps) => {
     return (
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pt-2 pl-2">
+        <div className="flex h-full flex-col ps-2 pt-2">
           {currentLocalFile && (
             <FilePreview file={currentLocalFile} hidePreview={hidePreviewLocalFile} />
           )}
@@ -87,7 +87,7 @@ export const StepTwoPreview = memo(
   }: StepTwoPreviewProps) => {
     return (
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pt-2 pl-2">
+        <div className="flex h-full flex-col ps-2 pt-2">
           <ChunkPreview
             dataSourceType={datasourceType as DatasourceType}
             localFiles={localFileList.map((file) => file.file)}

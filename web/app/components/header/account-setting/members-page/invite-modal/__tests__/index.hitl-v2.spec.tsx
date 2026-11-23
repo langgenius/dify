@@ -33,6 +33,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': fetchFeatures,
       'workspaces.current.rbac.roles.get': fetchRoles,
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.inviteEmail.post': (input: unknown) =>
         validate({
           context: {},
@@ -90,13 +91,13 @@ describe('InviteModal', () => {
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
     seedCurrentWorkspaceQuery(queryClient)
-    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD', is_email_setup: isEmailSetup })
     const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
     fetchFeatures.mockResolvedValue(features)
 
     const result = render(
       <QueryClientTestProvider queryClient={queryClient}>
-        <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
+        <InviteModal onSend={onSend} />
       </QueryClientTestProvider>,
     )
     if (open) {

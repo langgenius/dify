@@ -159,9 +159,14 @@ vp test watch --project unit path/to/spec
 
 # Diagnostic coverage report for the unit project; not an acceptance target
 vp test run --project unit --coverage path/to/spec-or-directory
+
+# Only tests affected by this branch and uncommitted changes; repeat for browser
+vp test run --project unit --changed=origin/main
 ```
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
+
+[`--changed`][Vitest changed] diffs from the merge base with the given ref, includes staged, unstaged, and untracked files, and selects tests that import the changed files. Bare `--changed` checks only uncommitted changes. Changes to setup files, Vite config, `package.json`, or the files in `forceRerunTriggers` in `web/vite.config.ts` run the whole project. When a spec reads a file from disk instead of importing it, add that file to `forceRerunTriggers`; avoid `?raw` imports of source files, which drop them from coverage. Fetch `origin/main` first so the merge base is current. Pull request CI runs the unit and browser projects the same way against the base branch without coverage; the merge queue runs both full projects with coverage.
 
 ## References
 
@@ -191,6 +196,7 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 [Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
 [Vitest Browser Mode traces]: https://vitest.dev/guide/browser/trace-view
 [Vitest Interactivity API]: https://vitest.dev/api/browser/interactivity
+[Vitest changed]: https://vitest.dev/config/changed
 [Vitest documentation]: https://vitest.dev/guide
 [Vitest test projects]: https://vitest.dev/guide/projects
 [Why Browser Mode]: https://vitest.dev/guide/browser/why

@@ -205,8 +205,14 @@ def test_list_comments_resolves_accounts_and_participants(
     assert summary.resolved_by_account.name == "Resolver"
     assert summary.reply_count == 2
     assert summary.mention_count == 2
-    # Creator, repliers, then mentioned users, each once; accounts that no longer exist are skipped.
+    assert [participant.id for participant in summary.participants] == [OWNER_ID, USER_3_ID]
+
+    _persist(sqlite_session, WorkflowCommentReply(comment_id=comment.id, content="thanks", created_by=USER_4_ID))
+
+    [summary] = repository.list_comments(workspace_id=TENANT_ID, app_id=APP_ID)
     assert [participant.id for participant in summary.participants] == [OWNER_ID, USER_3_ID, USER_4_ID]
+    assert summary.reply_count == 3
+    assert summary.mention_count == 2
 
 
 def test_list_comments_is_empty_for_an_app_without_comments(repository: WorkflowCommentRepository) -> None:

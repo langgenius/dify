@@ -554,7 +554,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {staticSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
@@ -588,7 +588,7 @@ const FormInputItem: FC<Props> = ({
           <SelectContent>
             {dynamicSelectItems.map((item) => (
               <SelectItem key={item.value} value={item.value}>
-                {item.icon && <img src={item.icon} alt="" className="mr-2 size-4 shrink-0" />}
+                {item.icon && <img src={item.icon} alt="" className="me-2 size-4 shrink-0" />}
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
