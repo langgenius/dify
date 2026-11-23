@@ -433,16 +433,4 @@ export {
   CoachmarkSpotlight,
   CoachmarkTitle,
 }
-export type {
-  CoachmarkArrowProps,
-  CoachmarkChangeEventDetails,
-  CoachmarkChangeEventReason,
-  CoachmarkCloseProps,
-  CoachmarkModal,
-  CoachmarkPopupProps,
-  CoachmarkPortalProps,
-  CoachmarkPositionerProps,
-  CoachmarkProps,
-  CoachmarkSide,
-  CoachmarkSpotlightProps,
-}
+export type { CoachmarkModal, CoachmarkProps, CoachmarkSide }

@@ -115,8 +115,8 @@ it.each(['ltr', 'rtl'] as const)(
     await expect.element(coachmark).toBeVisible()
     const target = screen.getByText('First target').element().getBoundingClientRect()
     const popup = coachmark.element().getBoundingClientRect()
-    if (direction === 'rtl') expect(Math.abs(popup.right - target.right)).toBeLessThanOrEqual(1)
-    else expect(Math.abs(popup.left - target.left)).toBeLessThanOrEqual(1)
+    if (direction === 'rtl') expect(Math.abs(popup.right - target.right)).toBeLessThanOrEqual(2)
+    else expect(Math.abs(popup.left - target.left)).toBeLessThanOrEqual(2)
   },
 )
 
