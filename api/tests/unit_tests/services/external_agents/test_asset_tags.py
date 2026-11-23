@@ -27,7 +27,7 @@ domain = fixtures.domain
 control = fixtures.control
 
 
-def label(control: ControlPlane, name: str, *, kind: TagKind = TagKind.AGENT) -> str:
+def label(control: ControlPlane, name: str, *, kind: TagKind = "agent") -> str:
     return (
         TagRepository(control.database[1])
         .create_tag(control.context.active_workspace_id, control.context.account_id, CreateTagInput(name, kind))
@@ -37,7 +37,7 @@ def label(control: ControlPlane, name: str, *, kind: TagKind = TagKind.AGENT) ->
 
 def bind(control: ControlPlane, target: str, *tag_ids: str) -> None:
     TagRepository(control.database[1]).create_bindings(
-        control.context.active_workspace_id, control.context.account_id, TagBindingInput(tag_ids, target, TagKind.AGENT)
+        control.context.active_workspace_id, control.context.account_id, TagBindingInput(tag_ids, target, "agent")
     )
 
 
@@ -84,7 +84,7 @@ def test_native_and_disabled_external_share_one_pool_without_mutating_asset_stat
     assert [asdict(tag) for tag in listed.items[0].tags] == [{"id": tag_id, "name": "Shared", "type": "agent"}]
     repository.update_tag(control.context.active_workspace_id, tag_id, UpdateTagInput("Renamed"))
     assert control.assets.detail(control.context, external)["asset"]["tags"][0]["name"] == "Renamed"
-    repository.delete_bindings(control.context.active_workspace_id, TagBindingInput((tag_id,), external, TagKind.AGENT))
+    repository.delete_bindings(control.context.active_workspace_id, TagBindingInput((tag_id,), external, "agent"))
     assert repository.list_tags(control.context.active_workspace_id, "agent", None)[0].binding_count == 1
     assert page(control, tag_id).items == ()
     repository.delete_tag(control.context.active_workspace_id, tag_id)
@@ -98,7 +98,7 @@ def test_all_tag_filters_precede_status_counts_visibility_and_pagination(control
         control.create(metadata={"name": "Tagged disabled"}).resource_id,
         control.create(metadata={"name": "Only one"}).resource_id,
     )
-    a, b, studio = label(control, "A"), label(control, "B"), label(control, "Studio", kind=TagKind.APP)
+    a, b, studio = label(control, "A"), label(control, "B"), label(control, "Studio", kind="app")
     bind(control, first, a, b)
     bind(control, second, a, b)
     bind(control, third, a)
@@ -163,7 +163,7 @@ def test_external_binding_rejects_unavailable_targets_without_writes(control: Co
         bind(control, external, tag_id)
     with pytest.raises(TagBindingTargetNotFoundError):
         TagRepository(control.database[1]).delete_bindings(
-            control.context.active_workspace_id, TagBindingInput((tag_id,), external, TagKind.AGENT)
+            control.context.active_workspace_id, TagBindingInput((tag_id,), external, "agent")
         )
     with control.database[1]() as session:
         assert session.scalar(select(TagBinding.id)) is None
