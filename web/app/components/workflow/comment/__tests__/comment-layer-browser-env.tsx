@@ -1,6 +1,7 @@
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../../__tests__/workflow-browser-test-env'
 import { WorkflowCommentLayer } from '../workflow-comment-layer'
@@ -19,7 +20,7 @@ export async function renderLayer({
   }).queryClient,
 } = {}) {
   await page.viewport(1200, 800)
-  seedMentionableUsers(queryClient, [])
+  seedMentionableUsers(queryClient, [], TEST_APP_ID)
   const screen = await render(
     <DirectionProvider direction={direction}>
       <div
@@ -34,7 +35,7 @@ export async function renderLayer({
     </DirectionProvider>,
     {
       queryClient,
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
+      resource: { kind: 'app', appId: TEST_APP_ID, mode: 'workflow', collaborationEnabled: true },
       initialStoreState: { showUserComments: true, showResolvedComments: !hideResolved },
     },
   )
