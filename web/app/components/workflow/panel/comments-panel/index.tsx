@@ -88,10 +88,10 @@ const CommentsPanel = () => {
     resolveComment.mutate({ params: { app_id: appId, comment_id: comment.id } })
   }
 
-  const hasActiveFilter = showOnlyMine || !showResolvedComments
+  const hasActiveFilter = showOnlyMine || showResolvedComments
 
   return (
-    <div className="relative flex h-full w-105 flex-col overflow-hidden rounded-s-2xl border border-components-panel-border bg-chatbot-bg shadow-xl">
+    <div className="relative flex h-full w-105 flex-col overflow-hidden rounded-s-2xl border border-components-panel-border bg-chatbot-bg shadow-xl backdrop-blur-[5px]">
       <div className="flex shrink-0 items-center gap-2 border-b-[0.5px] border-divider-regular bg-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
         <div className="min-w-0 grow truncate system-xl-semibold text-text-primary">
           {t(($) => $['comments.panelTitle'], { ns: 'workflowComments' })}
