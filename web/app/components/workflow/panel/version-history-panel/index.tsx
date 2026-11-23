@@ -317,8 +317,20 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const handleDelete = useCallback(
     async (id: string) => {
       try {
-        // The generated delete mutation refreshes the version list.
+        // The generated delete mutation drops the version from the list and refreshes it.
         await deleteWorkflow(id)
+        // A deleted version can no longer be previewed or restored: go back to the draft.
+        if (currentVersion?.id === id) {
+          const draft = versionHistory?.pages
+            .flatMap((page) => page.items)
+            .find((item) => item.version === WorkflowVersion.Draft)
+          if (draft) {
+            handleVersionClick(draft)
+          } else {
+            workflowStore.setState({ currentVersion: null })
+            handleLoadBackupDraft()
+          }
+        }
         deleteAllInspectVars()
         invalidAllLastRun()
       } catch (error) {
@@ -330,7 +342,17 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         setDeleteConfirmOpen(false)
       }
     },
-    [deleteWorkflow, t, deleteAllInspectVars, invalidAllLastRun],
+    [
+      deleteWorkflow,
+      t,
+      deleteAllInspectVars,
+      invalidAllLastRun,
+      currentVersion?.id,
+      versionHistory?.pages,
+      handleVersionClick,
+      workflowStore,
+      handleLoadBackupDraft,
+    ],
   )
 
   const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })

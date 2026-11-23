@@ -22,7 +22,7 @@ import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-q
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { useUpdateWorkflow } from '../use-workflow'
+import { useDeleteWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
@@ -589,6 +589,54 @@ describe('useUpdateWorkflow', () => {
       queryClient.getQueryData<ListEnvironmentDeploymentsResponse>(deploymentsQuery.queryKey),
     ).toEqual({ environment_deployments: [deployment] })
   })
+})
+
+describe('generated workflow version deletion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRequest.mockImplementation(async () => new Response(null, { status: 204 }))
+  })
+
+  it.each([
+    {
+      resource: {
+        kind: 'app',
+        collaborationEnabled: false,
+        appId: 'owner',
+        mode: 'workflow',
+      } satisfies EditorResource,
+    },
+    { resource: { kind: 'knowledge-pipeline', pipelineId: 'owner' } satisfies EditorResource },
+    { resource: { kind: 'snippet', snippetId: 'owner' } satisfies EditorResource },
+  ])(
+    'drops the deleted $resource.kind version from cached lists right away',
+    async ({ resource }) => {
+      const queryClient = createQueryClient()
+      const historyKey = workflowVersionHistoryInfiniteOptions(resource, { limit: 10 }).queryKey
+      queryClient.setQueryData(historyKey, {
+        pages: [
+          {
+            items: [createWorkflow({ id: 'workflow-1' }), createWorkflow({ id: 'workflow-2' })],
+            has_more: false,
+            limit: 10,
+            page: 1,
+          },
+        ],
+        pageParams: [1],
+      })
+      const { result } = renderHook(() => useDeleteWorkflow(resource), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await act(async () => {
+        await result.current('workflow-1')
+      })
+
+      expect(
+        queryClient.getQueryData(historyKey)?.pages[0]?.items.map((workflow) => workflow.id),
+      ).toEqual(['workflow-2'])
+    },
+  )
 })
 
 describe('restoreWorkflowMutationOptions', () => {

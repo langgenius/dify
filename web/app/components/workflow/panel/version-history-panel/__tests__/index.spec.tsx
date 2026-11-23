@@ -319,6 +319,26 @@ describe('VersionHistoryPanel', () => {
     }
   })
 
+  it('returns to the draft and drops the version when the previewed version is deleted', async () => {
+    const user = userEvent.setup()
+    const { VersionHistoryPanel } = await import('../index')
+    render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
+    await user.click(await screen.findByRole('button', { name: 'v1.0' }))
+    await waitFor(() =>
+      expect(renderedStore.getState().currentVersion?.id).toBe('published-version-id'),
+    )
+    // Even when the list refresh after the delete fails, the deleted version must not come back.
+    mockFetchVersions.mockRejectedValue(new Error('refresh failed'))
+
+    await selectAction(/operation\.delete/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() =>
+      expect(renderedStore.getState().currentVersion?.id).toBe('draft-version-id'),
+    )
+    await waitFor(() => expect(screen.queryByText('v1.0')).not.toBeInTheDocument())
+  })
+
   it('should keep restore mode backup state when restore request fails', async () => {
     const user = userEvent.setup()
     const { VersionHistoryPanel } = await import('../index')

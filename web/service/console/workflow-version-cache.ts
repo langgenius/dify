@@ -170,3 +170,26 @@ export function syncWorkflowDeploymentCaches(
 
   return environmentDeploymentsQuery.queryKey
 }
+
+// Drops a deleted version from every cached page set under `queryKey` right away, so it cannot be
+// acted on again while (or if) the list refresh after the delete fails.
+export function removeWorkflowVersionFromPages(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+  workflowId: string,
+) {
+  queryClient.setQueriesData<InfiniteData<{ items: Array<{ id: string }> }>>(
+    { queryKey },
+    (data) => {
+      if (!data) return data
+      let changed = false
+      const pages = data.pages.map((page) => {
+        const items = page.items.filter((workflow) => workflow.id !== workflowId)
+        if (items.length === page.items.length) return page
+        changed = true
+        return { ...page, items }
+      })
+      return changed ? { ...data, pages } : data
+    },
+  )
+}

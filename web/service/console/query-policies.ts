@@ -31,6 +31,7 @@ import {
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
+  removeWorkflowVersionFromPages,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
@@ -354,9 +355,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    // Refresh the version list in the background so callers can close their UI as soon as the
-                    // version is deleted.
+                    // Drop the version from cached lists now and refresh them in the background, so callers can
+                    // close their UI as soon as the version is deleted.
                     onSuccess: (_data, variables, _result, context) => {
+                      removeWorkflowVersionFromPages(
+                        context.client,
+                        consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                          type: 'infinite',
+                          input: { params: { pipeline_id: variables.params.pipeline_id } },
+                        }),
+                        variables.params.workflow_id,
+                      )
                       void context.client.invalidateQueries({
                         queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
@@ -1743,9 +1752,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  // Refresh the version list in the background so callers can close their UI as soon as the
-                  // version is deleted.
+                  // Drop the version from cached lists now and refresh them in the background, so callers can
+                  // close their UI as soon as the version is deleted.
                   onSuccess: (_data, variables, _result, context) => {
+                    removeWorkflowVersionFromPages(
+                      context.client,
+                      consoleQuery.apps.byAppId.workflows.get.key({
+                        type: 'infinite',
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                      variables.params.workflow_id,
+                    )
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                         input: { params: { app_id: variables.params.app_id } },
@@ -2500,9 +2517,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  // Refresh the version list in the background so callers can close their UI as soon as the
-                  // version is deleted.
+                  // Drop the version from cached lists now and refresh them in the background, so callers can
+                  // close their UI as soon as the version is deleted.
                   onSuccess: (_data, variables, _result, context) => {
+                    removeWorkflowVersionFromPages(
+                      context.client,
+                      consoleQuery.snippets.bySnippetId.workflows.get.key({
+                        type: 'infinite',
+                        input: { params: { snippet_id: variables.params.snippet_id } },
+                      }),
+                      variables.params.workflow_id,
+                    )
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                         input: { params: { snippet_id: variables.params.snippet_id } },
