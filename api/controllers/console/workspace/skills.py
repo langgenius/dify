@@ -22,7 +22,6 @@ from controllers.console.wraps import (
     edit_permission_required,
     validate_request,
 )
-
 from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
