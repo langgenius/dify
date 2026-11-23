@@ -809,6 +809,7 @@ describe('response bodies and cancellation', () => {
 })
 
 describe('request shapes the Python API rejects', () => {
+  const groupBody = { name: 'Office', allowed_cidrs: ['10.0.0.0/8'] }
   const groupsUrl = 'http://localhost:5001/console/api/workspaces/current/network-access-groups'
   const groupsApi = () =>
     installFakeApi({
@@ -835,6 +836,43 @@ describe('request shapes the Python API rejects', () => {
     await expect(fake()).rejects.toThrow(
       /workspaces\.current\.networkAccessGroups\.post: sent a application\/x-www-form-urlencoded body, but the API reads this body as JSON/,
     )
+  })
+
+  it.each([
+    ['without a Content-Type', new Blob([JSON.stringify(groupBody)]), /without a Content-Type/],
+    ['as text/json', new Blob([JSON.stringify(groupBody)], { type: 'text/json' }), /as text\/json/],
+  ])(
+    'fails the test when a JSON body is sent %s, which the API ignores',
+    async (_, body, sentAs) => {
+      const fake = groupsApi()
+      const response = await fetch(groupsUrl, { method: 'POST', body })
+
+      expect(response.status).toBe(415)
+      expect(fake.console.workspaces.current.networkAccessGroups.post).not.toHaveBeenCalled()
+      await expect(fake()).rejects.toThrow(
+        new RegExp(
+          `workspaces\\.current\\.networkAccessGroups\\.post: sent a body ${sentAs.source}; the API reads only application/json`,
+        ),
+      )
+    },
+  )
+
+  it('reads application/*+json bodies as JSON, as Flask does', async () => {
+    const fake = groupsApi()
+    const response = await fetch(groupsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/merge-patch+json; charset=utf-8' },
+      body: JSON.stringify(groupBody),
+    })
+
+    expect(response.status).toBe(201)
+    expect(
+      fake.console.workspaces.current.networkAccessGroups.post,
+    ).toHaveBeenCalledExactlyOnceWith({
+      // The handler gets the validated body, with its defaults filled in.
+      body: { ...groupBody, description: '' },
+    })
+    await expect(fake()).resolves.toBeUndefined()
   })
 
   it('fails the test on a trailing slash the API routes do not declare', async () => {

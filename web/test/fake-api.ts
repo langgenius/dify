@@ -327,6 +327,16 @@ async function buildConsoleRouter(leaves: Array<[string[], AnyHandler]>) {
   return implementLeaves(contracts, leaves)
 }
 
+// Flask's `request.is_json`: the API reads a body as JSON only under these media types, and
+// `get_json(silent=True)` treats any other body as absent.
+const isJsonMediaType = (contentType: string | undefined) => {
+  const mediaType = contentType?.split(';')[0]!.trim().toLowerCase() ?? ''
+  return (
+    mediaType === 'application/json' ||
+    (mediaType.startsWith('application/') && mediaType.endsWith('+json'))
+  )
+}
+
 const isFormBody = (contentType: string | undefined) =>
   Boolean(
     contentType &&
@@ -367,6 +377,22 @@ function createContractHandler(router: Record<string, unknown>, report: (problem
         if (isFormBody(requestContext.contentType) && !acceptsFormBody(procedure)) {
           report(
             `${options.path.join('.')}: sent a ${requestContext.contentType?.split(';')[0]} body, but the API reads this body as JSON`,
+          )
+          throw new ORPCError('UNSUPPORTED_MEDIA_TYPE', {
+            status: 415,
+            message: 'The API reads this request body as JSON',
+          })
+        }
+        if (
+          requestContext.bodySent &&
+          !isFormBody(requestContext.contentType) &&
+          !isJsonMediaType(requestContext.contentType)
+        ) {
+          const sentAs = requestContext.contentType
+            ? `as ${requestContext.contentType.split(';')[0]}`
+            : 'without a Content-Type'
+          report(
+            `${options.path.join('.')}: sent a body ${sentAs}; the API reads only application/json (or application/*+json) bodies and would ignore it`,
           )
           throw new ORPCError('UNSUPPORTED_MEDIA_TYPE', {
             status: 415,
@@ -494,6 +520,8 @@ type RequestContext = {
   decoded?: boolean
   /** The JSON body exactly as sent, so schema coercion never changes its types. */
   jsonBody?: { value: unknown }
+  /** Whether the request carried a body at all, whatever its media type. */
+  bodySent?: boolean
   /** The request's `Content-Type`, checked against what the procedure's body accepts. */
   contentType?: string
   flight?: Flight
@@ -702,15 +730,18 @@ function abortable(request: Request, dispatch: Dispatch) {
   })
 }
 
-async function readJsonBody(request: Request): Promise<RequestContext['jsonBody']> {
-  if (!(request.headers.get('content-type') ?? '').includes('json')) return undefined
+async function readJsonBody(
+  request: Request,
+): Promise<Pick<RequestContext, 'jsonBody' | 'bodySent'>> {
+  if (request.method === 'GET' || request.method === 'HEAD') return { bodySent: false }
   const text = await request.clone().text()
-  if (!text) return undefined
+  if (!text) return { bodySent: false }
+  if (!isJsonMediaType(request.headers.get('content-type') ?? undefined)) return { bodySent: true }
   try {
-    return { value: JSON.parse(text) }
+    return { bodySent: true, jsonBody: { value: JSON.parse(text) } }
   } catch {
     // oRPC reports the undecodable body; leave its decoding untouched.
-    return undefined
+    return { bodySent: true }
   }
 }
 
@@ -730,7 +761,7 @@ async function readBody(request: Request): Promise<DecodedBody> {
   }
   const text = await copy.text()
   if (!text) return { ok: true, value: undefined }
-  if (!type.includes('json')) return { ok: true, value: text }
+  if (!isJsonMediaType(type)) return { ok: true, value: text }
   try {
     return { ok: true, value: JSON.parse(text) }
   } catch (error) {
@@ -844,7 +875,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
     }
     if (base === 'console' && leavesOf('console').length) {
       const context: RequestContext = {
-        jsonBody: await readJsonBody(request),
+        ...(await readJsonBody(request)),
         contentType: request.headers.get('content-type') ?? undefined,
         flight,
       }
@@ -859,7 +890,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
     }
     if (base === 'marketplace' && leavesOf('marketplace').length) {
       const context: RequestContext = {
-        jsonBody: await readJsonBody(request),
+        ...(await readJsonBody(request)),
         contentType: request.headers.get('content-type') ?? undefined,
         flight,
       }
