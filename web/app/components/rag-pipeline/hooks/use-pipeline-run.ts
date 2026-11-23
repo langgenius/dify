@@ -19,7 +19,7 @@ import {
   toEnvironmentVariables,
   toGraphEdges,
   toGraphNodes,
-  toViewport,
+  toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -300,7 +300,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         data: { ...node.data, selected: false },
       }))
       const edges = toGraphEdges(publishedWorkflow.graph)
-      const viewport = toViewport(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,

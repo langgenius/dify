@@ -7,7 +7,8 @@ import type {
   EnvironmentVariableValue,
   Node,
 } from '@/app/components/workflow/types'
-import { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { TransferMethod } from '@/types/app'
+import { Resolution, TtsAutoPlay } from '@/types/app'
 
 // Versions, published workflows and templates store graph, features and variable values as
 // free-form JSON. These helpers narrow that JSON to what the editor can load, dropping anything
@@ -46,12 +47,12 @@ const getStrings = (record: Record<string, unknown>, key: string) => {
     : undefined
 }
 
-// Keep the nodes and edges React Flow can place.
+// Nodes without a position are kept: `initialNodes` lays them out when the canvas loads.
 const isGraphNode = (value: unknown): value is Node =>
-  isRecord(value) &&
-  typeof value.id === 'string' &&
-  isRecord(value.data) &&
-  isRecord(value.position)
+  isRecord(value) && typeof value.id === 'string' && isRecord(value.data)
+
+const isPlacedGraphNode = (value: unknown): value is Node =>
+  isGraphNode(value) && isRecord(value.position)
 
 const isGraphEdge = (value: unknown): value is Edge =>
   isRecord(value) && typeof value.source === 'string' && typeof value.target === 'string'
@@ -59,17 +60,25 @@ const isGraphEdge = (value: unknown): value is Edge =>
 export const toGraphNodes = (graph: Record<string, unknown>) =>
   Array.isArray(graph.nodes) ? graph.nodes.filter(isGraphNode) : []
 
+// For read-only previews that render nodes where they were saved, without a layout pass.
+export const toPlacedGraphNodes = (graph: Record<string, unknown>) =>
+  Array.isArray(graph.nodes) ? graph.nodes.filter(isPlacedGraphNode) : []
+
 export const toGraphEdges = (graph: Record<string, unknown>) =>
   Array.isArray(graph.edges) ? graph.edges.filter(isGraphEdge) : []
 
-export const toViewport = (graph: Record<string, unknown>): Viewport => {
-  const viewport = getRecord(graph, 'viewport') ?? {}
-  return {
-    x: getNumber(viewport, 'x') ?? 0,
-    y: getNumber(viewport, 'y') ?? 0,
-    zoom: getNumber(viewport, 'zoom') ?? 1,
-  }
+// The saved viewport, or undefined so the canvas keeps the current pan and zoom.
+export const toStoredViewport = (graph: Record<string, unknown>): Viewport | undefined => {
+  const viewport = getRecord(graph, 'viewport')
+  if (!viewport) return undefined
+  const x = getNumber(viewport, 'x')
+  const y = getNumber(viewport, 'y')
+  const zoom = getNumber(viewport, 'zoom')
+  return x === undefined || y === undefined || zoom === undefined ? undefined : { x, y, zoom }
 }
+
+export const toViewport = (graph: Record<string, unknown>): Viewport =>
+  toStoredViewport(graph) ?? { x: 0, y: 0, zoom: 1 }
 
 const ENVIRONMENT_VARIABLE_TYPES = {
   string: 'string',
@@ -129,8 +138,16 @@ const toModelSelection = (
   }
 }
 
+const TRANSFER_METHODS = {
+  all: 'all',
+  local_file: 'local_file',
+  remote_url: 'remote_url',
+  datasource_file: 'datasource_file',
+  tool_file: 'tool_file',
+} satisfies Record<TransferMethod, TransferMethod>
+
 const toTransferMethods = (record: Record<string, unknown>, key: string) =>
-  getStrings(record, key)?.filter((method) => isOneOf(TransferMethod, method))
+  getStrings(record, key)?.filter((method) => isOneOf(TRANSFER_METHODS, method))
 
 const toFileTypeUpload = (upload: Record<string, unknown> | undefined) =>
   upload && {

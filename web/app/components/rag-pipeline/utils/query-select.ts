@@ -30,7 +30,7 @@ import {
   isOneOf,
   isRecord,
   toGraphEdges,
-  toGraphNodes,
+  toPlacedGraphNodes,
   toViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { ChunkingMode } from '@/models/datasets'
@@ -88,14 +88,14 @@ export const selectPipelineTemplate = (
   icon_info: toIconInfo(template.icon_info),
   chunk_structure: toChunkingMode(template.chunk_structure),
   graph: {
-    nodes: toGraphNodes(template.graph),
+    nodes: toPlacedGraphNodes(template.graph),
     edges: toGraphEdges(template.graph),
     viewport: toViewport(template.graph),
   },
 })
 
 export const selectPublishedPipelineNodes = (workflow: RagPipelinePublishedWorkflowResponse) =>
-  workflow ? toGraphNodes(workflow.graph) : []
+  workflow ? toPlacedGraphNodes(workflow.graph) : []
 
 const toDefaultValue = (value: unknown) =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'

@@ -290,6 +290,50 @@ describe('useUpdateWorkflow', () => {
     })
   })
 
+  it('should keep gateway-added environments on the cached version after updating it', async () => {
+    const queryClient = createQueryClient()
+    const editorHistoryKey = workflowVersionHistoryInfiniteOptions(
+      { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+      { limit: 10 },
+    ).queryKey
+    const environments = [{ id: 'env-1', name: 'Production' }]
+    // The gateway adds `environments` on top of the contract shape.
+    const deployedVersion = {
+      ...createWorkflow({ id: 'workflow-1', marked_name: 'Old' }),
+      environments,
+    }
+    queryClient.setQueryData(editorHistoryKey, {
+      pages: [
+        {
+          items: [deployedVersion],
+          has_more: false,
+          limit: 10,
+          page: 1,
+        },
+      ],
+      pageParams: [1],
+    })
+    mockWorkflowResponse.mockResolvedValue(
+      createWorkflow({ id: 'workflow-1', marked_name: 'Release 1' }),
+    )
+    const { result } = renderHook(() => useUpdateWorkflow(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        resource: { kind: 'app', appId: 'app-1' },
+        versionId: 'workflow-1',
+        title: 'Release 1',
+        releaseNotes: '',
+      })
+    })
+
+    expect(queryClient.getQueryData(editorHistoryKey)?.pages[0]?.items[0]).toEqual(
+      expect.objectContaining({ id: 'workflow-1', marked_name: 'Release 1', environments }),
+    )
+  })
+
   it('should synchronize every cached app deployment reference to the updated workflow version', async () => {
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')

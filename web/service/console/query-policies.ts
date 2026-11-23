@@ -354,12 +354,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSuccess: (_data, variables, _result, context) =>
-                      context.client.invalidateQueries({
+                    // Refresh the version list in the background so callers can close their UI as soon as the
+                    // version is deleted.
+                    onSuccess: (_data, variables, _result, context) => {
+                      void context.client.invalidateQueries({
                         queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
-                      }),
+                      })
+                    },
                   },
                 },
               },
@@ -1740,12 +1743,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Refresh the version list in the background so callers can close their UI as soon as the
+                  // version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                         input: { params: { app_id: variables.params.app_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },
@@ -2494,12 +2500,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Refresh the version list in the background so callers can close their UI as soon as the
+                  // version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.invalidateQueries({
                       queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },

@@ -78,7 +78,9 @@ function syncWorkflowVersionPages(
 
       changed = true
       pageChanged = true
-      return updatedWorkflow
+      // Merge so fields the list response carries beyond the PATCH response survive, such as
+      // the `environments` the enterprise gateway adds to the app version list.
+      return { ...workflow, ...updatedWorkflow }
     })
 
     return pageChanged ? { ...page, items } : page

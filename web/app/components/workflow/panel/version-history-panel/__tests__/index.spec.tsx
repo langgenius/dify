@@ -300,6 +300,8 @@ describe('VersionHistoryPanel', () => {
     const { VersionHistoryPanel } = await import('../index')
     render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
     await selectAction(/operation\.delete/)
+    // The list refresh after a delete never settles, so the dialog must not wait for it.
+    if (!failed) mockFetchVersions.mockImplementationOnce(() => new Promise(() => {}))
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     await waitFor(() =>
       expect(mockDeleteWorkflow).toHaveBeenCalledWith({
@@ -312,8 +314,8 @@ describe('VersionHistoryPanel', () => {
       expect(mockFetchVersions).toHaveBeenCalledOnce()
     } else {
       expect(mockToast.error).not.toHaveBeenCalled()
-      // A successful delete refreshes the version list.
-      await waitFor(() => expect(mockFetchVersions.mock.calls.length).toBeGreaterThan(1))
+      // A successful delete refreshes the loaded page once, without a second reset fetch.
+      expect(mockFetchVersions).toHaveBeenCalledTimes(2)
     }
   })
 

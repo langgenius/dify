@@ -15,7 +15,7 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import {
   toGraphEdges,
   toGraphNodes,
-  toViewport,
+  toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -304,7 +304,7 @@ export const useSnippetRun = () => {
         data: { ...node.data, selected: false },
       }))
       const edges = toGraphEdges(publishedWorkflow.graph)
-      const viewport = toViewport(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,

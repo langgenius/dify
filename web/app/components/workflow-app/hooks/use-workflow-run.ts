@@ -25,7 +25,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   toEnvironmentVariables,
   toGraphEdges,
-  toViewport,
+  toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
@@ -548,13 +548,20 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     (publishedWorkflow: WorkflowVersionListItem) => {
       const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
       const edges = toGraphEdges(publishedWorkflow.graph)
-      const viewport = toViewport(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
         viewport,
       })
-      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      const features = mapPublishedWorkflowFeatures(publishedWorkflow)
+      // Upload limits come from the server's current upload config, not the saved version.
+      const { fileUploadConfig } = workflowStore.getState()
+      featuresStore?.setState({
+        features: features.file
+          ? { ...features, file: { ...features.file, fileUploadConfig } }
+          : features,
+      })
       workflowStore
         .getState()
         .setEnvironmentVariables(toEnvironmentVariables(publishedWorkflow.environment_variables))

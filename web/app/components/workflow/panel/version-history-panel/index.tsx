@@ -317,8 +317,8 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const handleDelete = useCallback(
     async (id: string) => {
       try {
+        // The generated delete mutation refreshes the version list.
         await deleteWorkflow(id)
-        resetWorkflowVersionHistory()
         deleteAllInspectVars()
         invalidAllLastRun()
       } catch (error) {
@@ -330,7 +330,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         setDeleteConfirmOpen(false)
       }
     },
-    [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun],
+    [deleteWorkflow, t, deleteAllInspectVars, invalidAllLastRun],
   )
 
   const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })

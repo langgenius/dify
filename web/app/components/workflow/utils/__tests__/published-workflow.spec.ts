@@ -3,12 +3,14 @@ import {
   toFeaturesData,
   toGraphEdges,
   toGraphNodes,
+  toPlacedGraphNodes,
+  toStoredViewport,
   toViewport,
 } from '../published-workflow'
 
 describe('published workflow narrowing', () => {
   describe('graph', () => {
-    it('keeps nodes and edges React Flow can place and drops malformed ones', () => {
+    it('keeps nodes and edges the canvas can load and drops malformed ones', () => {
       const node = {
         id: 'start',
         type: 'custom',
@@ -16,12 +18,15 @@ describe('published workflow narrowing', () => {
         data: { title: 'Start' },
       }
       const edge = { id: 'start-end', source: 'start', target: 'end' }
+      // Snapshots without coordinates are laid out when the canvas loads, so they are kept.
+      const unplaced = { id: 'no-position', data: {} }
       const graph = {
-        nodes: [node, { id: 'no-position', data: {} }, 'not-a-node'],
+        nodes: [node, unplaced, { id: 'no-data' }, 'not-a-node'],
         edges: [edge, { id: 'no-target', source: 'start' }],
       }
 
-      expect(toGraphNodes(graph)).toEqual([node])
+      expect(toGraphNodes(graph)).toEqual([node, unplaced])
+      expect(toPlacedGraphNodes(graph)).toEqual([node])
       expect(toGraphEdges(graph)).toEqual([edge])
     })
 
@@ -38,6 +43,16 @@ describe('published workflow narrowing', () => {
       })
       expect(toViewport({ viewport: { x: '10' } })).toEqual({ x: 0, y: 0, zoom: 1 })
       expect(toViewport({})).toEqual({ x: 0, y: 0, zoom: 1 })
+    })
+
+    it('returns no viewport when none is saved so the canvas keeps its current one', () => {
+      expect(toStoredViewport({ viewport: { x: 10, y: -5, zoom: 0.5 } })).toEqual({
+        x: 10,
+        y: -5,
+        zoom: 0.5,
+      })
+      expect(toStoredViewport({ viewport: { x: 10, y: -5 } })).toBeUndefined()
+      expect(toStoredViewport({})).toBeUndefined()
     })
   })
 
@@ -108,7 +123,7 @@ describe('published workflow narrowing', () => {
             },
             allowed_file_types: ['image'],
             allowed_file_extensions: ['.png'],
-            allowed_file_upload_methods: ['remote_url', 'ftp'],
+            allowed_file_upload_methods: ['remote_url', 'datasource_file', 'tool_file', 'ftp'],
             number_limits: 5,
           },
         }),
@@ -137,7 +152,7 @@ describe('published workflow narrowing', () => {
           }),
           allowed_file_types: ['image'],
           allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: ['remote_url'],
+          allowed_file_upload_methods: ['remote_url', 'datasource_file', 'tool_file'],
           number_limits: 5,
         }),
       })

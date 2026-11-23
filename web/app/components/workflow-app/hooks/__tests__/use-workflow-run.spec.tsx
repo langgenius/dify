@@ -38,6 +38,7 @@ import {
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { useWorkflowRun } from '../use-workflow-run'
 
@@ -515,6 +516,9 @@ it.each([
       },
       environment_variables: variables,
     })
+    // The saved version carries no upload config; restoring keeps the server's current limits.
+    const uploadConfig = createFileUploadConfigFixture({ file_size_limit: 50 })
+    store.getState().setFileUploadConfig(uploadConfig)
     act(() => result.current.run.handleRestoreFromPublishedWorkflow(published))
     expect(canvasUpdate).toHaveBeenCalledWith({
       type: WORKFLOW_DATA_UPDATE,
@@ -534,6 +538,7 @@ it.each([
       opening: { enabled: true, opening_statement: 'Welcome', suggested_questions: ['Help'] },
       suggested: { enabled: true },
     })
+    expect(features.getState().features.file?.fileUploadConfig).toEqual(uploadConfig)
   },
 )
 
