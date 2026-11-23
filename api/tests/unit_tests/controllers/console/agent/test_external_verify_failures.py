@@ -54,6 +54,7 @@ def test_verify_serves_a_documented_stable_reason_without_peer_content_or_a_proo
         assets = ExternalAssetService(
             store=control.store,
             access=control.access,
+            permissions=control.access,
             reference_access=control.access,
             icons=DifyExternalIconURLs(),
             gateway=gateway,

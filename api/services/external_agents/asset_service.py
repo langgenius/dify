@@ -19,6 +19,7 @@ from .contracts import (
     ExternalAgentVerificationFailedError,
     ExternalAsset,
     ExternalAssetAccess,
+    ExternalAssetPermissions,
     ExternalAssetReferences,
     ExternalAssetSortBy,
     ExternalAssetSortOrder,
@@ -100,6 +101,7 @@ class ExternalAssetService:
         *,
         store: ExternalAssetStore,
         access: ExternalAssetAccess,
+        permissions: ExternalAssetPermissions,
         reference_access: ExternalReferenceAccess,
         icons: ExternalIconURLs,
         gateway: GatewayPort,
@@ -110,6 +112,7 @@ class ExternalAssetService:
     ) -> None:
         self._store = store
         self._access = access
+        self._permissions = permissions
         self._reference_access = reference_access
         self._icons = icons
         self._gateway = gateway
@@ -141,7 +144,14 @@ class ExternalAssetService:
         connected_by_me: bool,
         sort_by: ExternalAssetSortBy = ExternalAssetSortBy.UPDATED_AT,
         sort_order: ExternalAssetSortOrder = ExternalAssetSortOrder.DESC,
+        tag_ids: tuple[str, ...] = (),
     ) -> AssetPage:
+        """Read an admitted cohort with every selected Agent tag before counts/pagination.
+
+        Preconditions: transport-normalized UUID tag IDs and a workspace member.
+        Postconditions: existing visibility/search/status semantics are preserved;
+        labels and effective ACLs are projected in batches without asset writes.
+        """
         if self._access.role(context) not in {"owner", "admin", "editor", "normal"}:
             raise ExternalAgentForbiddenError("Workspace membership is required.")
         if page < 1 or not 1 <= limit <= 100:
@@ -159,17 +169,32 @@ class ExternalAssetService:
             reference_app_ids=self._reference_access.reference_list_app_ids(context),
             sort_by=sort_by,
             sort_order=sort_order,
+            tag_ids=tag_ids,
         )
         return replace(result, items=self._present(context, result.items))
 
     def _present(self, context: RequestContext, assets: Sequence[ExternalAsset]) -> tuple[ExternalAsset, ...]:
-        """Refresh signed icons only after one tenant-owned file admission query."""
+        """Project current labels, ACLs and image capabilities for an admitted batch.
+
+        All records already belong to the caller's visible tenant scope. Each
+        projection makes at most one batch lookup; none changes connection,
+        context, Agent timestamps or test-display generations.
+        """
+        if not assets:
+            return ()
+        tags = self._store.tags_for_assets(
+            tenant_id=context.active_workspace_id, agent_ids=tuple(asset.id for asset in assets)
+        )
+        keys = self._permissions.permission_keys(context, assets)
         image_ids = tuple(asset.icon for asset in assets if asset.icon_type == "image" and asset.icon is not None)
         owned = self._store.owned_icon_file_ids(tenant_id=context.active_workspace_id, file_ids=image_ids)
         urls = self._icons.image_urls(tuple(owned))
         return tuple(
             replace(
-                asset, icon_url=urls.get(asset.icon) if asset.icon_type == "image" and asset.icon is not None else None
+                asset,
+                icon_url=urls.get(asset.icon) if asset.icon_type == "image" and asset.icon is not None else None,
+                tags=tags.get(asset.id, ()),
+                permission_keys=keys.get(asset.id, ()),
             )
             for asset in assets
         )

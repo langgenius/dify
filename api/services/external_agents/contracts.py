@@ -135,6 +135,15 @@ class ConnectionRevision:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ExternalAssetTag:
+    """One current label from the shared workspace Agent tag pool."""
+
+    id: str
+    name: str
+    type: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExternalAsset:
     id: str
     tenant_id: str
@@ -159,6 +168,9 @@ class ExternalAsset:
     icon_url: str | None = None
     # Computed on list rows; None withholds App reference details, including for Normal members.
     reference_count: int | None = None
+    # Current classification/ACL projection; neither changes connection or test state.
+    tags: tuple[ExternalAssetTag, ...] = ()
+    permission_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -246,6 +258,19 @@ class ExternalAssetAccess(Protocol):
     def visible_agent_ids(self, context: RequestContext) -> frozenset[str] | None: ...
 
 
+class ExternalAssetPermissions(Protocol):
+    def permission_keys(
+        self, context: RequestContext, assets: Sequence[ExternalAsset]
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Project effective Agent ACLs for an already tenant-scoped visible batch.
+
+        Use the Native Agent permission snapshot and overrides, plus its existing
+        creator bypass only when RBAC is enabled. These keys do not replace the
+        External control-plane's separate role gates. Empty input performs no I/O.
+        """
+        ...
+
+
 class ExternalReferenceAccess(Protocol):
     def reference_list_app_ids(self, context: RequestContext) -> frozenset[str] | None:
         """Return Monitoring's readable App set once for a list; None withholds details."""
@@ -288,7 +313,25 @@ class ExternalAssetStore(Protocol):
         reference_app_ids: frozenset[str] | None,
         sort_by: ExternalAssetSortBy,
         sort_order: ExternalAssetSortOrder,
-    ) -> AssetPage: ...
+        tag_ids: tuple[str, ...] = (),
+    ) -> AssetPage:
+        """Read a visible cohort with all shared Agent tags before count/pagination.
+
+        Empty tags preserve the existing cohort. Search, creator and visibility
+        constrain status counts; status selection does not constrain the two
+        counters. Every supplied tag must exist in this tenant's Agent pool.
+        """
+        ...
+
+    def tags_for_assets(
+        self, *, tenant_id: str, agent_ids: Sequence[str]
+    ) -> Mapping[str, tuple[ExternalAssetTag, ...]]:
+        """Batch-load shared Agent labels for previously admitted asset IDs.
+
+        Scope both tags and bindings by tenant and type=agent. Empty input makes
+        no query. No Agent, connection, context or test revision is changed.
+        """
+        ...
 
     def owned_icon_file_ids(self, *, tenant_id: str, file_ids: Sequence[str]) -> frozenset[str]:
         """Admit ordinary tenant-owned image uploads; temporary BYOA files cannot become icons."""

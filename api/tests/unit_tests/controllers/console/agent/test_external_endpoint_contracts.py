@@ -50,7 +50,9 @@ from models.external_agent import ExternalAgentConnectionRevision, ExternalAgent
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.asset_repository import ExternalAssetRepository
+from repositories.tag_repository import TagRepository
 from services.external_agents.contracts import VerificationEvidence
+from services.tag_application_service import CreateTagInput, TagBindingInput, TagKind
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
@@ -243,6 +245,39 @@ def test_reference_http_contract_returns_latest_app_icons_and_refreshable_image_
     assert isinstance(row["icon_url"], str)
     assert file_id in row["icon_url"]
     assert client.get(path).get_json()["apps"][0]["icon_url"] != row["icon_url"]
+
+
+def test_external_list_http_preserves_repeated_uuid_tags_and_current_labels(endpoint_domain: EndpointDomain) -> None:
+    """Actual HTTP query decoding requires all tags before counters and serializes current labels/ACLs."""
+    app, context, identifier, _, sessions = endpoint_domain
+    tags = TagRepository(sessions)
+    first = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared A", TagKind.AGENT))
+    second = tags.create_tag(context.active_workspace_id, context.account_id, CreateTagInput("Shared B", TagKind.AGENT))
+    tags.create_bindings(
+        context.active_workspace_id, context.account_id, TagBindingInput((first.id,), identifier, TagKind.AGENT)
+    )
+    handler = inspect.unwrap(vars(ExternalAgentsApi)["get"])
+    assert isinstance(handler, AdmittedHandler)
+    app.add_url_rule("/external-agents", view_func=lambda: wire(handler(ExternalAgentsApi(), context)))
+    client = app.test_client()
+    path = f"/external-agents?tag_ids={first.id}&tag_ids={second.id}"
+    missing = client.get(path)
+    assert missing.status_code == 200
+    assert missing.get_json()["total"] == missing.get_json()["enabled_count"] == 0
+    tags.create_bindings(
+        context.active_workspace_id, context.account_id, TagBindingInput((second.id,), identifier, TagKind.AGENT)
+    )
+    matched = client.get(path)
+    assert matched.status_code == 200
+    body = matched.get_json()
+    assert body["total"] == body["enabled_count"] == 1
+    assert body["disabled_count"] == 0
+    assert body["items"][0]["tags"] == [
+        {"id": first.id, "name": "Shared A", "type": "agent"},
+        {"id": second.id, "name": "Shared B", "type": "agent"},
+    ]
+    assert "agent.acl.edit" in body["items"][0]["permission_keys"]
+    assert client.get(f"/external-agents?tag_ids={first.id}&tag_ids={first.id}").get_json()["total"] == 1
 
 
 def test_connection_conflict_reload_exposes_the_current_saver_and_save_time(endpoint_domain: EndpointDomain) -> None:

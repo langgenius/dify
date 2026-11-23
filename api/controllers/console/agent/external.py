@@ -11,7 +11,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
 
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.agent.external_errors import ExternalAgentVerificationHTTPError
 from controllers.console.flask_admission import console_account_admission
@@ -45,6 +50,7 @@ class ExternalAgentListQuery(_Payload):
     connected_by_me: bool = False
     sort_by: ExternalAssetSortBy = ExternalAssetSortBy.UPDATED_AT
     sort_order: ExternalAssetSortOrder = ExternalAssetSortOrder.DESC
+    tag_ids: list[UUID] = Field(default_factory=list, description="Shared Agent tag IDs; every selected tag must match")
 
 
 class ExternalAgentVerifyPayload(_Payload):
@@ -77,6 +83,12 @@ class ExternalAgentSwitchPayload(_Payload):
     enabled: bool
 
 
+class ExternalAgentTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+
+
 class ExternalAgentAssetResponse(ResponseModel):
     id: str
     tenant_id: str
@@ -100,6 +112,12 @@ class ExternalAgentAssetResponse(ResponseModel):
     icon_url: str | None
     reference_count: int | None = Field(
         description="Distinct readable current App references on list rows; null withholds details."
+    )
+    tags: tuple[ExternalAgentTagResponse, ...] = Field(
+        description="Current labels from the shared workspace Agent pool."
+    )
+    permission_keys: tuple[str, ...] = Field(
+        description="Effective Agent resource ACL keys; External control-plane role gates remain independent."
     )
 
 
@@ -190,6 +208,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    ExternalAgentTagResponse,
     ExternalAgentAssetResponse,
     ExternalAgentListResponse,
     ExternalConnectionSaverResponse,
@@ -229,9 +248,18 @@ class ExternalAgentsApi(Resource):
     @console_ns.response(200, "Accessible external assets", console_ns.models[ExternalAgentListResponse.__name__])
     @console_account_admission()
     def get(self, context: RequestContext):
-        query = ExternalAgentListQuery.model_validate(request.args.to_dict(flat=True))
+        """Read admitted assets using repeat-encoded UUID tags before pagination.
+
+        The shared parser preserves every tag_ids value; all selected tags must
+        match. Invalid IDs fail before the service and do not start a task.
+        """
+        query = query_params_from_request(ExternalAgentListQuery, list_fields=("tag_ids",))
         result = external_call(
-            lambda: application_services().external_agents.assets.list(context, **query.model_dump())
+            lambda: application_services().external_agents.assets.list(
+                context,
+                **query.model_dump(exclude={"tag_ids"}),
+                tag_ids=tuple(str(tag_id) for tag_id in query.tag_ids),
+            )
         )
         return dump_response(ExternalAgentListResponse, asdict(result))
 
