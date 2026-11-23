@@ -34,7 +34,7 @@ function TemplateCardFixture({ queryClient }: { queryClient: QueryClient }) {
     <QueryClientProvider client={queryClient}>
       <Button>Before template</Button>
       <div className="w-80">
-        <TemplateCard pipeline={pipeline} type="built-in" showMoreOperations={false} />
+        <TemplateCard pipeline={pipeline} type="built-in" />
       </div>
     </QueryClientProvider>
   )

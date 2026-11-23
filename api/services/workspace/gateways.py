@@ -376,8 +376,8 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
                 resolved[workspace_id] = tenant_plan.plan or CloudPlan.SANDBOX
                 continue
 
-            features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
-            resolved[workspace_id] = features.billing.subscription.plan or CloudPlan.SANDBOX
+            # Workspace payloads keep reporting non-Cloud workspaces as sandbox.
+            resolved[workspace_id] = FeatureService.get_workspace_plan(workspace_id) or CloudPlan.SANDBOX
 
         return resolved
 

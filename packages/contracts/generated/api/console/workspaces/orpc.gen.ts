@@ -1968,16 +1968,20 @@ export const organizationCandidates = {
 }
 
 /**
- * List current Workspace test channels without granting channel management or app execution permissions
+ * List test identifiers for an authenticated workspace member in every edition
+ *
+ * Discovery grants no channel-management or app-execution permissions and
+ * performs no writes or provider I/O. Storage failures propagate normally.
  */
 export const get27 = oc
   .route({
+    description:
+      'Discovery grants no channel-management or app-execution permissions and\nperforms no writes or provider I/O. Storage failures propagate normally.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2TestChannels',
     path: '/workspaces/current/human-input/v2/test-channels',
-    summary:
-      'List current Workspace test channels without granting channel management or app execution permissions',
+    summary: 'List test identifiers for an authenticated workspace member in every edition',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentHumanInputV2TestChannelsResponse)

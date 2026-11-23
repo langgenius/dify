@@ -125,10 +125,10 @@ function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPrevi
     <Tooltip<string>>
       {({ payload }) => (
         <>
-          <div className="absolute top-4 right-4 sm:top-8 sm:right-8">
+          <div className="absolute inset-e-4 top-4 sm:inset-e-8 sm:top-8">
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-2 -right-2 -bottom-6 -left-8 bg-[radial-gradient(ellipse_at_top_right,var(--color-background-overlay-fullscreen)_45%,transparent_75%)]"
+              className="pointer-events-none absolute -inset-s-8 -inset-e-2 -top-2 -bottom-6 bg-[radial-gradient(ellipse_at_top_right,var(--color-background-overlay-fullscreen)_45%,transparent_75%)]"
             />
             <div className="relative flex items-center gap-1">
               <TooltipTrigger
@@ -169,7 +169,7 @@ function DiagramPreviewActions({ ready, zoomBy, reset, exportSvg }: DiagramPrevi
                 role="status"
                 className={
                   copyState === 'error'
-                    ? 'absolute top-full right-0 rounded-md bg-components-panel-bg px-2 py-1 system-xs-regular text-text-destructive'
+                    ? 'absolute inset-e-0 top-full rounded-md bg-components-panel-bg px-2 py-1 system-xs-regular text-text-destructive'
                     : 'sr-only'
                 }
               >

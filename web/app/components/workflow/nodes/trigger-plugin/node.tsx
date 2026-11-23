@@ -50,7 +50,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({ id, data }) => {
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute -top-8 right-3 z-40">
+        <div className="pointer-events-auto absolute inset-e-3 -top-8 z-40">
           <InstallPluginButton
             size="small"
             extraIdentifiers={
@@ -83,7 +83,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({ id, data }) => {
               </div>
               <div
                 title={formatConfigValue(config[key])}
-                className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
               >
                 {(() => {
                   const displayValue = formatConfigValue(config[key])

@@ -96,14 +96,14 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
                 {t(($) => $['batchModal.csvUploadTitle'], { ns: 'appAnnotation' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="inline cursor-pointer border-none bg-transparent p-0 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t(($) => $['batchModal.browse'], { ns: 'appAnnotation' })}
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+            {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
           </div>
         )}
         {file && (
@@ -114,7 +114,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
             )}
           >
             <span aria-hidden className="i-custom-public-files-csv h-8.5 w-8 shrink-0" />
-            <div className="ml-2 flex w-0 grow">
+            <div className="ms-2 flex w-0 grow">
               <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">
                 {file.name.replace(/.csv$/, '')}
               </span>
