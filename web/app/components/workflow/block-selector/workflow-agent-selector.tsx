@@ -2,16 +2,20 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { AgentRosterNodeData } from './types'
 import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { SearchInput } from '@/app/components/base/search-input'
+import { SearchInputClear } from '@/app/components/base/search-input'
+import { useSearchInput } from '@/app/components/base/search-input/use-search-input'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { ExternalAgentOptions } from '@/features/agent-v2/external-agent/workflow-preview/agent-options'
+import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 
@@ -34,30 +38,38 @@ export function WorkflowAgentSelectorContent({
   const appId = useAtomValue(editorAppIdAtom)
   const [source, setSource] = useState<AgentSource>('all')
   const [search, setSearch] = useState('')
+  const { inputProps, canClear, clearProps } = useSearchInput({
+    value: search,
+    onValueChange: setSearch,
+  })
   const keyword = useDebounce(search.trim(), { wait: 300 })
-  const agentsQuery = useQuery({
-    ...consoleQuery.agent.inviteOptions.get.queryOptions({
-      input: {
+  const [tagIds, setTagIds] = useState<string[]>([])
+  const tagPortalRef = useRef<HTMLDivElement>(null)
+  const showExternal =
+    Boolean(onSelectExternal) && (source === 'external' || (source === 'all' && !tagIds.length))
+  const agentsQuery = useInfiniteQuery(
+    consoleQuery.agent.inviteOptions.get.infiniteOptions({
+      input: (page: number) => ({
         query: {
           limit: 8,
-          page: 1,
+          page,
           ...(appId ? { app_id: appId } : {}),
           ...(keyword ? { keyword } : {}),
+          ...(tagIds.length ? { tag_ids: tagIds } : {}),
         },
-      },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      enabled: source !== 'external',
+      gcTime: 0,
+      staleTime: 0,
     }),
-    enabled: source !== 'external',
-    staleTime: 0,
-    placeholderData: keepPreviousData,
-  })
-  const difyAgents = source === 'external' ? [] : (agentsQuery.data?.data ?? [])
+  )
+  const difyAgents =
+    source === 'external' ? [] : (agentsQuery.data?.pages.flatMap((page) => page.data) ?? [])
   const isLoading = source !== 'external' && agentsQuery.isPending
   const hasDifyError = source !== 'external' && agentsQuery.isError
-  const isEmpty =
-    !isLoading &&
-    !hasDifyError &&
-    difyAgents.length === 0 &&
-    (source === 'dify' || !onSelectExternal)
+  const isEmpty = !isLoading && !hasDifyError && difyAgents.length === 0 && !showExternal
   const sources: AgentSource[] = onSelectExternal ? ['all', 'dify', 'external'] : ['all', 'dify']
 
   const selectDifyAgent = (agent: AgentInviteOptionResponse) => {
@@ -77,12 +89,41 @@ export function WorkflowAgentSelectorContent({
   return (
     <>
       <div className="p-2">
-        <SearchInput
-          value={search}
-          onValueChange={setSearch}
-          aria-label={t(($) => $['roster.searchLabel'])}
-          placeholder={t(($) => $['roster.nodeSelector.searchAgentsPlaceholder'])}
-        />
+        <InputGroup>
+          <InputGroupInput
+            {...inputProps}
+            name="query"
+            autoComplete="off"
+            enterKeyHint="search"
+            aria-label={t(($) => $['roster.searchLabel'])}
+            placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'])}
+          />
+          <InputGroupAddon className="ps-1.75 pe-1.25">
+            <span
+              aria-hidden
+              className="i-ri-search-line size-4 text-components-input-text-placeholder"
+            />
+          </InputGroupAddon>
+          <InputGroupAddon align="inline-end" className="gap-1 ps-0.75 pe-0.5">
+            {canClear && (
+              <SearchInputClear
+                {...clearProps}
+                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+              />
+            )}
+            {source !== 'external' && (
+              <>
+                <Separator decorative orientation="vertical" className="h-3.5" />
+                <CompactTagFilter
+                  type="agent"
+                  value={tagIds}
+                  onChange={setTagIds}
+                  container={tagPortalRef}
+                />
+              </>
+            )}
+          </InputGroupAddon>
+        </InputGroup>
       </div>
       <Tabs
         value={source}
@@ -153,7 +194,18 @@ export function WorkflowAgentSelectorContent({
                       </span>
                     </Button>
                   ))}
-                {source !== 'dify' && onSelectExternal && (
+                {source !== 'external' && agentsQuery.hasNextPage && (
+                  <Button
+                    variant="ghost"
+                    disabled={agentsQuery.isFetching}
+                    onClick={() => void agentsQuery.fetchNextPage()}
+                  >
+                    {agentsQuery.isFetchingNextPage
+                      ? t(($) => $.loading, { ns: 'common' })
+                      : t(($) => $['roster.loadMore'])}
+                  </Button>
+                )}
+                {showExternal && onSelectExternal && (
                   <ExternalAgentOptions
                     keyword={keyword}
                     onSelect={async (agent) => {
@@ -164,7 +216,7 @@ export function WorkflowAgentSelectorContent({
                 )}
                 {isEmpty && (
                   <p role="status" className="px-3 py-2 system-sm-regular text-text-tertiary">
-                    {search.trim()
+                    {search.trim() || tagIds.length
                       ? t(($) => $['roster.emptySearch'])
                       : t(($) => $['roster.empty'])}
                   </p>
@@ -200,6 +252,7 @@ export function WorkflowAgentSelectorContent({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
         </Link>
       </div>
+      <div ref={tagPortalRef} />
     </>
   )
 }

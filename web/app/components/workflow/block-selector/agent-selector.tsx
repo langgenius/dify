@@ -6,8 +6,10 @@ import type { AgentRosterNodeData } from './types'
 import type { ExternalAgentWorkflowPreviewAgent } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { InputGroupAddon } from '@langgenius/dify-ui/input-group'
 import {
   Menu,
+  MenuClear,
   MenuContent,
   MenuFilterProvider,
   MenuInput,
@@ -19,10 +21,11 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { createContext, use, useState } from 'react'
+import { createContext, use, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
@@ -31,6 +34,7 @@ import {
   editorResourceKindAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import { CompactTagFilter } from '@/features/tag-management/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import BlockIcon from '../block-icon'
@@ -77,7 +81,7 @@ export function AgentSelectorMenuContent({
       side={side}
       align={align}
       aria-label={t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-      className="w-60"
+      className="w-80 max-w-(--available-width) not-[[role=menu]]:overflow-visible"
     >
       <AgentSelectorList onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
     </MenuContent>
@@ -93,29 +97,34 @@ function AgentSelectorList({
   const appId = useAtomValue(editorAppIdAtom)
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
-  const agentsQuery = useQuery({
-    ...consoleQuery.agent.inviteOptions.get.queryOptions({
-      input: {
+  const [tagIds, setTagIds] = useState<string[]>([])
+  const tagPortalRef = useRef<HTMLDivElement>(null)
+  const agentsQuery = useInfiniteQuery(
+    consoleQuery.agent.inviteOptions.get.infiniteOptions({
+      input: (page: number) => ({
         query: {
           limit: AGENT_SELECTOR_PAGE_SIZE,
-          page: 1,
+          page,
           ...(appId ? { app_id: appId } : {}),
           ...(keyword ? { keyword } : {}),
+          ...(tagIds.length ? { tag_ids: tagIds } : {}),
         },
-      },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      // Returning to a filter starts on page one, even if more pages were loaded before.
+      gcTime: 0,
+      staleTime: 0,
     }),
-    staleTime: 0,
-    // A new keyword keeps the previous results on screen instead of flashing the skeleton.
-    placeholderData: keepPreviousData,
-  })
-  const agents = agentsQuery.data?.data ?? []
+  )
+  const agents = agentsQuery.data?.pages.flatMap((page) => page.data) ?? []
   const isLoading = agentsQuery.isPending
   const statusText = isLoading
     ? t(($) => $.loading, { ns: 'common' })
     : agentsQuery.isError
       ? t(($) => $['roster.loadingError'], { ns: 'agentRoster' })
       : agents.length === 0
-        ? keyword
+        ? keyword || tagIds.length
           ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
           : t(($) => $['roster.empty'], { ns: 'agentRoster' })
         : null
@@ -130,15 +139,27 @@ function AgentSelectorList({
 
   return (
     <>
-      <MenuInputGroup>
-        <span
-          aria-hidden
-          className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-        />
+      <MenuInputGroup className="mx-2 mt-1 mb-2 min-w-0 gap-0 px-0">
         <MenuInput
           aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
+        <InputGroupAddon className="ps-1.75 pe-1.25">
+          <span
+            aria-hidden
+            className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          />
+        </InputGroupAddon>
+        <InputGroupAddon align="inline-end" className="gap-1 ps-0.75 pe-0.5">
+          <MenuClear />
+          <Separator decorative orientation="vertical" className="h-3.5" />
+          <CompactTagFilter
+            type="agent"
+            value={tagIds}
+            onChange={setTagIds}
+            container={tagPortalRef}
+          />
+        </InputGroupAddon>
       </MenuInputGroup>
       {/* A persistent live region announces reliably. The skeleton already shows loading, so that
           status is announced but not displayed. */}
@@ -151,20 +172,15 @@ function AgentSelectorList({
       >
         {statusText}
       </div>
-      {/* The agents scroll inside the list so the footer actions stay in view. The scroller is kept
-          out of the tab order: the menu owns focus and Tab closes it. */}
+      {/* Only candidates scroll; the search, filters, and footer actions stay in view. */}
       <MenuList className="flex max-h-none flex-col overflow-visible">
         <div
           tabIndex={-1}
-          className={cn(
-            'max-h-54 min-h-0 overflow-y-auto overscroll-contain outline-hidden',
-            agentsQuery.isPlaceholderData && 'opacity-60',
-          )}
+          className="max-h-54 min-h-0 overflow-y-auto overscroll-contain outline-hidden"
         >
           {isLoading ? (
             <AgentSelectorLoadingSkeleton />
           ) : (
-            !agentsQuery.isError &&
             agents.map((agent) => (
               <MenuItem
                 key={agent.id}
@@ -185,6 +201,17 @@ function AgentSelectorList({
                 </span>
               </MenuItem>
             ))
+          )}
+          {agentsQuery.hasNextPage && (
+            <MenuItem
+              closeOnClick={false}
+              disabled={agentsQuery.isFetching}
+              onClick={() => void agentsQuery.fetchNextPage()}
+            >
+              {agentsQuery.isFetchingNextPage
+                ? t(($) => $.loading, { ns: 'common' })
+                : t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
+            </MenuItem>
           )}
         </div>
         <MenuSeparator className="shrink-0" />
@@ -209,6 +236,8 @@ function AgentSelectorList({
           </span>
         </MenuLinkItem>
       </MenuList>
+      {/* Keep the tag popup inside the hover menu, after the items it needs to cover. */}
+      <div ref={tagPortalRef} />
     </>
   )
 }
@@ -296,7 +325,7 @@ export function AgentBlockItem({
       <PopoverContent
         side="right"
         align="start"
-        className="w-92 max-w-[calc(100vw-1rem)] overflow-hidden"
+        className="w-92 max-w-[calc(100vw-1rem)] overflow-visible"
       >
         <PopoverTitle className="sr-only">
           {tAgentRoster(($) => $['roster.nodeSelector.dialogLabel'])}

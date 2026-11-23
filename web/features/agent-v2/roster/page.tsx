@@ -24,7 +24,7 @@ export default function RosterPage() {
 
     const clearedFilters =
       type === 'dify'
-        ? { keyword: null, filter: null, created_by_me: null, sort_by: null }
+        ? { keyword: null, filter: null, tag_ids: null, created_by_me: null, sort_by: null }
         : {
             external_keyword: null,
             external_status: null,

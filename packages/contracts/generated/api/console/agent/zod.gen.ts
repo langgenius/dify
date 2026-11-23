@@ -1522,7 +1522,7 @@ export const zAppDetailSiteResponse = z.object({
  * This leaves room for future non-Dify agent implementations while keeping
  * the current roster/workflow APIs scoped to Dify Agent.
  */
-export const zAgentKind = z.enum(['dify_agent', 'external_a2a'])
+export const zAgentKind = z.enum(['dify_agent'])
 
 /**
  * AgentPublishedReferenceResponse
@@ -1593,6 +1593,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -3956,6 +3957,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**
