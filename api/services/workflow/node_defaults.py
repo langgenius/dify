@@ -8,11 +8,20 @@ from dataclasses import dataclass
 from types import UnionType
 from typing import Any, Final, Union, get_args, get_origin
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic_core import PydanticCustomError
 
-from core.workflow.human_input_adapter import DeliveryChannelConfig
+from core.human_input_v2.entities import DebugChannel
+from core.workflow.human_input_adapter import DeliveryChannelConfig, EmailDeliveryConfig
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input_v2.entities import (
+    HUMAN_INPUT_V2_VERSION,
+    DebugModeConfig,
+    MessageTemplateConfig,
+    RecipientConfig,
+)
+from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HumanInputV2NodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 
@@ -37,14 +46,54 @@ class HumanInputNodeSpec(HumanInputNodeData):
     delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list)
 
 
-# Graphon keeps these node data opaque; Dify parses them with its own model when the node runs.
-_DIFY_NODE_DATA: Final[Mapping[str, type[BaseModel]]] = {
-    BuiltinNodeTypes.HUMAN_INPUT: HumanInputNodeSpec,
+class _HumanInputV2MessageTemplate(MessageTemplateConfig):
+    @field_validator("subject")
+    @classmethod
+    def _require_subject(cls, subject: str) -> str:
+        """Reject blank authoring input without normalizing the saved subject."""
+        if not subject.strip():
+            raise PydanticCustomError("subject_required", "Message subject must not be blank")
+        return subject
+
+    @field_validator("body")
+    @classmethod
+    def _require_request_url(cls, body: str) -> str:
+        """Preserve valid bodies and reject missing or repeated Request URL slots."""
+        if body.count(EmailDeliveryConfig.URL_PLACEHOLDER) != 1:
+            raise PydanticCustomError("request_url_required", "Message body must contain exactly one Request URL")
+        return body
+
+
+class _HumanInputV2DebugMode(DebugModeConfig):
+    @field_validator("channels")
+    @classmethod
+    def _require_enabled_channels(
+        cls, channels: Sequence[DebugChannel], info: ValidationInfo
+    ) -> Sequence[DebugChannel]:
+        """Reject enabled debug drafts without a channel; leave disabled drafts intact."""
+        if info.data.get("enabled") and not channels:
+            raise PydanticCustomError("debug_channel_required", "Enabled debug mode requires at least one channel")
+        return channels
+
+
+class _HumanInputV2NodeSpec(HumanInputV2NodeData):
+    """Validate complete CLI-authored configuration without activating runtime delivery."""
+
+    recipients_spec: list[RecipientConfig] = Field(min_length=1)
+    message_template: _HumanInputV2MessageTemplate
+    debug_mode: _HumanInputV2DebugMode
+
+
+# The v1 runtime parses delivery methods separately; v2 has its own authoring contract.
+_DIFY_NODE_DATA: Final[Mapping[tuple[str, str], type[BaseModel]]] = {
+    (BuiltinNodeTypes.HUMAN_INPUT, "1"): HumanInputNodeSpec,
+    (BuiltinNodeTypes.HUMAN_INPUT, HUMAN_INPUT_V2_VERSION): _HumanInputV2NodeSpec,
 }
 
 
 def node_data_type(node_type: str, node_class: type[Node]) -> type[BaseModel]:
-    return _DIFY_NODE_DATA.get(node_type) or node_class._get_node_data_type()
+    """Return the requested runtime version's authoring schema, preserving legacy contracts."""
+    return _DIFY_NODE_DATA.get((node_type, node_class.version())) or node_class._get_node_data_type()
 
 
 _LEGACY_IF_CASE_ID: Final = "true"
@@ -123,7 +172,10 @@ def editor_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
     normalize = _NORMALIZERS.get(node_type)
     if normalize is not None:
         data = normalize(data)
-    return {**copy.deepcopy(dict(EDITOR_EMPTY.get(node_type, {}))), **data}
+    empty = EDITOR_EMPTY.get(node_type, {})
+    if node_type == BuiltinNodeTypes.HUMAN_INPUT and data.get("version") == HUMAN_INPUT_V2_VERSION:
+        empty = {"user_actions": [], "inputs": []}
+    return {**copy.deepcopy(dict(empty)), **data}
 
 
 def fill_node_data(data: Mapping[str, Any]) -> dict[str, Any]:

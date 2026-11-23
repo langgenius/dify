@@ -7,14 +7,31 @@ from dify_agent.protocol import RunFailureType
 from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendRunFailedError
+from core.app.app_config.entities import (
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+    SensitiveWordAvoidanceEntity,
+)
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
+from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
+from core.app.entities.app_invoke_entities import AppGenerateEntity, CompletionAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
+from core.app.entities.task_entities import ChatbotAppStreamResponse, CompletionAppStreamResponse
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
+from models.enums import InvokeFrom as ModelsInvokeFrom
 from models.model import AppMode, Message
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 def _persist_message(session: Session, *, message_id: str) -> Message:
@@ -37,7 +54,7 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
         status=MessageStatus.NORMAL,
         error=None,
         message_metadata=None,
-        invoke_from=InvokeFrom.WEB_APP,
+        invoke_from=ModelsInvokeFrom.WEB_APP,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id="account-1",
@@ -52,35 +69,55 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
 
 class TestBasedGenerateTaskPipeline:
     @pytest.fixture
-    def pipeline(self):
+    def pipeline(self) -> BasedGenerateTaskPipeline[AppGenerateEntity]:
         app_config = SimpleNamespace(
             tenant_id="tenant-1",
             app_id="app-1",
             sensitive_word_avoidance=None,
         )
-        app_generate_entity = SimpleNamespace(task_id="task-1", app_config=app_config)
+        app_generate_entity = AppGenerateEntity(
+            task_id="task-1",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user-1",
+            stream=True,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
         return BasedGenerateTaskPipeline(
             application_generate_entity=app_generate_entity,
             queue_manager=Mock(),
             stream=True,
         )
 
-    def test_error_to_desc_quota_exceeded(self, pipeline):
+    def test_disabled_output_moderation_does_not_buffer_streams(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
+        pipeline._application_generate_entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="api", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}}
+        )
+        assert pipeline._init_output_moderation() is None
+
+    def test_error_to_desc_quota_exceeded(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
         message = pipeline._error_to_desc(QuotaExceededError())
         assert "quota" in message.lower()
 
-    def test_handle_error_wraps_invoke_authorization(self, pipeline):
+    def test_handle_error_wraps_invoke_authorization(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
         event = QueueErrorEvent(error=InvokeAuthorizationError())
         err = pipeline.handle_error(event=event)
         assert isinstance(err, InvokeAuthorizationError)
         assert str(err) == "Incorrect API key provided"
 
-    def test_handle_error_preserves_invoke_error(self, pipeline):
+    def test_handle_error_preserves_invoke_error(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
         event = QueueErrorEvent(error=InvokeError("bad"))
         err = pipeline.handle_error(event=event)
         assert err is event.error
 
-    def test_handle_error_preserves_agent_backend_run_failed_error(self, pipeline):
+    def test_handle_error_preserves_agent_backend_run_failed_error(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
         event = QueueErrorEvent(
             error=AgentBackendRunFailedError(
                 "run-1",
@@ -97,7 +134,9 @@ class TestBasedGenerateTaskPipeline:
         assert "agent_run_id=run-1" in str(err)
 
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-    def test_handle_error_updates_message_when_found(self, pipeline, sqlite_session: Session):
+    def test_handle_error_updates_message_when_found(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], sqlite_session: Session
+    ) -> None:
         event = QueueErrorEvent(error=ValueError("oops"))
         _persist_message(sqlite_session, message_id="msg-1")
 
@@ -112,7 +151,9 @@ class TestBasedGenerateTaskPipeline:
         assert updated_message.error == "oops"
 
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-    def test_handle_error_returns_err_when_message_missing(self, pipeline, sqlite_session: Session):
+    def test_handle_error_returns_err_when_message_missing(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], sqlite_session: Session
+    ) -> None:
         event = QueueErrorEvent(error=ValueError("oops"))
         _persist_message(sqlite_session, message_id="other-message")
 
@@ -124,19 +165,19 @@ class TestBasedGenerateTaskPipeline:
         assert untouched_message.status == MessageStatus.NORMAL
         assert untouched_message.error is None
 
-    def test_error_to_stream_response_and_ping(self, pipeline):
+    def test_error_to_stream_response_and_ping(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
         error_response = pipeline.error_to_stream_response(ValueError("boom"))
         ping_response = pipeline.ping_stream_response()
 
         assert error_response.task_id == "task-1"
         assert ping_response.task_id == "task-1"
 
-    def test_stream_converter_maps_invoke_rate_limit_error(self):
+    def test_stream_converter_maps_invoke_rate_limit_error(self) -> None:
         data = AppGenerateResponseConverter._error_to_stream_response(InvokeRateLimitError("quota exceeded"))
 
         assert data == {"code": "rate_limit_error", "status": 429, "message": "quota exceeded"}
 
-    def test_stream_converter_maps_agent_backend_run_failed_error(self):
+    def test_stream_converter_maps_agent_backend_run_failed_error(self) -> None:
         data = AppGenerateResponseConverter._error_to_stream_response(
             AgentBackendRunFailedError(
                 "run-1",
@@ -152,7 +193,7 @@ class TestBasedGenerateTaskPipeline:
             "message": "Knowledge retrieval failed (agent_run_id=run-1)",
         }
 
-    def test_stream_converter_maps_agent_run_limit_error(self):
+    def test_stream_converter_maps_agent_run_limit_error(self) -> None:
         data = AppGenerateResponseConverter._error_to_stream_response(
             AgentBackendRunFailedError(
                 "run-1",
@@ -168,24 +209,109 @@ class TestBasedGenerateTaskPipeline:
             "message": "run limit reached (agent_run_id=run-1)",
         }
 
-    def test_handle_output_moderation_when_flagged(self, pipeline):
+    def test_handle_output_moderation_when_flagged(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         handler = Mock()
         handler.moderation_completion.return_value = ("filtered", True)
-        pipeline.output_moderation_handler = handler
+        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
 
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result == "filtered"
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
 
-    def test_handle_output_moderation_when_not_flagged(self, pipeline):
+    def test_handle_output_moderation_when_not_flagged(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         handler = Mock()
         handler.moderation_completion.return_value = ("safe", False)
-        pipeline.output_moderation_handler = handler
+        monkeypatch.setattr(pipeline, "output_moderation_handler", handler)
 
         result = pipeline.handle_output_moderation_when_task_finished("raw")
 
         assert result is None
-        handler.stop_thread.assert_called_once()
+        handler.moderation_completion.assert_called_once_with(completion="raw")
         assert pipeline.output_moderation_handler is None
+
+
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.DEBUGGER, InvokeFrom.WEB_APP])
+@pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize(
+    ("failure", "expected_status"), [("input_rejected", 400), ("output_rejected", 400), ("unavailable", 503)]
+)
+def test_moderation_errors_survive_task_handling_and_response_conversion(
+    sqlite_session: Session, invoke_from: InvokeFrom, app_mode: AppMode, failure: str, expected_status: int
+) -> None:
+    entity = CompletionAppGenerateEntity(
+        task_id="task-1",
+        app_config=EasyUIBasedAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.COMPLETION,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="test-provider", model="test-model"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=make_model_config(provider="test-provider", model="test-model", mode="completion"),
+        inputs={},
+        files=[],
+        user_id="account-1",
+        stream=True,
+        invoke_from=invoke_from,
+    )
+    queue = MessageBasedAppQueueManager(
+        task_id="task-1",
+        user_id="account-1",
+        invoke_from=invoke_from,
+        conversation_id="conversation-1",
+        app_mode=app_mode,
+        message_id="msg-1",
+    )
+    pipeline = BasedGenerateTaskPipeline(application_generate_entity=entity, queue_manager=queue, stream=True)
+    errors = {
+        "input_rejected": ModerationRejectedInvocationError("input", "Model input was rejected by moderation."),
+        "output_rejected": ModerationRejectedInvocationError("output", "Model output was rejected by moderation."),
+        "unavailable": ModerationUnavailableInvocationError(),
+    }
+    error = errors[failure]
+    _persist_message(sqlite_session, message_id="msg-1")
+
+    handled_error = pipeline.handle_error(
+        event=QueueErrorEvent(error=error), session=sqlite_session, message_id="msg-1"
+    )
+
+    assert handled_error is error
+    sqlite_session.flush()
+    sqlite_session.expire_all()
+    message = sqlite_session.get(Message, "msg-1")
+    assert message is not None
+    assert message.status == MessageStatus.ERROR
+    assert message.error == str(error)
+    stream_response = pipeline.error_to_stream_response(handled_error)
+    if app_mode == AppMode.CHAT:
+        response = ChatbotAppStreamResponse(
+            conversation_id="conversation-1", message_id="msg-1", created_at=1, stream_response=stream_response
+        )
+        payloads = list(
+            ChatAppGenerateResponseConverter.convert_stream_full_response(item for item in [response])
+            if invoke_from == InvokeFrom.DEBUGGER
+            else ChatAppGenerateResponseConverter.convert_stream_simple_response(item for item in [response])
+        )
+    else:
+        response = CompletionAppStreamResponse(message_id="msg-1", created_at=1, stream_response=stream_response)
+        payloads = list(
+            CompletionAppGenerateResponseConverter.convert_stream_full_response(item for item in [response])
+            if invoke_from == InvokeFrom.DEBUGGER
+            else CompletionAppGenerateResponseConverter.convert_stream_simple_response(item for item in [response])
+        )
+    assert len(payloads) == 1
+    payload = payloads[0]
+    assert isinstance(payload, dict)
+    assert payload["event"] == "error"
+    assert payload["code"] == error.error_code
+    assert payload["status"] == expected_status
+    assert payload["message"] == str(error)

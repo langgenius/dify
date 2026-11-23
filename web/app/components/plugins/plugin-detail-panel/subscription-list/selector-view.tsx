@@ -30,13 +30,13 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
   return (
     <div className="w-[320px] p-1">
       {subscriptionCount > 0 && (
-        <div className="mr-1.5 ml-7 flex h-8 items-center justify-between">
+        <div className="ms-7 me-1.5 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
             <span id={titleId} className="system-sm-semibold-uppercase text-text-secondary">
               {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipTrigger aria-labelledby={titleId} />
               <InfotipContent aria-labelledby={titleId}>
                 {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
               </InfotipContent>
@@ -50,28 +50,28 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
           <div
             key={subscription.id}
             className={cn(
-              'group flex w-full items-center justify-between rounded-lg p-1 text-left transition-colors',
+              'group flex w-full items-center justify-between rounded-lg p-1 text-start transition-colors',
               'hover:bg-state-base-hover has-[.subscription-delete-btn:hover]:bg-state-destructive-hover!',
               selectedId === subscription.id && 'bg-state-base-hover',
             )}
           >
             <button
               type="button"
-              className="flex flex-1 items-center text-left"
+              className="flex flex-1 items-center text-start"
               onClick={() => onSelect?.(subscription)}
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
                   <span
                     aria-hidden
-                    className="mr-2 i-ri-check-line size-4 shrink-0 text-text-accent"
+                    className="me-2 i-ri-check-line size-4 shrink-0 text-text-accent"
                   />
                 )}
                 <span
                   aria-hidden
                   className={cn(
-                    'mr-1.5 i-ri-webhook-line size-3.5 text-text-secondary',
-                    selectedId !== subscription.id && 'ml-6',
+                    'me-1.5 i-ri-webhook-line size-3.5 text-text-secondary',
+                    selectedId !== subscription.id && 'ms-6',
                   )}
                 />
                 <span className="system-md-regular leading-6 text-text-secondary">

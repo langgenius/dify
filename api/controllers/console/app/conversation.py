@@ -286,3 +286,27 @@ class ChatConversationDetailApi(Resource):
         except ConversationNotExistsError as exc:
             raise ConversationNotFoundHTTPError() from exc
         return "", HTTPStatus.NO_CONTENT
+
+
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/conversations/workspaces/retire")
+class AdvancedChatDebugConversationWorkspacesRetireApi(Resource):
+    @error_responses(AppNotFoundError)
+    @console_ns.doc("retire_advanced_chat_debug_conversation_workspaces")
+    @console_ns.doc(description="Retire the Agent workspaces of the caller's ended Chatflow debug conversations")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Workspaces retired")
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()),),
+    )
+    def post(self, request_context: RequestContext, app_id: UUID) -> tuple[str, HTTPStatus]:
+        try:
+            application_services().conversation_commands.retire_console_debug_agent_workspaces(
+                request_context, str(app_id)
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        return "", HTTPStatus.NO_CONTENT

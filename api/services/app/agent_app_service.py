@@ -9,9 +9,19 @@ from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppDetail,
+    AgentAppListPage,
+    AgentAppNotFoundError,
     AgentReferencingWorkflow,
 )
-from services.entities.app_entities import AppDeletion, UpdateAppParams
+from services.entities.app_entities import (
+    AppCreationSettings,
+    AppDeletion,
+    AppListParams,
+    AppRecord,
+    CreateAppParams,
+    UpdateAppParams,
+)
+from services.rbac.contracts import ResourcePermissionSnapshot
 
 
 class AgentAppReferences(Protocol):
@@ -63,31 +73,33 @@ class AgentApiAccessService:
         return result.access
 
 
-class AgentAppDeletion(Protocol):
-    """Delete a tenant-owned Agent App and publish its post-commit cleanup."""
+class AgentAppDeletionStore(Protocol):
+    """Persist deletion of a tenant-owned Agent App."""
 
     def delete_agent(self, context: RequestContext, agent_id: str) -> AppDeletion:
         """Commit the Agent App deletion or raise AgentAppNotFoundError."""
-        ...
-
-    def deleted(self, context: RequestContext, deleted: AppDeletion) -> None:
-        """Publish cleanup for an already committed deletion."""
         ...
 
 
 class AgentAppDeletionService:
     """Coordinate Agent App deletion and post-commit cleanup."""
 
-    def __init__(self, *, lifecycle: AgentAppDeletion) -> None:
-        self._lifecycle = lifecycle
+    def __init__(
+        self,
+        *,
+        store: AgentAppDeletionStore,
+        notify_deleted: Callable[[RequestContext, AppDeletion], None],
+    ) -> None:
+        self._store = store
+        self._notify_deleted = notify_deleted
 
     def delete(self, context: RequestContext, agent_id: str) -> None:
         """Delete the admitted workspace's Agent App, then publish its cleanup."""
-        deleted = self._lifecycle.delete_agent(context, agent_id)
-        self._lifecycle.deleted(context, deleted)
+        deleted = self._store.delete_agent(context, agent_id)
+        self._notify_deleted(context, deleted)
 
 
-class AgentAppDetailRuntime(Protocol):
+class AgentAppDetailStore(Protocol):
     """Materialize Agent runtime details and commit changes in bounded transactions."""
 
     def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail: ...
@@ -97,8 +109,6 @@ class AgentAppDetailRuntime(Protocol):
     ) -> tuple[str, int]: ...
 
     def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str: ...
-
-    def agent_updated(self, context: RequestContext, app_id: str) -> None: ...
 
 
 class AgentAppDetailPresentation(Protocol):
@@ -110,22 +120,111 @@ class AgentAppDetailPresentation(Protocol):
 class AgentAppDetailService:
     """Coordinate Agent App updates, external metadata and editor Build conversations."""
 
-    def __init__(self, *, runtime: AgentAppDetailRuntime, presentation: AgentAppDetailPresentation) -> None:
-        self._runtime = runtime
+    def __init__(
+        self,
+        *,
+        store: AgentAppDetailStore,
+        presentation: AgentAppDetailPresentation,
+        notify_updated: Callable[[str, str], None],
+    ) -> None:
+        self._store = store
         self._presentation = presentation
+        self._notify_updated = notify_updated
 
     def get(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
         """Return a detached detail for an admitted Agent and ensure its Build conversation exists."""
-        detail = self._runtime.get_agent_detail(context, agent_id)
+        detail = self._store.get_agent_detail(context, agent_id)
         detail = self._presentation.present(context, detail)
-        conversation_id, count = self._runtime.get_agent_build_conversation(context, agent_id, app_id=detail.app.id)
+        conversation_id, count = self._store.get_agent_build_conversation(context, agent_id, app_id=detail.app.id)
         return replace(detail, debug_conversation_id=conversation_id, debug_conversation_message_count=count)
 
     def update(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> AgentAppDetail:
         """Commit an Agent App update, send its update event, and return the current detail."""
-        app_id = self._runtime.update_agent(context, agent_id, params)
-        self._runtime.agent_updated(context, app_id)
+        app_id = self._store.update_agent(context, agent_id, params)
+        self._notify_updated(context.active_workspace_id, app_id)
         return self.get(context, agent_id)
+
+
+class AgentAppCollectionStore(Protocol):
+    """Read Agent App pages and persist new Apps with their backing Agents."""
+
+    def list_apps(
+        self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
+    ) -> AgentAppListPage:
+        """Return a tenant-scoped page after committing its per-account Build conversations.
+
+        The adapter enforces one editor mapping per Agent, account and draft surface
+        with a unique key. A failure rolls back the page's conversation changes.
+        """
+        ...
+
+    def create_agent_app(
+        self,
+        context: RequestContext,
+        params: CreateAppParams,
+        settings: AppCreationSettings,
+        *,
+        default_model: tuple[str, str] | None,
+    ) -> AppRecord:
+        """Commit the App, Agent and initial configuration together.
+
+        A missing model seeds an empty Soul. The tenant's unique roster name
+        constraint rejects conflicting names and the transaction rolls back.
+        """
+        ...
+
+
+class AgentAppCollectionAccess(Protocol):
+    """Resolve list visibility before starting the database work."""
+
+    def permissions(self, context: RequestContext) -> tuple[set[str] | None, ResourcePermissionSnapshot]:
+        """Return the visible Agent ids and the admitted caller's Agent permissions."""
+        ...
+
+
+class AgentAppCollectionService:
+    """Coordinate Agent App creation and per-account collection presentation."""
+
+    def __init__(
+        self,
+        *,
+        store: AgentAppCollectionStore,
+        access: AgentAppCollectionAccess,
+        prepare_creation: Callable[[str, CreateAppParams], AppCreationSettings],
+        resolve_default_model: Callable[[str], tuple[str, str] | None],
+        notify_created: Callable[[RequestContext, AppRecord], None],
+        detail: AgentAppDetailService,
+    ) -> None:
+        self._store = store
+        self._access = access
+        self._prepare_creation = prepare_creation
+        self._resolve_default_model = resolve_default_model
+        self._notify_created = notify_created
+        self._detail = detail
+
+    def list_apps(self, context: RequestContext, params: AppListParams) -> AgentAppListPage:
+        """Return only visible Agents with permission keys, with no open session on return."""
+        agent_ids, permissions = self._access.permissions(context)
+        page = self._store.list_apps(context, params, accessible_agent_ids=agent_ids)
+        keys = permissions.permission_keys_by_resource_ids([item.agent_id for item in page.data if item.agent_id])
+        return replace(
+            page,
+            data=[
+                replace(item, permission_keys=keys.get(item.agent_id, [])) if item.agent_id else item
+                for item in page.data
+            ],
+        )
+
+    def create(self, context: RequestContext, params: CreateAppParams) -> AgentAppDetail:
+        """Create an Agent App, then return the admitted creator's complete Agent detail."""
+        tenant_id = context.active_workspace_id
+        settings = self._prepare_creation(tenant_id, params)
+        default_model = self._resolve_default_model(tenant_id)
+        app = self._store.create_agent_app(context, params, settings, default_model=default_model)
+        self._notify_created(context, app)
+        if app.bound_agent_id is None:
+            raise AgentAppNotFoundError
+        return self._detail.get(context, app.bound_agent_id)
 
 
 class AgentAppAccessService:

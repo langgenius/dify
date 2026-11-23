@@ -6,7 +6,7 @@ import {
   getMarketplaceTemplateIconUrl,
 } from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
-import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
+import { getPluginIconInMarketplace, toPluginCard } from '../plugin-card-adapter'
 import { adaptCreations, toPublisherSortQuery } from './model'
 
 const CREATOR_PAGE_SIZE = 40
@@ -92,10 +92,7 @@ export const toCreatorRecords = ({
     resolveDependencyIcon: getDependencyIcon,
   }),
   pluginsByCreationId: Object.fromEntries(
-    plugins.map((plugin) => [
-      `${plugin.type}:${plugin.org}/${plugin.name}`,
-      getFormattedPlugin(plugin),
-    ]),
+    plugins.map((plugin) => [`${plugin.type}:${plugin.org}/${plugin.name}`, toPluginCard(plugin)]),
   ),
   templatesByCreationId: Object.fromEntries(
     templates.map((template) => [`template:${template.id}`, template]),

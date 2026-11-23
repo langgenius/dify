@@ -3,32 +3,35 @@ import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi } from '@/test/fake-api'
 import { KnowledgeFsApiAccessDialog } from '../api-access-dialog'
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.apiKeys.get': async () => ({
-        data: [
-          {
-            id: 'workspace-key',
-            token: 'dataset-existing-secret',
-            created_at: 1710000000,
-            last_used_at: null,
-            type: 'dataset',
-            dataset_ids: [],
-            knowledge_space_ids: [],
+function installApiAccessApi() {
+  onTestFinished(
+    installFakeApi({
+      console: {
+        datasets: {
+          apiKeys: {
+            get: () => ({
+              data: [
+                {
+                  id: 'workspace-key',
+                  token: 'dataset-existing-secret',
+                  created_at: 1710000000,
+                  last_used_at: null,
+                  type: 'dataset',
+                  dataset_ids: [],
+                  knowledge_space_ids: [],
+                },
+              ],
+            }),
           },
-        ],
-      }),
-      'datasets.apiBaseInfo.get': async () => ({ api_base_url: 'https://api.example.com/v1/' }),
+          apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com/v1/' }) },
+        },
+      },
     }),
-  }
-})
+  )
+}
 
 async function renderDialog(
   props: Omit<ComponentProps<typeof KnowledgeFsApiAccessDialog>, 'onOpenChange' | 'open'>,
@@ -56,7 +59,7 @@ async function renderDialog(
 describe('KnowledgeFsApiAccessDialog', () => {
   beforeEach(async () => {
     await page.viewport(800, 700)
-    onTestFinished(guardUnexpectedFetch())
+    installApiAccessApi()
   })
 
   it('moves from Service API details to workspace keys and reopens a fresh dialog', async () => {

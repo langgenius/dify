@@ -2,18 +2,12 @@ import type { ImageFile } from '@/types/app'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { installFakeApi, route } from '@/test/fake-api'
 import { TransferMethod } from '@/types/app'
 import Uploader from '../uploader'
 import { imageFile, imageUrl } from './image-fixtures'
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
-const api = vi.hoisted(() => ({
-  upload:
-    vi.fn<
-      (options: { data: FormData }, isPublic?: boolean, url?: string) => Promise<{ id: string }>
-    >(),
-}))
-vi.mock('@/service/base', () => ({ upload: api.upload }))
 
 function UploaderExample({ disabled = false }: { disabled?: boolean }) {
   const [file, setFile] = useState<ImageFile>()
@@ -40,7 +34,15 @@ function UploaderExample({ disabled = false }: { disabled?: boolean }) {
   )
 }
 
-beforeEach(() => api.upload.mockResolvedValue({ id: 'uploaded-image' }))
+let fake: ReturnType<typeof installFakeApi>
+const uploadRoute = () => fake.route('POST', 'public', '/files/upload')
+beforeEach(() => {
+  // Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
+  fake = installFakeApi({
+    routes: [route('POST', 'public', '/files/upload', () => ({ id: 'uploaded-image' }))],
+  })
+  onTestFinished(fake)
+})
 
 it('reads native file bytes, uploads them to the public endpoint and accepts the same file again', async () => {
   await page.viewport(800, 600)
@@ -60,12 +62,8 @@ it('reads native file bytes, uploads them to the public endpoint and accepts the
   })
   await expect.element(screen.getByLabelText('Image picker')).not.toBeVisible()
   await expect.element(screen.getByRole('button', { name: 'Choose another image' })).toBeVisible()
-  expect(api.upload).toHaveBeenCalledWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    true,
-    undefined,
-  )
-  const uploaded = api.upload.mock.calls[0]![0].data.get('file')
+  expect(uploadRoute()).toHaveBeenCalledOnce()
+  const uploaded = (uploadRoute().mock.calls[0]![0].body as FormData).get('file')
   expect(uploaded).toBeInstanceOf(File)
   expect(await (uploaded as File).bytes()).toEqual(await file.bytes())
   expect((uploaded as File).name).toBe('sample.png')
@@ -74,7 +72,7 @@ it('reads native file bytes, uploads them to the public endpoint and accepts the
   await expect.element(input).toBeVisible()
   await input.click()
   await expect.element(input).toHaveValue('')
-  api.upload.mockResolvedValueOnce({ id: 'uploaded-again' })
+  uploadRoute().mockResolvedValueOnce({ id: 'uploaded-again' })
   await input.upload(file)
   await expect.poll(() => JSON.parse(saved.element().textContent!).fileId).toBe('uploaded-again')
   await expect.element(screen.getByLabelText('Image picker')).not.toBeVisible()
@@ -90,5 +88,5 @@ it('exposes disabled file selection without publishing or closing', async () => 
   await expect
     .element(screen.getByRole('button', { name: 'Choose another image' }))
     .not.toBeInTheDocument()
-  expect(api.upload).not.toHaveBeenCalled()
+  expect(uploadRoute()).not.toHaveBeenCalled()
 })

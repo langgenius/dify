@@ -1,18 +1,87 @@
 from collections.abc import Generator
 
+import pytest
+
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     NodeFinishStreamResponse,
+    NodeRetryStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TestWorkflowGenerateResponseConverter:
+    @pytest.mark.parametrize(
+        ("invoke_from", "redacted"),
+        [
+            (InvokeFrom.WEB_APP, True),
+            (InvokeFrom.EXPLORE, True),
+            (InvokeFrom.DEBUGGER, False),
+            (InvokeFrom.SERVICE_API, False),
+            (InvokeFrom.OPENAPI, False),
+        ],
+    )
+    def test_retry_details_follow_response_visibility(self, invoke_from: InvokeFrom, redacted: bool) -> None:
+        """Given a retry with private data, redact public streams without mutating the event."""
+        retry = NodeRetryStreamResponse(
+            task_id="task-1",
+            workflow_run_id="run-1",
+            data=NodeRetryStreamResponse.Data(
+                id="execution-1",
+                node_id="llm-1",
+                node_type="llm",
+                title="LLM",
+                index=2,
+                inputs={"query": "private-user-input"},
+                process_data={
+                    "model_provider": "private-provider",
+                    "model_name": "private-model",
+                    "prompts": [
+                        {"role": "system", "text": "private-system-prompt"},
+                        {"role": "user", "text": "private-user-input"},
+                    ],
+                },
+                outputs={"text": "private-output"},
+                status=WorkflowNodeExecutionStatus.RETRY,
+                error="private-error",
+                execution_metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 42},
+                files=[{"url": "https://example.com/private-file"}],
+                elapsed_time=0.5,
+                created_at=1,
+                finished_at=2,
+                retry_index=1,
+            ),
+        )
+        original = retry.model_dump(mode="json")
+
+        def stream() -> Generator[WorkflowAppStreamResponse]:
+            yield WorkflowAppStreamResponse(workflow_run_id="run-1", stream_response=retry)
+
+        response = WorkflowAppGenerateResponseConverter.convert(stream(), invoke_from)
+        assert isinstance(response, Generator)
+        chunks = list(response)
+        assert len(chunks) == 1
+        chunk = chunks[0]
+        assert isinstance(chunk, dict)
+        assert chunk["event"] == "node_retry"
+        assert chunk["task_id"] == "task-1"
+        assert chunk["workflow_run_id"] == "run-1"
+        assert chunk["data"]["retry_index"] == 1
+        assert chunk["data"]["status"] == "retry"
+        if redacted:
+            for field in ("inputs", "process_data", "outputs", "error", "execution_metadata"):
+                assert chunk["data"][field] is None
+            assert chunk["data"]["files"] == []
+        else:
+            assert chunk["data"] == original["data"]
+        assert retry.model_dump(mode="json") == original
+
     def test_blocking_full_response(self):
         blocking = WorkflowAppBlockingResponse(
             task_id="t1",

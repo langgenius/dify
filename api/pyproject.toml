@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.19.0"
+version = "1.20.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -118,6 +118,7 @@ dify-trace-langsmith = { workspace = true }
 dify-trace-mlflow = { workspace = true }
 dify-trace-sdk = { workspace = true }
 dify-trace-opik = { workspace = true }
+dify-trace-otel = { workspace = true }
 dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
 
@@ -238,6 +239,22 @@ storage = [
 tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 
 ############################################################
+# [ Evaluation ] dependency group
+# Installed in API/worker images; pinned to the adapter API used here.
+############################################################
+evaluation = [
+    "deepeval==4.2.0",
+    "ragas==0.3.2",
+    # RAGAS 0.3.2 still imports integrations removed by LangChain 1.x.
+    "langchain>=0.3.27,<0.4.0",
+    "langchain-community>=0.3.27,<0.4.0",
+    "langchain-core>=0.3.79,<0.4.0",
+    "langchain-openai>=0.3.35,<0.4.0",
+    # Keep the API SDK aligned with the version already locked by the main runtime.
+    "openai==2.24.0",
+]
+
+############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*
 # Each declares its own third-party deps and registers dify.vector_backends entry points.
 # Use: uv sync --group vdb-all | uv sync --group vdb-qdrant
@@ -314,6 +331,7 @@ trace-all = [
     "dify-trace-langsmith",
     "dify-trace-mlflow",
     "dify-trace-opik",
+    "dify-trace-otel",
     "dify-trace-tencent",
     "dify-trace-weave",
 ]
@@ -323,6 +341,7 @@ trace-langfuse = ["dify-trace-langfuse"]
 trace-langsmith = ["dify-trace-langsmith"]
 trace-mlflow = ["dify-trace-mlflow"]
 trace-opik = ["dify-trace-opik"]
+trace-otel = ["dify-trace-otel"]
 trace-tencent = ["dify-trace-tencent"]
 trace-weave = ["dify-trace-weave"]
 
