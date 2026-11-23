@@ -1,17 +1,12 @@
 import type { AppTraceResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render } from 'vitest-browser-react'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import { TracingConfiguration } from '../configuration'
-
-const { request } = vi.hoisted(() => ({
-  request:
-    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
-}))
-// boundary: generated API transport; authorization controls and persistence observers remain real.
-vi.mock('@/service/base', () => ({ request }))
 
 function server(nativeTracingEnabled: boolean) {
   let policy: AppTraceResponse = {
@@ -21,24 +16,31 @@ function server(nativeTracingEnabled: boolean) {
     capture_agent: true,
   }
   const writes: AppTraceResponse[] = []
-  request.mockImplementation(async (_url, _init, { request: sent }) => {
-    const path = new URL(sent.url).pathname
-    if (path.endsWith('/system-features'))
-      return Response.json(
-        createSystemFeaturesFixture({ agent_tracing_api_collection_enabled: nativeTracingEnabled }),
-      )
-    if (path.endsWith('/trace')) {
-      if (sent.method === 'POST') {
-        policy = await sent.json()
-        writes.push(policy)
-        return Response.json({ result: 'success' })
-      }
-      return Response.json(policy)
-    }
-    if (path.endsWith('/trace-config')) return Response.json({ has_not_configured: true })
-    throw new Error(`Unexpected request: ${path}`)
+  const fake = installFakeApi({
+    console: {
+      systemFeatures: {
+        get: () =>
+          createSystemFeaturesFixture({
+            agent_tracing_api_collection_enabled: nativeTracingEnabled,
+          }),
+      },
+      apps: {
+        byAppId: {
+          trace: {
+            get: () => policy,
+            post: ({ body }) => {
+              policy = body
+              writes.push(policy)
+              return { result: 'success' }
+            },
+          },
+          traceConfig: { get: () => ({ has_not_configured: true }) },
+        },
+      },
+    },
   })
-  return { writes }
+  onTestFinished(fake)
+  return { writes, fake }
 }
 
 async function setup(readOnly = false) {
@@ -48,7 +50,7 @@ async function setup(readOnly = false) {
     <QueryProvider>
       <NuqsProvider>
         <TracingConfiguration
-          resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
+          resource={{ kind: 'app', appId: TEST_APP_ID, mode: 'workflow' }}
           readOnly={readOnly}
         />
       </NuqsProvider>
@@ -100,7 +102,7 @@ it.each([true, false])(
 )
 
 it('shows independent consent read-only without an App destination or Native tracing', async () => {
-  const { writes } = server(false)
+  const { writes, fake } = server(false)
   const screen = await setup(true)
   await screen.getByRole('button', { name: 'app.tracing.title' }).click()
   const authorization = screen.getByRole('switch', { name: 'app.tracing.appContentAuthorization' })
@@ -108,9 +110,5 @@ it('shows independent consent read-only without an App destination or Native tra
   await authorization.click()
   await expect.element(authorization).not.toBeChecked()
   expect(writes).toEqual([])
-  expect(
-    request.mock.calls.filter(([, , { request: sent }]) =>
-      new URL(sent.url).pathname.endsWith('/trace-config'),
-    ),
-  ).toEqual([])
+  expect(fake.console.apps.byAppId.traceConfig.get).not.toHaveBeenCalled()
 })
