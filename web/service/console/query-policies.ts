@@ -8,7 +8,10 @@ import type {
   DatasetListResponse,
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsGoldenQuestionListResponse,
+  KnowledgeFsSpaceListResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
@@ -1989,6 +1992,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            goldenQuestions: {
+              byQuestionId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: async (question, { params }, _result, { client }) => {
+                      const get =
+                        consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      const scope = { queryKey: get.key({ input }) }
+                      await client.cancelQueries(scope)
+                      client.setQueriesData<InfiniteData<KnowledgeFsGoldenQuestionListResponse>>(
+                        { queryKey: get.key({ input, type: 'infinite' }) },
+                        (list) =>
+                          list && {
+                            ...list,
+                            pages: list.pages.map((page) => ({
+                              ...page,
+                              data: page.data.map((item) =>
+                                item.id === question.id ? question : item,
+                              ),
+                            })),
+                          },
+                      )
+                      void client.invalidateQueries(scope)
+                    },
+                  },
+                },
+              },
+            },
             documents: {
               byDocumentId: {
                 patch: {
