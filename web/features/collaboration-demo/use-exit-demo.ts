@@ -1,4 +1,6 @@
+import { useQueryState } from 'nuqs'
 import { useRouter } from '@/next/navigation'
+import { demoSourceQueryParamName, demoSourceQueryParser } from './query-params'
 
 function openedFromSameOrigin() {
   try {
@@ -8,14 +10,11 @@ function openedFromSameOrigin() {
   }
 }
 
-function openedFromNotification() {
-  return new URLSearchParams(window.location.search).get('source') === 'notification'
-}
-
 export function useExitDemo() {
   const router = useRouter()
+  const [source] = useQueryState(demoSourceQueryParamName, demoSourceQueryParser)
   return () => {
-    if (openedFromSameOrigin() || openedFromNotification()) {
+    if (openedFromSameOrigin() || source === 'notification') {
       window.close()
       if (window.closed) return
     }
