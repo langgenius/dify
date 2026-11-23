@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.outputs import ChatGeneration, LLMResult
 from langchain_core.prompt_values import ChatPromptValue, StringPromptValue
 
 from core.entities.embedding_type import EmbeddingInputType
@@ -162,6 +163,39 @@ def test_dify_model_wrapper_rounds_ragas_temperature_for_plugin(
         sys.modules.pop(wrapper_module_name, None)
         if previous_wrapper_module is not None:
             sys.modules[wrapper_module_name] = previous_wrapper_module
+
+
+def test_dify_model_wrapper_satisfies_installed_ragas_llm_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A completed Dify generation is accepted by the installed Ragas base class.
+
+    Precondition: the Evaluation dependency group is installed; model I/O is replaced.
+    Postcondition: Ragas accepts completed generations and rejects empty or
+    non-stop generations without calling an external model.
+    """
+    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+
+    wrapper = DifyModelWrapper("provider", "model", "tenant")
+    model_instance = _LLMModel()
+    monkeypatch.setattr(wrapper, "_get_model_instance", lambda: model_instance)
+
+    generated = asyncio.run(wrapper.generate(StringPromptValue(text="judge this")))
+
+    assert generated.generations[0][0].text == "response"
+    assert wrapper.is_finished(generated)
+    assert not wrapper.is_finished(LLMResult(generations=[[]]))
+    assert not wrapper.is_finished(
+        LLMResult(
+            generations=[
+                [
+                    ChatGeneration(
+                        text="partial",
+                        message=AIMessage(content="partial"),
+                        generation_info={"finish_reason": "length"},
+                    )
+                ]
+            ]
+        )
+    )
 
 
 def test_dify_embeddings_wrapper_uses_default_model_and_provider_batch_size(

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, override
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, Generation, GenerationChunk, LLMResult
@@ -93,6 +93,20 @@ class DifyModelWrapper(BaseRagasLLM):
             )
 
         return LLMResult(generations=generations)
+
+    @override
+    def is_finished(self, response: LLMResult) -> bool:
+        """Accept only non-empty generations this adapter marked complete.
+
+        Precondition: response is a LangChain result from this adapter.
+        Postcondition: returns false for missing or non-stop completion markers
+        without invoking the model or changing adapter state.
+        """
+        return bool(response.generations) and all(
+            bool(generations)
+            and all((generation.generation_info or {}).get("finish_reason") == "stop" for generation in generations)
+            for generations in response.generations
+        )
 
     async def agenerate_text(
         self,
