@@ -85,6 +85,7 @@ def test_read_configuration_without_credential_io(
     for field in ("created_at", "updated_at", "last_active_at"):
         assert isinstance(detail[field], int)
     assert detail["expires_at"] is None or isinstance(detail["expires_at"], int)
+    assert detail["manual_revocation_required_on_expiry"] is False
     assert set(detail) == {
         "id",
         "name",
@@ -96,6 +97,7 @@ def test_read_configuration_without_credential_io(
         "created_at",
         "updated_at",
         "last_active_at",
+        "manual_revocation_required_on_expiry",
     }
     queries: tuple[dict[str, str], ...] = ({}, {"conversation_id": conversation_id})
     for query in queries:
