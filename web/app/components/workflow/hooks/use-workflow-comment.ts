@@ -182,23 +182,6 @@ export const useWorkflowComment = () => {
           email: userProfile?.email ?? '',
           avatar_url: userProfile?.avatar_url || userProfile?.avatar || null,
         }
-        const mentionedUsers = mentionedUserIds
-          .map((mentionedId) => mentionableUserById.get(mentionedId))
-          .filter((user): user is NonNullable<typeof user> => Boolean(user))
-        const uniqueParticipantsMap = new Map<string, typeof createdByAccount>()
-        if (createdByAccount.id) uniqueParticipantsMap.set(createdByAccount.id, createdByAccount)
-        for (const user of mentionedUsers) {
-          if (!uniqueParticipantsMap.has(user.id)) {
-            uniqueParticipantsMap.set(user.id, {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              avatar_url: user.avatar_url ?? null,
-            })
-          }
-        }
-        const participants = Array.from(uniqueParticipantsMap.values())
-
         const composedComment: WorkflowCommentBasic = {
           id: newComment.id,
           position_x: flowPosition.x,
@@ -211,7 +194,7 @@ export const useWorkflowComment = () => {
           resolved: false,
           mention_count: mentionedUserIds.length,
           reply_count: 0,
-          participants,
+          participants: createdByAccount.id ? [createdByAccount] : [],
         }
 
         const composedDetail: WorkflowCommentDetail = {

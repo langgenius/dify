@@ -28,8 +28,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
   }
 })
-// boundary: isolated picker rendering has no Next route, while upload only requires empty params.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 let restoreFetch: () => void
 beforeEach(() => {

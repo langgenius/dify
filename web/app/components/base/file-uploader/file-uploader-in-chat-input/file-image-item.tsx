@@ -56,7 +56,7 @@ const FileImageItem = ({
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             variant="secondary"
             size="sm"
-            className="pointer-events-none absolute -top-1.5 -right-1.5 z-11 rounded-full opacity-0 group-focus-within/file-image:pointer-events-auto group-focus-within/file-image:opacity-100 group-hover/file-image:pointer-events-auto group-hover/file-image:opacity-100"
+            className="pointer-events-none absolute -inset-e-1.5 -top-1.5 z-11 rounded-full opacity-0 group-focus-within/file-image:pointer-events-auto group-focus-within/file-image:opacity-100 group-hover/file-image:pointer-events-auto group-hover/file-image:opacity-100"
             onClick={() => onRemove?.(id)}
           >
             <span
@@ -91,7 +91,7 @@ const FileImageItem = ({
             <IconButton
               size="md"
               aria-label={t(($) => $['operation.download'], { ns: 'common' })}
-              className="pointer-events-none absolute right-0.5 bottom-0.5 rounded-lg bg-components-actionbar-bg shadow-md group-focus-within/file-image:pointer-events-auto group-hover/file-image:pointer-events-auto hover:bg-components-actionbar-bg"
+              className="pointer-events-none absolute inset-e-0.5 bottom-0.5 rounded-lg bg-components-actionbar-bg shadow-md group-focus-within/file-image:pointer-events-auto group-hover/file-image:pointer-events-auto hover:bg-components-actionbar-bg"
               onClick={() => {
                 downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
               }}

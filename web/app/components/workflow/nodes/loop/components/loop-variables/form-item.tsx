@@ -106,7 +106,7 @@ const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
           var_type === VarType.arrayNumber ||
           var_type === VarType.arrayObject) && (
           <div
-            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
+            className="w-full rounded-[10px] bg-components-input-bg-normal py-2 ps-3 pe-1"
             style={{ height: editorMinHeight }}
           >
             <CodeEditor

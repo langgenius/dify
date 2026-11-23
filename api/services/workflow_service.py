@@ -39,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -104,7 +105,6 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
-from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -114,6 +114,7 @@ from services.errors.app import (
 )
 from services.errors.billing import BillingError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.feature_service import FeatureService
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -832,8 +833,7 @@ class WorkflowService:
         # Evaluators already passed the Cloud paid-plan check above; only standard
         # workflows need the Sandbox trigger limit lookup.
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and workflow_kind != WorkflowKind.EVALUATION:
-            limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(app_model.tenant_id) == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -919,10 +919,10 @@ class WorkflowService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
         try:
-            paid = BillingService.is_cloud_paid_plan(tenant_id)
+            plan = FeatureService.get_workspace_plan(tenant_id)
         except BillingError as exc:
             raise EvaluationEntitlementUnavailableError() from exc
-        if not paid:
+        if plan is None or not plan.is_paid:
             raise EvaluationPlanRequiredError()
 
     def publish_evaluation_workflow(
@@ -980,7 +980,8 @@ class WorkflowService:
 
         The caller supplies a valid target kind, app, account and session. Both
         conversion directions require Cloud paid billing; denied requests leave
-        the published workflow unchanged.
+        the published workflow unchanged. Publication receivers receive the same
+        session; receiver failures propagate without committing the conversion.
         """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
@@ -1006,7 +1007,7 @@ class WorkflowService:
         workflow.kind = target_kind
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
         return workflow
 
     def convert_published_workflow_kind_for_app(
@@ -1583,6 +1584,15 @@ class WorkflowService:
                         "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
                     )
             raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_execution_id=started_event.id,
+                )
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:

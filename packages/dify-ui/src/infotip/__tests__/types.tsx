@@ -16,7 +16,7 @@ export function infotipTypeContracts(
             ref={triggerRef}
             payload={{ title: 'Details' }}
             iconVariant="information"
-            iconSize="small"
+            size="sm"
             className={(state) => (state.open ? 'text-text-accent' : undefined)}
             style={(state) => ({ opacity: state.disabled ? 0.5 : 1 })}
           />
@@ -42,11 +42,24 @@ export function infotipTypeContracts(
   const children = <InfotipTrigger aria-label="Details">Custom trigger</InfotipTrigger>
   // @ts-expect-error InfotipTrigger always renders a native button.
   const render = <InfotipTrigger aria-label="Details" render={<div />} />
+  // @ts-expect-error Size selects the icon and its box together.
+  const legacySize = <InfotipTrigger aria-label="Details" iconSize="small" />
+  // @ts-expect-error Only the defined size steps are available.
+  const customSize = <InfotipTrigger aria-label="Details" size="xl" />
   const state = (
     // @ts-expect-error Popup state is separate from trigger state.
     <InfotipContent className={(state) => String(state.disabled)}>Details</InfotipContent>
   )
-  return { composition, labelledTrigger, unnamed, children, render, state }
+  return {
+    composition,
+    labelledTrigger,
+    unnamed,
+    children,
+    render,
+    legacySize,
+    customSize,
+    state,
+  }
 }
 
 export function infotipActionsTypeContract() {

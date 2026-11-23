@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   detail: vi.fn(),
   create: vi.fn(),
+  update: vi.fn(),
   resources: vi.fn(),
   workspaces: vi.fn(),
 }))
@@ -25,6 +26,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'account.personalAccessTokens.get': api.list,
       'account.personalAccessTokens.byTokenId.get': api.detail,
       'account.personalAccessTokens.post': api.create,
+      'account.personalAccessTokens.byTokenId.patch': api.update,
       'account.personalAccessTokenResources.get': api.resources,
       'account.personalAccessTokenWorkspaces.get': api.workspaces,
     }),
@@ -51,6 +53,7 @@ beforeEach(async () => {
   api.list.mockReset().mockResolvedValue(tokenList())
   api.detail.mockReset()
   api.create.mockReset().mockResolvedValue({ ...token, secret: 'dpat_scoped' })
+  api.update.mockReset().mockResolvedValue(token)
   api.resources.mockReset().mockResolvedValue({ data: [app], next_cursor: null, has_more: false })
   api.workspaces
     .mockReset()
@@ -178,7 +181,7 @@ it('keeps a selected resource through loading, failure, and retry with no remain
   await expect.element(selected).toBeChecked()
 })
 
-it('submits app, knowledge base and deployment selections with the same ID independently', async () => {
+it('keeps saved dataset resources on save while offering only apps and deployments', async () => {
   const deployment = {
     ...app,
     resource_type: 'app_deployment' as const,
@@ -186,34 +189,32 @@ it('submits app, knowledge base and deployment selections with the same ID indep
     parent_app_id: app.resource_id,
   }
   const dataset = { ...app, resource_type: 'dataset' as const, display_name: 'Handbook' }
-  api.resources.mockImplementation(async ({ query }) => ({
-    data:
-      query.resource_type === 'dataset' ? [dataset] : [{ ...app, app_deployments: [deployment] }],
+  const appWithDeployments = { ...app, app_deployments: [deployment] }
+  api.list.mockResolvedValue(tokenList([token]))
+  api.detail.mockResolvedValue({
+    token,
+    resources: [appWithDeployments, dataset],
+    workspaces: [workspace],
+  })
+  api.resources.mockResolvedValue({
+    data: [appWithDeployments],
     next_cursor: null,
     has_more: false,
-  }))
+  })
   const { screen } = await renderTokenPage()
-  await screen.getByRole('button', { name: 'Create token' }).click()
+  await screen.getByRole('button', { name: 'Edit', exact: true }).click()
   const dialog = screen.getByRole('dialog')
-  await dialog.getByRole('textbox', { name: 'Name' }).fill('mixed')
-  await dialog
-    .getByRole('radiogroup', { name: 'Resources' })
-    .getByRole('radio', { name: 'Selected' })
-    .click()
-  await dialog.getByRole('checkbox', { name: 'Built-in' }).click()
-  await dialog.getByRole('tab', { name: 'Knowledge bases 0 selected' }).click()
-  await dialog.getByRole('checkbox', { name: 'Handbook' }).click()
-  await dialog.getByRole('tab', { name: 'Apps 1 selected' }).click()
+  await expect.element(dialog.getByRole('tab')).not.toBeInTheDocument()
+  await expect.element(dialog.getByRole('checkbox', { name: 'Handbook' })).not.toBeInTheDocument()
+  await expect.element(dialog.getByRole('checkbox', { name: 'Built-in' })).toBeChecked()
   await dialog.getByRole('button', { name: 'Production', exact: true }).hover()
   await expect.element(screen.getByText(`deployment_id: ${app.resource_id}`)).toBeVisible()
   await userEvent.unhover(document.body)
   await dialog.getByRole('checkbox', { name: 'Production' }).click()
   await expect.element(dialog.getByRole('checkbox', { name: 'Built-in' })).toBeChecked()
-  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
-  await expect
-    .element(dialog.getByRole('textbox', { name: 'Token', exact: true }))
-    .toHaveValue('dpat_scoped')
-  expect(api.create).toHaveBeenCalledWith(
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(api.update).toHaveBeenCalledWith(
     expect.objectContaining({
       body: expect.objectContaining({
         resource_scope: {

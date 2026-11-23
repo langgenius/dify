@@ -227,11 +227,18 @@ describe('useWorkflowComment', () => {
       mention_count: 1,
       reply_count: 0,
     })
-    expect(comments[0]?.participants.map((p) => p.id)).toEqual(['user-1', 'user-2'])
+    expect(comments[0]?.participants.map((p) => p.id)).toEqual(['user-1'])
     expect(store.getState().commentDetailCache['comment-2']).toMatchObject({
       content: 'new message',
       position_x: 10,
       position_y: 20,
+      mentions: [
+        {
+          mentioned_user_id: 'user-2',
+          mentioned_user_account: { id: 'user-2' },
+          reply_id: null,
+        },
+      ],
     })
     expect(store.getState().pendingComment).toBeNull()
     expect(store.getState().isCommentQuickAdd).toBe(false)

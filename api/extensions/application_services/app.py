@@ -32,6 +32,7 @@ from services.app.query_service import AppDiscoveryService
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
 from services.app_tracing_config_service import AppTracingConfigService
+from services.evaluation_service import EvaluationService
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
@@ -88,7 +89,10 @@ def build_app_services(
             transfers=transfers,
             creators=CreatorsPlatformGateway(oauth=oauth),
             tracing=tracing_configs,
-            lifecycle=AppLifecycleGateway(session_factory=database_client),
+            lifecycle=AppLifecycleGateway(
+                session_factory=database_client,
+                stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+            ),
         ),
         enterprise=EnterpriseAppService(
             apps=EnterpriseAppRepository(

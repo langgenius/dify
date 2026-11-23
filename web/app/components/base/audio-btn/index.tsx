@@ -80,7 +80,7 @@ export function AudioBtn({ id, voice, value, className, isAudition }: AudioBtnPr
     <div
       className={cn(
         'inline-flex items-center justify-center',
-        audioState === 'loading' || audioState === 'playing' ? 'mr-1' : className,
+        audioState === 'loading' || audioState === 'playing' ? 'me-1' : className,
       )}
     >
       <Tooltip>

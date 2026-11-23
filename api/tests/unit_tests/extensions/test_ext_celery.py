@@ -1,4 +1,5 @@
 import ssl
+import threading
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from importlib import import_module
@@ -28,6 +29,42 @@ from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+@pytest.mark.parametrize(
+    ("backend", "shared"),
+    [
+        pytest.param("redis", True, id="redis-backend-is-shared"),
+        pytest.param("disabled", False, id="other-backends-stay-per-thread"),
+    ],
+)
+def test_result_backend_is_built_once_per_process_only_for_redis(backend: str, shared: bool) -> None:
+    """The gevent pool runs each task in a new greenlet; a per-thread backend is rebuilt for every task."""
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="redis://localhost:6379/1" if backend == "redis" else "memory://",
+            CELERY_BACKEND=backend,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        # A worker builds its backend once while it starts, before any task runs.
+        backend_at_startup = celery_app.backend
+        backends_seen_in_other_threads: list[object] = []
+
+        def read_backend() -> None:
+            backends_seen_in_other_threads.append(celery_app.backend)
+
+        threads = [threading.Thread(target=read_backend) for _ in range(3)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert len(backends_seen_in_other_threads) == 3
+        reused = [seen is backend_at_startup for seen in backends_seen_in_other_threads]
+        assert reused == [shared, shared, shared]
 
 
 @pytest.mark.parametrize(
