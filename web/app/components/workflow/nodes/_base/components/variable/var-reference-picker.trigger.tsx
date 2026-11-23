@@ -161,7 +161,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               >
                 {outputVarNode?.title}
               </div>
-              <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
+              <span aria-hidden className="me-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>
           )}
           {isShowAPart && (
@@ -169,7 +169,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               <RiMoreLine className="size-3 text-text-secondary" />
               <span
                 aria-hidden
-                className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25 text-divider-deep"
+                className="me-0.5 i-custom-public-common-line-3 h-3 w-1.25 text-divider-deep"
               />
             </div>
           )}
@@ -182,7 +182,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
             />
             <div
               className={cn(
-                'ml-0.5 truncate text-xs font-medium',
+                'ms-0.5 truncate text-xs font-medium',
                 isException && 'text-text-warning',
               )}
               title={varName}
@@ -192,7 +192,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
             </div>
           </div>
           <div
-            className="ml-0.5 truncate text-center system-xs-regular text-text-tertiary capitalize"
+            className="ms-0.5 truncate text-center system-xs-regular text-text-tertiary capitalize"
             title={type}
             style={{ maxWidth: maxTypeWidth }}
           >
@@ -201,7 +201,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
           {showErrorIcon && (
             <RiErrorWarningFill
               data-testid="var-reference-picker-error-icon"
-              className="ml-0.5 size-3 text-text-destructive"
+              className="ms-0.5 size-3 text-text-destructive"
             />
           )}
         </>
@@ -211,7 +211,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
         >
           {isLoading ? (
             <div className="flex items-center">
-              <RiLoader4Line className="mr-1 size-3.5 animate-spin text-text-secondary" />
+              <RiLoader4Line className="me-1 size-3.5 animate-spin text-text-secondary" />
               <span>{placeholder}</span>
             </div>
           ) : (
@@ -247,7 +247,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
         ref={isSupportConstantValue ? triggerRef : null}
         className={cn(
           'h-full',
-          isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 pl-1',
+          isSupportConstantValue && 'flex items-center rounded-lg bg-components-panel-bg py-1 ps-1',
         )}
       >
         {hoveredPill}
@@ -313,13 +313,13 @@ const VarReferencePickerTrigger: FC<Props> = ({
                   setOpen(false)
                   setControlFocus(Date.now())
                 }}
-                className="mr-1 flex h-full items-center space-x-1"
+                className="me-1 flex h-full items-center space-x-1"
               >
                 <TypeSelector
                   noLeft
                   trigger={
                     <div className="flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2">
-                      <div className="mr-1 system-sm-regular text-components-input-text-filled">
+                      <div className="me-1 system-sm-regular text-components-input-text-filled">
                         {varKindTypes.find((item) => item.value === varKindType)?.label}
                       </div>
                       <RiArrowDownSLine className="size-4 text-text-quaternary" />
@@ -335,7 +335,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               </div>
             ) : (
               !hasValue && (
-                <div className="mr-1 ml-1.5">
+                <div className="ms-1.5 me-1">
                   <span
                     aria-hidden
                     className={cn(
@@ -367,7 +367,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
               <button
                 type="button"
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
+                className="group invisible absolute inset-e-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
                 onClick={handleClearVar}
               >
                 <RiCloseLine
@@ -378,7 +378,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
             )}
             {!hasValue && valueTypePlaceHolder && (
               <Badge
-                className="absolute top-[50%] right-1 translate-y-[-50%] capitalize"
+                className="absolute inset-e-1 top-[50%] translate-y-[-50%] capitalize"
                 text={valueTypePlaceHolder}
                 uppercase={false}
               />
@@ -387,13 +387,13 @@ const VarReferencePickerTrigger: FC<Props> = ({
         )}
         {!readonly && isInTable && (
           <RemoveButton
-            className="absolute top-0.5 right-1 hidden group-hover/picker-trigger-wrap:block"
+            className="absolute inset-e-1 top-0.5 hidden group-hover/picker-trigger-wrap:block"
             onClick={() => onRemove?.()}
           />
         )}
 
         {!hasValue && typePlaceHolder && (
-          <Badge className="absolute top-1.5 right-2" text={typePlaceHolder} uppercase={false} />
+          <Badge className="absolute inset-e-2 top-1.5" text={typePlaceHolder} uppercase={false} />
         )}
       </>
       <input ref={inputRef} className="sr-only" value={controlFocus} readOnly />

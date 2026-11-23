@@ -1,11 +1,10 @@
 import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Features } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { ORPCError } from '@orpc/client'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -15,13 +14,10 @@ import {
   createEdge,
   createNode,
   createStartNode,
-  createTriggerNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import agentDefault from '@/app/components/workflow/nodes/agent-v2/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
-import scheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
-import webhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -181,8 +177,6 @@ const validGraph = (mode: 'workflow' | 'advanced-chat' = 'workflow') => ({
 function renderEditor({
   mode = 'workflow',
   graph = validGraph(mode),
-  edition = 'CLOUD',
-  plan = 'sandbox',
   features = {},
   initialStoreState = {},
   permissions = Object.values(AppACLPermission),
@@ -190,8 +184,6 @@ function renderEditor({
 }: {
   mode?: 'workflow' | 'advanced-chat'
   graph?: { nodes: Node[]; edges: Edge[] }
-  edition?: DeploymentEdition
-  plan?: CloudPlan
   features?: Features
   initialStoreState?: Partial<Shape>
   seedQueries?: (queryClient: QueryClient) => void
@@ -199,11 +191,11 @@ function renderEditor({
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
-      deployment_edition: edition,
+      deployment_edition: 'CLOUD',
       enable_marketplace: false,
       webapp_auth: { enabled: false },
     },
-    features: { billing: { subscription: { plan } } },
+    features: { billing: { subscription: { plan: 'sandbox' } } },
     workspacePermissionKeys: ['tool.manage'],
   })
   const app = createAppDetailFixture({
@@ -371,35 +363,46 @@ it('shows the server advisory instead of a success toast after publishing', asyn
   expect(success).not.toHaveBeenCalled()
 })
 
-it.each([
-  { edition: 'CLOUD', plan: 'sandbox', restricted: true },
-  { edition: 'CLOUD', plan: 'professional', restricted: false },
-  { edition: 'COMMUNITY', plan: 'sandbox', restricted: false },
-  { edition: 'ENTERPRISE', plan: 'sandbox', restricted: false },
-] as const)(
-  'enforces the entry limit for $edition / $plan through the real publish button',
-  async ({ edition, plan, restricted }) => {
-    const user = userEvent.setup()
-    const graph = validGraph()
-    graph.nodes.push(
-      createTriggerNode(BlockEnum.TriggerWebhook, {
-        id: 'webhook',
-        data: { ...webhookDefault.defaultValue },
-      }),
-      createTriggerNode(BlockEnum.TriggerSchedule, {
-        id: 'schedule',
-        data: { ...scheduleDefault.defaultValue },
-      }),
-    )
-    renderEditor({ graph, edition, plan })
-    const publish = await openPublisher(user)
-    if (restricted) expect(publish).toBeDisabled()
-    else expect(publish).toBeEnabled()
-    expect(
-      screen.queryByRole('button', { name: /navigation.common.workflowAsTool/ }),
-    ).not.toBeInTheDocument()
-  },
-)
+it('shows the plan upgrade hint when publishing exceeds the trigger node limit', async () => {
+  const user = userEvent.setup()
+  const error = vi.spyOn(toast, 'error')
+  api.publish.mockRejectedValueOnce(
+    new ORPCError('trigger_node_limit_exceeded', {
+      defined: true,
+      status: 403,
+      message: 'Backend text',
+      data: {
+        code: 'trigger_node_limit_exceeded',
+        message: 'Backend text',
+        status: 403,
+        details: { count: 3, limit: 2 },
+      },
+    }),
+  )
+  renderEditor()
+  const publish = await openPublisher(user)
+  expect(publish).toBeEnabled()
+  expect(screen.queryByText(/publishLimit\.startNodeDesc/)).not.toBeInTheDocument()
+
+  await user.click(publish)
+
+  expect(await screen.findByText(/publishLimit\.startNodeDesc/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /upgradeBtn\.encourageShort/ })).toBeInTheDocument()
+  expect(error).not.toHaveBeenCalled()
+})
+
+it('reports other publish failures with the server message', async () => {
+  const user = userEvent.setup()
+  const error = vi.spyOn(toast, 'error')
+  api.publish.mockRejectedValueOnce(
+    new ORPCError('BAD_REQUEST', { status: 400, message: 'Workflow is invalid' }),
+  )
+  renderEditor()
+  await user.click(await openPublisher(user))
+
+  await waitFor(() => expect(error).toHaveBeenCalledWith('Workflow is invalid'))
+  expect(screen.queryByText(/publishLimit\.startNodeDesc/)).not.toBeInTheDocument()
+})
 
 it('shows outputs from both end nodes and identifies conflicting names in tool configuration', async () => {
   const user = userEvent.setup()

@@ -664,6 +664,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
+**Discard the caller's draft and report success even if it was already absent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -679,6 +681,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
+**Return the admitted account's existing Build draft, or 404 when none exists**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1196,6 +1200,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
+**Reset the admitted account's Build conversation and return the new empty conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5690,7 +5696,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
-| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[TriggerNodeLimitExceededError](#triggernodelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15979,7 +15985,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/test-channels
-**List current Workspace test channels without granting channel management or app execution permissions**
+**List test identifiers for an authenticated workspace member in every edition**
+
+Discovery grants no channel-management or app-execution permissions and
+performs no writes or provider I/O. Storage failures propagate normally.
 
 #### Responses
 
@@ -38172,6 +38181,21 @@ the app is not allowed to be trial.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TriggerCreationMethod | string |  |  |
+
+#### TriggerNodeLimitDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| limit | integer |  | Yes |
+
+#### TriggerNodeLimitExceededError
+
+The workflow has more trigger nodes than the workspace plan allows.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerNodeLimitExceededError |  | The workflow has more trigger nodes than the workspace plan allows. |  |
 
 #### TriggerOAuthAuthorizeResponse
 

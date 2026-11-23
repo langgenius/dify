@@ -45,7 +45,7 @@ const PanelOutputSection: FC<Props> = ({
                 <InfotipTrigger
                   aria-label={t(($) => $['structOutput.modelNotSupported'], { ns: 'app' })}
                   iconVariant="warning"
-                  iconSize="large"
+                  size="lg"
                   className="me-1 text-text-warning-secondary"
                 />
                 <InfotipContent className="w-58">

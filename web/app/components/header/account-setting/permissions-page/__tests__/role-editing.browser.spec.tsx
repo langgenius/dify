@@ -1,6 +1,7 @@
 import type { Role } from '@/models/access-control'
 import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
+import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
@@ -8,6 +9,7 @@ const api = vi.hoisted(() => ({
   list: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.get>(),
   create: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.post>(),
   update: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.put>(),
+  remove: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.delete>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -18,6 +20,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.rbac.roles.get': api.list,
       'workspaces.current.rbac.roles.post': api.create,
       'workspaces.current.rbac.roles.byRoleId.put': api.update,
+      'workspaces.current.rbac.roles.byRoleId.delete': api.remove,
     }),
   }
 })
@@ -35,6 +38,7 @@ beforeEach(() => {
     roles = roles.map((role) => (role.id === saved.id ? saved : role))
     return saved
   })
+  api.remove.mockReset()
 })
 async function setup(options?: Parameters<typeof renderRolePage>[0]) {
   const view = await renderRolePage(options)
@@ -104,6 +108,50 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
   await expect
     .element(dialog.getByRole('button', { name: 'permission.permissionList.clearAll' }))
     .not.toBeInTheDocument()
+})
+
+it('retains a failed role deletion for retry and closes before the list refresh finishes', async () => {
+  const first = createDeferred<{ result: string }>()
+  const retry = createDeferred<{ result: string }>()
+  const refresh = createDeferred<ReturnType<typeof rolePage>>()
+  api.remove.mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise)
+  const { screen, queryClient } = await renderRolePage()
+  onTestFinished(() => queryClient.clear())
+
+  const actions = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  await actions.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.delete' }).click()
+  const dialog = screen.getByRole('alertdialog')
+  const confirm = dialog.getByRole('button', { name: 'common.operation.delete' })
+  await confirm.click()
+  await expect.element(confirm).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await expect
+    .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
+    .toBeDisabled()
+  await userEvent.keyboard('{Enter}{Escape}')
+  await expect.element(dialog).toBeVisible()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { role_id: customRole.id } })
+
+  first.reject(new Error('Delete failed'))
+  await expect.element(confirm).not.toHaveAttribute('aria-disabled', 'true')
+  await expect.element(confirm).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  expect(api.remove).toHaveBeenCalledTimes(2)
+  api.list.mockReturnValueOnce(refresh.promise)
+  retry.resolve({ result: 'success' })
+
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  const addRole = screen.getByRole('button', { name: 'permission.role.addRole' })
+  await expect.element(addRole).toHaveFocus()
+  refresh.reject(new Error('List refresh failed'))
+  const listKey = consoleQuery.workspaces.current.rbac.roles.get.key({ type: 'infinite' })
+  await expect
+    .poll(() => queryClient.getQueryCache().find({ queryKey: listKey, exact: false })?.state.status)
+    .toBe('error')
+  await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
+  await expect.element(addRole).toHaveFocus()
 })
 
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
