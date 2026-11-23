@@ -35,7 +35,7 @@ _PUBLIC_MESSAGES = {
     ),
     EvaluationErrorCode.METRIC_FAILED: "Metric evaluation failed. Check the evaluation configuration and retry.",
     EvaluationErrorCode.CONTEXT_MISSING: (
-        "No usable text context was available for this metric. Check the selected context variable."
+        "This metric needs non-empty text context, but none was available from the target run."
     ),
     EvaluationErrorCode.UNSUPPORTED_METRIC: "The selected metric is not supported by this evaluator.",
     EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED: "Custom evaluator failed. Check its workflow and retry.",
