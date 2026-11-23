@@ -1,4 +1,3 @@
-import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { TenantAccountRole } from '@dify/contracts/api/console/workspaces/types.gen'
 import { HotkeysProvider } from '@tanstack/react-hotkeys'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -9,26 +8,14 @@ import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import CollaborationDemoPage from '../page'
 
-const api = vi.hoisted(() => ({
-  apps: vi.fn<(input: Pick<GetAppsData, 'query'>) => unknown>(),
-  replace: vi.fn(),
-}))
+const api = vi.hoisted(() => ({ replace: vi.fn() }))
 
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: api.replace }) }))
-
-// boundary: only generated service responses are replaced; queries and overlays stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'apps.get': api.apps }),
-  }
-})
 
 const appPage = (app?: { id: string; name: string; updated_at: number }) => ({
   data: app ? [{ ...app, mode: 'workflow' as const, icon_url: null }] : [],
@@ -59,12 +46,17 @@ async function renderDemo(role: TenantAccountRole) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  api.apps.mockImplementation(async (input) =>
-    input.query?.mode === 'workflow'
-      ? appPage({ id: 'workflow-1', name: 'Older workflow', updated_at: 10 })
-      : appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }),
-  )
 })
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: {
+      get: (input) =>
+        input?.query?.mode === 'workflow'
+          ? appPage({ id: 'workflow-1', name: 'Older workflow', updated_at: 10 })
+          : appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }),
+    },
+  },
+}))
 
 async function startPlayback(screen: Awaited<ReturnType<typeof renderDemo>>) {
   await expect
@@ -163,7 +155,7 @@ it('explains read-only access without looking up apps', async () => {
   const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
   await expect.element(endPanel.getByText('collaborationDemo.end.readOnly.normal')).toBeVisible()
   await expect.element(endPanel.getByRole('link')).not.toBeInTheDocument()
-  expect(api.apps).not.toHaveBeenCalled()
+  expect(fake.console.apps.get).not.toHaveBeenCalled()
 })
 
 it('announces messages through a region that exists before the first message', async () => {
@@ -181,7 +173,7 @@ it('announces messages through a region that exists before the first message', a
 
 it('keeps focus on the primary action when Try it now becomes ready', async () => {
   const apps = createDeferred<ReturnType<typeof appPage>>()
-  api.apps.mockReturnValue(apps.promise)
+  fake.console.apps.get.mockReturnValue(apps.promise)
   const screen = await renderDemo('owner')
   await startPlayback(screen)
   await userEvent.keyboard('{Tab}{Enter}')
