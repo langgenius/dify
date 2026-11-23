@@ -5,17 +5,22 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from celery import group
-
 if TYPE_CHECKING:
     from services.async_workflow_service import TriggerWorkflowDispatcher
 
 
 def publish_schedules(schedule_ids: Sequence[str]) -> None:
-    """Publish one schedule task per ID; propagate broker publication failures."""
+    """Publish one schedule task per ID; propagate broker publication failures.
+
+    Tasks are published individually instead of through ``celery.group``: a group's
+    ``apply_async`` subscribes the dispatcher to every child's result channel for its
+    barrier. Under gevent workers the Redis result backend is greenlet-local, so each
+    poller tick would open a pubsub connection that is never closed.
+    """
     from tasks.workflow_schedule_tasks import run_schedule_trigger
 
-    group(run_schedule_trigger.s(schedule_id) for schedule_id in schedule_ids).apply_async()
+    for schedule_id in schedule_ids:
+        run_schedule_trigger.apply_async(args=(schedule_id,))
 
 
 class ScheduleWorkflowGateway:

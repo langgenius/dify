@@ -6,6 +6,7 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -225,6 +226,7 @@ def test_due_claim_requires_complete_owner_chain_and_enabled_due_schedule(
 def test_poll_publishes_real_celery_tasks_and_advances_batch(
     sqlite_session_factory: sessionmaker[Session],
     repository: TriggerScheduleRepository,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plans = [_plan(sqlite_session_factory) for _ in range(3)]
     from tasks.workflow_schedule_tasks import run_schedule_trigger
@@ -233,6 +235,10 @@ def test_poll_publishes_real_celery_tasks_and_advances_batch(
     with closing(Celery("schedule-test", broker="memory://", backend="cache+memory://")) as app:
         app.set_current()
         try:
+            # Fire-and-forget publication must not subscribe to result channels: under gevent
+            # workers each subscription opens a greenlet-local Redis pubsub connection that leaks.
+            add_pending_result = Mock()
+            monkeypatch.setattr(app.backend, "add_pending_result", add_pending_result)
             with (
                 app.connection_for_write() as connection,
                 SimpleQueue(connection.channel(), "schedule_executor") as queue,
@@ -245,6 +251,8 @@ def test_poll_publishes_real_celery_tasks_and_advances_batch(
                 assert {message.headers["task"] for message in messages} == {
                     "tasks.workflow_schedule_tasks.run_schedule_trigger"
                 }
+                assert {message.headers.get("group") for message in messages} == {None}
+                add_pending_result.assert_not_called()
                 for message in messages:
                     message.ack()
                 assert queue.qsize() == 0
