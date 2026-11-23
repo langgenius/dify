@@ -33,9 +33,14 @@ from tests.helpers.unit.core.model_fixtures import make_model_instance
         (UIPolicy.FORBIDDEN, "There are no records to analyze.", True, True),
         (UIPolicy.REQUIRED, "Only a conclusion.", False, True),
         (UIPolicy.OPTIONAL, "Only a conclusion.", True, True),
-        (UIPolicy.REQUIRED, 'Conclusion\n```openui\nroot = Stack([Text("data")])\n```\nRecommendation', True, True),
-        (UIPolicy.FORBIDDEN, '```openui\nroot = Stack([Text("data")])\n```', False, True),
-        (UIPolicy.REQUIRED, "```openui\nroot = Stack([", True, False),
+        (
+            UIPolicy.REQUIRED,
+            'Conclusion\n<dify_ui>\nroot = Stack([Text("data")])\n</dify_ui>\nRecommendation',
+            True,
+            True,
+        ),
+        (UIPolicy.FORBIDDEN, '<dify_ui>\nroot = Stack([Text("data")])\n</dify_ui>', False, True),
+        (UIPolicy.REQUIRED, "<dify_ui>\nroot = Stack([", True, False),
     ],
 )
 def test_transport_checks_do_not_automatically_grade_semantic_rubrics(
@@ -58,15 +63,16 @@ def test_transport_checks_do_not_automatically_grade_semantic_rubrics(
     assert result.case.rubric == ["Values are accurate"]
 
 
-def test_response_report_preserves_order_offsets_without_claiming_dsl_validity() -> None:
+def test_response_report_preserves_ordered_parts_without_claiming_dsl_validity() -> None:
     case = QualityCase(id="comparison", prompt="Compare", ui=UIPolicy.REQUIRED, rubric=["Readable chart"])
-    response = "Conclusion\n```openui\nNotARegisteredComponent()\n```\nRecommendation"
+    response = "Conclusion\n<dify_ui>\nNotARegisteredComponent()\n</dify_ui>\nRecommendation"
 
     result = assess_response(case, response, 0.3)
 
     assert result.prose == "Conclusion\nRecommendation"
-    assert result.content_blocks[0].text_offset == len("Conclusion\n")
-    assert result.content_blocks[0].source == "NotARegisteredComponent()\n"
+    assert [part.type for part in result.parts] == ["text", "openui", "text"]
+    assert result.parts[1].type == "openui"
+    assert result.parts[1].source == "NotARegisteredComponent()\n"
     assert result.automated_checks is not None
     assert result.automated_checks.passed
     assert result.semantic_review == "pending"

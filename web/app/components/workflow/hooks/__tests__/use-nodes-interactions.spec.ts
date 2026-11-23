@@ -414,6 +414,11 @@ it.for<{ target: string; resource: EditorResource; keepsGenerativeUI: boolean }>
   {
     target: 'Workflow',
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+    keepsGenerativeUI: true,
+  },
+  {
+    target: 'Knowledge Pipeline',
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
     keepsGenerativeUI: false,
   },
   {
@@ -498,7 +503,7 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
     expect(addedParent.parentId).toBeUndefined()
     expect(addedChild.parentId).toBe(addedParent.id)
     expect(addedChild.data).not.toHaveProperty('memory')
-    expect(addedChild.data).not.toHaveProperty('generative_ui_enabled')
+    expect(addedChild.data).toHaveProperty('generative_ui_enabled', true)
     expect(child.data).toHaveProperty('memory', memory)
     expect(child.data).toHaveProperty('generative_ui_enabled', true)
   },

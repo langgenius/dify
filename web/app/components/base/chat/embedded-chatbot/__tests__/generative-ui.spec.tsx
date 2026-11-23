@@ -56,7 +56,6 @@ const createBlocks = (): OpenUiContentBlock[] => [
     type: 'openui',
     library_version: 'dify-ui-v1',
     source: 'root = Stack([Table("Regional sales", ["Region", "Sales"], [["East", "72"]])])',
-    text_offset: 0,
     sequence: 1,
     status: 'completed',
     form_state: {},
@@ -67,7 +66,6 @@ const createBlocks = (): OpenUiContentBlock[] => [
     library_version: 'dify-ui-v1',
     source:
       'root = Stack([Form("filters", "Filter sales", "Apply filters", "Apply these filters", [TextField("keyword", "Keyword", "", false)])])',
-    text_offset: 0,
     sequence: 1,
     status: 'completed',
     form_state: { filters: { keyword: { value: 'saved' } } },
@@ -112,7 +110,10 @@ describe('Embedded generative UI persistence', () => {
           id: 'message-1',
           query: 'Compare regions',
           answer: 'East has the highest sales.',
-          content_blocks: structuredClone(storedBlocks),
+          parts: [
+            ...structuredClone(storedBlocks),
+            { id: 'text:2', type: 'text', text: 'East has the highest sales.' },
+          ],
         },
       ],
     }))
@@ -173,7 +174,10 @@ describe('Embedded generative UI persistence', () => {
             content: 'Choose the next filter.',
             isAnswer: true,
             children: [],
-            content_blocks: createBlocks(),
+            parts: [
+              ...createBlocks(),
+              { id: 'text:2', type: 'text', text: 'Choose the next filter.' },
+            ],
           },
         ],
       },

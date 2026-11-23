@@ -34,7 +34,13 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus, OpenUIStreamParser  # noqa: E402
+from libs.generative_ui import (  # noqa: E402
+    MessageContentPart,
+    OpenUIContentStatus,
+    OpenUIStreamParser,
+    has_openui_parts,
+    openui_blocks,
+)
 from libs.generative_ui_prompt import load_generative_ui_prompt  # noqa: E402
 
 if TYPE_CHECKING:
@@ -81,7 +87,7 @@ class CaseResult(BaseModel):
     case: QualityCase
     raw_response: str
     prose: str
-    content_blocks: list[OpenUIContentBlock]
+    parts: list[MessageContentPart]
     elapsed_seconds: float
     automated_checks: AutomatedChecks | None
     semantic_review: Literal["pending"] = "pending"
@@ -125,17 +131,17 @@ def assess_response(case: QualityCase, response: str, elapsed_seconds: float) ->
     """Inspect transport shape without claiming that the UI source is valid or accurate."""
     parser = OpenUIStreamParser(case.id)
     parts = parser.feed(response) + parser.finish(OpenUIContentStatus.COMPLETED)
-    has_ui = bool(parser.blocks)
+    has_ui = has_openui_parts(parser.parts)
     ui_policy = case.ui == UIPolicy.OPTIONAL or (has_ui if case.ui == UIPolicy.REQUIRED else not has_ui)
     return CaseResult(
         case=case,
         raw_response=response,
         prose="".join(part for part in parts if isinstance(part, str)),
-        content_blocks=parser.blocks,
+        parts=parser.parts if has_ui else [],
         elapsed_seconds=elapsed_seconds,
         automated_checks=AutomatedChecks(
             ui_policy=ui_policy,
-            fences_complete=all(block.status == OpenUIContentStatus.COMPLETED for block in parser.blocks),
+            fences_complete=all(block.status == OpenUIContentStatus.COMPLETED for block in openui_blocks(parser.parts)),
         ),
     )
 
@@ -207,7 +213,7 @@ def run_evaluation(
                 case=case,
                 raw_response="",
                 prose="",
-                content_blocks=[],
+                parts=[],
                 elapsed_seconds=time.perf_counter() - started,
                 automated_checks=None,
                 error_type=type(error).__name__,

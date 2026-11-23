@@ -89,6 +89,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     filterJinja2InputVar,
     handleReasoningFormatChange,
     handleGenerativeUIChange,
+    supportsGenerativeUI,
   } = useConfig(id, data)
 
   const isProviderRequired =
@@ -371,8 +372,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           onConfigChange={handleVisionResolutionChange}
         />
 
-        {/* Reasoning Format */}
-        {isChatflow && (
+        {/* Generative UI & Reasoning Format */}
+        {supportsGenerativeUI && (
           <GenerativeUIConfig
             enabled={!!inputs.generative_ui_enabled}
             structuredOutputEnabled={!!inputs.structured_output_enabled}

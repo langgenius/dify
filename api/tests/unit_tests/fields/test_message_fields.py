@@ -84,20 +84,22 @@ class TestExploreMessageListItem:
         payload = MessageListItem.model_validate(_base_kwargs()).model_dump(mode="json")
         assert "metadata" not in payload
 
-    def test_message_list_item_exposes_openui_blocks_from_stored_metadata(self) -> None:
-        block = {
-            "id": "m1:openui:0",
-            "type": "openui",
-            "library_version": "dify-ui-v1",
-            "source": 'root = Text("Hello")',
-            "status": "completed",
-            "sequence": 2,
-            "text_offset": 6,
-            "form_state": {"name": "Alice"},
-        }
-        item = MessageListItem.model_validate({**_base_kwargs(), "message_metadata_dict": {"content_blocks": [block]}})
+    def test_message_list_item_exposes_openui_parts_from_stored_metadata(self) -> None:
+        parts = [
+            {"id": "m1:text:0", "type": "text", "text": "Intro\n"},
+            {
+                "id": "m1:openui:0",
+                "type": "openui",
+                "library_version": "dify-ui-v1",
+                "source": 'root = Text("Hello")',
+                "status": "completed",
+                "sequence": 2,
+                "form_state": {"name": "Alice"},
+            },
+        ]
+        item = MessageListItem.model_validate({**_base_kwargs(), "message_metadata_dict": {"parts": parts}})
 
-        assert item.model_dump(mode="json")["content_blocks"] == [block]
+        assert item.model_dump(mode="json")["parts"] == parts
 
     def test_message_list_item_exposes_usage_fields(self) -> None:
         payload = MessageListItem.model_validate(

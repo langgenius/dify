@@ -24,6 +24,7 @@ class DifyLLMNode(LLMNode):
         self,
         *args: Any,
         polling_finalizer: Callable[[], None],
+        generative_ui_read_only: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -34,7 +35,7 @@ class DifyLLMNode(LLMNode):
             # UI programs are final answer content. Provider reasoning must use
             # the existing independent reasoning channel, including tagged models.
             self.node_data.reasoning_format = "separated"
-            instructions = load_generative_ui_prompt()
+            instructions = load_generative_ui_prompt(read_only=generative_ui_read_only)
             template = self.node_data.prompt_template
             if isinstance(template, LLMNodeCompletionModelPromptTemplate):
                 if template.edition_type == "jinja2" and template.jinja2_text:

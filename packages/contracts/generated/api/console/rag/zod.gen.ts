@@ -935,45 +935,6 @@ export const zWorkflowExecutionStatus = z.enum([
 ])
 
 /**
- * Data
- *
- * Data entity
- */
-export const zWorkflowAppBlockingResponseData = z.object({
-  created_at: z.int(),
-  elapsed_time: z.number(),
-  error: z.string().nullish(),
-  finished_at: z.int().nullable(),
-  id: z.string(),
-  outputs: z.record(z.string(), z.unknown()).nullish(),
-  status: zWorkflowExecutionStatus,
-  total_steps: z.int(),
-  total_tokens: z.int(),
-  workflow_id: z.string(),
-})
-
-/**
- * WorkflowAppBlockingResponse
- *
- * WorkflowAppBlockingResponse entity
- */
-export const zWorkflowAppBlockingResponse = z.object({
-  data: zWorkflowAppBlockingResponseData,
-  task_id: z.string(),
-  workflow_run_id: z.string(),
-})
-
-/**
- * RagPipelinePublishedRunResponse
- *
- * Blocking run result: a preview run returns the workflow result, a processing run the queued batch.
- */
-export const zRagPipelinePublishedRunResponse = z.union([
-  zPipelineGenerateResponse,
-  zWorkflowAppBlockingResponse,
-])
-
-/**
  * Option
  */
 export const zOption = z.object({
@@ -1137,6 +1098,17 @@ export const zToolParameterType = z.enum([
   'string',
   'system-files',
 ])
+
+/**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
 
 /**
  * DatasourceParameterType
@@ -1323,6 +1295,73 @@ export const zRagPipelineDatasourceProviderResponse = z.object({
  * RagPipelineDatasourceListResponse
  */
 export const zRagPipelineDatasourceListResponse = z.array(zRagPipelineDatasourceProviderResponse)
+
+export const zJsonValue = z.unknown()
+
+/**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  type: z.literal('openui'),
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
+
+/**
+ * Data
+ *
+ * Data entity
+ */
+export const zWorkflowAppBlockingResponseData = z.object({
+  created_at: z.int(),
+  elapsed_time: z.number(),
+  error: z.string().nullish(),
+  finished_at: z.int().nullable(),
+  id: z.string(),
+  outputs: z.record(z.string(), z.unknown()).nullish(),
+  parts: z.array(zMessageContentPart).optional(),
+  status: zWorkflowExecutionStatus,
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_id: z.string(),
+})
+
+/**
+ * WorkflowAppBlockingResponse
+ *
+ * WorkflowAppBlockingResponse entity
+ */
+export const zWorkflowAppBlockingResponse = z.object({
+  data: zWorkflowAppBlockingResponseData,
+  task_id: z.string(),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * RagPipelinePublishedRunResponse
+ *
+ * Blocking run result: a preview run returns the workflow result, a processing run the queued batch.
+ */
+export const zRagPipelinePublishedRunResponse = z.union([
+  zPipelineGenerateResponse,
+  zWorkflowAppBlockingResponse,
+])
 
 export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),

@@ -27,6 +27,9 @@ export function useFeatureConfigurationState() {
   })
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({ enabled: false })
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({ enabled: false })
+  const [generativeUIConfig, setGenerativeUIConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
   const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
     id: '',
@@ -51,12 +54,14 @@ export function useFeatureConfigurationState() {
     citationConfig,
     externalDataToolsConfig,
     formattingChangedDispatcher,
+    generativeUIConfig,
     introduction,
     moderationConfig,
     moreLikeThisConfig,
     setAnnotationConfig: updateAnnotationConfig,
     setCitationConfig,
     setExternalDataToolsConfig,
+    setGenerativeUIConfig,
     setIntroduction,
     setModerationConfig,
     setMoreLikeThisConfig,

@@ -85,11 +85,17 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import RuntimeState
 from libs.datetime_utils import naive_utc_now
 from libs.generative_ui import (
+    MessageContentPart,
     OpenUIContentBlock,
     OpenUIContentStatus,
     OpenUIStreamParser,
+    append_text_part,
     encode_openui_update,
     extract_openui_prose,
+    has_openui_parts,
+    openui_blocks,
+    parse_content_parts,
+    upsert_openui_part,
 )
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
@@ -141,7 +147,7 @@ class MessageSnapshot:
     created_at: datetime
     status: MessageStatus
     answer: str
-    content_blocks: tuple[OpenUIContentBlock, ...] = field(default_factory=tuple)
+    parts: tuple[MessageContentPart, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_message(cls, message: Message) -> "MessageSnapshot":
@@ -151,10 +157,7 @@ class MessageSnapshot:
             created_at=message.created_at,
             status=message.status,
             answer=message.answer,
-            content_blocks=tuple(
-                OpenUIContentBlock.model_validate(block)
-                for block in message.message_metadata_dict.get("content_blocks", [])
-            ),
+            parts=tuple(parse_content_parts(message.message_metadata_dict.get("parts", []))),
         )
 
 
@@ -212,6 +215,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._task_state = WorkflowTaskState()
         self._generative_ui_nodes = workflow.generative_ui_nodes
         self._generative_ui_parsers: dict[tuple[str, str | None], OpenUIStreamParser] = {}
+        self._generative_ui_parts: list[MessageContentPart] = []
         self._generative_ui_suppressed = False
         self._seed_task_state_from_message(message)
         self._message_cycle_manager = MessageCycleManager(
@@ -235,7 +239,12 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._seed_graph_runtime_state_from_queue_manager()
 
     def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
-        self._task_state.metadata.content_blocks = list(message.content_blocks)
+        if message.parts:
+            self._generative_ui_parts = list(message.parts)
+            if has_openui_parts(self._generative_ui_parts):
+                self._task_state.metadata.parts = list(self._generative_ui_parts)
+        elif self._generative_ui_nodes and message.status == MessageStatus.PAUSED and message.answer:
+            append_text_part(self._generative_ui_parts, message.answer, identity=message.id)
         if message.status == MessageStatus.PAUSED and message.answer:
             self._task_state.answer = message.answer
 
@@ -574,7 +583,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             parser = self._generative_ui_parsers.get(producer_execution)
             if parser is None:
                 parser = OpenUIStreamParser(
-                    f"{self._message_id}:{producer}:{event.node_execution_id}:{len(self._task_state.metadata.content_blocks)}"
+                    f"{self._message_id}:{producer}:{event.node_execution_id}:{len(openui_blocks(self._generative_ui_parts))}"
                 )
                 self._generative_ui_parsers[producer_execution] = parser
             parts = parser.feed(delta_text)
@@ -604,6 +613,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         handler = self._base_task_pipeline.output_moderation_handler
         if handler is not None and handler.should_direct_output():
             return
+        if self._generative_ui_nodes and not self._generative_ui_suppressed and event.text:
+            append_text_part(self._generative_ui_parts, event.text, identity=self._message_id)
+            if has_openui_parts(self._generative_ui_parts):
+                self._task_state.metadata.parts = list(self._generative_ui_parts)
         delta_text, replacement = (
             handler.append_new_token(event.text, prefix=self._task_state.answer)
             if handler is not None
@@ -656,20 +669,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
     def _openui_to_stream_response(self, block: OpenUIContentBlock) -> MessageContentStreamResponse:
-        """Place new blocks against prose shared by all producers and answer templates."""
-        blocks = self._task_state.metadata.content_blocks
-        previous: OpenUIContentBlock | None = None
-        for index, current in enumerate(blocks):
-            if current.id == block.id:
-                previous = current
-                block = block.model_copy(update={"text_offset": current.text_offset})
-                blocks[index] = block
-                break
-        else:
-            handler = self._base_task_pipeline.output_moderation_handler
-            pending_length = handler.pending_length if handler is not None else 0
-            block = block.model_copy(update={"text_offset": len(self._task_state.answer) + pending_length})
-            blocks.append(block)
+        """Record a UI block in ordered ``parts`` and emit a snapshot or source delta.
+
+        Preconditions: ``block`` is an immutable snapshot produced by ``OpenUIStreamParser``.
+        Postconditions: ``self._generative_ui_parts`` and ``self._task_state.metadata.parts``
+        contain ``block`` in its original reading order.
+        """
+        previous = upsert_openui_part(self._generative_ui_parts, block)
+        self._task_state.metadata.parts = list(self._generative_ui_parts)
         return MessageContentStreamResponse(
             task_id=self._application_generate_entity.task_id, data=encode_openui_update(block, previous)
         )
@@ -697,9 +704,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             return
         message = self._get_message(session=session)
         metadata = message.message_metadata_dict
-        metadata["content_blocks"] = [
-            block.model_dump(mode="json") for block in self._task_state.metadata.content_blocks
-        ]
+        metadata["parts"] = [part.model_dump(mode="json") for part in self._task_state.metadata.parts]
         message.message_metadata = json.dumps(metadata)
         message.answer = self._task_state.answer
 
@@ -963,7 +968,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     ) -> Generator[StreamResponse]:
         """Deliver checked prose and clear UI on a flagged verdict before persisting the message."""
         result = self._base_task_pipeline.handle_output_moderation_when_task_finished(
-            self._task_state.answer, extra_texts=[block.source for block in self._task_state.metadata.content_blocks]
+            self._task_state.answer,
+            extra_texts=[block.source for block in openui_blocks(self._task_state.metadata.parts)],
         )
         if result is not None:
             delivered = self._task_state.answer
@@ -1038,7 +1044,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             and event.reason == QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
         ):
             self._generative_ui_suppressed = True
-            self._task_state.metadata.content_blocks.clear()
+            self._generative_ui_parts.clear()
+            self._task_state.metadata.parts.clear()
             replacement = extract_openui_prose(replacement)
             self._task_state.answer = replacement
         yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement, reason=event.reason)

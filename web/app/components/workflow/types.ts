@@ -18,6 +18,7 @@ import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import type { MessageContentPart } from '@/features/generative-ui/protocol/types'
 import type { Resolution, TransferMethod } from '@/types/app'
 import type {
   FileResponse,
@@ -490,6 +491,7 @@ export type WorkflowRunningData = {
     exceptions_count?: number
   }
   tracing?: NodeTracing[]
+  parts?: MessageContentPart[]
   humanInputFormDataList?: HumanInputFormData[]
   humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }

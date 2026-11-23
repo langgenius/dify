@@ -1,4 +1,4 @@
-"""Keep content positions stable across producers, persistence, and resumed runs."""
+"""Keep ordered content parts stable across producers, persistence, and resumed runs."""
 
 import json
 
@@ -20,7 +20,7 @@ from core.app.entities.queue_entities import QueueTextChunkEvent
 from core.app.entities.task_entities import MessageContentStreamResponse
 from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes
-from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus, TextContentPart, openui_blocks
 from models.enums import EndUserType, MessageStatus
 from models.model import AppMode, Conversation, EndUser, Message
 from tests.unit_tests.core.app.apps.test_workflow_app_runner import _workflow_entry
@@ -54,7 +54,7 @@ def _pipeline(message: Message, queue: MessageBasedAppQueueManager) -> AdvancedC
     )
 
 
-def test_interleaved_producers_use_global_prose_offsets_and_persist_them(
+def test_interleaved_producers_preserve_ordered_parts_and_persist_them(
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
     sqlite_session: Session,
@@ -64,30 +64,32 @@ def test_interleaved_producers_use_global_prose_offsets_and_persist_them(
     responses = []
     for text, selector in [
         ("Introduction \U00020000\n", None),
-        ("First conclusion\n```openui\nroot = Stack([", ["first", "text"]),
+        ("First conclusion\n<dify_ui>\nroot = Stack([", ["first", "text"]),
         ("Transition\n", None),
-        ('Second conclusion\n```openui\nroot = Stack([Text("two")])\n```\nSecond recommendation\n', ["second", "text"]),
-        ('Text("one")])\n```\nFirst recommendation', ["first", "text"]),
+        (
+            'Second conclusion\n<dify_ui>\nroot = Stack([Text("two")])\n</dify_ui>\nSecond recommendation\n',
+            ["second", "text"],
+        ),
+        ('Text("one")])\n</dify_ui>\nFirst recommendation', ["first", "text"]),
     ]:
         responses.extend(
             pipeline._handle_text_chunk_event(QueueTextChunkEvent(text=text, from_variable_selector=selector))
         )
     responses.extend(pipeline._finish_generative_ui(OpenUIContentStatus.COMPLETED))
 
-    expected_offsets = [
-        len("Introduction \U00020000\nFirst conclusion\n"),
-        len("Introduction \U00020000\nFirst conclusion\nTransition\nSecond conclusion\n"),
-    ]
-    blocks = pipeline._task_state.metadata.content_blocks
-    assert [block.text_offset for block in blocks] == expected_offsets
+    parts = pipeline._task_state.metadata.parts
+    blocks = openui_blocks(parts)
+    assert [part.type for part in parts] == ["text", "openui", "text", "openui", "text"]
+    assert parts[0] == TextContentPart(id=f"{message.id}:text:0", text="Introduction \U00020000\nFirst conclusion\n")
+    assert parts[2] == TextContentPart(id=f"{message.id}:text:2", text="Transition\nSecond conclusion\n")
+    assert parts[4] == TextContentPart(id=f"{message.id}:text:4", text="Second recommendation\nFirst recommendation")
     assert all(block.status == "completed" for block in blocks)
     snapshots = [
         response.data
         for response in responses
         if isinstance(response, MessageContentStreamResponse) and isinstance(response.data, OpenUIContentBlock)
     ]
-    for snapshot in snapshots:
-        assert snapshot.text_offset == next(block.text_offset for block in blocks if block.id == snapshot.id)
+    assert {snapshot.id for snapshot in snapshots} == {block.id for block in blocks}
     pipeline._save_message(session=sqlite_session)
     sqlite_session.commit()
     sqlite_session.refresh(message)
@@ -95,34 +97,37 @@ def test_interleaved_producers_use_global_prose_offsets_and_persist_them(
         "Introduction \U00020000\nFirst conclusion\nTransition\nSecond conclusion\n"
         "Second recommendation\nFirst recommendation"
     )
-    assert [block["text_offset"] for block in message.message_metadata_dict["content_blocks"]] == expected_offsets
+    assert message.message_metadata_dict["parts"] == [part.model_dump(mode="json") for part in parts]
 
 
-def test_resumed_message_keeps_existing_positions_and_offsets_new_ui_after_previous_answer(
+def test_resumed_message_keeps_existing_parts_and_appends_new_ui_after_previous_answer(
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
 ) -> None:
     message = agent_records[1]
     message.status = MessageStatus.PAUSED
     message.answer = "Previous\n"
-    previous = OpenUIContentBlock(
-        id="previous", source="root = Stack([])", status=OpenUIContentStatus.COMPLETED, text_offset=0
+    previous = OpenUIContentBlock(id="previous", source="root = Stack([])", status=OpenUIContentStatus.COMPLETED)
+    previous_text = TextContentPart(id="prev-text", text="Previous\n")
+    message.message_metadata = json.dumps(
+        {"parts": [previous.model_dump(mode="json"), previous_text.model_dump(mode="json")]}
     )
-    message.message_metadata = json.dumps({"content_blocks": [previous.model_dump(mode="json")]})
     pipeline = _pipeline(message, agent_queue_manager)
 
     list(
         pipeline._handle_text_chunk_event(
             QueueTextChunkEvent(
-                text='Continue\n```openui\nroot = Stack([Text("next")])\n```\nEnd',
+                text='Continue\n<dify_ui>\nroot = Stack([Text("next")])\n</dify_ui>\nEnd',
                 from_variable_selector=["first", "text"],
             )
         )
     )
 
-    blocks = pipeline._task_state.metadata.content_blocks
-    assert blocks[0] == previous
-    assert blocks[1].text_offset == len("Previous\nContinue\n")
+    parts = pipeline._task_state.metadata.parts
+    assert [part.type for part in parts] == ["openui", "text", "openui", "text"]
+    assert parts[0] == previous
+    assert parts[1] == TextContentPart(id="prev-text", text="Previous\nContinue\n")
+    assert parts[3] == TextContentPart(id=f"{message.id}:text:3", text="End")
     assert pipeline._task_state.answer == "Previous\nContinue\nEnd"
 
 
@@ -136,7 +141,7 @@ def test_repeated_producer_finishes_each_execution_without_a_trailing_newline(
     runner = WorkflowBasedAppRunner(queue_manager=agent_queue_manager, app_id=agent_records[1].app_id)
     entry = _workflow_entry(runner)
     for index, label in enumerate(["First", "Second"]):
-        source = f'```openui\nroot = Text("{label}")\n```'
+        source = f'<dify_ui>\nroot = Text("{label}")\n</dify_ui>'
         chunks = [(source, not empty_terminal)] + ([("", True)] if empty_terminal else [])
         for text, is_final in chunks:
             runner.handle_event(
@@ -156,25 +161,25 @@ def test_repeated_producer_finishes_each_execution_without_a_trailing_newline(
             assert queued.event.node_execution_id == f"execution-{index}"
             assert queued.event.is_final is is_final
             list(pipeline._handle_text_chunk_event(queued.event))
-        assert pipeline._task_state.metadata.content_blocks[-1].status == "completed"
+        assert openui_blocks(pipeline._task_state.metadata.parts)[-1].status == "completed"
 
-    blocks = pipeline._task_state.metadata.content_blocks
+    blocks = openui_blocks(pipeline._task_state.metadata.parts)
     assert [block.source for block in blocks] == ['root = Text("First")\n', 'root = Text("Second")\n']
     assert len({block.id for block in blocks}) == 2
     assert pipeline._task_state.answer == ""
     assert list(pipeline._finish_generative_ui(OpenUIContentStatus.COMPLETED)) == []
 
 
-def test_parallel_executions_of_one_producer_keep_independent_source_and_offsets(
+def test_parallel_executions_of_one_producer_keep_independent_source_and_order(
     agent_queue_manager: MessageBasedAppQueueManager,
     agent_records: tuple[Conversation, Message],
 ) -> None:
     pipeline = _pipeline(agent_records[1], agent_queue_manager)
     for execution, text, is_final in [
-        ("first-pass", 'First\n```openui\nroot = Text("', False),
-        ("second-pass", 'Second\n```openui\nroot = Text("', False),
-        ("second-pass", 'Second")\n```', True),
-        ("first-pass", 'First")\n```', True),
+        ("first-pass", 'First\n<dify_ui>\nroot = Text("', False),
+        ("second-pass", 'Second\n<dify_ui>\nroot = Text("', False),
+        ("second-pass", 'Second")\n</dify_ui>', True),
+        ("first-pass", 'First")\n</dify_ui>', True),
     ]:
         list(
             pipeline._handle_text_chunk_event(
@@ -187,9 +192,10 @@ def test_parallel_executions_of_one_producer_keep_independent_source_and_offsets
             )
         )
 
-    blocks = pipeline._task_state.metadata.content_blocks
+    parts = pipeline._task_state.metadata.parts
+    blocks = openui_blocks(parts)
+    assert [part.type for part in parts] == ["text", "openui", "text", "openui"]
     assert [block.source for block in blocks] == ['root = Text("First")\n', 'root = Text("Second")\n']
-    assert [block.text_offset for block in blocks] == [len("First\n"), len("First\nSecond\n")]
     assert len({block.id for block in blocks}) == 2
     assert all(block.status == "completed" for block in blocks)
 
@@ -200,7 +206,7 @@ def test_final_prose_prefix_is_flushed_before_the_next_plain_producer(
 ) -> None:
     pipeline = _pipeline(agent_records[1], agent_queue_manager)
     for text, selector, is_final in [
-        ("Before\n``", ["first", "text"], False),
+        ("Before\n<dify", ["first", "text"], False),
         ("", ["first", "text"], True),
         ("After", ["plain", "text"], True),
     ]:
@@ -214,5 +220,5 @@ def test_final_prose_prefix_is_flushed_before_the_next_plain_producer(
             )
         )
 
-    assert pipeline._task_state.answer == "Before\n``After"
-    assert pipeline._task_state.metadata.content_blocks == []
+    assert pipeline._task_state.answer == "Before\n<difyAfter"
+    assert pipeline._task_state.metadata.parts == []

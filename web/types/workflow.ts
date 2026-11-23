@@ -18,6 +18,7 @@ import type {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { MessageContentPart } from '@/features/generative-ui/protocol/types'
 import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
@@ -222,6 +223,7 @@ export type WorkflowFinishedResponse = {
     }
     finished_at: number
     files?: FileResponse[]
+    parts?: MessageContentPart[]
   }
 }
 

@@ -761,6 +761,7 @@ export type WorkflowAppBlockingResponseData = {
   outputs?: {
     [key: string]: unknown
   } | null
+  parts?: Array<MessageContentPart>
   status: WorkflowExecutionStatus
   total_steps: number
   total_tokens: number
@@ -851,6 +852,14 @@ export type ToolParameter = {
   template?: PluginParameterTemplate | null
   type: ToolParameterType
 }
+
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
 
 export type WorkflowExecutionStatus =
   | 'failed'
@@ -976,6 +985,24 @@ export type ToolParameterType =
   | 'string'
   | 'system-files'
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  type: 'openui'
+}
+
 export type DatasourceParameterType =
   | 'boolean'
   | 'file'
@@ -987,6 +1014,10 @@ export type DatasourceParameterType =
   | 'system-files'
 
 export type PluginParameterAutoGenerateType = 'prompt_instruction'
+
+export type JsonValue = unknown
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never

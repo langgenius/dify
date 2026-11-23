@@ -9,7 +9,7 @@ from pydantic import AliasChoices, AliasPath, Field, WithJsonSchema, field_valid
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from fields.base import ResponseModel, SessionResponseSource
 from graphon.file import File
-from libs.generative_ui import OpenUIContentBlock
+from libs.generative_ui import MessageContentPart
 from libs.helper import to_timestamp
 from models.account import Account
 from models.model import (
@@ -254,13 +254,13 @@ class AgentThought(ResponseModel):
 
 
 class MessageDetail(ResponseModel):
-    content_blocks: list[OpenUIContentBlock] = Field(
+    parts: list[MessageContentPart] = Field(
         default_factory=list,
-        exclude_if=lambda blocks: not blocks,
+        exclude_if=lambda parts: not parts,
         validation_alias=AliasChoices(
-            "content_blocks",
-            AliasPath("metadata", "content_blocks"),
-            AliasPath("message_metadata_dict", "content_blocks"),
+            "parts",
+            AliasPath("metadata", "parts"),
+            AliasPath("message_metadata_dict", "parts"),
         ),
     )
     retriever_resources: list[RetrievalSourceMetadata] = Field(default_factory=list)

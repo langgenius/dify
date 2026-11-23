@@ -1,4 +1,5 @@
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 
 type GenerationTab = 'DETAIL' | 'RESULT'
 
@@ -27,6 +28,7 @@ export const shouldShowWorkflowResultTabs = (workflowProcessData?: WorkflowProce
 
   return Boolean(
     workflowProcessData.resultText ||
+    hasOpenUIParts(workflowProcessData.parts) ||
     workflowProcessData.files?.length ||
     workflowProcessData.humanInputFormDataList?.length ||
     workflowProcessData.humanInputFilledFormDataList?.length,

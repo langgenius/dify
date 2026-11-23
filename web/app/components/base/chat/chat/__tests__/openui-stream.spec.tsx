@@ -27,7 +27,6 @@ const block: OpenUIContentBlock = {
   id: 'ui-1',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: 0,
   source: 'root = Text("Revenue")',
   status: 'streaming',
   sequence: 1,
@@ -74,7 +73,7 @@ describe('shared OpenUI chat streaming', () => {
         source_delta: '\ncaption = Text("Quarterly sales")',
       }
       act(() => callbacks.onMessageContent?.(event(delta)))
-      expect(result.current.chatList[1]?.content_blocks).toEqual([
+      expect(result.current.chatList[1]?.parts).toEqual([
         { ...block, source: block.source + delta.source_delta, sequence: 2 },
       ])
       const completed: OpenUIContentBlock = {
@@ -92,7 +91,7 @@ describe('shared OpenUI chat streaming', () => {
       expect(result.current.chatList[1]).toMatchObject({
         id: 'message-1',
         content: '',
-        content_blocks: [completed],
+        parts: [completed],
       })
       expect(result.current.chatList[1]?.agent_response_parts).toBeUndefined()
       await act(async () => callbacks.onCompleted?.())
@@ -125,9 +124,7 @@ describe('shared OpenUI chat streaming', () => {
                 id: 'question-message-1',
                 content: 'Revenue',
                 isAnswer: false,
-                children: [
-                  { id: 'message-1', content: '', isAnswer: true, content_blocks: [block] },
-                ],
+                children: [{ id: 'message-1', content: '', isAnswer: true, parts: [block] }],
               },
             ]
           : []
@@ -148,7 +145,7 @@ describe('shared OpenUI chat streaming', () => {
       })
 
       expect(result.current.chatList[1]?.content).toBe('Replacement answer')
-      expect(result.current.chatList[1]?.content_blocks).toEqual(preservesUI ? [block] : [])
+      expect(result.current.chatList[1]?.parts).toEqual(preservesUI ? [block] : [])
     },
   )
 
@@ -166,7 +163,13 @@ describe('shared OpenUI chat streaming', () => {
         { query: 'Revenue' },
         {
           onGetConversationMessages: async () => ({
-            data: [{ id: 'message-1', answer: 'Revenue summary', content_blocks: [completed] }],
+            data: [
+              {
+                id: 'message-1',
+                answer: 'Revenue summary',
+                parts: [{ id: 'text:0', type: 'text', text: 'Revenue summary' }, completed],
+              },
+            ],
           }),
         },
       )
@@ -176,7 +179,7 @@ describe('shared OpenUI chat streaming', () => {
 
     expect(result.current.chatList[1]).toMatchObject({
       content: 'Revenue summary',
-      content_blocks: [completed],
+      parts: [{ id: 'text:0', type: 'text', text: 'Revenue summary' }, completed],
     })
   })
 
@@ -188,7 +191,10 @@ describe('shared OpenUI chat streaming', () => {
     act(() => callbacks.onMessageContent?.(event(block)))
     await act(async () => result.current.handleStop())
 
-    expect(result.current.chatList[1]?.content_blocks?.[0]?.status).toBe('cancelled')
+    expect(result.current.chatList[1]?.parts?.[0]).toMatchObject({
+      type: 'openui',
+      status: 'cancelled',
+    })
     expect(result.current.isResponding).toBe(false)
   })
 
@@ -198,7 +204,7 @@ describe('shared OpenUI chat streaming', () => {
         id: 'question-message-1',
         content: 'Revenue',
         isAnswer: false,
-        children: [{ id: 'message-1', content: '', isAnswer: true, content_blocks: [block] }],
+        children: [{ id: 'message-1', content: '', isAnswer: true, parts: [block] }],
       },
     ]
     const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, initial))
@@ -223,12 +229,15 @@ describe('shared OpenUI chat streaming', () => {
         }),
       )
     })
-    expect(result.current.chatList[1]?.content_blocks?.[0]?.source).toBe(completed.source)
+    expect(result.current.chatList[1]?.parts?.[0]).toMatchObject({
+      type: 'openui',
+      source: completed.source,
+    })
     act(() => {
       callbacks.onMessageContent?.(event(completed))
       callbacks.onMessageContent?.(event(block))
     })
-    expect(result.current.chatList[1]?.content_blocks).toEqual([completed])
+    expect(result.current.chatList[1]?.parts).toEqual([completed])
     expect(result.current.chatList[1]?.humanInputFormDataList).toBeUndefined()
   })
 })

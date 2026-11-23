@@ -1069,6 +1069,8 @@ export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', '
 
 /**
  * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
  */
 export const zOpenUiContentBlock = z.object({
   form_state: z.record(z.string(), zJsonValue),
@@ -1077,7 +1079,6 @@ export const zOpenUiContentBlock = z.object({
   sequence: z.int().gte(0),
   source: z.string(),
   status: zOpenUiContentStatus,
-  text_offset: z.int().gte(0),
   type: z.literal('openui'),
 })
 
@@ -1104,6 +1105,22 @@ export const zHumanInputFormSubmissionData = z.object({
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
 
 /**
  * KnowledgeFsCitation
@@ -1307,7 +1324,6 @@ export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -1320,6 +1336,7 @@ export const zExploreMessageListItem = z.object({
   message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.uuid().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -1382,7 +1399,6 @@ export const zExploreMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.uuid(),
   created_at: z.int().nullish(),
   currency: z.string().nullish(),
@@ -1395,6 +1411,7 @@ export const zExploreMessageListItemWritable = z.object({
   message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.uuid().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),

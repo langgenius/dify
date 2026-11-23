@@ -695,7 +695,6 @@ export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -710,6 +709,7 @@ export type ExploreMessageListItem = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -729,7 +729,6 @@ export type OpenUiContentBlock = {
   sequence: number
   source: string
   status: OpenUiContentStatus
-  text_offset: number
   type: 'openui'
 }
 
@@ -806,6 +805,14 @@ export type MessageFile = {
   url?: string | null
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type RetrieverResource = {
   content?: string | null
   created_at?: number | null
@@ -869,6 +876,12 @@ export type HumanInputFormSubmissionData = {
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
 
 export type KnowledgeFsCitation = {
   artifact_hash: string
@@ -991,7 +1004,6 @@ export type ExploreMessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1006,6 +1018,7 @@ export type ExploreMessageListItemWritable = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>

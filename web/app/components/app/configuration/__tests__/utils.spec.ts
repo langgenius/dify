@@ -101,6 +101,13 @@ describe('configuration utils', () => {
       expect(result.file!.enabled).toBe(true)
       expect(result.file!.image!.detail).toBe(Resolution.low)
       expect(result.file!.allowed_file_extensions).toEqual(['.png'])
+      expect(result.generativeUI).toEqual({ enabled: false })
+
+      const enabledResult = buildConfigurationFeaturesData(
+        createModelConfig({ generative_ui: { enabled: true } }),
+        undefined,
+      )
+      expect(enabledResult.generativeUI).toEqual({ enabled: true })
     })
   })
 

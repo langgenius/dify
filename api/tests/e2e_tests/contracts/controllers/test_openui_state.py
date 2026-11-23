@@ -59,7 +59,11 @@ def _assert_draft_contract(
             .values(
                 message_metadata=json.dumps(
                     {
-                        "content_blocks": [block.model_dump(mode="json"), streaming.model_dump(mode="json")],
+                        "parts": [
+                            {"id": f"{message_id}:text:0", "type": "text", "text": "Summary"},
+                            block.model_dump(mode="json"),
+                            streaming.model_dump(mode="json"),
+                        ],
                         "usage": usage,
                     }
                 )
@@ -85,7 +89,11 @@ def _assert_draft_contract(
         message = session.get(Message, message_id)
         assert message is not None
         assert message.message_metadata_dict == {
-            "content_blocks": [saved, streaming.model_dump(mode="json")],
+            "parts": [
+                {"id": f"{message_id}:text:0", "type": "text", "text": "Summary"},
+                saved,
+                streaming.model_dump(mode="json"),
+            ],
             "usage": usage,
         }
 

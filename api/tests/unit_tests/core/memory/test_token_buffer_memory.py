@@ -594,12 +594,16 @@ class TestPreparedHistory:
                 "id": "ui-block",
                 "source": source,
                 "status": ui_status,
-                "text_offset": len("East has the highest sales.\n"),
                 "form_state": {"filters": {"note": {"value": "Unsent private draft"}}},
             }
         )
+        parts = [
+            {"id": "m:text:0", "type": "text", "text": "East has the highest sales.\n"},
+            block.model_dump(mode="json"),
+            {"id": "m:text:2", "type": "text", "text": "Check investment next."},
+        ]
         message = _persist_message(database, conversation.id, query="Analyze this period's sales", answer=prose)
-        message.message_metadata = json.dumps({"content_blocks": [block.model_dump(mode="json")]})
+        message.message_metadata = json.dumps({"parts": parts})
         database.session.commit()
         database.session.expire(message)
         app = database.session.get(App, conversation.app_id)
@@ -612,7 +616,9 @@ class TestPreparedHistory:
         assistant = history.prompts[1]
         assert assistant.is_user_message is False
         if ui_status == "completed":
-            assert assistant.text == f"East has the highest sales.\n\n```openui\n{source}\n```\nCheck investment next."
+            assert assistant.text == (
+                f"East has the highest sales.\n\n<dify_ui>\n{source}\n</dify_ui>\nCheck investment next."
+            )
         else:
             assert assistant.text == prose
         assert "Unsent private draft" not in assistant.text

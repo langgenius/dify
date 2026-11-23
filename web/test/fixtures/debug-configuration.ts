@@ -30,6 +30,7 @@ export const createModelConfigFixture = (overrides: Partial<ModelConfig> = {}): 
   file_upload: null,
   suggested_questions_after_answer: null,
   retriever_resource: null,
+  generative_ui: null,
   annotation_reply: null,
   external_data_tools: [],
   dataSets: [],
@@ -123,6 +124,10 @@ export const createDebugConfigurationFixture = (
     enabled: false,
   },
   setCitationConfig: noop,
+  generativeUIConfig: {
+    enabled: false,
+  },
+  setGenerativeUIConfig: noop,
   moderationConfig: {
     enabled: false,
   },

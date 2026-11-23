@@ -1,6 +1,7 @@
 import type { ToolActivity } from './tool-activity-item'
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { Locale } from '@/i18n'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
@@ -8,7 +9,9 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
+import { GenerativeUIContent } from './generative-ui-content'
 import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
 import { OrderedResponseContent } from './ordered-response-content'
 import { SHELL_TOOL_NAMES, ToolActivityItem } from './tool-activity-item'
@@ -25,7 +28,11 @@ type AgentActivityEntry =
       type: 'message'
       content: string
       key: string
-      contentBlocks?: ChatItem['content_blocks']
+    }
+  | {
+      type: 'openui'
+      block: OpenUIContentBlock
+      key: string
     }
   | {
       type: 'thought'
@@ -100,20 +107,26 @@ function hasVisibleActivity(thought: ThoughtItem, showThoughts: boolean) {
   )
 }
 
-/** Live parts append in order, so message identity stays stable as its prose grows. */
+/** Live parts append in order, so message and UI identities stay stable as prose grows. */
 function getAgentActivityEntries(item: ChatItem, showThoughts: boolean): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
     const keyOccurrences = new Map<string, number>()
 
     return item.agent_response_parts.flatMap<AgentActivityEntry>((part, index) => {
       const baseKey =
-        part.type === 'message' ? `message-${index}` : `thought-${getThoughtKey(part.thought)}`
+        part.type === 'message'
+          ? `message-${index}`
+          : part.type === 'openui'
+            ? `openui-${part.block.id}`
+            : `thought-${getThoughtKey(part.thought)}`
       const occurrence = keyOccurrences.get(baseKey) ?? 0
       keyOccurrences.set(baseKey, occurrence + 1)
       const key = occurrence ? `${baseKey}-${occurrence}` : baseKey
 
       if (part.type === 'message')
         return part.content ? [{ type: 'message', content: part.content, key }] : []
+
+      if (part.type === 'openui') return [{ type: 'openui', block: part.block, key }]
 
       return hasVisibleActivity(part.thought, showThoughts)
         ? [{ type: 'thought', thought: part.thought, key }]
@@ -135,31 +148,6 @@ function getAgentActivityEntries(item: ChatItem, showThoughts: boolean): AgentAc
 
       return parts
     })
-}
-
-/** Live public text belongs to response parts; block offsets address their concatenation. */
-function addLiveContentBlocks(entries: AgentActivityEntry[], item: ChatItem): AgentActivityEntry[] {
-  const blocks = item.content_blocks
-  if (!item.agent_response_parts?.length || !blocks?.length) return entries
-
-  const lastMessage = [...entries].reverse().find((entry) => entry.type === 'message')
-  if (!lastMessage) {
-    return [...entries, { type: 'message', content: '', key: 'ui-only', contentBlocks: blocks }]
-  }
-
-  let offset = 0
-  return entries.map((entry) => {
-    if (entry.type !== 'message') return entry
-    const start = offset
-    offset += Array.from(entry.content).length
-    const contentBlocks = blocks
-      .filter(
-        (block) =>
-          block.text_offset >= start && (entry === lastMessage || block.text_offset < offset),
-      )
-      .map((block) => ({ ...block, text_offset: block.text_offset - start }))
-    return { ...entry, contentBlocks }
-  })
 }
 
 function useWorkingDuration(enabled?: boolean) {
@@ -240,7 +228,7 @@ function AgentActivityDisclosure({
   defaultOpen?: boolean
   showThoughts: boolean
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding
@@ -273,13 +261,16 @@ function AgentActivityDisclosure({
         <div className="flex w-full max-w-full min-w-0 flex-col gap-1 overflow-hidden">
           {entries.map((entry) =>
             entry.type === 'message' ? (
-              <OrderedResponseContent
+              <ResponseMessage
                 key={entry.key}
-                item={{ id: item.id, content_blocks: entry.contentBlocks }}
-                content={entry.content}
-                renderText={(text) => (
-                  <ResponseMessage content={resolveKnowledgeCitationLinks(text, item.citation)} />
-                )}
+                content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+              />
+            ) : entry.type === 'openui' ? (
+              <GenerativeUIContent
+                key={entry.key}
+                messageId={item.id}
+                block={entry.block}
+                fallbackText={t(($) => $['generativeUI.unavailable'], { ns: 'appDebug' })}
               />
             ) : (
               <AgentActivityItem
@@ -302,6 +293,8 @@ export function AgentRosterResponseContent({
   content,
   showThoughts = false,
 }: AgentRosterResponseContentProps) {
+  const { t } = useTranslation(['appDebug'])
+
   if (item.annotation?.logAnnotation) {
     return (
       <>
@@ -309,32 +302,24 @@ export function AgentRosterResponseContent({
           content={item.annotation.logAnnotation.content || ''}
           data-testid="agent-content-markdown"
         />
-        <OrderedResponseContent item={item} content="" renderText={() => null} />
+        <OrderedResponseContent
+          item={{ id: item.id, parts: item.parts?.filter((part) => part.type === 'openui') }}
+          content=""
+          renderText={() => null}
+        />
       </>
     )
   }
 
-  const entries = addLiveContentBlocks(getAgentActivityEntries(item, showThoughts), item)
+  const entries = getAgentActivityEntries(item, showThoughts)
   const hasLiveResponseParts = !!item.agent_response_parts?.length
   const hasThinkingStatus =
     entries.length === 0 && !!item.agent_response_parts?.some((part) => part.type === 'thought')
   const hasActivity =
     hasThinkingStatus ||
     (hasLiveResponseParts ? entries.some((entry) => entry.type === 'thought') : entries.length > 0)
-  const standaloneMessages = hasLiveResponseParts
-    ? hasActivity
-      ? []
-      : entries.flatMap((entry) => (entry.type === 'message' ? [entry] : []))
-    : content || item.content_blocks?.length
-      ? [
-          {
-            type: 'message' as const,
-            content: content ?? item.content,
-            key: 'final-answer',
-            contentBlocks: item.content_blocks,
-          },
-        ]
-      : []
+  const hasStandaloneLiveEntries = hasLiveResponseParts && !hasActivity
+  const hasFinalAnswer = !hasLiveResponseParts && (!!content || hasOpenUIParts(item.parts))
 
   return (
     <div
@@ -351,16 +336,31 @@ export function AgentRosterResponseContent({
           defaultOpen={hasLiveResponseParts && (!!responding || entries.length > 0)}
         />
       )}
-      {standaloneMessages.map((message) => (
+      {hasStandaloneLiveEntries &&
+        entries.map((entry) =>
+          entry.type === 'message' ? (
+            <ResponseMessage
+              key={entry.key}
+              content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+            />
+          ) : entry.type === 'openui' ? (
+            <GenerativeUIContent
+              key={entry.key}
+              messageId={item.id}
+              block={entry.block}
+              fallbackText={t(($) => $['generativeUI.unavailable'])}
+            />
+          ) : null,
+        )}
+      {hasFinalAnswer && (
         <OrderedResponseContent
-          key={message.key}
-          item={{ id: item.id, content_blocks: message.contentBlocks }}
-          content={message.content}
+          item={{ id: item.id, parts: item.parts }}
+          content={content ?? item.content}
           renderText={(text) => (
             <ResponseMessage content={resolveKnowledgeCitationLinks(text, item.citation)} />
           )}
         />
-      ))}
+      )}
     </div>
   )
 }

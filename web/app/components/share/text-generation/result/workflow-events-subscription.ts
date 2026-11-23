@@ -73,6 +73,7 @@ export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => 
       onNodeFinished: guard(handlers.onNodeFinished),
       onTextChunk: guard(handlers.onTextChunk),
       onTextReplace: guard(handlers.onTextReplace),
+      onMessageContent: guard(handlers.onMessageContent),
       onHumanInputRequired: guard(handlers.onHumanInputRequired),
       onHumanInputFormFilled: guard(handlers.onHumanInputFormFilled),
       onHumanInputFormTimeout: guard(handlers.onHumanInputFormTimeout),

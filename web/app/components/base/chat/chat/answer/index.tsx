@@ -19,6 +19,7 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 import { OrderedResponseContent } from './ordered-response-content'
 import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
@@ -79,7 +80,7 @@ const Answer: FC<AnswerProps> = ({
     humanInputFormDataList,
     humanInputFilledFormDataList,
   } = item
-  const hasGenerativeUI = !!item.content_blocks?.length
+  const hasGenerativeUI = hasOpenUIParts(item.parts)
   const hasAgentThoughts = !!agent_thoughts?.length
   const hasAgentResponseParts = !!item.agent_response_parts?.length
   const hasAgentContent = hasAgentThoughts || hasAgentResponseParts
@@ -163,7 +164,11 @@ const Answer: FC<AnswerProps> = ({
     <>
       {annotation?.logAnnotation && <BasicContent item={item} />}
       <OrderedResponseContent
-        item={item}
+        item={
+          annotation?.logAnnotation
+            ? { id: item.id, parts: item.parts?.filter((part) => part.type === 'openui') }
+            : item
+        }
         content={annotation?.logAnnotation ? '' : content}
         renderText={(text) => <BasicContent item={{ ...item, content: text }} />}
       />

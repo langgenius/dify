@@ -1,3 +1,4 @@
+import type { OpenUiContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { ChatItem } from '../../../types'
 import type { CitationItem } from '../../type'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -49,16 +50,12 @@ describe('AgentRosterResponseContent', () => {
     await import('@/app/components/base/markdown/streamdown-wrapper')
   }, 30_000)
 
-  const tableBlock = (
-    id: string,
-    textOffset: number,
-  ): NonNullable<ChatItem['content_blocks']>[number] => ({
+  const tableBlock = (id: string): OpenUiContentBlock => ({
     id,
     type: 'openui',
     library_version: 'dify-ui-v1',
     source: `root = Stack([Table("${id}", ["Region", "Sales"], [["East", "72"]])])`,
     status: 'completed',
-    text_offset: textOffset,
     sequence: 1,
     form_state: {},
   })
@@ -85,11 +82,10 @@ describe('AgentRosterResponseContent', () => {
       agent_response_parts: [
         { type: 'message', content: progress },
         { type: 'thought', thought },
-        { type: 'message', content: conclusion + suggestion },
-      ],
-      content_blocks: [
-        tableBlock('Summary data', Array.from(progress).length),
-        tableBlock('Detailed data', Array.from(progress + conclusion).length),
+        { type: 'openui', block: tableBlock('Summary data') },
+        { type: 'message', content: conclusion },
+        { type: 'openui', block: tableBlock('Detailed data') },
+        { type: 'message', content: suggestion },
       ],
     }
     const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
@@ -116,9 +112,11 @@ describe('AgentRosterResponseContent', () => {
       content: conclusion + suggestion,
       agent_response_parts: undefined,
       agent_thoughts: [{ ...thought, answer: progress, observation: 'Loaded' }],
-      content_blocks: [
-        tableBlock('Summary data', 0),
-        tableBlock('Detailed data', Array.from(conclusion).length),
+      parts: [
+        tableBlock('Summary data'),
+        { id: 'text:1', type: 'text', text: conclusion },
+        tableBlock('Detailed data'),
+        { id: 'text:3', type: 'text', text: suggestion },
       ],
     }
     rerender(
@@ -138,15 +136,18 @@ describe('AgentRosterResponseContent', () => {
   it('shows a UI-only response after live activity and after history restoration', async () => {
     const item: ChatItem = {
       ...thinkingOnlyItem,
-      agent_response_parts: thinkingOnlyItem.agent_response_parts.map((part) => ({
-        ...part,
-        thought: {
-          ...part.thought,
-          tool: 'load_sales',
-          observation: 'Loaded',
-        },
-      })),
-      content_blocks: [tableBlock('Sales data', 0)],
+      agent_response_parts: [
+        ...thinkingOnlyItem.agent_response_parts.map((part) => ({
+          ...part,
+          thought: {
+            ...part.thought,
+            tool: 'load_sales',
+            observation: 'Loaded',
+          },
+        })),
+        { type: 'openui', block: tableBlock('Sales data') },
+      ],
+      parts: [tableBlock('Sales data')],
     }
     const { rerender } = render(<AgentRosterResponseContent item={item} responding />)
     expect(await screen.findByRole('table', { name: 'Sales data' })).toBeVisible()
@@ -166,7 +167,7 @@ describe('AgentRosterResponseContent', () => {
       content: 'Original answer',
       isAnswer: true,
       annotation: createChatAnnotationFixture('Edited answer'),
-      content_blocks: [tableBlock('Sales data', 10)],
+      parts: [{ id: 'text:0', type: 'text', text: 'Original answer' }, tableBlock('Sales data')],
     }
     render(<AgentRosterResponseContent item={item} content={item.content} />)
     const table = await screen.findByRole('table', { name: 'Sales data' })
@@ -181,17 +182,18 @@ describe('AgentRosterResponseContent', () => {
   it('preserves an edited form when its surrounding live message grows', async () => {
     const user = userEvent.setup()
     const onSend = vi.fn()
+    const formBlock: OpenUiContentBlock = {
+      ...tableBlock('filters'),
+      source:
+        'root = Stack([Form("filters", "Filter sales", "Apply filters", "Apply these filters", [TextField("keyword", "Keyword", "", false)])])',
+    }
     const item: ChatItem = {
       id: 'answer-form',
       content: '',
       isAnswer: true,
-      agent_response_parts: [{ type: 'message', content: 'Choose a filter.' }],
-      content_blocks: [
-        {
-          ...tableBlock('filters', 0),
-          source:
-            'root = Stack([Form("filters", "Filter sales", "Apply filters", "Apply these filters", [TextField("keyword", "Keyword", "", false)])])',
-        },
+      agent_response_parts: [
+        { type: 'openui', block: formBlock },
+        { type: 'message', content: 'Choose a filter.' },
       ],
     }
     const view = (answer: ChatItem) => (
@@ -206,6 +208,7 @@ describe('AgentRosterResponseContent', () => {
       view({
         ...item,
         agent_response_parts: [
+          { type: 'openui', block: formBlock },
           { type: 'message', content: 'Choose a filter. More details arrived.' },
         ],
       }),

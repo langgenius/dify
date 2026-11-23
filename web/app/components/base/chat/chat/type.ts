@@ -1,10 +1,9 @@
-import type {
-  KnowledgeFsCitation,
-  OpenUiContentBlock as OpenUIContentBlock,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { KnowledgeFsCitation } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
+import type { MessageContentPart } from '@/features/generative-ui/protocol/types'
 import type { Annotation, MessageRating } from '@/models/log'
 import type { FileResponse, HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 
@@ -55,6 +54,10 @@ type AgentResponsePart =
       type: 'message'
       content: string
     }
+  | {
+      type: 'openui'
+      block: OpenUIContentBlock
+    }
 
 export type CitationItem = {
   knowledge_fs_citation?: KnowledgeFsCitation | null
@@ -96,7 +99,7 @@ export type IChatItem = {
   isError?: boolean
   id: string
   content: string
-  content_blocks?: OpenUIContentBlock[]
+  parts?: MessageContentPart[]
   citation?: CitationItem[]
   /**
    * Specific message type
@@ -147,7 +150,7 @@ export type IChatItem = {
 
 type Metadata = {
   agent_response_is_partial?: boolean
-  content_blocks?: OpenUIContentBlock[]
+  parts?: MessageContentPart[]
   retriever_resources?: CitationItem[]
   annotation_reply: {
     id: string

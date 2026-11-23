@@ -685,7 +685,6 @@ export type MessageDetailResponse = {
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
   answer_tokens: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   error?: string | null
@@ -703,6 +702,7 @@ export type MessageDetailResponse = {
   message_tokens: number
   metadata: AnyJsonValue
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency: number
   query: string
   retriever_resources?: Array<RetrievalSourceMetadata>
@@ -733,6 +733,7 @@ export type AppModelConfigPayload = {
   dataset_query_variable?: string | null
   external_data_tools?: Array<AppExternalDataToolPayload> | null
   file_upload?: AppFileUploadPayload | null
+  generative_ui?: AppFeaturePayload | null
   model: AppModelSelectionPayload
   more_like_this?: AppFeaturePayload | null
   opening_statement?: string | null
@@ -1765,6 +1766,7 @@ export type AppModelConfigResponse = {
     AppEnabledExternalDataToolResponse | AppDisabledExternalDataToolResponse
   >
   file_upload: AppFileUploadResponse
+  generative_ui?: AppEnabledConfigResponse
   model: AppModelSelectionResponse
   more_like_this: AppEnabledConfigResponse
   opening_statement: string | null
@@ -2075,7 +2077,6 @@ export type MessageDetail = {
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
   answer_tokens: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   error?: string | null
@@ -2092,6 +2093,7 @@ export type MessageDetail = {
   message_tokens: number
   metadata: AnyJsonValue
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency: number
   query: string
   retriever_resources?: Array<RetrievalSourceMetadata>
@@ -2138,19 +2140,6 @@ export type ConversationAnnotationHitHistory = {
   created_at?: number | null
 }
 
-export type OpenUiContentBlock = {
-  form_state: {
-    [key: string]: JsonValue
-  }
-  id: string
-  library_version: 'dify-ui-v1'
-  sequence: number
-  source: string
-  status: OpenUiContentStatus
-  text_offset: number
-  type: 'openui'
-}
-
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
@@ -2181,6 +2170,14 @@ export type MessageFile = {
   url?: string | null
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type RetrievalSourceMetadata = {
   content?: string | null
   data_source_type?: string | null
@@ -2209,6 +2206,18 @@ export type RetrievalSourceMetadata = {
   summary?: string | null
   title?: string | null
   word_count?: number | null
+}
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  type: 'openui'
 }
 
 export type AppAgentModePayload = {
@@ -2347,6 +2356,11 @@ export type AppFileUploadPayload = {
     | undefined
 }
 
+export type AppFeaturePayload = {
+  enabled?: boolean | null
+  [key: string]: AppConfigJsonValue | boolean | null | undefined
+}
+
 export type AppModelSelectionPayload = {
   completion_params: {
     [key: string]: AppConfigJsonValue
@@ -2363,11 +2377,6 @@ export type AppModelSelectionPayload = {
     | null
     | string
     | undefined
-}
-
-export type AppFeaturePayload = {
-  enabled?: boolean | null
-  [key: string]: AppConfigJsonValue | boolean | null | undefined
 }
 
 export type AppModerationPayload = {
@@ -3049,6 +3058,10 @@ export type AppFileUploadResponse = {
   number_limits?: number
 }
 
+export type AppEnabledConfigResponse = {
+  enabled: boolean
+}
+
 export type AppModelSelectionResponse = {
   completion_params?: {
     [key: string]: JsonValue
@@ -3057,10 +3070,6 @@ export type AppModelSelectionResponse = {
   name?: string | null
   provider?: string | null
   [key: string]: unknown
-}
-
-export type AppEnabledConfigResponse = {
-  enabled: boolean
 }
 
 export type PromptType = 'advanced' | 'simple'
@@ -3236,8 +3245,6 @@ export type SimpleAccount = {
   name: string
 }
 
-export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
-
 export type HumanInputFormDefinition = {
   actions?: Array<UserActionConfig>
   display_in_ui?: boolean
@@ -3267,6 +3274,12 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type KnowledgeFsCitation = {
   artifact_hash: string
   control_space_id: string
@@ -3282,6 +3295,8 @@ export type KnowledgeFsCitation = {
   space_name: string
   start_offset?: number | null
 }
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
 
 export type AppConfigJsonValue =
   | string

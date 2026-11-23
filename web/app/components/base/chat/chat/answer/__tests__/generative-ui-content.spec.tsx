@@ -12,7 +12,6 @@ const block: OpenUIContentBlock = {
   id: 'ui-1',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: 0,
   source:
     'root = Stack([filters])\nfilters = Form("filters", "Filter results", "Apply", "Apply filters", [region])\nregion = TextField("region", "Region", "East", false)',
   sequence: 2,
@@ -20,7 +19,7 @@ const block: OpenUIContentBlock = {
   form_state: {},
 }
 
-const item: ChatItem = { id: 'message-1', isAnswer: true, content: '', content_blocks: [block] }
+const item: ChatItem = { id: 'message-1', isAnswer: true, content: '', parts: [block] }
 
 describe('OpenUI content in shared answers', () => {
   beforeAll(async () => {
@@ -87,7 +86,7 @@ describe('OpenUI content in shared answers', () => {
       renderWithConsoleQuery(
         <ChatContextProvider chatList={[item]} onSend={vi.fn()}>
           <Answer
-            item={{ ...item, content_blocks: [{ ...block, status }] }}
+            item={{ ...item, parts: [{ ...block, status }] }}
             question="Choose filters"
             index={0}
           />
@@ -431,7 +430,7 @@ describe('OpenUI content in shared answers', () => {
         <Answer
           item={{
             ...item,
-            content_blocks: [{ ...block, form_state: { filters: { region: { value: 'West' } } } }],
+            parts: [{ ...block, form_state: { filters: { region: { value: 'West' } } } }],
           }}
           question="Choose filters"
           index={0}

@@ -1381,13 +1381,13 @@ class TestChatflowGenerativeUI:
 
     @pytest.mark.usefixtures("agent_runtime_app")
     @pytest.mark.parametrize("moderated", [False, True])
-    @pytest.mark.parametrize(("closing_fence", "status"), [("```", "completed"), ("", "error")])
+    @pytest.mark.parametrize(("closing_tag", "status"), [("</dify_ui>", "completed"), ("", "error")])
     def test_pause_persists_terminal_ui_before_human_input_and_resume(
         self,
         pipeline: AdvancedChatAppGenerateTaskPipeline,
         agent_queue_manager: MessageBasedAppQueueManager,
         sqlite_session: Session,
-        closing_fence: str,
+        closing_tag: str,
         status: str,
         moderated: bool,
         config_overrides: Callable[..., None],
@@ -1442,15 +1442,17 @@ class TestChatflowGenerativeUI:
                 output_evaluator=lambda _text: None,
             )
         source = 'root = Stack([details])\ndetails = Text("Result")\n'
-        list(
+        chunk_responses = list(
             pipeline._handle_text_chunk_event(
                 QueueTextChunkEvent(
-                    text=f"Summary\n```openui\n{source}{closing_fence}",
+                    text=f"Summary\n<dify_ui>\n{source}{closing_tag}",
                     from_variable_selector=["ui-producer", "text"],
                 )
             )
         )
-        assert pipeline._task_state.metadata.content_blocks[0].status == "streaming"
+        assert [part.type for part in pipeline._task_state.metadata.parts] == ["text", "openui"]
+        assert pipeline._task_state.metadata.parts[1].type == "openui"
+        assert pipeline._task_state.metadata.parts[1].status == ("completed" if closing_tag else "streaming")
         reason = HumanInputRequired(
             form_id=form.id,
             form_content=definition.form_content,
@@ -1467,23 +1469,30 @@ class TestChatflowGenerativeUI:
             )
         )
 
-        terminal = responses[0]
-        assert isinstance(terminal, MessageContentStreamResponse)
+        all_content = [
+            response
+            for response in [*chunk_responses, *responses]
+            if isinstance(response, MessageContentStreamResponse)
+        ]
+        terminal = all_content[-1]
         assert isinstance(terminal.data, OpenUIContentBlock)
         assert terminal.data.status == status
         assert terminal.data.source == source
-        assert terminal.data.text_offset == len("Summary\n")
         if moderated:
-            assert isinstance(responses[1], MessageStreamResponse)
-            assert responses[1].answer == "Summary\n"
+            prose_responses = [response for response in responses if isinstance(response, MessageStreamResponse)]
+            assert len(prose_responses) == 1
+            assert prose_responses[0].answer == "Summary\n"
         assert isinstance(responses[-2], HumanInputRequiredResponse)
         assert isinstance(responses[-1], WorkflowPauseStreamResponse)
+        expected_parts = [part.model_dump(mode="json") for part in pipeline._task_state.metadata.parts]
+        assert expected_parts[0]["text"] == "Summary\n"
+        assert expected_parts[1] == terminal.data.model_dump(mode="json")
         sqlite_session.expire_all()
         message = sqlite_session.get(Message, pipeline._message_id)
         assert message is not None
         assert message.status == MessageStatus.PAUSED
         assert message.answer == "Summary\n"
-        assert message.message_metadata_dict["content_blocks"] == [terminal.data.model_dump(mode="json")]
+        assert message.message_metadata_dict["parts"] == expected_parts
 
         resumed = _build_generative_ui_pipeline(message, agent_queue_manager)
         resumed._graph_runtime_state = pipeline._graph_runtime_state
@@ -1492,16 +1501,16 @@ class TestChatflowGenerativeUI:
 
         end = completed_responses[0]
         assert isinstance(end, MessageEndStreamResponse)
-        assert end.metadata["content_blocks"] == [terminal.data.model_dump(mode="json")]
+        assert end.metadata["parts"] == expected_parts
         sqlite_session.refresh(message)
         assert message.status == MessageStatus.NORMAL
-        assert message.message_metadata_dict["content_blocks"] == [terminal.data.model_dump(mode="json")]
+        assert message.message_metadata_dict["parts"] == expected_parts
 
     def test_stream_sends_deltas_and_retains_complete_persisted_blocks(
         self, pipeline: AdvancedChatAppGenerateTaskPipeline, sqlite_session: Session
     ) -> None:
         source = 'root = Stack([details])\ndetails = Text("' + "Revenue " * 100 + '")\n'
-        text = f"```openui\n{source}```"
+        text = f"<dify_ui>\n{source}</dify_ui>"
         responses = []
         for offset in range(0, len(text), 20):
             responses.extend(
@@ -1526,7 +1535,7 @@ class TestChatflowGenerativeUI:
         sqlite_session.commit()
         message = sqlite_session.get(Message, pipeline._message_id)
         assert message is not None
-        assert message.message_metadata_dict["content_blocks"] == [terminal.model_dump(mode="json")]
+        assert message.message_metadata_dict["parts"] == [terminal.model_dump(mode="json")]
 
     @pytest.mark.parametrize("selector", [["plain-producer", "text"], None])
     def test_only_enabled_producer_separates_ui_from_plain_answer_and_speech(
@@ -1535,7 +1544,7 @@ class TestChatflowGenerativeUI:
         queued_tts_publisher: AppGeneratorTTSPublisher,
         selector: list[str] | None,
     ) -> None:
-        source = '```openui\nroot = Card("Result")\n```\n'
+        source = '<dify_ui>\nroot = Card("Result")\n</dify_ui>\n'
         publisher = queued_tts_publisher
         responses = []
         for text, producer in [("Summary.\n" + source, ["ui-producer", "text"]), (source, selector)]:
@@ -1573,7 +1582,7 @@ class TestChatflowGenerativeUI:
         list(
             pipeline._handle_text_chunk_event(
                 QueueTextChunkEvent(
-                    text='Summary.\n```openui\nroot = Card("Partial")',
+                    text='Summary.\n<dify_ui>\nroot = Card("Partial")',
                     from_variable_selector=["ui-producer", "text"],
                 )
             )
@@ -1590,12 +1599,13 @@ class TestChatflowGenerativeUI:
         assert message is not None
         assert message.status == MessageStatus.ERROR
         assert message.answer == "Summary.\n"
-        assert message.message_metadata_dict["content_blocks"] == [responses[0].data.model_dump(mode="json")]
+        assert [part["type"] for part in message.message_metadata_dict["parts"]] == ["text", "openui"]
+        assert message.message_metadata_dict["parts"][1] == responses[0].data.model_dump(mode="json")
 
-    def test_reasoning_with_openui_fence_does_not_create_ui_content(
+    def test_reasoning_with_openui_tag_does_not_create_ui_content(
         self, pipeline: AdvancedChatAppGenerateTaskPipeline
     ) -> None:
-        reasoning = 'Considering a UI:\n```openui\nroot = Card("Reasoning only")\n```\n'
+        reasoning = 'Considering a UI:\n<dify_ui>\nroot = Card("Reasoning only")\n</dify_ui>\n'
         event = QueueReasoningChunkEvent(reasoning=reasoning, from_node_id="ui-producer", is_final=True)
 
         responses = list(pipeline._dispatch_event(event))
@@ -1606,15 +1616,15 @@ class TestChatflowGenerativeUI:
         assert responses[0].data.node_id == "ui-producer"
         assert responses[0].data.is_final is True
         assert pipeline._task_state.answer == ""
-        assert pipeline._task_state.metadata.content_blocks == []
+        assert pipeline._task_state.metadata.parts == []
         assert pipeline._generative_ui_parsers == {}
 
-    @pytest.mark.parametrize("closing_fence", ["```\n", ""])
+    @pytest.mark.parametrize("closing_tag", ["</dify_ui>\n", ""])
     def test_direct_output_moderation_clears_ui_before_stopping(
         self,
         pipeline: AdvancedChatAppGenerateTaskPipeline,
         sqlite_session: Session,
-        closing_fence: str,
+        closing_tag: str,
         config_overrides: Callable[..., None],
     ) -> None:
         pipeline._graph_runtime_state = RuntimeState(
@@ -1635,7 +1645,7 @@ class TestChatflowGenerativeUI:
         initial_responses = list(
             pipeline._handle_text_chunk_event(
                 QueueTextChunkEvent(
-                    text=f'Original.\n```openui\nroot = Card("Result")\n{closing_fence}',
+                    text=f'Original.\n<dify_ui>\nroot = Card("Result")\n{closing_tag}',
                     from_variable_selector=["ui-producer", "text"],
                 )
             )
@@ -1652,12 +1662,12 @@ class TestChatflowGenerativeUI:
         assert [response.event for response in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
         end = responses[0]
         assert isinstance(end, MessageEndStreamResponse)
-        assert end.metadata["content_blocks"] == []
+        assert end.metadata["parts"] == []
         sqlite_session.expire_all()
         message = sqlite_session.get(Message, pipeline._message_id)
         assert message is not None
         assert message.answer == "Redacted."
-        assert message.message_metadata_dict["content_blocks"] == []
+        assert message.message_metadata_dict["parts"] == []
 
     def test_moderation_replacement_suppresses_current_and_later_ui_blocks(
         self,
@@ -1673,14 +1683,14 @@ class TestChatflowGenerativeUI:
         )
         for event in [
             QueueTextChunkEvent(
-                text='Original.\n```openui\nroot = Card("Partial', from_variable_selector=["ui-producer", "text"]
+                text='Original.\n<dify_ui>\nroot = Card("Partial', from_variable_selector=["ui-producer", "text"]
             ),
             QueueMessageReplaceEvent(
-                text='Redacted.\n```openui\nroot = Card("Replacement UI")\n```\n',
+                text='Redacted.\n<dify_ui>\nroot = Card("Replacement UI")\n</dify_ui>\n',
                 reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
             ),
             QueueTextChunkEvent(
-                text='")\n```\nFollowing prose.\n```openui\nroot = Card("Later UI")\n```\nDone.',
+                text='")\n</dify_ui>\nFollowing prose.\n<dify_ui>\nroot = Card("Later UI")\n</dify_ui>\nDone.',
                 from_variable_selector=["ui-producer", "text"],
             ),
             QueueAdvancedChatMessageEndEvent(),
@@ -1701,12 +1711,12 @@ class TestChatflowGenerativeUI:
         assert not any(isinstance(response, MessageContentStreamResponse) for response in responses[replacement_index:])
         end = responses[-1]
         assert isinstance(end, MessageEndStreamResponse)
-        assert end.metadata["content_blocks"] == []
+        assert end.metadata["parts"] == []
         sqlite_session.expire_all()
         message = sqlite_session.get(Message, "message-id")
         assert message is not None
         assert message.answer == "Redacted.\nFollowing prose.\nDone."
-        assert message.message_metadata_dict["content_blocks"] == []
+        assert message.message_metadata_dict["parts"] == []
         speech = []
         while not publisher._msg_queue.empty():
             published = publisher._msg_queue.get_nowait()

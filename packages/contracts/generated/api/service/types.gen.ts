@@ -3367,6 +3367,14 @@ export type KnowledgeTagResponse = {
   type: string
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -3405,7 +3413,6 @@ export type MessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -3419,6 +3426,7 @@ export type MessageListItem = {
   message_files: Array<MessageFile>
   message_tokens?: number
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -3531,7 +3539,6 @@ export type OpenUiContentBlock = {
   sequence: number
   source: string
   status: OpenUiContentStatus
-  text_offset: number
   type: 'openui'
 }
 
@@ -4301,6 +4308,12 @@ export type TagUpdatePayload = {
   tag_id: string
 }
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type TextToAudioPayload = {
   message_id?: string | null
   streaming?: boolean | null
@@ -4632,7 +4645,6 @@ export type MessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -4646,6 +4658,7 @@ export type MessageListItemWritable = {
   message_files: Array<MessageFile>
   message_tokens?: number
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>

@@ -6,7 +6,7 @@ import { Renderer } from '@openuidev/react-lang'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { toGenerativeUIAction } from './actions'
-import { InteractionsDisabledContext } from './components/interaction-context'
+import { AllowInteractiveContext, InteractionsDisabledContext } from './components/interaction-context'
 import { GENERATIVE_UI_LIBRARY_VERSION } from './registry/definitions'
 import { difyUILibrary } from './registry/library'
 
@@ -15,6 +15,7 @@ export type GenerativeUIRendererProps = {
   libraryVersion: string
   isStreaming: boolean
   isReadOnly?: boolean
+  allowInteractive?: boolean
   initialState?: Record<string, unknown>
   fallbackText: string
   onStateUpdate?: (state: Record<string, unknown>) => void
@@ -39,6 +40,7 @@ function CurrentLibraryRenderer({
   source,
   isStreaming,
   isReadOnly = false,
+  allowInteractive = true,
   initialState,
   fallbackText,
   onStateUpdate,
@@ -64,7 +66,7 @@ function CurrentLibraryRenderer({
     )
     setHasMissingContent(!!result && (result.meta.incomplete || result.meta.unresolved.length > 0))
   }, [])
-  const disabled = isStreaming || isReadOnly || !onAction
+  const disabled = isStreaming || isReadOnly || !allowInteractive || !onAction
   const showFallback = !isStreaming && (!hasUsableRoot || !source.trim())
 
   return (
@@ -85,22 +87,24 @@ function CurrentLibraryRenderer({
         </p>
       )}
       <div hidden={showFallback}>
-        <InteractionsDisabledContext value={disabled || showFallback}>
-          <Renderer
-            library={difyUILibrary}
-            response={source}
-            isStreaming={isStreaming}
-            initialState={hydratedState}
-            onStateUpdate={onStateUpdate}
-            onAction={(event) => {
-              if (disabled || showFallback) return
-              const action = toGenerativeUIAction(event)
-              if (action) onAction?.(action)
-            }}
-            onError={reportErrors}
-            onParseResult={inspectProgram}
-          />
-        </InteractionsDisabledContext>
+        <AllowInteractiveContext value={allowInteractive}>
+          <InteractionsDisabledContext value={disabled || showFallback}>
+            <Renderer
+              library={difyUILibrary}
+              response={source}
+              isStreaming={isStreaming}
+              initialState={hydratedState}
+              onStateUpdate={onStateUpdate}
+              onAction={(event) => {
+                if (disabled || showFallback) return
+                const action = toGenerativeUIAction(event)
+                if (action) onAction?.(action)
+              }}
+              onError={reportErrors}
+              onParseResult={inspectProgram}
+            />
+          </InteractionsDisabledContext>
+        </AllowInteractiveContext>
       </div>
     </div>
   )

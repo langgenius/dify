@@ -161,6 +161,10 @@ class TestChatAppConfigManager:
                 "core.app.apps.chat.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("sensitive_word_avoidance", 11),
             ),
+            patch(
+                "core.app.apps.chat.app_config_manager.GenerativeUIConfigManager.validate_and_set_defaults",
+                side_effect=_add_key("generative_ui", 12),
+            ),
         ):
             filtered = ChatAppConfigManager.config_validate(session=unbound_session, tenant_id="t1", config=config)
 
@@ -175,3 +179,4 @@ class TestChatAppConfigManager:
         assert filtered["text_to_speech"] == 9
         assert filtered["retriever_resource"] == 10
         assert filtered["sensitive_word_avoidance"] == 11
+        assert filtered["generative_ui"] == 12

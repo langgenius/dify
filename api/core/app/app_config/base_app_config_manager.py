@@ -3,6 +3,7 @@ from typing import Any
 
 from core.app.app_config.entities import AppAdditionalFeatures
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.app_config.features.generative_ui.manager import GenerativeUIConfigManager
 from core.app.app_config.features.more_like_this.manager import MoreLikeThisConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
 from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
@@ -45,5 +46,7 @@ class BaseAppConfigManager:
         additional_features.speech_to_text = SpeechToTextConfigManager.convert(config=config_dict)
 
         additional_features.text_to_speech = TextToSpeechConfigManager.convert(config=config_dict)
+
+        additional_features.generative_ui = GenerativeUIConfigManager.convert(config=config_dict)
 
         return additional_features

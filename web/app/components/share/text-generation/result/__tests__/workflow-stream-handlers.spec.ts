@@ -893,4 +893,82 @@ describe('createWorkflowStreamHandlers', () => {
 
     expect(stringOutputSetup.setCompletionRes).toHaveBeenCalledWith('plain text output')
   })
+
+  it('merges message_content OpenUI blocks and preserves final parts on workflow_finished', () => {
+    const setup = setupHandlers()
+    const handlers = setup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowStarted' | 'onTextChunk' | 'onMessageContent' | 'onWorkflowFinished'>
+    >
+
+    act(() => {
+      handlers.onWorkflowStarted({
+        workflow_run_id: 'run-ui',
+        task_id: 'task-ui',
+        event: 'workflow_started',
+        data: { id: 'run-ui', workflow_id: 'wf-ui', created_at: 0 },
+      })
+      handlers.onTextChunk({
+        workflow_run_id: 'run-ui',
+        task_id: 'task-ui',
+        event: 'text_chunk',
+        data: { text: 'Summary.\n' },
+      })
+      handlers.onMessageContent({
+        workflow_run_id: 'run-ui',
+        task_id: 'task-ui',
+        event: 'message_content',
+        data: {
+          id: 'ui-1',
+          type: 'openui',
+          status: 'completed',
+          sequence: 1,
+          library_version: 'dify-ui-v1',
+          form_state: {},
+          source: 'root = Card("Report")',
+        },
+      })
+    })
+
+    expect(setup.workflowProcessData()?.parts?.map((part) => part.type)).toEqual(['text', 'openui'])
+
+    act(() => {
+      handlers.onWorkflowFinished({
+        task_id: 'task-ui',
+        workflow_run_id: 'run-ui',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-ui',
+          workflow_id: 'wf-ui',
+          status: WorkflowRunningStatus.Succeeded,
+          outputs: { report: 'Summary.\n' },
+          parts: [
+            { id: 't1', type: 'text', text: 'Summary.\n' },
+            {
+              id: 'ui-1',
+              type: 'openui',
+              status: 'completed',
+              sequence: 1,
+              library_version: 'dify-ui-v1',
+              form_state: {},
+              source: 'root = Card("Report")',
+            },
+          ],
+          error: '',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    expect(setup.workflowProcessData()?.parts).toHaveLength(2)
+    expect(setup.setCompletionRes).toHaveBeenCalledWith('{"report":"Summary.\\n"}')
+  })
 })

@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { interruptContentParts } from '@/features/generative-ui/stream-reducer'
 
 export const useWorkflowFailed = () => {
   const store = useStoreApi()
@@ -38,6 +39,7 @@ export const useWorkflowFailed = () => {
             status: WorkflowRunningStatus.Failed,
             error,
           }
+          draft.parts = interruptContentParts(draft.parts, 'error')
           draft.tracing?.forEach((trace) => {
             if (trace.status === NodeRunningStatus.Running) trace.status = NodeRunningStatus.Failed
           })

@@ -197,6 +197,29 @@ describe('LLM Panel', () => {
     expect(screen.getByRole('switch', { name: 'app.structOutput.structured' })).toBeChecked()
   })
 
+  it('enables generative UI for a Workflow node and hides it in Snippet flows', async () => {
+    const user = userEvent.setup()
+    const { getNodeData, unmount } = renderPanel({
+      resource: {
+        kind: 'app',
+        appId: 'test-app',
+        mode: 'workflow',
+        collaborationEnabled: false,
+      },
+    })
+
+    const generativeUI = screen.getByRole('switch', { name: 'appDebug.generativeUI.title' })
+    await user.click(generativeUI)
+    expect(getNodeData().generative_ui_enabled).toBe(true)
+    expect(generativeUI).toBeChecked()
+    unmount()
+
+    renderPanel({ resource: { kind: 'snippet', snippetId: 'test-snippet' } })
+    expect(
+      screen.queryByRole('switch', { name: 'appDebug.generativeUI.title' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('explains why generative UI is unavailable while JSON output is enabled', async () => {
     const user = userEvent.setup()
     renderPanel({

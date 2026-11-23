@@ -88,6 +88,7 @@ describe('configuration debug hooks', () => {
       suggestedQuestions: ['how are you?'],
       suggestedQuestionsAfterAnswerConfig: { enabled: false },
       citationConfig: { enabled: true },
+      generativeUIConfig: { enabled: true },
       moderationConfig: { enabled: false },
       dataSets: [createDatasetFixture({ id: 'dataset-1' })],
       datasetConfigs: createDatasetConfigsFixture({ retrieval_model: RETRIEVE_TYPE.multiWay }),
@@ -110,6 +111,7 @@ describe('configuration debug hooks', () => {
         opening_statement: 'hello',
         pre_prompt: 'hello {{name}}',
         suggested_questions: ['how are you?'],
+        generative_ui: { enabled: true },
       }),
     )
     expect(result.current.agent_mode?.strategy).toBe(AgentStrategy.functionCall)

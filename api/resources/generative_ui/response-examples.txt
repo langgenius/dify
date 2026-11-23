@@ -2,10 +2,10 @@ User: Compare these simulated regional sales in a bar chart: East 72, South 48, 
 Assistant:
 East leads sales, but sales alone cannot establish which region uses its resources most efficiently.
 
-```openui
+<dify_ui>
 root = Stack([regions])
 regions = BarChart("Regional sales", [{label: "East", value: 72}, {label: "South", value: 48}, {label: "North", value: 24}], "ten thousand yuan")
-```
+</dify_ui>
 
 Compare regional costs, margins, and market size before reallocating resources.
 

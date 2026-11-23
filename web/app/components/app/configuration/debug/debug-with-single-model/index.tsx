@@ -12,6 +12,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -71,6 +72,7 @@ const DebugWithSingleModel = ({
       suggested_questions_after_answer: features.suggested,
       retriever_resource: features.citation,
       annotation_reply: features.annotationReply,
+      generative_ui: features.generativeUI,
     } as ChatConfig
   }, [configTemplate, features])
   const inputsForm = useMemo(() => {
@@ -89,6 +91,7 @@ const DebugWithSingleModel = ({
     handleAnnotationAdded,
     handleAnnotationEdited,
     handleAnnotationRemoved,
+    handleContentBlockStateSaved,
   } = useChat(
     config,
     {
@@ -212,6 +215,19 @@ const DebugWithSingleModel = ({
       onAnnotationEdited={canManageAnnotation ? handleAnnotationEdited : undefined}
       onAnnotationAdded={canManageAnnotation ? handleAnnotationAdded : undefined}
       onAnnotationRemoved={canManageAnnotation ? handleAnnotationRemoved : undefined}
+      onGenerativeUIStateChange={
+        canTestAndRun
+          ? async (messageId, blockId, state) => {
+              const { block } = await saveGenerativeUIState(
+                { kind: 'app', appId },
+                messageId,
+                blockId,
+                state,
+              )
+              handleContentBlockStateSaved(messageId, block)
+            }
+          : undefined
+      }
       noSpacing
     />
   )

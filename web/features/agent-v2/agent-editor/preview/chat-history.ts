@@ -120,7 +120,7 @@ export function getFormattedAgentDebugChatTree(
     chatList.push({
       id: item.id,
       content: answer,
-      content_blocks: item.content_blocks,
+      parts: item.parts,
       agent_response_is_partial:
         typeof item.metadata === 'object' &&
         item.metadata !== null &&

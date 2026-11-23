@@ -33,7 +33,7 @@
     "id": "follow-up-ui-fact",
     "history": [
       {"role": "user", "content": "Show the simulated regional query results."},
-      {"role": "assistant", "content": "East China had the highest sales.\n\n```openui\nroot = Stack([regions])\nregions = BarChart(\"Regional sales\", [{label: \"East China\", value: 72}, {label: \"South China\", value: 48}, {label: \"North China\", value: 24}], \"CNY 10,000\")\n```\n"}
+      {"role": "assistant", "content": "East China had the highest sales.\n\n<dify_ui>\nroot = Stack([regions])\nregions = BarChart(\"Regional sales\", [{label: \"East China\", value: 72}, {label: \"South China\", value: 48}, {label: \"North China\", value: 24}], \"CNY 10,000\")\n</dify_ui>\n"}
     ],
     "prompt": "What was the exact sales figure for South China just shown? Answer in a single sentence of plain text.",
     "ui": "forbidden",

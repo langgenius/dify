@@ -18,13 +18,19 @@ type GenerativeUIContentProps = {
   messageId: string
   block: OpenUIContentBlock
   fallbackText: string
+  allowInteractive?: boolean
 }
 
 export const GenerativeUIContent = memo((props: GenerativeUIContentProps) => {
   return <GenerativeUIContentSession key={`${props.messageId}:${props.block.id}`} {...props} />
 })
 
-function GenerativeUIContentSession({ messageId, block, fallbackText }: GenerativeUIContentProps) {
+function GenerativeUIContentSession({
+  messageId,
+  block,
+  fallbackText,
+  allowInteractive = true,
+}: GenerativeUIContentProps) {
   const { t } = useTranslation(['common', 'appDebug'])
   const hostReadOnly = useContextSelector(
     ChatContext,
@@ -108,6 +114,7 @@ function GenerativeUIContentSession({ messageId, block, fallbackText }: Generati
         libraryVersion={block.library_version}
         isStreaming={block.status === 'streaming'}
         isReadOnly={isReadOnly || isSubmitting}
+        allowInteractive={allowInteractive}
         initialState={block.form_state}
         fallbackText={fallbackText}
         onStateUpdate={handleStateUpdate}

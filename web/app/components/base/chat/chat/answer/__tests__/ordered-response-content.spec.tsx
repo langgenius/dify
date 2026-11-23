@@ -11,7 +11,6 @@ const block: OpenUiContentBlock = {
   id: 'regions',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: Array.from(intro).length,
   source: 'root = Stack([Table("Regional sales", ["Region", "Sales"], [["East", "72"]])])',
   status: 'completed',
   sequence: 2,
@@ -35,7 +34,11 @@ describe('ordered text and UI answers', () => {
         id: 'answer',
         isAnswer: true,
         content: intro + advice,
-        content_blocks: [block],
+        parts: [
+          { id: 'text:0', type: 'text', text: intro },
+          block,
+          { id: 'text:2', type: 'text', text: advice },
+        ],
         humanInputFilledFormDataList: humanInputs
           ? [
               {
@@ -70,7 +73,7 @@ describe('ordered text and UI answers', () => {
       id: 'answer',
       isAnswer: true,
       content: intro,
-      content_blocks: [block, secondBlock],
+      parts: [{ id: 'text:0', type: 'text', text: intro }, block, secondBlock],
     }
     const view = (answer: ChatItem, responding: boolean) => (
       <ChatContextProvider chatList={[answer]}>
@@ -81,7 +84,11 @@ describe('ordered text and UI answers', () => {
     const table = await screen.findByRole('table', { name: 'Regional sales' })
     const heading = screen.getByRole('heading', { name: 'Follow-up investigation' })
     expectBefore(table, heading)
-    const complete = { ...item, content: intro + advice }
+    const complete: ChatItem = {
+      ...item,
+      content: intro + advice,
+      parts: [...item.parts!, { id: 'text:3', type: 'text', text: advice }],
+    }
     rerender(view(complete, false))
     expectBefore(heading, await screen.findByText(advice))
     unmount()

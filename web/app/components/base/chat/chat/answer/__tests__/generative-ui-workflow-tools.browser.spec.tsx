@@ -40,7 +40,6 @@ const block: OpenUiContentBlock = {
   id: 'ui-1',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: Array.from(introduction).length,
   source: `root = Stack([results, filters])
 results = Table("Sales by region", ["Region", "Sales"], [["East", "80"], ["West", "40"]])
 filters = Form("filters", "Filter results", "Apply", "Apply these filters", [region])
@@ -91,7 +90,7 @@ it.each([
       ...item,
       content: introduction,
       workflowAgentActivities: [completedTool],
-      content_blocks: [block],
+      parts: [{ id: 'text:0', type: 'text', text: introduction }, block],
     }
     await screen.rerender(renderAnswer(streamingAnswer, true))
 
@@ -111,7 +110,11 @@ it.each([
     const completedAnswer: ChatItem = {
       ...streamingAnswer,
       content: introduction + conclusion,
-      content_blocks: [{ ...block, sequence: 2, status: 'completed' }],
+      parts: [
+        { id: 'text:0', type: 'text', text: introduction },
+        { ...block, sequence: 2, status: 'completed' },
+        { id: 'text:2', type: 'text', text: conclusion },
+      ],
     }
     await screen.rerender(renderAnswer(completedAnswer, true))
     await expect.element(submit).toBeDisabled()

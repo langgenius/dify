@@ -85,6 +85,8 @@ type IDebugConfiguration = {
   setAnnotationConfig: (annotationConfig: AnnotationReplyConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
+  generativeUIConfig?: MoreLikeThisConfig
+  setGenerativeUIConfig?: (generativeUIConfig: MoreLikeThisConfig) => void
   externalDataToolsConfig: ExternalDataTool[]
   setExternalDataToolsConfig: (externalDataTools: ExternalDataTool[]) => void
   formattingChanged: boolean
@@ -198,6 +200,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setAnnotationConfig: noop,
   setModerationConfig: noop,
+  generativeUIConfig: {
+    enabled: false,
+  },
+  setGenerativeUIConfig: noop,
   externalDataToolsConfig: [],
   setExternalDataToolsConfig: noop,
   formattingChanged: false,
@@ -234,6 +240,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    generative_ui: null,
     external_data_tools: [],
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,

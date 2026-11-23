@@ -379,6 +379,10 @@ class AppModelConfigResponse(ResponseModel):
         validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs")
     )
     file_upload: AppFileUploadResponse = Field(validation_alias=AliasChoices("file_upload_dict", "file_upload"))
+    generative_ui: AppEnabledConfigResponse = Field(
+        default_factory=lambda: {"enabled": False},
+        validation_alias=AliasChoices("generative_ui_dict", "generative_ui"),
+    )
     created_by: str | None
     created_at: int
     updated_by: str | None

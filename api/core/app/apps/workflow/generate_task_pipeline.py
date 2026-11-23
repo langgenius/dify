@@ -1,6 +1,7 @@
 import logging
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
+from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -44,6 +45,7 @@ from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
+    MessageContentStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamResponse,
@@ -62,6 +64,20 @@ from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.generative_ui import (
+    OPENUI_TAG_OPEN,
+    MessageContentPart,
+    OpenUIContentBlock,
+    OpenUIContentStatus,
+    OpenUIStreamParser,
+    append_text_part,
+    encode_openui_update,
+    extract_openui_prose,
+    has_openui_parts,
+    openui_blocks,
+    upsert_openui_part,
+)
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -118,6 +134,31 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             system_variables=self._workflow_system_variables,
         )
         self._graph_runtime_state: RuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
+        self._generative_ui_nodes = self._extract_generative_ui_nodes(workflow)
+        self._generative_ui_parsers: dict[str, OpenUIStreamParser] = {}
+        self._generative_ui_parts: list[MessageContentPart] = []
+        self._openui_sequences: dict[str, int] = {}
+
+    @staticmethod
+    def _extract_generative_ui_nodes(workflow: Workflow) -> frozenset[str]:
+        """Return LLM node IDs in ``workflow`` that enabled read-only Generative UI.
+
+        Preconditions: ``workflow.graph_dict`` may be empty or contain node dictionaries.
+        Postconditions: returns a frozenset of string node IDs with ``generative_ui_enabled=True``.
+        """
+        graph = workflow.graph_dict if isinstance(workflow.graph_dict, Mapping) else {}
+        nodes = graph.get("nodes")
+        if not isinstance(nodes, list):
+            return frozenset()
+        return frozenset(
+            node["id"]
+            for node in nodes
+            if isinstance(node, Mapping)
+            and isinstance(node.get("id"), str)
+            and isinstance(node.get("data"), Mapping)
+            and node["data"].get("type") == "llm"
+            and bool(node["data"].get("generative_ui_enabled", False))
+        )
 
     def process(
         self,
@@ -182,6 +223,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                             finished_at=int(stream_response.data.finished_at)
                             if stream_response.data.finished_at
                             else None,
+                            parts=list(stream_response.data.parts),
                         ),
                     )
                 case _:
@@ -316,8 +358,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle ping events."""
         yield self._base_task_pipeline.ping_stream_response()
 
-    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
+    def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle error events."""
+        yield from self._finish_generative_ui(OpenUIContentStatus.ERROR)
         err = self._base_task_pipeline.handle_error(event=event)
         yield self._base_task_pipeline.error_to_stream_response(err)
 
@@ -470,11 +513,15 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle workflow succeeded events."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
+        yield from self._finish_generative_ui(OpenUIContentStatus.COMPLETED)
+        outputs_override, parts = self._finalize_workflow_outputs_and_parts(validated_state.outputs)
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
             status=WorkflowExecutionStatus.SUCCEEDED,
             graph_runtime_state=validated_state,
+            parts=parts,
+            outputs_override=outputs_override,
         )
 
         yield workflow_finish_resp
@@ -487,12 +534,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle workflow partial success events."""
         self._ensure_workflow_initialized()
         validated_state = self._ensure_graph_runtime_initialized()
+        yield from self._finish_generative_ui(OpenUIContentStatus.COMPLETED)
+        outputs_override, parts = self._finalize_workflow_outputs_and_parts(validated_state.outputs)
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
             status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
             graph_runtime_state=validated_state,
             exceptions_count=event.exceptions_count,
+            parts=parts,
+            outputs_override=outputs_override,
         )
         yield workflow_finish_resp
 
@@ -524,10 +575,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             status = WorkflowExecutionStatus.FAILED
             error = event.error
             exceptions_count = event.exceptions_count
+            ui_status = OpenUIContentStatus.ERROR
         else:
             status = WorkflowExecutionStatus.STOPPED
             error = event.get_stop_reason()
             exceptions_count = 0
+            ui_status = OpenUIContentStatus.CANCELLED
+        yield from self._finish_generative_ui(ui_status)
+        outputs_override, parts = self._finalize_workflow_outputs_and_parts(validated_state.outputs)
         workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_id=self._workflow.id,
@@ -535,6 +590,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
             error=error,
             exceptions_count=exceptions_count,
+            parts=parts,
+            outputs_override=outputs_override,
         )
         yield workflow_finish_resp
 
@@ -546,16 +603,119 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle text chunk events."""
+        """Handle text chunk events, separating ``<dify_ui>`` blocks for enabled LLM nodes."""
         delta_text = event.text
         if delta_text is None:
             return
+
+        producer = event.from_variable_selector[0] if event.from_variable_selector else None
+        run_identity = self._workflow_execution_id or self._application_generate_entity.task_id
+        if producer and producer in self._generative_ui_nodes:
+            parser = self._generative_ui_parsers.get(producer)
+            if parser is None:
+                parser = OpenUIStreamParser(
+                    f"{run_identity}:{producer}:{len(openui_blocks(self._generative_ui_parts))}"
+                )
+                self._generative_ui_parsers[producer] = parser
+            for item in parser.feed(delta_text):
+                if isinstance(item, OpenUIContentBlock):
+                    yield self._openui_to_stream_response(item)
+                elif item:
+                    append_text_part(self._generative_ui_parts, item, identity=run_identity)
+                    if tts_publisher and queue_message:
+                        tts_publisher.publish(
+                            queue_message.model_copy(
+                                update={
+                                    "event": QueueTextChunkEvent(
+                                        text=item, from_variable_selector=event.from_variable_selector
+                                    )
+                                }
+                            )
+                        )
+                    yield self._text_chunk_to_stream_response(item, from_variable_selector=event.from_variable_selector)
+            return
+
+        if self._generative_ui_nodes and delta_text:
+            append_text_part(self._generative_ui_parts, delta_text, identity=run_identity)
 
         # only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
+
+    def _openui_to_stream_response(self, block: OpenUIContentBlock) -> MessageContentStreamResponse:
+        """Upsert one OpenUI block into ordered workflow parts and encode its wire update.
+
+        Preconditions: ``block`` was emitted by a workflow-scoped ``OpenUIStreamParser``.
+        Postconditions: ``self._generative_ui_parts`` stores the updated block with monotonic
+            ``sequence`` and the matching snapshot/delta stream response is returned.
+        """
+        sequence = self._openui_sequences.get(block.id, 0) + 1
+        self._openui_sequences[block.id] = sequence
+        sequenced = block.model_copy(update={"sequence": sequence})
+        previous = upsert_openui_part(self._generative_ui_parts, sequenced)
+        return MessageContentStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=encode_openui_update(sequenced, previous),
+        )
+
+    def _finish_generative_ui(self, status: OpenUIContentStatus) -> Generator[StreamResponse]:
+        """Finalize any active workflow OpenUI parsers and flush trailing prose/UI updates.
+
+        Preconditions: workflow execution reached a terminal state (``COMPLETED``,
+            ``CANCELLED``, or ``ERROR``).
+        Postconditions: all open parsers are finalized and closed; trailing buffered text
+            and terminal UI snapshots have been yielded.
+        """
+        run_identity = self._workflow_execution_id or self._application_generate_entity.task_id
+        for producer, parser in list(self._generative_ui_parsers.items()):
+            for item in parser.finish(status):
+                if isinstance(item, OpenUIContentBlock):
+                    yield self._openui_to_stream_response(item)
+                elif item:
+                    append_text_part(self._generative_ui_parts, item, identity=run_identity)
+                    yield self._text_chunk_to_stream_response(item, from_variable_selector=[producer, "text"])
+        self._generative_ui_parsers.clear()
+
+    def _finalize_workflow_outputs_and_parts(
+        self, outputs: Mapping[str, Any] | None
+    ) -> tuple[Mapping[str, Any] | None, list[MessageContentPart]]:
+        """Project workflow outputs to clean prose and build ordered read-only UI parts.
+
+        Preconditions: all active stream parsers have already been finalized via
+            ``_finish_generative_ui``.
+        Postconditions: when ``self._generative_ui_nodes`` is empty, returns ``(None, [])``;
+            otherwise strips ``<dify_ui>`` tags from string output values and returns ordered
+            ``parts`` only when at least one OpenUI block exists.
+        """
+        if not self._generative_ui_nodes:
+            return None, []
+
+        encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs or {})
+        parts = list(self._generative_ui_parts)
+        run_identity = self._workflow_execution_id or self._application_generate_entity.task_id
+
+        if isinstance(encoded_outputs, Mapping):
+            projected: dict[str, Any] = {}
+            parsed_fallback: list[MessageContentPart] = []
+            for key, value in encoded_outputs.items():
+                if isinstance(value, str) and OPENUI_TAG_OPEN in value:
+                    projected[key] = extract_openui_prose(value)
+                    if not has_openui_parts(parts):
+                        parser = OpenUIStreamParser(f"{run_identity}:{key}")
+                        parser.feed(value)
+                        parser.finish(OpenUIContentStatus.COMPLETED)
+                        parsed_fallback.extend(parser.parts)
+                else:
+                    projected[key] = value
+            if not has_openui_parts(parts) and has_openui_parts(parsed_fallback):
+                parts = parsed_fallback
+            final_parts = parts if has_openui_parts(parts) else []
+            return projected, final_parts
+
+        final_parts = parts if has_openui_parts(parts) else []
+        return None, final_parts
 
     def _handle_reasoning_chunk_event(self, event: QueueReasoningChunkEvent, **kwargs) -> Generator[StreamResponse]:
         """Handle reasoning chunk events."""

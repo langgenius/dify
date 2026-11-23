@@ -20,7 +20,16 @@ from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from graphon.file import File
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from libs.generative_ui import generative_ui_enabled
+from libs.generative_ui_prompt import load_generative_ui_prompt
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
@@ -214,6 +223,12 @@ class ChatAppRunner(AppRunner):
             context_files=context_files,
         )
 
+        if generative_ui_enabled(app_config.app_model_config_dict.get("generative_ui")):
+            prompt_messages = self._inject_generative_ui_prompt(
+                prompt_messages=prompt_messages,
+                model_mode=application_generate_entity.model_conf.mode,
+            )
+
         # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
         self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
 
@@ -244,3 +259,36 @@ class ChatAppRunner(AppRunner):
             user_id=application_generate_entity.user_id,
             tenant_id=app_config.tenant_id,
         )
+
+    @staticmethod
+    def _inject_generative_ui_prompt(
+        *,
+        prompt_messages: list[PromptMessage],
+        model_mode: str | None,
+    ) -> list[PromptMessage]:
+        """Attach Generative UI instructions to organized Chatbot prompt messages.
+
+        Preconditions: ``prompt_messages`` contains the organized prompt sequence for one turn.
+        Postconditions: returns a new prompt message list including ``load_generative_ui_prompt()``
+            without mutating caller-owned message instances.
+        """
+        instructions = load_generative_ui_prompt()
+        updated = list(prompt_messages)
+        if model_mode == LLMMode.COMPLETION.value:
+            if updated and isinstance(updated[0], UserPromptMessage):
+                first = updated[0]
+                if isinstance(first.content, str):
+                    updated[0] = UserPromptMessage(content=f"{instructions}\n\n{first.content}".strip())
+                elif isinstance(first.content, list):
+                    updated[0] = UserPromptMessage(
+                        content=[TextPromptMessageContent(data=f"{instructions}\n\n"), *first.content]
+                    )
+                return updated
+            return [UserPromptMessage(content=instructions), *updated]
+
+        if updated and isinstance(updated[0], SystemPromptMessage):
+            first_system = updated[0]
+            if isinstance(first_system.content, str):
+                updated[0] = SystemPromptMessage(content=f"{first_system.content}\n\n{instructions}".strip())
+                return updated
+        return [SystemPromptMessage(content=instructions), *updated]

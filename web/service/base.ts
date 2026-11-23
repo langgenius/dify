@@ -273,7 +273,7 @@ export type IOtherOptions = {
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
-  /** Enables ordered UI events and keeps answer text aligned with their offsets. */
+  /** Receives incremental OpenUI snapshots and deltas alongside streamed answer chunks. */
   onMessageContent?: IOnMessageContent
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
@@ -515,8 +515,7 @@ export const handleStream = (
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
                 // can not use format here. Because message is splitted.
-                const answer = onMessageContent ? bufferObj.answer : unicodeToChar(bufferObj.answer)
-                onData(answer, isFirstMessage, {
+                onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
                   event: bufferObj.event,
                   conversationId: bufferObj.conversation_id,
                   taskId: bufferObj.task_id,

@@ -80,6 +80,7 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now, to_utc_timestamp
+from libs.generative_ui import MessageContentPart
 from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.provider_ids import TriggerProviderID
@@ -308,6 +309,8 @@ class WorkflowResponseConverter:
         graph_runtime_state: RuntimeState,
         error: str | None = None,
         exceptions_count: int = 0,
+        parts: Sequence[MessageContentPart] = (),
+        outputs_override: Mapping[str, Any] | None = None,
     ) -> WorkflowFinishStreamResponse:
         run_id = self._ensure_workflow_run_id()
         started_at = self._workflow_started_at
@@ -320,7 +323,11 @@ class WorkflowResponseConverter:
         elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
 
         outputs_mapping = graph_runtime_state.outputs or {}
-        encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
+        encoded_outputs = (
+            outputs_override
+            if outputs_override is not None
+            else WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
+        )
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
@@ -354,6 +361,7 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+                parts=list(parts),
             ),
         )
 

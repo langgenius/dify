@@ -1094,7 +1094,7 @@ def test_interrupted_openui_answer_persists_only_prose(sqlite_session: Session) 
         queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
         generative_ui_enabled=True,
     )
-    for character in 'Summary\n```openui\nroot = Card("Incomplete":':
+    for character in 'Summary\n<dify_ui>\nroot = Card("Incomplete":':
         recorder.append_answer_text(character)
     recorder.finish_answer_text()
 
@@ -1110,7 +1110,7 @@ def test_openui_final_answer_trim_removes_duplicate_prose(sqlite_session: Sessio
         queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
         generative_ui_enabled=True,
     )
-    final_answer = 'Summary\n```openui\nroot = Text("Result")\n```'
+    final_answer = 'Summary\n<dify_ui>\nroot = Text("Result")\n</dify_ui>'
     recorder.append_answer_text("Earlier answer\n")
     for character in final_answer:
         recorder.append_answer_text(character)
@@ -1141,7 +1141,7 @@ def test_disabled_openui_recorder_preserves_code_examples(sqlite_session: Sessio
         message_id="msg-1",
         queue_manager=_FakeQueueManager(),  # type: ignore[arg-type]
     )
-    prose = '```openui\nroot = Text("Example")\n```'
+    prose = '<dify_ui>\nroot = Text("Example")\n</dify_ui>'
     recorder.append_answer_text(prose)
     recorder.finish_answer_text()
     assert _thought_rows(sqlite_session)[0].answer == prose

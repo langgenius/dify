@@ -5,37 +5,40 @@ import { useTranslation } from 'react-i18next'
 import { GenerativeUIContent } from './generative-ui-content'
 
 type OrderedResponseContentProps = {
-  item: Pick<ChatItem, 'id' | 'content_blocks'>
+  item: Pick<ChatItem, 'id' | 'parts'>
   content: string
   renderText: (content: string) => ReactNode
+  allowInteractive?: boolean
 }
 
-/** UI positions count Unicode code points, matching the producer's Python strings. */
-export function OrderedResponseContent({ item, content, renderText }: OrderedResponseContentProps) {
+/** Render ordered text and UI parts directly; fall back to plain content when parts are absent. */
+export function OrderedResponseContent({
+  item,
+  content,
+  renderText,
+  allowInteractive = true,
+}: OrderedResponseContentProps) {
   const { t } = useTranslation(['appDebug'])
-  const characters = Array.from(content)
-  const blocks = [...(item.content_blocks ?? [])].sort(
-    (left, right) => left.text_offset - right.text_offset,
-  )
-  let offset = 0
+  const parts = item.parts
+  if (!parts?.length) return content ? <>{renderText(content)}</> : null
 
   return (
     <>
-      {blocks.map((block) => {
-        const text = characters.slice(offset, block.text_offset).join('')
-        offset = block.text_offset
-        return (
-          <Fragment key={block.id}>
-            {text && renderText(text)}
-            <GenerativeUIContent
-              messageId={item.id}
-              block={block}
-              fallbackText={t(($) => $['generativeUI.unavailable'])}
-            />
-          </Fragment>
-        )
-      })}
-      {offset < characters.length && renderText(characters.slice(offset).join(''))}
+      {parts.map((part) =>
+        part.type === 'text' ? (
+          part.text ? (
+            <Fragment key={part.id}>{renderText(part.text)}</Fragment>
+          ) : null
+        ) : (
+          <GenerativeUIContent
+            key={part.id}
+            messageId={item.id}
+            block={part}
+            fallbackText={t(($) => $['generativeUI.unavailable'])}
+            allowInteractive={allowInteractive}
+          />
+        ),
+      )}
     </>
   )
 }

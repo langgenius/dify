@@ -3588,32 +3588,6 @@ export const zFeedback = z.object({
 })
 
 /**
- * OpenUIContentStatus
- */
-export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
-
-/**
- * OpenUIContentBlock
- */
-export const zOpenUiContentBlock = z.object({
-  form_state: z.record(z.string(), zJsonValue),
-  id: z.string(),
-  library_version: z.literal('dify-ui-v1'),
-  sequence: z.int().gte(0),
-  source: z.string(),
-  status: zOpenUiContentStatus,
-  text_offset: z.int().gte(0),
-  type: z.literal('openui'),
-})
-
-/**
- * OpenUIStateResponse
- */
-export const zOpenUiStateResponse = z.object({
-  block: zOpenUiContentBlock,
-})
-
-/**
  * HumanInputFormSubmissionData
  */
 export const zHumanInputFormSubmissionData = z.object({
@@ -3629,6 +3603,17 @@ export const zHumanInputFormSubmissionData = z.object({
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
 
 /**
  * KnowledgeFsCitation
@@ -3681,6 +3666,38 @@ export const zRetrievalSourceMetadata = z.object({
 })
 
 /**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  type: z.literal('openui'),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
+
+/**
  * MessageDetail
  */
 export const zMessageDetail = z.object({
@@ -3689,7 +3706,6 @@ export const zMessageDetail = z.object({
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
   answer: z.string(),
   answer_tokens: z.int(),
-  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
@@ -3704,6 +3720,7 @@ export const zMessageDetail = z.object({
   message_tokens: z.int(),
   metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number(),
   query: z.string(),
   retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
@@ -3743,6 +3760,15 @@ export const zAppExternalDataToolPayload = z
   .catchall(z.json())
 
 /**
+ * AppFeaturePayload
+ */
+export const zAppFeaturePayload = z
+  .object({
+    enabled: z.boolean().nullish(),
+  })
+  .catchall(z.json())
+
+/**
  * AppModelSelectionPayload
  */
 export const zAppModelSelectionPayload = z
@@ -3751,15 +3777,6 @@ export const zAppModelSelectionPayload = z
     mode: z.string().nullish(),
     name: z.string(),
     provider: z.string(),
-  })
-  .catchall(z.json())
-
-/**
- * AppFeaturePayload
- */
-export const zAppFeaturePayload = z
-  .object({
-    enabled: z.boolean().nullish(),
   })
   .catchall(z.json())
 
@@ -5570,6 +5587,7 @@ export const zAppModelConfigResponse = z.object({
     z.union([zAppEnabledExternalDataToolResponse, zAppDisabledExternalDataToolResponse]),
   ),
   file_upload: zAppFileUploadResponse,
+  generative_ui: zAppEnabledConfigResponse.optional(),
   model: zAppModelSelectionResponse,
   more_like_this: zAppEnabledConfigResponse,
   opening_statement: z.string().nullable(),
@@ -5770,7 +5788,6 @@ export const zMessageDetailResponse = z.object({
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
   answer: z.string(),
   answer_tokens: z.int(),
-  content_blocks: z.array(zOpenUiContentBlock).optional(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
@@ -5786,6 +5803,7 @@ export const zMessageDetailResponse = z.object({
   message_tokens: z.int(),
   metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number(),
   query: z.string(),
   retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
@@ -5927,6 +5945,7 @@ export const zAppModelConfigPayload = z.object({
   dataset_query_variable: z.string().nullish(),
   external_data_tools: z.array(zAppExternalDataToolPayload).nullish(),
   file_upload: zAppFileUploadPayload.nullish(),
+  generative_ui: zAppFeaturePayload.nullish(),
   model: zAppModelSelectionPayload,
   more_like_this: zAppFeaturePayload.nullish(),
   opening_statement: z.string().nullish(),

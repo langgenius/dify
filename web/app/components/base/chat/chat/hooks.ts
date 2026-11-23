@@ -1,8 +1,9 @@
-import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
+import type { MessageContentEvent } from '@/features/generative-ui/protocol/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { VisionFile } from '@/types/app'
@@ -32,7 +33,13 @@ import {
   hasAppAccessError,
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
-import { interruptContentBlocks, updateContentBlock } from '@/features/generative-ui/stream-reducer'
+import {
+  appendTextPart,
+  hasOpenUIParts,
+  interruptContentParts,
+  replaceSavedBlockInParts,
+  updateContentPart,
+} from '@/features/generative-ui/stream-reducer'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -49,7 +56,7 @@ type HistoryMessageFile = Partial<FileResponse> & {
 type HistoryConversationMessage = {
   id: string
   answer?: string
-  content_blocks?: ChatItem['content_blocks']
+  parts?: ChatItem['parts']
   status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
   message_files?: HistoryMessageFile[]
@@ -113,35 +120,83 @@ function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
   thoughts.push(thought)
 }
 
-function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
-  if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
+function ensureAgentResponseParts(responseItem: ChatItemInTree) {
+  if (responseItem.agent_response_parts) return responseItem.agent_response_parts
+  responseItem.agent_response_parts =
+    responseItem.parts?.map((part) =>
+      part.type === 'openui'
+        ? { type: 'openui' as const, block: part }
+        : { type: 'message' as const, content: part.text },
+    ) ?? []
+  return responseItem.agent_response_parts
+}
 
-  const lastPart = responseItem.agent_response_parts.at(-1)
+function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
+  const agentParts = ensureAgentResponseParts(responseItem)
+
+  const lastPart = agentParts.at(-1)
   if (lastPart?.type === 'message') {
     lastPart.content += message
   } else {
-    responseItem.agent_response_parts.push({
+    agentParts.push({
       type: 'message',
       content: message,
     })
   }
 }
 
-function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
-  if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
+function applyOpenUIContentUpdate(
+  responseItem: ChatItemInTree,
+  update: MessageContentEvent['data'],
+) {
+  if (!responseItem.parts && responseItem.content)
+    responseItem.parts = appendTextPart(undefined, responseItem.content)
+  responseItem.parts = updateContentPart(responseItem.parts, update)
+  if (!responseItem.agent_response_parts?.length) return
 
+  const existingBlocks = responseItem.agent_response_parts.flatMap((part) =>
+    part.type === 'openui' ? [part.block] : [],
+  )
+  const nextBlock = updateContentPart(existingBlocks, update).find(
+    (part) => part.type === 'openui' && part.id === update.id,
+  )
+  if (!nextBlock || nextBlock.type !== 'openui') return
   const partIndex = responseItem.agent_response_parts.findIndex(
+    (part) => part.type === 'openui' && part.block.id === nextBlock.id,
+  )
+  if (partIndex > -1) {
+    responseItem.agent_response_parts[partIndex] = { type: 'openui', block: nextBlock }
+  } else {
+    responseItem.agent_response_parts.push({ type: 'openui', block: nextBlock })
+  }
+}
+
+function interruptAgentResponseParts(
+  parts: ChatItemInTree['agent_response_parts'],
+  status: 'cancelled' | 'error',
+) {
+  return parts?.map((part) =>
+    part.type === 'openui' && part.block.status === 'streaming'
+      ? { ...part, block: { ...part.block, status } }
+      : part,
+  )
+}
+
+function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
+  const agentParts = ensureAgentResponseParts(responseItem)
+
+  const partIndex = agentParts.findIndex(
     (part) => part.type === 'thought' && part.thought.id === thought.id,
   )
   if (partIndex > -1) {
-    responseItem.agent_response_parts[partIndex] = {
+    agentParts[partIndex] = {
       type: 'thought',
       thought,
     }
     return
   }
 
-  responseItem.agent_response_parts.push({
+  agentParts.push({
     type: 'thought',
     thought,
   })
@@ -557,7 +612,11 @@ export const useChat = (
       const queue = [...draft]
       while (queue.length) {
         const item = queue.shift()!
-        item.content_blocks = interruptContentBlocks(item.content_blocks, 'cancelled')
+        item.parts = interruptContentParts(item.parts, 'cancelled')
+        item.agent_response_parts = interruptAgentResponseParts(
+          item.agent_response_parts,
+          'cancelled',
+        )
         if (item.children) queue.push(...item.children)
       }
     })
@@ -705,8 +764,10 @@ export const useChat = (
               (event === 'agent_message' || event === 'message')
             if (isNewAgentMessage) {
               appendAgentResponseMessagePart(responseItem, message)
+              if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
             } else if (!agentThoughts.length || options.isNewAgent) {
               responseItem.content = responseItem.content + message
+              if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
             } else {
               const lastThought = agentThoughts[agentThoughts.length - 1]
               if (lastThought) lastThought.thought = lastThought.thought + message
@@ -721,12 +782,9 @@ export const useChat = (
         onMessageContent: (event) => {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
           updateChatTreeNode(messageId, (responseItem) => {
-            responseItem.content_blocks = updateContentBlock(
-              responseItem.content_blocks,
-              event.data,
-            )
+            applyOpenUIContentUpdate(responseItem, event.data)
           })
-          conversationIdRef.current = event.conversation_id
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
           taskIdRef.current = event.task_id
         },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
@@ -744,8 +802,9 @@ export const useChat = (
 
           handleResponding(false)
           updateChatTreeNode(messageId, (responseItem) => {
-            responseItem.content_blocks = interruptContentBlocks(
-              responseItem.content_blocks,
+            responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+            responseItem.agent_response_parts = interruptAgentResponseParts(
+              responseItem.agent_response_parts,
               'error',
             )
           })
@@ -858,8 +917,7 @@ export const useChat = (
             conversationIdRef.current = messageEnd.conversation_id
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.agent_response_is_partial = messageEnd.metadata?.agent_response_is_partial
-            if (messageEnd.metadata?.content_blocks)
-              responseItem.content_blocks = messageEnd.metadata.content_blocks
+            if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
             if (messageEnd.metadata?.annotation_reply) {
               responseItem.annotation = {
                 id: messageEnd.metadata.annotation_reply.id,
@@ -883,7 +941,7 @@ export const useChat = (
             ) {
               isGenerativeUIFinal = true
               responseItem.agent_response_parts = undefined
-              responseItem.content_blocks = []
+              responseItem.parts = messageReplace.reason === 'output_moderation' ? [] : undefined
             }
             if (messageReplace.reason === 'output_moderation') {
               responseItem.agent_thoughts = responseItem.agent_thoughts?.map((thought) => ({
@@ -898,8 +956,9 @@ export const useChat = (
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
           updateChatTreeNode(messageId, (responseItem) => {
-            responseItem.content_blocks = interruptContentBlocks(
-              responseItem.content_blocks,
+            responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+            responseItem.agent_response_parts = interruptAgentResponseParts(
+              responseItem.agent_response_parts,
               'error',
             )
           })
@@ -1301,6 +1360,7 @@ export const useChat = (
             appendAgentResponseMessagePart(responseItem, message)
           } else if (!isAgentMode || options.isNewAgent) {
             responseItem.content = responseItem.content + message
+            if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
           } else {
             const lastThought =
               responseItem.agent_thoughts?.[responseItem.agent_thoughts.length - 1]
@@ -1328,14 +1388,14 @@ export const useChat = (
         },
         onMessageContent: (event) => {
           if (!isCurrentRequest()) return
-          responseItem.content_blocks = updateContentBlock(responseItem.content_blocks, event.data)
-          if (!hasSetResponseId) {
+          applyOpenUIContentUpdate(responseItem, event.data)
+          if (!hasSetResponseId && event.message_id) {
             questionItem.id = `question-${event.message_id}`
             responseItem.id = event.message_id
             responseItem.parentMessageId = questionItem.id
             hasSetResponseId = true
           }
-          conversationIdRef.current = event.conversation_id
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
           taskIdRef.current = event.task_id
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1362,8 +1422,12 @@ export const useChat = (
         async onCompleted(hasError?: boolean) {
           if (!isCurrentRequest()) return
 
-          handleResponding(!!responseItem.content_blocks?.length)
-          responseItem.content_blocks = interruptContentBlocks(responseItem.content_blocks, 'error')
+          handleResponding(hasOpenUIParts(responseItem.parts))
+          responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+          responseItem.agent_response_parts = interruptAgentResponseParts(
+            responseItem.agent_response_parts,
+            'error',
+          )
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1416,7 +1480,7 @@ export const useChat = (
               const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
               updateChatTreeNode(responseItem.id, {
                 content: isUseAgentThought ? '' : historyAnswer,
-                content_blocks: newResponseItem.content_blocks,
+                parts: newResponseItem.parts,
                 agent_response_is_partial: newResponseItem.metadata?.agent_response_is_partial,
                 isError:
                   options.isNewAgent &&
@@ -1589,8 +1653,7 @@ export const useChat = (
         },
         onMessageEnd: (messageEnd) => {
           responseItem.agent_response_is_partial = messageEnd.metadata?.agent_response_is_partial
-          if (messageEnd.metadata?.content_blocks)
-            responseItem.content_blocks = messageEnd.metadata.content_blocks
+          if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
           if (messageEnd.metadata?.annotation_reply) {
@@ -1629,7 +1692,7 @@ export const useChat = (
           ) {
             isGenerativeUIFinal = true
             responseItem.agent_response_parts = undefined
-            responseItem.content_blocks = []
+            responseItem.parts = messageReplace.reason === 'output_moderation' ? [] : undefined
           }
           if (messageReplace.reason === 'output_moderation') {
             responseItem.agent_thoughts = responseItem.agent_thoughts?.map((thought) => ({
@@ -1656,7 +1719,11 @@ export const useChat = (
           }
           if (options.isNewAgent && hasStopRespondedRef.current) return
           if (options.isNewAgent) responseItem.isError = true
-          responseItem.content_blocks = interruptContentBlocks(responseItem.content_blocks, 'error')
+          responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+          responseItem.agent_response_parts = interruptAgentResponseParts(
+            responseItem.agent_response_parts,
+            'error',
+          )
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({
@@ -2070,8 +2137,9 @@ export const useChat = (
   const handleContentBlockStateSaved = useCallback(
     (messageId: string, block: OpenUIContentBlock) => {
       updateChatTreeNode(messageId, (message) => {
-        message.content_blocks = message.content_blocks?.map((existing) =>
-          existing.id === block.id ? block : existing,
+        message.parts = replaceSavedBlockInParts(message.parts, block)
+        message.agent_response_parts = message.agent_response_parts?.map((part) =>
+          part.type === 'openui' && part.block.id === block.id ? { ...part, block } : part,
         )
       })
     },

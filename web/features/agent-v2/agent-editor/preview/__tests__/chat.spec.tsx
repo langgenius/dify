@@ -246,17 +246,18 @@ describe('Agent conversation history', () => {
           answer: 'Before\n\nAfter',
           status,
           metadata: { agent_response_is_partial: true },
-          content_blocks: [
+          parts: [
+            { id: 'text:0', type: 'text', text: 'Before\n\n' },
             {
               id: 'partial-table',
               type: 'openui',
               library_version: 'dify-ui-v1',
-              text_offset: 8,
               source: 'root = Stack([Table("Sales", ["Region", "Revenue"], [["East", "72"]])])',
               status: 'completed',
               sequence: 2,
               form_state: {},
             },
+            { id: 'text:2', type: 'text', text: 'After' },
           ],
           agent_thoughts: [
             {
@@ -696,12 +697,11 @@ describe('Agent stop and failure ownership', () => {
   const createMessageWithAction = () =>
     createMessage({
       id: 'saved-message',
-      content_blocks: [
+      parts: [
         {
           id: 'saved-action',
           type: 'openui',
           library_version: 'dify-ui-v1',
-          text_offset: 0,
           source: 'root = Stack([ActionButton("Review sales", "Review sales now")])',
           status: 'completed',
           sequence: 2,

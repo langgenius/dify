@@ -5,8 +5,53 @@ from pathlib import Path
 
 
 @cache
-def load_generative_ui_prompt() -> str:
-    grammar = (Path(__file__).resolve().parents[1] / "resources/generative_ui/dify-ui-v1.txt").read_text()
+def load_generative_ui_prompt(*, read_only: bool = False) -> str:
+    """Return the system prompt instructions for Generative UI generation.
+
+    Preconditions: generated grammar and example resource files exist under
+        ``api/resources/generative_ui/``.
+    Postconditions: returns full interactive prompt when ``read_only`` is False,
+        or display-only visualization prompt (excluding ActionButton/Form/fields)
+        when ``read_only`` is True.
+    """
+    resources_dir = Path(__file__).resolve().parents[1] / "resources/generative_ui"
+    if read_only:
+        grammar = (resources_dir / "dify-ui-v1-readonly.txt").read_text()
+        examples = (resources_dir / "response-examples-readonly.txt").read_text()
+        return (
+            (
+                "Intelligent UI is an optional read-only presentation capability, not a requirement for every output. "
+                "By default, use ordinary text for simple explanations, summaries without structured metrics, "
+                "or when plain text is requested. "
+                "Use UI when structured data, visual comparisons, or trends make the output easier to read. "
+                "Do not add Text, Heading, or Card components merely to restate prose. "
+                "The component grammar below applies only when a UI block is useful."
+            )
+            + "\n\n"
+            + grammar
+            + "\n\n"
+            + (
+                "Dify response transport: a text-only output has no <dify_ui> tag or empty UI program. "
+                "Compose prose and UI as one report, in the order the reader should read them. "
+                "Prose owns conclusions, explanations, uncertainty, and recommendations. Charts, tables, "
+                "and metric cards own the detailed values, comparisons, and trends. "
+                "A short conclusion may cite a key value, but do not enumerate the same dataset in prose "
+                "and UI or restate a metric card in another card. "
+                "Put each complete OpenUI program inside a <dify_ui>...</dify_ui> block whose opening line is "
+                "exactly <dify_ui> and whose closing line is exactly </dify_ui>. Put UI blocks between complete "
+                "paragraphs, never inside a sentence, list, table, or code fence. Text may follow a UI block. "
+                "Explain the important conclusion in prose without copying all UI details. "
+                "Missing values are unknown, not zero; omit comparisons that require unavailable data. "
+                "This workflow output is strictly read-only: use only the registered display components. "
+                "Never generate ActionButton, Form, TextField, SelectField, Query, Mutation, URLs, "
+                "executable JavaScript, or HTML."
+            )
+            + "\n\nComplete response examples:\n"
+            + examples
+        )
+
+    grammar = (resources_dir / "dify-ui-v1.txt").read_text()
+    examples = (resources_dir / "response-examples.txt").read_text()
     return (
         (
             "Intelligent UI is an optional presentation capability, not a requirement for every response. "
@@ -22,15 +67,15 @@ def load_generative_ui_prompt() -> str:
         + grammar
         + "\n\n"
         + (
-            "Dify response transport: a text-only answer has no OpenUI fence or empty UI program. "
+            "Dify response transport: a text-only answer has no <dify_ui> tag or empty UI program. "
             "Compose prose and UI as one answer, in the order the user should read them. "
             "Prose owns conclusions, explanations, uncertainty, and next steps. Charts and tables own "
             "the detailed values, comparisons, and trends; forms own collecting input. "
             "A short conclusion may cite a key value, but do not enumerate the same dataset in prose "
             "and UI or restate a metric card in another card. "
-            "Put each complete OpenUI program inside a fenced block whose opening line is exactly ```openui "
-            "and whose closing line is exactly ```. Put UI blocks between complete paragraphs, never "
-            "inside a sentence, list, table, or another code fence. Text may follow a UI block. "
+            "Put each complete OpenUI program inside a <dify_ui>...</dify_ui> block whose opening line is "
+            "exactly <dify_ui> and whose closing line is exactly </dify_ui>. Put UI blocks between complete "
+            "paragraphs, never inside a sentence, list, table, or code fence. Text may follow a UI block. "
             "Conversation history retains completed UI content, so do not repeat its data merely for memory. "
             "Explain the important conclusion in prose without copying all UI details. "
             "Missing values are unknown, not zero; omit comparisons that require unavailable data. "
@@ -39,5 +84,5 @@ def load_generative_ui_prompt() -> str:
             "Generate UI only in the final user-facing response, after any tool calls have completed."
         )
         + "\n\nComplete response examples:\n"
-        + (Path(__file__).resolve().parents[1] / "resources/generative_ui/response-examples.txt").read_text()
+        + examples
     )

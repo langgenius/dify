@@ -1,7 +1,7 @@
 import type { ElementNode } from '@openuidev/lang-core'
 import { SelectFieldDefinition, TableDefinition, TextFieldDefinition } from './registry/definitions'
 
-const contentTypes = new Set([
+const displayContentTypes = new Set([
   'Text',
   'Heading',
   'Status',
@@ -9,9 +9,9 @@ const contentTypes = new Set([
   'LineChart',
   'BarChart',
   'MetricCard',
-  'ActionButton',
-  'Form',
 ])
+
+const interactiveContentTypes = new Set(['ActionButton', 'Form'])
 
 function isElement(value: unknown): value is ElementNode {
   return (
@@ -35,8 +35,17 @@ export type ValidatedUIContent = {
   invalidCount: number
 }
 
+export type ValidateUIContentOptions = {
+  allowInteractive?: boolean
+}
+
 /** Validate relationships the OpenUI parser's positional prop checks do not enforce. */
-export function validateUIContent(children: unknown, unavailableText: string): ValidatedUIContent {
+export function validateUIContent(
+  children: unknown,
+  unavailableText: string,
+  options: ValidateUIContentOptions = {},
+): ValidatedUIContent {
+  const allowInteractive = options.allowInteractive ?? true
   const formCounts = new Map<string, number>()
   function collectForms(value: unknown) {
     if (!Array.isArray(value)) return
@@ -82,20 +91,25 @@ export function validateUIContent(children: unknown, unavailableText: string): V
     const result: ValidatedUIContent = { children: [], hasContent: false, invalidCount: 0 }
     if (!Array.isArray(value)) return result
     for (const node of value) {
+      const element = isElement(node) ? node : null
+      const isAllowedContentType =
+        element !== null &&
+        (displayContentTypes.has(element.typeName) ||
+          (allowInteractive && interactiveContentTypes.has(element.typeName)))
       let valid =
-        isElement(node) &&
-        !node.partial &&
-        (contentTypes.has(node.typeName) || (allowCards && node.typeName === 'Card'))
-      if (valid && isElement(node)) {
-        if (node.typeName === 'Form') valid = validForm(node)
-        if (node.typeName === 'Table') {
-          const table = TableDefinition.props.safeParse(node.props)
+        element !== null &&
+        !element.partial &&
+        (isAllowedContentType || (allowCards && element.typeName === 'Card'))
+      if (valid && element !== null) {
+        if (element.typeName === 'Form') valid = validForm(element)
+        if (element.typeName === 'Table') {
+          const table = TableDefinition.props.safeParse(element.props)
           valid =
             table.success &&
             table.data.rows.every((row) => row.length === table.data.columns.length)
         }
       }
-      if (!valid || !isElement(node)) {
+      if (!valid || element === null) {
         result.invalidCount++
         result.children.push({
           type: 'element',

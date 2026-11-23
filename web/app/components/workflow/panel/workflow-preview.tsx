@@ -11,6 +11,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
 import { ENABLE_HITL_IM } from '@/config'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 import { submitHumanInputForm } from '@/service/workflow'
 import { editorAppIdAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
@@ -64,6 +65,7 @@ const WorkflowPreview = () => {
     if (
       (status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) &&
       !workflowRunningData.resultText &&
+      !hasOpenUIParts(workflowRunningData.parts) &&
       !workflowRunningData.result.files?.length
     )
       switchTab('DETAIL')
@@ -239,6 +241,8 @@ const WorkflowPreview = () => {
                 }
                 isPaused={workflowRunningData?.result?.status === WorkflowRunningStatus.Paused}
                 outputs={workflowRunningData?.resultText}
+                parts={workflowRunningData?.parts}
+                runId={workflowRunningData?.result?.id}
                 allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}

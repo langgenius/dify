@@ -11,7 +11,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from libs.generative_ui import OpenUIContentBlock, OpenUIContentDelta
+from libs.generative_ui import MessageContentPart, OpenUIContentBlock, OpenUIContentDelta
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -25,7 +25,7 @@ class AnnotationReply(BaseModel):
 
 
 class TaskStateMetadata(BaseModel):
-    content_blocks: list[OpenUIContentBlock] = Field(default_factory=list)
+    parts: list[MessageContentPart] = Field(default_factory=list)
     annotation_reply: AnnotationReply | None = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
     usage: LLMUsage | None = None
@@ -258,6 +258,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         finished_at: int | None
         exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
+        parts: list[MessageContentPart] = Field(default_factory=list, exclude_if=lambda parts: not parts)
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -925,6 +926,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+        parts: list[MessageContentPart] = Field(default_factory=list, exclude_if=lambda parts: not parts)
 
     workflow_run_id: str
     data: Data

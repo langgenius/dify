@@ -152,6 +152,7 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   annotation_reply: AnnotationReplyConfig | null
+  generative_ui?: MoreLikeThisConfig | null
   external_data_tools?: ExternalDataTool[] | null
   system_parameters?: {
     audio_file_size_limit: number

@@ -21,7 +21,7 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
-from libs.generative_ui import OpenUIContentBlock, restore_openui_content
+from libs.generative_ui import has_openui_parts, parse_content_parts, restore_openui_parts
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
@@ -324,12 +324,8 @@ class TokenBufferMemory:
                 if user_files or assistant_files
                 else None
             )
-            ui_blocks = [
-                block
-                for data in message.message_metadata_dict.get("content_blocks", [])
-                if (block := OpenUIContentBlock.model_validate(data)).status == "completed"
-            ]
-            assistant_text = restore_openui_content(message.answer, ui_blocks)
+            stored_parts = parse_content_parts(message.message_metadata_dict.get("parts", []))
+            assistant_text = restore_openui_parts(stored_parts) if has_openui_parts(stored_parts) else message.answer
             for files, text_content, is_user_message in (
                 (user_files, message.query, True),
                 (assistant_files, assistant_text, False),

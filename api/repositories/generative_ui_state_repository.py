@@ -6,7 +6,7 @@ from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from libs.generative_ui import OpenUIContentBlock
+from libs.generative_ui import OpenUIContentBlock, OpenUIContentStatus, parse_content_parts
 from models.account import Account
 from models.model import App, EndUser, InstalledApp, Message
 from services.entities.message_entities import MessageAccount, MessageActor
@@ -64,15 +64,22 @@ class SQLAlchemyOpenUIStateRepository:
             if message is None:
                 raise MessageNotExistsError("Message not found for this app and actor")
             metadata = message.message_metadata_dict
-            blocks = [OpenUIContentBlock.model_validate(block) for block in metadata.get("content_blocks", [])]
-            for index, block in enumerate(blocks):
-                if block.id != block_id:
-                    continue
-                if block.status != "completed":
-                    raise OpenUIBlockNotReadyError("Only completed OpenUI blocks accept form state")
-                updated = block.model_copy(update={"form_state": form_state})
-                blocks[index] = updated
-                metadata["content_blocks"] = [item.model_dump(mode="json") for item in blocks]
-                message.message_metadata = json.dumps(metadata, ensure_ascii=False)
-                return updated
-            raise MessageNotExistsError("OpenUI content block not found")
+            parts = parse_content_parts(metadata.get("parts", []))
+            match = next(
+                (
+                    (index, part)
+                    for index, part in enumerate(parts)
+                    if isinstance(part, OpenUIContentBlock) and part.id == block_id
+                ),
+                None,
+            )
+            if match is None:
+                raise MessageNotExistsError("OpenUI content block not found")
+            index, block = match
+            if block.status != OpenUIContentStatus.COMPLETED:
+                raise OpenUIBlockNotReadyError("Only completed OpenUI blocks accept form state")
+            updated = block.model_copy(update={"form_state": form_state})
+            parts[index] = updated
+            metadata["parts"] = [item.model_dump(mode="json") for item in parts]
+            message.message_metadata = json.dumps(metadata, ensure_ascii=False)
+            return updated

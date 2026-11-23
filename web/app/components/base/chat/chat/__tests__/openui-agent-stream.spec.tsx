@@ -40,12 +40,11 @@ const initial: ChatItemInTree[] = [
   },
 ]
 
-function tableBlock(id: string, title: string, offset: number): OpenUiContentBlock {
+function tableBlock(id: string, title: string): OpenUiContentBlock {
   return {
     id,
     type: 'openui',
     library_version: 'dify-ui-v1',
-    text_offset: offset,
     source: `root = Stack([Table("${title}", ["Region", "Sales"], [["East", "72"]])])`,
     status: 'completed',
     sequence: 3,
@@ -138,15 +137,15 @@ describe('Agent OpenUI final replay', () => {
       observation: 'Loaded',
       position: 1,
     })
-    callbacks.onMessageContent?.(contentEvent(tableBlock('summary', 'Live preview', 16)))
-    callbacks.onMessageContent?.(contentEvent(tableBlock('removed', 'Discarded result', 16)))
+    callbacks.onMessageContent?.(contentEvent(tableBlock('summary', 'Live preview')))
+    callbacks.onMessageContent?.(contentEvent(tableBlock('removed', 'Discarded result')))
   }
 
   it('restores an interrupted live response from history without duplicating its prose', async () => {
     const user = userEvent.setup()
     const before = 'Before\n\n'
     const after = 'After'
-    const block = tableBlock('partial', 'Partial sales', Array.from(before).length)
+    const block = tableBlock('partial', 'Partial sales')
     const thought = {
       id: 'load',
       message_id: 'answer',
@@ -164,7 +163,11 @@ describe('Agent OpenUI final replay', () => {
           id: 'answer',
           answer: before + after,
           status: 'error',
-          content_blocks: [block],
+          parts: [
+            { id: 'text:0', type: 'text', text: before },
+            block,
+            { id: 'text:2', type: 'text', text: after },
+          ],
           agent_thoughts: [thought],
           metadata: { agent_response_is_partial: true },
         },
@@ -208,11 +211,9 @@ describe('Agent OpenUI final replay', () => {
 
       const conclusion = 'Conclusion \u{1F4CA}.\n\n'
       act(() => {
-        callbacks.onMessageContent?.(contentEvent(tableBlock('summary', 'Final summary', 0)))
+        callbacks.onMessageContent?.(contentEvent(tableBlock('summary', 'Final summary')))
         callbacks.onData?.(conclusion, false, { ...identity, event: 'message' })
-        callbacks.onMessageContent?.(
-          contentEvent(tableBlock('added', 'New detail', Array.from(conclusion).length)),
-        )
+        callbacks.onMessageContent?.(contentEvent(tableBlock('added', 'New detail')))
         callbacks.onData?.('Review the findings.', false, { ...identity, event: 'message' })
       })
       await act(async () => callbacks.onCompleted?.())
@@ -270,7 +271,7 @@ describe('Agent OpenUI final replay', () => {
     act(streamLiveProgress)
     act(() => {
       callbacks.onMessageReplace?.(replacement)
-      callbacks.onMessageContent?.(contentEvent(tableBlock('only', 'Final UI', 0)))
+      callbacks.onMessageContent?.(contentEvent(tableBlock('only', 'Final UI')))
     })
     expect(await screen.findByRole('table', { name: 'Final UI' })).toBeVisible()
     await act(async () => callbacks.onCompleted?.())
@@ -290,7 +291,7 @@ describe('Agent OpenUI final replay', () => {
       renderWithConsoleQuery(<ChatHarness fetchHistory={fetchHistory} />)
       await user.click(screen.getByRole('button', { name: 'Start' }))
       const form: OpenUiContentBlock = {
-        ...tableBlock('filters', 'unused', 0),
+        ...tableBlock('filters', 'unused'),
         source:
           'root = Stack([Form("filters", "Filter sales", "Apply filters", "Apply these filters", [TextField("keyword", "Keyword", "", false)])])',
         form_state: { filters: { keyword: { value: 'saved' } } },
@@ -307,7 +308,7 @@ describe('Agent OpenUI final replay', () => {
       expect(fetchHistory).toHaveBeenCalled()
       expect(screen.getByRole('textbox', { name: 'Keyword' })).toBeDisabled()
       await act(async () => {
-        resolveHistory({ data: [{ id: 'answer', answer: '', content_blocks: [form] }] })
+        resolveHistory({ data: [{ id: 'answer', answer: '', parts: [form] }] })
         await history
       })
       await waitFor(() => expect(screen.getByRole('textbox', { name: 'Keyword' })).toBeEnabled())

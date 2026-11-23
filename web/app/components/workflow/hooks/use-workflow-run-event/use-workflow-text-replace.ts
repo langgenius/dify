@@ -16,6 +16,7 @@ export const useWorkflowTextReplace = () => {
         produce(workflowRunningData!, (draft) => {
           draft.resultText = text
           draft.resultTextSelectorKey = undefined
+          draft.parts = undefined
         }),
       )
     },

@@ -45,11 +45,6 @@ class OutputModeration(BaseModel):
     _error: Exception | None = PrivateAttr(default=None)
 
     @property
-    def pending_length(self) -> int:
-        """Return the number of prose characters still awaiting a stream check."""
-        return len(self.buffer) - self._checked_length
-
-    @property
     def flagged(self) -> bool:
         """Return whether moderation flagged any segment, even if its replacement leaves the text unchanged."""
         return self._flagged or self.should_direct_output()

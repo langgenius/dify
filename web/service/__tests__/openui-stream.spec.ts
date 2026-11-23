@@ -18,7 +18,6 @@ describe('OpenUI SSE transport', () => {
           id: 'ui-1',
           type: 'openui',
           library_version: 'dify-ui-v1',
-          text_offset: 0,
           sequence: 1,
           source: 'root = Stack([])',
           status: 'streaming',
@@ -71,17 +70,18 @@ describe('OpenUI SSE transport', () => {
     },
   )
 
-  it('decodes uppercase Unicode escapes in streams without an ordered UI consumer', async () => {
+  it('decodes uppercase Unicode escapes uniformly regardless of UI consumers', async () => {
     const event = { event: 'message', answer: '\\u597D', id: 'message-1' }
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(new Response(`data: ${JSON.stringify(event)}\n\n`)),
     )
     const onData = vi.fn()
+    const onMessageContent = vi.fn()
     const onCompleted = vi.fn()
 
-    // oxlint-disable-next-line typescript/no-deprecated -- Verify the existing SSE entry point without an ordered UI consumer.
-    await ssePost('/chat-messages', {}, { onData, onCompleted })
+    // oxlint-disable-next-line typescript/no-deprecated -- Verify the existing SSE entry point decodes escapes consistently.
+    await ssePost('/chat-messages', {}, { onData, onMessageContent, onCompleted })
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledExactlyOnceWith())
 
     expect(onData).toHaveBeenCalledExactlyOnceWith(
@@ -97,10 +97,9 @@ describe('OpenUI SSE transport', () => {
     { event: 'agent_message', bytewise: false },
     { event: 'agent_message', bytewise: true },
   ])(
-    'preserves UI text offsets for $event with bytewise transport=$bytewise',
+    'preserves text and UI event arrival order for $event with bytewise transport=$bytewise',
     async ({ event, bytewise }) => {
-      const beforeChunks = ['Before \\u0041. \\u597D. \\u0', '042 中文 \u{1F4CA}.\n\n']
-      const before = beforeChunks.join('')
+      const beforeChunks = ['Before ', '中文 \u{1F4CA}.\n\n']
       const after = 'After the UI.'
       const textEvent = (answer: string) => ({
         event,
@@ -118,7 +117,6 @@ describe('OpenUI SSE transport', () => {
           id: 'ui-1',
           type: 'openui',
           library_version: 'dify-ui-v1',
-          text_offset: Array.from(before).length,
           sequence: 1,
           source: 'root = Stack([Text("Result")])',
           status: 'completed',
@@ -142,19 +140,24 @@ describe('OpenUI SSE transport', () => {
         },
       })
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body)))
-      const onData = vi.fn<(text: string) => void>()
-      const onMessageContent = vi.fn()
+      const timeline: Array<['text' | 'ui', string]> = []
+      const onData = vi.fn<(text: string) => void>((text) => timeline.push(['text', text]))
+      const onMessageContent = vi.fn((content: MessageContentEvent) =>
+        timeline.push(['ui', content.data.id]),
+      )
       const onCompleted = vi.fn()
 
-      // oxlint-disable-next-line typescript/no-deprecated -- Verify text and UI offsets across the shared SSE transport.
+      // oxlint-disable-next-line typescript/no-deprecated -- Verify text and UI order across the shared SSE transport.
       await ssePost('/chat-messages', {}, { onData, onMessageContent, onCompleted })
       await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
 
-      expect(onData.mock.calls.map(([text]) => text)).toEqual([...beforeChunks, after])
       expect(onMessageContent).toHaveBeenCalledExactlyOnceWith(contentEvent)
-      const receivedText = Array.from(onData.mock.calls.map(([text]) => text).join(''))
-      expect(receivedText.slice(0, contentEvent.data.text_offset).join('')).toBe(before)
-      expect(receivedText.slice(contentEvent.data.text_offset).join('')).toBe(after)
+      expect(timeline).toEqual([
+        ['text', 'Before '],
+        ['text', '中文 \u{1F4CA}.\n\n'],
+        ['ui', 'ui-1'],
+        ['text', after],
+      ])
     },
   )
 })

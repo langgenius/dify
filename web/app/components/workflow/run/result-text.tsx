@@ -1,16 +1,21 @@
 'use client'
 import type { FC } from 'react'
+import type { MessageContentPart } from '@/features/generative-ui/protocol/types'
 import { useTranslation } from 'react-i18next'
+import { OrderedResponseContent } from '@/app/components/base/chat/chat/answer/ordered-response-content'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 
 type ResultTextProps = {
   isRunning?: boolean
   isPaused?: boolean
   outputs?: any
+  parts?: MessageContentPart[]
+  runId?: string
   error?: string
   onClick?: () => void
   allFiles?: any[]
@@ -20,14 +25,18 @@ const ResultText: FC<ResultTextProps> = ({
   isRunning,
   isPaused,
   outputs,
+  parts,
+  runId,
   error,
   onClick,
   allFiles,
 }) => {
   const { t } = useTranslation(['runLog'])
+  const hasUI = hasOpenUIParts(parts)
+  const hasContent = Boolean(outputs || hasUI)
   return (
     <div className="bg-background-section-burn">
-      {isRunning && !outputs && (
+      {isRunning && !hasContent && (
         <div className="ps-6.5 pt-4">
           <LoadingAnim type="text" />
         </div>
@@ -37,7 +46,7 @@ const ResultText: FC<ResultTextProps> = ({
           <StatusContainer status="failed">{error}</StatusContainer>
         </div>
       )}
-      {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
+      {!isPaused && !isRunning && !hasContent && !error && !allFiles?.length && (
         <div className="mt-30 flex flex-col items-center px-4 py-2 text-[13px] leading-4.5 text-gray-500">
           <span
             aria-hidden
@@ -57,13 +66,22 @@ const ResultText: FC<ResultTextProps> = ({
           </div>
         </div>
       )}
-      {(outputs || !!allFiles?.length) && (
+      {(hasContent || !!allFiles?.length) && (
         <>
-          {outputs && (
+          {hasContent && (
             <div className="px-4 py-2">
               {/* ThinkBlock's timer reads isResponding from ChatContext, which the run panel otherwise lacks. */}
-              <ChatContextProvider chatList={[]} isResponding={!!isRunning}>
-                <Markdown content={outputs} />
+              <ChatContextProvider chatList={[]} isResponding={!!isRunning} readonly>
+                {hasUI ? (
+                  <OrderedResponseContent
+                    item={{ id: runId || 'workflow-result', parts }}
+                    content={typeof outputs === 'string' ? outputs : ''}
+                    renderText={(text) => <Markdown content={text} />}
+                    allowInteractive={false}
+                  />
+                ) : (
+                  <Markdown content={outputs} />
+                )}
               </ChatContextProvider>
             </div>
           )}

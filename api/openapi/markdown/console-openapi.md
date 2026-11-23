@@ -23305,6 +23305,7 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | dataset_query_variable | string |  | No |
 | external_data_tools | [ [AppExternalDataToolPayload](#appexternaldatatoolpayload) ] |  | No |
 | file_upload | [AppFileUploadPayload](#appfileuploadpayload) |  | No |
+| generative_ui | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | model | [AppModelSelectionPayload](#appmodelselectionpayload) |  | Yes |
 | more_like_this | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | opening_statement | string |  | No |
@@ -23332,6 +23333,7 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | dataset_query_variable | string |  | Yes |
 | external_data_tools | [ [AppEnabledExternalDataToolResponse](#appenabledexternaldatatoolresponse)<br>[AppDisabledExternalDataToolResponse](#appdisabledexternaldatatoolresponse) ] |  | Yes |
 | file_upload | [AppFileUploadResponse](#appfileuploadresponse) |  | Yes |
+| generative_ui | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | No |
 | model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | Yes |
 | more_like_this | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
 | opening_statement | string |  | Yes |
@@ -27470,7 +27472,6 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
@@ -27483,6 +27484,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
@@ -32407,6 +32409,12 @@ The member is not in the workspace.
 | account_id | string |  | No |
 | account_name | string |  | No |
 
+#### MessageContentPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageContentPart | [TextContentPart](#textcontentpart)<br>[OpenUIContentBlock](#openuicontentblock) |  |  |
+
 #### MessageCursorNotFoundError
 
 The message cursor is not in this conversation. Refresh the list and try again.
@@ -32424,7 +32432,6 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
-| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
@@ -32439,6 +32446,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | message_tokens | integer |  | Yes |
 | metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrievalSourceMetadata](#retrievalsourcemetadata) ] |  | No |
@@ -32454,7 +32462,6 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
-| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
@@ -32470,6 +32477,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | message_tokens | integer |  | Yes |
 | metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrievalSourceMetadata](#retrievalsourcemetadata) ] |  | No |
@@ -33484,6 +33492,8 @@ OAuth schema
 
 #### OpenUIContentBlock
 
+An immutable snapshot of a single generative UI part.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | form_state | object |  | Yes |
@@ -33492,7 +33502,6 @@ OAuth schema
 | sequence | integer |  | Yes |
 | source | string |  | Yes |
 | status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
-| text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
 | type | string |  | Yes |
 
 #### OpenUIContentStatus
@@ -37427,6 +37436,16 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
 
+#### TextContentPart
+
+An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
 #### TextContentResponse
 
 | Name | Type | Description | Required |
@@ -38819,6 +38838,7 @@ Data entity
 | finished_at | integer |  | Yes |
 | id | string |  | Yes |
 | outputs | object |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
 | total_steps | integer |  | Yes |
 | total_tokens | integer |  | Yes |

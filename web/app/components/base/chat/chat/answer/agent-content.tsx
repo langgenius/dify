@@ -24,7 +24,11 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
           content={annotation?.logAnnotation.content || ''}
           data-testid="agent-content-markdown"
         />
-        <OrderedResponseContent item={item} content="" renderText={() => null} />
+        <OrderedResponseContent
+          item={{ id: item.id, parts: item.parts?.filter((part) => part.type === 'openui') }}
+          content=""
+          renderText={() => null}
+        />
       </>
     )
   }
@@ -68,7 +72,13 @@ const AgentContent: FC<AgentContentProps> = ({ item, responding, content }) => {
           </div>
         ))
       )}
-      {!content && <OrderedResponseContent item={item} content="" renderText={() => null} />}
+      {!content && (
+        <OrderedResponseContent
+          item={{ id: item.id, parts: item.parts?.filter((part) => part.type === 'openui') }}
+          content=""
+          renderText={() => null}
+        />
+      )}
     </div>
   )
 }

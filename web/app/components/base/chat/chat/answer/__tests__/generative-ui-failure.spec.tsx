@@ -41,7 +41,6 @@ function makeBlock(id: string, source: string): OpenUIContentBlock {
     id,
     type: 'openui',
     library_version: 'dify-ui-v1',
-    text_offset: 0,
     source,
     sequence: 1,
     status: 'completed',
@@ -66,12 +65,13 @@ describe('Generative UI failure isolation', () => {
         id: 'message-1',
         isAnswer: true,
         content,
-        content_blocks: [
+        parts: [
           makeBlock('broken', failureSources[failure]),
           makeBlock(
             'healthy',
             'root = Stack([ActionButton("View details", "Show sales details")])',
           ),
+          { id: 'text:2', type: 'text', text: content },
         ],
       }
       renderWithConsoleQuery(
@@ -108,9 +108,10 @@ describe('Generative UI failure isolation', () => {
           action_text: 'Approved',
         },
       ],
-      content_blocks: [
+      parts: [
         makeBlock('unknown-component', 'root = Unknown("broken")'),
         makeBlock('missing-reference', 'root = Stack([missing])'),
+        { id: 'text:2', type: 'text', text: content },
       ],
     }
     renderWithConsoleQuery(
@@ -134,7 +135,7 @@ describe('Generative UI failure isolation', () => {
       id: 'message-1',
       isAnswer: true,
       content: '',
-      content_blocks: [makeBlock('broken', failureSources.runtime)],
+      parts: [makeBlock('broken', failureSources.runtime)],
     }
     const { rerender } = renderWithConsoleQuery(
       <ChatContextProvider chatList={[item]} onSend={onSend}>
@@ -146,7 +147,7 @@ describe('Generative UI failure isolation', () => {
 
     const recoveredItem: ChatItem = {
       ...item,
-      content_blocks: [makeBlock('broken', 'root = Stack([Heading("Sales recovered")])')],
+      parts: [makeBlock('broken', 'root = Stack([Heading("Sales recovered")])')],
     }
     rerender(
       <ChatContextProvider chatList={[recoveredItem]} onSend={onSend}>

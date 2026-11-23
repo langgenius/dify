@@ -19,3 +19,7 @@ export function getEditorResourceId(resource: EditorResource): string {
 export function isChatflow(resource: EditorResource): boolean {
   return resource.kind === 'app' && resource.mode === 'advanced-chat'
 }
+
+export function supportsGenerativeUI(resource: EditorResource): boolean {
+  return resource.kind === 'app' && (resource.mode === 'advanced-chat' || resource.mode === 'workflow')
+}

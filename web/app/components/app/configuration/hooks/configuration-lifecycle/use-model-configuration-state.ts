@@ -32,6 +32,7 @@ function createInitialModelConfig(): ModelConfig {
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    generative_ui: null,
     external_data_tools: [],
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,

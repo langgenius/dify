@@ -205,6 +205,7 @@ class AppAdditionalFeatures(BaseModel):
     more_like_this: bool = False
     speech_to_text: bool = False
     text_to_speech: TextToSpeechEntity | None = None
+    generative_ui: bool = False
     trace_config: TracingConfigEntity | None = None
 
 

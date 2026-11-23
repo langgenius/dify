@@ -21,16 +21,20 @@ describe('Agent chat history', () => {
       query: 'Question',
       inputs: {},
       metadata: {},
-      content_blocks: [
+      parts: [
         {
           id: 'ui-1',
           type: 'openui',
           library_version: 'dify-ui-v1',
-          text_offset: 0,
           source: 'root = Stack([])',
           sequence: 2,
           status: 'completed',
           form_state: { filters: { region: { value: 'West' } } },
+        },
+        {
+          id: 'text:1',
+          type: 'text',
+          text: `[Manual](kfs://${citation.id})`,
         },
       ],
       message: [],
@@ -58,7 +62,7 @@ describe('Agent chat history', () => {
     }
     const answer = getFormattedAgentDebugChatTree([message])[0]?.children?.[0]
     expect(answer?.content).toBe(message.answer)
-    expect(answer?.content_blocks).toEqual(message.content_blocks)
+    expect(answer?.parts).toEqual(message.parts)
     expect(answer?.citation?.[0]).toMatchObject({
       knowledge_fs_citation: citation,
       document_asset_id: 'doc',

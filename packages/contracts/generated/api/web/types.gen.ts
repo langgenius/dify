@@ -571,6 +571,14 @@ export type MalformedUploadTokenError = ErrorResponse & {
   status: 400
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -642,7 +650,6 @@ export type OpenUiContentBlock = {
   sequence: number
   source: string
   status: OpenUiContentStatus
-  text_offset: number
   type: 'openui'
 }
 
@@ -1304,6 +1311,12 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type TextToAudioPayload = {
   message_id?: string | null
   streaming?: boolean | null
@@ -1411,7 +1424,6 @@ export type WebMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1426,6 +1438,7 @@ export type WebMessageListItem = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -1528,7 +1541,6 @@ export type WebMessageListItemWritable = {
   agent_thoughts: Array<AgentThought>
   answer: string
   answer_tokens?: number
-  content_blocks?: Array<OpenUiContentBlock>
   conversation_id: string
   created_at?: number | null
   currency?: string | null
@@ -1543,6 +1555,7 @@ export type WebMessageListItemWritable = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>

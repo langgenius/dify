@@ -151,6 +151,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowMessageContent,
     handleWorkflowReasoning,
     handleWorkflowPaused,
   } = useWorkflowRunEvent()
@@ -327,6 +328,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         handleWorkflowAgentLog,
         handleWorkflowTextChunk,
         handleWorkflowTextReplace,
+        handleWorkflowMessageContent,
         handleWorkflowReasoning,
         handleWorkflowPaused,
       }
@@ -471,6 +473,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowAgentLog,
       handleWorkflowTextChunk,
       handleWorkflowTextReplace,
+      handleWorkflowMessageContent,
       handleWorkflowReasoning,
       handleWorkflowPaused,
       handleWorkflowNodeHumanInputRequired,

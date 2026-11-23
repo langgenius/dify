@@ -6,7 +6,6 @@ const block = {
   id: 'openui:llm:1',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: 0,
   source: 'root = Stack([])',
   status: 'completed',
   sequence: 2,

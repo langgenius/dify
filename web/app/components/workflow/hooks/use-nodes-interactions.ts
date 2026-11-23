@@ -20,7 +20,10 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
-import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  isChatflowAtom,
+  supportsGenerativeUIAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
@@ -173,6 +176,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 export const useNodesInteractions = () => {
   const { t } = useTranslation(['workflow'] as const)
   const isChatflow = useAtomValue(isChatflowAtom)
+  const supportsGenerativeUI = useAtomValue(supportsGenerativeUIAtom)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -2182,6 +2186,10 @@ export const useNodesInteractions = () => {
       nodesToPaste.forEach((node) => {
         if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
           delete node.data.memory
+      })
+    }
+    if (!supportsGenerativeUI) {
+      nodesToPaste.forEach((node) => {
         if (node.data.type === BlockEnum.LLM)
           delete (node.data as LLMNodeType).generative_ui_enabled
       })
@@ -2214,6 +2222,7 @@ export const useNodesInteractions = () => {
     getNodeDefaultValueForPaste,
     appDslVersion,
     isChatflow,
+    supportsGenerativeUI,
   ])
 
   const handleNodesDuplicate = useCallback(

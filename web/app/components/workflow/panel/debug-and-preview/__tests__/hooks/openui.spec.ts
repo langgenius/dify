@@ -23,7 +23,6 @@ const block: OpenUIContentBlock = {
   id: 'ui-1',
   type: 'openui',
   library_version: 'dify-ui-v1',
-  text_offset: 0,
   source: 'root = Stack([])',
   status: 'streaming',
   sequence: 1,
@@ -60,9 +59,7 @@ describe('Chatflow debug OpenUI streaming', () => {
                 id: 'question-message-1',
                 content: 'Revenue',
                 isAnswer: false,
-                children: [
-                  { id: 'message-1', content: '', isAnswer: true, content_blocks: [block] },
-                ],
+                children: [{ id: 'message-1', content: '', isAnswer: true, parts: [block] }],
               },
             ]
           : []
@@ -94,7 +91,7 @@ describe('Chatflow debug OpenUI streaming', () => {
         callbacks.onMessageContent?.(deltaEvent)
         callbacks.onMessageContent?.(deltaEvent)
       })
-      expect(result.current.chatList[1]?.content_blocks).toEqual([
+      expect(result.current.chatList[1]?.parts).toEqual([
         { ...block, source: block.source + sourceDelta, sequence: 2 },
       ])
       act(() => {
@@ -114,7 +111,7 @@ describe('Chatflow debug OpenUI streaming', () => {
       expect(result.current.chatList[1]).toMatchObject({
         id: 'message-1',
         content: 'Updated summary',
-        content_blocks: [
+        parts: [
           { ...block, source: block.source + sourceDelta, status: 'completed', sequence: 3 },
         ],
       })
@@ -134,7 +131,7 @@ describe('Chatflow debug OpenUI streaming', () => {
               id: 'question-message-1',
               content: 'Revenue',
               isAnswer: false,
-              children: [{ id: 'message-1', content: '', isAnswer: true, content_blocks: [block] }],
+              children: [{ id: 'message-1', content: '', isAnswer: true, parts: [block] }],
             },
           ]
         : []
@@ -160,7 +157,7 @@ describe('Chatflow debug OpenUI streaming', () => {
       })
     })
     expect(result.current.chatList[1]?.content).toBe('Replacement answer')
-    expect(result.current.chatList[1]?.content_blocks).toEqual(preservesUI ? [block] : [])
+    expect(result.current.chatList[1]?.parts).toEqual(preservesUI ? [block] : [])
   })
 
   it('cancels partial UI content when stopping the debug stream', () => {
@@ -180,7 +177,10 @@ describe('Chatflow debug OpenUI streaming', () => {
     act(() => result.current.handleStop())
     act(() => callbacks.onError?.('Aborted'))
 
-    expect(result.current.chatList[1]?.content_blocks?.[0]?.status).toBe('cancelled')
+    expect(result.current.chatList[1]?.parts?.[0]).toMatchObject({
+      type: 'openui',
+      status: 'cancelled',
+    })
     expect(result.current.isResponding).toBe(false)
   })
 
@@ -191,9 +191,7 @@ describe('Chatflow debug OpenUI streaming', () => {
         id: 'question-message-1',
         content: 'Revenue',
         isAnswer: false,
-        children: [
-          { id: 'message-1', content: '', isAnswer: true, content_blocks: [completedBlock] },
-        ],
+        children: [{ id: 'message-1', content: '', isAnswer: true, parts: [completedBlock] }],
       },
     ])
 
@@ -224,9 +222,7 @@ describe('Chatflow debug OpenUI streaming', () => {
                 id: 'question-message-1',
                 content: 'Revenue',
                 isAnswer: false,
-                children: [
-                  { id: 'message-1', content: '', isAnswer: true, content_blocks: [block] },
-                ],
+                children: [{ id: 'message-1', content: '', isAnswer: true, parts: [block] }],
               },
             ]
           : undefined,
@@ -253,7 +249,7 @@ describe('Chatflow debug OpenUI streaming', () => {
 
       expect(result.current.chatList).toHaveLength(2)
       expect(result.current.chatList[0]?.content).toBe('Start another conversation')
-      expect(result.current.chatList[1]?.content_blocks).toBeUndefined()
+      expect(result.current.chatList[1]?.parts).toBeUndefined()
       expect(result.current.conversationId).toBe('')
       expect(result.current.isResponding).toBe(true)
     },

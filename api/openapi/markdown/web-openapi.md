@@ -1943,6 +1943,12 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | MalformedUploadTokenError |  | The upload token is malformed. |  |
 
+#### MessageContentPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageContentPart | [TextContentPart](#textcontentpart)<br>[OpenUIContentBlock](#openuicontentblock) |  |  |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -2036,6 +2042,8 @@ Please check if your Workflow app mode matches the right API route.
 
 #### OpenUIContentBlock
 
+An immutable snapshot of a single generative UI part.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | form_state | object |  | Yes |
@@ -2044,7 +2052,6 @@ Please check if your Workflow app mode matches the right API route.
 | sequence | integer |  | Yes |
 | source | string |  | Yes |
 | status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
-| text_offset | integer | Position in the prose answer before this block, measured in Unicode code points. | Yes |
 | type | string |  | Yes |
 
 #### OpenUIContentStatus
@@ -2488,6 +2495,16 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
+#### TextContentPart
+
+An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
@@ -2644,7 +2661,6 @@ Too many form requests. Please try again later.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| content_blocks | [ [OpenUIContentBlock](#openuicontentblock) ] |  | No |
 | conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
@@ -2657,6 +2673,7 @@ Too many form requests. Please try again later.
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |

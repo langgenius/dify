@@ -90,7 +90,10 @@ def draft_case(request: pytest.FixtureRequest, sqlite_session_factory: sessionma
                 {
                     "usage": {"total_tokens": 7},
                     "retriever_resources": [],
-                    "content_blocks": [block.model_dump()],
+                    "parts": [
+                        {"id": "message:text:0", "type": "text", "text": "Summary"},
+                        block.model_dump(mode="json"),
+                    ],
                 }
             ),
         )
@@ -116,7 +119,8 @@ def test_state_save_preserves_source_answer_sequence_and_unrelated_metadata(draf
         assert message is not None
         assert message.answer == "Summary"
         assert message.message_metadata_dict["usage"] == {"total_tokens": 7}
-        assert OpenUIContentBlock.model_validate(message.message_metadata_dict["content_blocks"][0]) == updated
+        assert message.message_metadata_dict["parts"][0] == {"id": "message:text:0", "type": "text", "text": "Summary"}
+        assert OpenUIContentBlock.model_validate(message.message_metadata_dict["parts"][1]) == updated
 
 
 @pytest.mark.parametrize("field", ["app_id", "tenant_id", "actor", "message_id", "block_id"])
@@ -138,7 +142,7 @@ def test_state_save_rejects_another_owner_or_resource(draft_case: DraftCase, fie
 def test_state_save_rejects_incomplete_or_cancelled_ui_without_writing(
     draft_case: DraftCase, status: OpenUIContentStatus
 ) -> None:
-    metadata = {"content_blocks": [draft_case.block.model_copy(update={"status": status}).model_dump(mode="json")]}
+    metadata = {"parts": [draft_case.block.model_copy(update={"status": status}).model_dump(mode="json")]}
     with draft_case.factory.begin() as session:
         session.execute(
             update(Message).where(Message.id == draft_case.message_id).values(message_metadata=json.dumps(metadata))
@@ -197,5 +201,6 @@ def test_saved_state_is_hydrated_by_existing_history_contract(draft_case: DraftC
         installed_app=None,
     )
     history = WebMessageListItem.model_validate(page.data[0].record)
-    assert history.content_blocks == [expected]
+    assert history.parts[0].type == "text"
+    assert history.parts[1] == expected
     assert history.answer == "Summary"
