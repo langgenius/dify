@@ -6,6 +6,7 @@ export const consoleErrorAllowlist: readonly string[] = [
   'app/(auth)/init/__tests__/InitPasswordPopup.browser.spec.tsx',
   'app/components/app/deploy/__tests__/accessibility.browser.spec.tsx',
   'app/components/base/agent-log-modal/__tests__/detail.browser.spec.tsx',
+  'app/components/base/file-uploader/__tests__/pdf-preview.browser.spec.tsx',
   'app/components/base/file-uploader/file-uploader-in-attachment/__tests__/file-item.browser.spec.tsx',
   'app/components/base/file-uploader/file-uploader-in-chat-input/__tests__/file-item.browser.spec.tsx',
   'app/components/base/zendesk/__tests__/theme.browser.spec.tsx',
