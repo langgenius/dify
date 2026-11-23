@@ -100,7 +100,7 @@ it('closes a demo tab opened from the product and falls back to the apps list ot
 it('closes a demo tab opened from the in-site notification', async () => {
   const close = vi.spyOn(window, 'close').mockImplementation(() => {})
   const url = window.location.href
-  window.history.replaceState(null, '', '?from=notification')
+  window.history.replaceState(null, '', '?source=notification')
   onTestFinished(() => window.history.replaceState(null, '', url))
   const { screen } = await renderPanel({ kind: 'createApp' })
 

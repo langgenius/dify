@@ -9,7 +9,7 @@ function openedFromSameOrigin() {
 }
 
 function openedFromNotification() {
-  return new URLSearchParams(window.location.search).get('from') === 'notification'
+  return new URLSearchParams(window.location.search).get('source') === 'notification'
 }
 
 export function useExitDemo() {
