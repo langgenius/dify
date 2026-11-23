@@ -1,10 +1,11 @@
+import type { MessageFileInput } from '../message-files'
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
-import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { findLast, findLastIndex, uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -34,15 +35,13 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { toFileResponse } from '../message-files'
 import { getThreadMessages } from '../utils'
 import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
-type HistoryMessageFile = Partial<FileResponse> & {
-  id?: string
-  belongs_to?: string
-}
+type HistoryMessageFile = MessageFileInput
 type HistoryConversationMessage = {
   id: string
   answer?: string
@@ -130,12 +129,15 @@ function upsertStreamingThought(
 
   // A file may have arrived before its owning thought's IDs, so reclaim it from
   // the answer or a different tool that received it through the legacy fallback.
-  const receivedFiles = mergeStreamingFiles([
-    ...(responseItem.message_files ?? []),
-    ...thoughts.flatMap((item) => item.message_files ?? []),
-  ])
-  for (const file of receivedFiles) {
-    if (mergedThought.files?.includes(file.id)) attachStreamingFile(responseItem, file, isNewAgent)
+  if (mergedThought.files?.length) {
+    const ownedFileIds = new Set(mergedThought.files)
+    const fallbackFiles = mergeStreamingFiles([
+      ...(responseItem.message_files ?? []),
+      ...thoughts.flatMap((item) => (item === mergedThought ? [] : (item.message_files ?? []))),
+    ])
+    for (const file of fallbackFiles) {
+      if (ownedFileIds.has(file.id)) attachStreamingFile(responseItem, file, isNewAgent)
+    }
   }
   syncAgentResponseThoughtPart(responseItem, mergedThought, isNewAgent)
 }
@@ -150,7 +152,7 @@ function attachStreamingFile(
   const targetThought =
     findLast(thoughts, (thought) => thought.files?.includes(file.id)) ?? thoughts.at(-1)
   if (!targetThought) {
-    responseItem.message_files = [...(responseItem.message_files ?? []), file]
+    responseItem.message_files = mergeStreamingFiles([...(responseItem.message_files ?? []), file])
     return
   }
 
@@ -220,40 +222,17 @@ function getHistoryAgentThoughts(responseItem: HistoryConversationMessage) {
   if (!Array.isArray(responseItem.agent_thoughts)) return []
 
   const messageFiles = getProcessedFilesFromResponse(
-    (responseItem.message_files ?? []).map(toHistoryFileResponse),
+    (responseItem.message_files ?? []).map(toFileResponse),
   )
 
   return addFileInfos(sortAgentSorts(responseItem.agent_thoughts), messageFiles)
-}
-
-function toHistoryFileResponse(file: HistoryMessageFile): FileResponse {
-  return {
-    related_id: file.related_id || file.id || '',
-    extension: file.extension || '',
-    filename: file.filename || '',
-    size: file.size || 0,
-    mime_type: file.mime_type || file.type || '',
-    transfer_method: file.transfer_method || TransferMethod.remote_url,
-    type: file.type || '',
-    url: file.url || '',
-    upload_file_id: file.upload_file_id || '',
-    remote_url: file.remote_url || '',
-  }
 }
 
 function getHistoryAnswerFiles(responseItem: HistoryConversationMessage) {
   const answerFiles =
     responseItem.message_files?.filter((file) => file.belongs_to === 'assistant') || []
 
-  return getProcessedFilesFromResponse(
-    answerFiles.map((file) =>
-      toHistoryFileResponse({
-        ...file,
-        related_id: file.related_id || file.id || '',
-        upload_file_id: file.upload_file_id || '',
-      }),
-    ),
-  )
+  return getProcessedFilesFromResponse(answerFiles.map(toFileResponse))
 }
 
 function isHistoryConversationMessage(value: unknown): value is HistoryConversationMessage {

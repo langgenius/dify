@@ -52,6 +52,7 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
+from dify_agent.layers.read_media.mime import normalize_media_mime
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -469,12 +470,89 @@ def _normalized_json_part(text: str) -> str:
         return text
 
 
+_GENERIC_BINARY_MIME_TYPE = "application/octet-stream"
+_ENCODING_MIME_TYPES: Mapping[str, str] = {
+    "gzip": "application/gzip",
+    "bzip2": "application/x-bzip2",
+    "xz": "application/x-xz",
+    "br": "application/x-brotli",
+    "compress": "application/x-compress",
+}
+_MIME_TYPE_ALIASES: Mapping[str, str] = {
+    "application/xml": "text/xml",
+    "application/javascript": "text/javascript",
+    "audio/vnd.wave": "audio/wav",
+}
+_PREFERRED_MIME_EXTENSIONS: Mapping[str, str] = {
+    "application/xml": ".xml",
+    "audio/wav": ".wav",
+    "audio/mp3": ".mp3",
+    "image/jpg": ".jpg",
+    "application/gzip": ".gz",
+}
+
+
+def _guess_mime_type_from_filename(filename: str) -> str | None:
+    guessed_type, encoding = mimetypes.guess_type(filename)
+    if encoding is not None:
+        return _ENCODING_MIME_TYPES.get(encoding.lower())
+    if guessed_type is not None:
+        return guessed_type.lower()
+    return None
+
+
+def _canonical_mime_type(mime_type: str) -> str:
+    normalized = normalize_media_mime(mime_type)
+    normalized = _MIME_TYPE_ALIASES.get(normalized, normalized)
+    main_type, sep, sub_type = normalized.partition("/")
+    if sep and sub_type.startswith("x-"):
+        normalized = f"{main_type}/{sub_type[2:]}"
+    normalized = normalize_media_mime(normalized)
+    return _MIME_TYPE_ALIASES.get(normalized, normalized)
+
+
+def _has_safe_extension(extension: str) -> bool:
+    return len(extension) > 1 and all(char.isalnum() or char in "+-_" for char in extension[1:])
+
+
+def _guess_extension_for_mime_type(mime_type: str) -> str:
+    canonical = _canonical_mime_type(mime_type)
+    preferred = _PREFERRED_MIME_EXTENSIONS.get(mime_type) or _PREFERRED_MIME_EXTENSIONS.get(canonical)
+    if preferred is not None:
+        return preferred
+    candidates = [mime_type]
+    if canonical != mime_type:
+        candidates.append(canonical)
+    main_type, sep, sub_type = canonical.partition("/")
+    if sep:
+        candidates.append(f"{main_type}/x-{sub_type}")
+    for candidate in candidates:
+        extension = mimetypes.guess_extension(candidate)
+        if extension:
+            return extension
+    return ".bin"
+
+
+def _extension_matches_mime_type(filename: str, extension: str, mime_type: str) -> bool:
+    lower_ext = extension.lower()
+    canonical = _canonical_mime_type(mime_type)
+    if lower_ext in {_PREFERRED_MIME_EXTENSIONS.get(mime_type), _PREFERRED_MIME_EXTENSIONS.get(canonical)}:
+        return True
+    for candidate in (mime_type, canonical):
+        if lower_ext in mimetypes.guess_all_extensions(candidate):
+            return True
+    guessed_type = _guess_mime_type_from_filename(filename)
+    return guessed_type is not None and _canonical_mime_type(guessed_type) == canonical
+
+
 def _resolve_blob_file_info(meta: Mapping[str, object]) -> tuple[str, str]:
     """Return a safe basename and MIME essence for untrusted blob metadata.
 
-    Missing names use ``output``; missing MIME types are inferred from the name.
-    Strip path segments and control characters, and repair missing or conflicting
-    extensions so downstream ToolFile URLs describe the persisted content type.
+    Missing names use ``output``; missing or generic ``application/octet-stream``
+    MIME types are inferred from the filename when possible while keeping safe
+    unknown extensions intact. Strip path segments and control characters, and
+    repair missing or conflicting extensions without overwriting equivalent MIME
+    aliases.
     """
     raw_filename = meta.get("filename")
     filename = posixpath.basename(raw_filename.replace("\\", "/")) if isinstance(raw_filename, str) else ""
@@ -483,9 +561,17 @@ def _resolve_blob_file_info(meta: Mapping[str, object]) -> tuple[str, str]:
         filename = "output"
     raw_mime_type = meta.get("mime_type")
     mime_type = raw_mime_type.partition(";")[0].strip().lower() if isinstance(raw_mime_type, str) else ""
-    mime_type = mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    if mimetypes.guess_type(filename)[0] != mime_type:
-        filename = posixpath.splitext(filename)[0] + (mimetypes.guess_extension(mime_type) or ".bin")
+    stem, extension = posixpath.splitext(filename)
+    if mime_type in {"", _GENERIC_BINARY_MIME_TYPE}:
+        inferred = _guess_mime_type_from_filename(filename)
+        if inferred is not None:
+            return filename, inferred
+        mime_type = _GENERIC_BINARY_MIME_TYPE
+        if not _has_safe_extension(extension):
+            filename = f"{stem}.bin"
+        return filename, mime_type
+    if not _has_safe_extension(extension) or not _extension_matches_mime_type(filename, extension, mime_type):
+        filename = stem + _guess_extension_for_mime_type(mime_type)
     return filename, mime_type
 
 

@@ -21,8 +21,10 @@ it needs to inspect content. File inputs supplied as workspace paths use
 
 `BLOB_CHUNK` messages preserve and merge metadata across chunks into the final
 `BLOB`, including when the closing chunk omits metadata. Before upload, blob
-filenames are reduced to safe basenames with matching extensions and MIME types
-are normalized or inferred. Successful blob outputs return a native `ToolReturn`
+filenames are reduced to safe basenames, missing or generic
+`application/octet-stream` MIME types are inferred from known extensions when
+possible, and missing or conflicting extensions are repaired without overwriting
+equivalent MIME aliases or safe unknown extensions. Successful blob outputs return a native `ToolReturn`
 with `metadata["dify_plugin_blob_files"]` containing the persisted ToolFile IDs in
 stream order. The API validates their ownership and delivers assistant attachments
 in chat and Agent Logs. These IDs are attachment candidates, not authorization

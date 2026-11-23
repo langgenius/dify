@@ -489,10 +489,9 @@ class _AgentProcessRecorder:
         """
         self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
+        matched_existing_thought = thought_id is not None
         if thought_id is None:
             thought_id = self._create_thought(tool=tool_name)
-        else:
-            self._mark_tool_observed(thought_id)
         message_files = []
         for tool_file_id in tool_file_ids:
             if tool_file_id not in self._persisted_tool_file_ids:
@@ -500,6 +499,8 @@ class _AgentProcessRecorder:
                 if message_file is not None:
                     message_files.append(message_file)
         self._update_thought(thought_id, observation=_json_or_text(observation), message_files=message_files)
+        if matched_existing_thought:
+            self._mark_tool_observed(thought_id)
 
     def _plugin_blob_message_file(self, tool_file_id: str) -> MessageFile | None:
         """Resolve a UUID to a transient attachment using authoritative file data.

@@ -1163,6 +1163,14 @@ describe('useChat', () => {
       })
       act(() => {
         callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf' })
+        callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf?sign=new' })
+      })
+
+      expect(result.current.chatList.at(-1)!.message_files).toEqual([
+        expect.objectContaining({ id: 'mf-first', url: 'report.pdf?sign=new' }),
+      ])
+
+      act(() => {
         callbacks.onThought({ ...createToolThought('th-a'), message_files: ['mf-first'] })
       })
 
@@ -1170,7 +1178,7 @@ describe('useChat', () => {
       expect(response.message_files).toEqual([])
       expect(response.agent_thoughts![0]).toMatchObject({
         files: ['mf-first'],
-        message_files: [expect.objectContaining({ id: 'mf-first', url: 'report.pdf' })],
+        message_files: [expect.objectContaining({ id: 'mf-first', url: 'report.pdf?sign=new' })],
       })
       expect(response.agent_response_parts).toEqual([
         { type: 'thought', thought: response.agent_thoughts![0] },
@@ -3617,7 +3625,7 @@ describe('useChat', () => {
       resumeCallbacks.onFile(fileWithMethodAndNoType)
 
       // Test the inner condition in handleSend `!isAgentMode` where we also push to current files
-      sendCallbacks.onFile(fileWithMethodAndNoType)
+      sendCallbacks.onFile({ ...fileWithMethodAndNoType, id: 'f-2' })
     })
 
     const lastSendResponse = result.current.chatList[1]

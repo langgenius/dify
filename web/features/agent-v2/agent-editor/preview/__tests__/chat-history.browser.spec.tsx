@@ -5,8 +5,6 @@ import { getFormattedAgentDebugChatTree } from '../chat-history'
 import { createAgentFileHistoryMessage } from './chat-history-fixtures'
 
 vi.unmock('react-i18next')
-// boundary: file previews read Next route params without a running application.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 it('shows an operable report attachment when historical Agent tool activity is expanded', async () => {
   onTestFinished(guardUnexpectedFetch())

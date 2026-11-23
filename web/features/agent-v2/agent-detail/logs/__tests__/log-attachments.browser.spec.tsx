@@ -6,8 +6,6 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
 vi.unmock('react-i18next')
-// boundary: file previews read Next route params without a running application.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const response: AgentLogMessageListResponse = {
   data: [
@@ -118,11 +116,11 @@ it('renders user and generated attachments on their messages and downloads the s
     .element(question.getByRole('button', { name: 'legacy.pdf', exact: true }))
     .toBeVisible()
   await expect
-    .element(question.getByRole('button', { name: 'generated.pdf', exact: true }))
-    .not.toBeInTheDocument()
-  await expect
     .element(page.getByRole('button', { name: 'generated.pdf', exact: true }))
     .toBeVisible()
+  await expect
+    .element(question.getByRole('button', { name: 'generated.pdf', exact: true }))
+    .not.toBeInTheDocument()
   for (const name of ['input.pdf', 'generated.pdf']) {
     await page.getByRole('button', { name, exact: true }).hover()
     await page.getByRole('button', { name: 'Download', exact: true }).click()

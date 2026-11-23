@@ -408,7 +408,7 @@
   },
   "web/app/components/base/chat/chat-with-history/hooks.tsx": {
     "typescript/no-explicit-any": {
-      "count": 17
+      "count": 15
     }
   },
   "web/app/components/base/chat/chat-with-history/index.tsx": {
@@ -475,7 +475,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 14
+      "count": 12
     }
   },
   "web/app/components/base/chat/embedded-chatbot/inputs-form/content.tsx": {

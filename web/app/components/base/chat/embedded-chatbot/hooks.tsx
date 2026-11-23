@@ -42,9 +42,7 @@ function getFormattedChatList(messages: any[]) {
       id: `question-${item.id}`,
       content: item.query,
       isAnswer: false,
-      message_files: getProcessedFilesFromResponse(
-        questionFiles.map((item: any) => ({ ...item, related_id: item.id })),
-      ),
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
       parentMessageId: item.parent_message_id || undefined,
     })
     const answerFiles =
@@ -61,9 +59,7 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       reasoningContent: item.metadata?.reasoning,
       reasoningFinished: true,
-      message_files: getProcessedFilesFromResponse(
-        answerFiles.map((item: any) => ({ ...item, related_id: item.id })),
-      ),
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
       parentMessageId: `question-${item.id}`,
     })
   })
