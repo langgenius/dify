@@ -20,9 +20,9 @@ from testcontainers.postgres import PostgresContainer
 
 from models.base import TypeBase
 from models.types import StringUUID
+from tests.helpers.builder_migration import load_builder_migration
 
 _VERSIONS = Path(__file__).parents[3] / "migrations/versions"
-_REVISIONS = ("c84e6a217b90", "c67e12a904bf", "d28f0e3c912a", "f47a1c90d2e8", "e59b7d32a6c1", "7d2b9c4e61a8")
 
 
 def _migration(revision: str) -> ModuleType:
@@ -60,12 +60,7 @@ def migrated_connection(request: pytest.FixtureRequest, free_tcp_port: int) -> I
                 with Operations.context(
                     MigrationContext.configure(connection, opts={"target_metadata": TypeBase.metadata})
                 ):
-                    # This legacy table is the request migration's sole prerequisite.
-                    sa.Table(
-                        "dify_builder_test_inputs", sa.MetaData(), sa.Column("id", StringUUID(), primary_key=True)
-                    ).create(connection)
-                    for revision in _REVISIONS:
-                        _migration(revision).upgrade()
+                    load_builder_migration().upgrade()
                     yield connection
         finally:
             engine.dispose()
@@ -73,11 +68,10 @@ def migrated_connection(request: pytest.FixtureRequest, free_tcp_port: int) -> I
 
 def test_native_migrations_preserve_checks_and_evidence_on_both_databases(migrated_connection: Connection) -> None:
     connection = migrated_connection
-    # Empty-evidence downgrades and re-upgrades execute real DDL on each database.
-    for revision in reversed(_REVISIONS[1:]):
-        _migration(revision).downgrade()
-    for revision in _REVISIONS[1:]:
-        _migration(revision).upgrade()
+    migration = load_builder_migration()
+    # Roll back and reinstall the complete schema on each database.
+    migration.downgrade()
+    migration.upgrade()
 
     def seed(name: str, **overrides: object) -> str:
         table = sa.Table("dify_builder_" + name, sa.MetaData(), autoload_with=connection)
@@ -193,14 +187,18 @@ def test_native_migrations_preserve_checks_and_evidence_on_both_databases(migrat
     )
     refused("UPDATE dify_builder_native_code_physical_operations SET observed_output_offset=3", "cannot regress")
 
-    for revision, reason in (
-        ("7d2b9c4e61a8", "Code physical evidence"),
-        ("e59b7d32a6c1", "native dispatch claim evidence"),
-        ("f47a1c90d2e8", "native invocation read owner evidence"),
-        ("d28f0e3c912a", "native continuation recovery data"),
+    with pytest.raises(RuntimeError, match="Code physical evidence"):
+        migration.downgrade()
+    assert sa.inspect(connection).has_table("dify_builder_fix_intents")
+
+    for operation, reason in (
+        (migration._drop_code_physical_scopes, "Code physical evidence"),
+        (migration._drop_dispatch_claims, "native dispatch claim evidence"),
+        (migration._unbind_native_read_owners, "native invocation read owner evidence"),
+        (migration._drop_native_continuation, "native continuation recovery data"),
     ):
         with pytest.raises(RuntimeError, match=reason):
-            _migration(revision).downgrade()
+            operation()
     assert connection.scalar(sa.text("SELECT count(*) FROM dify_builder_native_code_physical_operations")) == 1
 
     if connection.dialect.name == "mysql":
@@ -210,7 +208,7 @@ def test_native_migrations_preserve_checks_and_evidence_on_both_databases(migrat
         with Operations.context(
             MigrationContext.configure(dialect_name="mysql", opts={"as_sql": True, "output_buffer": output})
         ):
-            _migration("7d2b9c4e61a8").downgrade()
+            migration._drop_code_physical_scopes()
         for _attempt in range(2):
             try:
                 with pytest.raises(DBAPIError, match="Code physical evidence must be retained"):

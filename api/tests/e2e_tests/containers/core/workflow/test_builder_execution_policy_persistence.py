@@ -8,11 +8,9 @@ if TYPE_CHECKING:
     pass
 
 
-import importlib.util
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from pathlib import Path
 from threading import Barrier
 from uuid import uuid4
 
@@ -44,6 +42,12 @@ from services.dify_builder.execution_policy_service import BuilderExecutionPolic
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner, configure
 from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
+)
+from tests.helpers.builder_migration import (
+    BUILDER_MAIN_REVISION,
+    BUILDER_REVISION,
+    MIGRATIONS_DIR,
+    load_builder_migration,
 )
 
 
@@ -175,17 +179,10 @@ def test_postgres_append_seal_and_duplicate_seal_are_serialized(native_owner: Na
 
 
 def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_containers: DifyApp) -> None:
-    """Exercise the actual Task1 migration in an isolated PG schema, preserving old input rows."""
+    """Exercise the execution-request migration phase in an isolated PG schema, preserving old input rows."""
     from extensions.ext_database import db
 
-    path = (
-        Path(__file__).parents[5] / "migrations/versions/2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py"
-    )
-    spec = importlib.util.spec_from_file_location("builder_execution_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
+    migration = load_builder_migration()
     schema = "builder_migration_" + uuid4().hex
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         assert connection.dialect.name == "postgresql"
@@ -204,16 +201,16 @@ def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_cont
             {"id": identity, "sid": str(uuid4())},
         )
         with Operations.context(MigrationContext.configure(connection)):
-            migration.upgrade()
+            migration._create_execution_requests()
             assert "dify_builder_execution_requests" in inspect(connection).get_table_names(schema=schema)
             assert connection.execute(text("SELECT http_fixtures FROM dify_builder_test_inputs")).scalar() is None
-            migration.downgrade()
+            migration._drop_execution_requests()
             assert "dify_builder_execution_requests" not in inspect(connection).get_table_names(schema=schema)
             assert (
                 connection.execute(text("SELECT start_schema_hash FROM dify_builder_test_inputs")).scalar()
                 == "historical"
             )
-            migration.upgrade()
+            migration._create_execution_requests()
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
@@ -232,248 +229,55 @@ def _isolated_migration_schema(connection: Connection, schema: str) -> Generator
         connection.commit()
 
 
-def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_containers: DifyApp) -> None:
-    """Real Alembic traversal upgrades both branches, merges/splits heads without changing their data."""
+def test_real_postgres_builder_revision_preserves_main_schema_and_data(flask_app_with_containers: DifyApp) -> None:
+    """Upgrade and downgrade only Builder while retaining real main table contents."""
     from extensions.ext_database import db
 
-    merge_revision = "7d95a2e61346"
-    canvas_head = "c34e2f7b5a10"
-    evaluation_head = "f8b6e2c4a901"
-    current_head = "430a56d97885"
-    main_head = "53c10126d551"
-    fix_intents_head = "6c84f1d90235"
-    writer_head = "5b73e0c8f124"
-    material_head = "4a62d9b7e013"
-    coordination_head = "e832a94f210b"
-    knowledge_fs_head = "b9d3f7a5c102"
-    code_head = "7d2b9c4e61a8"
-    task_head = "c6f4a90d8b31"
-    dispatch_head = "e59b7d32a6c1"
-    owner_head = "f47a1c90d2e8"
-    continuation_head = "d28f0e3c912a"
-    native_head = "c67e12a904bf"
-    archive_head = "f1d3c5b7a902"
-    branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
-    predecessor = ("a9cc8d552db4", "e7b2a9c4d601")
     config = Config()
-    config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
+    config.set_main_option("script_location", str(MIGRATIONS_DIR))
     scripts = ScriptDirectory.from_config(config)
-    assert scripts.get_heads() == [current_head]
-    main_sync_revision = scripts.get_revision(current_head)
-    assert main_sync_revision is not None
-    assert main_sync_revision.down_revision == (canvas_head, evaluation_head)
-    canvas_revision = scripts.get_revision(canvas_head)
-    assert canvas_revision is not None
-    assert canvas_revision.down_revision == merge_revision
-    main_merge = scripts.get_revision(merge_revision)
-    assert main_merge is not None
-    assert main_merge.down_revision == (fix_intents_head, main_head)
-    fix_intents_revision = scripts.get_revision(fix_intents_head)
-    assert fix_intents_revision is not None
-    assert fix_intents_revision.down_revision == writer_head
-    writer_revision = scripts.get_revision(writer_head)
-    assert writer_revision is not None
-    assert writer_revision.down_revision == material_head
-    material_revision = scripts.get_revision(material_head)
-    assert material_revision is not None
-    assert material_revision.down_revision == "3f51c8a6d902"
-    policy_revision = scripts.get_revision("3f51c8a6d902")
-    assert policy_revision is not None
-    assert isinstance(policy_revision.down_revision, tuple)
-    assert set(policy_revision.down_revision) == {coordination_head, knowledge_fs_head}
-    coordination_revision = scripts.get_revision(coordination_head)
-    assert coordination_revision is not None
-    assert isinstance(coordination_revision.down_revision, tuple)
-    assert set(coordination_revision.down_revision) == {code_head, task_head}
-    task_revision = scripts.get_revision(task_head)
-    assert task_revision is not None
-    assert task_revision.down_revision == "f1d3c5b7a902"
-    code_revision = scripts.get_revision(code_head)
-    assert code_revision is not None
-    assert code_revision.down_revision == dispatch_head
-    dispatch_revision = scripts.get_revision(dispatch_head)
-    assert dispatch_revision is not None
-    assert dispatch_revision.down_revision == owner_head
-    owner_revision = scripts.get_revision(owner_head)
-    assert owner_revision is not None
-    assert owner_revision.down_revision == continuation_head
-    continuation_revision = scripts.get_revision(continuation_head)
-    assert continuation_revision is not None
-    assert continuation_revision.down_revision == native_head
-    native_revision = scripts.get_revision(native_head)
-    assert native_revision is not None
-    assert isinstance(native_revision.down_revision, tuple)
-    assert set(native_revision.down_revision) == {"d82f9a6c31e0", archive_head}
-    verification = scripts.get_revision("b6ce72a91f04")
-    assert verification is not None
-    assert verification.down_revision == predecessor
+    revision = scripts.get_revision(BUILDER_REVISION)
+    assert revision is not None
+    assert scripts.get_heads() == [BUILDER_REVISION]
+    assert revision.down_revision == BUILDER_MAIN_REVISION
+    schema = "builder_single_migration_" + uuid4().hex
+    main_tables = ("resource_access_tokens", "resource_access_tokens_relation", "workflow_run_archive_bundles")
 
-    schema = "builder_forward_merge_" + uuid4().hex
     with (
         flask_app_with_containers.app_context(),
         db.engine.connect() as connection,
         _isolated_migration_schema(connection, schema),
     ):
         assert connection.dialect.name == "postgresql"
-        # Only the two preexisting tables touched by the Builder branch are prerequisites.
-        # Their structures come from the real database; remove the later nullable additions.
-        for table in ("dify_builder_test_inputs", "dify_builder_runs"):
+        for table in main_tables:
             connection.execute(text(f"CREATE TABLE {table} (LIKE public.{table} INCLUDING ALL)"))
-        connection.execute(text("ALTER TABLE dify_builder_test_inputs DROP COLUMN http_fixtures"))
-        connection.execute(text("ALTER TABLE dify_builder_runs DROP COLUMN verification"))
-        connection.execute(text("ALTER TABLE dify_builder_runs DROP COLUMN origin_task_id"))
         identity = str(uuid4())
         connection.execute(
             text(
-                "INSERT INTO dify_builder_test_inputs (id,session_id,source,inputs,start_schema_hash) "
-                "VALUES (:id,:id,'user','{}','historical')"
-            ),
-            {"id": identity},
-        )
-        connection.execute(
-            text(
-                "INSERT INTO dify_builder_runs (id,session_id,kind,status,error,immutable) "
-                "VALUES (:id,:id,'verify','failed','historical execution evidence',true)"
-            ),
-            {"id": identity},
-        )
-        context = MigrationContext.configure(connection, opts={"version_table_schema": schema})
-        for revision in predecessor:
-            context.stamp(scripts, revision)
-
-        def migrate(target: str, *, downgrade: bool = False) -> tuple[str, ...]:
-            def revisions(current: tuple[str, ...], _context: MigrationContext) -> list[RevisionStep]:
-                if downgrade:
-                    assert target == merge_revision
-                    assert current == (merge_revision,)
-                    # A relative -1 cannot choose between a merge's two parents.
-                    # Inclusive traversal of the exact merge reverts only that script;
-                    # Alembic's real HeadMaintainer then splits its two parent revisions.
-                    to_revert = list(
-                        scripts.iterate_revisions(current, target, inclusive=True, select_for_downgrade=True)
-                    )
-                    assert [revision.revision for revision in to_revert] == [merge_revision]
-                    return [
-                        RevisionStep.downgrade_from_script(scripts.revision_map, revision) for revision in to_revert
-                    ]
-                planned = scripts.iterate_revisions(target, current, implicit_base=True)
-                return [
-                    RevisionStep.upgrade_from_script(scripts.revision_map, revision)
-                    for revision in reversed(list(planned))
-                ]
-
-            # Main builds its task index concurrently; let Alembic own each transaction
-            # and keep the isolated schema in the session search path across commits.
-            connection.commit()
-            with EnvironmentContext(config, scripts, fn=revisions) as environment:
-                environment.configure(connection=connection, version_table_schema=schema)
-                with environment.begin_transaction():
-                    environment.run_migrations()
-            return MigrationContext.configure(connection, opts={"version_table_schema": schema}).get_current_heads()
-
-        # Execute real b6/c84/d82 and a8 migrations, not metadata.create_all or handwritten branch DDL.
-        assert migrate("d82f9a6c31e0") == ("d82f9a6c31e0",)
-        assert set(migrate("a8c9e2f1b704")) == branch_heads
-        parameters = {"id": identity}
-        connection.execute(
-            text(
-                "INSERT INTO dify_builder_execution_requests "
-                "(id,tenant_id,app_id,workflow_id,actor_id,session_id,test_input_id,"
-                "context,context_digest,state,observations) "
-                "VALUES (:id,:id,:id,:id,:id,:id,:id,'{}',repeat('0',64),'prepared','[]')"
-            ),
-            parameters,
-        )
-        connection.execute(
-            text(
-                "INSERT INTO dify_builder_real_call_consents "
-                "(id,tenant_id,app_id,workflow_id,actor_id,session_id,prepared_commit_id,test_input_id,prepared_version,"
-                "binding,scope_digest,disclosure,disclosure_digest,expires_at,state,prepare_key,prepare_body_digest,"
-                "prepare_receipt,initial_credential_revision,oauth_client_revision) "
-                "VALUES (:id,:id,:id,:id,:id,:id,:id,:id,1,'{}',repeat('0',64),'{}',repeat('0',64),"
-                "CURRENT_TIMESTAMP,'prepared','merge-control',repeat('0',64),'{}',repeat('0',64),repeat('0',64))"
-            ),
-            parameters,
-        )
-        connection.execute(
-            text(
                 "INSERT INTO resource_access_tokens (id,tenant_id,name,track_id,token,created_by) "
-                "VALUES (:id,:id,'merge-control','merge-control','synthetic-merge-token',:id)"
+                "VALUES (:id,:id,'builder-control','builder-control','synthetic-builder-token',:id)"
             ),
-            parameters,
+            {"id": identity},
         )
         connection.execute(
             text(
                 "INSERT INTO resource_access_tokens_relation (id,token_id,resource_type,app_id) "
                 "VALUES (:id,:id,'app',:id)"
             ),
-            parameters,
+            {"id": identity},
         )
-        tables = (
-            "dify_builder_test_inputs",
-            "dify_builder_runs",
-            "dify_builder_execution_requests",
-            "dify_builder_real_call_consents",
-            "resource_access_tokens",
-            "resource_access_tokens_relation",
+        connection.execute(
+            text(
+                "INSERT INTO workflow_run_archive_bundles "
+                "(id,tenant_id,year,month,shard,bundle_id,workflow_run_count,row_count,archive_bytes,archived_at) "
+                "VALUES (:id,:id,2026,10,'builder-shard','builder-archive-control',2,5,128,CURRENT_TIMESTAMP)"
+            ),
+            {"id": identity},
         )
 
-        native_tables = {
-            "dify_builder_native_" + suffix
-            for suffix in (
-                "scopes",
-                "invocations",
-                "grants",
-                "operations",
-                "attempts",
-                "outcomes",
-                "continuations",
-                "pending_actions",
-            )
-        }
-
-        continuation_tables = {
-            "dify_builder_native_payload_objects",
-            "dify_builder_native_invocation_states",
-            "dify_builder_native_dispatches",
-        }
-
-        def witness(
-            *,
-            include_archive: bool = False,
-            include_native: bool = False,
-            include_continuation: bool = False,
-            include_dispatch_claims: bool = False,
-            include_code_physical: bool = False,
-            include_workflow_tasks: bool = False,
-            include_draft_coordination: bool = False,
-            include_builder_context: bool = False,
-            include_workflow_writer: bool = False,
-            include_fix_intents: bool = False,
-        ) -> dict[str, _TableWitness]:
+        def witness() -> dict[str, _TableWitness]:
+            """Capture current definitions and rows for each copied main table."""
             inspector = inspect(connection)
-            expected_tables = {*tables, "alembic_version"}
-            if include_workflow_tasks:
-                expected_tables.add("workflow_runs")
-            if include_draft_coordination:
-                expected_tables.add("workflow_draft_coordination")
-            if include_builder_context:
-                expected_tables.update({"dify_builder_cognition_policies", "dify_builder_material"})
-            if include_workflow_writer:
-                expected_tables.add("dify_builder_workflow_writers")
-            if include_fix_intents:
-                expected_tables.add("dify_builder_fix_intents")
-            if include_archive:
-                expected_tables.add("workflow_run_archive_bundles")
-            if include_native:
-                expected_tables.update(native_tables)
-            if include_continuation:
-                expected_tables.update(continuation_tables)
-            if include_dispatch_claims:
-                expected_tables.add("dify_builder_native_effect_dispatch_claims")
-            if include_code_physical:
-                expected_tables.add("dify_builder_native_code_physical_operations")
-            assert set(inspector.get_table_names(schema=schema)) == expected_tables
             return {
                 table: {
                     "columns": [
@@ -486,312 +290,64 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                     "checks": inspector.get_check_constraints(table, schema=schema),
                     "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).tuples()),
                 }
-                for table in tables
+                for table in main_tables
             }
 
-        before = witness()
-        assert set(context.get_current_heads()) == branch_heads
+        def migrate(*, downgrade: bool = False) -> tuple[str, ...]:
+            """Apply one step to the isolated schema and return its persisted revisions."""
 
-        # The new archive branch touches this preexisting table, not the original
-        # six witnesses. Clone its real structure before applying the archive branch.
-        archive_table = "workflow_run_archive_bundles"
-        connection.execute(text(f"CREATE TABLE {archive_table} (LIKE public.{archive_table} INCLUDING ALL)"))
-        connection.execute(text(f"ALTER TABLE {archive_table} DROP COLUMN deletion_status"))
-        archive_id = str(uuid4())
+            def revisions(current: tuple[str, ...], _context: MigrationContext) -> list[RevisionStep]:
+                if downgrade:
+                    assert current == (BUILDER_REVISION,)
+                    return [RevisionStep.downgrade_from_script(scripts.revision_map, revision)]
+                assert current == (BUILDER_MAIN_REVISION,)
+                return [RevisionStep.upgrade_from_script(scripts.revision_map, revision)]
+
+            connection.commit()
+            with EnvironmentContext(config, scripts, fn=revisions) as environment:
+                environment.configure(connection=connection, version_table_schema=schema)
+                with environment.begin_transaction():
+                    environment.run_migrations()
+            return MigrationContext.configure(connection, opts={"version_table_schema": schema}).get_current_heads()
+
+        baseline = witness()
+        MigrationContext.configure(connection, opts={"version_table_schema": schema}).stamp(
+            scripts, BUILDER_MAIN_REVISION
+        )
+        assert migrate() == (BUILDER_REVISION,)
+        assert witness() == baseline
+
+        builder_tables = {
+            name
+            for name in db.metadata.tables
+            if name.startswith("dify_builder_") or name == "workflow_draft_coordination"
+        }
+        installed = {*main_tables, "alembic_version", *builder_tables}
+        assert set(inspect(connection).get_table_names(schema=schema)) == installed
         connection.execute(
             text(
-                "INSERT INTO workflow_run_archive_bundles "
-                "(id,tenant_id,year,month,shard,bundle_id,workflow_run_count,row_count,archive_bytes,archived_at) "
-                "VALUES (:archive_id,:tenant_id,2026,10,'merge-shard','merge-archive-control',2,5,128,"
-                "TIMESTAMP '2026-10-01 12:00:00')"
-            ),
-            {"archive_id": archive_id, "tenant_id": identity},
-        )
-        archive_fields = [column["name"] for column in inspect(connection).get_columns(archive_table, schema=schema)]
-        assert "deletion_status" not in archive_fields
-        archive_projection = ",".join(f'"{field}"' for field in archive_fields)
-
-        def archive_witness() -> _TableWitness:
-            inspector = inspect(connection)
-            return {
-                "columns": [
-                    (column["name"], str(column["type"]), column["nullable"], column["default"])
-                    for column in inspector.get_columns(archive_table, schema=schema)
-                    if column["name"] != "deletion_status"
-                ],
-                "primary_key": inspector.get_pk_constraint(archive_table, schema=schema),
-                "indexes": inspector.get_indexes(archive_table, schema=schema),
-                "unique": inspector.get_unique_constraints(archive_table, schema=schema),
-                "checks": inspector.get_check_constraints(archive_table, schema=schema),
-                "rows": list(
-                    connection.execute(text(f"SELECT {archive_projection} FROM {archive_table} ORDER BY id")).tuples()
-                ),
-            }
-
-        archive_before = archive_witness()
-        assert witness(include_archive=True) == before
-        assert set(migrate(archive_head)) == {"d82f9a6c31e0", archive_head}
-        assert witness(include_archive=True) == before
-        assert archive_witness() == archive_before
-        archive_after_columns = inspect(connection).get_columns(archive_table, schema=schema)
-        assert {column["name"] for column in archive_after_columns} == {*archive_fields, "deletion_status"}
-        deletion_column = next(column for column in archive_after_columns if column["name"] == "deletion_status")
-        assert str(deletion_column["type"]) == "VARCHAR(16)"
-        assert deletion_column["nullable"] is True
-        assert deletion_column["default"] is None
-        assert (
-            connection.execute(
-                text("SELECT deletion_status FROM workflow_run_archive_bundles WHERE id=:id"), {"id": archive_id}
-            ).scalar_one()
-            is None
-        )
-        assert migrate(native_head) == (native_head,)
-        after_native = witness(include_archive=True, include_native=True)
-        request_table = "dify_builder_execution_requests"
-        previous_request = before[request_table]
-        current_request = after_native[request_table]
-        waiting_indexes = [
-            index for index in current_request["indexes"] if index["name"] == "builder_native_waiting_idx"
-        ]
-        assert len(waiting_indexes) == 1
-        assert waiting_indexes[0]["column_names"] == ["tenant_id", "app_id", "state"]
-        assert "waiting" in waiting_indexes[0]["dialect_options"]["postgresql_where"]
-        assert len(current_request["checks"]) == len(previous_request["checks"]) == 1
-        assert "waiting" in current_request["checks"][0]["sqltext"]
-        assert "builder-native-test-v1" in current_request["checks"][0]["sqltext"]
-        # Only the reviewed native waiting CHECK/index may change on the old
-        # request table; all preexisting rows/columns/other constraints persist.
-        current_request["indexes"] = [index for index in current_request["indexes"] if index not in waiting_indexes]
-        current_request["checks"] = previous_request["checks"]
-        assert after_native == before
-        assert archive_witness() == archive_before
-
-        def native_ledger_witness() -> dict[str, _TableWitness]:
-            inspector = inspect(connection)
-            result: dict[str, _TableWitness] = {}
-            for table in sorted(native_tables):
-                primary_key = inspector.get_pk_constraint(table, schema=schema)
-                order = ",".join(f'"{name}"' for name in primary_key["constrained_columns"])
-                result[table] = {
-                    "columns": [
-                        (column["name"], str(column["type"]), column["nullable"], column["default"])
-                        for column in inspector.get_columns(table, schema=schema)
-                    ],
-                    "primary_key": primary_key,
-                    "indexes": inspector.get_indexes(table, schema=schema),
-                    "unique": inspector.get_unique_constraints(table, schema=schema),
-                    "checks": inspector.get_check_constraints(table, schema=schema),
-                    "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY {order}")).tuples()),
-                }
-            return result
-
-        before_continuation = witness(include_archive=True, include_native=True)
-        ledger_before = native_ledger_witness()
-        assert migrate(continuation_head) == (continuation_head,)
-        assert witness(include_archive=True, include_native=True, include_continuation=True) == before_continuation
-        assert native_ledger_witness() == ledger_before
-        assert archive_witness() == archive_before
-
-        # An acknowledged pre-provenance invocation remains explicitly unowned;
-        # the forward migration must not invent app/workflow authority for it.
-        connection.execute(
-            text(
-                "INSERT INTO dify_builder_native_invocation_states "
-                "(id,tenant_id,request_id,invocation_id,context_object_id,generation,state,pending_ids,resolution) "
-                "VALUES (:id,:id,:id,'legacy-native',:id,0,'waiting','[]','{}')"
+                """
+                INSERT INTO dify_builder_execution_requests
+                    (id,tenant_id,app_id,workflow_id,actor_id,session_id,test_input_id,
+                     context,context_digest,state,observations)
+                VALUES (:id,:id,:id,:id,:id,:id,:id,
+                        '{"policy_version":"builder-native-test-v1"}',repeat('0',64),'waiting','[]')
+                """
             ),
             {"id": identity},
         )
-        continuation_before = {
-            table: {
-                "columns": [
-                    (column["name"], str(column["type"]), column["nullable"], column["default"])
-                    for column in inspect(connection).get_columns(table, schema=schema)
-                ],
-                "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).tuples()),
-            }
-            for table in sorted(continuation_tables)
-        }
-        connection.execute(text("CREATE TABLE workflow_runs (LIKE public.workflow_runs INCLUDING ALL)"))
-        connection.execute(text("ALTER TABLE workflow_runs DROP COLUMN task_id"))
-        connection.execute(text("ALTER TABLE workflow_runs DROP COLUMN stop_requested_at"))
-        workflow_columns = {
-            column["name"] for column in inspect(connection).get_columns("workflow_runs", schema=schema)
-        }
-        assert migrate(coordination_head) == (coordination_head,)
-        workflow_after = inspect(connection).get_columns("workflow_runs", schema=schema)
-        assert {column["name"] for column in workflow_after} == {*workflow_columns, "task_id", "stop_requested_at"}
-        assert all(column["nullable"] for column in workflow_after if column["name"] not in workflow_columns)
-        assert any(
-            index["name"] == "workflow_run_task_id_idx"
-            for index in inspect(connection).get_indexes("workflow_runs", schema=schema)
-        )
-        assert (
-            witness(
-                include_archive=True,
-                include_native=True,
-                include_continuation=True,
-                include_dispatch_claims=True,
-                include_code_physical=True,
-                include_workflow_tasks=True,
-                include_draft_coordination=True,
-            )
-            == before_continuation
-        )
-        assert connection.scalar(text("SELECT count(*) FROM dify_builder_native_effect_dispatch_claims")) == 0
-        assert native_ledger_witness() == ledger_before
-        assert archive_witness() == archive_before
-        for table, previous in continuation_before.items():
-            columns = inspect(connection).get_columns(table, schema=schema)
-            names = {column["name"] for column in columns}
-            old_names = [column[0] for column in previous["columns"]]
-            additions = {"app_id", "workflow_id"} if table.endswith("invocation_states") else set()
-            assert names == {*old_names, *additions}
-            assert [
-                (column["name"], str(column["type"]), column["nullable"], column["default"])
-                for column in columns
-                if column["name"] not in additions
-            ] == previous["columns"]
-            for column in columns:
-                if column["name"] in additions:
-                    assert column["nullable"] is True
-                    assert column["default"] is None
-            projection = ",".join(f'"{name}"' for name in old_names)
-            assert (
-                list(connection.execute(text(f"SELECT {projection} FROM {table} ORDER BY id")).tuples())
-                == previous["rows"]
-            )
-        assert connection.execute(
-            text("SELECT app_id,workflow_id FROM dify_builder_native_invocation_states WHERE id=:id"),
-            {"id": identity},
-        ).one() == (None, None)
+        with pytest.raises(RuntimeError, match="terminate native waits before downgrade"):
+            migrate(downgrade=True)
+        connection.rollback()
+        assert set(inspect(connection).get_table_names(schema=schema)) == installed
+        assert witness() == baseline
 
-        # The official branch has its own migration qualification. With both
-        # parents applied, the merge consolidates version rows; its later
-        # Builder descendants add empty context/ownership/Fix tables and nullable
-        # run provenance without altering historical values or constraints.
-        parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
-        parents.stamp(scripts, coordination_head)
-        parents.stamp(scripts, main_head)
-        assert set(parents.get_current_heads()) == {coordination_head, main_head}
-        assert migrate(merge_revision) == (merge_revision,)
-        assert native_ledger_witness() == ledger_before
-        assert archive_witness() == archive_before
-        assert connection.scalar(text("SELECT count(*) FROM dify_builder_cognition_policies")) == 0
-        assert connection.scalar(text("SELECT count(*) FROM dify_builder_material")) == 0
-        assert connection.scalar(text("SELECT count(*) FROM dify_builder_workflow_writers")) == 0
-        assert connection.scalar(text("SELECT count(*) FROM dify_builder_fix_intents")) == 0
-        writer_inspector = inspect(connection)
-        assert writer_inspector.get_pk_constraint("dify_builder_fix_intents", schema=schema)["constrained_columns"] == [
-            "id"
-        ]
-        assert {
-            constraint["name"]: constraint["column_names"]
-            for constraint in writer_inspector.get_unique_constraints("dify_builder_fix_intents", schema=schema)
-        } == {
-            "builder_fix_intent_action_unique": ["session_id", "client_action_id"],
-            "builder_fix_intent_decision_unique": ["session_id", "decision_id"],
-        }
-        assert {
-            index["name"]: index["column_names"]
-            for index in writer_inspector.get_indexes("dify_builder_fix_intents", schema=schema)
-            if not index.get("duplicates_constraint")
-        } == {
-            "builder_fix_intent_owner_idx": ["tenant_id", "owner_account_id", "app_id", "session_id"],
-        }
-        assert writer_inspector.get_pk_constraint("dify_builder_workflow_writers", schema=schema)[
-            "constrained_columns"
-        ] == [
-            "tenant_id",
-            "app_id",
-        ]
-        assert {
-            column["name"] for column in writer_inspector.get_columns("dify_builder_workflow_writers", schema=schema)
-        } == {
-            "tenant_id",
-            "app_id",
-            "session_id",
-            "token",
-            "generation",
-            "expires_at",
-        }
-        assert {
-            index["name"] for index in writer_inspector.get_indexes("dify_builder_workflow_writers", schema=schema)
-        } == {
-            "builder_workflow_writer_session_idx",
-        }
-        previous_runs = before_continuation["dify_builder_runs"]
-        assert len(previous_runs["rows"]) == 1
-        expected_after_fix_intents: dict[str, _TableWitness] = {
-            **before_continuation,
-            "dify_builder_runs": {
-                **previous_runs,
-                "columns": [*previous_runs["columns"], ("origin_task_id", "VARCHAR(255)", True, None)],
-                "rows": [(*row, None) for row in previous_runs["rows"]],
-            },
-        }
-        assert (
-            witness(
-                include_archive=True,
-                include_native=True,
-                include_continuation=True,
-                include_dispatch_claims=True,
-                include_code_physical=True,
-                include_workflow_tasks=True,
-                include_draft_coordination=True,
-                include_builder_context=True,
-                include_workflow_writer=True,
-                include_fix_intents=True,
-            )
-            == expected_after_fix_intents
-        )
-
-        def final_witness() -> dict[str, _TableWitness]:
-            return witness(
-                include_archive=True,
-                include_native=True,
-                include_continuation=True,
-                include_dispatch_claims=True,
-                include_code_physical=True,
-                include_workflow_tasks=True,
-                include_draft_coordination=True,
-                include_builder_context=True,
-                include_workflow_writer=True,
-                include_fix_intents=True,
-            )
-
-        # The retained final Builder merge is empty. Splitting/rejoining it must
-        # preserve schema and historical execution-evidence witnesses.
-        final_before = final_witness()
-        final_ledger = native_ledger_witness()
-        assert set(migrate(merge_revision, downgrade=True)) == {fix_intents_head, main_head}
-        assert final_witness() == final_before
-        assert native_ledger_witness() == final_ledger
-        assert archive_witness() == archive_before
-        assert migrate(merge_revision) == (merge_revision,)
-        assert final_witness() == final_before
-        assert native_ledger_witness() == final_ledger
-        assert archive_witness() == archive_before
-        assert migrate(canvas_head) == (canvas_head,)
-        previous_request = final_before[request_table]
-        expected_final: dict[str, _TableWitness] = {
-            **final_before,
-            request_table: {
-                **previous_request,
-                "columns": [*previous_request["columns"], ("canvas_path", "JSONB", True, None)],
-                "rows": [(*row, None) for row in previous_request["rows"]],
-            },
-        }
-        assert final_witness() == expected_final
-
-        # Main's Evaluation/PAT/file-scan line has its own migration qualification
-        # and touches no Builder table. With its merge stamped beside the Builder
-        # head, the empty main-sync merge only consolidates version rows.
-        main_line = MigrationContext.configure(connection, opts={"version_table_schema": schema})
-        main_line.stamp(scripts, evaluation_head)
-        assert set(main_line.get_current_heads()) == {canvas_head, evaluation_head}
-        assert migrate("head") == (current_head,)
-        assert final_witness() == expected_final
+        connection.execute(text("DELETE FROM dify_builder_execution_requests WHERE id=:id"), {"id": identity})
+        assert migrate(downgrade=True) == (BUILDER_MAIN_REVISION,)
+        assert set(inspect(connection).get_table_names(schema=schema)) == {*main_tables, "alembic_version"}
+        assert witness() == baseline
+        assert migrate() == (BUILDER_REVISION,)
+        assert witness() == baseline
 
 
 @pytest.mark.parametrize(

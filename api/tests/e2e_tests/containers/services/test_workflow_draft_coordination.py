@@ -28,6 +28,7 @@ from tasks.workflow_draft_coordination_task import (
     process_workflow_draft_coordination,
     sweep_workflow_draft_coordination,
 )
+from tests.helpers.builder_migration import load_builder_migration
 from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, DraftOwner, seed_owner
 
 
@@ -536,9 +537,7 @@ def test_work_and_sweep_use_shared_persistence_and_scheduling_queues(flask_app_w
 
 
 def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_with_containers: Flask) -> None:
-    import importlib.util
     from io import StringIO
-    from pathlib import Path
 
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
@@ -546,23 +545,14 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     from sqlalchemy import text
     from sqlalchemy.exc import IntegrityError
 
-    path = (
-        Path(__file__).parents[4]
-        / "migrations/versions/2026_10_25_1200-e832a94f210b_add_workflow_draft_coordination.py"
-    )
-    spec = importlib.util.spec_from_file_location("coordination_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
-    assert migration.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
+    migration = load_builder_migration()
     schema = "draft_coordination_" + uuid4().hex
     table = "workflow_draft_coordination"
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         connection.execute(text(f'CREATE SCHEMA "{schema}"'))
         connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
         with Operations.context(MigrationContext.configure(connection)):
-            migration.upgrade()
+            migration._create_draft_coordination()
             inspector = sa_inspect(connection)
             assert {c["name"] for c in inspector.get_columns(table, schema=schema)} == {
                 c.name for c in Coordination.__table__.columns
@@ -584,9 +574,9 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
                 connection.execute(insert, {"id": identity, "count": -1})
             nested.rollback()
             connection.execute(insert, {"id": identity, "count": 0})
-            migration.downgrade()
+            migration._drop_draft_coordination()
             assert table not in sa_inspect(connection).get_table_names(schema=schema)
-            migration.upgrade()
+            migration._create_draft_coordination()
             assert table in sa_inspect(connection).get_table_names(schema=schema)
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
@@ -594,8 +584,8 @@ def test_coordination_actual_migration_upgrade_downgrade_and_offline(flask_app_w
     with Operations.context(
         MigrationContext.configure(dialect_name="postgresql", opts={"as_sql": True, "output_buffer": output})
     ):
-        migration.upgrade()
-        migration.downgrade()
+        migration._create_draft_coordination()
+        migration._drop_draft_coordination()
     assert "CREATE TABLE workflow_draft_coordination" in output.getvalue()
     assert "DROP TABLE workflow_draft_coordination" in output.getvalue()
 

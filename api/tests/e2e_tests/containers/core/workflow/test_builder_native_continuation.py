@@ -29,6 +29,7 @@ from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records imp
     NativeRuntimeWitness,
     require_instance,
 )
+from tests.helpers.builder_migration import load_builder_migration
 
 if TYPE_CHECKING:
     from multiprocessing.synchronize import Barrier
@@ -118,10 +119,6 @@ from runtime_contracts.builder.native.runtime_contracts import (
 from services.dify_builder.native_testing.state_store import ObjectReceipt
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_present
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
-    _migration,
-    raw_ledger_case,
-)
-from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - shared pytest fixture
 )
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
@@ -132,6 +129,9 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger 
 )
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414 - shared pytest fixture
+)
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
+    raw_ledger_case,
 )
 
 
@@ -151,9 +151,12 @@ def migrated_continuation_tables(flask_app_with_containers: DifyApp, migrated_na
             connection.execute(text("DROP TABLE IF EXISTS dify_builder_native_" + name))
         context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
         with Operations.context(context):
-            _migration("2026_10_14_1500-d28f0e3c912a_add_native_continuation_dispatch.py").upgrade()
-            _migration("2026_10_15_0900-f47a1c90d2e8_bind_native_invocation_read_owners.py").upgrade()
-        connection.execute(text("COMMENT ON TABLE dify_builder_native_dispatches IS 'ci-alembic:d28f0e3c912a'"))
+            migration = load_builder_migration()
+            migration._create_native_continuation()
+            migration._bind_native_read_owners()
+        connection.execute(
+            text("COMMENT ON TABLE dify_builder_native_dispatches IS 'ci-alembic:builder-native-continuation'")
+        )
 
 
 class ResolutionOwner:
@@ -1475,7 +1478,7 @@ def test_migration_keeps_checkpoint_and_payload_evidence_immutable(continuation_
     with c.factory() as session:
         assert (
             session.scalar(text("SELECT obj_description('dify_builder_native_dispatches'::regclass)"))
-            == "ci-alembic:d28f0e3c912a"
+            == "ci-alembic:builder-native-continuation"
         )
         row = session.get(NativePayloadObject, cp.checkpoint_id)
         require_instance(row, NativePayloadObject).storage_key = "replacement"

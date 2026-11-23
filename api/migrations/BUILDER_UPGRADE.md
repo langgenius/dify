@@ -1,39 +1,35 @@
-# Builder empty merge consolidation
+# Builder schema upgrade
 
-The feature branch consolidates five historical empty merge revisions into the
-retained final merge `7d95a2e61346`. Schema-changing revision IDs and bodies,
-upstream/main history, and retained ancestor dependencies are preserved.
+Revision `430a56d97885` installs the complete Builder schema after main's
+`f8b6e2c4a901`. It creates the final table names, indexes, constraints, and
+native execution triggers. It also registers the same final revision as the
+previous Builder migration chain.
 
-The observed Local checkpoint `6c84f1d90235` and Dev checkpoint
-`7d95a2e61346` support ordinary forward upgrades without restamping.
+## Choose the upgrade path
 
-The 2026-11-19 main sync adds a separate empty merge, `430a56d97885` (parents
-`c34e2f7b5a10` and main's `f8b6e2c4a901`), as the single head. It is not part of
-this consolidation; from either checkpoint, or from `c34e2f7b5a10`, an ordinary
-`flask upgrade-db` first runs main's Evaluation, personal access token and file
-scan revisions, then the merge.
+Check the current database revision with the normal migration tooling before
+changing the checkout.
 
-## Environments at a removed checkpoint
+- **A database on main or a fresh installation:** run the ordinary upgrade
+  with the consolidated migration. Alembic applies main's pending revisions
+  before creating Builder storage in one step.
+- **A database already at `430a56d97885`:** use the ordinary upgrade. The
+  database already has the final Builder schema and Alembic skips the revision.
+- **A database at an intermediate Builder revision:** first upgrade with the
+  pre-consolidation checkout `239853f233cf4059f6dfcf23c27f042a6e699e30`. Verify
+  that the database reports only `430a56d97885` before switching to the
+  consolidated checkout. This also applies to databases with multiple
+  revision rows when one row contains a retired Builder revision.
 
-Before installing this cleanup, inspect `flask db current` through the normal
-deployment migration tooling. If any version row contains one of these IDs,
-first upgrade using the pre-cleanup checkout:
+Databases that stopped at a merge revision removed by an earlier Builder
+cleanup must first use a checkout that still includes that revision. Follow
+the [previous upgrade guide](https://github.com/langgenius/dify/blob/239853f233cf4059f6dfcf23c27f042a6e699e30/api/migrations/BUILDER_UPGRADE.md)
+before upgrading through the pre-consolidation checkout. Let Alembic advance
+the version table through the actual migrations.
 
-- `733e4c46f90e`
-- `f9a3c62de418`
-- `a61e9b2c7d40`
-- `d41e6b8c2a75`
-- `db7f42c9a801`
+## Downgrade
 
-Keep checkout `88f64b6a3b08a7ec2919221af75152d7a360a0c9` with its normal
-configuration and dependencies, run the ordinary `flask upgrade-db`, and verify
-that only `7d95a2e61346` remains before installing the cleanup checkout. This
-also applies to multihead checkpoints containing a removed ID.
-
-If the cleanup was installed first, restore the old checkout to perform that
-normal upgrade. Do not stamp, directly edit `alembic_version`, reset the
-database, or assume that a missing revision's dependencies already ran.
-
-Deleted IDs are no longer directly resolvable by the new script directory.
-Environments requiring direct upgrades from every historical ID must retain
-the pre-cleanup migration files until they have completed this prior upgrade.
+Stop Builder writers before downgrading. The revision checks for pending
+native waits, continuation state, dispatch claims, and Code physical evidence
+before dropping tables. A successful downgrade removes Builder data and
+returns the schema to main's `f8b6e2c4a901` revision.

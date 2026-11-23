@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm.state import InstanceState
 
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
+from tests.helpers.builder_migration import load_builder_migration
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -58,16 +59,13 @@ if TYPE_CHECKING:
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from threading import Barrier
 from time import monotonic
 from uuid import uuid4
 
 import pytest
-from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from alembic.script import ScriptDirectory
 from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
 from sqlalchemy import func, insert, select, text
 from sqlalchemy import inspect as inspect_orm
@@ -108,9 +106,6 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claim
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414 - pytest fixture
 )
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
-    _migration,
-)
-from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - pytest fixture
 )
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
@@ -123,7 +118,6 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger 
     no_live as no_live,  # noqa: PLC0414 - pytest fixture
 )
 
-MIGRATION = "2026_10_16_1800-7d2b9c4e61a8_add_native_code_physical_owners.py"
 TABLE = "dify_builder_native_code_physical_operations"
 
 
@@ -145,46 +139,10 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
         connection.execute(text(f"DROP TABLE IF EXISTS {TABLE}"))
         connection.execute(text("DROP FUNCTION IF EXISTS builder_code_physical_monotone()"))
         with Operations.context(MigrationContext.configure(connection)):
-            migration = _migration(MIGRATION)
-            assert migration.down_revision == "e59b7d32a6c1"
-            config = Config()
-            config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
-            scripts = ScriptDirectory.from_config(config)
-            assert scripts.get_heads() == ["430a56d97885"]
-            main_sync = scripts.get_revision("430a56d97885")
-            assert main_sync is not None
-            assert main_sync.down_revision == ("c34e2f7b5a10", "f8b6e2c4a901")
-            canvas_path = scripts.get_revision("c34e2f7b5a10")
-            assert canvas_path is not None
-            assert canvas_path.down_revision == "7d95a2e61346"
-            main_merge = scripts.get_revision("7d95a2e61346")
-            assert main_merge is not None
-            assert main_merge.down_revision == ("6c84f1d90235", "53c10126d551")
-            fix_intents = scripts.get_revision("6c84f1d90235")
-            assert fix_intents is not None
-            assert fix_intents.down_revision == "5b73e0c8f124"
-            writer = scripts.get_revision("5b73e0c8f124")
-            assert writer is not None
-            assert writer.down_revision == "4a62d9b7e013"
-            material = scripts.get_revision("4a62d9b7e013")
-            assert material is not None
-            assert material.down_revision == "3f51c8a6d902"
-            policy = scripts.get_revision("3f51c8a6d902")
-            assert policy is not None
-            assert isinstance(policy.down_revision, tuple)
-            assert set(policy.down_revision) == {"e832a94f210b", "b9d3f7a5c102"}
-            coordination = scripts.get_revision("e832a94f210b")
-            assert coordination is not None
-            assert coordination.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
-            for current in ("base", "c6f4a90d8b31", "7d2b9c4e61a8"):
-                planned = scripts._upgrade_revs("head", current)
-                assert planned[-1].revision.revision == "430a56d97885"
-            steps = list(scripts.iterate_revisions("7d2b9c4e61a8", "e59b7d32a6c1"))
-            assert [step.revision for step in steps] == ["7d2b9c4e61a8"]
-            for step in reversed(steps):
-                step.module.upgrade()
-            migration.downgrade()  # Empty-evidence rollback only.
-            migration.upgrade()
+            migration = load_builder_migration()
+            migration._create_code_physical_scopes()
+            migration._drop_code_physical_scopes()  # Empty-evidence rollback only.
+            migration._create_code_physical_scopes()
     yield
     # Test-owned fixture teardown. Product downgrade itself never deletes evidence.
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
@@ -477,7 +435,7 @@ def test_downgrade_refuses_nonempty_evidence(code_case: PhysicalCodeCase) -> Non
         t.case.factory.begin() as session,
         Operations.context(MigrationContext.configure(session.connection())),
     ):
-        _migration(MIGRATION).downgrade()
+        load_builder_migration()._drop_code_physical_scopes()
     assert count_rows(t) == 1
 
 

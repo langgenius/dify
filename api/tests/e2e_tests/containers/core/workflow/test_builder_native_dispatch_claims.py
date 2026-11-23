@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from runtime_contracts.builder.native.contracts import EffectIntent, Outcome
 from services.dify_builder.native_testing.repository import OwnedNativeTest
 from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
+from tests.helpers.builder_migration import load_builder_migration
 
 if TYPE_CHECKING:
     from runtime_contracts.builder.native.contracts import NativeTestContextRef
@@ -87,7 +88,6 @@ from services.dify_builder.native_testing.repository import OwnedNativeTestLoade
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     MetadataOwner,
     _create_real_child,
-    _migration,
 )
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - shared pytest fixture
@@ -101,8 +101,6 @@ from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger 
 from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414 - shared pytest fixture
 )
-
-MIGRATION = "2026_10_15_1200-e59b7d32a6c1_add_native_effect_dispatch_claims.py"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -118,9 +116,9 @@ def migrated_dispatch_claims(migrated_native_tables: None, flask_app_with_contai
         connection.execute(text("DROP TABLE IF EXISTS dify_builder_native_effect_dispatch_claims"))
         context = MigrationContext.configure(connection, opts={"target_metadata": db.metadata})
         with Operations.context(context):
-            _migration(MIGRATION).upgrade()
-            _migration(MIGRATION).downgrade()
-            _migration(MIGRATION).upgrade()
+            load_builder_migration()._create_dispatch_claims()
+            load_builder_migration()._drop_dispatch_claims()
+            load_builder_migration()._create_dispatch_claims()
 
 
 @pytest.fixture
@@ -514,7 +512,7 @@ def test_claim_rows_are_unique_append_only_and_block_destructive_downgrade(
         engine = require_instance(session.get_bind(), Engine)
     with pytest.raises(RuntimeError, match="dispatch claim evidence must be retained"), engine.begin() as connection:
         with Operations.context(MigrationContext.configure(connection)):
-            _migration(MIGRATION).downgrade()
+            load_builder_migration()._drop_dispatch_claims()
     assert _count(case) == 1
 
 
@@ -557,7 +555,7 @@ def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(
         try:
             with engine.begin() as connection:
                 with Operations.context(MigrationContext.configure(connection)):
-                    _migration(MIGRATION).downgrade()
+                    load_builder_migration()._drop_dispatch_claims()
             sender.send("dropped")
         except RuntimeError as error:
             if "dispatch claim evidence must be retained" not in str(error):
@@ -612,7 +610,7 @@ def test_concurrent_downgrade_cannot_erase_a_successfully_committed_claim(
             )
             connection.execute(text(f'SET LOCAL search_path TO "{schema}", public'))
             with Operations.context(MigrationContext.configure(connection)):
-                _migration(MIGRATION).upgrade()
+                load_builder_migration()._create_dispatch_claims()
             assert connection.scalar(text(f"SELECT count(*) FROM {table}")) == 0
         downgrade_receiver = start_worker(downgrade_worker)
         assert checked_empty.wait(10), "downgrade never reached the real empty-table check"

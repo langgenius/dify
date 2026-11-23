@@ -4,6 +4,8 @@ from pathlib import Path
 
 from alembic.script import ScriptDirectory
 
+from tests.helpers.builder_migration import BUILDER_MAIN_REVISION, BUILDER_REVISION
+
 _VERSIONS = Path(__file__).resolve().parents[4] / "migrations/versions"
 _MAIN_HEAD = "d6b9e2f1a407"
 # KnowledgeFS revisions run in this order after main's head, without merge revisions.
@@ -32,30 +34,12 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == ["430a56d97885"]
-    main_sync = scripts.get_revision("430a56d97885")
-    assert main_sync is not None
-    assert main_sync.down_revision == ("c34e2f7b5a10", "f8b6e2c4a901")
-    canvas_path = scripts.get_revision("c34e2f7b5a10")
-    assert canvas_path is not None
-    assert canvas_path.down_revision == "7d95a2e61346"
-    current = scripts.get_revision("7d95a2e61346")
-    assert current is not None
-    assert isinstance(current.down_revision, tuple)
-    assert set(current.down_revision) == {"6c84f1d90235", "53c10126d551"}
-    fix_intents = scripts.get_revision("6c84f1d90235")
-    assert fix_intents is not None
-    assert fix_intents.down_revision == "5b73e0c8f124"
-    writer = scripts.get_revision("5b73e0c8f124")
-    assert writer is not None
-    assert writer.down_revision == "4a62d9b7e013"
-    material = scripts.get_revision("4a62d9b7e013")
-    assert material is not None
-    assert material.down_revision == "3f51c8a6d902"
-    policy = scripts.get_revision("3f51c8a6d902")
-    assert policy is not None
-    assert isinstance(policy.down_revision, tuple)
-    assert set(policy.down_revision) == {"e832a94f210b", _KNOWLEDGE_FS_CHAIN[-1]}
+    assert scripts.get_heads() == [BUILDER_REVISION]
+    builder = scripts.get_revision(BUILDER_REVISION)
+    assert builder is not None
+    assert builder.down_revision == BUILDER_MAIN_REVISION
+    main_ancestors = {revision.revision for revision in scripts.iterate_revisions(BUILDER_MAIN_REVISION, "base")}
+    assert set(_KNOWLEDGE_FS_CHAIN) <= main_ancestors
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
