@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,9 +17,7 @@ import AddBlock from './add-block'
 import { ExportImage } from './export-image'
 import { useOperator } from './hooks'
 import TipPopup from './tip-popup'
-
-const pressedModeClassName =
-  'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
+import { toolbarClassName, toolbarModeToggleClassName } from './toolbar-styles'
 
 const Control = () => {
   const { t } = useTranslation(['workflow', 'billing'])
@@ -45,7 +44,7 @@ const Control = () => {
   }
 
   return (
-    <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
+    <div className={cn('pointer-events-auto', toolbarClassName)}>
       <AddBlock />
       <TipPopup title={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}>
         <IconButton
@@ -68,7 +67,7 @@ const Control = () => {
           pressed={controlMode === ControlMode.Pointer}
           onPressedChange={handleModePointer}
           disabled={nodesReadOnly}
-          className={pressedModeClassName}
+          className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
@@ -90,7 +89,7 @@ const Control = () => {
           pressed={controlMode === ControlMode.Hand}
           onPressedChange={handleModeHand}
           disabled={nodesReadOnly}
-          className={pressedModeClassName}
+          className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
@@ -110,7 +109,7 @@ const Control = () => {
             pressed={controlMode === ControlMode.Comment}
             onPressedChange={handleModeComment}
             disabled={!canUseCommentMode}
-            className={pressedModeClassName}
+            className={toolbarModeToggleClassName}
             render={
               <IconButton
                 size="lg"
