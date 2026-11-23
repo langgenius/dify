@@ -19,11 +19,15 @@ from werkzeug.test import TestResponse
 from constants import COOKIE_NAME_ACCESS_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
-from controllers.console.agent.build_session import AgentDebugConversationRefreshApi
+from controllers.console.agent.build_session import (
+    AgentBuildDraftApi,
+    AgentBuildDraftApplyApi,
+    AgentBuildDraftCheckoutApi,
+    AgentDebugConversationRefreshApi,
+)
 from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppListApi,
-    AgentBuildDraftApi,
     AgentInviteOptionsApi,
     AgentLogExportApi,
     AgentLogExportFileApi,
@@ -170,6 +174,8 @@ def harness(
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
         api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
         api.add_resource(AgentBuildDraftApi, "/agent/<uuid:agent_id>/build-draft")
+        api.add_resource(AgentBuildDraftCheckoutApi, "/agent/<uuid:agent_id>/build-draft/checkout")
+        api.add_resource(AgentBuildDraftApplyApi, "/agent/<uuid:agent_id>/build-draft/apply")
         api.add_resource(AgentDebugConversationRefreshApi, "/agent/<uuid:agent_id>/debug-conversation/refresh")
         api.add_resource(AgentRosterVersionsApi, "/agent/<uuid:agent_id>/versions")
         api.add_resource(AgentRosterVersionDetailApi, "/agent/<uuid:agent_id>/versions/<uuid:version_id>")

@@ -3,6 +3,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -158,6 +159,8 @@ describe('Classic document deletion', () => {
 it.each(['pencil', 'menu'])(
   'returns focus to the selected row after cancelling rename from its %s entry',
   async (entry) => {
+    // The exit transition is where the draft must survive.
+    await emulateReducedMotion(false)
     const { screen } = await setup(['Alpha', 'Beta'])
     const row = screen.getByRole('row', { name: /Beta/ })
     await row.getByRole('link', { name: 'Beta' }).hover()
