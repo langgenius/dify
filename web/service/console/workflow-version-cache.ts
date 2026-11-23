@@ -9,7 +9,7 @@ import type {
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
-import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 
 function syncWorkflowVersionMetadata(
@@ -89,18 +89,6 @@ function syncWorkflowVersionPages(
   return changed ? { ...data, pages } : data
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-// oRPC keys are `[path, { type, input }]`; the list filters live in `input.query`.
-function isNamedOnlyVersionList(queryKey: QueryKey) {
-  const options = queryKey[1]
-  if (!isRecord(options) || !isRecord(options.input)) return false
-  const query = options.input.query
-  return isRecord(query) && query.named_only === true
-}
-
 function syncEnvironmentDeployments(
   data: ListEnvironmentDeploymentsResponse | undefined,
   updatedWorkflow: WorkflowResponse,
@@ -130,26 +118,15 @@ export function syncAppWorkflowVersionCaches(
   queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
     workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
   )
-  const versionListKey = consoleQuery.apps.byAppId.workflows.get.key({
-    type: 'infinite',
-    input: { params: { app_id: appId } },
-  })
-  // A version whose name was cleared no longer belongs in a named-only list. Reset those lists
-  // so they reload from the first page instead of keeping it if the follow-up refresh fails.
-  const nameCleared = !updatedWorkflow.marked_name
   queryClient.setQueriesData<InfiniteData<WorkflowPaginationResponse>>(
     {
-      queryKey: versionListKey,
-      predicate: (query) => !(nameCleared && isNamedOnlyVersionList(query.queryKey)),
+      queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+        type: 'infinite',
+        input: { params: { app_id: appId } },
+      }),
     },
     (data) => syncWorkflowVersionPages(data, updatedWorkflow),
   )
-  if (nameCleared) {
-    void queryClient.resetQueries({
-      queryKey: versionListKey,
-      predicate: (query) => isNamedOnlyVersionList(query.queryKey),
-    })
-  }
 }
 
 export function syncWorkflowDeploymentCaches(
