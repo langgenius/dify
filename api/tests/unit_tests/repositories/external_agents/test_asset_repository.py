@@ -23,7 +23,7 @@ from models.external_agent import (
     ExternalAgentVerification,
 )
 from models.external_agent_trace import ExternalAgentDataTombstone
-from models.model import App, AppMode
+from models.model import App, AppMode, Tag, TagBinding
 from models.workflow import Workflow, WorkflowType
 from repositories.external_agents.asset_repository import ExternalAssetRepository
 from services.external_agents.contracts import (
@@ -66,6 +66,9 @@ def domain() -> Iterator[AssetDomain]:
                 App,
                 Workflow,
                 WorkflowAgentNodeBinding,
+                # Asset archival retires shared Agent bindings in this transaction.
+                Tag,
+                TagBinding,
             )
         ],
     )
