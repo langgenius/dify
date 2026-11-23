@@ -4,10 +4,13 @@ import hmac
 from collections.abc import Mapping, Sequence
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token
+from enums.account import TenantAccountRole
 from libs.helper import build_icon_url
 from machinery.context import RequestContext
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.enterprise import rbac_service as enterprise
+from services.external_agents.contracts import ExternalAsset
+from services.rbac.builtin import builtin_permissions
 from services.rbac.members import MemberService
 
 
@@ -39,6 +42,29 @@ class WorkspaceExternalAssetAccess:
 
     def role(self, context: RequestContext) -> str | None:
         return self._workspaces.get_account_role(account_id=context.account_id, tenant_id=context.active_workspace_id)
+
+    def permission_keys(
+        self, context: RequestContext, assets: Sequence[ExternalAsset]
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Project Native Agent ACL semantics once for an admitted External page.
+
+        Preconditions: assets were tenant-scoped and visibility-filtered before
+        this read. Postconditions: custom resource overrides replace defaults;
+        the same resource-creator bypass as AGENT_EDIT applies only under RBAC.
+        Legacy roles retain their existing permissions. These keys do not grant
+        External connection/enable/delete control-plane access.
+        """
+        if not assets:
+            return {}
+        snapshot = self._permissions.permissions(context.active_workspace_id, context.account_id).agent
+        keys = snapshot.permission_keys_by_resource_ids([asset.id for asset in assets])
+        creator_keys = tuple(builtin_permissions(TenantAccountRole.OWNER).agent.default_permission_keys)
+        return {
+            asset.id: creator_keys
+            if self._rbac_enabled and asset.created_by == context.account_id
+            else tuple(keys.get(asset.id, ()))
+            for asset in assets
+        }
 
     def visible_agent_ids(self, context: RequestContext) -> frozenset[str] | None:
         if not self._rbac_enabled:

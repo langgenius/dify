@@ -8,7 +8,7 @@ IO; they never fabricate ORM construction or bypass an application constructor.
 
 import copy
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
@@ -32,7 +32,7 @@ from models.external_agent import (
     ExternalAgentVerification,
 )
 from models.external_agent_trace import ExternalAgentDataTombstone, ExternalAgentTraceUsageSummary
-from models.model import UploadFile
+from models.model import Tag, TagBinding, UploadFile
 from models.workflow import Workflow
 from providers.a2a.control_adapters import DifyExternalIconURLs
 from repositories.external_agents.asset_repository import ExternalAssetRepository
@@ -47,6 +47,7 @@ from services.external_agents.contracts import (
     ExternalAgentLimits,
     ExternalAgentNotFoundError,
     ExternalAgentVerificationFailedError,
+    ExternalAsset,
     OperationResult,
     VerificationEvidence,
 )
@@ -70,6 +71,7 @@ from services.external_agents.protocol import (
 from services.external_agents.runtime_contracts import CancelState, Invocation, LocalState, TimeoutPolicy, WaitPolicy
 from services.external_agents.test_service import ExternalTestService
 from services.external_agents.traceability import TraceLimits
+from services.rbac.builtin import builtin_permissions
 from tests.unit_tests.repositories.external_agents.test_runtime_repository import (
     Clock,
     Domain,
@@ -108,6 +110,15 @@ class MembershipAccess:
     def visible_agent_ids(self, context: RequestContext) -> frozenset[str] | None:
         assert context.account_id
         return self.visibility
+
+    def permission_keys(
+        self, context: RequestContext, assets: Sequence[ExternalAsset]
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Use actual legacy membership; production RBAC projection has separate adapter tests."""
+        role = self.role(context)
+        assert role is not None
+        keys = tuple(builtin_permissions(TenantAccountRole(role)).agent.default_permission_keys)
+        return {asset.id: keys for asset in assets}
 
     def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
         assert self.role(context) in {"owner", "admin", "editor"}
@@ -349,6 +360,8 @@ def control(domain: Domain) -> ControlPlane:
                 Workflow,
                 WorkflowAgentNodeBinding,
                 ExternalAgentTraceUsageSummary,
+                Tag,
+                TagBinding,
             )
         ],
     )
@@ -364,6 +377,7 @@ def control(domain: Domain) -> ControlPlane:
     assets = ExternalAssetService(
         store=ExternalAssetRepository(session_factory=sessions),
         access=access,
+        permissions=access,
         reference_access=access,
         icons=DifyExternalIconURLs(),
         gateway=gateway,

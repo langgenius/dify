@@ -7,7 +7,7 @@ from itertools import starmap
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,7 +16,7 @@ from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin
 from models.agent import Agent, AgentIconType, AgentKind, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
-from models.enums import AppStatus
+from models.enums import AppStatus, TagType
 from models.external_agent import (
     ExternalAgentConnectionRevision,
     ExternalAgentContextSlot,
@@ -27,8 +27,9 @@ from models.external_agent import (
     ExternalAgentVerification,
 )
 from models.external_agent_trace import ExternalAgentDataTombstone
-from models.model import App, UploadFile
+from models.model import App, Tag, TagBinding, UploadFile
 from models.workflow import Workflow
+from repositories.tag_repository import TagRepository
 from services.external_agents.contracts import (
     AssetPage,
     ConnectionRevision,
@@ -43,6 +44,7 @@ from services.external_agents.contracts import (
     ExternalAssetReferences,
     ExternalAssetSortBy,
     ExternalAssetSortOrder,
+    ExternalAssetTag,
     OperationResult,
     VerificationEvidence,
 )
@@ -159,10 +161,12 @@ class ExternalAssetRepository:
         reference_app_ids: frozenset[str] | None,
         sort_by: ExternalAssetSortBy,
         sort_order: ExternalAssetSortOrder,
+        tag_ids: tuple[str, ...] = (),
     ) -> AssetPage:
         """Read one authorized cohort; tabs do not alter availability counts.
 
-        Search, creator and asset visibility constrain both counters. A single
+        Search, creator, every requested Agent tag and asset visibility constrain
+        both counters before status selection and pagination. A single
         grouped query counts readable current App references for all page rows;
         None withholds this detail, while an empty readable set yields zero.
         """
@@ -176,6 +180,11 @@ class ExternalAssetRepository:
         if visible_ids is not None:
             stmt = stmt.where(Agent.id.in_(visible_ids))
         with self._sessions() as session:
+            if tag_ids:
+                tagged_ids = TagRepository.get_target_ids_by_tag_ids(
+                    "agent", tenant_id, list(tag_ids), session, match_all=True
+                )
+                stmt = stmt.where(Agent.id.in_(tagged_ids))
             cohort = stmt.with_only_columns(ExternalAgentHead.enabled).subquery()
             enabled_count, disabled_count = session.execute(
                 select(
@@ -218,6 +227,25 @@ class ExternalAssetRepository:
                 enabled_count=enabled_count,
                 disabled_count=disabled_count,
             )
+
+    def tags_for_assets(
+        self, *, tenant_id: str, agent_ids: Sequence[str]
+    ) -> Mapping[str, tuple[ExternalAssetTag, ...]]:
+        """Read shared Agent labels once for an already admitted tenant cohort.
+
+        Both binding and tag ownership are scoped by the canonical helper. The
+        session is closed on return and no metadata or runtime state is written.
+        """
+        if not agent_ids:
+            return {}
+        with self._sessions() as session:
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=tenant_id, tag_type="agent", target_ids=list(agent_ids)
+            )
+            return {
+                identifier: tuple(ExternalAssetTag(id=tag["id"], name=tag["name"], type=tag["type"]) for tag in labels)
+                for identifier, labels in tags.items()
+            }
 
     @staticmethod
     def _reference_statement(tenant_id: str, agent_ids: Sequence[str]):
@@ -702,9 +730,24 @@ class ExternalAssetRepository:
             return self._asset(agent, head)
 
     def archive(self, *, context: RequestContext, agent_id: str) -> None:
+        """Archive an owned asset and remove only its shared Agent tag bindings.
+
+        Tenant/Agent locks serialize against binding writes. Cleanup and archive
+        commit together, preserving shared labels, other Agents and runtime data.
+        Repeated deletion can clean any legacy bindings without reviving an asset.
+        """
         with self._sessions.begin() as session:
             self._manager(session, context)
             agent, head = self._rows(session, context.active_workspace_id, agent_id, lock=True, allow_deleted=True)
+            session.execute(
+                delete(TagBinding).where(
+                    TagBinding.tenant_id == context.active_workspace_id,
+                    TagBinding.target_id == agent_id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(Tag.tenant_id == context.active_workspace_id, Tag.type == TagType.AGENT)
+                    ),
+                )
+            )
             if head.deleted_at is not None:
                 return
             head.deleted_at = now()
