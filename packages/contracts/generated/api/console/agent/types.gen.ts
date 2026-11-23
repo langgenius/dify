@@ -948,6 +948,7 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
+  tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
@@ -1561,7 +1562,7 @@ export type AppJsonObjectFormResponse = {
 
 export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
-export type AgentKind = 'dify_agent' | 'external_a2a'
+export type AgentKind = 'dify_agent'
 
 export type AgentPublishedReferenceResponse = {
   app_icon?: string | null
@@ -2735,6 +2736,7 @@ export type GetAgentInviteOptionsData = {
     keyword?: string
     limit?: number
     page?: number
+    tag_ids?: Array<string>
   }
   url: '/agent/invite-options'
 }

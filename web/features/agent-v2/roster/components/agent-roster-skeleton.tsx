@@ -8,7 +8,13 @@ const skeletonCardIds = Array.from(
   (_, index) => `agent-roster-skeleton-card-${index}`,
 )
 
-export function AgentRosterSkeleton({ className }: { className?: string }) {
+export function AgentRosterSkeleton({
+  className,
+  showTagPlaceholder = false,
+}: {
+  className?: string
+  showTagPlaceholder?: boolean
+}) {
   const { t } = useTranslation(['common'])
 
   return (
@@ -19,7 +25,7 @@ export function AgentRosterSkeleton({ className }: { className?: string }) {
       {skeletonCardIds.map((id) => (
         <div
           key={id}
-          className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
+          className="relative h-43 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3"
         >
           <div className="flex items-center gap-3 ps-3.5 pe-4 pt-3.5 pb-2">
             <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
@@ -33,6 +39,14 @@ export function AgentRosterSkeleton({ className }: { className?: string }) {
               <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
               <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
             </div>
+          </div>
+          <div className="flex h-6.5 items-center gap-1 px-4">
+            {showTagPlaceholder && (
+              <>
+                <SkeletonRectangle className="my-0 h-4 w-14 rounded-md opacity-12" />
+                <SkeletonRectangle className="my-0 h-4 w-20 rounded-md opacity-12" />
+              </>
+            )}
           </div>
           <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
             <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />

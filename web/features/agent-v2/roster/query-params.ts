@@ -1,17 +1,19 @@
 import { zGetAgentQuery } from '@dify/contracts/api/console/agent/zod.gen'
-import { debounce, parseAsBoolean, parseAsString, parseAsStringLiteral } from 'nuqs'
+import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral } from 'nuqs'
 import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 
 export const rosterQueryParamNames = {
   type: 'agent_type',
   keyword: 'keyword',
   filter: 'filter',
+  tagIds: 'tag_ids',
   createdByMe: 'created_by_me',
   sortBy: 'sort_by',
 } as const
 
 export const externalRosterQueryParsers = {
   external_keyword: parseAsString.withDefault(''),
+  external_tag_ids: parseAsArrayOf(parseAsString, ';').withDefault([]),
   external_status: parseAsStringLiteral(['all', 'enabled', 'disabled']).withDefault('all'),
   external_connected_by_me: parseAsBoolean.withDefault(false),
   external_sort_by: parseAsStringLiteral([
@@ -27,6 +29,8 @@ export const rosterKeywordQueryParser = parseAsString.withDefault('').withOption
 
 export const rosterFilterQueryParser = parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all')
 
+export const rosterTagIdsQueryParser = parseAsArrayOf(parseAsString, ';').withDefault([])
+
 export const rosterCreatedByMeQueryParser = parseAsBoolean.withDefault(false)
 
 export const rosterSortByQueryParser = parseAsStringLiteral(
@@ -37,6 +41,7 @@ export const rosterTabQueryParsers = {
   [rosterQueryParamNames.type]: parseAsStringLiteral(['dify', 'external']).withDefault('dify'),
   [rosterQueryParamNames.keyword]: rosterKeywordQueryParser,
   [rosterQueryParamNames.filter]: rosterFilterQueryParser,
+  [rosterQueryParamNames.tagIds]: rosterTagIdsQueryParser,
   [rosterQueryParamNames.createdByMe]: rosterCreatedByMeQueryParser,
   [rosterQueryParamNames.sortBy]: rosterSortByQueryParser,
   ...externalRosterQueryParsers,

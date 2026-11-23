@@ -1,5 +1,6 @@
 'use client'
 
+import type { GetExternalAgentsData } from '@dify/contracts/api/console/external-agents/types.gen'
 import type { ExternalAgentActionRequest } from './components/external-agent-actions'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
@@ -14,16 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { toExternalAgentListItem } from '@/features/agent-v2/external-agent/model'
+import { TagFilter } from '@/features/tag-management/tag-filter'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterSkeleton } from './components/agent-roster-skeleton'
 import { ConnectExternalAgent } from './components/connect-external-agent'
@@ -38,6 +41,7 @@ const EMPTY_STATUS_COUNTS = {
 
 export function ExternalRoster() {
   const { t } = useTranslation(['agentRoster'])
+  const queryClient = useQueryClient()
   const workspace = useAtomValue(currentWorkspaceAtom)
   const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
   const profile = useQuery(userProfileQueryOptions())
@@ -46,30 +50,52 @@ export function ExternalRoster() {
   const [actionRequest, setActionRequest] = useState<ExternalAgentActionRequest>()
   const [actionOpen, setActionOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [tagManagementOpen, setTagManagementOpen] = useState(false)
   const sortLabelId = useId()
   const [filters, setFilters] = useQueryStates(externalRosterQueryParsers)
+  const urlTagIds = filters.external_tag_ids
+  const tagCatalog = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: { query: { type: 'agent' } },
+      enabled: urlTagIds.length > 0,
+      refetchOnMount: 'always',
+    }),
+  )
+  const tagIds = useMemo(() => {
+    if (!urlTagIds.length || !tagCatalog.isSuccess || tagCatalog.isFetching) return urlTagIds
+    const availableIds = new Set(tagCatalog.data.map((tag) => tag.id))
+    return urlTagIds.filter((id) => availableIds.has(id))
+  }, [urlTagIds, tagCatalog.data, tagCatalog.isSuccess, tagCatalog.isFetching])
+  useEffect(() => {
+    if (tagIds.length === urlTagIds.length) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reconcile the shareable filter with the authoritative catalog.
+    void setFilters({ external_tag_ids: tagIds })
+  }, [tagIds, urlTagIds, setFilters])
   const keyword = useDebounce(filters.external_keyword.trim().slice(0, 255), { wait: 300 })
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
   const sortBy = filters.external_sort_by === 'last_modified' ? 'updated_at' : 'created_at'
   const sortOrder = filters.external_sort_by === 'earliest_created' ? 'asc' : 'desc'
-  const commonFilters = {
-    ...(keyword ? { keyword } : {}),
-    connected_by_me: filters.external_connected_by_me,
-  }
+  const rosterQueryInput = (
+    page: number,
+    selectedTagIds: string[],
+  ): Pick<GetExternalAgentsData, 'query'> => ({
+    query: {
+      ...(keyword ? { keyword } : {}),
+      ...(selectedTagIds.length ? { tag_ids: selectedTagIds } : {}),
+      connected_by_me: filters.external_connected_by_me,
+      page,
+      limit: 20,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      ...(filters.external_status === 'all'
+        ? {}
+        : { enabled: filters.external_status === 'enabled' }),
+    },
+  })
   const list = useInfiniteQuery({
     ...consoleQuery.externalAgents.get.infiniteOptions({
-      input: (page) => ({
-        query: {
-          ...commonFilters,
-          page: Number(page),
-          limit: 20,
-          sort_by: sortBy,
-          sort_order: sortOrder,
-          ...(filters.external_status === 'all'
-            ? {}
-            : { enabled: filters.external_status === 'enabled' }),
-        },
-      }),
+      input: (page) => rosterQueryInput(Number(page), tagIds),
       initialPageParam: 1,
       getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
       enabled: capabilities.isSuccess && !workspaceLoading,
@@ -145,6 +171,23 @@ export function ExternalRoster() {
             {t(($) => $['external.filters.connectedByMe'])}
           </span>
         </label>
+        <TagFilter
+          type="agent"
+          value={tagIds}
+          onChange={(nextIds) => {
+            queryClient.removeQueries({
+              queryKey: consoleQuery.externalAgents.get.key({
+                type: 'infinite',
+                input: rosterQueryInput(1, nextIds),
+              }),
+              exact: true,
+              type: 'inactive',
+            })
+            viewportRef.current?.scrollTo({ top: 0 })
+            void setFilters({ external_tag_ids: nextIds })
+          }}
+          onOpenTagManagement={() => setTagManagementOpen(true)}
+        />
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
           <Select
             items={sortOptions}
@@ -193,6 +236,8 @@ export function ExternalRoster() {
             <ExternalAgentList
               agents={agents}
               canReadDetails={canReadDetails}
+              viewportRef={viewportRef}
+              onOpenTagManagement={() => setTagManagementOpen(true)}
               onAction={
                 canManage
                   ? (request) => {
@@ -204,13 +249,17 @@ export function ExternalRoster() {
               onClearFilters={() => {
                 void setFilters({
                   external_keyword: '',
+                  external_tag_ids: [],
                   external_status: 'all',
                   external_connected_by_me: false,
                 })
                 searchRef.current?.focus()
               }}
               filtered={Boolean(
-                keyword || filters.external_status !== 'all' || filters.external_connected_by_me,
+                keyword ||
+                tagIds.length ||
+                filters.external_status !== 'all' ||
+                filters.external_connected_by_me,
               )}
             />
           </div>
@@ -237,6 +286,11 @@ export function ExternalRoster() {
           setActionOpen(true)
         }}
         fallbackFocus={searchRef}
+      />
+      <TagManagementDialog
+        type="agent"
+        show={tagManagementOpen}
+        onClose={() => setTagManagementOpen(false)}
       />
     </>
   )

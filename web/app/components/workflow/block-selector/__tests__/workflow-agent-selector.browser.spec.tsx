@@ -38,6 +38,7 @@ const difyAgent: AgentInviteOptionsResponse['data'][number] = {
   is_in_current_workflow: false,
   published_node_reference_count: 0,
   published_reference_count: 0,
+  tags: [],
   agent_kind: 'dify_agent',
   scope: 'roster',
   source: 'workflow',
@@ -58,6 +59,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': () =>
+        ['Research', 'Finance', 'Support', 'Sales', 'Design', 'Operations', 'Writing'].map(
+          (name) => ({
+            id: name.toLowerCase(),
+            name,
+            type: 'agent',
+          }),
+        ),
       'externalAgents.get': mocks.fetchExternal,
       'externalAgents.capabilities.get': () => createExternalAgentCapabilities(),
       'agent.inviteOptions.get': mocks.fetchAgents,
@@ -130,14 +139,28 @@ beforeEach(({ onTestFinished }) => {
   mocks.fetchAgents.mockReset().mockImplementation(async (input) => {
     const keyword = input?.query?.keyword?.toLowerCase() ?? ''
     const data = [difyAgent].filter((agent) => agent.name.toLowerCase().includes(keyword))
-    return { data, has_more: false, limit: 8, page: 1, total: data.length }
+    const page = input?.query?.page ?? 1
+    if (input?.query?.tag_ids?.includes('research')) {
+      return {
+        data: [{ ...difyAgent, id: `match-${page}`, name: `Research match ${page}` }],
+        has_more: page === 1,
+        limit: 8,
+        page,
+        total: 2,
+      }
+    }
+    return { data, has_more: false, limit: 8, page, total: data.length }
   })
   mocks.fetchExternal.mockReset().mockImplementation(async (input) => {
     const items = [
-      createExternalAgentAsset(),
+      createExternalAgentAsset({ tags: [{ id: 'research', name: 'Research', type: 'agent' }] }),
       createExternalAgentAsset({
         id: '44444444-4444-4444-8444-444444444444',
         name: 'Document Review Agent',
+        tags: [
+          { id: 'research', name: 'Research', type: 'agent' },
+          { id: 'finance', name: 'Finance', type: 'agent' },
+        ],
       }),
       createExternalAgentAsset({
         id: '55555555-5555-4555-8555-555555555555',
@@ -146,8 +169,9 @@ beforeEach(({ onTestFinished }) => {
       }),
     ].filter(
       (agent) =>
-        !input?.query?.keyword ||
-        agent.name.toLowerCase().includes(input.query.keyword.toLowerCase()),
+        (!input?.query?.keyword ||
+          agent.name.toLowerCase().includes(input.query.keyword.toLowerCase())) &&
+        (input?.query?.tag_ids ?? []).every((id) => agent.tags.some((tag) => tag.id === id)),
     )
     return {
       items,
@@ -471,4 +495,80 @@ it('loads another server page before selecting an external agent outside the fir
   expect(mocks.fetchExternal).toHaveBeenLastCalledWith({ query: { page: 2, limit: 20 } })
   await picker.getByRole('button', { name: /Later page Agent/ }).click()
   expect(onSelectExternal).toHaveBeenCalledWith(later)
+})
+
+it('keeps the tag popup above Dify results and pages through tagged agents in All', async () => {
+  const { picker } = await setup()
+  await picker.getByRole('tab', { name: 'Dify', exact: true }).click()
+  const candidate = picker.getByRole('button', { name: /Research Agent/ })
+  await expect.element(candidate).toBeVisible()
+  const tagFilter = picker.getByRole('button', { name: 'Tags', exact: true })
+  const searchBounds = picker
+    .getByRole('searchbox', { name: 'Search agents' })
+    .element()
+    .getBoundingClientRect()
+  const tagBounds = tagFilter.element().getBoundingClientRect()
+  const searchCenterY = searchBounds.top + searchBounds.height / 2
+  expect(searchCenterY).toBeGreaterThan(tagBounds.top)
+  expect(searchCenterY).toBeLessThan(tagBounds.bottom)
+  expect(searchBounds.right).toBeLessThanOrEqual(tagBounds.left)
+  await tagFilter.click()
+  const popup = page.getByRole('dialog', { name: 'Tags', exact: true })
+  const option = popup.getByRole('checkbox', { name: 'Research', exact: true })
+  await expect.element(option).toBeVisible()
+  const start = picker.getByRole('button', { name: 'Start from Scratch' })
+  const popupBounds = popup.element().getBoundingClientRect()
+  for (const underlyingRow of [candidate, start]) {
+    const rowBounds = underlyingRow.element().getBoundingClientRect()
+    const left = Math.max(popupBounds.left, rowBounds.left)
+    const right = Math.min(popupBounds.right, rowBounds.right)
+    const top = Math.max(popupBounds.top, rowBounds.top)
+    const bottom = Math.min(popupBounds.bottom, rowBounds.bottom)
+    expect(right).toBeGreaterThan(left)
+    expect(bottom).toBeGreaterThan(top)
+    const frontElement = document.elementFromPoint((left + right) / 2, (top + bottom) / 2)
+    expect(popup.element().contains(frontElement)).toBe(true)
+  }
+  await option.click()
+  await userEvent.keyboard('{Escape}')
+  await picker.getByRole('tab', { name: 'All', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Research match 1/ })).toBeVisible()
+  await expect.element(picker.getByRole('button', { name: /Contract Review Agent/ })).toBeVisible()
+  expect(mocks.fetchExternal).toHaveBeenLastCalledWith({
+    query: { page: 1, limit: 20, tag_ids: ['research'] },
+  })
+  await picker.getByRole('button', { name: 'Load more', exact: true }).click()
+  await expect.element(picker.getByRole('button', { name: /Research match 2/ })).toBeVisible()
+  expect(mocks.fetchAgents).toHaveBeenLastCalledWith({
+    query: { app_id: 'workflow-app', tag_ids: ['research'], page: 2, limit: 8 },
+  })
+  await picker.getByRole('button', { name: 'Research', exact: true }).click()
+  await popup.getByRole('checkbox', { name: 'Finance', exact: true }).click()
+  await popup.getByRole('checkbox', { name: 'Support', exact: true }).click()
+  await userEvent.keyboard('{Escape}')
+  const selectedTags = picker.getByRole('button', {
+    name: 'Research, Finance, Support',
+    exact: true,
+  })
+  await expect.element(selectedTags).toHaveTextContent('Research,Finance+1')
+  await expect
+    .poll(() => mocks.fetchAgents.mock.calls.at(-1))
+    .toEqual([
+      {
+        query: {
+          app_id: 'workflow-app',
+          tag_ids: ['research', 'finance', 'support'],
+          page: 1,
+          limit: 8,
+        },
+      },
+    ])
+  await picker.getByRole('tab', { name: 'External', exact: true }).click()
+  await expect
+    .element(picker.getByRole('button', { name: /Contract Review Agent/ }))
+    .not.toBeInTheDocument()
+  await expect.element(selectedTags).toBeVisible()
+  expect(mocks.fetchExternal).toHaveBeenLastCalledWith({
+    query: { page: 1, limit: 20, tag_ids: ['research', 'finance', 'support'] },
+  })
 })
