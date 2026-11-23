@@ -32,11 +32,11 @@ const FontSizeSelector = () => {
           <button
             type="button"
             className={cn(
-              'flex h-8 cursor-pointer items-center rounded-md pr-1.5 pl-2 text-[13px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+              'flex h-8 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-[13px] font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
               fontSizeSelectorShow && 'bg-state-base-hover text-text-secondary',
             )}
           >
-            <RiFontSize className="mr-1 size-4" />
+            <RiFontSize className="me-1 size-4" />
             {FONT_SIZE_LIST.find((font) => font.key === fontSize)?.value ||
               t(($) => $['nodes.note.editor.small'], { ns: 'workflow' })}
           </button>
@@ -51,7 +51,7 @@ const FontSizeSelector = () => {
           {FONT_SIZE_LIST.map((font) => (
             <div
               key={font.key}
-              className="flex h-8 cursor-pointer items-center justify-between rounded-md pr-2 pl-3 hover:bg-state-base-hover"
+              className="flex h-8 cursor-pointer items-center justify-between rounded-md ps-3 pe-2 hover:bg-state-base-hover"
               onClick={(e) => {
                 e.stopPropagation()
                 handleFontSize(font.key)

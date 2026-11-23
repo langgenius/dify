@@ -201,6 +201,90 @@ def test_retire_all_for_conversation_scopes_workspaces_and_active_bindings(sqlit
     )
 
 
+def test_retire_all_for_conversations_retires_only_requested_conversations(sqlite_session: Session) -> None:
+    conversation_a = "conversation-a"
+    conversation_b = "conversation-b"
+    matching = [
+        _workspace("a-root", replace(_SCOPE, owner_id=conversation_a)),
+        _workspace("a-node", replace(_SCOPE, owner_id=conversation_a, owner_scope_key="node-1:binding-1")),
+        _workspace("b-root", replace(_SCOPE, owner_id=conversation_b)),
+    ]
+    excluded = [
+        _workspace("other-conversation", replace(_SCOPE, owner_id="conversation-c")),
+        _workspace(
+            "other-app",
+            replace(_SCOPE, app_id="other-app", owner_id=conversation_a, owner_scope_key="other-app"),
+        ),
+        _workspace(
+            "workflow-run",
+            replace(
+                _SCOPE,
+                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                owner_id=conversation_a,
+                owner_scope_key="workflow-run",
+            ),
+        ),
+    ]
+    already_retired = _workspace("a-retired", replace(_SCOPE, owner_id=conversation_a, owner_scope_key="a-retired"))
+    already_retired.status = AgentWorkingResourceStatus.RETIRED
+    already_retired.active_guard = None
+    already_retired.retired_at = _RETIRED_AT
+    active_bindings = [_binding(f"{workspace.id}-binding", workspace) for workspace in matching]
+    sqlite_session.add_all([*matching, *excluded, already_retired, *active_bindings])
+    sqlite_session.commit()
+    repository = AgentWorkspaceRepository(session=sqlite_session)
+
+    retired_ids = repository.retire_all_for_conversations(
+        tenant_id=_SCOPE.tenant_id,
+        app_id=_SCOPE.app_id,
+        conversation_ids=(conversation_a, conversation_b),
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+
+    assert set(retired_ids) == {workspace.id for workspace in matching}
+    for workspace in matching:
+        assert workspace.status is AgentWorkingResourceStatus.RETIRED
+        assert workspace.active_guard is None
+        assert workspace.retired_at is not None
+    for binding in active_bindings:
+        assert binding.status is AgentWorkingResourceStatus.RETIRED
+        assert binding.retired_at is not None
+    for workspace in excluded:
+        assert workspace.status is AgentWorkingResourceStatus.ACTIVE
+        assert workspace.active_guard == 1
+        assert workspace.retired_at is None
+    assert already_retired.status is AgentWorkingResourceStatus.RETIRED
+    assert already_retired.retired_at == _RETIRED_AT
+    assert (
+        repository.retire_all_for_conversations(
+            tenant_id=_SCOPE.tenant_id,
+            app_id=_SCOPE.app_id,
+            conversation_ids=(conversation_a, conversation_b),
+        )
+        == []
+    )
+
+
+def test_retire_all_for_conversations_with_empty_ids_retires_nothing(sqlite_session: Session) -> None:
+    workspace = _workspace("workspace-1", _SCOPE)
+    binding = _binding("binding-1", workspace)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    repository = AgentWorkspaceRepository(session=sqlite_session)
+
+    assert (
+        repository.retire_all_for_conversations(tenant_id=_SCOPE.tenant_id, app_id=_SCOPE.app_id, conversation_ids=())
+        == []
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+
+    assert workspace.status is AgentWorkingResourceStatus.ACTIVE
+    assert workspace.active_guard == 1
+    assert binding.status is AgentWorkingResourceStatus.ACTIVE
+
+
 @pytest.mark.parametrize("operation", ["workspace", "conversation"])
 def test_caller_rollback_restores_workspace_and_bindings(
     sqlite_session: Session,

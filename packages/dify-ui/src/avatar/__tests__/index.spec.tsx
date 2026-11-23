@@ -23,11 +23,12 @@ it('shares the group size through wrappers and keeps explicit avatar sizes', asy
   const button = screen.getByRole('button', { name: 'Open Alice' }).element()
   const fallback = screen.getByText('A').element()
   const avatar = fallback.parentElement!
+  // The separator border sits inside the avatar's size, so the fallback fills what is left.
   expect(avatar.getBoundingClientRect().width).toBe(24)
-  expect(fallback.getBoundingClientRect().width).toBe(24)
+  expect(fallback.getBoundingClientRect().width).toBe(22)
+  expect(getComputedStyle(avatar).borderWidth).toBe('1px')
+  expect(getComputedStyle(avatar).boxShadow).toBe('none')
   expect(getComputedStyle(button).borderWidth).toBe('0px')
-  expect(getComputedStyle(button).boxShadow).toBe('none')
-  expect(getComputedStyle(avatar).boxShadow).not.toBe('none')
   expect(screen.getByRole('img', { name: 'Bob' }).element().getBoundingClientRect().width).toBe(20)
   expect(
     screen.getByRole('img', { name: '2 more people' }).element().getBoundingClientRect().width,

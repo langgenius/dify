@@ -27,7 +27,7 @@ const PreviewMode = memo(({ disabled = false }: { disabled?: boolean }) => {
         if (!isDisabled) handleWorkflowStartRunInChatflow()
       }}
     >
-      <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+      <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
       {t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
     </button>
   )

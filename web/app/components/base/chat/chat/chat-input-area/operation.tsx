@@ -37,7 +37,7 @@ const Operation: FC<OperationProps> = ({
 
   return (
     <div className={cn('flex shrink-0 items-center justify-end')}>
-      <div className="flex items-center pl-1" ref={ref}>
+      <div className="flex items-center ps-1" ref={ref}>
         <div className="flex items-center gap-1">
           {fileConfig?.enabled && (
             <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
@@ -56,7 +56,7 @@ const Operation: FC<OperationProps> = ({
         </div>
         <Button
           aria-label={sendButtonLabel ? undefined : t(($) => $['operation.send'], { ns: 'common' })}
-          className={cn('ml-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
+          className={cn('ms-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
           variant="primary"
           disabled={readonly || disabled}
           loading={sendButtonLoading}

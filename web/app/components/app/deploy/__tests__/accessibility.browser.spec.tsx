@@ -4,6 +4,7 @@ import {
   DeploymentOperationType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { userEvent } from 'vite-plus/test/browser'
+import { installFakeApi } from '@/test/fake-api'
 import {
   checkAccessibility,
   checkMenuAccessibility,
@@ -13,12 +14,6 @@ import {
 } from './accessibility-test-env'
 
 vi.unmock('react-i18next')
-
-// boundary: isolated Browser specs do not provide the Next route params runtime.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ appId: 'deploy-audit' }),
-}))
 
 it('verifies every reported menu sentinel redirects focus and allows keyboard exit in both directions', async () => {
   const screen = await renderDeploy()
@@ -42,10 +37,6 @@ it('verifies every reported menu sentinel redirects focus and allows keyboard ex
     await userEvent.keyboard('{Enter}')
     await expect.element(screen.getByRole('menu')).toBeVisible()
   })
-})
-
-afterEach(() => {
-  vi.restoreAllMocks()
 })
 
 it('keeps focus through the first lazy menu handoff and resets deployment drafts before a pointer reopen', async () => {
@@ -165,25 +156,26 @@ it('returns focus to the environment heading after a successful deployment remov
     ...deployment,
     environment: { ...environment, id: 'dev', display_name: 'Dev' },
   }
-  const deployRequests: Request[] = []
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = input instanceof Request ? input : new Request(input, init)
-    if (request.url.endsWith('/deployment:deploy')) {
-      deployRequests.push(request.clone())
-      return Response.json({
-        operation: {
-          id: 'deploy-dev',
-          status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
-          type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+  const fake = installFakeApi({
+    console: {
+      enterprise: {
+        appDeploy: {
+          deploymentService: {
+            deployWorkflow: () => ({
+              operation: {
+                id: 'deploy-dev',
+                status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_SUCCEEDED,
+                type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_DEPLOY,
+              },
+            }),
+            listAppEnvironments: () => ({ data: [{ ...deployed.environment, in_use: true }] }),
+            listEnvironmentDeployments: () => ({ environment_deployments: [deployed] }),
+          },
         },
-      })
-    }
-    if (request.url.endsWith('/environments'))
-      return Response.json({ data: [{ ...deployed.environment, in_use: true }] })
-    if (request.url.endsWith('/workflows/environment-deployments'))
-      return Response.json({ environment_deployments: [deployed] })
-    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+      },
+    },
   })
+  onTestFinished(fake)
   const screen = await renderDeploy({ environmentDeployments: [] })
   const emptyDeploy = screen.getByRole('button', { name: 'Deploy', exact: true }).nth(1)
   await emptyDeploy.click()
@@ -200,6 +192,10 @@ it('returns focus to the environment heading after a successful deployment remov
   await expect
     .element(screen.getByRole('heading', { name: 'Environments', exact: true }))
     .toHaveFocus()
-  expect(deployRequests).toHaveLength(1)
-  expect(new URL(deployRequests[0]!.url).pathname).toContain('/environments/dev/deployment:deploy')
+  expect(fake.console.enterprise.appDeploy.deploymentService.deployWorkflow).toHaveBeenCalledTimes(
+    1,
+  )
+  expect(
+    fake.console.enterprise.appDeploy.deploymentService.deployWorkflow.mock.calls[0]![0].params,
+  ).toEqual({ app_id: 'deploy-audit', workflow_id: 'release-1', environment_id: 'dev' })
 })

@@ -49,7 +49,7 @@ const TriggerPluginActionItem: FC<Props> = ({
       aria-describedby={previewDescription ? previewDescriptionId : undefined}
       disabled={disabled}
       className={cn(
-        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent pr-1 pl-5.25 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
+        'flex w-full items-center justify-between rounded-lg border-0 bg-transparent ps-5.25 pe-1 text-start focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden',
         disabled ? 'cursor-default' : 'cursor-pointer hover:bg-state-base-hover',
       )}
       onClick={() => {
@@ -78,11 +78,11 @@ const TriggerPluginActionItem: FC<Props> = ({
         })
       }}
     >
-      <div className="truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary">
+      <div className="truncate border-s-2 border-divider-subtle py-2 ps-4 system-sm-medium text-text-secondary">
         <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
       </div>
       {isAdded && (
-        <div className="mr-4 system-xs-regular text-text-tertiary">
+        <div className="me-4 system-xs-regular text-text-tertiary">
           {t(($) => $['addToolModal.added'], { ns: 'tools' })}
         </div>
       )}

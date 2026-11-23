@@ -8,9 +8,9 @@ import { useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useRouter } from '@/next/navigation'
 import MarketplaceDetailDialog from '../detail-dialog'
+import { toPluginCard } from '../plugin-card-adapter'
 import TemplateDetailDialog from '../templates/template-detail-dialog'
 import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
-import { getFormattedPlugin } from '../utils'
 import CreatorProfileHeader from './header'
 import CreatorProfileView from './view'
 
@@ -81,7 +81,7 @@ export default function DifyCreatorProfile({ loadedProfile, locale }: DifyCreato
       if (navigation.openPlugin(selection.plugin)) return { preserveQuery: true }
       setSelected({
         kind: 'plugin',
-        plugin: normalizePlugin(getFormattedPlugin(selection.plugin)),
+        plugin: normalizePlugin(toPluginCard(selection.plugin)),
       })
       return
     }

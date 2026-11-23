@@ -20,10 +20,10 @@ const meta = {
 | \`Avatar\` | Styles Base UI Root and owns the shared size. Defaults to \`md\` (32px). |
 | \`AvatarImage\` | Uses Base UI image loading, error handling, and source changes. Accepts native image props, \`keepMounted\`, and \`onLoadingStatusChange\`. |
 | \`AvatarFallback\` | Owns the default background and displays caller-provided content while the image is unavailable. Inherits size from Avatar and supports Base UI \`delay\`. |
-| \`AvatarGroup\` | Dify visual extension for overlapping children by 4px. Avatars and counts use a 1px panel ring, including inside wrappers. Supplies their default size; explicit child sizes win. Callers control stacking with \`z-index\`. |
+| \`AvatarGroup\` | Dify visual extension for overlapping children by 4px. Avatars and counts draw a 1px panel border inside their size, including inside wrappers. Supplies their default size; explicit child sizes win. Callers control stacking with \`z-index\`. |
 | \`AvatarGroupCount\` | Dify visual extension for caller-provided overflow text such as \`+2\`. Inherits Group size, or defaults to \`md\` (32px) outside a group, matching Avatar. |
 
-Without an explicit size, children inherit the enclosing group's size or fall back to \`md\`. Override a grouped ring with \`group-[&]/avatar-group:ring-0\`; ring colors use ordinary \`ring-*\` classes.
+Without an explicit size, children inherit the enclosing group's size or fall back to \`md\`. Override a grouped border with \`group-[&]/avatar-group:border-0\`; border colors use ordinary \`border-*\` classes.
 
 The first three parts preserve Base UI \`render\`, refs, and state-aware \`className\` / \`style\` props. See the [Base UI Avatar documentation](https://base-ui.com/react/components/avatar) for their underlying API. Group and GroupCount accept native span props; they do not expose Base UI render or state callbacks.
 

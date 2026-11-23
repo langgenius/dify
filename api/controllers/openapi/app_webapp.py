@@ -8,6 +8,7 @@ from typing import Final
 from flask_restx import Resource
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import _app_settings as settings
 from controllers.openapi import openapi_ns
@@ -57,6 +58,7 @@ _ACCESS_SET_EXAMPLE: Final = Example(
 class WorkflowWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="A workflow app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -68,6 +70,7 @@ class WorkflowWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a workflow app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -85,6 +88,7 @@ class WorkflowWebAppApi(Resource):
 class AdvancedChatWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="An advanced-chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -98,6 +102,7 @@ class AdvancedChatWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an advanced-chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -115,6 +120,7 @@ class AdvancedChatWebAppApi(Resource):
 class ChatWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="A chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -126,6 +132,7 @@ class ChatWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -143,6 +150,7 @@ class ChatWebAppApi(Resource):
 class AgentChatWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.agent_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="An agent-chat app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -156,6 +164,7 @@ class AgentChatWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.agent_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an agent-chat app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -173,6 +182,7 @@ class AgentChatWebAppApi(Resource):
 class CompletionWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.completion",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="A completion app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -186,6 +196,7 @@ class CompletionWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.completion",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change a completion app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -203,6 +214,7 @@ class CompletionWebAppApi(Resource):
 class AgentWebAppApi(Resource):
     @endpoint(
         op="describe.webapp.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="An agent app's web app: on or off, its URL token and page settings",
         examples=(_WEBAPP_EXAMPLE,),
@@ -216,6 +228,7 @@ class AgentWebAppApi(Resource):
 
     @endpoint(
         op="set.webapp.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Change an agent app's web app; only the fields passed change",
         examples=(_WEBAPP_ON_EXAMPLE,),
@@ -233,6 +246,7 @@ class AgentWebAppApi(Resource):
 class AgentWebAppResetApi(Resource):
     @endpoint(
         op="reset.webapp.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Rotate an agent app's web app URL; the old URL stops working",
@@ -250,6 +264,7 @@ class AgentWebAppResetApi(Resource):
 class AgentWebAppAccessApi(Resource):
     @endpoint(
         op="describe.webapp_access.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Who may open an agent app's web app (Enterprise)",
         examples=(_ACCESS_EXAMPLE,),
@@ -264,6 +279,7 @@ class AgentWebAppAccessApi(Resource):
 
     @endpoint(
         op="set.webapp_access.agent",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Set who may open an agent app's web app (Enterprise)",
         examples=(_ACCESS_SET_EXAMPLE,),
@@ -284,6 +300,7 @@ class AgentWebAppAccessApi(Resource):
 class WebAppResetApi(Resource):
     @endpoint(
         op="reset.webapp",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         effect=Effect.DESTRUCTIVE,
         summary="Rotate an app's web app URL; the old URL stops working (agent apps: reset.webapp.agent)",
@@ -301,6 +318,7 @@ class WebAppResetApi(Resource):
 class WebAppAccessApi(Resource):
     @endpoint(
         op="describe.webapp_access",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Who may open an app's web app (Enterprise; agent apps: describe.webapp_access.agent)",
         examples=(_ACCESS_EXAMPLE,),
@@ -315,6 +333,7 @@ class WebAppAccessApi(Resource):
 
     @endpoint(
         op="set.webapp_access",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Set who may open an app's web app (Enterprise; agent apps: set.webapp_access.agent)",
         examples=(_ACCESS_SET_EXAMPLE,),

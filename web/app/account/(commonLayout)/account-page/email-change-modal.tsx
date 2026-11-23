@@ -203,7 +203,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     !normalizedMail || newEmailExited || unAvailableEmail || isCheckingEmail || !isMailValid
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-105">
         <form
           className="contents"

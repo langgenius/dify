@@ -50,7 +50,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage,
             {items.map((o, index) => (
               <div
                 className={cn(
-                  'group relative flex items-center rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
+                  'group relative flex items-center rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg ps-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
                   focusID === index &&
                     'border-components-input-border-active bg-components-input-bg-active hover:border-components-input-border-active hover:bg-components-input-bg-active',
                   deletingID === index &&
@@ -81,14 +81,14 @@ const ConfigSelect: FC<IConfigSelectProps> = ({ options, onChange, errorMessage,
                       }),
                     )
                   }}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pr-8 pl-1.5 text-sm/9 text-text-secondary focus:outline-hidden"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent ps-1.5 pe-8 text-sm/9 text-text-secondary focus:outline-hidden"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
                 <button
                   type="button"
                   aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
-                  className="absolute top-1/2 right-1.5 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+                  className="absolute inset-e-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                   onClick={() => {
                     onChange(options.filter((_, i) => getItemKey(index) !== i))
                     setDeletingID(null)
