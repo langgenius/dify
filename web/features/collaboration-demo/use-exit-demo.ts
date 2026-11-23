@@ -8,10 +8,14 @@ function openedFromSameOrigin() {
   }
 }
 
+function openedFromNotification() {
+  return new URLSearchParams(window.location.search).get('from') === 'notification'
+}
+
 export function useExitDemo() {
   const router = useRouter()
   return () => {
-    if (openedFromSameOrigin()) {
+    if (openedFromSameOrigin() || openedFromNotification()) {
       window.close()
       if (window.closed) return
     }
