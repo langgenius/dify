@@ -158,6 +158,7 @@ from services.conversation_service import ConversationService
 from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.deployment_credential_composition import build_deployment_credential_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -791,6 +792,7 @@ def build_application_services(
                 workspaces=workspace_services.provisioning,
                 installation=installation_state,
                 telemetry=InstallationTelemetryGateway(session_factory=database_client),
+                credential_keys=build_deployment_credential_service(session_maker=database_client),
             ),
             lock=RedisSetupLock(client=redis),
             setup_required=deployment_edition != DeploymentEdition.CLOUD,

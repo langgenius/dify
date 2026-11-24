@@ -20,10 +20,10 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from lark_oapi.core.cache import LocalCache
 from lark_oapi.core.token import TokenManager
 
-from controllers.console.human_input_v2.providers import (
+from controllers.common.human_input_v2.providers import (
     FeishuCredentialsInput as FeishuCredentialRequest,
 )
-from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
+from controllers.common.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (

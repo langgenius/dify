@@ -47,11 +47,24 @@ class OpenDALStorage(BaseStorage):
         logger.debug("file %s saved", filename)
 
     @override
-    def load_once(self, filename: str) -> bytes:
-        if not self.exists(filename):
-            raise FileNotFoundError("File not found")
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require OpenDAL conditional-write support; atomically preserve an existing object."""
+        try:
+            self.op.write(path=filename, bs=data, if_not_exists=True)
+        except opendal.exceptions.ConditionNotMatch:
+            return False
+        except opendal.exceptions.Error:
+            raise OSError("Storage atomic creation failed") from None
+        return True
 
-        content: bytes = self.op.read(path=filename)
+    @override
+    def load_once(self, filename: str) -> bytes:
+        try:
+            content: bytes = self.op.read(path=filename)
+        except opendal.exceptions.NotFound:
+            raise FileNotFoundError("File not found") from None
+        except opendal.exceptions.Error:
+            raise OSError("Storage read failed") from None
         logger.debug("file %s loaded", filename)
         return content
 

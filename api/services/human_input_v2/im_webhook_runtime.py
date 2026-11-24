@@ -25,6 +25,7 @@ from extensions.ext_key_provider import key_provider_manager
 from libs.key_providers.base import BaseKeyProvider
 from repositories.human_input_v2.im_channel_repository import IMChannelId, WebhookId
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import SQLAlchemyIMWebhookChannelRepository
+from services.human_input_v2.deployment_im_adapter import build_deployment_im_adapter
 from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
 from services.human_input_v2.im_message_inbox.processor import IMInboxProcessor
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
@@ -55,16 +56,14 @@ class IMWebhookIngressService:
                 route = SQLAlchemyIMWebhookChannelRepository(session).find_by_webhook_id(webhook_id)
             if route is None:
                 return WebhookResponse(404, (), b"")
-            if not isinstance(route.scope, WorkspaceScope):
-                from services.enterprise.human_input_im import build_deployment_im_adapter
-
-                adapter = build_deployment_im_adapter(route.channel)
-            else:
+            if isinstance(route.scope, WorkspaceScope):
                 cipher = TenantBoundCredentialCipher(self._key_provider, str(route.scope.id))
                 credentials = IMCredentialCodec(cipher).load(
                     route.channel.provider, route.channel.encrypted_credentials
                 )
                 adapter = build_im_provider_adapter(credentials)
+            else:
+                adapter = build_deployment_im_adapter(route.channel, session_maker=self._sessions)
             try:
                 sink = IMMessageInboxSink(
                     channel_id=IMChannelId(str(route.channel.id)),

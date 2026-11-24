@@ -35,9 +35,29 @@ class AliyunOssStorage(BaseStorage):
         self.client.put_object(self.__wrapper_folder_filename(filename), data)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Require OSS no-overwrite support; preserve an existing object atomically."""
+        try:
+            self.client.put_object(
+                self.__wrapper_folder_filename(filename), data, headers={"x-oss-forbid-overwrite": "true"}
+            )
+        except aliyun_s3.exceptions.ServerError as error:
+            if error.code == "FileAlreadyExists":
+                return False
+            raise OSError("OSS atomic creation failed") from None
+        except aliyun_s3.exceptions.OssError:
+            raise OSError("OSS atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
-        obj = self.client.get_object(self.__wrapper_folder_filename(filename))
-        data = obj.read()
+        try:
+            obj = self.client.get_object(self.__wrapper_folder_filename(filename))
+            data = obj.read()
+        except aliyun_s3.exceptions.NoSuchKey:
+            raise FileNotFoundError("File not found") from None
+        except aliyun_s3.exceptions.OssError:
+            raise OSError("OSS read failed") from None
         if not isinstance(data, bytes):
             return b""
         return data

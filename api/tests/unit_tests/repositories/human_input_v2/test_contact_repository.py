@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.shared import AccountId, ContactId, TenantId
+from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, TenantId, WorkspaceScope
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
     ContactSubjectType,
@@ -324,6 +324,61 @@ def test_filtering_precedes_pagination(contact_repository_context: _RepositoryCo
     assert tuple(contact.id for contact in second_match.items) == (ids.external_shared,)
 
 
+def test_ee_organization_directory_does_not_require_workspace_visibility(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    """EE Organization admission is Account availability, independently of any workspace projection."""
+    ids = contact_repository_context.contact_ids
+    with contact_repository_context.sessions() as session:
+        repository = SQLAlchemyContactRepository(session)
+        organization = repository.list_organization_contacts(DeploymentScope(), 1, 100)
+        assert {contact.id for contact in organization} == {
+            ids.workspace_shared,
+            ids.platform_beta,
+            ids.workspace_delta,
+            ids.platform_echo,
+            ids.unavailable,
+            ids.foreign_platform,
+        }
+        assert repository.count_organization_contacts(DeploymentScope(), "") == 6
+        for contact in organization:
+            assert repository.get_organization_contact(DeploymentScope(), contact.id) == contact
+        assert repository.get_organization_contact(DeploymentScope(), ids.inactive) is None
+        assert repository.get_organization_contact(DeploymentScope(), ids.external_shared) is None
+        assert repository.get_organization_contact(DeploymentScope(), ids.foreign_external) is None
+        assert repository.get_contacts_by_id(_TENANT_A, ids.unavailable) is None
+        assert repository.get_contacts_by_id(_TENANT_A, ids.foreign_platform) is None
+
+
+def test_ce_saas_organization_directory_is_limited_to_current_tenant_members(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    """CE/SaaS Organization Directory excludes External Contacts and foreign Account projections."""
+    ids = contact_repository_context.contact_ids
+    scope = WorkspaceScope(_TENANT_A)
+    with contact_repository_context.sessions() as session:
+        repository = SQLAlchemyContactRepository(session)
+        organization = repository.list_organization_contacts(scope, 1, 100)
+        assert {contact.id for contact in organization} == {ids.workspace_shared, ids.workspace_delta}
+        assert repository.count_organization_contacts(scope, "") == 2
+        for contact in organization:
+            assert repository.get_organization_contact(scope, contact.id) == contact
+        for excluded in (
+            ids.platform_beta,
+            ids.platform_echo,
+            ids.external_shared,
+            ids.inactive,
+            ids.unavailable,
+            ids.foreign_platform,
+            ids.foreign_external,
+        ):
+            assert repository.get_organization_contact(scope, excluded) is None
+        matching = repository.list_organization_contacts(scope, 1, 1, "SHARED")
+        assert tuple(contact.id for contact in matching) == (ids.workspace_shared,)
+        assert repository.count_organization_contacts(scope, "SHARED") == 1
+        assert repository.list_organization_contacts(scope, 2, 1, "SHARED") == ()
+
+
 @pytest.mark.parametrize(
     ("page", "expected_slice"),
     [
@@ -483,20 +538,20 @@ def test_membership_takes_precedence_over_platform_visibility(
     assert contact.type is ContactType.WORKSPACE
 
 
-def test_organization_candidate_count_list_keyword_and_pagination_share_one_candidate_set(
+def test_organization_count_list_keyword_and_pagination_share_one_contact_set(
     contact_repository_context: _RepositoryContext,
 ) -> None:
     expected_ids = set(contact_repository_context.candidate_ids)
 
     with contact_repository_context.sessions() as session:
         repository = SQLAlchemyContactRepository(session)
-        first_page = repository.list_organization_candidates(page=1, limit=2)
-        middle_page = repository.list_organization_candidates(page=2, limit=2)
-        final_page = repository.list_organization_candidates(page=3, limit=2)
-        out_of_range = repository.list_organization_candidates(page=4, limit=2)
-        count = repository.count_organization_candidates()
-        keyword_page = repository.list_organization_candidates(page=1, limit=10, keyword="UNAVAILABLE")
-        keyword_count = repository.count_organization_candidates(keyword="  unavailable  ")
+        first_page = repository.list_organization_contacts(DeploymentScope(), page=1, limit=2)
+        middle_page = repository.list_organization_contacts(DeploymentScope(), page=2, limit=2)
+        final_page = repository.list_organization_contacts(DeploymentScope(), page=3, limit=2)
+        out_of_range = repository.list_organization_contacts(DeploymentScope(), page=4, limit=2)
+        count = repository.count_organization_contacts(DeploymentScope(), "")
+        keyword_page = repository.list_organization_contacts(DeploymentScope(), page=1, limit=10, keyword="UNAVAILABLE")
+        keyword_count = repository.count_organization_contacts(DeploymentScope(), keyword="  unavailable  ")
 
     paged_ids = {candidate.id for candidate in (*first_page, *middle_page, *final_page)}
     assert count == len(expected_ids)
@@ -513,7 +568,7 @@ def test_candidate_contact_id_round_trips_through_platform_entry_creation(
 
     with contact_repository_context.sessions.begin() as session:
         repository = SQLAlchemyContactRepository(session)
-        candidates = repository.list_organization_candidates(page=1, limit=10, keyword="unavailable")
+        candidates = repository.list_organization_contacts(DeploymentScope(), page=1, limit=10, keyword="unavailable")
         assert len(candidates) == 1
         candidate = candidates[0]
         repository.create_platform_entry(_TENANT_A, candidate.id, _ADMIN_ACCOUNT)
@@ -523,18 +578,6 @@ def test_candidate_contact_id_round_trips_through_platform_entry_creation(
     assert created_contact is not None
     assert created_contact.id == candidate.id
     assert created_contact.type is ContactType.PLATFORM
-
-
-@pytest.mark.parametrize(("page", "limit"), [(0, 1), (-1, 1), (1, 0), (1, -1)])
-def test_organization_candidate_list_rejects_non_positive_page_boundaries(
-    contact_repository_context: _RepositoryContext,
-    page: int,
-    limit: int,
-) -> None:
-    with contact_repository_context.sessions() as session:
-        repository = SQLAlchemyContactRepository(session)
-        with pytest.raises(ValueError, match="must be positive"):
-            repository.list_organization_candidates(page=page, limit=limit)
 
 
 def test_account_contact_provisioning_is_idempotent_and_compensatable(

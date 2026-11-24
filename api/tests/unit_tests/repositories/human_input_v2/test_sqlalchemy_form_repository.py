@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import RecipientId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import HumanInputForm
 from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure
@@ -86,6 +86,44 @@ def test_submitted_form_requires_submission_delivery(sqlite_session_factory: ses
 
     with sqlite_session_factory() as session, pytest.raises(ValidationError, match="complete submission"):
         SQLAlchemyFormRepository(session, form.tenant_id, form.app_id).get_form_by_id(form.id)
+
+
+@pytest.mark.parametrize("submitted", [False, True])
+def test_stopped_enterprise_expiration_is_idempotent(
+    sqlite_session_factory: sessionmaker[Session], form: Form, submitted: bool
+) -> None:
+    """Committed stop expires waiting forms, preserves submissions and clears reverse effects."""
+    with sqlite_session_factory.begin() as session:
+        record = session.get_one(HumanInputForm, form.id)
+        record.run_gateway = "enterprise"
+        record.run_effect_pending = True
+        repository = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id)
+        if submitted:
+            repository.submit_form(
+                form.id,
+                submitted_by_recipient_id=RecipientId(str(uuid4())),
+                submitted_by_delivery_id=str(uuid4()),
+                selected_action_id="approve",
+                raw_submission_inputs={},
+                normalized_submission_data={},
+            )
+    for _ in range(2):
+        with sqlite_session_factory.begin() as session:
+            repository = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id)
+            result = repository.expire_stopped_enterprise_form(form.id)
+            assert result is not None
+            assert result.status == (HumanInputFormStatus.SUBMITTED if submitted else HumanInputFormStatus.EXPIRED)
+            assert not session.get_one(HumanInputForm, form.id).run_effect_pending
+
+
+def test_stopped_enterprise_expiration_preserves_other_gateway(
+    sqlite_session_factory: sessionmaker[Session], form: Form
+) -> None:
+    """Enterprise cleanup cannot alter a Dify-owned form."""
+    with sqlite_session_factory.begin() as session:
+        result = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id).expire_stopped_enterprise_form(form.id)
+        assert result is not None
+        assert result.status == HumanInputFormStatus.WAITING
 
 
 def test_waiting_form_cannot_contain_submission_delivery(

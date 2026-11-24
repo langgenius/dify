@@ -32,16 +32,18 @@ inner_api_ns = Namespace("inner_api", description="Internal API operations", pat
 def _register_controllers() -> tuple[ModuleType, ...]:
     """Load route modules after their namespace exists."""
 
-    from . import datasource_credentials, human_input_im, mail, runtime_credentials
+    from . import datasource_credentials, mail, runtime_credentials
     from .agent import files, knowledge, llm, runtime_usage, tools, tracing
     from .app import app, dsl, file_grants, human_input
+    from .human_input_v2 import contact as human_input_contact
+    from .human_input_v2 import im_channel as human_input_channel
+    from .human_input_v2 import im_sync as human_input_sync
     from .knowledge import retrieval
     from .knowledge_fs import background, storage, texts, vectors
     from .plugin import agent_config, plugin, skills
     from .workspace import workspace
 
     return (
-        human_input_im,
         datasource_credentials,
         mail,
         runtime_credentials,
@@ -55,6 +57,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         dsl,
         file_grants,
         human_input,
+        human_input_contact,
+        human_input_channel,
+        human_input_sync,
         retrieval,
         background,
         storage,
@@ -68,7 +73,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 
 (
-    _human_input_im,
     _datasource_credentials,
     _mail,
     _runtime_credentials,
@@ -82,6 +86,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _app_dsl,
     _app_file_grants,
     _app_human_input,
+    _human_input_contact,
+    _human_input_channel,
+    _human_input_sync,
     _knowledge_retrieval,
     _knowledge_fs_background,
     _knowledge_fs_storage,

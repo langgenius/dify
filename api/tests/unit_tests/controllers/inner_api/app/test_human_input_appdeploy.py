@@ -162,6 +162,20 @@ def test_prepare_replay_submit_and_expire(
         "action": "approve",
         "inputs": {"note": "OK"},
     }
+    monkeypatch.setattr(
+        "services.enterprise.human_input_run_gateway.EnterpriseRequest.send_request",
+        lambda *_args, **_kwargs: {"state": "stopped", "has_checkpoint": True},
+    )
+    rejected = client.post(form_base + ":submit", json=submit, headers=headers)
+    assert rejected.status_code == (400 if version == "1" or caller == "service_api" else 409)
+    with sqlite_session_factory() as session:
+        waiting = SQLAlchemyFormRepository(session, TenantId(tenant.id), app.id).get_form_by_id(prepared["form_id"])
+    assert waiting is not None
+    assert waiting.status.value == "waiting"
+    monkeypatch.setattr(
+        "services.enterprise.human_input_run_gateway.EnterpriseRequest.send_request",
+        lambda *_args, **_kwargs: {"state": "paused", "has_checkpoint": True},
+    )
     response = client.post(form_base + ":submit", json=submit, headers=headers)
     assert response.status_code == 200, response.json
     assert response.json == {"workflow_run_id": run_id}
@@ -180,3 +194,22 @@ def test_prepare_replay_submit_and_expire(
         412 if version == "1" or caller == "service_api" else 409
     )
     assert client.post(base + ":expire", headers=headers).status_code == 200
+    assert client.post(base + ":expire", headers=headers).status_code == 200
+    with sqlite_session_factory() as session:
+        submitted_form = SQLAlchemyFormRepository(session, TenantId(tenant.id), app.id).get_form_by_id(
+            prepared["form_id"]
+        )
+    assert submitted_form is not None
+    assert submitted_form.submission is not None
+
+    # Stop a second waiting run and retry the same delivery after response loss.
+    stopped_base = base.replace(run_id, str(uuid4()))
+    stopped_payload = {**payload, "node_execution_id": str(uuid4())}
+    stopped = client.post(stopped_base + ":prepare", json=stopped_payload, headers=headers)
+    assert stopped.status_code == 200, stopped.json
+    assert client.post(stopped_base + ":expire", headers=headers).status_code == 200
+    assert client.post(stopped_base + ":expire", headers=headers).status_code == 200
+    with sqlite_session_factory() as session:
+        expired = SQLAlchemyFormRepository(session, TenantId(tenant.id), app.id).get_form_by_id(stopped.json["form_id"])
+    assert expired is not None
+    assert expired.status.value == "expired"

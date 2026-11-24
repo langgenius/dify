@@ -930,4 +930,4 @@ def test_contact_detail_preserves_not_found(app: Flask, monkeypatch: pytest.Monk
 )
 def test_sync_result_projection_rejects_incomplete_persisted_snapshots(result: SyncResultFact) -> None:
     with pytest.raises(RuntimeError, match="missing"):
-        _CONTROLLER_MODULE._sync_result_payload(result)
+        _CONTROLLER_MODULE._sync_result_response(result)

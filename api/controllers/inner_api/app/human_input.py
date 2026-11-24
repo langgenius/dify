@@ -139,7 +139,7 @@ class ExpireHumanInputForms(Resource):
             repository = SQLAlchemyFormRepository(session, tenant_id, app_id)
             for form in repository.get_run_forms(workflow_run_id):
                 if form.run_gateway == "enterprise":
-                    repository.cancel_form(form.id)
+                    repository.expire_stopped_enterprise_form(form.id)
         return {}
 
 

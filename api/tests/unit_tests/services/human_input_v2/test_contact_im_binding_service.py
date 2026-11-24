@@ -26,6 +26,7 @@ from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingC
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
+    DeploymentScope,
     DirectoryScope,
     IMBindingId,
     IMIdentityId,
@@ -273,6 +274,96 @@ def test_contact_details_follow_effective_binding_and_reset(binding_context: _Bi
         assert binding.binding.scope is IMBindingScope.ORGANIZATION
         assert binding.identity.id == _IDENTITY_ID
         assert binding.identity.email == "reviewer@example.com"
+
+
+def _directory_service(session: Session) -> ContactManagementService:
+    contacts = SQLAlchemyContactRepository(session)
+    return ContactManagementService(
+        contacts,
+        SQLAlchemyContactIMBindingRepository(session, _channel()),
+        SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID),
+        organization_bindings=SQLAlchemyIMBindingRepository(session, _CHANNEL_ID),
+    )
+
+
+def test_organization_binding_reads_materialize_only_the_requested_defaults(binding_context: _BindingContext) -> None:
+    """A Contact read must not load the other Contacts' deployment bindings or workspace overrides."""
+    with binding_context.sessions.begin() as session:
+        repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID)
+        selected = repository.create(IMBindingAssignment(_CONTACT_ID, _IDENTITY_ID, _NOW), bound_by_account_id=None)
+        repository.create(IMBindingAssignment(_OTHER_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW), bound_by_account_id=None)
+        repository.set_workspace_override(
+            _TENANT_ID,
+            IMBindingAssignment(_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
+            bound_by_account_id=None,
+        )
+    loaded: set[str] = set()
+
+    def observe_loaded(_session: Session, record: object) -> None:
+        if isinstance(record, HumanInputIMBinding):
+            loaded.add(record.id)
+
+    with binding_context.sessions() as session:
+        event.listen(session, "loaded_as_persistent", observe_loaded)
+        repository = SQLAlchemyContactIMBindingRepository(session, _channel())
+        bindings = repository.get_organization_im_bindings((_CONTACT_ID, _CONTACT_ID))
+        assert tuple(binding.id for binding in bindings) == (selected.id,)
+        assert bindings[0].scope is IMBindingScope.ORGANIZATION
+        assert repository.get_organization_im_bindings(()) == ()
+    assert loaded == {str(selected.id)}
+
+
+def test_organization_defaults_and_workspace_overrides_share_contact_identity(binding_context: _BindingContext) -> None:
+    """One service composes both Directories without leaking effective workspace overrides into Organization reads."""
+    with binding_context.sessions.begin() as session:
+        default = _directory_service(session).set_organization_im_binding(DeploymentScope(), _CONTACT_ID, _IDENTITY_ID)
+    override = binding_context.service.set_workspace_override(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_CONTACT_ID,
+        identity_id=_OTHER_IDENTITY_ID,
+        bound_by_account_id=_ACCOUNT_ID,
+    )
+    with binding_context.sessions() as session:
+        service = _directory_service(session)
+        organization = service.get_organization_contact_details(DeploymentScope(), _CONTACT_ID)
+        workspace = service.get_contact_details(_TENANT_ID, _CONTACT_ID)
+        assert organization is not None
+        assert workspace is not None
+        assert organization.contact.contact.id == workspace.contact.contact.id == _CONTACT_ID
+        assert organization.contact.im_bindings == default.im_bindings
+        assert organization.im_binding_details[0].identity.id == _IDENTITY_ID
+        assert workspace.contact.im_bindings == override.im_bindings
+        assert workspace.im_binding_details[0].identity.id == _OTHER_IDENTITY_ID
+        page = service.list_organization_contacts(DeploymentScope(), page=1, limit=10, keyword="reviewer")
+        assert page.items == (organization.contact,)
+        assert service.count_organization_contacts(DeploymentScope(), "reviewer") == 1
+
+
+@pytest.mark.parametrize("operation", ["set", "delete"])
+def test_organization_binding_commands_roll_back_with_the_callers_transaction(
+    binding_context: _BindingContext,
+    operation: str,
+) -> None:
+    """Default replacement/deletion participates in the same transaction as the calling operation."""
+    with binding_context.sessions.begin() as session:
+        original = _directory_service(session).set_organization_im_binding(DeploymentScope(), _CONTACT_ID, _IDENTITY_ID)
+
+    def abort_operation() -> None:
+        with binding_context.sessions.begin() as session:
+            service = _directory_service(session)
+            if operation == "set":
+                service.set_organization_im_binding(DeploymentScope(), _CONTACT_ID, _OTHER_IDENTITY_ID)
+            else:
+                service.delete_organization_im_binding(DeploymentScope(), _CONTACT_ID)
+            raise AssertionError("abort surrounding operation")
+
+    with pytest.raises(AssertionError, match="abort surrounding operation"):
+        abort_operation()
+    with binding_context.sessions() as session:
+        restored = _directory_service(session).get_organization_contact_details(DeploymentScope(), _CONTACT_ID)
+        assert restored is not None
+        assert restored.contact.im_bindings == original.im_bindings
 
 
 def test_contact_details_read_identities_in_one_batch(

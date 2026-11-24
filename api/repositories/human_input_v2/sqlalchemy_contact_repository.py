@@ -19,7 +19,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
 from core.human_input_v2.entities import IMBindingScope
-from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, NormalizedEmail, TenantId
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    DeploymentScope,
+    DirectoryScope,
+    IMBindingId,
+    NormalizedEmail,
+    TenantId,
+    WorkspaceScope,
+)
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
@@ -31,7 +40,6 @@ from models.human_input_v2 import (
 )
 from models.model import UploadFile
 from repositories.human_input_v2.contact import (
-    CandidateId,
     Contact,
     ContactError,
     ContactErrorCode,
@@ -39,7 +47,7 @@ from repositories.human_input_v2.contact import (
     ContactType,
     ExternalContact,
     IMBinding,
-    OrganizationCandidate,
+    OrganizationContact,
     Page,
 )
 from repositories.human_input_v2.im_binding_repository import IMBindingKind
@@ -60,7 +68,7 @@ def _escape_like(value: str) -> str:
 
 
 class SQLAlchemyContactRepository:
-    """One concrete implementation of core and enterprise Contact ports."""
+    """Persist Contact identity, profiles and directory visibility through one caller-owned Session."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -290,46 +298,75 @@ class SQLAlchemyContactRepository:
         self._session.delete(identity)
         self._session.flush()
 
-    def list_organization_candidates(
-        self,
-        page: int,
-        limit: int,
-        keyword: str = "",
-    ) -> Sequence[OrganizationCandidate]:
-        if page < 1:
-            raise ValueError("page must be positive")
-        if limit < 1:
-            raise ValueError("limit must be positive")
+    def count_organization_contacts(self, organization_scope: DirectoryScope, keyword: str) -> int:
+        """Require the list's keyword; count the same available Account-backed identities."""
+        candidates = self._organization_contacts_query(organization_scope, keyword).subquery()
+        return self._session.scalar(sa.select(sa.func.count()).select_from(candidates)) or 0
+
+    def list_organization_contacts(
+        self, organization_scope: DirectoryScope, page: int, limit: int, keyword: str = ""
+    ) -> Sequence[OrganizationContact]:
+        """Require boundary-validated pagination; read available Accounts without initializing identities."""
         rows = self._session.execute(
-            self._organization_candidates_query(keyword)
+            self._organization_contacts_query(organization_scope, keyword)
             .order_by(Account.created_at, HumanInputContactIdentity.id)
             .offset((page - 1) * limit)
             .limit(limit)
         ).all()
-        return tuple(self._candidate_from_row(row) for row in rows)
+        return tuple(self._organization_contact(row) for row in rows)
 
-    def count_organization_candidates(self, keyword: str = "") -> int:
-        candidates = self._organization_candidates_query(keyword).subquery()
-        return self._session.scalar(sa.select(sa.func.count()).select_from(candidates)) or 0
+    def get_organization_contact(
+        self, organization_scope: DirectoryScope, contact_id: ContactId, *, for_update: bool = False
+    ) -> OrganizationContact | None:
+        """Read one available Account-backed Contact; commands lock Account availability until commit."""
+        query = self._organization_contacts_query(organization_scope, "").where(
+            HumanInputContactIdentity.id == str(contact_id)
+        )
+        if for_update:
+            query = query.with_for_update()
+        row = self._session.execute(query).one_or_none()
+        return self._organization_contact(row) if row is not None else None
+
+    @staticmethod
+    def _organization_contacts_query(organization_scope: DirectoryScope, keyword: str):
+        """Use the existing Tenant/deployment Organization mapping without adding another owner entity."""
+        query = SQLAlchemyContactRepository._account_contacts_query(keyword)
+        if isinstance(organization_scope, WorkspaceScope):
+            return query.where(
+                sa.exists().where(
+                    TenantAccountJoin.account_id == Account.id,
+                    TenantAccountJoin.tenant_id == str(organization_scope.id),
+                )
+            )
+        return query
+
+    @staticmethod
+    def _organization_contact(row: Row[tuple[HumanInputContactIdentity, Account]]) -> OrganizationContact:
+        identity, account = row
+        return OrganizationContact(
+            ContactId(identity.id),
+            account.name,
+            account.email,
+            account.avatar,
+            ensure_naive_utc(identity.created_at),
+            ensure_naive_utc(account.created_at),
+        )
 
     def create_platform_entry(
         self,
         tenant_id: TenantId,
-        candidate_id: ContactId,
+        contact_id: ContactId,
         added_by_account_id: AccountId,
     ) -> None:
-        candidate = self._session.execute(
-            self._organization_candidates_query("").where(
-                HumanInputContactIdentity.id == str(candidate_id),
-            )
-        ).one_or_none()
-        if candidate is None:
+        """Require a selected Organization Contact; persist only its target workspace visibility."""
+        contact = self.get_organization_contact(DeploymentScope(), contact_id)
+        if contact is None:
             raise ContactError(ContactErrorCode.NOT_FOUND, "Organization candidate was not found")
         now = naive_utc_now()
         values = {
             "id": str(uuidv7()),
             "tenant_id": str(tenant_id),
-            "contact_id": str(candidate_id),
+            "contact_id": str(contact_id),
             "added_by_account_id": str(added_by_account_id),
             "created_at": now,
             "updated_at": now,
@@ -355,14 +392,14 @@ class SQLAlchemyContactRepository:
                 existing_id = self._session.scalar(
                     sa.select(HumanInputPlatformContactWorkspaceEntry.id).where(
                         HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id),
-                        HumanInputPlatformContactWorkspaceEntry.contact_id == str(candidate_id),
+                        HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
                     )
                 )
                 if existing_id is None:
                     self._session.add(
                         HumanInputPlatformContactWorkspaceEntry(
                             tenant_id=str(tenant_id),
-                            contact_id=str(candidate_id),
+                            contact_id=str(contact_id),
                             added_by_account_id=str(added_by_account_id),
                         )
                     )
@@ -481,7 +518,7 @@ class SQLAlchemyContactRepository:
         return sa.union_all(account_contacts, external_contacts).subquery("current_contacts")
 
     @staticmethod
-    def _organization_candidates_query(keyword: str):
+    def _account_contacts_query(keyword: str):
         statement = (
             sa.select(HumanInputContactIdentity, Account)
             .join(Account, Account.id == HumanInputContactIdentity.account_id)
@@ -515,17 +552,6 @@ class SQLAlchemyContactRepository:
             created_at=ensure_naive_utc(created_at),
         )
 
-    @staticmethod
-    def _candidate_from_row(row: Row[tuple[HumanInputContactIdentity, Account]]) -> OrganizationCandidate:
-        identity, account = row
-        return OrganizationCandidate(
-            id=CandidateId(identity.id),
-            name=account.name,
-            email=account.email,
-            avatar_file_id=account.avatar,
-            created_at=ensure_naive_utc(identity.created_at),
-        )
-
 
 class SQLAlchemyContactIMBindingRepository:
     """Contact projection over one already-resolved current IM Channel."""
@@ -534,6 +560,22 @@ class SQLAlchemyContactIMBindingRepository:
     def __init__(self, session: Session, channel: IMChannel | None) -> None:
         self._session = session
         self._channel = channel
+
+    def get_organization_im_bindings(self, contact_ids: Sequence[ContactId]) -> Sequence[IMBinding]:
+        """Require resolved Contact IDs; return only current Channel defaults, ignoring overrides."""
+        if self._channel is None or not contact_ids:
+            return ()
+        bindings = SQLAlchemyIMBindingRepository(self._session, self._channel.id).list_all(contact_ids=contact_ids)
+        return tuple(
+            IMBinding(
+                id=binding.id,
+                scope=IMBindingScope.ORGANIZATION,
+                contact_id=binding.contact_id,
+                identity_id=binding.identity_id,
+                provider=self._channel.provider,
+            )
+            for binding in bindings
+        )
 
     def get_im_bindings(
         self,

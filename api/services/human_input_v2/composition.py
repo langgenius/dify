@@ -19,10 +19,10 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc
 from models.workflow import WorkflowRun
-from services.enterprise.human_input_im import build_deployment_im_adapter
 from services.feature_service import FeatureService
 
 from .delivery_service import HumanInputDeliveryService
+from .deployment_im_adapter import build_deployment_im_adapter
 from .email_client import build_email_client
 from .form_service import AccountInitiator, EndUserInitiator, FormExecutionContext, HumanInputFormService
 from .node_data_migration import HumanInputNodeDataMigrationService

@@ -953,8 +953,8 @@ def test_all_retained_credentials_round_trip_through_one_encrypted_document(
 ) -> None:
     from pydantic import TypeAdapter
 
-    from controllers.console.human_input_v2.provider_updates import IMProviderCredentialsUpdateInput
-    from controllers.console.human_input_v2.provider_views import im_credentials_response
+    from controllers.common.human_input_v2.provider_updates import IMProviderCredentialsUpdateInput
+    from controllers.common.human_input_v2.provider_views import im_credentials_response
 
     credentials = case.credentials
     edit_payload = {
@@ -1058,7 +1058,7 @@ def test_all_retained_credentials_round_trip_through_one_encrypted_document(
 def test_credential_details_expose_identifiers_and_redact_only_secrets(
     case: _CredentialCase, expected: dict[str, object]
 ) -> None:
-    from controllers.console.human_input_v2.provider_views import im_credentials_response
+    from controllers.common.human_input_v2.provider_views import im_credentials_response
 
     state = _State()
     service = _TestService(state)

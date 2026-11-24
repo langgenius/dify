@@ -24,6 +24,7 @@ from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
     WorkspaceIMChannelReader,
 )
 from services.feature_service import FeatureService
+from services.human_input_v2.deployment_im_adapter import build_deployment_im_adapter
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
@@ -133,8 +134,6 @@ class HumanInputIMCardService:
 
     def _build_adapter(self, tenant_id: TenantId, channel: IMChannel) -> IMProviderAdapter:
         if FeatureService.is_im_centrally_managed():
-            from services.enterprise.human_input_im import build_deployment_im_adapter
-
             return build_deployment_im_adapter(channel)
         cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))
         credentials = IMCredentialCodec(cipher).load(channel.provider, channel.encrypted_credentials)

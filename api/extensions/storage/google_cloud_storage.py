@@ -3,6 +3,7 @@ import io
 from collections.abc import Generator
 from typing import Any, override
 
+from google.api_core.exceptions import GoogleAPIError, NotFound, PreconditionFailed
 from google.cloud import storage as google_cloud_storage  # type: ignore
 from pydantic import TypeAdapter
 
@@ -37,12 +38,31 @@ class GoogleCloudStorage(BaseStorage):
             blob.upload_from_file(stream)
 
     @override
+    def save_if_absent(self, filename: str, data: bytes) -> bool:
+        """Publish only when the object has no live generation; never replace a winner."""
+        try:
+            self.client.bucket(self.bucket_name).blob(filename).upload_from_string(data, if_generation_match=0)
+        except PreconditionFailed:
+            return False
+        except GoogleAPIError:
+            raise OSError("GCS atomic creation failed") from None
+        return True
+
+    @override
     def load_once(self, filename: str) -> bytes:
-        bucket = self.client.get_bucket(self.bucket_name)
-        blob = bucket.get_blob(filename)
+        try:
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.get_blob(filename)
+        except GoogleAPIError:
+            raise OSError("GCS bucket read failed") from None
         if blob is None:
             raise FileNotFoundError("File not found")
-        data: bytes = blob.download_as_bytes()
+        try:
+            data: bytes = blob.download_as_bytes()
+        except NotFound:
+            raise FileNotFoundError("File not found") from None
+        except GoogleAPIError:
+            raise OSError("GCS object read failed") from None
         return data
 
     @override

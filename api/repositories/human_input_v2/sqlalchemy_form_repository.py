@@ -235,6 +235,24 @@ class SQLAlchemyFormRepository(FormRepository):
             self._session.flush([record])
         return _form_from_record(record) if record is not None else None
 
+    def expire_stopped_enterprise_form(self, form_id: str) -> Form | None:
+        """Expire an owner-scoped Enterprise form after its run stopped.
+
+        The caller supplies a locally committed Enterprise stop. A row lock
+        serializes expiration with submissions; accepted outcomes stay intact.
+        Repeated calls are no-ops, and no reverse run effect is scheduled.
+        Missing or non-Enterprise forms remain unchanged. Errors roll back with
+        the caller's transaction.
+        """
+        record = self._lock_form(form_id)
+        if record is not None and record.run_gateway == "enterprise":
+            if record.status == HumanInputFormStatus.WAITING:
+                record.status = HumanInputFormStatus.EXPIRED
+                record.updated_at = self._database_now()
+            record.run_effect_pending = False
+            self._session.flush([record])
+        return _form_from_record(record) if record is not None else None
+
     @override
     def get_forms_by_ids(self, *, workflow_run_id: str, form_ids: Sequence[str]) -> tuple[Form, ...]:
         if not form_ids:

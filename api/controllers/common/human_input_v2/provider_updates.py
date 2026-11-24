@@ -1,4 +1,4 @@
-"""Console credential edit DTOs; omission is never a retention instruction."""
+"""Shared credential edit DTOs; omission is never a retention instruction."""
 
 from typing import Annotated, Literal
 
