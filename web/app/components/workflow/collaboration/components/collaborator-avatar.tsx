@@ -60,14 +60,13 @@ export function CollaboratorAvatarStack({
 
   return (
     <AvatarGroup size={size}>
-      {visible.map((collaborator, index) => (
+      {visible.map((collaborator) => (
         <CollaboratorAvatar
           key={collaborator.id}
           collaborator={collaborator}
           role="img"
           aria-hidden={undefined}
           aria-label={collaborator.name}
-          style={{ zIndex: visible.length - index }}
         />
       ))}
       {overflowCount > 0 && <AvatarGroupCount>+{overflowCount}</AvatarGroupCount>}
