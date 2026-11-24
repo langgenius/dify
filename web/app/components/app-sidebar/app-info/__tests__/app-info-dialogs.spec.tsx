@@ -1,4 +1,6 @@
-import type { AppInfoOperation } from '../app-info-modals'
+import type { AppInfoDialogHandles } from '../app-info-dialogs'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -6,17 +8,21 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import AppInfoModals from '../app-info-modals'
-import { ExportAppDialog } from '../export-app-dialog'
+import { AppInfoDialogs } from '../app-info-dialogs'
+import { ExportAppDialogContent } from '../export-app-dialog'
 
 const service = vi.hoisted(() => ({
   request: vi.fn(),
   replace: vi.fn(),
+  push: vi.fn(),
+  emit: vi.fn(),
   exportWorkflow: vi.fn(),
   exportApp: vi.fn(),
   notify: vi.fn(),
 }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace: service.replace }) }))
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ replace: service.replace, push: service.push }),
+}))
 vi.mock('@/app/notifications', () => ({
   toast: { error: service.notify, success: service.notify },
 }))
@@ -30,7 +36,7 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
 }))
 vi.mock('@/service/base', () => ({ request: (...args: unknown[]) => service.request(...args) }))
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
-  webSocketClient: { getSocket: () => null },
+  webSocketClient: { getSocket: () => ({ emit: service.emit }) },
 }))
 
 const app = createAppDetailFixture({
@@ -42,33 +48,39 @@ const app = createAppDetailFixture({
   icon_background: '#FFEAD5',
   permission_keys: ['app.acl.view_layout'],
 })
-function MetadataEntry({ operation = 'edit' }: { operation?: 'edit' | 'duplicate' }) {
-  const [open, setOpen] = useState(true)
+type Operation = keyof AppInfoDialogHandles
+
+function OperationsEntry({ operation }: { operation: Operation }) {
+  const [handles] = useState<AppInfoDialogHandles>(() => ({
+    edit: createDialogHandle(),
+    duplicate: createDialogHandle(),
+    switchApp: createDialogHandle(),
+    importDSL: createDialogHandle(),
+    delete: createAlertDialogHandle(),
+    export: createAlertDialogHandle(),
+  }))
   return (
     <>
-      <button onClick={() => setOpen(true)}>Reopen</button>
-      <AppInfoModals
-        appDetail={app}
-        activeModal={open ? operation : null}
-        onClose={() => setOpen(false)}
-      />
+      <button onClick={() => handles[operation].open(null)}>Open operation</button>
+      <AppInfoDialogs appDetail={app} handles={handles} />
     </>
   )
 }
-function DeleteEntry() {
-  const [open, setOpen] = useState(true)
+function ExportEntry() {
+  const [handle] = useState(() => createAlertDialogHandle())
   return (
-    <AppInfoModals
-      appDetail={app}
-      activeModal={open ? 'delete' : null}
-      onClose={() => setOpen(false)}
-    />
+    <>
+      <button onClick={() => handle.open(null)}>Open operation</button>
+      <AlertDialog handle={handle}>
+        <ExportAppDialogContent appDetail={app} onExported={() => handle.close()} />
+      </AlertDialog>
+    </>
   )
 }
-function ExportEntry() {
-  const [open, setOpen] = useState(true)
-  return <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
-}
+const openOperation = () =>
+  act(async () => {
+    screen.getByRole('button', { name: 'Open operation' }).click()
+  })
 const render = (ui: React.ReactElement) =>
   renderWithConsoleQuery(ui, {
     queryClient: createConsoleQueryClient(),
@@ -78,6 +90,8 @@ const render = (ui: React.ReactElement) =>
 beforeEach(() => {
   service.notify.mockReset()
   service.replace.mockReset()
+  service.push.mockReset()
+  service.emit.mockReset()
   service.request.mockReset()
   service.exportApp.mockReset()
   service.exportWorkflow.mockReset()
@@ -86,7 +100,8 @@ beforeEach(() => {
 it.each(['edit', 'duplicate'] as const)(
   'separates the %s app name and icon within their named group',
   async (operation) => {
-    render(<MetadataEntry operation={operation} />)
+    render(<OperationsEntry operation={operation} />)
+    await openOperation()
     const group = await screen.findByRole('group', { name: 'app.newApp.captionName' })
     expect(within(group).getByRole('textbox', { name: 'app.newApp.name' })).toBeRequired()
     expect(within(group).getByRole('button', { name: 'app.iconPicker.title' })).toBeEnabled()
@@ -102,7 +117,8 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
         reject = rejectRequest
       }),
   )
-  render(<MetadataEntry />)
+  render(<OperationsEntry operation="edit" />)
+  await openOperation()
   const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Retried name')
@@ -121,7 +137,8 @@ it('keeps the edit draft on failure, guards pending dismissal and closes only af
 
 it('keeps the edit draft after an outside press and still allows explicit cancellation', async () => {
   const user = userEvent.setup()
-  render(<MetadataEntry />)
+  render(<OperationsEntry operation="edit" />)
+  await openOperation()
   const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Unsaved draft')
@@ -135,20 +152,22 @@ it('keeps the edit draft after an outside press and still allows explicit cancel
 
 it('discards a cancelled draft and initializes the next edit session from saved data', async () => {
   const user = userEvent.setup()
-  render(<MetadataEntry />)
+  render(<OperationsEntry operation="edit" />)
+  await openOperation()
   const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Discarded')
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  await user.click(screen.getByRole('button', { name: 'Reopen' }))
+  await user.click(screen.getByRole('button', { name: 'Open operation' }))
   expect(await screen.findByRole('textbox', { name: 'app.newApp.name' })).toHaveValue(app.name)
 })
 
 it('keeps the duplicate name after a failed copy', async () => {
   const user = userEvent.setup()
   service.request.mockRejectedValueOnce(new Error('Unavailable'))
-  render(<MetadataEntry operation="duplicate" />)
+  render(<OperationsEntry operation="duplicate" />)
+  await openOperation()
   const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.type(name, 'Copy draft{Enter}')
@@ -167,7 +186,8 @@ it('retains deletion confirmation after failure and prevents repeated submission
         reject = rejectRequest
       }),
   )
-  render(<DeleteEntry />)
+  render(<OperationsEntry operation="delete" />)
+  await openOperation()
   await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() => expect(service.request).toHaveBeenCalledTimes(1))
@@ -191,6 +211,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
   })
   service.exportApp.mockResolvedValue({ status: 'failed' })
   render(<ExportEntry />)
+  await openOperation()
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   const dialog = await screen.findByRole('alertdialog', { name: 'app.exportSecret.title' })
   await user.click(within(dialog).getByRole('checkbox'))
@@ -207,21 +228,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
   expect(dialog).toBeInTheDocument()
 })
 
-function OperationsEntry({ operation }: { operation: AppInfoOperation }) {
-  const [activeModal, setActiveModal] = useState<AppInfoOperation | null>(null)
-  return (
-    <>
-      <button onClick={() => setActiveModal(operation)}>Open operation</button>
-      <AppInfoModals
-        appDetail={app}
-        activeModal={activeModal}
-        onClose={() => setActiveModal(null)}
-      />
-    </>
-  )
-}
-
-it.each(['edit', 'duplicate', 'switch', 'delete', 'importDSL'] as const)(
+it.each(['edit', 'duplicate', 'switchApp', 'delete', 'importDSL'] as const)(
   'focuses the input control when opening %s',
   async (operation) => {
     const user = userEvent.setup()
@@ -261,7 +268,8 @@ it('preserves the selected import file while opening and cancelling its nested b
 it('validates the edit form and submits current values after choosing an icon', async () => {
   const user = userEvent.setup()
   service.request.mockResolvedValueOnce(Response.json(app))
-  render(<MetadataEntry />)
+  render(<OperationsEntry operation="edit" />)
+  await openOperation()
   const name = await screen.findByRole('textbox', { name: 'app.newApp.name' })
   await user.clear(name)
   await user.keyboard('{Enter}')
@@ -300,13 +308,11 @@ it.each(['duplicate', 'delete'] as const)(
     service.request.mockResolvedValueOnce(
       Response.json(operation === 'duplicate' ? app : { result: 'success' }),
     )
-    renderWithConsoleQuery(
-      operation === 'duplicate' ? <MetadataEntry operation="duplicate" /> : <DeleteEntry />,
-      {
-        queryClient,
-        systemFeatures: { deployment_edition: 'COMMUNITY', rbac_enabled: false },
-      },
-    )
+    renderWithConsoleQuery(<OperationsEntry operation={operation} />, {
+      queryClient,
+      systemFeatures: { deployment_edition: 'COMMUNITY', rbac_enabled: false },
+    })
+    await openOperation()
     if (operation === 'delete')
       await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
     await user.click(
@@ -335,7 +341,8 @@ it.each([0, 12, null])(
   async (limit) => {
     const user = userEvent.setup()
     service.request.mockResolvedValueOnce(Response.json(app))
-    render(<MetadataEntry />)
+    render(<OperationsEntry operation="edit" />)
+    await openOperation()
     const input = await screen.findByRole('textbox', { name: 'app.maxActiveRequests' })
     await user.clear(input)
     if (limit !== null) await user.type(input, String(limit))
@@ -359,13 +366,20 @@ it('keeps the shared edit cache policy when closing after a successful save', as
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
   const updated = { ...app, name: 'Saved name' }
   service.request.mockResolvedValueOnce(Response.json(updated))
-  renderWithConsoleQuery(<MetadataEntry />, {
+  renderWithConsoleQuery(<OperationsEntry operation="edit" />, {
     queryClient,
     systemFeatures: { deployment_edition: 'COMMUNITY', rbac_enabled: false },
   })
+  await openOperation()
   await user.click(await screen.findByRole('button', { name: /common.operation.save/ }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(queryClient.getQueryData(detailKey)).toEqual(updated)
+  await waitFor(() =>
+    expect(service.emit).toHaveBeenCalledWith(
+      'collaboration_event',
+      expect.objectContaining({ type: 'app_meta_update' }),
+    ),
+  )
   for (const queryKey of [
     consoleQuery.apps.get.key(),
     consoleQuery.apps.starred.get.key(),
@@ -377,4 +391,21 @@ it('keeps the shared edit cache policy when closing after a successful save', as
       ),
     ).toHaveLength(1)
   }
+})
+
+it('closes the switch dialog and opens the converted app after a successful switch', async () => {
+  const user = userEvent.setup()
+  service.request.mockResolvedValueOnce(
+    Response.json({ new_app_id: 'converted-app', permission_keys: ['app.acl.view_layout'] }),
+  )
+  renderWithConsoleQuery(<OperationsEntry operation="switchApp" />, {
+    queryClient: createConsoleQueryClient(),
+    systemFeatures: { deployment_edition: 'COMMUNITY', rbac_enabled: false },
+    features: { apps: { size: 1, limit: 10 } },
+  })
+  await openOperation()
+  await user.click(await screen.findByRole('button', { name: 'app.switchStart' }))
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(service.push).toHaveBeenCalledWith('/app/converted-app/workflow')
 })

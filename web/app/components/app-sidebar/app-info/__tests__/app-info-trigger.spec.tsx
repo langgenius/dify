@@ -1,4 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppInfoDialogHandles } from '../app-info-dialogs'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -6,7 +7,7 @@ import { createAccountProfileQueryWrapper } from '@/test/console/account-profile
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
-import AppInfoTrigger from '../app-info-trigger'
+import { AppInfoTrigger } from '../app-info-trigger'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.create_and_management'] as string[],
@@ -18,6 +19,11 @@ const mockConsoleState = vi.hoisted(() => ({
       return mockWorkspacePermissionKeys.value
     },
   },
+}))
+
+const mockExport = vi.hoisted(() => ({ exportAppDsl: vi.fn(), isExporting: false }))
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => mockExport,
 }))
 
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
@@ -52,12 +58,22 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
     ...overrides,
   })
 
+const createHandles = () => {
+  const handle = () => ({ open: vi.fn() })
+  return {
+    edit: handle(),
+    duplicate: handle(),
+    switchApp: handle(),
+    importDSL: handle(),
+    delete: handle(),
+    export: handle(),
+  } as unknown as AppInfoDialogHandles
+}
+
 const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({
   appDetail: createAppDetail(),
   expand: true,
-  openModal: vi.fn(),
-  isExporting: false,
-  exportCheck: vi.fn(),
+  handles: createHandles(),
   ...overrides,
 })
 
@@ -67,6 +83,7 @@ const getOperationsTrigger = () =>
 describe('AppInfoTrigger', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockExport.isExporting = false
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
   })
 
@@ -83,8 +100,8 @@ describe('AppInfoTrigger', () => {
 
     await user.click(screen.getByText('🤖'))
 
-    expect(props.openModal).not.toHaveBeenCalled()
-    expect(props.exportCheck).not.toHaveBeenCalled()
+    for (const handle of Object.values(props.handles)) expect(handle.open).not.toHaveBeenCalled()
+    expect(mockExport.exportAppDsl).not.toHaveBeenCalled()
   })
 
   it('opens workflow conversion for a chat app', async () => {
@@ -95,7 +112,7 @@ describe('AppInfoTrigger', () => {
     await user.click(getOperationsTrigger())
 
     await user.click(screen.getByRole('menuitem', { name: 'app.switch' }))
-    expect(props.openModal).toHaveBeenCalledWith('switch')
+    expect(props.handles.switchApp.open).toHaveBeenCalledWith(null)
   })
 
   it('shows import DSL for workflow apps without a workflow conversion operation', async () => {
@@ -111,12 +128,13 @@ describe('AppInfoTrigger', () => {
     expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
-    expect(props.openModal).toHaveBeenCalledWith('importDSL')
+    expect(props.handles.importDSL.open).toHaveBeenCalledWith(null)
   })
 
   it('runs export from the menu and disables it while an export is pending', async () => {
     const user = userEvent.setup()
-    const props = createProps({ isExporting: true })
+    mockExport.isExporting = true
+    const props = createProps()
     const { rerender } = render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
@@ -125,11 +143,27 @@ describe('AppInfoTrigger', () => {
       'true',
     )
 
-    const readyProps = createProps()
-    rerender(<AppInfoTrigger {...readyProps} />)
+    mockExport.isExporting = false
+    rerender(<AppInfoTrigger {...props} />)
     await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
-    expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
+    expect(mockExport.exportAppDsl).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      appName: 'Test App',
+    })
+    expect(props.handles.export.open).not.toHaveBeenCalled()
+  })
+
+  it('confirms the export of a workflow app in a dialog', async () => {
+    const user = userEvent.setup()
+    const props = createProps({ appDetail: createAppDetail({ mode: 'workflow' as const }) })
+    render(<AppInfoTrigger {...props} />)
+
+    await user.click(getOperationsTrigger())
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
+
+    expect(props.handles.export.open).toHaveBeenCalledWith(null)
+    expect(mockExport.exportAppDsl).not.toHaveBeenCalled()
   })
 
   it('keeps the operations trigger disabled when no operation is permitted', () => {

@@ -3,7 +3,6 @@ import type {
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import {
-  AlertDialog,
   AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
@@ -16,17 +15,24 @@ import {
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
-type ExportAppDialogProps = {
-  open: boolean
-  onClose: () => void
+type ExportAppDialogContentProps = {
   appDetail: AppDetailWithSite
+  onExported: () => void
 }
 
-export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogProps) {
+export function ExportAppDialogContent(props: ExportAppDialogContentProps) {
+  return (
+    <AlertDialogContent backdropProps={{ forceRender: true }}>
+      <ExportAppSession {...props} />
+    </AlertDialogContent>
+  )
+}
+
+function ExportAppSession({ appDetail, onExported }: ExportAppDialogContentProps) {
   const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const [secrets, setSecrets] = useState<EnvironmentVariableItemResponse[]>([])
@@ -34,24 +40,20 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
     exportWorkflowAppDsl,
     isExporting: isChecking,
     errorMessage: checkError,
-    reset: resetCheck,
   } = useExportWorkflowAppDsl()
-  const {
-    exportAppDsl,
-    isExporting,
-    errorMessage: exportError,
-    reset: resetExport,
-  } = useExportAppDsl()
+  const { exportAppDsl, isExporting, errorMessage: exportError } = useExportAppDsl()
   const isPending = isChecking || isExporting
   const activeExportRef = useRef<AbortController | null>(null)
-  const cancelExport = useCallback(() => {
-    activeExportRef.current?.abort()
-    activeExportRef.current = null
-  }, [])
-  useLayoutEffect(() => cancelExport, [appDetail.id, cancelExport, open])
+  useLayoutEffect(
+    () => () => {
+      activeExportRef.current?.abort()
+      activeExportRef.current = null
+    },
+    [appDetail.id],
+  )
 
   const runExport = async (includeSecret?: boolean) => {
-    if (!open || isPending || activeExportRef.current) return
+    if (isPending || activeExportRef.current) return
     const controller = new AbortController()
     activeExportRef.current = controller
     const input = {
@@ -68,74 +70,58 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
 
     activeExportRef.current = null
     if (result.status === 'confirmation-required') setSecrets(result.secretEnvList)
-    else if (result.status === 'downloaded') onClose()
+    else if (result.status === 'downloaded') onExported()
   }
+
+  if (secrets.length > 0)
+    return (
+      <ExportSecretsForm
+        secrets={secrets}
+        errorMessage={exportError}
+        isPending={isPending}
+        onSubmit={(includeSecret) => {
+          void runExport(includeSecret)
+        }}
+      />
+    )
+
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) return
-        cancelExport()
-        onClose()
-      }}
-      onOpenChangeComplete={(nextOpen) => {
-        if (!nextOpen) {
-          setSecrets([])
-          resetCheck()
-          resetExport()
-        }
-      }}
-    >
-      <AlertDialogContent backdropProps={{ forceRender: true }}>
-        {secrets.length > 0 ? (
-          <ExportSecretsForm
-            secrets={secrets}
-            errorMessage={exportError}
-            isPending={isPending}
-            onSubmit={(includeSecret) => {
-              void runExport(includeSecret)
-            }}
-          />
-        ) : (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            {checkError && (
-              <AlertDialogBody>
-                <p role="alert" className="system-sm-regular text-text-destructive">
-                  {checkError}
-                </p>
-              </AlertDialogBody>
-            )}
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                tone="default"
-                loading={isPending}
-                aria-labelledby={confirmLabelId}
-                onClick={() => {
-                  void runExport()
-                }}
-              >
-                <span id={confirmLabelId}>
-                  {isPending
-                    ? t(($) => $['operation.exporting'], { ns: 'common' })
-                    : t(($) => $['operation.confirm'], { ns: 'common' })}
-                </span>
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </>
-        )}
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>
+          {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
+        </AlertDialogTitle>
+        <AlertDialogDescription>
+          {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      {checkError && (
+        <AlertDialogBody>
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {checkError}
+          </p>
+        </AlertDialogBody>
+      )}
+      <AlertDialogFooter>
+        <AlertDialogCancelButton>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </AlertDialogCancelButton>
+        <AlertDialogConfirmButton
+          tone="default"
+          loading={isPending}
+          aria-labelledby={confirmLabelId}
+          onClick={() => {
+            void runExport()
+          }}
+        >
+          <span id={confirmLabelId}>
+            {isPending
+              ? t(($) => $['operation.exporting'], { ns: 'common' })
+              : t(($) => $['operation.confirm'], { ns: 'common' })}
+          </span>
+        </AlertDialogConfirmButton>
+      </AlertDialogFooter>
+    </>
   )
 }
 

@@ -1,5 +1,11 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -14,17 +20,23 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
-import { ExportAppDialog } from './export-app-dialog'
+import { ExportAppDialogContent } from './export-app-dialog'
 
-export type AppInfoOperation = 'edit' | 'duplicate' | 'delete' | 'switch' | 'importDSL' | 'export'
-
-type AppInfoModalsProps = {
-  appDetail: AppDetailWithSite
-  activeModal: AppInfoOperation | null
-  onClose: () => void
+export type AppInfoDialogHandles = {
+  edit: DialogHandle
+  duplicate: DialogHandle
+  switchApp: DialogHandle
+  importDSL: DialogHandle
+  delete: AlertDialogHandle
+  export: AlertDialogHandle
 }
 
-export default function AppInfoModals({ appDetail, activeModal, onClose }: AppInfoModalsProps) {
+type AppInfoDialogsProps = {
+  appDetail: AppDetailWithSite
+  handles: AppInfoDialogHandles
+}
+
+export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
   const editNameRef = useRef<HTMLInputElement>(null)
   const duplicateNameRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['app'])
@@ -43,14 +55,14 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
   const switching = useSwitchAppMutation()
+  const [backupDialog] = useState(() => createAlertDialogHandle())
   return (
     <>
       <Dialog
-        open={activeModal === 'edit'}
+        handle={handles.edit}
         disablePointerDismissal
         onOpenChange={(open, details) => {
-          if (!open && edit.isPending) details.cancel()
-          else if (!open) onClose()
+          if (!open && edit.isPending && details.reason !== 'imperative-action') details.cancel()
         }}
         onOpenChangeComplete={(open) => {
           if (!open) edit.reset()
@@ -69,7 +81,7 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
                 { params: { app_id: appDetail.id }, body },
                 {
                   onSuccess: () => {
-                    onClose()
+                    handles.edit.close()
                     void import('@/app/components/workflow/collaboration/core/websocket-manager')
                       .then(({ webSocketClient }) => {
                         webSocketClient.getSocket(appDetail.id)?.emit('collaboration_event', {
@@ -87,10 +99,9 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
         </DialogContent>
       </Dialog>
       <Dialog
-        open={activeModal === 'duplicate'}
+        handle={handles.duplicate}
         onOpenChange={(open, details) => {
-          if (!open && copy.isPending) details.cancel()
-          else if (!open) onClose()
+          if (!open && copy.isPending && details.reason !== 'imperative-action') details.cancel()
         }}
         onOpenChangeComplete={(open) => {
           if (!open) copy.reset()
@@ -116,7 +127,7 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
                       toast.error(t(($) => $['newApp.appCreateFailed']))
                       return
                     }
-                    onClose()
+                    handles.duplicate.close()
                     getRedirection(app, replace, { isRbacEnabled })
                   },
                 },
@@ -126,11 +137,11 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
         </DialogContent>
       </Dialog>
       <Dialog
-        open={activeModal === 'switch'}
+        handle={handles.switchApp}
         disablePointerDismissal
         onOpenChange={(open, details) => {
-          if (!open && switching.isPending) details.cancel()
-          else if (!open) onClose()
+          if (!open && switching.isPending && details.reason !== 'imperative-action')
+            details.cancel()
         }}
         onOpenChangeComplete={(open) => {
           if (!open) switching.reset()
@@ -141,15 +152,18 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
           isPending={switching.isPending}
           onSubmit={(body, removeOriginal) => {
             if (switching.isPending) return
-            switching.mutate({ sourceApp: appDetail, body, removeOriginal }, { onSuccess: onClose })
+            switching.mutate(
+              { sourceApp: appDetail, body, removeOriginal },
+              { onSuccess: () => handles.switchApp.close() },
+            )
           }}
         />
       </Dialog>
       <AlertDialog
-        open={activeModal === 'delete'}
+        handle={handles.delete}
         onOpenChange={(open, details) => {
-          if (!open && deletion.isPending) details.cancel()
-          else if (!open) onClose()
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
         }}
         onOpenChangeComplete={(open) => {
           if (!open) deletion.reset()
@@ -170,7 +184,7 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
                 { params: { app_id: appDetail.id } },
                 {
                   onSuccess: () => {
-                    onClose()
+                    handles.delete.close()
                     toast.success(t(($) => $.appDeleted))
                     replace('/apps')
                   },
@@ -180,37 +194,19 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
           />
         </AlertDialogContent>
       </AlertDialog>
-      <ImportAppDialog appDetail={appDetail} open={activeModal === 'importDSL'} onClose={onClose} />
-      <ExportAppDialog appDetail={appDetail} open={activeModal === 'export'} onClose={onClose} />
+      <UpdateDSLModal
+        handle={handles.importDSL}
+        appId={appDetail.id}
+        appMode={appDetail.mode}
+        onBackup={() => backupDialog.open(null)}
+      >
+        <AlertDialog handle={backupDialog}>
+          <ExportAppDialogContent appDetail={appDetail} onExported={() => backupDialog.close()} />
+        </AlertDialog>
+      </UpdateDSLModal>
+      <AlertDialog handle={handles.export}>
+        <ExportAppDialogContent appDetail={appDetail} onExported={() => handles.export.close()} />
+      </AlertDialog>
     </>
-  )
-}
-
-function ImportAppDialog({
-  appDetail,
-  open,
-  onClose,
-}: {
-  appDetail: AppDetailWithSite
-  open: boolean
-  onClose: () => void
-}) {
-  const [backupOpen, setBackupOpen] = useState(false)
-  return (
-    <UpdateDSLModal
-      appId={appDetail.id}
-      appMode={appDetail.mode}
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-      onBackup={() => setBackupOpen(true)}
-    >
-      <ExportAppDialog
-        appDetail={appDetail}
-        open={backupOpen}
-        onClose={() => setBackupOpen(false)}
-      />
-    </UpdateDSLModal>
   )
 }

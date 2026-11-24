@@ -1,10 +1,11 @@
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { hold, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { ExportAppDialog } from '../export-app-dialog'
+import { ExportAppDialogContent } from '../export-app-dialog'
 
 const { downloadBlob } = vi.hoisted(() => ({ downloadBlob: vi.fn() }))
 
@@ -41,13 +42,15 @@ const warning = 'workflow.sidebar.exportWarning'
 const secretWarning = 'app.exportSecret.title'
 
 function Fixture({ client }: { client: QueryClient }) {
-  const [open, setOpen] = useState(false)
+  const [handle] = useState(() => createAlertDialogHandle())
   return (
     <QueryClientProvider client={client}>
-      <button type="button" onClick={() => setOpen(true)}>
+      <button type="button" onClick={() => handle.open(null)}>
         Export workflow
       </button>
-      <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
+      <AlertDialog handle={handle}>
+        <ExportAppDialogContent appDetail={app} onExported={() => handle.close()} />
+      </AlertDialog>
     </QueryClientProvider>
   )
 }
