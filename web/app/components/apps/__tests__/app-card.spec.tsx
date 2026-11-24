@@ -870,6 +870,37 @@ describe('AppCard', () => {
     },
   )
 
+  it('keeps the open secret export confirmation on its app when another export check finishes', async () => {
+    const user = userEvent.setup()
+    const lateCheck = createDeferred<{ items: EnvironmentVariableItemResponse[] }>()
+    api.env.mockImplementation(({ params }) =>
+      params.app_id === 'late-app' ? lateCheck.promise : Promise.resolve({ items: [secret] }),
+    )
+    render(
+      <>
+        <AppCard
+          dialogs={dialogs}
+          onDelete={onDelete}
+          app={createMockApp({ id: 'late-app', name: 'Late App', mode: 'workflow' })}
+        />
+        <AppCard dialogs={dialogs} onDelete={onDelete} app={createMockApp({ mode: 'workflow' })} />
+      </>,
+    )
+    const [lateTrigger, trigger] = screen.getAllByRole('button', {
+      name: /common\.operation\.moreActionsFor/,
+    })
+    await user.click(lateTrigger!)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.exportApp' }))
+    await user.click(trigger!)
+    await user.click(await screen.findByRole('menuitem', { name: 'app.exportApp' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'app.exportSecret.title' })
+    await user.click(within(dialog).getByRole('checkbox'))
+    await act(async () => lateCheck.resolve({ items: [{ ...secret, name: 'LATE_KEY' }] }))
+    expect(within(dialog).getByText('API_KEY')).toBeInTheDocument()
+    expect(within(dialog).queryByText('LATE_KEY')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('checkbox')).toBeChecked()
+  })
+
   it('clears secret export consent when the warning is cancelled and reopened', async () => {
     const user = userEvent.setup()
     api.env.mockResolvedValue({

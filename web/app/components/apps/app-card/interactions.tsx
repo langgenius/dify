@@ -283,7 +283,7 @@ export function AppCardInteractions({
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
       : await exportAppDsl({ appId: app.id, appName: app.name })
-    if (result?.status === 'confirmation-required')
+    if (result?.status === 'confirmation-required' && !dialogs.exportSecrets.isOpen)
       dialogs.exportSecrets.openWithPayload({ app, envList: result.secretEnvList })
   }
 
