@@ -26,6 +26,7 @@ const api = vi.hoisted(() => ({
   versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
   releases: vi.fn<typeof fetch>(),
   autoUpgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.autoUpgrade.fetch.get>(),
+  tasks: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.get>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -44,11 +45,12 @@ vi.mock('@/service/console', async (importOriginal) => {
         debug_permission: 'everyone',
       }),
       'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+      // The upgrade dialog observes tasks through queryOptions, not consoleClient.
+      'workspaces.current.plugin.tasks.get': api.tasks,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
     }),
   }
 })
@@ -129,6 +131,7 @@ const openActions = async (user: ReturnType<typeof userEvent.setup>) => {
   )
 }
 beforeEach(() => {
+  api.tasks.mockReset().mockResolvedValue({ tasks: [] })
   api.autoUpgrade.mockReset().mockResolvedValue({
     category: 'model',
     auto_upgrade: {
@@ -246,6 +249,7 @@ it('uses the latest summary package when the loaded detail still describes the i
   const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
   await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
   await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+  expect(api.tasks).toHaveBeenCalledWith({ query: { page: 1, page_size: 100 } })
   expect(api.upgrade).toHaveBeenCalledExactlyOnceWith({
     body: {
       original_plugin_unique_identifier: installed.plugin_unique_identifier,
