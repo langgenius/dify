@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 from flask import Response, request
 from flask_restx import Resource
-from werkzeug.exceptions import RequestEntityTooLarge, Unauthorized
+from werkzeug.exceptions import NotFound, RequestEntityTooLarge, Unauthorized
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
@@ -144,7 +144,8 @@ class OpenApiMcpApi(Resource):
     def post(self):
         """Serve one MCP JSON-RPC message.
 
-        Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+        Precondition: a POST to the openapi blueprint. Postcondition: 404, as for an unknown path, before
+        anything else when ``OPENAPI_MCP_ENABLED`` is false. Otherwise 200 with a JSON-RPC reply
         (result, or error for an unsupported protocol version or tool name); 202 with no body for
         a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
         any other unparsable message; 413 with a JSON-RPC error when the body is above
@@ -158,6 +159,8 @@ class OpenApiMcpApi(Resource):
         when bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
+        if not dify_config.OPENAPI_MCP_ENABLED:
+            raise NotFound()
         origin = request.headers.get(ORIGIN_HEADER)
         if origin is not None and not _origin_allowed(origin):
             return _json_response(

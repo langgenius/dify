@@ -149,8 +149,9 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # SINGLE_CHUNK_ATTACHMENT_LIMIT=10
 
 # ------------------------------
-# Agents on /openapi/v1: run jobs
+# Agents on /openapi/v1: the MCP endpoint and run jobs
 # ------------------------------
+# OPENAPI_MCP_ENABLED=true
 # RUN_JOB_MAX_BACKGROUND_RUNS=10
 # Each waiting job call holds one of SERVER_WORKER_CONNECTIONS for up to 45 s; keep this at about a fifth of it.
 # RUN_JOB_MAX_WAITERS=2

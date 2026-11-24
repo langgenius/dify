@@ -1444,7 +1444,12 @@ class DataSetConfig(BaseSettings):
 
 
 class OpenApiAgentConfig(BaseSettings):
-    """Settings for agents that work through /openapi/v1: run jobs."""
+    """Settings for agents that work through /openapi/v1: the MCP endpoint and run jobs."""
+
+    OPENAPI_MCP_ENABLED: bool = Field(
+        description="Serve the MCP endpoint, POST /openapi/v1/mcp. When false the endpoint answers 404.",
+        default=True,
+    )
 
     RUN_JOB_MAX_BACKGROUND_RUNS: PositiveInt = Field(
         description="Max app runs that one API process reads in the background for run jobs.",

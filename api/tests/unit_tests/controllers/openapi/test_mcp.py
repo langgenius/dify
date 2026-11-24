@@ -432,3 +432,46 @@ def test_an_origin_in_the_openapi_cors_list_is_accepted(openapi_app: Flask, monk
 
     assert allowed.status_code == 200
     assert other.status_code == 403
+
+
+def _unknown_path_answer(client: FlaskClient) -> TestResponse:
+    return client.post("/openapi/v1/no-such-route", data=b"{}", content_type="application/json")
+
+
+@pytest.mark.parametrize(
+    ("body", "headers"),
+    [
+        (_initialize(), {"Authorization": "Bearer dfoa_x"}),
+        (_rpc("ping"), {}),
+        (_rpc("ping"), {"Origin": "http://evil.example.com"}),
+        (_oversize_call(), {}),
+    ],
+)
+def test_with_mcp_off_the_endpoint_answers_as_an_unknown_path_and_runs_nothing(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, body: object, headers: dict[str, str]
+) -> None:
+    monkeypatch.setattr(mcp_module.dify_config, "OPENAPI_MCP_ENABLED", False)
+    recorder = _OpRecorder()
+    monkeypatch.setattr("controllers.openapi._mcp_tools.call_op", recorder)
+
+    def no_login(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("no login check runs while MCP is off")
+
+    monkeypatch.setattr(mcp_module, "admit_bearer", no_login)
+    client = openapi_app.test_client()
+
+    response = _post(client, body, headers)
+    unknown = _unknown_path_answer(client)
+
+    assert response.status_code == 404
+    assert response.get_json() == unknown.get_json()
+    assert recorder.calls == []
+
+
+def test_with_mcp_on_the_endpoint_serves(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mcp_module.dify_config, "OPENAPI_MCP_ENABLED", True)
+
+    response = _post(openapi_app.test_client(), _rpc("ping"))
+
+    assert response.status_code == 200
+    assert response.get_json()["result"] == {}
