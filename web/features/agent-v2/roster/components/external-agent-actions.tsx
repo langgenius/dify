@@ -7,7 +7,7 @@ import type {
 import type { RefObject } from 'react'
 import type { ExternalAgentListItem } from './external-agent-list'
 import type { IconPickerInputValue } from '@/app/components/base/icon-picker'
-import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -284,6 +284,7 @@ export function ExternalAgentActions({
           ? { params: { agent_id: request.agent.key } }
           : skipToken,
       enabled: open && request?.kind === 'delete',
+      retry: false,
     }),
   )
   if (!request) return null
@@ -375,7 +376,21 @@ export function ExternalAgentActions({
           <AlertDialogBody>
             {deleting ? (
               <>
-                {references.data && (
+                {references.isError ? (
+                  <Alert type="error">
+                    <AlertTitle>{t(($) => $['external.deleteDialog.impactLoadFailed'])}</AlertTitle>
+                    <AlertActions>
+                      <Button
+                        variant="secondary"
+                        size="small"
+                        loading={references.isFetching}
+                        onClick={() => void references.refetch()}
+                      >
+                        {t(($) => $['operation.retry'], { ns: 'common' })}
+                      </Button>
+                    </AlertActions>
+                  </Alert>
+                ) : references.data ? (
                   <AlertDialogDescription render={<div />}>
                     <p>
                       <Trans
@@ -385,16 +400,17 @@ export function ExternalAgentActions({
                         values={{ count: references.data.apps.length }}
                         components={{ apps: <span className="system-md-semibold" /> }}
                       />
+                      {references.data.may_have_in_flight && (
+                        <> {t(($) => $['external.api.inFlight'])}</>
+                      )}
                     </p>
-                    {references.data.may_have_in_flight && (
-                      <p className="mt-2">{t(($) => $['external.api.inFlight'])}</p>
-                    )}
                     <p className="mt-2 text-text-tertiary">
                       {t(($) => $['external.deleteDialog.retention'])}
                     </p>
                   </AlertDialogDescription>
+                ) : (
+                  references.isPending && <LoadingPlaceholder className="h-20" />
                 )}
-                {references.isPending && <LoadingPlaceholder className="h-20" />}
               </>
             ) : (
               <AlertDialogDescription>
@@ -414,7 +430,7 @@ export function ExternalAgentActions({
               </Alert>
             )}
           </AlertDialogBody>
-          <AlertDialogFooter>
+          <AlertDialogFooter spacing={deleting ? 'compact' : 'default'}>
             <AlertDialogCancelButton disabled={pending} variant="secondary" size="large">
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
