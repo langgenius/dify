@@ -30,6 +30,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import { upsertStartedPluginTask } from './plugin-task-cache'
 import {
   legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
@@ -730,6 +731,46 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             asset: {
               get: {
                 queryOptions: { context: { silent: true } },
+              },
+            },
+            install: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              pkg: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              github: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+            },
+            upgrade: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
               },
             },
           },

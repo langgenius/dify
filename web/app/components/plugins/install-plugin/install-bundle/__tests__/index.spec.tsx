@@ -49,15 +49,16 @@ vi.mock('@/service/console', async (importOriginal) => {
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
+      'workspaces.current.plugin.upload.github.post': uploadGithub,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.install.marketplace.post': installRequest,
       'workspaces.current.plugin.upload.github.post': uploadGithub,
       'workspaces.current.plugin.install.github.post': installGithub,
       'workspaces.current.plugin.install.pkg.post': installPackage,
       'workspaces.current.plugin.upgrade.marketplace.post': upgrade,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
     }),
   }
 })
