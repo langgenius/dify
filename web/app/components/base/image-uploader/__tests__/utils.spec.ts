@@ -1,3 +1,4 @@
+import type { ConsoleClient } from '@/service/console'
 import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
 import { createInstance } from 'i18next'
@@ -8,6 +9,17 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   upload,
 }))
+const consoleUpload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': consoleUpload,
+    }),
+  }
+})
 const i18n = createInstance()
 beforeAll(async () => {
   await i18n.init({
@@ -19,6 +31,7 @@ beforeAll(async () => {
 })
 beforeEach(() => {
   upload.mockReset().mockResolvedValue({ id: 'uploaded-id' })
+  consoleUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
 })
 
 it.each([
@@ -42,25 +55,48 @@ const callbacks = () => ({
   onErrorCallback: vi.fn<(error?: unknown) => void>(),
 })
 
-it('passes the file and upload destination to the service and reports the server result', async () => {
+it('uploads console images through the files contract and reports the server result', async () => {
   const selected = file()
   const events = callbacks()
-  imageUpload({ file: selected, ...events }, true, '/files/upload')
-  expect(upload).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    true,
-    '/files/upload',
+  imageUpload({ file: selected, ...events })
+  expect(consoleUpload).toHaveBeenCalledExactlyOnceWith(
+    { body: { file: selected } },
+    { context: { silent: true, onUploadProgress: expect.any(Function) } },
   )
-  expect(upload.mock.calls[0]![0].data.get('file')).toBe(selected)
+  expect(upload).not.toHaveBeenCalled()
   await waitFor(() =>
-    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
+    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: 'uploaded-id' }),
+    ),
   )
   expect(events.onErrorCallback).not.toHaveBeenCalled()
 })
 
+it('reports console upload progress as a percentage', () => {
+  const events = callbacks()
+  imageUpload({ file: file(), ...events })
+  consoleUpload.mock.calls[0]![1]!.context!.onUploadProgress!({ loaded: 5, total: 8 })
+  expect(events.onProgressCallback).toHaveBeenCalledExactlyOnceWith(62)
+})
+
+it('uploads public web app images through the public upload transport', async () => {
+  const selected = file()
+  const events = callbacks()
+  imageUpload({ file: selected, ...events }, true)
+  expect(upload).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ data: expect.any(FormData) }),
+    true,
+  )
+  expect(upload.mock.calls[0]![0].data.get('file')).toBe(selected)
+  expect(consoleUpload).not.toHaveBeenCalled()
+  await waitFor(() =>
+    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
+  )
+})
+
 it('forwards a failed upload without reporting success', async () => {
   const error = new Error('Upload failed')
-  upload.mockRejectedValue(error)
+  consoleUpload.mockRejectedValue(error)
   const events = callbacks()
   imageUpload({ file: file(), ...events })
   await waitFor(() => expect(events.onErrorCallback).toHaveBeenCalledExactlyOnceWith(error))
@@ -68,7 +104,7 @@ it('forwards a failed upload without reporting success', async () => {
 })
 
 it.each([true, false])(
-  'only reports a progress percentage when the total is known (%s)',
+  'only reports a public upload progress percentage when the total is known (%s)',
   async (lengthComputable) => {
     upload.mockImplementation(async (options) => {
       options.onprogress?.call(
@@ -78,7 +114,7 @@ it.each([true, false])(
       return { id: 'uploaded-id' }
     })
     const events = callbacks()
-    imageUpload({ file: file(), ...events })
+    imageUpload({ file: file(), ...events }, true)
     if (lengthComputable) expect(events.onProgressCallback).toHaveBeenCalledExactlyOnceWith(62)
     else expect(events.onProgressCallback).not.toHaveBeenCalled()
     await waitFor(() =>

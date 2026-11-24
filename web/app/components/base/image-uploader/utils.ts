@@ -1,6 +1,8 @@
 import type { TFunction } from 'i18next'
 import { ORPCError } from '@orpc/client'
+// oxlint-disable-next-line no-restricted-imports -- The public WebApp upload contract declares no multipart body yet.
 import { upload } from '@/service/base'
+import { consoleClient } from '@/service/console'
 
 /**
  * Get appropriate error message for image upload errors
@@ -30,31 +32,40 @@ type ImageUploadParams = {
   onSuccessCallback: (res: { id: string }) => void
   onErrorCallback: (error?: unknown) => void
 }
-type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
+type ImageUpload = (v: ImageUploadParams, isPublic?: boolean) => void
 export const imageUpload: ImageUpload = (
   { file, onProgressCallback, onSuccessCallback, onErrorCallback },
   isPublic,
-  url,
 ) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const onProgress = (e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor((e.loaded / e.total) * 100)
-      onProgressCallback(percent)
-    }
+  const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+    onProgressCallback(Math.floor((loaded / total) * 100))
   }
 
-  upload(
-    {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      onprogress: onProgress,
-    },
-    isPublic,
-    url,
-  )
-    .then((res: { id: string }) => {
+  let uploading: Promise<{ id: string }>
+  if (isPublic) {
+    const formData = new FormData()
+    formData.append('file', file)
+    // oxlint-disable-next-line typescript/no-deprecated -- The public WebApp upload contract declares no multipart body yet.
+    uploading = upload(
+      {
+        // oxlint-disable-next-line no-restricted-globals -- The legacy public upload transport takes the XHR.
+        xhr: new XMLHttpRequest(),
+        data: formData,
+        onprogress: (event) => {
+          if (event.lengthComputable) onUploadProgress(event)
+        },
+      },
+      true,
+    )
+  } else {
+    uploading = consoleClient.files.upload.post(
+      { body: { file } },
+      { context: { silent: true, onUploadProgress } },
+    )
+  }
+
+  uploading
+    .then((res) => {
       onSuccessCallback(res)
     })
     .catch((error) => {
