@@ -10,6 +10,8 @@ import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 
 type WebAppClientContext = {
   silent?: boolean
+  /** The response is an event stream: no time limit on its first frame. */
+  stream?: boolean
   headers?: Record<string, string>
 }
 
@@ -54,6 +56,7 @@ export const webAppClient: JsonifiedClient<
         fetchCompat: true,
         request: await withURL(input, publicURL),
         silent: context.silent,
+        timeout: context.stream ? false : undefined,
       })
     },
   }),

@@ -151,7 +151,10 @@ describe('streamEvents', () => {
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
     expect(controller).toBeInstanceOf(AbortController)
-    expect(request).toHaveBeenCalledWith({ signal: controller!.signal, context: { silent: true } })
+    expect(request).toHaveBeenCalledWith({
+      signal: controller!.signal,
+      context: { silent: true, stream: true },
+    })
   })
 
   it('ends the stream on an error frame and reports it once', async () => {
@@ -628,5 +631,121 @@ describe('generated client streams', () => {
     expect(request.method).toBe('POST')
     expect(request.signal.aborted).toBe(false)
     controller!.abort()
+  })
+
+  describe('when the first frame arrives after the request timeout', () => {
+    // ky's request timeout covers the time to response headers, which a stream only sends with
+    // its first frame. The legacy SSE helpers had no timeout.
+    const REQUEST_TIMEOUT_MS = 100_000
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /** Answers with the stream only after `delay`, or rejects when the request is aborted. */
+    const stubLateFetch = (delay: number, chunks: string[]) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          (input: Request, init?: RequestInit) =>
+            new Promise<Response>((resolve, reject) => {
+              const signal = init?.signal ?? input.signal
+              const timer = setTimeout(() => resolve(eventStreamResponse(chunks)), delay)
+              signal.addEventListener('abort', () => {
+                clearTimeout(timer)
+                reject(signal.reason)
+              })
+            }),
+        ),
+      )
+    }
+
+    it('still delivers the stream', async () => {
+      vi.useFakeTimers()
+      stubLateFetch(REQUEST_TIMEOUT_MS + 50_000, [
+        frame({ event: 'message', answer: 'late', id: 'm-1', conversation_id: 'c-1' }),
+        frame({ event: 'message_end', id: 'm-1' }),
+      ])
+      const onData = vi.fn()
+      const onError = vi.fn()
+      const onCompleted = vi.fn()
+
+      void sendCompletionMessage(
+        'app-1',
+        {},
+        {
+          onData,
+          onError,
+          onCompleted,
+          onMessageReplace: vi.fn(),
+        },
+      )
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 60_000)
+      vi.useRealTimers()
+
+      await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledWith())
+      expect(onData).toHaveBeenCalledWith('late', true, expect.anything())
+      expect(onError).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('still delivers the workflow generator result', async () => {
+      vi.useFakeTimers()
+      stubLateFetch(REQUEST_TIMEOUT_MS + 50_000, [frame({ event: 'result', graph: {} })])
+      const onResult = vi.fn()
+      const onError = vi.fn()
+      const onCompleted = vi.fn()
+
+      generateWorkflowStream(
+        { mode: 'workflow', instruction: 'Build' } as Parameters<typeof generateWorkflowStream>[0],
+        { onResult, onError, onCompleted },
+      )
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 60_000)
+      vi.useRealTimers()
+
+      await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
+      expect(onResult).toHaveBeenCalledWith({ event: 'result', graph: {} })
+      expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('keeps the time limit for JSON calls', async () => {
+      vi.useFakeTimers()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      stubLateFetch(REQUEST_TIMEOUT_MS + 50_000, [])
+      const result = consoleClient.workflowGenerate
+        .post({ body: { mode: 'workflow', instruction: 'Build' } as never })
+        .catch((error: unknown) => error)
+
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS + 1_000)
+      vi.useRealTimers()
+
+      expect(await result).toMatchObject({ name: 'TimeoutError' })
+    })
+
+    it('can still be aborted while waiting', async () => {
+      vi.useFakeTimers()
+      stubLateFetch(REQUEST_TIMEOUT_MS + 50_000, [frame({ event: 'message_end', id: 'm-1' })])
+      const onError = vi.fn()
+      const onCompleted = vi.fn()
+      let controller: AbortController | undefined
+
+      streamEvents(
+        (options) =>
+          consoleClient.apps.byAppId.completionMessages.post(
+            { params: { app_id: 'app-1' }, body: { inputs: {}, response_mode: 'streaming' } },
+            options,
+          ),
+        { onError, onCompleted, getAbortController: (c) => (controller = c) },
+      )
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS / 2)
+      controller!.abort()
+      vi.useRealTimers()
+
+      await vi.waitFor(() =>
+        expect(onError).toHaveBeenCalledWith(expect.stringContaining('AbortError')),
+      )
+      expect(onCompleted).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
+    })
   })
 })

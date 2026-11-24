@@ -265,6 +265,11 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  /**
+   * `false` lifts the time limit on the response headers. Event streams send their headers with
+   * the first frame, which can take longer than the limit; abort them through their signal.
+   */
+  timeout?: false
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
