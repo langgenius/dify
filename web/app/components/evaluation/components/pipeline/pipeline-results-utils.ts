@@ -6,6 +6,8 @@ import type { EvaluationResourceState } from '../../types'
 import { formatTime } from '@/utils/time'
 
 const PREFERRED_QUERY_INPUT_KEYS = ['query', 'question', 'input']
+// Keep this preview node label in English across UI languages.
+const CUSTOM_EVALUATOR_LABEL = 'Custom Evaluator'
 
 export type MetricColumn = {
   /** Unique column key: the metric name, plus the node id when the metric covers several nodes. */
@@ -15,6 +17,11 @@ export type MetricColumn = {
   /** Set only when the run scores this metric on several nodes, so each node gets its own column. */
   nodeId?: string
   nodeLabel?: string
+}
+
+type MetricNode = {
+  title: string
+  isCustomEvaluator: boolean
 }
 
 const normalizeMetricKey = (value: string) => value.toLowerCase().replace(/[\s_-]/g, '')
@@ -149,31 +156,48 @@ export const getMetricColumns = (
   const configLabels = new Map(
     resource.metrics.map((metric) => [normalizeMetricKey(metric.optionId), metric.label] as const),
   )
-  const metricsByName = new Map<string, { name: string; nodes: Map<string, string> }>()
+  const metricsByName = new Map<string, { name: string; nodes: Map<string, MetricNode> }>()
 
   items.forEach((item) => {
     item.metrics?.forEach((metric) => {
       if (!metric.name) return
 
       const normalizedName = normalizeMetricKey(metric.name)
-      const entry = metricsByName.get(normalizedName) ?? { name: metric.name, nodes: new Map() }
-      const nodeId = metric.node_info?.node_id
+      const entry = metricsByName.get(normalizedName) ?? {
+        name: metric.name,
+        nodes: new Map<string, MetricNode>(),
+      }
+      const nodeInfo = metric.node_info
+      const nodeId = nodeInfo?.node_id
       if (nodeId && !entry.nodes.has(nodeId))
-        entry.nodes.set(nodeId, metric.node_info?.title || nodeId)
+        entry.nodes.set(nodeId, {
+          title: nodeInfo?.title || nodeId,
+          isCustomEvaluator: nodeInfo?.type === 'customized',
+        })
       metricsByName.set(normalizedName, entry)
     })
   })
 
   return Array.from(metricsByName.entries()).flatMap(([normalizedName, { name, nodes }]) => {
     const label = configLabels.get(normalizedName) ?? humanizeMetricName(name)
-    if (nodes.size < 2) return [{ id: name, metricName: name, label }]
+    if (nodes.size < 2) {
+      const node = nodes.values().next().value
+      return [
+        {
+          id: name,
+          metricName: name,
+          label,
+          ...(node?.isCustomEvaluator && { nodeLabel: CUSTOM_EVALUATOR_LABEL }),
+        },
+      ]
+    }
 
-    return Array.from(nodes.entries()).map(([nodeId, nodeLabel]) => ({
+    return Array.from(nodes.entries()).map(([nodeId, node]) => ({
       id: `${name}:${nodeId}`,
       metricName: name,
       label,
       nodeId,
-      nodeLabel,
+      nodeLabel: node.isCustomEvaluator ? CUSTOM_EVALUATOR_LABEL : node.title,
     }))
   })
 }

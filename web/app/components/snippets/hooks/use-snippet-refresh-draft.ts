@@ -4,7 +4,7 @@ import type { SnippetWorkflow } from '@/types/snippet'
 import { useCallback } from 'react'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { fetchSnippetDraftWorkflow } from '@/service/use-snippet-workflows'
+import { fetchSnippetDraftWorkflow } from '@/service/snippet-queries'
 import { useSnippetDraftStore } from '../draft-store'
 
 export const useSnippetRefreshDraft = (snippetId: string) => {

@@ -47,6 +47,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueStopEvent,
 )
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from domain.tracing.trace_run_agg import TraceInvocation, TraceRunState
@@ -925,7 +926,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
         base_app_queue_manager.redis_client, "setex", lambda key, _ttl, value: flags.__setitem__(key, value)
     )
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+        "core.app.llm.model_access.resolve_model_runtime_profile", lambda **_kwargs: ModelRuntimeProfile(None, [])
     )
     task_id = identifier("stop-at-final-publish")
     queue_manager = MessageBasedAppQueueManager(

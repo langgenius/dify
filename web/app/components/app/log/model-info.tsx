@@ -49,7 +49,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
 
   return (
     <div className={cn('flex items-center rounded-lg')}>
-      <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pr-2 pl-1.5">
+      <div className="me-px flex h-8 shrink-0 items-center gap-1 rounded-s-lg bg-components-input-bg-normal ps-1.5 pe-2">
         <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
         <ModelName modelItem={currentModel} showMode />
       </div>
@@ -60,7 +60,7 @@ const ModelInfo: FC<Props> = ({ model }) => {
               <button type="button" className="group block border-none bg-transparent p-0">
                 <div
                   className={cn(
-                    'cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
+                    'cursor-pointer rounded-e-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
                     'group-data-popup-open:bg-components-button-tertiary-bg-hover',
                   )}
                 >

@@ -48,7 +48,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
         {expand && (
           <>
             <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-0.5">
-              <div className="flex w-full min-w-0 items-center gap-2 pr-1">
+              <div className="flex w-full min-w-0 items-center gap-2 pe-1">
                 <div
                   className="min-w-0 flex-1 truncate system-md-semibold text-text-secondary"
                   title={dataset.name}

@@ -32,6 +32,10 @@ class QuotaExceededError(ValueError):
     description = "Quota Exceeded"
 
 
+class InsufficientHostedCreditsError(QuotaExceededError):
+    """Billing declined the full hosted-credit reservation without charging or reserving credits."""
+
+
 class AppInvokeQuotaExceededError(ValueError):
     """
     Custom exception raised when the quota for an app has been exceeded.

@@ -16,7 +16,7 @@ vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
+  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
 }))
 
 // Default block/publish/upload config queries are covered by use-pipeline-config.spec.
@@ -79,9 +79,7 @@ describe('usePipelineInit', () => {
     const { result, store } = renderPipelineInit()
 
     expect(result.current).toEqual({ data: undefined, isLoading: true })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/test-pipeline-id/workflows/draft',
-    )
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith('test-pipeline-id')
     expect(store.getState().isWorkflowDataLoaded).toBe(false)
 
     await act(async () => pending.resolve(draft))

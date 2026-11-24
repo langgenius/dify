@@ -40,10 +40,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.workflows.draft.variables.byVariableId.reset.put': requests.reset,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.workflows.draft.conversationVariables.get': requests.conversation,
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'workspaces.current.tools.builtin.get': async () => [],
