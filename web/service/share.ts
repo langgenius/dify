@@ -39,7 +39,7 @@ import {
 } from '@/features/app-access-error/state'
 import { consoleClient } from '@/service/console'
 import { selectAppParameters } from '@/service/console/app-parameters-select'
-import { getPublic, request } from './base'
+import { request } from './base'
 import { streamEvents } from './event-stream'
 import { resolveWebAppAddress } from './webapp-address'
 import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
@@ -384,57 +384,39 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/saml/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.samlLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/oidc/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.oidcLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/oauth2/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.oAuth2Login({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchMembersSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/members/saml/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.members.samlLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchMembersOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/members/oidc/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.members.oidcLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
-  return getPublic('/enterprise/sso/members/oauth2/login', {
-    params: {
-      app_code: appCode,
-      redirect_url: redirectUrl,
-    },
-  }) as Promise<{ url: string }>
+  return webAppClient.enterprise.sso.members.oAuth2Login({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId = '') => {
