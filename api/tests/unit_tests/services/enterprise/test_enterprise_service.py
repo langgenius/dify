@@ -8,6 +8,7 @@ Covers:
 from datetime import datetime
 from unittest.mock import patch
 
+import httpx
 import pytest
 
 from enums import DeploymentEdition
@@ -575,6 +576,20 @@ class TestVerifyMCPIdentityToken:
         with patch(f"{MODULE}.EnterpriseRequest") as req:
             req.send_request.side_effect = error
             with pytest.raises(MCPTokenError, match=str(error)):
+                EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            httpx.ConnectError("connection refused"),
+            httpx.ReadTimeout("timed out"),
+            ValueError("Expecting value: line 1 column 1 (char 0)"),
+        ],
+    )
+    def test_unreachable_or_non_json_enterprise_maps_to_token_error(self, error: Exception) -> None:
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = error
+            with pytest.raises(MCPTokenError, match=type(error).__name__):
                 EnterpriseService.verify_mcp_identity_token("id.token.jwt", "app-uuid")
 
     @pytest.mark.parametrize("response", ["not-a-dict", {}, {"email": ""}])
