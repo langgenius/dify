@@ -1519,7 +1519,9 @@ export type WebMessageListItemWritable = {
 }
 
 export type PostAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/audio-to-text'
@@ -2688,9 +2690,7 @@ export type GetSavedMessagesResponse = GetSavedMessagesResponses[keyof GetSavedM
 export type PostSavedMessagesData = {
   body: SavedMessageCreatePayload
   path?: never
-  query: {
-    message_id: string
-  }
+  query?: never
   url: '/saved-messages'
 }
 

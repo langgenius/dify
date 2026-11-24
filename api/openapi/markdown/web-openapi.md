@@ -17,6 +17,12 @@ Web application API operations
 
 Convert audio file to text using speech-to-text service.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -957,12 +963,6 @@ Retrieve paginated list of saved messages for a completion application.
 
 ### [POST] /saved-messages
 Save a specific message for later reference.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| message_id | query | Message UUID to save | Yes | string |
 
 #### Request Body
 
