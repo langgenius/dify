@@ -39,6 +39,7 @@ from services.plugin.dispatch_identity import plugin_dispatch_headers
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 _MANAGED_MODEL_ROUTE = "_managed_model_route"
+_HOSTED_REDIRECT_VERSION = 2
 _HOSTED_REDIRECT_OPERATIONS = frozenset(
     (
         "llm/invoke",
@@ -79,7 +80,7 @@ class PluginModelClient(BasePluginClient):
                 raise ValueError("Managed model route does not match the invocation.")
             data = {key: value for key, value in data.items() if key != _MANAGED_MODEL_ROUTE}
             data["redirect"] = self._tokener_target(route["tenant_id"], route["model_type"], route["model"])
-            path = f"{prefix}/dispatch/redirect/v1/{operation}"
+            path = f"{prefix}/dispatch/redirect/v{_HOSTED_REDIRECT_VERSION}/{operation}"
         elif isinstance(data, dict) and "redirect" in data:
             prefix, separator, operation = path.partition("/dispatch/")
             if not separator or operation.startswith("redirect/") or "validate" in operation:
@@ -98,15 +99,15 @@ class PluginModelClient(BasePluginClient):
 
     @staticmethod
     def _tokener_target(tenant_id: str, model_type: str, model: str) -> dict[str, Any]:
-        """Load the ready, isolated canary binding without forwarding source credentials."""
+        """Load an admitted canary's managed key and stable target; daemon resolves the signed installation."""
         try:
             provider = ModelProviderID(CANARY_STAGING_PROVIDER)
             repository = TokenerBootstrapRepository(sessions=session_factory.create_session)
             binding = repository.ready_dispatch_binding(tenant_id, str(provider))
             if binding is None:
                 raise ValueError("No ready binding.")
-            identifier, credential_id, encrypted = binding
-            if identifier.partition(":")[0] != provider.plugin_id:
+            enrollment_identifier, credential_id, encrypted = binding
+            if enrollment_identifier.partition(":")[0] != provider.plugin_id:
                 raise ValueError("Invalid target package.")
             runtime_check_credential_policy_compliance(
                 credential_id=credential_id, provider=str(provider), credential_type=PluginCredentialType.MODEL
@@ -119,11 +120,10 @@ class PluginModelClient(BasePluginClient):
         except Exception:
             raise ValueError("Managed model routing is temporarily unavailable.") from None
         return {
-            "version": 1,
+            "version": _HOSTED_REDIRECT_VERSION,
             "route_id": str(uuid4()),
             "target": {
                 "plugin_id": provider.plugin_id,
-                "expected_unique_identifier": identifier,
                 "provider": provider.provider_name,
                 "model_type": model_type,
                 "model": model,

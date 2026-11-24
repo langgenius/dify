@@ -13,7 +13,7 @@ from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration,
 from repositories.tokener_signup_canary_repository import CANARY_STAGING_PROVIDER
 
 
-def test_hosted_signup_uses_only_pinned_target_and_preserves_raw_payload(
+def test_hosted_signup_routes_by_plugin_id_without_transmitting_enrollment_uid(
     sqlite_session: Session, mocker: MockerFixture
 ) -> None:
     uid = "langgenius/tokener-staging:0.4.4@signup-test"
@@ -72,12 +72,12 @@ def test_hosted_signup_uses_only_pinned_target_and_preserves_raw_payload(
         None,
     )
     payload = json.loads(body)
-    assert url.endswith(f"/plugin/{tenant.id}/dispatch/redirect/v1/llm/invoke")
+    assert url.endswith(f"/plugin/{tenant.id}/dispatch/redirect/v2/llm/invoke")
+    assert payload["redirect"]["version"] == 2
     assert payload["data"] == {**raw, "credentials": {}}
     assert payload["app_id"] == "app-id"
     assert payload["redirect"]["target"] == {
         "plugin_id": "langgenius/tokener-staging",
-        "expected_unique_identifier": uid,
         "provider": "tokener",
         "model_type": "llm",
         "model": "gpt-4o-mini",
