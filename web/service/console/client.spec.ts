@@ -2489,6 +2489,49 @@ describe('consoleQuery resourceAccessTokens mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
   })
 
+  it('removes every relation for a deleted token from matching list caches', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = createQueryClient()
+    const tokens = consoleQuery.resourceAccessTokens
+    const key = (keyword?: string) =>
+      tokens.get.queryKey({ input: { query: { keyword, page: 1, limit: 20 } } })
+    const deleted = {
+      token_id: 'token-1',
+      relation_id: 'relation-1',
+      created_at: 1,
+      masked_token: 'masked',
+      name: 'Token',
+      resource_type: 'app' as const,
+      resource_id: 'app-1',
+      resource_name: 'App',
+      track_id: 'track-1',
+    }
+    const remaining = { ...deleted, token_id: 'token-2', relation_id: 'relation-3' }
+    const unaffected = { ...tokenList, data: [remaining], total: 1 }
+    client.setQueryData(key(), {
+      ...tokenList,
+      data: [deleted, { ...deleted, relation_id: 'relation-2' }, remaining],
+      total: 2,
+    })
+    client.setQueryData(key('Token'), { ...tokenList, data: [deleted], total: 1 })
+    client.setQueryData(key('Other'), unaffected)
+
+    const mutation = new MutationObserver(
+      client,
+      tokens.byTokenId.relations.byRelationId.delete.mutationOptions({
+        mutationFn: async () => undefined,
+      }),
+    )
+    await mutation.mutate({
+      params: { token_id: deleted.token_id, relation_id: deleted.relation_id },
+    })
+
+    expect(client.getQueryData(key())).toEqual(unaffected)
+    expect(client.getQueryData(key('Token'))).toEqual(tokenList)
+    expect(client.getQueryData(key('Other'))).toEqual(unaffected)
+    expect(client.getQueryState(key('Other'))?.isInvalidated).toBe(true)
+  })
+
   it('should leave the token list alone when the mutation fails', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()

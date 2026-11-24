@@ -76,15 +76,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.workflow.get': getWorkflowTools,
       'workspaces.current.tools.mcp.get': getMCPTools,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.api.add.post': api.createCustom,
-      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: createPluginEntity().declaration,
       }),
       'workspaces.current.plugin.install.marketplace.post': api.install,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.toolProvider.api.add.post': api.createCustom,
+      'workspaces.current.toolProvider.api.schema.post': api.parseSchema,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',

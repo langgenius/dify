@@ -18,14 +18,14 @@ from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
-from services.app.agent_app_contracts import (
+from services.agent.sandbox_contracts import (
     AgentSandboxBinding,
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     SandboxCaller,
     WorkflowSandboxAppNotFoundError,
 )
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 
 class AgentSandboxRepository:

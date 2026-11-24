@@ -453,7 +453,13 @@ export default function IpPoliciesPage() {
             handleDialogOpenChange(open, details, createGroup.isPending)
           }
         >
-          <IpPolicyDialogContent finalFocus={() => createButtonRef.current ?? titleRef.current}>
+          <IpPolicyDialogContent
+            finalFocus={() =>
+              isEmpty && queryClient.getQueryData(groupsQuery.queryKey)?.groups.length
+                ? titleRef.current
+                : (createButtonRef.current ?? titleRef.current)
+            }
+          >
             <IpPolicyForm
               mode="create"
               isPending={createGroup.isPending}

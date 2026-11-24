@@ -442,7 +442,7 @@ function CreateSourceSetupSession({
                   type="button"
                   variant="ghost-accent"
                   size="small"
-                  className="ml-auto shrink-0"
+                  className="ms-auto shrink-0"
                   loading={stoppingPreview}
                   onClick={() => void stopPreview()}
                 >

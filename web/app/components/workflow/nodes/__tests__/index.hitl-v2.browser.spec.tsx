@@ -1,6 +1,5 @@
 import type { HumanInputV2NodeType } from '../human-input-v2/types'
 import type { HumanInputNodeType } from '../human-input/types'
-import { ORPCError } from '@orpc/client'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import ReactFlow, { useNodes } from 'reactflow'
 import { page } from 'vite-plus/test/browser'
@@ -10,7 +9,7 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createNode } from '../../__tests__/fixtures'
 import {
   createStoresFromOptions,
@@ -27,31 +26,6 @@ vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_HITL_IM: true,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.humanInput.v2.contacts.get': async () => ({
-        data: [],
-        total: 0,
-        page: 1,
-        limit: 1,
-      }),
-      'workspaces.current.humanInput.v2.contactOptions.get': async () => ({
-        data: [],
-        total: 0,
-        page: 1,
-        limit: 20,
-      }),
-      'snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get': async () => {
-        throw new ORPCError('NOT_FOUND', { status: 404 })
-      },
-    }),
-  }
-})
-
 const legacy: HumanInputNodeType = {
   title: 'Approval',
   desc: '',
@@ -86,7 +60,43 @@ function SelectedPanel() {
 
 it('replaces the visible panel configuration on migration and undo without closing the selected node', async () => {
   await page.viewport(1400, 1000)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            humanInput: {
+              v2: {
+                contacts: { get: () => ({ data: [], total: 0, page: 1, limit: 1 }) },
+                contactOptions: { get: () => ({ data: [], total: 0, page: 1, limit: 20 }) },
+              },
+            },
+          },
+        },
+        snippets: {
+          bySnippetId: {
+            workflows: {
+              draft: {
+                nodes: {
+                  byNodeId: {
+                    lastRun: {
+                      get: () => {
+                        throw apiError({
+                          status: 404,
+                          code: 'NOT_FOUND',
+                          message: 'Node has not run yet',
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const { queryClient } = createConsoleQueryWrapper({
     queryClient: createChannelsQueryClient([]),
     appDslVersion: '0.6.0',
@@ -108,7 +118,8 @@ it('replaces the visible panel configuration on migration and undo without closi
   })
   const Wrapper = createWorkflowWrapper(stores, undefined, queryClient, {
     kind: 'snippet',
-    snippetId: 'approval-test',
+    // Snippet routes take UUID ids.
+    snippetId: '00000000-0000-4000-8000-000000000001',
   })
   const owner = (data: HumanInputNodeType | HumanInputV2NodeType) => (
     <NuqsTestingAdapter>

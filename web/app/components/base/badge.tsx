@@ -34,7 +34,7 @@ const Badge = ({
       )}
     >
       {hasRedCornerMark && (
-        <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm"></span>
+        <span className="absolute -inset-e-0.5 -top-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm"></span>
       )}
       {children || text}
     </Component>

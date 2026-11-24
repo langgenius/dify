@@ -205,8 +205,14 @@ def test_list_comments_resolves_accounts_and_participants(
     assert summary.resolved_by_account.name == "Resolver"
     assert summary.reply_count == 2
     assert summary.mention_count == 2
-    # Creator, repliers, then mentioned users, each once; accounts that no longer exist are skipped.
+    assert [participant.id for participant in summary.participants] == [OWNER_ID, USER_3_ID]
+
+    _persist(sqlite_session, WorkflowCommentReply(comment_id=comment.id, content="thanks", created_by=USER_4_ID))
+
+    [summary] = repository.list_comments(workspace_id=TENANT_ID, app_id=APP_ID)
     assert [participant.id for participant in summary.participants] == [OWNER_ID, USER_3_ID, USER_4_ID]
+    assert summary.reply_count == 3
+    assert summary.mention_count == 2
 
 
 def test_list_comments_is_empty_for_an_app_without_comments(repository: WorkflowCommentRepository) -> None:
@@ -251,6 +257,38 @@ def test_get_comment_returns_thread_with_accounts(
     assert mention_record.reply_id == reply.id
     assert mention_record.mentioned_user_account is not None
     assert mention_record.mentioned_user_account.id == OWNER_ID
+
+
+def test_get_comment_keeps_replies_in_creation_order_after_an_edit(
+    sqlite_session: Session, repository: WorkflowCommentRepository
+) -> None:
+    comment = _comment()
+    _persist(sqlite_session, comment)
+    first = WorkflowCommentReply(comment_id=comment.id, content="first", created_by=OWNER_ID)
+    second = WorkflowCommentReply(comment_id=comment.id, content="second", created_by=OWNER_ID)
+    last = WorkflowCommentReply(comment_id=comment.id, content="last", created_by=OWNER_ID)
+    first.id = "55555555-5555-5555-5555-555555555551"
+    second.id = "55555555-5555-5555-5555-555555555552"
+    last.id = "55555555-5555-5555-5555-555555555553"
+    first.created_at = second.created_at = datetime(2024, 1, 1)
+    last.created_at = datetime(2024, 1, 2)
+    _persist(sqlite_session, last, second, first)
+
+    with _change(repository, comment.id) as changed:
+        changed.edit_reply(
+            reply_id=second.id,
+            actor_id=OWNER_ID,
+            content=WorkflowCommentContent("edited"),
+            mentions=_mentions(),
+            now=NOW,
+        )
+
+    detail = repository.get_comment(workspace_id=TENANT_ID, app_id=APP_ID, comment_id=comment.id)
+    assert [(reply.id, reply.content) for reply in detail.replies] == [
+        (first.id, "first"),
+        (second.id, "edited"),
+        (last.id, "last"),
+    ]
 
 
 @pytest.mark.parametrize(
