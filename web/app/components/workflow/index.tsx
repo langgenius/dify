@@ -31,7 +31,6 @@ import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -130,6 +129,7 @@ export type WorkflowProps = {
   edges: Edge[]
   viewport?: Viewport
   children?: React.ReactNode
+  sidePanel?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
   isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
@@ -143,6 +143,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     edges: originalEdges,
     viewport,
     children,
+    sidePanel,
     onWorkflowDataUpdate,
     isCollaborationEnabled = false,
     cursors,
@@ -161,17 +162,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     const controlMode = useStore((s) => s.controlMode)
     const nodeAnimation = useStore((s) => s.nodeAnimation)
     const showConfirm = useStore((s) => s.showConfirm)
-    const workflowCanvasHeight = useStore((s) => s.workflowCanvasHeight)
-    const bottomPanelHeight = useStore((s) => s.bottomPanelHeight)
     const setWorkflowCanvasWidth = useStore((s) => s.setWorkflowCanvasWidth)
     const setWorkflowCanvasHeight = useStore((s) => s.setWorkflowCanvasHeight)
     const workflowCanvasSizeRef = useRef<{ width?: number; height?: number }>({})
     const workflowCanvasResizeFrameRef = useRef<number | undefined>(undefined)
-    const controlHeight = useMemo(() => {
-      if (!workflowCanvasHeight) return '100%'
-      return workflowCanvasHeight - bottomPanelHeight
-    }, [workflowCanvasHeight, bottomPanelHeight])
-
     // update workflow Canvas width and height
     useEffect(() => {
       if (workflowContainerRef.current) {
@@ -556,45 +550,6 @@ export const Workflow: FC<WorkflowProps> = memo(
         )}
         ref={workflowContainerRef}
       >
-        <CandidateNode />
-        <CommentManager />
-        <div
-          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
-          style={{ height: controlHeight }}
-        >
-          <Control />
-        </div>
-        <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
-        <HelpLine />
-        <AlertDialog
-          open={!!showConfirm}
-          onOpenChange={(open) => {
-            if (!open) {
-              showConfirm?.onCancel?.()
-              setShowConfirm(undefined)
-            }
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
-              {showConfirm?.desc && (
-                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
-              )}
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
-        <WorkflowCommentLayer />
-        {children}
         <WorkflowContextmenu>
           <WorkflowCanvas
             nodeTypes={nodeTypes}
@@ -654,6 +609,51 @@ export const Workflow: FC<WorkflowProps> = memo(
             )}
           </WorkflowCanvas>
         </WorkflowContextmenu>
+        <HelpLine />
+        <CandidateNode />
+        <CommentManager />
+        <div className="pointer-events-none absolute inset-0 isolate">
+          {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
+          <WorkflowCommentLayer />
+        </div>
+        <div className="workflow-editor-controls pointer-events-none absolute inset-0 isolate">
+          <div className="flex w-12 items-center-safe justify-center p-1 ps-2 [grid-area:toolbar]">
+            <Control />
+          </div>
+          <div className="@container/variable-inspect min-w-100 [grid-area:bottom]">
+            <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
+          </div>
+          {sidePanel && (
+            <div className="mt-14 mb-1 flex min-h-0 [grid-area:side-panel]">{sidePanel}</div>
+          )}
+        </div>
+        {children}
+        <AlertDialog
+          open={!!showConfirm}
+          onOpenChange={(open) => {
+            if (!open) {
+              showConfirm?.onCancel?.()
+              setShowConfirm(undefined)
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
+              {showConfirm?.desc && (
+                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
+              )}
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={showConfirm?.onConfirm}>
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <SyncingDataModal />
       </div>
     )

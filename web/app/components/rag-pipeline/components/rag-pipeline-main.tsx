@@ -19,6 +19,7 @@ import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { usePipelineRefreshDraft } from '../hooks/use-pipeline-refresh-draft'
 import { usePipelineRunByCanEdit } from '../hooks/use-pipeline-run'
 import { usePipelineStartRunByCanEdit } from '../hooks/use-pipeline-start-run'
+import RagPipelinePanel from './panel'
 import RagPipelineChildren from './rag-pipeline-children'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
@@ -185,6 +186,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
       viewport={viewport}
       hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
+      sidePanel={<RagPipelinePanel />}
     >
       <RagPipelineChildren />
     </WorkflowWithInnerContext>

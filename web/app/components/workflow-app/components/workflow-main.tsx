@@ -41,6 +41,7 @@ import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
+import WorkflowPanel from './workflow-panel'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -554,6 +555,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             cursors={filteredCursors}
             myUserId={myUserId}
             onlineUsers={onlineUsers}
+            sidePanel={<WorkflowPanel />}
           >
             <WorkflowChildren />
             {isCollaborationEnabled &&
@@ -561,7 +563,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                 <div
                   data-testid="collaboration-graph-loading"
                   className={cn(
-                    'absolute inset-0 z-20 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
+                    'absolute inset-0 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
                     !joinFailure && 'cursor-wait',
                   )}
                   style={{ paddingInlineEnd: rightPanelWidth }}

@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
-import { cn } from '@langgenius/dify-ui/cn'
 import dynamic from 'next/dynamic'
 import { memo, useEffect, useRef } from 'react'
 import { useStore as useReactflow } from 'reactflow'
@@ -123,7 +122,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
       ref={rightPanelRef}
       data-workflow-right-panel
       tabIndex={-1}
-      className={cn('absolute inset-e-0 top-14 bottom-1 z-10 flex outline-hidden')}
+      className="pointer-events-auto relative isolate flex outline-hidden"
       key={`${isRestoring}`}
     >
       {components?.left}
