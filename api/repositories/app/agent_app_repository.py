@@ -13,6 +13,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import filter_uuid_strings
 from machinery.context import RequestContext
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -29,7 +30,6 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids, valid_knowledge_dataset_ids
 from models.agent_soul_state import build_initial_agent_soul
 from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus
@@ -460,7 +460,7 @@ class AgentAppRepository:
         session: Session, *, tenant_id: str, dataset_ids: list[str]
     ) -> dict[str, AgentComposerDatasetLabel]:
         """Return labels for valid dataset IDs owned by the tenant."""
-        ids = valid_knowledge_dataset_ids(dataset_ids)
+        ids = filter_uuid_strings(dataset_ids)
         if not ids:
             return {}
         rows = session.execute(
@@ -484,9 +484,7 @@ class AgentAppRepository:
             except AgentComposerAgentMissingError:
                 return AgentComposerCandidateSource(soul=None, datasets={})
             soul = AgentSoulConfig.model_validate(read_composer_state(session, agent=agent).agent_soul)
-            datasets = self._composer_datasets(
-                session, tenant_id=tenant_id, dataset_ids=list_agent_soul_knowledge_dataset_ids(soul)
-            )
+            datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=soul.knowledge.dataset_ids())
             return AgentComposerCandidateSource(soul=soul, datasets=datasets)
 
     def get_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildDraft:

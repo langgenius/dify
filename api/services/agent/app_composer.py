@@ -5,7 +5,6 @@ from typing import Protocol
 
 from machinery.context import RequestContext
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids
 from models.agent_soul_state import backfill_cli_tool_ids
 from services.agent.app_composer_store import AgentAppComposerStore, AgentComposerState
 from services.agent.composer_candidates import soul_candidates
@@ -81,7 +80,7 @@ class AgentAppComposer:
         self.get(context, agent_id)
         ComposerConfigValidator.validate_publish_payload(payload)
         if payload.agent_soul is not None:
-            ids = list_agent_soul_knowledge_dataset_ids(payload.agent_soul)
+            ids = payload.agent_soul.knowledge.dataset_ids()
             missing = (
                 self._store.missing_composer_datasets(tenant_id=context.active_workspace_id, dataset_ids=ids)
                 if ids
