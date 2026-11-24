@@ -51,6 +51,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': api.credentials,
+      'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.toolProviders.get': api.providers,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
@@ -71,8 +73,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.tools,
-      'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
-      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
     }),
   }

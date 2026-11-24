@@ -1,6 +1,6 @@
+import type { TriggerProviderApiEntity } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RefObject } from 'react'
 import type { ReactFlowInstance } from 'reactflow'
-import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { Shape } from '@/app/components/workflow/store'
@@ -19,7 +19,6 @@ import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { convertToTriggerWithProvider } from '@/service/use-triggers'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -74,9 +73,6 @@ vi.mock('@/service/console', async (importOriginal) => {
         file_upload_limit: 5,
       }),
       'files.supportType.get': async () => ({ allowed_extensions: ['txt'] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': api.run,
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [
         {
           id: 'subscription-1',
@@ -90,6 +86,9 @@ vi.mock('@/service/console', async (importOriginal) => {
           workflows_in_use: 0,
         },
       ],
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': api.run,
       'apps.byAppId.workflows.draft.nodes.byNodeId.variables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
       'rag.pipelines.byPipelineId.workflows.draft.variables.get': async () => ({
@@ -160,7 +159,7 @@ function renderPanel({
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
     [...consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} })],
-    triggers.map(convertToTriggerWithProvider),
+    triggers,
   )
   for (const trigger of triggers) {
     queryClient.setQueryData(
