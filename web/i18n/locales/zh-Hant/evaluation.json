@@ -103,7 +103,6 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
-  "judgeFramework.description": "選擇用於計算內建指標的評估函式庫。不同框架支援的指標不同。",
   "judgeFramework.title": "判定框架",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

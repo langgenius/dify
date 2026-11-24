@@ -103,7 +103,6 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
-  "judgeFramework.description": "組み込みメトリクスを計算するライブラリを選択します。フレームワークごとに対応するメトリクスが異なります。",
   "judgeFramework.title": "評価フレームワーク",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

@@ -103,7 +103,6 @@
   "history.status.pending": "等待中",
   "history.status.running": "运行中",
   "history.title": "测试历史",
-  "judgeFramework.description": "选择用于计算内置指标的评估库。不同框架支持的指标不同。",
   "judgeFramework.title": "判定框架",
   "judgeModel.description": "选择用于打分和判定评测结果的模型。",
   "judgeModel.title": "判定模型",

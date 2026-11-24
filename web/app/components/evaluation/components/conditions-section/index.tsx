@@ -30,7 +30,6 @@ const ConditionsSection = ({ resourceType, resourceId }: EvaluationResourceProps
       <InlineSectionHeader
         title={t(($) => $['conditions.title'])}
         tooltip={t(($) => $['conditions.description'])}
-        docPath="/use-dify/evaluate/run-evaluations#decide-what-counts-as-a-pass"
       />
       <div className="mt-2 space-y-4">
         {resource.judgmentConfig.conditions.length === 0 && (

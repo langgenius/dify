@@ -2,10 +2,6 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowKindChangeDialog } from '../built-in-publisher/workflow-kind-change-dialog'
 
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
-}))
-
 describe('WorkflowKindChangeDialog', () => {
   it('stays closed without a target kind', () => {
     render(<WorkflowKindChangeDialog targetKind={null} onCancel={vi.fn()} onConfirm={vi.fn()} />)
@@ -28,28 +24,6 @@ describe('WorkflowKindChangeDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: /operation\.confirm/ }))
 
     expect(onConfirm).toHaveBeenCalledWith(targetKind)
-  })
-
-  it('links the evaluation workflow guide only when switching to evaluation', () => {
-    const { rerender } = render(
-      <WorkflowKindChangeDialog targetKind="evaluation" onCancel={vi.fn()} onConfirm={vi.fn()} />,
-    )
-
-    const link = within(screen.getByRole('alertdialog')).getByRole('link', {
-      name: /operation\.learnMore/,
-    })
-    expect(link).toHaveAttribute(
-      'href',
-      'https://docs.example.com/use-dify/evaluate/custom-evaluators#publish-it-as-an-evaluation-workflow',
-    )
-    expect(link).toHaveAttribute('target', '_blank')
-
-    rerender(
-      <WorkflowKindChangeDialog targetKind="standard" onCancel={vi.fn()} onConfirm={vi.fn()} />,
-    )
-    expect(
-      within(screen.getByRole('alertdialog')).queryByRole('link', { name: /operation\.learnMore/ }),
-    ).not.toBeInTheDocument()
   })
 
   it('cancels without switching', async () => {

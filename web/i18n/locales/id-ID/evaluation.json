@@ -103,7 +103,6 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
-  "judgeFramework.description": "Pilih pustaka yang menghitung metrik bawaan. Setiap framework mendukung kumpulan metrik yang berbeda.",
   "judgeFramework.title": "Kerangka evaluasi",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

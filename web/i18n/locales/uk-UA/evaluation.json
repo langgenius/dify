@@ -103,7 +103,6 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
-  "judgeFramework.description": "Виберіть бібліотеку для обчислення вбудованих метрик. Кожен фреймворк підтримує власний набір метрик.",
   "judgeFramework.title": "Фреймворк оцінювання",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",
