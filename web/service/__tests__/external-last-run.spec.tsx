@@ -1,7 +1,7 @@
 import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
-import { useLastRun } from '../use-workflow'
+import { lastRunQueryOptions } from '../workflow-queries'
 
 const api = vi.hoisted(() => ({ read: vi.fn() }))
 // boundary: only generated remote LastRun GET responses are replaced; real query keys and observers own polling.
@@ -41,11 +41,12 @@ it('ignores a previous execution and reads the accepted node-debug execution thr
     .mockResolvedValue(execution('succeeded'))
   const { result } = renderHook(
     () =>
-      useLastRun(
-        { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
-        'node-1',
-        true,
-        'current',
+      useQuery(
+        lastRunQueryOptions(
+          { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: false },
+          'node-1',
+          'current',
+        ),
       ),
     {
       wrapper: ({ children }) => (

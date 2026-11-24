@@ -1,54 +1,46 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TagManagementDialog } from '../tag-management-dialog'
 
-const mocks = vi.hoisted(() => ({ update: vi.fn(), remove: vi.fn(), tags: [] as Tag[] }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'tags.get': async () => mocks.tags,
-      'tags.byTagId.patch': async (input: {
-        params: { tag_id: string }
-        body: { name: string }
-      }) => {
-        await mocks.update(input)
-        const updated = {
-          ...mocks.tags.find((tag) => tag.id === input.params.tag_id)!,
-          name: input.body.name,
-        }
-        mocks.tags = mocks.tags.map((tag) => (tag.id === input.params.tag_id ? updated : tag))
-        return updated
-      },
-      'tags.byTagId.delete': async (input: { params: { tag_id: string } }) => {
-        await mocks.remove(input)
-        mocks.tags = mocks.tags.filter((tag) => tag.id !== input.params.tag_id)
-      },
-    }),
-  }
-})
-const baseTag: Tag = { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '3' }
+let serverTags: Tag[] = []
+// Tag routes address tags by UUID.
+const frontendId = '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60'
+const backendId = '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071'
+const baseTag: Tag = { id: frontendId, name: 'Frontend', type: 'app', binding_count: '3' }
 function renderEditor(bindingCount = '3', name = baseTag.name) {
-  mocks.tags = [
+  serverTags = [
     { ...baseTag, name, binding_count: bindingCount },
-    { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
+    { ...baseTag, id: backendId, name: 'Backend', binding_count: '' },
   ]
-  return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, mocks.tags)
+  return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, serverTags)
 }
 const edit = () => page.getByRole('button', { name: 'common.operation.edit Frontend' })
 const remove = () => page.getByRole('button', { name: 'common.operation.remove Frontend' })
 const input = () => page.getByRole('textbox', { name: 'common.operation.rename Frontend' })
 const confirmation = () => page.getByRole('alertdialog', { name: 'common.tag.delete "Frontend"' })
-beforeEach(() => {
-  mocks.update.mockReset().mockResolvedValue(undefined)
-  mocks.remove.mockReset().mockResolvedValue(undefined)
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: {
+      get: () => serverTags,
+      byTagId: {
+        patch: ({ params, body }) => {
+          const updated = {
+            ...serverTags.find((tag) => tag.id === params.tag_id)!,
+            name: body.name,
+          }
+          serverTags = serverTags.map((tag) => (tag.id === params.tag_id ? updated : tag))
+          return updated
+        },
+        delete: ({ params }) => {
+          serverTags = serverTags.filter((tag) => tag.id !== params.tag_id)
+        },
+      },
+    },
+  },
+}))
 afterEach(() => {
   toast.dismiss()
 })
@@ -91,8 +83,8 @@ it('renames a tag through the real management list and exits editing', async () 
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByText('Frontend V2', { exact: true })).toBeVisible()
   await expect.element(input()).not.toBeInTheDocument()
-  expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
-    params: { tag_id: 'tag-1' },
+  expect(fake.console.tags.byTagId.patch).toHaveBeenCalledExactlyOnceWith({
+    params: { tag_id: frontendId },
     body: { name: 'Frontend V2' },
   })
 })
@@ -103,18 +95,20 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
   await expect.element(input()).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(input()).not.toBeInTheDocument()
-  expect(mocks.update).not.toHaveBeenCalled()
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
   await edit().click()
   await input().fill('')
   await userEvent.tab()
   await expect.element(page.getByText('tag name is empty', { exact: true })).toBeVisible()
   await expect.element(input()).not.toBeInTheDocument()
   await expect.element(edit()).toBeVisible()
-  expect(mocks.update).not.toHaveBeenCalled()
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
 })
 
 it('shows a rename failure and restores the original name for editing again', async () => {
-  mocks.update.mockRejectedValueOnce(new Error('Update failed'))
+  fake.console.tags.byTagId.patch.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Update failed' }),
+  )
   await renderEditor()
   await edit().click()
   await input().fill('Broken Name')
@@ -130,7 +124,9 @@ it('removes an unbound tag from the real list without a success notification', a
   await remove().click()
   await expect.element(page.getByText('Frontend', { exact: true })).not.toBeInTheDocument()
   await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
-  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ params: { tag_id: 'tag-1' } })
+  expect(fake.console.tags.byTagId.delete).toHaveBeenCalledExactlyOnceWith({
+    params: { tag_id: frontendId },
+  })
   await expect
     .element(page.getByRole('region', { name: 'Notifications' }).getByRole('dialog'))
     .not.toBeInTheDocument()
@@ -139,17 +135,16 @@ it('removes an unbound tag from the real list without a success notification', a
 it('keeps a pending deletion single-submission and removes the tag only after completion', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   try {
-    const pending = createDeferred<void>()
-    mocks.remove.mockReturnValueOnce(pending.promise)
+    const pending = hold(fake.console.tags.byTagId.delete)
     await renderEditor('0')
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
-    expect(mocks.remove).toHaveBeenCalledOnce()
+    await expect.poll(() => fake.console.tags.byTagId.delete).toHaveBeenCalledOnce()
     await expect.element(page.getByText('Frontend', { exact: true })).toBeVisible()
     await remove().click()
     await vi.advanceTimersByTimeAsync(200)
-    expect(mocks.remove).toHaveBeenCalledOnce()
-    pending.resolve()
+    expect(fake.console.tags.byTagId.delete).toHaveBeenCalledOnce()
+    pending.release()
     await expect.element(page.getByText('Frontend', { exact: true })).not.toBeInTheDocument()
     await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
   } finally {
@@ -164,7 +159,7 @@ it('cancels a bound-tag deletion without changing the list and deletes after con
   await confirmation().getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(confirmation()).not.toBeInTheDocument()
   await expect.element(remove()).toBeVisible()
-  expect(mocks.remove).not.toHaveBeenCalled()
+  expect(fake.console.tags.byTagId.delete).not.toHaveBeenCalled()
   await remove().click()
   await confirmation().getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(confirmation()).not.toBeInTheDocument()
@@ -173,14 +168,12 @@ it('cancels a bound-tag deletion without changing the list and deletes after con
 })
 
 it('shows a deletion error and keeps both tags available', async () => {
-  mocks.remove.mockRejectedValueOnce(new Error('Delete failed'))
+  fake.console.tags.byTagId.delete.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Delete failed' }),
+  )
   await renderEditor('0')
   await remove().click()
   await expect.element(page.getByText('Delete failed', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Frontend', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
-})
-
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
 })

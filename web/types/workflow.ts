@@ -15,7 +15,6 @@ import type {
   InputVar,
   Node,
   Variable,
-  WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
@@ -156,20 +155,6 @@ export type FetchWorkflowDraftResponse = {
   marked_name: string
   marked_comment: string
   environments?: VersionEnvironment[]
-}
-
-export type FetchWorkflowDraftPageParams = {
-  url: string
-  initialPage: number
-  limit: number
-  userId?: string
-  namedOnly?: boolean
-}
-
-export type FetchWorkflowDraftPageResponse = {
-  items: FetchWorkflowDraftResponse[]
-  has_more: boolean
-  page: number
 }
 
 export type NodeTracingListResponse = {
@@ -412,35 +397,6 @@ export type HumanInputFormTimeoutResponse = {
   workflow_run_id: string
   event: string
   data: HumanInputFormTimeoutData
-}
-
-export type WorkflowRunHistory = {
-  id: string
-  version: string
-  conversation_id?: string
-  message_id?: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  inputs: Record<string, string>
-  status: WorkflowRunningStatus
-  outputs: Record<string, any>
-  error?: string
-  elapsed_time: number
-  total_tokens: number
-  total_steps: number
-  created_at: number
-  finished_at: number
-  created_by_account: {
-    id: string
-    name: string
-    email: string
-  }
-}
-export type WorkflowRunHistoryResponse = {
-  data: WorkflowRunHistory[]
 }
 
 export type IterationDurationMap = Record<string, number>

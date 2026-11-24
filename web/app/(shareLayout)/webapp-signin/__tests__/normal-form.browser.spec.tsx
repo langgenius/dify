@@ -1,20 +1,8 @@
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import NormalForm from '../normalForm'
-
-const navigation = vi.hoisted(() => ({
-  push: vi.fn(),
-  replace: vi.fn(),
-  search: 'redirect_url=%2Fchatbot%2Fshare-app',
-}))
-
-// boundary: Next.js router/search-param context is not mounted in a focused Browser Mode render.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/webapp-signin',
-  useRouter: () => ({ push: navigation.push, replace: navigation.replace }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
 
 async function renderForm() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
@@ -30,17 +18,17 @@ async function renderForm() {
       license: { status: 'active' },
     },
   })
+  const { NavigationProvider } = createTestNavigation({
+    url: '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app',
+  })
   return render(
-    <ConsoleProvider>
-      <NormalForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <NormalForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
-
-beforeEach(() => {
-  navigation.push.mockReset()
-  navigation.replace.mockReset()
-})
 
 it('switches the real password and verification-code forms without losing trigger focus', async () => {
   const screen = await renderForm()

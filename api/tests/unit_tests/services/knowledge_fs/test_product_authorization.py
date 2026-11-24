@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from sqlalchemy.orm import Session
-
 from core.rbac.entities import RBACPermission
 from services.enterprise import rbac_service
 from services.knowledge_fs.product_authorization import DifyKnowledgeFSProductRBACPort
@@ -31,7 +29,6 @@ def test_enterprise_knowledge_fs_permissions_use_one_batch_request() -> None:
             "tenant-1",
             "account-1",
             ["control-1", "control-2"],
-            session=Session(),
         )
 
     inner_call.assert_called_once_with(
@@ -68,9 +65,7 @@ def test_knowledge_fs_capabilities_reuse_the_legacy_dataset_permission_points() 
 
 def test_rbac_disabled_fallback_grants_every_dataset_point_knowledge_fs_consults() -> None:
     with config_overrides_context(RBAC_ENABLED=False):
-        permissions = rbac_service.RBACService.KnowledgeFSPermissions.batch_get(
-            "tenant-1", "account-1", ["control-1"], session=Session()
-        )
+        permissions = rbac_service.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "account-1", ["control-1"])
 
     assert permissions["control-1"] == list(KNOWLEDGE_FS_RBAC_PERMISSION_KEYS)
     assert product_permissions_from_rbac_keys(permissions["control-1"]) == frozenset(KnowledgeFSProductPermission)
@@ -100,7 +95,6 @@ def test_rbac_transport_failure_filters_every_control_space() -> None:
     port = DifyKnowledgeFSProductRBACPort()
     with patch.object(rbac_service.RBACService.KnowledgeFSPermissions, "batch_get", side_effect=RuntimeError("down")):
         allowed = port.filter_authorized_control_space_ids(
-            session=Session(),
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_ids=["control-1"],
@@ -121,7 +115,6 @@ def test_rbac_permission_map_ignores_unknown_keys_and_preserves_one_resource_bat
         },
     ) as batch_get:
         permissions = port.permission_keys_by_control_space(
-            session=Session(),
             tenant_id="tenant-1",
             account_id="account-1",
             control_space_ids=["control-1", "control-2"],

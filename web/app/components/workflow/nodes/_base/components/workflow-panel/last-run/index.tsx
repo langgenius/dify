@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import { RiLoader2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -15,7 +16,7 @@ import {
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { isNotFoundError } from '@/service/http-error'
-import { useLastRun } from '@/service/use-workflow'
+import { lastRunQueryOptions } from '@/service/workflow-queries'
 import NoData from './no-data'
 
 type Props = Readonly<{
@@ -79,7 +80,10 @@ const LastRun: FC<Props> = ({
     data: lastRunResult,
     isFetching,
     error,
-  } = useLastRun(resource, nodeId, canRunLastRun, expectedExecutionId)
+  } = useQuery({
+    ...lastRunQueryOptions(resource, nodeId, expectedExecutionId),
+    enabled: canRunLastRun,
+  })
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
   const hasExternalLastRun = lastRunResult && Boolean(getExternalAgentInvocationId(lastRunResult))
   const isRunning =

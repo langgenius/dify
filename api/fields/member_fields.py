@@ -5,7 +5,8 @@ from datetime import datetime
 from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
-from libs.helper import build_avatar_url, to_timestamp
+from libs.helper import to_timestamp
+from services.account.avatar_url import build_account_avatar_url
 
 
 class SimpleAccountResponse(ResponseModel):
@@ -15,16 +16,16 @@ class SimpleAccountResponse(ResponseModel):
 
 
 class _AccountAvatarResponseMixin(ResponseModel):
+    id: str
     avatar: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return build_avatar_url(self.avatar)
+        return build_account_avatar_url(avatar=self.avatar, account_id=self.id)
 
 
 class AccountResponse(_AccountAvatarResponseMixin):
-    id: str
     name: str
     email: str
     is_password_set: bool
@@ -47,7 +48,6 @@ class MemberRoleSummaryResponse(ResponseModel):
 
 
 class AccountWithRoleResponse(_AccountAvatarResponseMixin):
-    id: str
     name: str
     email: str
     last_login_at: int | None = None
