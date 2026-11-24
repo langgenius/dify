@@ -1080,7 +1080,7 @@ type MarketplacePluginInfoRequest = {
   version?: string
 }
 
-const pluginPermissionSettingsQueryKey =
+const pluginPermissionSettingsQueryKey = () =>
   consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
 const pluginAutoUpgradeSettingsQueryKey = (category: PluginCategoryEnum) =>
   consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
@@ -1137,18 +1137,18 @@ export const useMutationPluginPermissionSettings = ({
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey })
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey)
+      await queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
+      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
       const hadPreviousPermission = previousPermission !== undefined
 
-      queryClient.setQueryData(pluginPermissionSettingsQueryKey, payload)
+      queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload)
 
       return { previousPermission, hadPreviousPermission }
     },
     onError: (_error, _payload, context) => {
       if (context?.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey, context.previousPermission)
-      else queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey })
+        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
+      else queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
     },
     onSuccess: () => {
       onSuccess?.()
@@ -1250,20 +1250,20 @@ export const useMutationReferenceSettings = ({
 
       await Promise.all([
         shouldUpdatePermission
-          ? queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey })
+          ? queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
           : Promise.resolve(),
         shouldUpdateAutoUpgrade
           ? queryClient.cancelQueries({ queryKey: autoUpgradeQueryKey })
           : Promise.resolve(),
       ])
 
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey)
+      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
       const previousAutoUpgrade = queryClient.getQueryData(autoUpgradeQueryKey)
       const hadPreviousPermission = previousPermission !== undefined
       const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
 
       if (shouldUpdatePermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey, payload.permission)
+        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload.permission)
 
       if (shouldUpdateAutoUpgrade) {
         queryClient.setQueryData(autoUpgradeQueryKey, {
@@ -1283,9 +1283,9 @@ export const useMutationReferenceSettings = ({
     },
     onError: (_error, _payload, context) => {
       if (context?.shouldUpdatePermission && context.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey, context.previousPermission)
+        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
       else if (context?.shouldUpdatePermission)
-        queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey })
+        queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
 
       if (context?.shouldUpdateAutoUpgrade && context.hadPreviousAutoUpgrade)
         queryClient.setQueryData(
