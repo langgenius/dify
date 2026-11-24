@@ -17,7 +17,14 @@ from collections import defaultdict, deque
 from collections.abc import Mapping, Sequence
 from typing import TypedDict
 
-from pydantic import JsonValue
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationError,
+    field_validator,
+)
 
 
 class WorkflowGraphEdge(TypedDict):
@@ -42,39 +49,108 @@ class WorkflowGraph(TypedDict):
 
 
 def parse_workflow_graph(raw: Mapping[str, JsonValue]) -> WorkflowGraph:
-    """Read the persisted ``Workflow.graph`` JSON into a ``WorkflowGraph``."""
+    """Parse the persisted workflow graph mapping into a typed graph.
+
+    Preconditions: raw is a mapping containing persisted JSON values.
+    Postconditions: missing or non-list sections become empty lists; entries rejected
+    by their per-item Pydantic models are omitted. The input is not mutated.
+    """
     return WorkflowGraph(nodes=_parse_nodes(raw.get("nodes")), edges=_parse_edges(raw.get("edges")))
 
 
+class _WorkflowGraphNodePayload(BaseModel):
+    """Pydantic schema for fields needed from one persisted graph node.
+
+    The identifier is strict, top-level extras are ignored, and absent or
+    non-mapping data becomes an empty mapping for legacy compatibility.
+    """
+
+    id: str
+    data: dict[str, JsonValue] = Field(default_factory=dict)
+
+    model_config = ConfigDict(strict=True, extra="ignore")
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def _normalize_data(cls, raw_data: object) -> object:
+        """Normalize node data before Pydantic validates its JSON values.
+
+        Preconditions: raw_data is a value from the persisted graph.
+        Postconditions: mappings become string-keyed dictionaries; other values
+        become empty dictionaries. No input is mutated.
+        """
+        if not isinstance(raw_data, Mapping):
+            return {}
+        return {str(key): value for key, value in raw_data.items()}
+
+
+class _WorkflowGraphEdgePayload(BaseModel):
+    """Pydantic schema for strict edge endpoints; extra fields are ignored."""
+
+    source: str
+    target: str
+
+    model_config = ConfigDict(strict=True, extra="ignore")
+
+
+def _parse_workflow_graph_node(raw_node: JsonValue) -> WorkflowGraphNode | None:
+    """Convert one persisted node payload into the downstream TypedDict.
+
+    Preconditions: raw_node is a JSON value from the graph.
+    Postconditions: valid required fields yield a node with normalized data and
+    ignored top-level extras; invalid fields return None. Input is not mutated.
+    """
+    try:
+        parsed = _WorkflowGraphNodePayload.model_validate(raw_node)
+    except ValidationError:
+        return None
+    return WorkflowGraphNode(id=parsed.id, data=parsed.data)
+
+
+def _parse_workflow_graph_edge(raw_edge: JsonValue) -> WorkflowGraphEdge | None:
+    """Convert one persisted edge payload into the downstream TypedDict.
+
+    Preconditions: raw_edge is a JSON value from the graph.
+    Postconditions: valid string endpoints yield an edge with ignored top-level
+    extras; invalid fields return None. Input is not mutated.
+    """
+    try:
+        parsed = _WorkflowGraphEdgePayload.model_validate(raw_edge)
+    except ValidationError:
+        return None
+    return WorkflowGraphEdge(source=parsed.source, target=parsed.target)
+
+
 def _parse_nodes(raw_nodes: JsonValue) -> list[WorkflowGraphNode]:
+    """Parse a node section while preserving malformed-graph tolerance.
+
+    Preconditions: raw_nodes is a JSON value.
+    Postconditions: non-list values produce an empty list; valid entries are
+    returned and invalid entries are omitted. Input is not mutated.
+    """
     if not isinstance(raw_nodes, list):
         return []
-    nodes: list[WorkflowGraphNode] = []
-    for raw_node in raw_nodes:
-        if isinstance(raw_node, Mapping):
-            node_id = raw_node.get("id")
-            if isinstance(node_id, str):
-                nodes.append(WorkflowGraphNode(id=node_id, data=_parse_node_data(raw_node.get("data"))))
-    return nodes
-
-
-def _parse_node_data(raw_data: JsonValue) -> dict[str, JsonValue]:
-    if not isinstance(raw_data, Mapping):
-        return {}
-    return {str(key): value for key, value in raw_data.items()}
+    return [
+        node
+        for raw_node in raw_nodes
+        if (node := _parse_workflow_graph_node(raw_node)) is not None
+    ]
 
 
 def _parse_edges(raw_edges: JsonValue) -> list[WorkflowGraphEdge]:
+    """Parse an edge section while preserving malformed-graph tolerance.
+
+    Preconditions: raw_edges is a JSON value.
+    Postconditions: non-list values produce an empty list; valid entries are
+    returned and invalid entries are omitted. Input is not mutated.
+    """
     if not isinstance(raw_edges, list):
         return []
-    edges: list[WorkflowGraphEdge] = []
-    for raw_edge in raw_edges:
-        if isinstance(raw_edge, Mapping):
-            source = raw_edge.get("source")
-            target = raw_edge.get("target")
-            if isinstance(source, str) and isinstance(target, str):
-                edges.append(WorkflowGraphEdge(source=source, target=target))
-    return edges
+    return [
+        edge
+        for raw_edge in raw_edges
+        if (edge := _parse_workflow_graph_edge(raw_edge)) is not None
+    ]
 
 
 class WorkflowGraphTopology:

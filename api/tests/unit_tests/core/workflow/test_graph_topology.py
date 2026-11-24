@@ -59,21 +59,29 @@ def test_parse_workflow_graph_drops_entries_that_are_not_nodes_or_edges() -> Non
     graph = parse_workflow_graph(
         {
             "nodes": [
-                {"id": "start", "data": {"type": "start"}},
+                {"id": "start", "data": {"type": "start"}, "legacy": True},
+                {"id": "empty-data"},
+                {"id": "non-mapping-data", "data": None},
                 {"data": {"type": "llm"}},
                 "not-a-node",
             ],
             "edges": [
-                {"source": "start", "target": "end"},
+                {"source": "start", "target": "end", "legacy": True},
                 {"source": "start"},
                 {"source": 1, "target": "end"},
+                "not-an-edge",
             ],
         }
     )
 
-    assert graph["nodes"] == [{"id": "start", "data": {"type": "start"}}]
+    assert graph["nodes"] == [
+        {"id": "start", "data": {"type": "start"}},
+        {"id": "empty-data", "data": {}},
+        {"id": "non-mapping-data", "data": {}},
+    ]
     assert graph["edges"] == [{"source": "start", "target": "end"}]
 
 
 def test_parse_workflow_graph_tolerates_missing_sections() -> None:
     assert parse_workflow_graph({}) == {"nodes": [], "edges": []}
+    assert parse_workflow_graph({"nodes": None, "edges": {}}) == {"nodes": [], "edges": []}
