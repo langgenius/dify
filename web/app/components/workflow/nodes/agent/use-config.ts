@@ -13,8 +13,10 @@ import {
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
-import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
-import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
+import {
+  installedPluginsByIdsQueryOptions,
+  marketplacePluginsByIdsQueryOptions,
+} from '@/service/plugin-list-queries'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -39,18 +41,19 @@ export const useStrategyInfo = (strategyProviderName?: string, strategyName?: st
   const strategy = strategyProvider.data?.declaration.strategies?.find(
     (str) => str.identity.name === strategyName,
   )
-  const marketplace = useFetchPluginsInMarketPlaceByIds(
-    strategyProviderName ? [strategyProviderName] : [],
-    {
-      retry: false,
-    },
+  const {
+    data: marketplaceData,
+    isLoading: isMarketplaceLoading,
+    refetch: refetchMarketplace,
+  } = useQuery(
+    marketplacePluginsByIdsQueryOptions(strategyProviderName ? [strategyProviderName] : []),
   )
   const strategyStatus: StrategyStatus | undefined = useMemo(() => {
-    if (!strategyProviderName || strategyProvider.isLoading || marketplace.isLoading)
+    if (!strategyProviderName || strategyProvider.isLoading || isMarketplaceLoading)
       return undefined
     const strategyExist = !!strategy
     const isPluginInstalled = strategyProvider.isSuccess
-    const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
+    const isInMarketplace = !!marketplaceData?.data.plugins.at(0)
     return {
       plugin: {
         source: isInMarketplace ? 'marketplace' : 'external',
@@ -61,12 +64,12 @@ export const useStrategyInfo = (strategyProviderName?: string, strategyName?: st
   }, [
     strategy,
     strategyProviderName,
-    marketplace,
+    isMarketplaceLoading,
+    marketplaceData,
     strategyProvider.isSuccess,
     strategyProvider.isLoading,
   ])
   const { refetch: refetchProvider } = strategyProvider
-  const { refetch: refetchMarketplace } = marketplace
   const refetch = useCallback(() => {
     if (!strategyProviderName) return
     return Promise.all([refetchProvider(), refetchMarketplace()])

@@ -3428,17 +3428,6 @@
       "count": 4
     }
   },
-  "web/service/use-plugins.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 3
-    }
-  },
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
