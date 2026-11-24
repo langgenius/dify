@@ -47,6 +47,7 @@ const {
   fetchAppMeta,
   fetchAppParams,
   fetchChatList,
+  textToAudioStream,
 } = await import('./share')
 
 const publicRequestCalls = () =>
@@ -554,5 +555,73 @@ describe('public app requests through the generated WebApp client', () => {
       '/api/environment/environment-app/parameters',
     ])
     window.history.replaceState({}, '', '/')
+  })
+})
+
+describe('web app saved messages and trial app limits', () => {
+  beforeEach(() => {
+    request.mockReset().mockImplementation(async () => Response.json({ result: 'success' }))
+  })
+
+  it('saves a web app message through the public contract', async () => {
+    await saveMessage('message-1', AppSourceType.webApp)
+
+    expect(publicRequestCalls()).toEqual([['/saved-messages', 'POST']])
+    expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({ message_id: 'message-1' })
+    expect(publicPost).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['fetchConversations', () => fetchConversations(AppSourceType.tryApp, 'trial-1')],
+    ['pinConversation', () => pinConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['unpinConversation', () => unpinConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['delConversation', () => delConversation(AppSourceType.tryApp, 'trial-1', 'c-1')],
+    ['renameConversation', () => renameConversation(AppSourceType.tryApp, 'trial-1', 'c-1', 'n')],
+    [
+      'generationConversationName',
+      () => generationConversationName(AppSourceType.tryApp, 'trial-1', 'c-1'),
+    ],
+    ['fetchChatList', () => fetchChatList('c-1', AppSourceType.tryApp, 'trial-1')],
+    ['fetchAppMeta', () => fetchAppMeta(AppSourceType.tryApp, 'trial-1')],
+    [
+      'updateFeedback',
+      () =>
+        updateFeedback(
+          { messageId: 'm-1', body: { rating: 'like' } },
+          AppSourceType.tryApp,
+          'trial-1',
+        ),
+    ],
+    ['fetchMoreLikeThis', () => fetchMoreLikeThis('m-1', AppSourceType.tryApp, 'trial-1')],
+    ['saveMessage', () => saveMessage('m-1', AppSourceType.tryApp, 'trial-1')],
+    ['fetchSavedMessage', () => fetchSavedMessage(AppSourceType.tryApp, 'trial-1')],
+    ['removeMessage', () => removeMessage('m-1', AppSourceType.tryApp, 'trial-1')],
+  ])('rejects %s for trial apps without a request', async (_name, call) => {
+    await expect(call()).rejects.toThrow('not available for trial apps')
+    expect(request).not.toHaveBeenCalled()
+  })
+})
+
+describe('textToAudioStream', () => {
+  beforeEach(() => request.mockReset())
+
+  it.each([
+    { source: AppSourceType.webApp, url: '/text-to-audio', isPublicAPI: true },
+    {
+      source: AppSourceType.installedApp,
+      url: '/installed-apps/installed-1/text-to-audio',
+      isPublicAPI: false,
+    },
+  ])('returns the streamed $source audio response as is', async ({ source, url, isPublicAPI }) => {
+    const audio = new Response(new Blob(['audio']), { headers: { 'content-type': 'audio/mpeg' } })
+    request.mockResolvedValueOnce(audio)
+    const body = { streaming: true, message_id: 'message-1' }
+
+    await expect(textToAudioStream(url, source, body)).resolves.toBe(audio)
+    expect(request).toHaveBeenCalledExactlyOnceWith(
+      url,
+      { body, method: 'POST' },
+      { isPublicAPI, needAllResponseContent: true },
+    )
   })
 })
