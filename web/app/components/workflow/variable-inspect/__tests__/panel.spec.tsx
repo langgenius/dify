@@ -78,7 +78,6 @@ it('selects an environment variable and shows its details', async () => {
         description: '',
       },
     ],
-    bottomPanelWidth: 560,
   })
   await user.click(screen.getByText('API_KEY'))
   expect(screen.getByText('workflowDebug.debug.variableInspect.envNode')).toBeVisible()
