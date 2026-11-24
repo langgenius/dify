@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AppConversationData, ConversationItem } from '@/models/share'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { renderHook, waitFor } from '@testing-library/react'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
@@ -11,12 +11,11 @@ import {
 } from './share'
 import {
   EnvironmentConversationNotFoundError,
+  shareChatListQueryOptions,
+  shareConversationNameQueryOptions,
+  shareConversationsQueryOptions,
   shareQueryKeys,
-  useInvalidateShareConversations,
-  useShareChatList,
-  useShareConversationName,
-  useShareConversations,
-} from './use-share'
+} from './share-queries'
 
 vi.mock('./share', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./share')>()
@@ -102,7 +101,7 @@ describe('shareQueryKeys', () => {
 })
 
 // Scenario: share conversation list queries behave consistently with params and enablement.
-describe('useShareConversations', () => {
+describe('shareConversationsQueryOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -119,7 +118,9 @@ describe('useShareConversations', () => {
     mockFetchConversations.mockResolvedValueOnce(response)
 
     // Act
-    const { result, queryClient } = renderShareHook(() => useShareConversations(params))
+    const { result, queryClient } = renderShareHook(() =>
+      useQuery(shareConversationsQueryOptions(params)),
+    )
 
     // Assert
     await waitFor(() => {
@@ -147,7 +148,7 @@ describe('useShareConversations', () => {
     }
 
     // Act
-    const { result } = renderShareHook(() => useShareConversations(params))
+    const { result } = renderShareHook(() => useQuery(shareConversationsQueryOptions(params)))
 
     // Assert
     await waitFor(() => {
@@ -158,7 +159,7 @@ describe('useShareConversations', () => {
 })
 
 // Scenario: chat list queries respect conversation ID and app installation rules.
-describe('useShareChatList', () => {
+describe('shareChatListQueryOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
@@ -175,7 +176,7 @@ describe('useShareChatList', () => {
     mockFetchChatList.mockResolvedValueOnce(response)
 
     // Act
-    const { result } = renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useQuery(shareChatListQueryOptions(params)))
 
     // Assert
     await waitFor(() => {
@@ -199,7 +200,7 @@ describe('useShareChatList', () => {
     }
 
     // Act
-    const { result } = renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useQuery(shareChatListQueryOptions(params)))
 
     // Assert
     await waitFor(() => {
@@ -221,7 +222,7 @@ describe('useShareChatList', () => {
     const apiError = await httpErrorFromResponse(response)
     mockFetchChatList.mockRejectedValue(apiError)
 
-    const { result } = renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useQuery(shareChatListQueryOptions(params)))
 
     await waitFor(() => {
       expect(result.current.error).toBeInstanceOf(EnvironmentConversationNotFoundError)
@@ -240,7 +241,7 @@ describe('useShareChatList', () => {
     const apiError = await httpErrorFromResponse(response)
     mockFetchChatList.mockRejectedValue(apiError)
 
-    const { result } = renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useQuery(shareChatListQueryOptions(params)))
 
     await waitFor(() => {
       expect(result.current.error).toBe(apiError)
@@ -260,7 +261,7 @@ describe('useShareChatList', () => {
     const apiError = await httpErrorFromResponse(response)
     mockFetchChatList.mockRejectedValue(apiError)
 
-    const { result } = renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useQuery(shareChatListQueryOptions(params)))
 
     await waitFor(() => {
       expect(result.current.error).toBe(apiError)
@@ -289,7 +290,9 @@ describe('useShareChatList', () => {
 
     // First fetch
     mockFetchChatList.mockResolvedValueOnce(initialResponse)
-    const { result, unmount } = renderHook(() => useShareChatList(params), { wrapper })
+    const { result, unmount } = renderHook(() => useQuery(shareChatListQueryOptions(params)), {
+      wrapper,
+    })
 
     await waitFor(() => {
       expect(result.current.data).toEqual(initialResponse)
@@ -302,7 +305,9 @@ describe('useShareChatList', () => {
     // Remount with same params (simulates switching back)
     // With staleTime: 0, this should trigger a background refetch
     mockFetchChatList.mockResolvedValueOnce(updatedResponse)
-    const { result: result2 } = renderHook(() => useShareChatList(params), { wrapper })
+    const { result: result2 } = renderHook(() => useQuery(shareChatListQueryOptions(params)), {
+      wrapper,
+    })
 
     // Should immediately return cached data
     expect(result2.current.data).toEqual(initialResponse)
@@ -320,7 +325,7 @@ describe('useShareChatList', () => {
 })
 
 // Scenario: conversation name queries follow enabled flags and installation constraints.
-describe('useShareConversationName', () => {
+describe('shareConversationNameQueryOptions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -336,7 +341,7 @@ describe('useShareConversationName', () => {
     mockGenerationConversationName.mockResolvedValueOnce(response)
 
     // Act
-    const { result } = renderShareHook(() => useShareConversationName(params))
+    const { result } = renderShareHook(() => useQuery(shareConversationNameQueryOptions(params)))
 
     // Assert
     await waitFor(() => {
@@ -360,7 +365,9 @@ describe('useShareConversationName', () => {
     }
 
     // Act
-    const { result } = renderShareHook(() => useShareConversationName(params, { enabled: false }))
+    const { result } = renderShareHook(() =>
+      useQuery(shareConversationNameQueryOptions(params, { enabled: false })),
+    )
 
     // Assert
     await waitFor(() => {
@@ -370,15 +377,11 @@ describe('useShareConversationName', () => {
   })
 })
 
-// Scenario: invalidation helper clears share conversation caches.
-describe('useInvalidateShareConversations', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should invalidate share conversations query key when invoked', () => {
+// Scenario: the conversations key prefix covers every share conversation list.
+describe('shareQueryKeys.conversations', () => {
+  it('should invalidate share conversation lists without touching app metadata', async () => {
     // Arrange
-    const { result, queryClient } = renderShareHook(() => useInvalidateShareConversations())
+    const queryClient = createQueryClient()
     const firstKey = shareQueryKeys.conversationList(
       { kind: 'default', code: 'first' },
       { appSourceType: AppSourceType.webApp },
@@ -393,9 +396,7 @@ describe('useInvalidateShareConversations', () => {
     queryClient.setQueryData(metadataKey, { title: 'First app' })
 
     // Act
-    act(() => {
-      result.current()
-    })
+    await queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
 
     // Assert
     expect(queryClient.getQueryState(firstKey)?.isInvalidated).toBe(true)
