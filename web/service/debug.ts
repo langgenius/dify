@@ -5,7 +5,13 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { PostInstructionGenerateData } from '@dify/contracts/api/console/instruction-generate/types.gen'
 import type { PostRuleGenerateData } from '@dify/contracts/api/console/rule-generate/types.gen'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './event-stream'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  StreamSender,
+} from './event-stream'
 import type { Model, ModelModeType } from '@/types/app'
 import { consoleClient } from './console'
 import { streamEvents } from './event-stream'
@@ -51,6 +57,19 @@ export const stopChatMessageResponding = async (appId: string, taskId: string) =
   })
 }
 
+/** Streams a debug completion for a Console app. */
+export const appCompletionMessagesSender =
+  (appId: string): StreamSender =>
+  (body, options) =>
+    consoleClient.apps.byAppId.completionMessages.post(
+      {
+        params: { app_id: appId },
+        // The debugger builds the body from the editable model config.
+        body: body as PostAppsByAppIdCompletionMessagesData['body'],
+      },
+      options,
+    )
+
 export const sendCompletionMessage = async (
   appId: string,
   body: Record<string, unknown>,
@@ -62,21 +81,8 @@ export const sendCompletionMessage = async (
     onNotifyError?: IOnError
   },
 ) => {
-  return streamEvents(
-    (options) =>
-      consoleClient.apps.byAppId.completionMessages.post(
-        {
-          params: { app_id: appId },
-          // The debugger builds the body from the editable model config.
-          body: {
-            ...body,
-            response_mode: 'streaming',
-          } as PostAppsByAppIdCompletionMessagesData['body'],
-        },
-        options,
-      ),
-    handlers,
-  )
+  const send = appCompletionMessagesSender(appId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), handlers)
 }
 
 const createAbortSignal = (getAbortController?: (abortController: AbortController) => void) => {

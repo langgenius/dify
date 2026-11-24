@@ -138,9 +138,9 @@ const OnlineUsers = () => {
     </TooltipContent>
   )
 
-  const renderPillAvatar = (user: OnlineUser, index: number, trigger: ReactElement) => (
+  const renderPillAvatar = (user: OnlineUser, trigger: ReactElement) => (
     <Tooltip key={user.sid}>
-      <TooltipTrigger render={trigger} style={{ zIndex: visibleUsers.length - index }}>
+      <TooltipTrigger render={trigger}>
         <CollaboratorAvatar
           collaborator={toCollaborator(user, isConnected ? avatarUrls?.[user.sid] : undefined)}
         />
@@ -152,10 +152,9 @@ const OnlineUsers = () => {
   if (!shouldShowCount) {
     return (
       <CollaboratorPill>
-        {visibleUsers.map((user, index) =>
+        {visibleUsers.map((user) =>
           renderPillAvatar(
             user,
-            index,
             user.user_id === currentUserId ? (
               <div
                 role="img"
@@ -195,8 +194,8 @@ const OnlineUsers = () => {
             overflowCount={remainingCount}
             className="cursor-pointer hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            {visibleUsers.map((user, index) =>
-              renderPillAvatar(user, index, <span className="relative flex rounded-full" />),
+            {visibleUsers.map((user) =>
+              renderPillAvatar(user, <span className="relative flex rounded-full" />),
             )}
           </CollaboratorPill>
         }

@@ -31,13 +31,26 @@ const requests = vi.hoisted(() => ({
   notifyError: vi.fn(),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: requests.stream,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: requests.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 vi.mock('@/service/debug', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/debug')>()),
   fetchTextGenerationMessage: requests.log,
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
 }))
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: { error: requests.notifyError },
