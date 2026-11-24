@@ -1108,12 +1108,6 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1128,12 +1122,6 @@
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -1162,12 +1150,6 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -1643,7 +1625,7 @@
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/__tests__/index.spec.tsx": {
     "typescript/no-deprecated": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {
