@@ -35,11 +35,11 @@ vi.mock('@/service/console', async (importOriginal) => {
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.install.pkg.post': install,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.install.pkg.post': install,
     }),
   }
 })

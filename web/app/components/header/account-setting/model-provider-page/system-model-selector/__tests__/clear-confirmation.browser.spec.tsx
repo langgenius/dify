@@ -1,4 +1,3 @@
-import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -13,27 +12,10 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import SystemModel from '../index'
 
 vi.unmock('react-i18next')
-
-// boundary: default-model reads and writes stop at the generated console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.defaultModel.get': async ({
-        query: { model_type },
-      }: {
-        query: { model_type: DefaultModelResponse['model_type'] }
-      }) => ({
-        data: createDefaultModelFixture({ model: `${model_type}-model`, model_type }),
-      }),
-    }),
-  }
-})
 
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
@@ -46,6 +28,21 @@ it.each([
   'returns focus to the $label selector after clearing',
   async ({ modelType, label, requiresConfirmation }) => {
     // The clear button unmounts on clearing; browser focus must stay on this field in the parent dialog.
+    onTestFinished(
+      installFakeApi({
+        console: {
+          workspaces: {
+            current: {
+              defaultModel: {
+                get: ({ query: { model_type } }) => ({
+                  data: createDefaultModelFixture({ model: `${model_type}-model`, model_type }),
+                }),
+              },
+            },
+          },
+        },
+      }),
+    )
     const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
       workspacePermissionKeys: ['plugin.model_config'],
     })

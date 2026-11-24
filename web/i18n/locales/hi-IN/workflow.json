@@ -114,6 +114,8 @@
   "collaboration.joinDenied": "सहयोग से जुड़ना संभव नहीं हुआ। अपनी पहुँच और कार्यक्षेत्र का प्लान जाँचें, फिर संपादक दोबारा खोलें।",
   "collaboration.joinUnavailable": "सहयोग से कनेक्ट नहीं हो सका। इस कैनवास के बदलाव सहेजे नहीं गए हो सकते हैं।",
   "collaboration.reloadPage": "पेज रीलोड करें",
+  "collaboration.userEditing": "{{name}} संपादित कर रहे हैं",
+  "collaboration.viewCollaborators": "{{count}} सहयोगी देखें",
   "common.accessAPIReference": "एपीआई संदर्भ तक पहुंचें",
   "common.accessPointDescription": "वेब ऐप, API, MCP और ट्रिगर कॉन्फ़िगर करें",
   "common.addBlock": "नोड जोड़ें",

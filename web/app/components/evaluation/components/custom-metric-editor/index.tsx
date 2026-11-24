@@ -19,7 +19,7 @@ import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/com
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
-import { useAppWorkflow } from '@/service/use-workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import MappingRow from './mapping-row'
 import WorkflowSelector from './workflow-selector'
@@ -94,8 +94,9 @@ const CustomMetricEditorCard = ({
   const updateCustomMetricMapping = useEvaluationStore((state) => state.updateCustomMetricMapping)
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
-  const { data: selectedWorkflow, isPending: isSelectedWorkflowPending } =
-    useAppWorkflow(selectedWorkflowAppId)
+  const { data: selectedWorkflow, isPending: isSelectedWorkflowPending } = useQuery(
+    appWorkflowQueryOptions(selectedWorkflowAppId),
+  )
   const { data: selectedEvaluatorApp, isPending: isSelectedEvaluatorAppPending } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: selectedWorkflowAppId ? { params: { app_id: selectedWorkflowAppId } } : skipToken,
@@ -106,7 +107,9 @@ const CustomMetricEditorCard = ({
       input: resourceType === 'apps' ? { params: { app_id: resourceId } } : skipToken,
     }),
   )
-  const { data: currentAppWorkflow } = useAppWorkflow(resourceType === 'apps' ? resourceId : '')
+  const { data: currentAppWorkflow } = useQuery(
+    appWorkflowQueryOptions(resourceType === 'apps' ? resourceId : ''),
+  )
   const { data: currentSnippetWorkflow } = useSnippetPublishedWorkflow(
     resourceType === 'snippets' ? resourceId : '',
   )

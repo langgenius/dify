@@ -1,21 +1,19 @@
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ContactImBindingContent } from '../binding-dialog'
 import { providerMetadata } from '../credentials'
 import { ContactEmailConfigContent } from '../email-config-dialog'
-
-// boundary: documentation routing is covered separately from credential session lifetime.
-vi.mock('../use-channel-doc-link', () => ({
-  useChannelDocLink: () => () => 'https://docs.dify.ai',
-}))
 
 it.each(['feishu', 'resend'] as const)(
   'keeps the %s credential draft until the closing content session unmounts',
   async (provider) => {
     const user = userEvent.setup()
     const client = new QueryClient()
+    seedSystemFeatures(client)
     const close = vi.fn()
     const metadata = providerMetadata[provider]
     const definition = {
@@ -24,7 +22,7 @@ it.each(['feishu', 'resend'] as const)(
       requiredFields: metadata.fields,
     }
     const content = (open: boolean) => (
-      <QueryClientProvider client={client}>
+      <QueryClientTestProvider queryClient={client}>
         <Dialog open={open}>
           <DialogContent>
             {provider === 'feishu' ? (
@@ -43,7 +41,7 @@ it.each(['feishu', 'resend'] as const)(
             )}
           </DialogContent>
         </Dialog>
-      </QueryClientProvider>
+      </QueryClientTestProvider>
     )
     const view = render(content(true))
     const label =

@@ -8,7 +8,10 @@ import type {
   DatasetListResponse,
   DocumentWithSegmentsListResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsGoldenQuestionListResponse,
+  KnowledgeFsSpaceListResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ResourceAccessTokenListResponse } from '@dify/contracts/api/console/resource-access-tokens/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
@@ -27,8 +30,8 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import { upsertStartedPluginTask } from './plugin-task-cache'
 import {
-  legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
@@ -330,9 +333,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                           }),
                         }),
                         context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
-                        context.client.invalidateQueries({
                           queryKey: consoleQuery.datasets.get.key(),
                         }),
                       ]),
@@ -345,9 +345,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     onSuccess: (_data, variables, _result, context) => {
                       return Promise.all([
                         context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
-                        context.client.invalidateQueries({
                           queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                             input: { params: { pipeline_id: variables.params.pipeline_id } },
                           }),
@@ -358,12 +355,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSuccess: (_data, variables, _result, context) =>
-                      context.client.invalidateQueries({
+                    // Reset the version lists so they reload from the first page: the deleted version is gone
+                    // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                    // callers can close their UI as soon as the version is deleted.
+                    onSuccess: (_data, variables, _result, context) => {
+                      void context.client.resetQueries({
                         queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                          type: 'infinite',
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
-                      }),
+                      })
+                    },
                   },
                 },
               },
@@ -727,6 +729,46 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             asset: {
               get: {
                 queryOptions: { context: { silent: true } },
+              },
+            },
+            install: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              pkg: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              github: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+            },
+            upgrade: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
               },
             },
           },
@@ -1221,6 +1263,57 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          workflow: {
+            comments: {
+              // Collaborators change comments while the editor is closed, and their live
+              // updates reach only an open editor, so every mount reads comments again. While
+              // open, live updates keep them current; a read on window focus could land on an
+              // optimistic write.
+              get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+              byCommentId: {
+                get: { queryOptions: { staleTime: 0, refetchOnWindowFocus: false } },
+                resolve: {
+                  post: {
+                    // Resolving shows at once, on the thread and on the canvas: a thread resolved
+                    // while resolved ones are hidden closes and its marker goes. Reads running for
+                    // the comment are stopped first, and a failed resolve puts both back.
+                    mutationOptions: {
+                      onMutate: async ({ params }, context) => {
+                        await Promise.all([
+                          context.client.cancelQueries({
+                            queryKey: consoleQuery.apps.byAppId.workflow.comments.get.queryKey({
+                              input: { params: { app_id: params.app_id } },
+                            }),
+                          }),
+                          context.client.cancelQueries({
+                            queryKey:
+                              consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryKey({
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: true,
+                        })
+                      },
+                      onError: (_error, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: false,
+                        })
+                      },
+                      onSuccess: (result, { params }, _result, context) => {
+                        setCommentResolved(consoleQuery, context.client, params, {
+                          resolved: result.resolved,
+                          resolved_at: result.resolved_at,
+                          resolved_by: result.resolved_by,
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           annotations: {
             byAnnotationId: {
               post: {
@@ -1651,9 +1744,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                         }),
                       }),
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.get.key({
                           input: { params: variables.params },
                         }),
@@ -1685,9 +1775,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     )
                     return Promise.all([
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                           input: { params: { app_id: variables.params.app_id } },
                         }),
@@ -1699,12 +1786,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Reset the version lists so they reload from the first page: the deleted version is gone
+                  // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                  // callers can close their UI as soon as the version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.resetQueries({
                       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+                        type: 'infinite',
                         input: { params: { app_id: variables.params.app_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },
@@ -1938,6 +2030,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            goldenQuestions: {
+              byQuestionId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: async (question, { params }, _result, { client }) => {
+                      const get =
+                        consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      const scope = { queryKey: get.key({ input }) }
+                      await client.cancelQueries(scope)
+                      client.setQueriesData<InfiniteData<KnowledgeFsGoldenQuestionListResponse>>(
+                        { queryKey: get.key({ input, type: 'infinite' }) },
+                        (list) =>
+                          list && {
+                            ...list,
+                            pages: list.pages.map((page) => ({
+                              ...page,
+                              data: page.data.map((item) =>
+                                item.id === question.id ? question : item,
+                              ),
+                            })),
+                          },
+                      )
+                      void client.invalidateQueries(scope)
+                    },
+                  },
+                },
+              },
+            },
             documents: {
               byDocumentId: {
                 patch: {
@@ -2414,9 +2535,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   onSuccess: (_data, variables, _result, context) => {
                     return Promise.all([
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                           input: { params: { snippet_id: variables.params.snippet_id } },
                         }),
@@ -2427,12 +2545,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Reset the version lists so they reload from the first page: the deleted version is gone
+                  // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                  // callers can close their UI as soon as the version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.resetQueries({
                       queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
+                        type: 'infinite',
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },
@@ -3424,6 +3547,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
   })
 
   return consoleQuery
+}
+
+// A comment's resolved state, on its thread and in its app's comment list.
+function setCommentResolved(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  params: { app_id: string; comment_id: string },
+  fields: { resolved: boolean; resolved_at?: number | null; resolved_by?: string | null },
+) {
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.byCommentId.get.queryKey({ input: { params } }),
+    (detail) => (detail ? { ...detail, ...fields } : detail),
+  )
+  client.setQueryData(
+    query.apps.byAppId.workflow.comments.get.queryKey({
+      input: { params: { app_id: params.app_id } },
+    }),
+    (list) =>
+      list
+        ? {
+            ...list,
+            data: list.data.map((comment) =>
+              comment.id === params.comment_id
+                ? { ...comment, resolved: fields.resolved }
+                : comment,
+            ),
+          }
+        : list,
+  )
 }
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {

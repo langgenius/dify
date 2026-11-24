@@ -4,6 +4,7 @@ import type { Dependency, Plugin, PluginManifestInMarket } from '../../../types'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
@@ -39,13 +40,13 @@ vi.mock('@/service/console', async (importOriginal) => {
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.marketplace.pkg.get': declaration,
       'workspaces.current.plugin.install.marketplace.post': install,
       'workspaces.current.plugin.upgrade.marketplace.post': upgrade,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': installedPlugins,
     }),
   }
 })
@@ -254,7 +255,13 @@ it('hands a started task to the task list and closes without claiming installati
   const { onClose, onSuccess, queryClient } = renderInstaller()
   await user.click(installButton())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+  expect(
+    queryClient.getQueryData(
+      consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+        input: { query: { page: 1, page_size: 100 } },
+      }),
+    ),
+  ).toEqual({
     tasks: [expect.objectContaining({ id: task.id, status: TaskStatus.running })],
   })
   expect(pollTask).not.toHaveBeenCalled()
@@ -365,7 +372,11 @@ it.each([
   const { queryClient } = renderInstaller()
   await waitFor(() =>
     expect(
-      queryClient.getQueryData(['plugins', 'pluginDeclaration', 'test-unique-identifier']),
+      queryClient.getQueryData(
+        consoleQuery.workspaces.current.plugin.marketplace.pkg.get.queryKey({
+          input: { query: { plugin_unique_identifier: 'test-unique-identifier' } },
+        }),
+      ),
     ).toEqual(response),
   )
   if (warns) expect(await screen.findByText(/plugin.difyVersionNotCompatible/)).toBeInTheDocument()

@@ -47,13 +47,9 @@ vi.mock('@/service/base', async (importOriginal) => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.install.marketplace.post': service.installPackage,
-    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get': async () => ({
@@ -69,6 +65,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         toolProviderState.customTools ?? new Promise<ToolProviderApiEntityResponse[]>(() => {}),
       'workspaces.current.tools.workflow.get': async () => [],
       'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.plugin.install.marketplace.post': service.installPackage,
     }),
   }
 })
