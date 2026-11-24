@@ -42,7 +42,6 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import {
   normalizeInstalledPluginDetail,
-  useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
 
@@ -67,7 +66,6 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { getIconUrl } = useGetIcon()
   const queryClient = useQueryClient()
   const invalidatePluginList = useInvalidateInstalledPluginList()
-  const invalidateInstalled = useInvalidateCheckInstalled()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const marketplace = useMarketplace()
   const pluginDetails = useQuery(
@@ -116,7 +114,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     },
     onSuccess: (_data, { plugin }) => {
       const category = plugin.declaration.category
-      void invalidateInstalled()
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+      })
       void invalidatePluginList(category)
       if (category === PluginCategoryEnum.agent) {
         const workspace = consoleQuery.workspaces.current

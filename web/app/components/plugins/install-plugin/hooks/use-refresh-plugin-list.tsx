@@ -3,10 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateCheckInstalled,
-  useInvalidateInstalledPluginList,
-} from '@/service/use-plugins'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
@@ -23,7 +20,6 @@ const SYSTEM_MODEL_TYPES = [
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const invalidateCheckInstalled = useInvalidateCheckInstalled()
   const { refetch: refetchLLMModelList } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
@@ -60,7 +56,6 @@ const useRefreshPluginList = () => {
       // installed list
       if (refreshAllType || !manifest) invalidateInstalledPluginList()
       else invalidateInstalledPluginList(manifest.category)
-      invalidateCheckInstalled()
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
       })

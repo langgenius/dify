@@ -10,13 +10,11 @@ import useRefreshPluginList from '../use-refresh-plugin-list'
 const mocks = vi.hoisted(() => ({
   request: vi.fn<(url: string) => Promise<Response>>(),
   installed: vi.fn(),
-  checkInstalled: vi.fn(),
   defaultModel: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({ request: mocks.request }))
 vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => mocks.checkInstalled,
   useInvalidateInstalledPluginList: () => mocks.installed,
 }))
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -97,7 +95,6 @@ describe('plugin installation refresh', () => {
     for (const key of pluginVersionKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
 
     expect(mocks.installed).toHaveBeenCalledWith(PluginCategoryEnum.agent)
-    expect(mocks.checkInstalled).toHaveBeenCalledOnce()
     for (const key of strategyKeys) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
     for (const key of [...providerKeys, unrelatedKey])
       expect(client.getQueryState(key)?.isInvalidated).toBe(false)
@@ -160,7 +157,6 @@ describe('plugin installation refresh', () => {
     act(() => result.current.refreshPluginList())
 
     expect(mocks.installed).toHaveBeenCalledWith()
-    expect(mocks.checkInstalled).toHaveBeenCalledOnce()
     for (const key of [
       ...strategyKeys,
       ...providerKeys,

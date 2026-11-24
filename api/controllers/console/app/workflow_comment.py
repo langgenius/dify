@@ -17,8 +17,9 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
 from libs.external_api import error_responses
-from libs.helper import build_avatar_url, dump_response, to_timestamp
+from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
+from services.account.avatar_url import build_account_avatar_url
 from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
     InvalidWorkflowCommentContentError,
@@ -72,7 +73,7 @@ class WorkflowCommentAccount(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return build_avatar_url(self.avatar)
+        return build_account_avatar_url(avatar=self.avatar, account_id=self.id)
 
 
 class WorkflowCommentReply(ResponseModel):
