@@ -1,5 +1,5 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoDialogHandles } from './app-info-dialogs'
+import type { AppInfoDialogHandles } from './app-info-dialog-handles'
 import type { Operation } from './app-operations'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -8,7 +8,7 @@ import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
-import AppInfoHeader from './app-info-header'
+import { AppInfoHeader } from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
 
 type AppInfoTriggerProps = {

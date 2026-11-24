@@ -1,12 +1,8 @@
-import type {
-  AppDetailWithSite,
-  EnvironmentVariableItemResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
-import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { createAppInfoDialogHandles } from './app-info-dialog-handles'
 import { AppInfoDialogs } from './app-info-dialogs'
 import { AppInfoTrigger } from './app-info-trigger'
 import { updateCachedAppMetadata } from './metadata'
@@ -16,14 +12,7 @@ type AppInfoViewProps = { appDetail: AppDetailWithSite; expand: boolean }
 export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
   const appId = appDetail.id
   const queryClient = useQueryClient()
-  const [handles] = useState(() => ({
-    edit: createDialogHandle(),
-    duplicate: createDialogHandle(),
-    switchApp: createDialogHandle(),
-    importDSL: createDialogHandle(),
-    delete: createAlertDialogHandle(),
-    export: createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
-  }))
+  const [handles] = useState(createAppInfoDialogHandles)
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
     let disposed = false

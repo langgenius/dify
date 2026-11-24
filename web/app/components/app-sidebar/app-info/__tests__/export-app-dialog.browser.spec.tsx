@@ -1,7 +1,3 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoDialogHandles } from '../app-info-dialogs'
-import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
@@ -9,13 +5,14 @@ import { render } from 'vitest-browser-react'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { hold, setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
+import { createAppInfoDialogHandles } from '../app-info-dialog-handles'
 import { AppInfoDialogs } from '../app-info-dialogs'
 
 const { downloadBlob } = vi.hoisted(() => ({ downloadBlob: vi.fn() }))
 
 // boundary: Downloads leave the browser test page; record the download instead.
 vi.mock('@/utils/download', () => ({ downloadBlob }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
 
 const app = createAppDetailFixture({ name: 'Support workflow', mode: 'workflow' })
 const secret = {
@@ -47,14 +44,7 @@ const warning = 'workflow.sidebar.exportWarning'
 const secretWarning = 'app.exportSecret.title'
 
 function Fixture({ client }: { client: QueryClient }) {
-  const [handles] = useState<AppInfoDialogHandles>(() => ({
-    edit: createDialogHandle(),
-    duplicate: createDialogHandle(),
-    switchApp: createDialogHandle(),
-    importDSL: createDialogHandle(),
-    delete: createAlertDialogHandle(),
-    export: createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
-  }))
+  const [handles] = useState(createAppInfoDialogHandles)
   return (
     <QueryClientProvider client={client}>
       <button type="button" onClick={() => handles.export.openWithPayload(null)}>
@@ -68,7 +58,12 @@ function Fixture({ client }: { client: QueryClient }) {
 async function setup() {
   const client = new QueryClient()
   seedSystemFeatures(client)
-  const screen = await render(<Fixture client={client} />)
+  const { NavigationProvider } = createTestNavigation({ url: `/app/${app.id}/workflow` })
+  const screen = await render(
+    <NavigationProvider>
+      <Fixture client={client} />
+    </NavigationProvider>,
+  )
   const trigger = screen.getByRole('button', { name: 'Export workflow' })
   await trigger.click()
   const dialog = screen.getByRole('alertdialog', { name: warning })

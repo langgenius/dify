@@ -1,9 +1,6 @@
-import type {
-  AppDetailWithSite,
-  EnvironmentVariableItemResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
+import type { AppInfoDialogHandles, ExportPayload } from './app-info-dialog-handles'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -26,17 +23,6 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { ExportAppDialogContent } from './export-app-dialog'
-
-export type AppInfoDialogHandles = {
-  edit: DialogHandle
-  duplicate: DialogHandle
-  switchApp: DialogHandle
-  importDSL: DialogHandle
-  delete: AlertDialogHandle
-  export: ExportAppDialogHandle
-}
-
-type ExportAppDialogHandle = AlertDialogHandle<EnvironmentVariableItemResponse[] | null>
 
 type AppInfoDialogsProps = {
   appDetail: AppDetailWithSite
@@ -63,12 +49,10 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
   )
   const switching = useSwitchAppMutation()
   const secretExport = useExportAppDsl()
-  const [backupDialog] = useState(() =>
-    createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
-  )
+  const [backupDialog] = useState(() => createAlertDialogHandle<ExportPayload>())
   const exportSession =
-    (dialog: ExportAppDialogHandle) =>
-    ({ payload }: { payload: EnvironmentVariableItemResponse[] | null | undefined }) =>
+    (dialog: AlertDialogHandle<ExportPayload>) =>
+    ({ payload }: { payload: ExportPayload | undefined }) =>
       payload ? (
         <ExportSecretsDialogContent
           envList={payload}

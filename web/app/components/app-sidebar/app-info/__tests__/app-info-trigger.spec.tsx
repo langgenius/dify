@@ -1,5 +1,4 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoDialogHandles } from '../app-info-dialogs'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -7,6 +6,7 @@ import { createAccountProfileQueryWrapper } from '@/test/console/account-profile
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
+import { createAppInfoDialogHandles } from '../app-info-dialog-handles'
 import { AppInfoTrigger } from '../app-info-trigger'
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
@@ -59,15 +59,12 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   })
 
 const createHandles = () => {
-  const handle = () => ({ open: vi.fn(), openWithPayload: vi.fn() })
-  return {
-    edit: handle(),
-    duplicate: handle(),
-    switchApp: handle(),
-    importDSL: handle(),
-    delete: handle(),
-    export: handle(),
-  } as unknown as AppInfoDialogHandles
+  const handles = createAppInfoDialogHandles()
+  for (const handle of Object.values(handles)) {
+    vi.spyOn(handle, 'open').mockImplementation(() => {})
+    vi.spyOn(handle, 'openWithPayload').mockImplementation(() => {})
+  }
+  return handles
 }
 
 const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({

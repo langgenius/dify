@@ -1,7 +1,4 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppInfoDialogHandles } from '../app-info-dialogs'
-import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import type { AppInfoDialogHandles } from '../app-info-dialog-handles'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -9,6 +6,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createAppInfoDialogHandles } from '../app-info-dialog-handles'
 import { AppInfoDialogs } from '../app-info-dialogs'
 
 const service = vi.hoisted(() => ({
@@ -51,14 +49,7 @@ const app = createAppDetailFixture({
 type Operation = keyof AppInfoDialogHandles
 
 function OperationsEntry({ operation }: { operation: Operation }) {
-  const [handles] = useState<AppInfoDialogHandles>(() => ({
-    edit: createDialogHandle(),
-    duplicate: createDialogHandle(),
-    switchApp: createDialogHandle(),
-    importDSL: createDialogHandle(),
-    delete: createAlertDialogHandle(),
-    export: createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
-  }))
+  const [handles] = useState(createAppInfoDialogHandles)
   return (
     <>
       <button
