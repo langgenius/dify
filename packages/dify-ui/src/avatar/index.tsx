@@ -75,7 +75,7 @@ function AvatarImage({ className, ...props }: AvatarImageProps) {
 type AvatarGroupProps = React.ComponentProps<'span'> & { size?: AvatarSize }
 
 function observeAvatarGroupItems(group: HTMLSpanElement | null) {
-  if (!group) return
+  if (!group || CSS.supports('z-index', 'calc(sibling-count() - sibling-index() + 1)')) return
 
   const updateLayers = () => {
     const items = group.querySelectorAll<HTMLElement | SVGElement>(':scope > *')
@@ -97,6 +97,7 @@ function AvatarGroup({ size, className, ref, ...props }: AvatarGroupProps) {
       ref={groupRef}
       className={cn(
         'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle *:z-(--avatar-group-layer)',
+        'supports-[z-index:calc(sibling-count()_-_sibling-index()_+_1)]:*:z-[calc(sibling-count()-sibling-index()+1)]',
         avatarSizeVariants({ size }),
         className,
       )}
