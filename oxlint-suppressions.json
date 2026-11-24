@@ -3190,11 +3190,6 @@
       "count": 4
     }
   },
-  "web/features/tag-management/tag-item-editor.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/hooks/use-metadata.ts": {
     "typescript/no-explicit-any": {
       "count": 1

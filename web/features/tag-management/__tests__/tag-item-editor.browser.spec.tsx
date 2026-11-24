@@ -87,7 +87,7 @@ it('renames a tag through the real management list and exits editing', async () 
   await renderEditor()
   await edit().click()
   await expect.element(input()).toHaveFocus()
-  await input().fill('Frontend V2')
+  await input().fill('  Frontend V2  ')
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByText('Frontend V2', { exact: true })).toBeVisible()
   await expect.element(input()).not.toBeInTheDocument()
@@ -105,11 +105,10 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
   await expect.element(input()).not.toBeInTheDocument()
   expect(mocks.update).not.toHaveBeenCalled()
   await edit().click()
-  await input().fill('')
-  await userEvent.tab()
-  await expect.element(page.getByText('tag name is empty', { exact: true })).toBeVisible()
-  await expect.element(input()).not.toBeInTheDocument()
-  await expect.element(edit()).toBeVisible()
+  await input().fill('   ')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByRole('dialog', { name: 'common.tag.nameRequired' })).toBeVisible()
+  await expect.element(input()).toHaveValue('   ')
   expect(mocks.update).not.toHaveBeenCalled()
 })
 
@@ -123,6 +122,25 @@ it('shows a rename failure and restores the original name for editing again', as
   await expect.element(input()).not.toBeInTheDocument()
   await edit().click()
   await expect.element(input()).toHaveValue('Frontend')
+})
+
+it('rejects 51 code points before saving and accepts a 50-character replacement', async () => {
+  const validName = '🔖'.repeat(50)
+  await renderEditor()
+  await edit().click()
+  await input().fill(`${validName}x`)
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(page.getByRole('dialog', { name: 'common.tag.nameTooLong:{"max":50}' }))
+    .toBeVisible()
+  expect(mocks.update).not.toHaveBeenCalled()
+  await input().fill(validName)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByText(validName, { exact: true })).toBeVisible()
+  expect(mocks.update).toHaveBeenCalledExactlyOnceWith({
+    params: { tag_id: 'tag-1' },
+    body: { name: validName },
+  })
 })
 
 it('removes an unbound tag from the real list without a success notification', async () => {

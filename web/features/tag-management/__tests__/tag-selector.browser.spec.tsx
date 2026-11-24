@@ -207,6 +207,25 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(mocks.bind).not.toHaveBeenCalled()
 })
 
+it('shows one error toast when a new tag name crosses the length limit', async () => {
+  await renderSelector()
+  await trigger().click()
+  await search().fill('A'.repeat(51))
+  const message = 'common.tag.nameTooLong:{"max":50}'
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect.element(notifications.getByRole('dialog', { name: message })).toBeVisible()
+  await expect
+    .element(page.getByRole('dialog', { name: 'Frontend: Test App' }).getByText(message))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(52))
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
+  await expect
+    .element(page.getByRole('option', { name: /common\.tag\.create/ }))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(50))
+  await expect.element(page.getByRole('option', { name: /common\.tag\.create/ })).toBeVisible()
+})
+
 it.each(['agent', 'app'] as const)(
   'offers to create the first %s tag only after the workspace catalog loads',
   async (type) => {

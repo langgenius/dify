@@ -21,6 +21,8 @@ import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from './permissions'
 import { useApplyTagBindingsMutation } from './tag-bindings'
+import { isTagNameTooLong, MAX_TAG_NAME_LENGTH } from './tag-name-length'
+import { getTagNameValidationMessage } from './tag-name-validation'
 import { isCreateTagOption } from './tag-option'
 import { TagSearchContent } from './tag-search-content'
 import { TagTriggerContent } from './tag-trigger-content'
@@ -94,6 +96,7 @@ export const TagSelector = ({
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const nameTooLong = canManageTags && isTagNameTooLong(inputValue)
   const canChangeBindings = requiresTargetEditPermission
     ? !!canBindOrUnbindTags
     : !!canBindOrUnbindTags || canManageTags
@@ -154,6 +157,7 @@ export const TagSelector = ({
 
     if (
       canManageTags &&
+      !nameTooLong &&
       normalizedInputValue &&
       nextItems.every((tag) => normalizeTagName(tag.name) !== normalizedInputValue)
     ) {
@@ -168,7 +172,7 @@ export const TagSelector = ({
     }
 
     return nextItems
-  }, [canManageTags, closingPopup, inputValue, open, tagList, type, value])
+  }, [canManageTags, closingPopup, inputValue, nameTooLong, open, tagList, type, value])
   const isTagCatalogEmpty = closingPopup?.isTagCatalogEmpty ?? (hasLoadedTags && items.length === 0)
   const tagItemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
   const tagItems = useMemo(
@@ -237,7 +241,11 @@ export const TagSelector = ({
           return tag.id
         },
         (error: unknown) => {
-          toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed'], { ns: 'common' }))
+          toast.error(
+            getTagNameValidationMessage(error, t, 'create') ??
+              getErrorMessage(error) ??
+              t(($) => $['tag.failed']),
+          )
           return undefined
         },
       )
@@ -286,7 +294,11 @@ export const TagSelector = ({
       value={draftTagIds}
       onValueChange={handleValueChange}
       inputValue={closingPopup?.inputValue ?? inputValue}
-      onInputValueChange={setInputValue}
+      onInputValueChange={(nextValue) => {
+        if (canManageTags && !nameTooLong && isTagNameTooLong(nextValue))
+          toast.error(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
+        setInputValue(nextValue)
+      }}
       filter={TAG_COMBOBOX_FILTER}
     >
       <ComboboxTrigger
@@ -316,6 +328,7 @@ export const TagSelector = ({
           >
             <TagSearchContent
               type={type}
+              nameTooLong={nameTooLong}
               isTagCatalogEmpty={isTagCatalogEmpty}
               canBindOrUnbindTags={canBindOrUnbindTags}
               requiresTargetEditPermission={requiresTargetEditPermission}
