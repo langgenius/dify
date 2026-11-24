@@ -1,19 +1,14 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { SubscriptionListView } from '../list-view'
 
 let mockSubscriptions: TriggerSubscription[] = []
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ subscriptions: mockSubscriptions }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
-  useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),
-  useInitiateTriggerOAuth: () => ({ mutate: vi.fn() }),
 }))
 
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({

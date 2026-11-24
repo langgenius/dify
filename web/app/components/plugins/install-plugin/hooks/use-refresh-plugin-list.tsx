@@ -7,7 +7,6 @@ import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
@@ -53,7 +52,6 @@ const useRefreshPluginList = () => {
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const queryClient = useQueryClient()
 
-  const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
   return {
     refreshPluginList: (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
@@ -86,8 +84,11 @@ const useRefreshPluginList = () => {
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 
-      if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType)
-        invalidateAllTriggerPlugins()
+      if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
+        })
+      }
 
       if (
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
