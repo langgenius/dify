@@ -518,14 +518,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/__tests__/utils.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 5
-    }
-  },
   "web/app/components/base/file-uploader/file-preview-content.tsx": {
     "jsx-a11y/media-has-caption": {
       "count": 2
@@ -606,11 +598,6 @@
   },
   "web/app/components/base/icon-picker/emoji-data.ts": {
     "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/image-uploader/__tests__/utils.spec.ts": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -2947,7 +2934,7 @@
       "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 3
+      "count": 1
     }
   },
   "web/features/skills/detail/files/editor.tsx": {
@@ -3061,14 +3048,6 @@
       "count": 1
     }
   },
-  "web/service/annotation.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/service/base.spec.ts": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3098,11 +3077,6 @@
   },
   "web/service/console/server.ts": {
     "no-restricted-properties": {
-      "count": 1
-    }
-  },
-  "web/service/datasets.ts": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },

@@ -4,10 +4,11 @@ import { waitFor } from '@testing-library/react'
 import { createInstance } from 'i18next'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
+const upload = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/webapp-client').webAppClient.files.upload.post>(),
+)
+vi.mock('@/service/webapp-client', () => ({
+  webAppClient: { files: { upload: { post: upload } } },
 }))
 const consoleUpload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
 vi.mock('@/service/console', async (importOriginal) => {
@@ -30,7 +31,7 @@ beforeAll(async () => {
   })
 })
 beforeEach(() => {
-  upload.mockReset().mockResolvedValue({ id: 'uploaded-id' })
+  upload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
   consoleUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'image.png', size: 5 })
 })
 
@@ -79,19 +80,20 @@ it('reports console upload progress as a percentage', () => {
   expect(events.onProgressCallback).toHaveBeenCalledExactlyOnceWith(62)
 })
 
-it('uploads public web app images through the public upload transport', async () => {
+it('uploads public web app images through the WebApp files contract', async () => {
   const selected = file()
   const events = callbacks()
   imageUpload({ file: selected, ...events }, true)
-  expect(upload).toHaveBeenCalledExactlyOnceWith(
-    expect.objectContaining({ data: expect.any(FormData) }),
-    true,
-  )
-  expect(upload.mock.calls[0]![0].data.get('file')).toBe(selected)
-  expect(consoleUpload).not.toHaveBeenCalled()
   await waitFor(() =>
-    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
+    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: 'uploaded-id' }),
+    ),
   )
+  expect(upload).toHaveBeenCalledExactlyOnceWith(
+    { body: { file: selected } },
+    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+  )
+  expect(consoleUpload).not.toHaveBeenCalled()
 })
 
 it('forwards a failed upload without reporting success', async () => {
@@ -102,23 +104,3 @@ it('forwards a failed upload without reporting success', async () => {
   await waitFor(() => expect(events.onErrorCallback).toHaveBeenCalledExactlyOnceWith(error))
   expect(events.onSuccessCallback).not.toHaveBeenCalled()
 })
-
-it.each([true, false])(
-  'only reports a public upload progress percentage when the total is known (%s)',
-  async (lengthComputable) => {
-    upload.mockImplementation(async (options) => {
-      options.onprogress?.call(
-        options.xhr,
-        new ProgressEvent('progress', { lengthComputable, loaded: 5, total: 8 }),
-      )
-      return { id: 'uploaded-id' }
-    })
-    const events = callbacks()
-    imageUpload({ file: file(), ...events }, true)
-    if (lengthComputable) expect(events.onProgressCallback).toHaveBeenCalledExactlyOnceWith(62)
-    else expect(events.onProgressCallback).not.toHaveBeenCalled()
-    await waitFor(() =>
-      expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
-    )
-  },
-)

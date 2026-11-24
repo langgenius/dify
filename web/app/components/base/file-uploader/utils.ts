@@ -5,10 +5,9 @@ import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-// oxlint-disable-next-line no-restricted-imports -- The public WebApp upload contract declares no multipart body yet.
-import { upload } from '@/service/base'
 import { consoleClient } from '@/service/console'
 import { TransferMethod } from '@/types/app'
+import { uploadPublicFile } from './public-upload'
 import { FileAppearanceTypeEnum } from './types'
 
 /**
@@ -63,20 +62,7 @@ export const fileUpload: FileUpload = (
 
   let uploading: Promise<unknown>
   if (isPublic) {
-    const formData = new FormData()
-    formData.append('file', file)
-    // oxlint-disable-next-line typescript/no-deprecated -- The public WebApp upload contract declares no multipart body yet.
-    uploading = upload(
-      {
-        // oxlint-disable-next-line no-restricted-globals -- The legacy public upload transport takes the XHR.
-        xhr: new XMLHttpRequest(),
-        data: formData,
-        onprogress: (event) => {
-          if (event.lengthComputable) onUploadProgress(event)
-        },
-      },
-      true,
-    )
+    uploading = uploadPublicFile(file, onUploadProgress)
   } else if (trialAppId) {
     uploading = consoleClient.trialApps.byAppId.files.upload.post(
       { params: { app_id: trialAppId }, body: { file } },

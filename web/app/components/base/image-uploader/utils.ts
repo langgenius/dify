@@ -1,7 +1,6 @@
 import type { TFunction } from 'i18next'
 import { ORPCError } from '@orpc/client'
-// oxlint-disable-next-line no-restricted-imports -- The public WebApp upload contract declares no multipart body yet.
-import { upload } from '@/service/base'
+import { uploadPublicFile } from '@/app/components/base/file-uploader/public-upload'
 import { consoleClient } from '@/service/console'
 
 /**
@@ -43,20 +42,7 @@ export const imageUpload: ImageUpload = (
 
   let uploading: Promise<{ id: string }>
   if (isPublic) {
-    const formData = new FormData()
-    formData.append('file', file)
-    // oxlint-disable-next-line typescript/no-deprecated -- The public WebApp upload contract declares no multipart body yet.
-    uploading = upload(
-      {
-        // oxlint-disable-next-line no-restricted-globals -- The legacy public upload transport takes the XHR.
-        xhr: new XMLHttpRequest(),
-        data: formData,
-        onprogress: (event) => {
-          if (event.lengthComputable) onUploadProgress(event)
-        },
-      },
-      true,
-    )
+    uploading = uploadPublicFile(file, onUploadProgress)
   } else {
     uploading = consoleClient.files.upload.post(
       { body: { file } },
