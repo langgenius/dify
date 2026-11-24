@@ -1,44 +1,136 @@
+import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
+import type { ReactElement } from 'react'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
-import { AppToaster } from '@/app/notifications/app-toaster'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { TagItemEditor } from '../tag-item-editor'
+import en from '@/i18n/locales/en-US/common.json'
+import ja from '@/i18n/locales/ja-JP/common.json'
+import zh from '@/i18n/locales/zh-Hans/common.json'
+import { renderWithTags } from '@/test/tag-management'
+import { TagManagementDialog } from '../tag-management-dialog'
+import { TagSelector } from '../tag-selector'
+
+vi.unmock('react-i18next')
+
+const locales = { 'en-US': en, 'ja-JP': ja, 'zh-Hans': zh }
+const original: TagResponse = {
+  id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
+  name: 'Original',
+  type: 'agent',
+  binding_count: '2',
+}
+// Exercise the real Console transport, including suppression of its default error toast.
+function installTagApi() {
+  const writes: Array<{ method: string; name: string }> = []
+  let saved = original
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const request = new Request(input, init)
+    const { pathname } = new URL(request.url)
+    if (request.method === 'GET' && pathname.endsWith('/tags')) return Response.json([saved])
+    const create = request.method === 'POST' && pathname.endsWith('/tags')
+    const rename = request.method === 'PATCH' && pathname.endsWith(`/tags/${original.id}`)
+    if (!create && !rename) throw new Error(`Unexpected request: ${request.method} ${pathname}`)
+    const { name } = (await request.json()) as { name: string }
+    writes.push({ method: request.method, name })
+    if (name === 'Finance') {
+      return Response.json(
+        { code: 'invalid_param', message: 'Tag name already exists' },
+        { status: 400 },
+      )
+    }
+    if (rename) saved = { ...saved, name }
+    return Response.json(create ? { ...original, id: 'new-tag', name } : saved)
+  })
+  return writes
+}
+
+async function renderLocalized(language: keyof typeof locales, ui: ReactElement) {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: language,
+    resources: { [language]: { common: locales[language] } },
+    keySeparator: false,
+  })
+  return renderWithTags(
+    <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>,
+    [original],
+    ['agent.tag.manage'],
+  )
+}
 
 afterEach(() => {
   vi.restoreAllMocks()
   toast.dismiss()
 })
 
-it('shows one business error per failed rename, including a retry through the real transport', async () => {
-  const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    const request = input instanceof Request ? input : new Request(String(input))
-    if (!request.url.endsWith('/tags/tag-1') || request.method !== 'PATCH')
-      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-    return Response.json({ message: 'Tag name already exists' }, { status: 400 })
-  })
-  const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  await render(
-    <Wrapper>
-      <TagItemEditor tag={{ id: 'tag-1', name: 'Original', type: 'app', binding_count: '0' }} />
-      <AppToaster />
-    </Wrapper>,
-  )
+it.each([
+  {
+    language: 'ja-JP',
+    action: 'create',
+    expected: '同じ名前のタグがすでに存在します。',
+  },
+  {
+    language: 'zh-Hans',
+    action: 'rename',
+    expected: '已存在同名标签。',
+  },
+  {
+    language: 'en-US',
+    action: 'rename',
+    expected: 'A tag with this name already exists.',
+  },
+] as const)(
+  'shows one $language error notification for a $action conflict and accepts a correction',
+  async ({ language, action, expected }) => {
+    const writes = installTagApi()
+    const common = locales[language]
+    await renderLocalized(language, <TagManagementDialog type="agent" show onClose={() => {}} />)
+    const dialog = page.getByRole('dialog', { name: common['tag.manageTags'] })
+    let input = dialog.getByRole('textbox', { name: common['tag.addNew'] })
+    if (action === 'rename') {
+      await dialog.getByRole('button', { name: `${common['operation.edit']} Original` }).click()
+      input = dialog.getByRole('textbox', { name: `${common['operation.rename']} Original` })
+    }
+    await input.fill('Finance')
+    await userEvent.keyboard('{Enter}')
+    const notifications = page.getByRole('region', { name: 'Notifications' })
+    await expect.element(notifications.getByRole('dialog', { name: expected })).toBeVisible()
+    await expect.element(dialog.getByText(expected, { exact: true })).not.toBeInTheDocument()
+    await expect.element(input).toHaveAttribute('aria-invalid', 'true')
+    await expect.element(input).toHaveValue('Finance')
+    expect(notifications.getByRole('dialog').all()).toHaveLength(1)
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    await page.getByRole('button', { name: 'common.operation.edit Original' }).click()
-    await page.getByRole('textbox', { name: 'common.operation.rename Original' }).fill('Renamed')
-    await userEvent.tab()
-    await expect.element(page.getByRole('textbox')).not.toBeInTheDocument()
-    await expect.element(page.getByText('Tag name already exists', { exact: true })).toBeVisible()
-    await page.getByRole('dialog', { name: 'Tag name already exists' }).hover()
-    // A second transport notification would expose a second independently dismissible card.
-    await expect.element(page.getByRole('button', { name: 'Close notification' })).toBeVisible()
-    expect(page.getByRole('button', { name: 'Close notification' }).all()).toHaveLength(1)
-    expect(network).toHaveBeenCalledTimes(attempt)
-    await page.getByRole('button', { name: 'Close notification' }).click()
-    await expect
-      .element(page.getByText('Tag name already exists', { exact: true }))
-      .not.toBeInTheDocument()
-  }
+    await input.fill('Corrected')
+    await userEvent.keyboard('{Enter}')
+    if (action === 'create') {
+      await expect.element(input).toHaveValue('')
+      await expect.element(dialog.getByText('Original', { exact: true })).toBeVisible()
+    } else {
+      await expect.element(dialog.getByText('Corrected', { exact: true })).toBeVisible()
+    }
+    const method = action === 'create' ? 'POST' : 'PATCH'
+    expect(writes).toEqual([
+      { method, name: 'Finance' },
+      { method, name: 'Corrected' },
+    ])
+    await expect.element(dialog.getByText('2', { exact: true })).toBeVisible()
+  },
+)
+
+it('shows a single Japanese notification when creating from a card races a concurrent creation', async () => {
+  const writes = installTagApi()
+  await renderLocalized(
+    'ja-JP',
+    <TagSelector type="agent" targetId="agent-1" value={[original]} canBindOrUnbindTags />,
+  )
+  await page.getByRole('combobox', { name: 'Original' }).click()
+  await page.getByRole('combobox', { name: ja['tag.selectorPlaceholder'] }).fill('Finance')
+  await page.getByRole('option', { name: /Finance/ }).click()
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect
+    .element(notifications.getByRole('dialog', { name: '同じ名前のタグがすでに存在します。' }))
+    .toBeVisible()
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
+  expect(writes).toEqual([{ method: 'POST', name: 'Finance' }])
 })

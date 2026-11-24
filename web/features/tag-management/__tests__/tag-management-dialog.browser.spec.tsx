@@ -1,4 +1,5 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
@@ -7,13 +8,21 @@ import { renderWithTags } from '@/test/tag-management'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { TagManagementDialog } from '../tag-management-dialog'
 
-const { createTag } = vi.hoisted(() => ({ createTag: vi.fn() }))
+const { createTag, updateTag, listTags } = vi.hoisted(() => ({
+  createTag: vi.fn(),
+  updateTag: vi.fn(),
+  listTags: vi.fn(),
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'tags.post': createTag }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.post': createTag,
+      'tags.byTagId.patch': updateTag,
+      'tags.get': listTags,
+    }),
   }
 })
 const tags = [
@@ -37,7 +46,12 @@ function renderModal(
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
+const notifications = () => page.getByRole('region', { name: 'Notifications' })
 beforeEach(() => {
+  listTags.mockReset().mockResolvedValue(tags)
+  updateTag
+    .mockReset()
+    .mockImplementation(async ({ params, body }) => ({ id: params.tag_id, ...body }))
   createTag
     .mockReset()
     .mockImplementation(async ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }))
@@ -50,7 +64,7 @@ it.each(['app', 'knowledge', 'snippet'] as const)(
   'creates a %s tag and clears the successful draft',
   async (type) => {
     await renderModal(type)
-    await input().fill('NewTag')
+    await input().fill('  NewTag  ')
     await userEvent.keyboard('{Enter}')
     await expect.element(input()).toHaveValue('')
     expect(createTag).toHaveBeenCalledExactlyOnceWith({ body: { name: 'NewTag', type } })
@@ -91,13 +105,71 @@ it('keeps a failed draft available for correction and retry', async () => {
   expect(createTag).toHaveBeenLastCalledWith({ body: { name: 'Corrected', type: 'app' } })
 })
 
-it('ignores empty submissions through Enter and blur', async () => {
+it('translates a server-side name length error without displaying its JSON', async () => {
+  const message = JSON.stringify([{ loc: ['name'], type: 'string_too_long' }])
+  createTag.mockRejectedValueOnce(new ORPCError('unprocessable_entity', { status: 422, message }))
   await renderModal()
-  await input().click()
+  await input().fill('Research')
   await userEvent.keyboard('{Enter}')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameTooLong:{"max":50}' }))
+    .toBeVisible()
+  await expect.element(input()).toHaveValue('Research')
+  await expect.element(page.getByText(message, { exact: true })).not.toBeInTheDocument()
+})
+
+it('rejects whitespace-only names and lets the user correct the draft', async () => {
+  await renderModal()
+  await input().fill('   ')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameRequired' }))
+    .toBeVisible()
   await userEvent.tab()
+  expect(notifications().getByRole('dialog').all()).toHaveLength(1)
   expect(createTag).not.toHaveBeenCalled()
-  await expect.element(dialog()).toBeVisible()
+  // The next real submission goes through the same path, so an empty request would precede it.
+  await input().fill('NextTag')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveValue('')
+  expect(createTag).toHaveBeenCalledExactlyOnceWith({
+    body: { name: 'NextTag', type: 'app' },
+  })
+})
+
+it('checks normalized names against other loaded Agent tags on create and rename', async () => {
+  const research = {
+    id: '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60',
+    type: 'agent',
+    name: '  Research  ',
+  }
+  const finance = { ...research, id: '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071', name: 'Finance' }
+  const catalog = [research, finance]
+  listTags.mockResolvedValue(catalog)
+  await renderWithTags(<TagManagementDialog type="agent" show onClose={() => {}} />, catalog, [
+    'agent.tag.manage',
+  ])
+  await input().fill('Research')
+  await userEvent.keyboard('{Enter}')
+  const conflicts = notifications().getByRole('dialog', { name: 'common.tag.nameAlreadyExists' })
+  await expect.element(conflicts).toBeVisible()
+  expect(createTag).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Finance' }).click()
+  const rename = dialog().getByRole('textbox', { name: 'common.operation.rename Finance' })
+  await rename.fill(' Research ')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(rename).toHaveAttribute('aria-invalid', 'true')
+  expect(conflicts.all()).toHaveLength(2)
+  expect(updateTag).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Research' }).click()
+  const ownName = dialog().getByRole('textbox', { name: 'common.operation.rename Research' })
+  await ownName.fill('Research')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .poll(() => updateTag.mock.calls)
+    .toEqual([[{ params: { tag_id: research.id }, body: { name: 'Research' } }]])
 })
 
 it.each(['button', 'Escape'])('dismisses management with %s', async (method) => {
