@@ -64,7 +64,7 @@ const api = vi.hoisted(() => ({
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
   stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  marketplace: vi.fn<typeof import('@/service/base').postMarketplace>(),
+  marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
@@ -110,8 +110,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: api.stream,
-  postMarketplace: api.marketplace,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: api.marketplace })
+})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),

@@ -46,10 +46,10 @@ const mockTools = [
 ]
 
 const requests = vi.hoisted(() => ({ installed: vi.fn(), marketplace: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  getMarketplace: requests.marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginDetail: requests.marketplace })
+})
 
 describe('useToolSelector', () => {
   const mockOnSelect = vi.fn()
@@ -170,7 +170,11 @@ describe('useToolSelector', () => {
     await waitFor(() => expect(result.current.inMarketPlace).toBe(true))
     expect(result.current.manifest).toMatchObject({ name: 'Marketplace tool' })
     expect(requests.installed).toHaveBeenCalledWith({ body: { plugin_ids: [pluginId] } })
-    expect(requests.marketplace).toHaveBeenCalledWith(`/plugins/${pluginId}`)
+    const [organization, pluginName] = pluginId.split('/')
+    expect(requests.marketplace).toHaveBeenCalledWith(
+      { params: { organization, pluginName } },
+      expect.anything(),
+    )
   })
 
   it('fetches the known plugin while legacy provider lists are still pending', async () => {
@@ -189,7 +193,10 @@ describe('useToolSelector', () => {
     )
     await waitFor(() => expect(result.current.inMarketPlace).toBe(true))
     expect(requests.installed).toHaveBeenCalledWith({ body: { plugin_ids: ['org/market-plugin'] } })
-    expect(requests.marketplace).toHaveBeenCalledWith('/plugins/org/market-plugin')
+    expect(requests.marketplace).toHaveBeenCalledWith(
+      { params: { organization: 'org', pluginName: 'market-plugin' } },
+      expect.anything(),
+    )
   })
 
   it('does not request marketplace data for an unresolved workflow tool', () => {
