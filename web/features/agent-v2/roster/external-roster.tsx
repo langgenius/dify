@@ -73,27 +73,42 @@ export function ExternalRoster() {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reconcile the shareable filter with the authoritative catalog.
     void setFilters({ external_tag_ids: tagIds })
   }, [tagIds, urlTagIds, setFilters])
-  const keyword = useDebounce(filters.external_keyword.trim().slice(0, 255), { wait: 300 })
+  const trimmedKeyword = filters.external_keyword.trim().slice(0, 255)
+  const delayedKeyword = useDebounce(trimmedKeyword, { wait: 300 })
+  const keyword = trimmedKeyword ? delayedKeyword : ''
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
   const sortBy = filters.external_sort_by === 'last_modified' ? 'updated_at' : 'created_at'
   const sortOrder = filters.external_sort_by === 'earliest_created' ? 'asc' : 'desc'
+  const firstUnfilteredPage = {
+    page: 1,
+    limit: 20,
+    connected_by_me: false,
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  } satisfies NonNullable<GetExternalAgentsData['query']>
   const rosterQueryInput = (
     page: number,
     selectedTagIds: string[],
   ): Pick<GetExternalAgentsData, 'query'> => ({
     query: {
+      ...firstUnfilteredPage,
+      page,
       ...(keyword ? { keyword } : {}),
       ...(selectedTagIds.length ? { tag_ids: selectedTagIds } : {}),
       connected_by_me: filters.external_connected_by_me,
-      page,
-      limit: 20,
-      sort_by: sortBy,
-      sort_order: sortOrder,
       ...(filters.external_status === 'all'
         ? {}
         : { enabled: filters.external_status === 'enabled' }),
     },
   })
+  const resetRosterPagination = (input: ReturnType<typeof rosterQueryInput>) => {
+    queryClient.removeQueries({
+      queryKey: consoleQuery.externalAgents.get.key({ type: 'infinite', input }),
+      exact: true,
+      type: 'inactive',
+    })
+    viewportRef.current?.scrollTo({ top: 0 })
+  }
   const list = useInfiniteQuery({
     ...consoleQuery.externalAgents.get.infiniteOptions({
       input: (page) => rosterQueryInput(Number(page), tagIds),
@@ -177,15 +192,7 @@ export function ExternalRoster() {
           type="agent"
           value={tagIds}
           onChange={(nextIds) => {
-            queryClient.removeQueries({
-              queryKey: consoleQuery.externalAgents.get.key({
-                type: 'infinite',
-                input: rosterQueryInput(1, nextIds),
-              }),
-              exact: true,
-              type: 'inactive',
-            })
-            viewportRef.current?.scrollTo({ top: 0 })
+            resetRosterPagination(rosterQueryInput(1, nextIds))
             void setFilters({ external_tag_ids: nextIds })
           }}
           onOpenTagManagement={() => setTagManagementOpen(true)}
@@ -249,6 +256,7 @@ export function ExternalRoster() {
                   : undefined
               }
               onClearFilters={() => {
+                resetRosterPagination({ query: firstUnfilteredPage })
                 void setFilters({
                   external_keyword: '',
                   external_tag_ids: [],

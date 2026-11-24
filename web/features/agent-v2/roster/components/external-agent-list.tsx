@@ -26,13 +26,12 @@ import {
   getExternalAgentMonitoringPath,
   getExternalAgentOverviewPath,
 } from '@/features/agent-v2/external-agent/routes'
-import { TagSelector } from '@/features/tag-management/tag-selector'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { AgentRosterTags } from './agent-roster-tags'
 import { ExternalAgentEmptyState } from './external-agent-empty-state'
-import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 export type ExternalAgentListItem = {
   key: string
@@ -133,19 +132,13 @@ function ExternalAgentCard({
         </div>
       </Link>
       <div className="px-3">
-        {canEditTags ? (
-          <TagSelector
-            type="agent"
-            targetId={agent.key}
-            contextLabel={agent.name}
-            value={agent.tags}
-            canBindOrUnbindTags
-            requiresTargetEditPermission
-            onOpenTagManagement={onOpenTagManagement}
-          />
-        ) : (
-          <ReadOnlyAgentTags agent={agent} />
-        )}
+        <AgentRosterTags
+          id={agent.key}
+          name={agent.name}
+          tags={agent.tags}
+          canEdit={canEditTags}
+          onOpenTagManagement={onOpenTagManagement}
+        />
       </div>
       {!agent.enabled && (
         <span id={statusId} className="pointer-events-none absolute inset-e-0 top-[-0.5px]">
