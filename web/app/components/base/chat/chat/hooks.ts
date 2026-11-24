@@ -204,6 +204,27 @@ function getConversationMessagesData(response: unknown): ConversationMessagesRes
   return Array.isArray(data) ? data.filter(isHistoryConversationMessage) : []
 }
 
+function hasPendingAgentHistory(
+  message: HistoryConversationMessage | undefined,
+  streamedThoughts: ThoughtItem[] | undefined,
+) {
+  if (!message) return true
+  const thoughts = getHistoryAgentThoughts(message)
+  const isPending = (thought: ThoughtItem) =>
+    thought.tool_activity?.status === 'started' || thought.tool_activity?.status === 'running'
+
+  return (
+    thoughts.some(isPending) ||
+    (streamedThoughts ?? []).some(
+      (streamed) =>
+        streamed.tool_activity &&
+        !thoughts.some(
+          (thought) => thought.id === streamed.id && thought.tool_activity && !isPending(thought),
+        ),
+    )
+  )
+}
+
 function abortWorkflowEventsRequest(abortController: AbortController | null) {
   abortController?.abort(new DOMException('The user aborted a request.', 'AbortError'))
 }
@@ -1304,24 +1325,37 @@ export const useChat = (
               (!hasStopRespondedRef.current || options.isNewAgent) &&
               onGetConversationMessages
             ) {
-              let conversationMessagesResponse: unknown
-              try {
-                conversationMessagesResponse = await onGetConversationMessages(
-                  conversationIdRef.current,
-                  (newAbortController) => {
-                    if (isCurrentRequest())
-                      conversationMessagesAbortControllerRef.current = newAbortController
-                    else newAbortController.abort()
-                  },
-                )
-              } catch {
-                // Keep the streamed answer and its settlement when history cannot be refreshed.
-                return
-              }
-              if (!isCurrentRequest()) return
+              let newResponseItem: HistoryConversationMessage | undefined
+              // Stop acknowledges the cancellation request before terminal thoughts are persisted.
+              for (let attempt = 0; attempt < 20; attempt++) {
+                if (!isCurrentRequest()) return
+                let conversationMessagesResponse: unknown
+                try {
+                  conversationMessagesResponse = await onGetConversationMessages(
+                    conversationIdRef.current,
+                    (newAbortController) => {
+                      if (isCurrentRequest())
+                        conversationMessagesAbortControllerRef.current = newAbortController
+                      else newAbortController.abort()
+                    },
+                  )
+                } catch {
+                  // Keep the streamed answer and its settlement when history cannot be refreshed.
+                  return
+                }
+                if (!isCurrentRequest()) return
 
-              const data = getConversationMessagesData(conversationMessagesResponse)
-              const newResponseItem = data.find((item) => item.id === responseItem.id)
+                const data = getConversationMessagesData(conversationMessagesResponse)
+                newResponseItem = data.find((item) => item.id === responseItem.id)
+                if (
+                  !options.isNewAgent ||
+                  !hasStopRespondedRef.current ||
+                  !hasPendingAgentHistory(newResponseItem, responseItem.agent_thoughts)
+                )
+                  break
+                if (attempt === 19) return notifyConversationComplete(completedWorkflowRunId)
+                await new Promise<void>((resolve) => setTimeout(resolve, 500))
+              }
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
               if (!newResponseItem) return notifyConversationComplete(completedWorkflowRunId)
 

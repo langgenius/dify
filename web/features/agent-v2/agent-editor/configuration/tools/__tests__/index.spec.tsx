@@ -496,7 +496,10 @@ describe('AgentTools', () => {
       )
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
-      expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument())
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.tools.add' }),
+      ).toHaveFocus()
       expect(readComposerState().tools).toEqual([
         expect.objectContaining({ id: 'lark-cli', kind: 'cli' }),
       ])

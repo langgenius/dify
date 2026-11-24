@@ -24,7 +24,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
@@ -312,6 +312,8 @@ export const AgentProviderToolItem = memo(
     const { t } = useTranslation(['agentV2'])
     const { t: tCommon } = useTranslation(['common'])
     const readOnly = useAgentOrchestrateReadOnly()
+    const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+    const removeConfirmedRef = useRef(false)
     const theme = useResolvedTheme()
     const shouldFetchPluginManifest =
       isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
@@ -354,7 +356,16 @@ export const AgentProviderToolItem = memo(
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <AlertDialog>
+            <AlertDialog
+              open={removeDialogOpen}
+              onOpenChange={setRemoveDialogOpen}
+              onOpenChangeComplete={(open) => {
+                if (!open && removeConfirmedRef.current) {
+                  removeConfirmedRef.current = false
+                  onRemoveProvider()
+                }
+              }}
+            >
               <AlertDialogTrigger
                 render={
                   <IconButton
@@ -376,7 +387,12 @@ export const AgentProviderToolItem = memo(
                   <AlertDialogCancelButton>
                     {tCommon(($) => $['operation.cancel'])}
                   </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton onClick={onRemoveProvider}>
+                  <AlertDialogConfirmButton
+                    onClick={() => {
+                      removeConfirmedRef.current = true
+                      setRemoveDialogOpen(false)
+                    }}
+                  >
                     {tCommon(($) => $['operation.remove'])}
                   </AlertDialogConfirmButton>
                 </AlertDialogFooter>

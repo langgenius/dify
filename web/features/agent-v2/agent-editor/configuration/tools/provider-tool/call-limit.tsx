@@ -65,23 +65,30 @@ export function ToolCallLimit({
     if (value !== limit) save(value)
   }
 
+  const triggerText = summary || t(($) => $['toolCallLimit.set'])
+
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={t(($) => $['toolCallLimit.label'], { toolName: action.name })}
+        aria-label={`${triggerText}: ${t(($) => $['toolCallLimit.label'], { toolName: action.name })}`}
         className={cn(
-          'shrink-0 rounded-md px-1 py-0.5 system-xs-regular text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
+          'shrink-0 rounded-md py-0.5 ps-1.5 pe-1 system-xs-regular text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
           !enabled &&
             'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100',
         )}
       >
-        {summary || t(($) => $['toolCallLimit.set'])}
+        {triggerText}
         <span
           aria-hidden
-          className="ms-0.5 i-ri-arrow-down-s-line inline-block size-3 align-middle"
+          className="ms-0.5 i-ri-arrow-down-s-line inline-block size-3.5 align-middle"
         />
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={4} aria-labelledby={titleId} className="w-62 p-3">
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        aria-labelledby={titleId}
+        className="w-62 px-3 py-2.5"
+      >
         <form
           noValidate
           onSubmit={(event) => {
@@ -90,7 +97,7 @@ export function ToolCallLimit({
           }}
         >
           <Field className="mb-2 flex items-center justify-between">
-            <FieldLabel id={titleId} className="system-sm-medium">
+            <FieldLabel id={titleId} className="system-sm-semibold">
               {t(($) => $['toolCallLimit.title'])}
             </FieldLabel>
             <Switch
@@ -102,7 +109,7 @@ export function ToolCallLimit({
               }}
             />
           </Field>
-          <Field invalid={invalid} className="grid-cols-[1fr_5rem] items-center">
+          <Field invalid={invalid} className="grid-cols-[1fr_5rem] items-center gap-y-0">
             <FieldLabel className={cn('system-sm-regular', !enabled && 'text-text-disabled')}>
               {t(($) => $['toolCallLimit.maximum'])}
             </FieldLabel>
@@ -142,9 +149,11 @@ export function ToolCallLimit({
                 </NumberFieldControls>
               </NumberFieldGroup>
             </NumberField>
-            <FieldError match={invalid} className="col-span-2">
-              {t(($) => $['toolCallLimit.invalid'])}
-            </FieldError>
+            <div className="col-span-2" aria-live="polite" aria-atomic="true">
+              <FieldError match={invalid} className="mt-1">
+                {t(($) => $['toolCallLimit.invalid'])}
+              </FieldError>
+            </div>
           </Field>
         </form>
       </PopoverContent>

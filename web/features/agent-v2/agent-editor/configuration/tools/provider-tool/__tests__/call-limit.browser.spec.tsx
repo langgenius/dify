@@ -45,7 +45,7 @@ it('commits only valid limits and remembers the last value across disabling and 
       <ConfiguredTool />
     </AgentComposerProvider>,
   )
-  const trigger = page.getByRole('button', { name: 'Call limit for Search repositories' })
+  const trigger = page.getByRole('button', { name: /Call limit for Search repositories/ })
   await trigger.click()
   const toggle = page.getByRole('switch', { name: 'Call limit per run' })
   const input = page.getByRole('textbox', { name: 'Maximum calls' })
@@ -59,6 +59,8 @@ it('commits only valid limits and remembers the last value across disabling and 
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByText('Enter a whole number greater than 0.')).toBeVisible()
   await expect.element(input).toHaveValue('1.5')
+  await expect.element(input).toHaveAttribute('aria-invalid', 'true')
+  await expect.element(input).toHaveAccessibleDescription('Enter a whole number greater than 0.')
   await expect.element(saved).toMatchTextContent('"max_calls_per_run":3')
   await input.fill('0')
   await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
@@ -68,6 +70,13 @@ it('commits only valid limits and remembers the last value across disabling and 
   await input.fill('5')
   await userEvent.keyboard('{Enter}')
   await expect.element(trigger).toHaveTextContent('5 calls / run')
+  await expect
+    .element(trigger)
+    .toHaveAccessibleName('5 calls / run: Call limit for Search repositories')
+  await expect.element(input).not.toHaveAttribute('aria-invalid', 'true')
+  await expect
+    .element(input)
+    .not.toHaveAccessibleDescription('Enter a whole number greater than 0.')
   await page.getByRole('button', { name: 'Increase value' }).click()
   await expect.element(saved).toMatchTextContent('"max_calls_per_run":6')
   await page.getByRole('button', { name: 'Decrease value' }).click()
@@ -76,7 +85,8 @@ it('commits only valid limits and remembers the last value across disabling and 
   await expect.element(saved).toMatchTextContent('"max_calls_per_run":null')
   await expect.element(input).toHaveValue('5')
   await userEvent.keyboard('{Escape}')
-  await trigger.click()
+  await expect.element(trigger).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
   await toggle.click()
   await expect.element(input).toHaveValue('5')
   await expect.element(saved).toMatchTextContent('"max_calls_per_run":5')
@@ -103,6 +113,6 @@ it('displays saved limits without an editing control in read-only versions', asy
   )
   await expect.element(page.getByText('1 call / run', { exact: true })).toBeVisible()
   await expect
-    .element(page.getByRole('button', { name: 'Call limit for Search repositories' }))
+    .element(page.getByRole('button', { name: /Call limit for Search repositories/ }))
     .not.toBeInTheDocument()
 })

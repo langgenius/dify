@@ -1,5 +1,6 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -273,10 +274,12 @@ type AddToolMenuView = 'menu' | 'tool-picker'
 const addToolDefaultView = 'tool-picker' satisfies AddToolMenuView
 
 function AddToolMenu({
+  triggerRef,
   onAddCliTool,
   onAddTools,
   selectedTools,
 }: {
+  triggerRef?: Ref<HTMLButtonElement>
   onAddCliTool: () => void
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
@@ -343,6 +346,7 @@ function AddToolMenu({
       <PopoverTrigger
         render={
           <ConfigureSectionAddButton
+            ref={triggerRef}
             ariaLabel={t(($) => $['agentDetail.configure.tools.add'])}
             className="data-popup-open:bg-state-base-hover"
           />
@@ -392,6 +396,7 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
+  const addToolButtonRef = useRef<HTMLButtonElement>(null)
   const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
@@ -417,6 +422,13 @@ export function AgentTools() {
     handleCliDialogSave,
     handleCliDialogOpenChange,
   } = useCliToolDialogSurface()
+  const handleDeleteProviderTool = useCallback(
+    (toolId: string) => {
+      deleteProviderTool(toolId)
+      addToolButtonRef.current?.focus()
+    },
+    [deleteProviderTool],
+  )
   const handleProviderCredentialChange = useCallback(
     (
       toolId: string,
@@ -545,6 +557,7 @@ export function AgentTools() {
         actions={
           !readOnly ? (
             <AddToolMenu
+              triggerRef={addToolButtonRef}
               onAddCliTool={openCliToolDialog}
               onAddTools={addTools}
               selectedTools={selectedTools}
@@ -564,7 +577,7 @@ export function AgentTools() {
               tool={tool}
               onConfigureAction={setSettingTarget}
               onDeleteCliTool={deleteCliTool}
-              onDeleteProviderTool={deleteProviderTool}
+              onDeleteProviderTool={handleDeleteProviderTool}
               onDeleteProviderToolAction={deleteProviderToolAction}
               onEditCliTool={editCliTool}
               onCredentialChange={handleProviderCredentialChange}
