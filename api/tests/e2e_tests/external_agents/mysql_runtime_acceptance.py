@@ -24,6 +24,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import httpx
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import sessionmaker
 
@@ -202,8 +203,11 @@ class MySQLAcceptance:
             heads = list(session.scalars(text("SELECT version_num FROM alembic_version")))
         tables = inspect(db.engine).get_table_names()
         managed = [name for name in tables if name.startswith("external_agent") or name == "external_workflow_budgets"]
+        scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "migrations"))
+        applied_revisions = {revision.revision for revision in scripts.walk_revisions(base="base", head=tuple(heads))}
         require(
-            "c3025a2a1109" in heads and len(managed) >= 17, "MySQL did not apply the real external-agent migration."
+            "c3025byoa1124" in applied_revisions and len(managed) >= 17,
+            "MySQL did not apply the complete external-agent migration.",
         )
         self.report.update(
             mysql_version=version, transaction_isolation=isolation, alembic_heads=heads, external_tables=managed

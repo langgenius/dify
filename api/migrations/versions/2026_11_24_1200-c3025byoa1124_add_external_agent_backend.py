@@ -1,8 +1,12 @@
 """Add owned external agents, durable dispatches and observation delivery.
 
-Revision ID: c3025a2a1109
-Revises: ad1816d009b8, 53c10126d551
-Create Date: 2026-11-09
+Revision ID: c3025byoa1124
+Revises: f8b6e2c4a901
+Create Date: 2026-11-24
+
+This is the first published BYOA schema, consolidated before the feature PR
+lands. Historical development revisions are not aliases of this revision;
+databases that applied them require a separately verified adoption procedure.
 """
 
 import sqlalchemy as sa
@@ -10,13 +14,21 @@ from alembic import op
 
 from models.types import AdjustedJSON, StringUUID
 
-revision = "c3025a2a1109"
-down_revision = ("ad1816d009b8", "53c10126d551")
+revision = "c3025byoa1124"
+down_revision = "f8b6e2c4a901"
 branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
+    """Add the complete BYOA schema after the upstream head.
+
+    Preconditions: the predecessor is applied and no BYOA tables or binding
+    columns exist. Postconditions: the final schema includes nullable frozen
+    capture evidence and the portable Native-writer default. Existing Native
+    values remain unchanged. Existing BYOA schemas fail rather than silently
+    skipping DDL or claiming that a historical revision is equivalent.
+    """
     op.create_table(
         "external_agent_heads",
         sa.Column("agent_id", StringUUID(), nullable=False),
@@ -428,6 +440,7 @@ def upgrade():
         sa.Column("config_revision", sa.String(length=64), nullable=False),
         sa.Column("encrypted_config", AdjustedJSON(), nullable=False),
         sa.Column("capture_content", sa.Boolean(), nullable=False),
+        sa.Column("capture_policy", AdjustedJSON(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="external_agent_trace_targets_pkey"),
         sa.UniqueConstraint("tenant_id", "invocation_id", "target_kind", "target_id", name="external_trace_target_uq"),
     )
@@ -462,7 +475,13 @@ def upgrade():
         )
 
 
-def downgrade():
+def downgrade() -> None:
+    """Remove this feature's schema while preserving predecessor Native data.
+
+    Admission and workers must be stopped and BYOA data loss accepted before
+    use. The predecessor's binding columns, rows and indexes remain; all BYOA
+    tables and the three columns introduced by this revision are removed.
+    """
     with op.batch_alter_table("workflow_agent_node_bindings") as batch:
         batch.drop_column("original_reference")
         batch.drop_column("external_job_config")

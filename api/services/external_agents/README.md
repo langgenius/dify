@@ -258,9 +258,20 @@ lease after cleanup; unfinished planned intents remain auditable. `cleanup_after
 
 ## Migration, validation and rollback
 
-Alembic revision `c3025a2a1109` merges the two base heads and creates the static schema. Upgrade applies explicit DDL,
-not imports of mutable application models. Existing bindings are backfilled with an empty external job configuration.
-SQLite tests exercise upgrade/backfill/downgrade and column parity; PostgreSQL/MySQL DDL compilation is also covered.
+The first public BYOA revision is `c3025byoa1124`, a single child of the upstream main head `f8b6e2c4a901`.
+It creates the complete 17-table schema, including nullable `external_agent_trace_targets.capture_policy`, and adds
+the three external binding columns. Upgrade uses explicit DDL rather than mutable application model imports.
+Existing Native bindings keep their original values and receive an empty external job configuration; the portable
+`('{}')` server default is retained from the initial ADD through NOT NULL so rolling and rolled-back Native writers
+can omit the new fields. Unknown capture evidence remains SQL NULL and has no synthesized default or backfill.
+
+The unreleased development chain was consolidated before this PR merged: the historical base, default repair,
+capture-policy addition and four no-op branch merges do not enter the public migration graph. Existing upstream
+migrations are unchanged. SQLite exercises upgrade, legacy raw INSERTs, downgrade and re-upgrade with Native row,
+index and constraint preservation. PostgreSQL/MySQL DDL compilation covers the complete final schema and defaults.
+
+Private dev databases that already applied the old chain require a separately reviewed adoption plan; do not copy
+this cleaned versions directory over their deployed history. See [development revision adoption](#development-revision-adoption).
 
 Run targeted checks from the repository root with the installed API environment:
 
@@ -284,6 +295,29 @@ inventory does not authorize business replay.
 Prefer a forward fix while nonterminal tasks exist; never downgrade and infer that remote work was canceled. Back up
 the database according to the deployment's normal procedure, then run the reviewed downgrade only when destructive
 loss is acceptable. The three added native binding columns are also removed by downgrade.
+
+### Development revision adoption
+
+The removed development revision IDs are `c3025a2a1109`, `c3025dflt1112`, `c3025merge1112`, `c3046merge1115`,
+`c3051merge1117`, `c3056cap1120` and `c3056merge1120`. They are historical identities, not aliases of
+`c3025byoa1124`; none is reused with new parents or DDL. Historical acceptance reports retain the IDs actually tested.
+Private descendants such as `c3056dev1120`, `b3025merge1119` and `c1120oauthfix` are not public main parents.
+
+Keep the existing private revision graph and database version unchanged until all of these conditions hold:
+
+1. Inventory and back up the exact applied private heads, their ancestry and the existing schema/data under the
+   deployment's normal maintenance procedure. Unknown revisions stop adoption.
+2. In an isolated clone, account for every private/upstream migration and compare the full desired schema. BYOA
+   parity includes all 17 tables, columns and nullability, 18 indexes, 17 primary keys, 10 unique constraints, the
+   three binding columns, the NOT NULL JSON expression default and nullable/default-free capture evidence.
+3. Verify that every public predecessor migration is represented, and that the final schema and existing Native
+   and BYOA row values are equivalent. A missing column/default requires an explicit data-preserving repair first;
+   version stamping must not conceal unapplied DDL.
+4. Review an explicit mapping from only those verified private heads to the consolidated public revision, with a
+   bounded maintenance lock and recorded before/after version state. Execute that deployment-specific operation
+   separately; the application and this public migration do not auto-stamp, skip existing tables or rewrite history.
+
+This consolidation does not itself deploy to, stamp or alter an existing dev database.
 
 ## Managed Graphon source in the single PR
 
