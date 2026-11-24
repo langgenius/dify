@@ -32,16 +32,17 @@ export function TagNameForm({
   const submit = async (onBlur: boolean) => {
     if (pending) return
     if (onBlur && initialName === undefined && !draft) return
-    if (!draft.trim()) {
+    const name = draft.trim()
+    if (!name) {
       setError(t(($) => $['tag.nameRequired']))
       return
     }
-    if (draft === initialName) {
+    if (name === initialName) {
       onFinish?.()
       return
     }
     try {
-      await onSave(draft)
+      await onSave(name)
       setDraft('')
       onFinish?.()
     } catch (cause) {

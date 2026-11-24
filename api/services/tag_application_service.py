@@ -63,6 +63,8 @@ class TagTargetQuery(Protocol):
 class TagStore(TagTargetQuery, Protocol):
     """Persist tags within their workspace and resource pool.
 
+    Names admitted by the Console are trimmed and 1–50 characters long. Legacy
+    padded names also reserve their normalized name in the same workspace/pool.
     Agent writes serialize on the existing workspace row before checking names,
     reading targets or changing bindings. That lock lives through the bounded
     transaction and makes names unique and binding creation idempotent against

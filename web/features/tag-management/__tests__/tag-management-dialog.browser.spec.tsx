@@ -43,7 +43,7 @@ it.each(['app', 'knowledge', 'snippet'] as const)(
   'creates a %s tag and clears the successful draft',
   async (type) => {
     await renderModal(type)
-    await input().fill('NewTag')
+    await input().fill('  NewTag  ')
     await userEvent.keyboard('{Enter}')
     await expect.element(input()).toHaveValue('')
     expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
