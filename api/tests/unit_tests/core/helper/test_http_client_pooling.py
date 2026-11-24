@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 import httpx
 import pytest
 
 from core.helper.http_client_pooling import HttpClientPoolFactory
+from tests.helpers.unit.core.helper.tls_proxy import tls_proxy
 
 
 @pytest.fixture
@@ -53,3 +55,56 @@ def test_close_all_closes_pooled_clients_and_allows_recreate(http_clients: tuple
     assert first_client.is_closed
     assert not replacement_client.is_closed
     assert factory.get_or_create("x", lambda: replacement_client) is replacement_client
+
+
+@pytest.mark.parametrize(
+    ("host", "error"),
+    [("wrong.example", httpx.ConnectError), ("timeout.example", httpx.ConnectTimeout)],
+)
+def test_pooled_client_recovers_after_proxy_tls_failure(
+    tmp_path: Path, host: str, error: type[httpx.TransportError]
+) -> None:
+    """With one connection slot, a failed handshake must allow the next request."""
+    factory = HttpClientPoolFactory()
+    with tls_proxy(tmp_path) as (proxy_url, context, release):
+        client = factory.get_or_create(
+            "proxy",
+            lambda: httpx.Client(
+                proxy=proxy_url,
+                verify=context,
+                limits=httpx.Limits(max_connections=1),
+                timeout=httpx.Timeout(2, connect=0.2, pool=0.2),
+                trust_env=False,
+            ),
+        )
+        try:
+            with pytest.raises(error):
+                client.get(f"https://{host}/")
+            release.set()
+            assert client.get("https://localhost/").text == "OK"
+        finally:
+            factory.close_all()
+
+
+@pytest.mark.parametrize(
+    ("host", "error"),
+    [("wrong.example", httpx.ConnectError), ("timeout.example", httpx.ConnectTimeout)],
+)
+@pytest.mark.anyio
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_async_client_recovers_after_proxy_tls_failure(
+    tmp_path: Path, host: str, error: type[httpx.TransportError]
+) -> None:
+    """The same dependency pin must release failed asynchronous proxy tunnels."""
+    with tls_proxy(tmp_path) as (proxy_url, context, release):
+        async with httpx.AsyncClient(
+            proxy=proxy_url,
+            verify=context,
+            limits=httpx.Limits(max_connections=1),
+            timeout=httpx.Timeout(2, connect=0.2, pool=0.2),
+            trust_env=False,
+        ) as client:
+            with pytest.raises(error):
+                await client.get(f"https://{host}/")
+            release.set()
+            assert (await client.get("https://localhost/")).text == "OK"

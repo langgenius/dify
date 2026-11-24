@@ -198,3 +198,25 @@ def test_unresolvable_grpc_hosts_are_transient(monkeypatch: pytest.MonkeyPatch) 
 
     assert not isinstance(raised.value, EgressBlockedError)
     assert raised.value.request_sent is False
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout, httpx.ReadTimeout, httpx.RemoteProtocolError],
+)
+def test_transport_diagnostics_preserve_error_class_without_request_data(
+    monkeypatch: pytest.MonkeyPatch, error_type: type[httpx.TransportError]
+) -> None:
+    """Transport failures expose their class while dropping sensitive exception details."""
+    failure = error_type("https://collector.example/secret-token body=private-trace")
+    monkeypatch.setattr(ssrf_proxy, "make_request", _ProxyCalls(failure))
+
+    with pytest.raises(EgressError) as raised:
+        _request(SSRFEgress(), {"Authorization": "Bearer secret-token"})
+
+    assert error_type.__name__ in str(raised.value)
+    assert "secret-token" not in str(raised.value)
+    assert "private-trace" not in str(raised.value)
+    assert "collector.example" not in str(raised.value)
+    assert raised.value.__cause__ is None
+    assert raised.value.__context__ is None

@@ -34,6 +34,7 @@ dependencies = [
     "flask-orjson>=2.0.0,<3.0.0",
     "flask-restx>=1.3.2,<2.0.0",
     "google-cloud-aiplatform>=2.7.0,<3.0.0",
+    "httpcore==1.0.9",
     "httpx[socks]==0.28.1",
     "markdown-it-py>=4.0.0,<5.0.0",
     "opentelemetry-distro==0.65b0",
@@ -77,6 +78,8 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
+# Remove this pin when a release includes encode/httpcore#1087 (proxy TLS cleanup).
+httpcore = { git = "https://github.com/encode/httpcore", rev = "5e45f65c311412ccb5d771a8eae9bdd240ba1b1e" }
 dify-agent = { path = "../dify-agent", editable = true }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "e44a2861b854" }
 # shortcut: pin the 0.8.0 container-type fix until a release includes graphon#344.

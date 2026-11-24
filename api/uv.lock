@@ -1543,6 +1543,7 @@ dependencies = [
     { name = "google-cloud-aiplatform" },
     { name = "graphon" },
     { name = "gunicorn" },
+    { name = "httpcore" },
     { name = "httpx", extra = ["socks"] },
     { name = "httpx-sse" },
     { name = "json-repair" },
@@ -1864,6 +1865,7 @@ requires-dist = [
     { name = "google-cloud-aiplatform", specifier = ">=2.7.0,<3.0.0" },
     { name = "graphon", git = "https://github.com/langgenius/graphon?rev=4fa22141774dff80e90e4dfa98ea3e6fbf0421bb" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
+    { name = "httpcore", git = "https://github.com/encode/httpcore?rev=5e45f65c311412ccb5d771a8eae9bdd240ba1b1e" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
     { name = "json-repair", specifier = "==0.60.1" },
@@ -3530,14 +3532,10 @@ wheels = [
 [[package]]
 name = "httpcore"
 version = "1.0.9"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/encode/httpcore?rev=5e45f65c311412ccb5d771a8eae9bdd240ba1b1e#5e45f65c311412ccb5d771a8eae9bdd240ba1b1e" }
 dependencies = [
     { name = "certifi" },
     { name = "h11" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8", size = 85484, upload-time = "2025-04-24T22:06:22.219Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55", size = 78784, upload-time = "2025-04-24T22:06:20.566Z" },
 ]
 
 [[package]]

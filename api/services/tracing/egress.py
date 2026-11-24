@@ -72,6 +72,12 @@ class SSRFEgress(Egress):
 
     @staticmethod
     def _send(method: str, url: str, headers: dict[str, str], content: bytes | None, timeout: float) -> httpx.Response:
+        """Send through the proxy and translate failures without exposing request data.
+
+        Given a prepared request, return its bounded response or raise an egress
+        error retaining the transport class and delivery certainty. Exception
+        messages and chains from the transport never enter delivery diagnostics.
+        """
         # Raise outside the original handler so no credential-bearing exception is chained.
         failure: EgressError | None = None
         response: httpx.Response | None = None
@@ -94,17 +100,19 @@ class SSRFEgress(Egress):
             if "403" in str(error):
                 failure = EgressBlockedError("Destination blocked by the SSRF policy")
             else:
-                failure = EgressError("SSRF proxy unavailable", request_sent=False)
+                failure = EgressError(f"SSRF proxy unavailable ({type(error).__name__})", request_sent=False)
         except (
             httpx.ConnectError,
             httpx.ConnectTimeout,
             httpx.PoolTimeout,
             httpx.UnsupportedProtocol,
             httpx.LocalProtocolError,
-        ):
-            failure = EgressError("Destination unreachable", request_sent=False)
-        except (httpx.TransportError, ssrf_proxy.ResponseLimitError):
-            failure = EgressError("Transport failed after the request was sent", request_sent=True)
+        ) as error:
+            failure = EgressError(f"Destination unreachable ({type(error).__name__})", request_sent=False)
+        except (httpx.TransportError, ssrf_proxy.ResponseLimitError) as error:
+            failure = EgressError(
+                f"Transport failed after the request was sent ({type(error).__name__})", request_sent=True
+            )
         except ValueError:
             # Request construction rejects malformed input before sending; its message may quote the URL.
             failure = EgressError("Request could not be built", request_sent=False)
