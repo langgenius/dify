@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "เครื่องมือช่วยให้ตัวแทนสามารถดำเนินการได้ เช่น ค้นหาเว็บหรือเรียกใช้แอปของคุณ",
   "agentDetail.configure.tools.empty.title": "ยังไม่มีเครื่องมือ",
   "agentDetail.configure.tools.label": "เครื่องมือ",
-  "agentDetail.configure.tools.moreActions": "การกระทำเพิ่มเติมสำหรับ {{name}}",
   "agentDetail.configure.tools.removeAction": "ลบ {{name}}",
   "agentDetail.configure.tools.removeProvider": "ลบเครื่องมือทั้งหมด",
   "agentDetail.configure.tools.richTip": "เพิ่มเครื่องมือ Dify จาก workspace ของคุณ <docLink>เรียนรู้เพิ่มเติม</docLink>\n\nเครื่องมือที่ agent ติดตั้งใน sandbox จะไม่แสดงที่นี่ แต่ยังคงพร้อมใช้งานสำหรับ agent",
@@ -373,5 +372,17 @@
   "agentDetail.versionHistory.restore": "กู้คืน",
   "agentDetail.versionHistory.versionName": "เวอร์ชัน {{version}}",
   "agentDetail.versionHistory.viewOnly": "ดูเท่านั้น",
-  "exportAgent": "ส่งออกเอเจนต์"
+  "exportAgent": "ส่งออกเอเจนต์",
+  "toolCallLimit.invalid": "ป้อนจำนวนเต็มที่มากกว่า 0",
+  "toolCallLimit.label": "ขีดจำกัดการเรียกสำหรับ {{toolName}}",
+  "toolCallLimit.maximum": "จำนวนการเรียกสูงสุด",
+  "toolCallLimit.notExecuted": "ไม่ได้ดำเนินการ",
+  "toolCallLimit.reached": "ถึงขีดจำกัดการเรียกแล้ว ({{limit}} ครั้งต่อการรัน) คำขอนี้ไม่ได้ดำเนินการ",
+  "toolCallLimit.reason": "เหตุผล",
+  "toolCallLimit.set": "ตั้งค่าขีดจำกัด",
+  "toolCallLimit.summary_one": "{{count}} ครั้ง / การรัน",
+  "toolCallLimit.summary_other": "{{count}} ครั้ง / การรัน",
+  "toolCallLimit.title": "ขีดจำกัดการเรียกต่อการรัน",
+  "toolCallLimit.used_one": "ใช้แล้ว {{used}} จาก {{limit}} ครั้ง",
+  "toolCallLimit.used_other": "ใช้แล้ว {{used}} จาก {{limit}} ครั้ง"
 }

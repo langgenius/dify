@@ -13,33 +13,23 @@ import common from '@/i18n/locales/en-US/common.json'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { List } from '../../list'
 
 vi.unmock('react-i18next')
 
-// boundary: the test exercises real annotation dialogs while replacing their HTTP mutations.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'apps.byAppId.annotations.byAnnotationId.delete': () => undefined,
-      'apps.byAppId.annotations.byAnnotationId.post': () => undefined,
-    }),
-  }
-})
+const appId = '019a0000-0000-7000-8000-000000000001'
 
 function AnnotationListFixture({ filterOnEdit = false }: { filterOnEdit?: boolean }) {
   const [items, setItems] = useState<Annotation[]>([
     {
-      id: 'first',
+      id: '019a0000-0000-7000-8000-000000000002',
       question: 'First question',
       answer: 'First answer',
       created_at: 1704067200,
     },
     {
-      id: 'second',
+      id: '019a0000-0000-7000-8000-000000000003',
       question: 'Second question',
       answer: 'Second answer',
       created_at: 1704153600,
@@ -47,7 +37,7 @@ function AnnotationListFixture({ filterOnEdit = false }: { filterOnEdit?: boolea
   ])
   return (
     <List
-      appId="app-id"
+      appId={appId}
       list={items}
       onEdited={() => {
         if (filterOnEdit) setItems([])
@@ -72,6 +62,18 @@ async function renderAnnotations(filterOnEdit = false) {
   client.setQueryData<UserProfileWithMeta>(
     consoleQuery.account.profile.get.queryKey(),
     accountProfile,
+  )
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: { profile: { get: () => accountProfile.profile } },
+        apps: {
+          byAppId: {
+            annotations: { byAnnotationId: { delete: () => undefined, post: () => undefined } },
+          },
+        },
+      },
+    }),
   )
   const screen = await render(
     <QueryClientTestProvider queryClient={client}>

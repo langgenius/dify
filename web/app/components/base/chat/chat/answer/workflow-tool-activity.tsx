@@ -41,6 +41,7 @@ const WorkflowToolActivity: FC<WorkflowToolActivityProps> = ({ item, responding 
       isFinished: finished,
       status,
       error: activity.error,
+      callLimit: activity.data.call_limit,
     })
   }
 

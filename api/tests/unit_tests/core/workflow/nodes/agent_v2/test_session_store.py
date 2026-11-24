@@ -41,6 +41,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from services.agent.sandbox_contracts import AgentSandboxBindingNotFoundError
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app.agent_app_contracts import AgentSandboxBindingNotFoundError
 from services.app_service import AppService

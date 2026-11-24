@@ -59,7 +59,7 @@ import {
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
 import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
@@ -386,7 +386,9 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   }, [data.type, currToolCollection?.allow_delete])
 
   // only fetch trigger plugins when the node is a trigger plugin
-  const { data: triggerPlugins = [] } = useAllTriggerPlugins(data.type === BlockEnum.TriggerPlugin)
+  const { data: triggerPlugins = [] } = useQuery(
+    allTriggerPluginsQueryOptions(data.type === BlockEnum.TriggerPlugin),
+  )
   const currentTriggerPlugin = useMemo(
     () => getCurrentTriggerPlugin(data, triggerPlugins),
     [data, triggerPlugins],

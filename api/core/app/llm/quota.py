@@ -23,6 +23,7 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_configuration import ProviderConfiguration
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
@@ -200,9 +201,37 @@ def reserve_model_quota_for_model(
     provider_configuration: Any = None,
     invocation_credentials: dict[str, Any] | None = None,
 ) -> ModelQuotaReservation:
-    """Reserve system-hosted model quota before invoking the provider."""
+    """Resolve or retain the admitted provider route before reserving its quota."""
     if provider_configuration is None:
         provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    return reserve_model_quota_for_configuration(
+        provider_configuration,
+        model_type=model_type,
+        model=model,
+        request_id=request_id,
+        app_type=app_type,
+        created_by=created_by,
+        invocation_credentials=invocation_credentials,
+    )
+
+
+def reserve_model_quota_for_configuration(
+    provider_configuration: ProviderConfiguration,
+    *,
+    model_type: ModelType,
+    model: str,
+    request_id: str | None,
+    app_type: CreditUsageAppTypeInput,
+    created_by: CreditUsageCreatedByInput,
+    invocation_credentials: dict[str, Any] | None = None,
+) -> ModelQuotaReservation:
+    """Reserve for the admitted route while preserving Tokener settlement ownership.
+
+    Custom routes incur no hosted charge. The supplied configuration and credentials
+    retain the selected tenant route; hosted credit admission stays in Billing.
+    """
+    tenant_id = provider_configuration.tenant_id
+    provider = provider_configuration.provider.provider
     effective_app_type = normalize_credit_usage_app_type(app_type)
     effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(

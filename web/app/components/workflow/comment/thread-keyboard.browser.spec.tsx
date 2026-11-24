@@ -137,8 +137,8 @@ it('moves focus into the edit field when a reply is edited from its menu, and ba
   await userEvent.keyboard('{Enter}')
 
   const editField = screen.getByPlaceholder('workflowComments.comments.placeholder.editReply')
-  await expect.element(editField).toHaveFocus()
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  // Focus must survive the menu's close transition, which applies its final focus on removal.
+  await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   await expect.element(editField).toHaveFocus()
   expect((editField.element() as HTMLTextAreaElement).selectionStart).toBe('A second reply'.length)
 

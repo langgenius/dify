@@ -1,8 +1,9 @@
 import type { PluginTriggerNodeType } from './types'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { getTriggerCheckParams } from '@/app/components/workflow/utils/trigger'
 import { useGetLanguage } from '@/context/i18n'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 
 type Params = {
   id: string
@@ -10,7 +11,7 @@ type Params = {
 }
 
 const useGetDataForCheckMore = ({ payload }: Params) => {
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
   const language = useGetLanguage()
 
   const getData = useCallback(() => {

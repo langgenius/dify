@@ -166,7 +166,8 @@ export function shouldHideMainNavigation(pathname: string) {
 
   return (
     (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
-    isSkillDetailPathname(pathname)
+    isSkillDetailPathname(pathname) ||
+    pathname === '/collaboration-demo'
   )
 }
 

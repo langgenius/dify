@@ -3,7 +3,6 @@
 from collections.abc import Callable, Generator
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
@@ -16,7 +15,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
-from core.entities.provider_entities import ModelSettings, ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import (
+    ModelSettings,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    SystemConfiguration,
+)
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -38,7 +43,7 @@ from services.agent_llm_inner_service import (
 )
 from services.billing_service import QuotaCommitResult, QuotaReserveResult
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
-from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 
 def _request() -> AgentLLMInvokeRequest:
@@ -184,7 +189,6 @@ def test_datasource_media_uses_upload_file_preview_and_storage(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     send_format: str,
-    account_application_services: ApplicationServices,
 ) -> None:
     """Given an authorized datasource file, rendering uses its signed UploadFile preview or stored bytes."""
     import base64
@@ -687,25 +691,27 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     request = _request()
     _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
-    model_instance, _ = _model_instance()
-    prepared = _prepare(service, request, model_instance)
-    provider_configuration = SimpleNamespace(
-        tenant_id=request.caller.tenant_id,
-        using_provider_type=ProviderType.SYSTEM,
-        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
-            current_quota_type=ProviderQuotaType.TRIAL,
-            quota_configurations=[
-                SimpleNamespace(
-                    quota_type=ProviderQuotaType.TRIAL,
-                    quota_unit=QuotaUnit.CREDITS,
-                    quota_limit=100,
-                )
-            ],
-        ),
+    model = make_model_config(provider=request.target.provider, model=request.target.model, mode="chat")
+    bundle = model.provider_model_bundle
+    provider_configuration = bundle.configuration
+    provider_configuration.tenant_id = request.caller.tenant_id
+    provider_configuration.provider.models = [model.model_schema]
+    provider_configuration.using_provider_type = ProviderType.SYSTEM
+    provider_configuration.system_configuration = SystemConfiguration(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.TRIAL,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=100,
+                quota_used=0,
+                is_valid=True,
+            )
+        ],
     )
-    model_instance.provider_model_bundle = MagicMock(configuration=provider_configuration)
-    model_instance.model_type_instance.model_type = ModelType.LLM
+    model_instance = QuotaManagedModelInstance(bundle, model.model, credentials={"api_key": "hosted"})
+    prepared = _prepare(service, request, model_instance)
     reservations_by_request: dict[str, str] = {}
     committed_reservations: set[str] = set()
     effective_charges = 0

@@ -223,13 +223,12 @@ class AgentObservabilityQueries:
     def list_log_messages(
         self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
     ) -> dict[str, Any]:
-        """Return source-filtered messages with one page-scoped thought read.
+        """Return existing source-filtered messages with one page-scoped thought read.
 
-        The existing dev service remains the query owner for this additive
-        backport. The caller supplies the admitted Agent's runtime App; native
-        activity comes only from persisted thoughts independently of Tracing.
-        Ownership, message status and source filters remain unchanged. An empty
-        page adds no query, and no per-message thought queries are introduced.
+        The caller must supply the admitted Agent's runtime App. Native tool
+        activity is read from persisted thoughts independently of Tracing; its
+        presence does not change message status, ownership or source filters.
+        No thought queries are issued per message, and an empty page adds none.
         """
         source_filters = self.resolve_source_filters(params.sources)
         rows: list[dict[str, Any]] = []
@@ -289,12 +288,12 @@ class AgentObservabilityQueries:
     def _list_agent_thoughts(
         self, *, app: App, conversation_id: str, message_ids: Sequence[str]
     ) -> dict[str, list[MessageAgentThoughtRecord]]:
-        """Detach current-page thoughts in one query with complete owner checks.
+        """Detach thoughts for this admitted page in one owner-scoped SQL query.
 
-        Requires IDs from the already source-filtered page. App, tenant and
-        conversation are rechecked in SQL; stale or foreign IDs return no
-        thoughts. Position/ID ordering is retained, and unrelated raw tool
-        metadata never leaves this read owner.
+        Requires identifiers from already filtered page messages. The joins
+        recheck App, tenant and conversation ownership even for stale or invalid
+        identifiers. Results are ordered by thought position and ID; no ORM
+        objects or raw tool metadata escape the repository session.
         """
         if not message_ids:
             return {}

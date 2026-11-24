@@ -67,6 +67,8 @@ describe('GoldenQuestionDialog browser interactions', () => {
     await screen.getByRole('button', { name: 'Open dialog' }).click()
     const question = screen.getByPlaceholder('knowledgeQuality.qualityPage.questionPlaceholder')
     await question.fill('Edited draft question')
+    // The backdrop has no accessible role, so press the page corner it covers. `force` only skips
+    // the actionability check; the real mouse event still hit-tests onto the backdrop.
     await userEvent.click(document.body, { force: true, position: { x: 4, y: 4 } })
 
     await expect

@@ -1,6 +1,7 @@
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
 import { atom } from 'jotai'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
 export type ConsoleStateFixture = {
@@ -30,7 +31,7 @@ type JotaiStore = ReturnType<typeof createStore>
 type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures'
 
 const defaultCurrentWorkspace = {
-  id: 'workspace-1',
+  id: TEST_WORKSPACE_ID,
   name: 'Workspace',
   plan: null,
   credits: null,

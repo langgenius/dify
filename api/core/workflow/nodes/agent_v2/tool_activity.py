@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal
 
 from dify_agent.protocol.tool_call_limits import (
@@ -27,7 +28,18 @@ _TOOL_FIELD_LIMIT = 16 * 1024
 
 _UNFINISHED_TOOL_ERROR = "Tool call did not return a result."
 
-ActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled", "not_executed"]
+
+class ActivityStatus(StrEnum):
+    """Tool lifecycle states serialized with their existing public string values."""
+
+    STARTED = "started"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    NOT_EXECUTED = "not_executed"
+
+
 FinishStatus = Literal["succeeded", "failed", "cancelled"]
 
 _EARLY_TOOL_NAMES = frozenset({"shell_run", "shell_wait", "shell_input", "shell_interrupt"})
@@ -90,7 +102,7 @@ class _ToolCallState:
     tool_name: str
     tool_input: str
     tool_output: str = ""
-    status: ActivityStatus = "started"
+    status: ActivityStatus = ActivityStatus.STARTED
     error: str | None = None
     call_limit: ToolCallLimitMetadata | None = None
 
@@ -197,14 +209,14 @@ class WorkflowAgentToolActivityProjector:
         bounded_error = _bounded_text(error) or None
         activities: list[WorkflowAgentToolActivity] = []
         for (run_id, _tool_call_id), state in self._calls.items():
-            if state.status in {"started", "running"}:
+            if state.status in {ActivityStatus.STARTED, ActivityStatus.RUNNING}:
                 if state.call_limit is None and call_limits:
                     state.call_limit = unconfirmed_reservation(state.tool_call_id, call_limits)
                 if status == "cancelled":
-                    state.status = "cancelled"
+                    state.status = ActivityStatus.CANCELLED
                     state.error = bounded_error
                 else:
-                    state.status = "failed"
+                    state.status = ActivityStatus.FAILED
                     state.error = bounded_error or _UNFINISHED_TOOL_ERROR
                 activities.append(self._snapshot(run_id, state))
         return activities
@@ -273,15 +285,15 @@ class WorkflowAgentToolActivityProjector:
                 tool_call_id=part.tool_call_id,
                 tool_name=part.tool_name,
                 tool_input=_bounded_text(part.args),
-                status="running",
+                status=ActivityStatus.RUNNING,
             )
             self._calls[key] = state
             return [self._snapshot(run_id, state)]
-        if state.status != "started":
+        if state.status != ActivityStatus.STARTED:
             return []
         state.tool_name = part.tool_name
         state.tool_input = _bounded_text(part.args)
-        state.status = "running"
+        state.status = ActivityStatus.RUNNING
         return [self._snapshot(run_id, state)]
 
     def _finish_call(
@@ -319,19 +331,19 @@ class WorkflowAgentToolActivityProjector:
                 tool_input="",
             )
             self._calls[key] = state
-        if state.status not in {"started", "running"}:
+        if state.status not in {ActivityStatus.STARTED, ActivityStatus.RUNNING}:
             return []
         if state.tool_name == "" and part.tool_name:
             state.tool_name = part.tool_name
         if is_retry:
-            state.status = "failed"
+            state.status = ActivityStatus.FAILED
             state.error = _bounded_text(part.content) or None
         else:
             output = _bounded_text(part.content)
             state.tool_output = output
             state.call_limit = validated_call_limit(part.metadata)
             if state.call_limit is not None and state.call_limit.execution_status == "not_executed":
-                state.status = "not_executed"
+                state.status = ActivityStatus.NOT_EXECUTED
                 state.error = (
                     f"Call limit reached ({state.call_limit.limit} per run). This request was not executed."
                     if state.call_limit.reason == "call_limit_reached"
@@ -340,10 +352,10 @@ class WorkflowAgentToolActivityProjector:
             elif part.outcome == "failure" or runtime_tool_failed(
                 part.metadata, has_quota=state.call_limit is not None
             ):
-                state.status = "failed"
+                state.status = ActivityStatus.FAILED
                 state.error = output or None
             else:
-                state.status = "succeeded"
+                state.status = ActivityStatus.SUCCEEDED
         return [self._snapshot(run_id, state)]
 
     def _snapshot(self, run_id: str, state: _ToolCallState) -> WorkflowAgentToolActivity:

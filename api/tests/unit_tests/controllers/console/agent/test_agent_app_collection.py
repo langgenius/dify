@@ -473,12 +473,14 @@ def test_agent_tag_filters_combine_and_paginate_before_counting(
             (second_id, second_app, "Market Monitor"),
         ):
             agent = session.get_one(Agent, agent_id)
+            snapshot_id = agent.active_config_snapshot_id
+            assert snapshot_id is not None
             agent.name = name
             agent.active_config_has_model = True
             session.get_one(App, app_id).name = name
             session.add(
                 AgentConfigSnapshot(
-                    id=agent.active_config_snapshot_id,
+                    id=snapshot_id,
                     tenant_id=harness.tenant_id,
                     agent_id=agent_id,
                     version=1,

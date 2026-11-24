@@ -37,9 +37,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.modelProviders.byProvider.models.get': api.models,
       'workspaces.current.modelProviders.get': api.providers,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
@@ -54,6 +51,9 @@ vi.mock('@/service/console', async (importOriginal) => {
           exclude_plugins: [],
         },
       }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.disable.patch': api.disable,
     }),
   }
 })

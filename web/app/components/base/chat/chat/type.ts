@@ -1,4 +1,7 @@
-import type { KnowledgeFsCitation } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentToolActivity,
+  KnowledgeFsCitation,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
@@ -34,6 +37,7 @@ export type ThoughtItem = {
   thought: string
   answer?: string
   tool_input: string
+  tool_activity?: AgentToolActivity | null
   tool_labels?: { [key: string]: TypeWithI18N }
   message_id: string
   conversation_id: string

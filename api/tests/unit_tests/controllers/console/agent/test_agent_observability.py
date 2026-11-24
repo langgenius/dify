@@ -93,15 +93,15 @@ def _persist_native_activity_message(harness: Harness) -> tuple[str, str, str, s
     return agent_id, app_id, conversation_id, message_id
 
 
-class NativeActivityScenario(StrEnum):
+class _NativeActivityScenario(StrEnum):
     CANCELLED = "cancelled"
     REPLAY = "replay"
     VALIDATION = "validation"
 
 
-@pytest.mark.parametrize("scenario", list(NativeActivityScenario))
+@pytest.mark.parametrize("scenario", list(_NativeActivityScenario))
 def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
-    harness: Harness, scenario: NativeActivityScenario
+    harness: Harness, scenario: _NativeActivityScenario
 ) -> None:
     """Real native events, recorder SQL commits and HTTP reads share one activity.
 
@@ -123,7 +123,7 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
         # The live counter is discarded before the API receives the terminal.
         # Subsequent reads must depend on the committed activity alone.
         memory = InMemoryToolCallLimitStore()
-        if scenario != "validation":
+        if scenario != _NativeActivityScenario.VALIDATION:
             await memory.reserve(run_id=run_id, tool_identity=tool_identity, tool_call_id=call_id, limit=3)
         return memory.seal()
 
@@ -132,7 +132,7 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
         RunCancelledEvent(
             run_id=run_id, data=RunCancelledEventData(reason="user_cancelled"), tool_call_limits=summaries
         )
-        if scenario == "cancelled"
+        if scenario == _NativeActivityScenario.CANCELLED
         else RunSucceededEvent(
             run_id=run_id,
             data=RunSucceededEventData(output="Available results", session_snapshot=SessionSnapshot()),
@@ -153,7 +153,7 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
         task_id = str(uuid4())
         queue: AppQueueManager = (
             _StoppedQueueManager()
-            if scenario == "cancelled"
+            if scenario == _NativeActivityScenario.CANCELLED
             else MessageBasedAppQueueManager(
                 task_id=task_id,
                 user_id=harness.account_id,
@@ -164,14 +164,14 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
             )
         )
         try:
-            if scenario == "cancelled":
+            if scenario == _NativeActivityScenario.CANCELLED:
                 assert queue.is_stopped()
             recorder = _AgentProcessRecorder(dify_context=context, message_id=message_id, queue_manager=queue)
             recorder.handle_stream_event(call_event)
-            if scenario != "cancelled":
+            if scenario != _NativeActivityScenario.CANCELLED:
                 metadata = (
                     {TOOL_VALIDATION_FAILED_METADATA_KEY: True}
-                    if scenario == "validation"
+                    if scenario == _NativeActivityScenario.VALIDATION
                     else {
                         TOOL_CALL_LIMIT_METADATA_KEY: ToolCallLimitMetadata(
                             tool_identity=tool_identity, limit=3, used=1, execution_status="executed"
@@ -191,7 +191,7 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
                 result_event = adapted_result
                 recorder.handle_stream_event(result_event)
             recorder.finish(terminal_event)
-            if scenario == "replay":
+            if scenario == _NativeActivityScenario.REPLAY:
                 assert result_event is not None
                 restored = _AgentProcessRecorder(dify_context=context, message_id=message_id, queue_manager=queue)
                 restored.handle_stream_event(call_event)
@@ -214,14 +214,23 @@ def test_native_terminal_activity_survives_into_fresh_history_and_logs_reads(
         assert thoughts[0]["id"] == thought_id
         activity = AgentToolActivity.model_validate(thoughts[0]["tool_activity"])
         assert activity.id == f"{run_id}:{call_id}"
-        assert activity.status == {"cancelled": "cancelled", "replay": "succeeded", "validation": "failed"}[scenario]
-        if scenario == "validation":
+        assert (
+            activity.status
+            == {
+                _NativeActivityScenario.CANCELLED: "cancelled",
+                _NativeActivityScenario.REPLAY: "succeeded",
+                _NativeActivityScenario.VALIDATION: "failed",
+            }[scenario]
+        )
+        if scenario == _NativeActivityScenario.VALIDATION:
             assert activity.call_limit is None
         else:
             assert activity.call_limit is not None
             assert (activity.call_limit.used, activity.call_limit.limit) == (1, 3)
             assert activity.call_limit.reason is None
-            assert activity.call_limit.execution_status == ("unconfirmed" if scenario == "cancelled" else "executed")
+            assert activity.call_limit.execution_status == (
+                "unconfirmed" if scenario == _NativeActivityScenario.CANCELLED else "executed"
+            )
 
 
 def test_agent_chat_history_and_logs_return_persisted_activity_without_tracing(harness: Harness) -> None:

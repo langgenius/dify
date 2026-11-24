@@ -152,23 +152,25 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
-    data:
-      infos.length > 0 && marketplacePluginState.label
-        ? {
-            data: {
-              list: infos.map(({ organization, plugin }) => ({
-                plugin: {
-                  label: marketplacePluginState.label,
-                  labels: marketplacePluginState.label,
-                  name: plugin,
-                  plugin_id: `${organization}/${plugin}`,
-                },
-              })),
+// Marketplace lookups have no contract yet and go through the legacy marketplace helper.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  postMarketplace: async (
+    _url: string,
+    { body }: { body: { plugin_tuples: Array<{ org: string; name: string }> } },
+  ) => ({
+    data: {
+      list: marketplacePluginState.label
+        ? body.plugin_tuples.map(({ org, name }) => ({
+            plugin: {
+              label: marketplacePluginState.label,
+              labels: marketplacePluginState.label,
+              name,
+              plugin_id: `${org}/${name}`,
             },
-          }
-        : undefined,
+          }))
+        : [],
+    },
   }),
 }))
 
@@ -1228,6 +1230,8 @@ describe('useAgentConfigureSync', () => {
       } satisfies AgentSoulConfigFormState)
     })
 
+    // The tool label comes from the marketplace lookup, which resolves after the draft changes.
+    await act(() => vi.advanceTimersByTimeAsync(0))
     await act(async () => {
       await result.current.publishDraft()
     })

@@ -451,10 +451,10 @@ class WorkflowCollaborationService:
         )
 
     def get_online_user_avatars(self, sid: str, *, avatar_service: AccountAvatarService) -> dict[str, str]:
-        """Resolve current-room avatars for an admitted socket; an unjoined socket receives no URLs.
+        """Resolve current profiles for active room sessions; an unjoined socket receives no URLs.
 
-        The room, account IDs, and profile avatars come from server-managed sessions.
-        Missing or unowned uploads are omitted so clients can show initials.
+        The room and account IDs come from server-managed sessions; profile avatars are read in one batch.
+        Missing or unowned uploads are omitted so clients can show initials. Redis avatar snapshots are ignored.
         """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
@@ -463,21 +463,15 @@ class WorkflowCollaborationService:
         if not self.is_session_active(workflow_id, sid):
             return {}
 
-        urls: dict[str, str] = {}
-        for user in self._repository.list_sessions(workflow_id):
-            avatar = user["avatar"]
-            if avatar and self.is_session_active(workflow_id, user["sid"]):
-                # The profile accepts arbitrary strings, but the upload lookup requires a valid UUID.
-                if not avatar.startswith(("http://", "https://")):
-                    try:
-                        avatar = str(uuid.UUID(avatar))
-                    except ValueError:
-                        avatar = ""
-
-                if avatar and (url := avatar_service.resolve_for_account(account_id=user["user_id"], avatar=avatar)):
-                    urls[user["sid"]] = url
-
-        return urls
+        active_users = [
+            user
+            for user in self._repository.list_sessions(workflow_id)
+            if self.is_session_active(workflow_id, user["sid"])
+        ]
+        urls_by_account = avatar_service.resolve_current_for_accounts(
+            account_ids=tuple(dict.fromkeys(user["user_id"] for user in active_users))
+        )
+        return {user["sid"]: url for user in active_users if (url := urls_by_account.get(user["user_id"])) is not None}
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
         self._refresh_server_heartbeat()

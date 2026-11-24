@@ -2,8 +2,8 @@ import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -22,10 +22,15 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  toEnvironmentVariables,
+  toGraphEdges,
+  toStoredViewport,
+} from '@/app/components/workflow/utils/published-workflow'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { useExternalWaitRun } from './use-external-wait-run'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
@@ -35,7 +40,6 @@ import {
 import {
   applyRunningStateForMode,
   applyStoppedState,
-  buildRunHistoryUrl,
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
@@ -126,8 +130,18 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
   const resource = useAtomValue(editorResourceAtom)
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
+  const invalidateRunHistory = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: workflowRunHistoryQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const externalCallbacksRef = useRef<IOtherOptions>({})
@@ -139,9 +153,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const completeExternalWaitRun = useCallback(() => {
     void fetchInspectVars({})
     invalidAllLastRun()
-    invalidateRunHistory(buildRunHistoryUrl(appDetail))
+    invalidateRunHistory()
     externalCallbacksRef.current.onCompleted?.(false)
-  }, [appDetail, fetchInspectVars, invalidAllLastRun, invalidateRunHistory])
+  }, [fetchInspectVars, invalidAllLastRun, invalidateRunHistory])
   const discardExternalWaitRun = useExternalWaitRun(
     appId,
     completeExternalWaitRun,
@@ -249,7 +263,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const runHistoryUrl = buildRunHistoryUrl(appDetail)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
@@ -404,7 +417,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const baseSseOptions = createBaseWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -439,7 +451,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const finalCallbacks = createFinalWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -555,19 +566,26 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: FetchWorkflowDraftResponse) => {
+    (publishedWorkflow: WorkflowVersionListItem) => {
       const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
-      const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport!
+      const edges = toGraphEdges(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
         viewport,
       })
-      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      const features = mapPublishedWorkflowFeatures(publishedWorkflow)
+      // Upload limits come from the server's current upload config, not the saved version.
+      const { fileUploadConfig } = workflowStore.getState()
+      featuresStore?.setState({
+        features: features.file
+          ? { ...features, file: { ...features.file, fileUploadConfig } }
+          : features,
+      })
       workflowStore
         .getState()
-        .setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+        .setEnvironmentVariables(toEnvironmentVariables(publishedWorkflow.environment_variables))
     },
     [featuresStore, handleUpdateWorkflowCanvas, workflowStore],
   )

@@ -185,6 +185,10 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
+              'next/dist/shared/lib/app-router-context.shared-runtime',
+              'next/dist/shared/lib/hooks-client-context.shared-runtime',
+              'next/navigation',
               'next/script',
               'react-textarea-autosize',
             ],
@@ -196,8 +200,19 @@ export default defineConfig(({ command, mode, isPreview }) => {
             include: [browserTestPattern],
             browser: {
               enabled: true,
-              provider: playwright(),
+              // Pin what the host machine would otherwise decide, so local runs match CI.
+              provider: playwright({
+                // `TZ` instead of `timezoneId`: a context override would block the
+                // per-spec `Emulation.setTimezoneOverride` behind `emulateTimezone`.
+                launchOptions: { env: { ...process.env, TZ: 'UTC' } },
+                contextOptions: {
+                  locale: 'en-US',
+                  reducedMotion: 'reduce',
+                },
+              }),
               instances: [{ browser: 'chromium' }],
+              // Vitest's default, stated so specs and the setup file share one documented size.
+              viewport: { width: 414, height: 896 },
               headless: true,
               // Keep application maps and mapped error stacks without sending dependency maps.
               dependencySourcemaps: false,

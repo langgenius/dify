@@ -13,6 +13,7 @@ from services.tag_application_service import (
     CreateTagInput,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagNameConflictError,
     TagNotFoundError,
     UpdateTagInput,
@@ -73,7 +74,7 @@ def test_tag_lifecycle_uses_owned_transactions_and_workspace_scope(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     repository = TagRepository(sqlite_session_factory)
-    created = repository.create_tag("workspace-1", "account-1", CreateTagInput("Original", "knowledge"))
+    created = repository.create_tag("workspace-1", "account-1", CreateTagInput("Original", TagKind.KNOWLEDGE))
 
     with sqlite_session_factory.begin() as session:
         session.add(
@@ -93,7 +94,7 @@ def test_tag_lifecycle_uses_owned_transactions_and_workspace_scope(
     assert updated.binding_count == 1
 
     with pytest.raises(TagNameConflictError):
-        repository.create_tag("workspace-1", "account-1", CreateTagInput("Updated", "knowledge"))
+        repository.create_tag("workspace-1", "account-1", CreateTagInput("Updated", TagKind.KNOWLEDGE))
 
     with pytest.raises(TagNotFoundError):
         repository.update_tag("workspace-2", created.id, UpdateTagInput("Leaked"))
@@ -118,7 +119,7 @@ def test_binding_mutations_validate_target_type_and_workspace(
         )
 
     repository = TagRepository(sqlite_session_factory)
-    binding = TagBindingInput(("tag-1", "tag-1", "tag-2", "tag-3"), "snippet-1", "snippet")
+    binding = TagBindingInput(("tag-1", "tag-1", "tag-2", "tag-3"), "snippet-1", TagKind.SNIPPET)
     repository.create_bindings("workspace-1", "account-1", binding)
     repository.create_bindings("workspace-1", "account-1", binding)
 
@@ -140,7 +141,7 @@ def test_binding_mutation_rejects_missing_target(sqlite_session_factory: session
         repository.create_bindings(
             "workspace-1",
             "account-1",
-            TagBindingInput(("tag-1",), "missing", "snippet"),
+            TagBindingInput(("tag-1",), "missing", TagKind.SNIPPET),
         )
 
 
@@ -158,7 +159,7 @@ def test_binding_mutations_validate_skill_target(
         )
 
     repository = TagRepository(sqlite_session_factory)
-    binding = TagBindingInput(("tag-1", "tag-2", "tag-3"), "skill-1", "skill")
+    binding = TagBindingInput(("tag-1", "tag-2", "tag-3"), "skill-1", TagKind.SKILL)
     repository.create_bindings("workspace-1", "account-1", binding)
 
     with sqlite_session_factory() as session:
@@ -175,7 +176,7 @@ def test_binding_mutations_validate_skill_target(
         repository.create_bindings(
             "workspace-1",
             "account-1",
-            TagBindingInput(("tag-1",), "missing", "skill"),
+            TagBindingInput(("tag-1",), "missing", TagKind.SKILL),
         )
 
 
@@ -272,10 +273,10 @@ def test_agent_bindings_use_canonical_identity_and_an_independent_tag_pool(
             ]
         )
     repository = TagRepository(sqlite_session_factory)
-    first_binding = TagBindingInput(("agent-tag", "agent-tag", "app-tag", "foreign-tag"), "agent-1", "agent")
+    first_binding = TagBindingInput(("agent-tag", "agent-tag", "app-tag", "foreign-tag"), "agent-1", TagKind.AGENT)
     repository.create_bindings("workspace-1", "account-1", first_binding)
     repository.create_bindings("workspace-1", "account-1", first_binding)
-    repository.create_bindings("workspace-1", "account-1", TagBindingInput(("agent-tag",), "agent-2", "agent"))
+    repository.create_bindings("workspace-1", "account-1", TagBindingInput(("agent-tag",), "agent-2", TagKind.AGENT))
 
     assert repository.list_tags("workspace-1", "agent", None) == (("agent-tag", "Research", "agent", 2),)
     repository.delete_bindings("workspace-1", first_binding)
@@ -309,7 +310,7 @@ def test_agent_bindings_reject_unavailable_or_non_roster_identities(
             ]
         )
     repository = TagRepository(sqlite_session_factory)
-    binding = TagBindingInput(("agent-tag",), target_id, "agent")
+    binding = TagBindingInput(("agent-tag",), target_id, TagKind.AGENT)
     with pytest.raises(TagBindingTargetNotFoundError, match="Agent not found"):
         repository.create_bindings("workspace-1", "account-1", binding)
     with pytest.raises(TagBindingTargetNotFoundError, match="Agent not found"):
@@ -324,12 +325,12 @@ def test_agent_tag_names_are_unique_within_the_pool_and_workspace(
 ) -> None:
     """Reject duplicate Agent names while permitting the same name in independent pools."""
     repository = TagRepository(sqlite_session_factory)
-    repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", "agent"))
-    repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", "app"))
-    repository.create_tag("workspace-2", "account-1", CreateTagInput("Research", "agent"))
-    second = repository.create_tag("workspace-1", "account-1", CreateTagInput("Finance", "agent"))
+    repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", TagKind.AGENT))
+    repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", TagKind.APP))
+    repository.create_tag("workspace-2", "account-1", CreateTagInput("Research", TagKind.AGENT))
+    second = repository.create_tag("workspace-1", "account-1", CreateTagInput("Finance", TagKind.AGENT))
     with pytest.raises(TagNameConflictError):
-        repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", "agent"))
+        repository.create_tag("workspace-1", "account-1", CreateTagInput("Research", TagKind.AGENT))
     with pytest.raises(TagNameConflictError):
         repository.update_tag("workspace-1", second.id, UpdateTagInput("Research"))
     assert {tag.name for tag in repository.list_tags("workspace-1", "agent", None)} == {"Finance", "Research"}

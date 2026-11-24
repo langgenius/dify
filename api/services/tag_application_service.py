@@ -1,11 +1,20 @@
 """Application boundary for Console tag management."""
 
 from collections.abc import Sequence
-from typing import Literal, NamedTuple, Protocol
+from enum import StrEnum
+from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
 
-type TagKind = Literal["knowledge", "app", "agent", "snippet", "skill"]
+
+class TagKind(StrEnum):
+    """Application-owned tag pools with the Console's existing wire values."""
+
+    KNOWLEDGE = "knowledge"
+    APP = "app"
+    AGENT = "agent"
+    SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class TagSummary(NamedTuple):
@@ -16,6 +25,8 @@ class TagSummary(NamedTuple):
 
 
 class CreateTagInput(NamedTuple):
+    """Create a named tag in the application pool admitted by the transport."""
+
     name: str
     type: TagKind
 
@@ -25,7 +36,7 @@ class UpdateTagInput(NamedTuple):
 
 
 class TagBindingInput(NamedTuple):
-    """Bind tags in one pool; an Agent target is its canonical roster Agent id."""
+    """Bind tags in an admitted application pool; Agent targets use canonical roster ids."""
 
     tag_ids: tuple[str, ...]
     target_id: str

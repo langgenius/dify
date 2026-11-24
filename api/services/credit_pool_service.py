@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
-from core.errors.error import QuotaExceededError
+from core.errors.error import InsufficientHostedCreditsError, QuotaExceededError
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
@@ -302,7 +302,7 @@ class CreditPoolService:
             )
             reservation_id = result.get("reservation_id", "")
             if not reservation_id:
-                raise QuotaExceededError("Insufficient credits remaining")
+                raise InsufficientHostedCreditsError("Insufficient credits remaining")
             reserved_amount = result.get("reserved_amount", 0) if _capped else credits_required
             if (
                 not isinstance(reserved_amount, int)

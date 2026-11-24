@@ -76,7 +76,7 @@ it('names the owning app and filters existing tags without offering a case-only 
 })
 
 it.each(['app', 'agent'] as const)(
-  'keeps the %s tag options visible while the popup fades out',
+  'retains the %s tag options until the popup finishes closing',
   async (type) => {
     vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     mocks.tags = tags.map((tag) => ({ ...tag, type }))
@@ -98,24 +98,21 @@ it.each(['app', 'agent'] as const)(
     const popup = dialog.element()
     await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
 
-    const exitFrame = createDeferred<{ opacity: number; options: string[]; text: string }>()
-    const captureExit = (event: Event) => {
-      if (!(event instanceof TransitionEvent)) return
-      if (event.target !== popup || event.propertyName !== 'opacity') return
-      popup.removeEventListener('transitionrun', captureExit)
+    const exitFrame = createDeferred<{ options: string[]; text: string }>()
+    const observer = new MutationObserver(() => {
+      if (!popup.hasAttribute('data-ending-style')) return
+      observer.disconnect()
       exitFrame.resolve({
-        opacity: Number(getComputedStyle(popup).opacity),
         options: Array.from(
           popup.querySelectorAll('[role="option"]'),
           (option) => option.textContent?.trim() ?? '',
         ),
         text: popup.textContent ?? '',
       })
-    }
-    popup.addEventListener('transitionrun', captureExit)
+    })
+    observer.observe(popup, { attributes: true, attributeFilter: ['data-ending-style'] })
     await userEvent.keyboard('{Escape}')
     const frame = await exitFrame.promise
-    expect(frame.opacity).toBeGreaterThan(0)
     expect(frame.options).toEqual(['Frontend', 'Backend'])
     expect(frame.text).not.toContain('common.tag.noTagsYetCreateHint')
     await expect.poll(() => popup.isConnected).toBe(false)

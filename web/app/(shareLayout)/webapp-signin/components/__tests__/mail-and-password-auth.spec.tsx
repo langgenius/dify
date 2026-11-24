@@ -65,12 +65,9 @@ describe('MailAndPasswordAuth', () => {
 
     await waitFor(() => {
       expect(webAppLoginMock).toHaveBeenCalledWith({
-        url: '/login',
-        body: {
-          email: 'user@example.com',
-          password: 'c3Ryb25nLXBhc3N3b3Jk',
-          remember_me: true,
-        },
+        email: 'user@example.com',
+        password: 'c3Ryb25nLXBhc3N3b3Jk',
+        remember_me: true,
       })
     })
   })
@@ -104,12 +101,9 @@ describe('MailAndPasswordAuth', () => {
     await user.click(submit)
     await waitFor(() =>
       expect(webAppLoginMock).toHaveBeenCalledWith({
-        url: '/login',
-        body: {
-          email: 'autofill@example.com',
-          password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
-          remember_me: true,
-        },
+        email: 'autofill@example.com',
+        password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
+        remember_me: true,
       }),
     )
   })

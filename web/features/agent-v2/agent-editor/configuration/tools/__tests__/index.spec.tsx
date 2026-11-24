@@ -40,21 +40,18 @@ const service = vi.hoisted(() => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: service.credentialInfo,
   getMarketplace: service.getMarketplace,
   postMarketplace: service.postMarketplace,
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.install.marketplace.post': service.installPackage,
-    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get':
+        service.credentialInfo,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get': async () => ({
         schema: [],
@@ -69,6 +66,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         toolProviderState.customTools ?? new Promise<ToolProviderApiEntityResponse[]>(() => {}),
       'workspaces.current.tools.workflow.get': async () => [],
       'workspaces.current.tools.mcp.get': async () => [],
+      'workspaces.current.plugin.install.marketplace.post': service.installPackage,
     }),
   }
 })
@@ -487,22 +485,21 @@ describe('AgentTools', () => {
       })
     })
 
-    it('should remove all provider tools from the provider more-actions menu', async () => {
+    it('confirms before removing all operations from a provider', async () => {
       const user = userEvent.setup()
       renderAgentTools()
 
       await user.click(
         screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+          name: 'agentV2.agentDetail.configure.tools.removeProvider',
         }),
       )
-      await user.click(
-        screen.getByRole('menuitem', {
-          name: /agentV2\.agentDetail\.configure\.tools\.removeProvider/,
-        }),
-      )
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
-      expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument())
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.tools.add' }),
+      ).toHaveFocus()
       expect(readComposerState().tools).toEqual([
         expect.objectContaining({ id: 'lark-cli', kind: 'cli' }),
       ])
@@ -542,7 +539,7 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+          name: 'agentV2.agentDetail.configure.tools.removeProvider',
         }),
       ).not.toBeInTheDocument()
 
@@ -701,12 +698,9 @@ describe('AgentTools', () => {
           team_credentials: {},
         },
       ]
-      service.credentialInfo.mockImplementation(async (url: string) => {
-        if (
-          new URL(url, 'http://localhost').pathname !==
-          '/workspaces/current/tool-provider/builtin/google/credential/info'
-        )
-          throw new Error(`Unexpected credential GET: ${url}`)
+      service.credentialInfo.mockImplementation(async ({ params }) => {
+        if (params.provider !== 'google')
+          throw new Error(`Unexpected credential provider: ${params.provider}`)
         return credentialInfo([
           {
             id: 'workspace-oauth',

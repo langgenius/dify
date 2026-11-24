@@ -1,8 +1,11 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { useWorkflowRun } from '../../../hooks/use-workflow-run'
 import type { Node } from '../../../types'
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
+import { lastRunQueryKey } from '@/service/workflow-queries'
+import { createTestQueryClient } from '@/test/query-client'
 import { createNode, createNodeTracing } from '../../../__tests__/fixtures'
 import {
   renderWorkflowCanvasHook,
@@ -17,7 +20,6 @@ type RunCallbacks = NonNullable<Parameters<HandleRun>[1]>
 
 const mockHandleRun = vi.hoisted(() => vi.fn<HandleRun>())
 const mockFetchInspectVars = vi.hoisted(() => vi.fn())
-const mockInvalidAllLastRun = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputForm = vi.hoisted(() => vi.fn())
 const mockSseGet = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
@@ -26,11 +28,6 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   sseGet: (...args: unknown[]) => mockSseGet(...args),
   request: mockRequest,
-}))
-
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
@@ -43,9 +40,11 @@ const renderChat = (
     canRun?: boolean
     nodes?: Node[]
     mode?: 'workflow' | 'advanced-chat'
+    queryClient?: QueryClient
   } = {},
 ) =>
   renderWorkflowCanvasHook(() => useChat({}), {
+    queryClient: options.queryClient,
     resource: { kind: 'app', appId: 'app-1', mode: options.mode ?? 'workflow' },
     nodes: options.nodes,
     hooksStoreProps: {
@@ -65,7 +64,18 @@ describe('useChat', () => {
     mockHandleRun.mockImplementation((_params, callbacks) => {
       sendCallbacks = callbacks
     })
-    const { result, store } = renderChat()
+    const queryClient = createTestQueryClient()
+    const lastRunKey = lastRunQueryKey(
+      { kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' },
+      'human-node',
+    )
+    const otherAppLastRunKey = lastRunQueryKey(
+      { kind: 'app', collaborationEnabled: false, appId: 'app-2', mode: 'workflow' },
+      'human-node',
+    )
+    queryClient.setQueryData(lastRunKey, { id: 'run-1' })
+    queryClient.setQueryData(otherAppLastRunKey, { id: 'run-2' })
+    const { result, store } = renderChat({ queryClient })
 
     act(() => {
       result.current.handleSend({ query: 'Review this request' }, {})
@@ -123,6 +133,8 @@ describe('useChat', () => {
     })
 
     expect(result.current.isResponding).toBe(false)
+    // A paused run keeps cached last-run results until it actually completes.
+    expect(queryClient.getQueryState(lastRunKey)?.isInvalidated).toBe(false)
     expect(result.current.chatList).toEqual([
       expect.objectContaining({ content: 'Review this request', isAnswer: false }),
       expect.objectContaining({
@@ -166,7 +178,8 @@ describe('useChat', () => {
 
     expect(result.current.isResponding).toBe(false)
     expect(mockFetchInspectVars).toHaveBeenCalledWith({})
-    expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryState(lastRunKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(otherAppLastRunKey)?.isInvalidated).toBe(false)
   })
 
   it('keeps workflow-tool tracing available after resuming a sibling with pending human input', async () => {

@@ -2,13 +2,12 @@ import type { AssignerNodeType } from '../../nodes/assigner/types'
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { Edge, Node, OnNodeAdd, ValueSelector } from '../../types'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
@@ -412,7 +411,9 @@ export const useInsertSnippet = () => {
   const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-  const { mutate: incrementSnippetUseCount } = useIncrementSnippetUseCountMutation()
+  const { mutate: incrementSnippetUseCount } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.useCount.increment.post.mutationOptions(),
+  )
 
   const handleInsertSnippet = useCallback(
     async (snippetId: string, insertPayload?: SnippetInsertPayload) => {
@@ -579,7 +580,7 @@ export const useInsertSnippet = () => {
         })
         handleSyncWorkflowDraft()
         incrementSnippetUseCount({
-          params: { snippetId },
+          params: { snippet_id: snippetId },
         })
         return true
       } catch (error) {

@@ -18,10 +18,10 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.customizedSnippets.bySnippetId.export.get': (...args: unknown[]) =>
         mockMutateAsync(...args),
     }),
@@ -41,13 +41,10 @@ describe('useSnippetDSL', () => {
 
     await act(() => result.current.handleExportDSL(false, 'workflow-1'))
 
-    expect(mockMutateAsync).toHaveBeenCalledWith(
-      {
-        params: { snippet_id: 'snippet-1' },
-        query: { include_secret: 'false', workflow_id: 'workflow-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      params: { snippet_id: 'snippet-1' },
+      query: { include_secret: 'false', workflow_id: 'workflow-1' },
+    })
     expect(downloadBlob).toHaveBeenCalledWith({
       data: expect.any(Blob),
       fileName: 'My Snippet.yml',
