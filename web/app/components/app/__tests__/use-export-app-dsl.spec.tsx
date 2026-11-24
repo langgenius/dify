@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
-import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ExportAppDialog } from '@/app/components/app-sidebar/app-info/export-app-dialog'
+import { ExportAppWarning } from '@/app/components/app-sidebar/app-info/export-app-warning'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { ExportSecretsDialogContent } from '../export-secrets-dialog'
@@ -412,16 +416,25 @@ describe('useExportWorkflowAppDsl', () => {
       .mockResolvedValueOnce(new File(['package'], 'workflow.ifpkg'))
 
     function ExportEntry() {
-      const [open, setOpen] = useState(true)
+      const [handle] = useState(() => createAlertDialogHandle())
       return (
         <>
-          <button onClick={() => setOpen(true)}>Reopen</button>
-          <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
+          <button onClick={() => handle.open(null)}>Reopen</button>
+          <AlertDialog handle={handle}>
+            <AlertDialogContent>
+              <ExportAppWarning
+                appDetail={app}
+                onSecretsRequired={vi.fn()}
+                onExported={() => handle.close()}
+              />
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )
     }
 
     render(<ExportEntry />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Draft unavailable')
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()

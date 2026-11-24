@@ -38,7 +38,7 @@ import {
 } from './update-dsl-modal.helpers'
 import { initialEdges, initialNodes } from './utils'
 
-type UpdateDSLModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+type UpdateDSLModalProps = Pick<DialogProps, 'handle' | 'open' | 'onOpenChange'> & {
   children?: ReactNode
   appId: string
   appMode: AppDetailWithSite['mode']
@@ -47,6 +47,7 @@ type UpdateDSLModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
 }
 
 function UpdateDSLModal({
+  handle,
   open,
   onOpenChange,
   children,
@@ -203,6 +204,7 @@ function UpdateDSLModal({
   return (
     <Dialog
       actionsRef={actionsRef}
+      handle={handle}
       open={open}
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && isImporting && details.reason !== 'imperative-action') details.cancel()
