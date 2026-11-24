@@ -7,7 +7,7 @@ import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { consoleClient } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
 
@@ -37,7 +37,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+      const res = await fetchPipelineWorkflowDraft(pipelineId)
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)

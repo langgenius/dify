@@ -12,15 +12,24 @@ import type { ConsoleClientContext } from '@/service/console'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { zConsoleHumanInputV2SubmitPayload } from '@dify/contracts/api/console/form/zod.gen'
 import { consoleClient } from '@/service/console'
-import { get } from './base'
 
 export type EnvironmentVariablePatch = {
   environmentVariables: EnvironmentVariable[]
   deletedEnvironmentVariableIds: string[]
 }
 
-export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+export const fetchAppWorkflowDraft = (appId: string) => {
+  return consoleClient.apps.byAppId.workflows.draft.get(
+    { params: { app_id: appId } },
+    { context: { silent: true } },
+  ) as Promise<FetchWorkflowDraftResponse>
+}
+
+export const fetchPipelineWorkflowDraft = (pipelineId: string) => {
+  return consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
+    { params: { pipeline_id: pipelineId } },
+    { context: { silent: true } },
+  ) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const singleNodeRun = (
