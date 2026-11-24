@@ -1,8 +1,9 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
 import { TagSelector } from '../tag-selector'
 
@@ -57,6 +58,7 @@ it('names the owning app and filters existing tags without offering a case-only 
 it.each(['app', 'agent'] as const)(
   'keeps the %s tag options visible while the popup fades out',
   async (type) => {
+    await emulateReducedMotion(false)
     vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
     serverTags = tags.map((tag) => ({ ...tag, type }))
     await renderWithTags(
@@ -252,13 +254,8 @@ it.each(['before', 'after'] as const)(
     const agentTag = { id: 'existing', name: 'Existing', type: 'agent' }
     const newTag = { id: 'created', name: 'Research', type: 'agent' }
     serverTags = [agentTag]
-    const creation = createDeferred<Tag>()
-    const binding = createDeferred()
-    fake.console.tags.post.mockImplementationOnce(() => creation.promise)
-    fake.console.tagBindings.post.mockImplementationOnce(async () => {
-      await binding.promise
-      return { result: 'success' }
-    })
+    const creation = hold(fake.console.tags.post)
+    const binding = hold(fake.console.tagBindings.post)
     await renderWithTags(
       <TagSelector
         type="agent"
@@ -275,6 +272,7 @@ it.each(['before', 'after'] as const)(
     await page.getByRole('option', { name: 'Existing' }).click()
     await search().fill('Research')
     await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+    await creation.arrived
     expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
       body: { name: 'Research', type: 'agent' },
     })
@@ -304,7 +302,7 @@ it.each(['before', 'after'] as const)(
     await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
     await userEvent.keyboard('{Enter}')
     await expect.element(search()).not.toBeInTheDocument()
-    binding.resolve()
+    binding.release()
     await expect.element(addTags).not.toHaveAttribute('aria-disabled')
     await expect.element(addTags).toHaveFocus()
     await userEvent.keyboard('{Enter}')
