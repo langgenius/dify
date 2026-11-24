@@ -3255,14 +3255,6 @@
       "count": 4
     }
   },
-  "web/service/__tests__/sse-generator-post.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/service/__tests__/use-workflow.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2
@@ -3302,10 +3294,10 @@
       "count": 2
     },
     "no-restricted-properties": {
-      "count": 3
+      "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 16
+      "count": 15
     },
     "typescript/no-explicit-any": {
       "count": 2

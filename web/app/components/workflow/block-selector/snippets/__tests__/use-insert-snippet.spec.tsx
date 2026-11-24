@@ -19,7 +19,6 @@ const mockGetPublishedWorkflow = vi.fn()
 
 vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => mockRequest(...args),
-  sseGeneratorPost: vi.fn(),
 }))
 
 // History owns a debounced temporal store and is covered separately; insertion only emits its event.
