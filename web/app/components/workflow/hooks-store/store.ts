@@ -7,7 +7,7 @@ import type {
   ValueSelector,
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -61,7 +61,7 @@ type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
+  handleRun: (params: any, callback?: StreamCallbacks, options?: any) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void

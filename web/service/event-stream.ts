@@ -32,7 +32,7 @@ import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
 import { resolveWebAppAddress } from './webapp-address'
 
-type IOnDataMoreInfo = {
+export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
   taskId?: string
@@ -164,6 +164,15 @@ const streamRequestOptions = (signal: AbortSignal): StreamRequestOptions => ({
  * The client decodes a `text/event-stream` response into an async iterator of JSON frames.
  */
 export type StreamRequest = (options: StreamRequestOptions) => Promise<unknown>
+
+/**
+ * Sends a request body built by the stream's owner (e.g. the chat hook) through a generated
+ * client, e.g. `(body, options) => consoleClient.apps.byAppId.chatMessages.post({ params, body }, options)`.
+ */
+export type StreamSender = (
+  body: Record<string, unknown>,
+  options: StreamRequestOptions,
+) => Promise<unknown>
 
 type Frame = Record<string, unknown>
 

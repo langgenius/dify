@@ -376,11 +376,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat-with-history/__tests__/chat-wrapper.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -427,12 +422,6 @@
     }
   },
   "web/app/components/base/chat/chat/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 9
     }
@@ -812,19 +801,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/text-generation/__tests__/hooks.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/text-generation/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/base/text-generation/types.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -1039,12 +1015,6 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1059,12 +1029,6 @@
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -1093,12 +1057,6 @@
     }
   },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -1550,11 +1508,6 @@
       "count": 2
     }
   },
-  "web/app/components/rag-pipeline/components/panel/test-run/preparation/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -1599,12 +1552,6 @@
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1639,24 +1586,8 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/result/__tests__/workflow-stream-handlers.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/result/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/share/text-generation/result/workflow-stream-handlers.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -1710,14 +1641,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippets/hooks/use-snippet-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
@@ -1746,38 +1669,9 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run-utils.ts": {
-    "no-restricted-imports": {
-      "count": 3
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
     },
     "typescript/no-deprecated": {
       "count": 1
@@ -1869,9 +1763,6 @@
     }
   },
   "web/app/components/workflow/hooks-store/store.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -2136,12 +2027,6 @@
       "count": 1
     },
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 2
     },
     "typescript/no-explicit-any": {
@@ -2716,12 +2601,6 @@
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -3133,7 +3012,7 @@
   },
   "web/service/__tests__/ip-access-denied.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 33
+      "count": 29
     }
   },
   "web/service/__tests__/plugin-credential-commands.spec.ts": {
@@ -3174,7 +3053,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 17
+      "count": 15
     }
   },
   "web/service/base.ts": {
@@ -3182,10 +3061,10 @@
       "count": 2
     },
     "no-restricted-properties": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 13
+      "count": 12
     },
     "typescript/no-explicit-any": {
       "count": 2
@@ -3257,10 +3136,10 @@
       "count": 1
     },
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 11
+      "count": 9
     },
     "typescript/no-explicit-any": {
       "count": 1

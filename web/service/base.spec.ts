@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
-import { handleStream, postPublic, sseGet, ssePost, upload } from './base'
+import { handleStream, postPublic, ssePost, upload } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -150,7 +150,7 @@ describe('handleStream', () => {
   })
 })
 
-describe('ssePost and sseGet', () => {
+describe('ssePost', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
@@ -209,25 +209,6 @@ describe('ssePost and sseGet', () => {
       expect(onError).toHaveBeenCalledWith('Base model not found')
     })
     expect(onNotifyError).toHaveBeenCalledWith('Base model not found')
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-
-  it('should route event stream response errors through a custom notifier', async () => {
-    const onError = vi.fn()
-    const onNotifyError = vi.fn()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: 'Workflow resume failed' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    await sseGet('/workflow/workflow-run-1/events', {}, { onError, onNotifyError })
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Workflow resume failed')
-    })
-    expect(onNotifyError).toHaveBeenCalledWith('Workflow resume failed')
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -312,24 +293,6 @@ describe('ssePost and sseGet', () => {
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: refresh failed')
-    })
-  })
-
-  it('should report event stream token refresh failures through onError', async () => {
-    const onError = vi.fn()
-    refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('resume refresh failed'))
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
-
-    await sseGet(
-      '/workflow/workflow-run-1/events',
-      {},
-      {
-        onError,
-      },
-    )
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
     })
   })
 
