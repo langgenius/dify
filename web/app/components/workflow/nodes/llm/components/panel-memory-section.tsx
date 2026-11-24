@@ -69,7 +69,7 @@ const PanelMemorySection: FC<Props> = ({
     <>
       {isChatModel && !!inputs.memory && (
         <div className="mt-4">
-          <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3">
+          <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal ps-3 pe-2">
             <div className="flex items-center space-x-1">
               <div
                 id={memoryLabelId}

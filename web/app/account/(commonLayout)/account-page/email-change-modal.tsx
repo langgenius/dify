@@ -11,12 +11,13 @@ import {
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleClient } from '@/service/console'
-import { useLogout } from '@/service/use-common'
 import { getErrorMessage } from '@/utils/error-message'
 
 type Props = {
@@ -178,7 +179,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     setStep(STEP.verifyNew)
   }
 
-  const { mutateAsync: logout } = useLogout()
+  const { mutateAsync: logout } = useMutation(logoutMutationOptions())
   const updateEmail = async (lastToken: string) => {
     try {
       await consoleClient.account.changeEmail.reset.post(
@@ -203,7 +204,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     !normalizedMail || newEmailExited || unAvailableEmail || isCheckingEmail || !isMailValid
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
+    <Dialog open disablePointerDismissal onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-105">
         <form
           className="contents"

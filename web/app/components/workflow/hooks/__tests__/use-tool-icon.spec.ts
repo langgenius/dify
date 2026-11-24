@@ -3,6 +3,10 @@ import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import {
+  createTriggerProviderResponseFixture,
+  seedTriggerPlugins,
+} from '@/test/console/trigger-plugins'
 import { renderWorkflowHook as renderWorkflowHookBase } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useGetToolIcon, useToolIcon } from '../use-tool-icon'
@@ -33,14 +37,16 @@ const renderWorkflowHook = <T>(
   ] as const
   for (const [operation, provider] of fixtures)
     queryClient.setQueryData(operation.queryKey(), [createToolProviderFixture(provider)])
+  seedTriggerPlugins(queryClient, [
+    createTriggerProviderResponseFixture({
+      name: 'trigger-1',
+      plugin_id: 'trigger-1',
+      icon: '/trigger.svg',
+      icon_dark: '/trigger-dark.svg',
+    }),
+  ])
   return renderWorkflowHookBase(hook, { ...options, queryClient })
 }
-
-vi.mock('@/service/use-triggers', async () =>
-  (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock({
-    triggerPlugins: [{ id: 'trigger-1', icon: '/trigger.svg', icon_dark: '/trigger-dark.svg' }],
-  }),
-)
 
 let mockTheme = 'light'
 vi.mock('@/features/theme/hooks', () => ({

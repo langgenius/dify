@@ -153,7 +153,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     type="button"
                     disabled={!item.embedding_available}
                     className={cn(
-                      'flex h-10 w-full cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 text-left shadow-xs outline-hidden hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                      'flex h-10 w-full cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 text-start shadow-xs outline-hidden hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                       selectedIdsInModal.includes(item.id) &&
                         'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
                       !item.embedding_available &&
@@ -161,8 +161,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     )}
                     onClick={() => toggleSelect(item)}
                   >
-                    <div className="mr-1 flex grow items-center overflow-hidden">
-                      <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
+                    <div className="me-1 flex grow items-center overflow-hidden">
+                      <div className={cn('me-2', !item.embedding_available && 'opacity-30')}>
                         <AppIcon size="tiny" icon={item.icon_info} />
                       </div>
                       <div
@@ -174,13 +174,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                         {item.name}
                       </div>
                       {!item.embedding_available && (
-                        <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 font-normal text-text-tertiary">
+                        <span className="ms-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 font-normal text-text-tertiary">
                           {t(($) => $.unavailable, { ns: 'dataset' })}
                         </span>
                       )}
                     </div>
                     {item.is_multimodal && (
-                      <div className="mr-1 shrink-0">
+                      <div className="me-1 shrink-0">
                         <FeatureIcon feature={ModelFeatureEnum.vision} />
                       </div>
                     )}

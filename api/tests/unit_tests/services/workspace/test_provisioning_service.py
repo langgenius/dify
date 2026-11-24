@@ -13,7 +13,6 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Mapper, ORMExecuteState, Session, sessionmaker
 
 from enums import DeploymentEdition
-from models import TenantCreditPool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -147,10 +146,8 @@ def test_creation_reuses_defaults_and_emits_one_event(
     gateway: tuple[WorkspaceProvisioningService, Signal],
     sqlite_session_factory: sessionmaker[Session],
     with_owner: bool,
-    config_overrides: Callable[..., None],
 ) -> None:
     adapter, signal = gateway
-    config_overrides(HOSTED_POOL_CREDITS=123)
     with sqlite_session_factory() as session:
         account = Account(name="Owner", email="owner@example.com")
         session.add(account)
@@ -172,11 +169,6 @@ def test_creation_reuses_defaults_and_emits_one_event(
         tenant = session.get(Tenant, result.id)
         assert tenant is not None
         assert tenant.name == "Created"
-        pool = session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == result.id))
-        assert pool is not None
-        assert pool.quota_limit == 123
-        assert pool.quota_used == 0
-        assert pool.pool_type == "trial"
         strategies = session.scalars(
             select(TenantPluginAutoUpgradeStrategy).where(TenantPluginAutoUpgradeStrategy.tenant_id == result.id)
         ).all()
@@ -267,21 +259,25 @@ def test_provisioning_rolls_back_the_entire_aggregate_when_defaults_fail(
     def record(tenant: CreatedWorkspace) -> None:
         emitted.append(tenant.id)
 
-    def reject_pool(_mapper: Mapper[TenantCreditPool], _connection: Connection, _pool: TenantCreditPool) -> None:
-        raise RuntimeError("Pool write failed")
+    def reject_strategy(
+        _mapper: Mapper[TenantPluginAutoUpgradeStrategy],
+        _connection: Connection,
+        _strategy: TenantPluginAutoUpgradeStrategy,
+    ) -> None:
+        raise RuntimeError("Strategy write failed")
 
     signal.connect(record)
-    event.listen(TenantCreditPool, "before_insert", reject_pool)
+    event.listen(TenantPluginAutoUpgradeStrategy, "before_insert", reject_strategy)
     try:
-        with pytest.raises(RuntimeError, match="Pool write failed"):
+        with pytest.raises(RuntimeError, match="Strategy write failed"):
             account_domain.provisioning.create_with_owner_workspace(
                 email="new@example.com", name="New", interface_language="en-US", timezone="UTC", ip_address="127.0.0.1"
             )
     finally:
-        event.remove(TenantCreditPool, "before_insert", reject_pool)
+        event.remove(TenantPluginAutoUpgradeStrategy, "before_insert", reject_strategy)
 
     with sqlite_session_factory() as session:
-        for model in (Account, Tenant, TenantAccountJoin, TenantPluginAutoUpgradeStrategy, TenantCreditPool):
+        for model in (Account, Tenant, TenantAccountJoin, TenantPluginAutoUpgradeStrategy):
             assert session.scalar(select(model.id)) is None
     assert emitted == []
 
@@ -295,7 +291,6 @@ def test_initial_workspace_creation_is_idempotent(
 
     with sqlite_session_factory() as session:
         assert len(session.scalars(select(Tenant.id)).all()) == 1
-        assert len(session.scalars(select(TenantCreditPool.id)).all()) == 1
 
 
 def test_competing_initial_workspace_skips_key_and_owner_binding(
@@ -304,8 +299,8 @@ def test_competing_initial_workspace_skips_key_and_owner_binding(
     account = account_domain.accounts.create_account("owner@example.com", "Owner", "en-US")
     effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
     effects.prepare.side_effect = [
-        WorkspaceCreation("winner", "Owner's Workspace", "winner-key", 123, 0, {}),
-        WorkspaceCreation("skipped", "Owner's Workspace", "orphan-key", 123, 0, {}),
+        WorkspaceCreation("winner", "Owner's Workspace", "winner-key", 0, {}),
+        WorkspaceCreation("skipped", "Owner's Workspace", "orphan-key", 0, {}),
     ]
     monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
     competing_repository = WorkspaceRepository(sqlite_session_factory)
@@ -336,7 +331,6 @@ def test_competing_initial_workspace_skips_key_and_owner_binding(
     with sqlite_session_factory() as session:
         assert list(session.scalars(select(Tenant.id))) == ["winner"]
         assert list(session.scalars(select(TenantAccountJoin.tenant_id))) == ["winner"]
-        assert list(session.scalars(select(TenantCreditPool.tenant_id))) == ["winner"]
 
 
 def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
@@ -355,7 +349,7 @@ def test_initial_workspace_locks_before_preparation_and_publishes_after_commit(
 
     def prepare(_name: str) -> WorkspaceCreation:
         phases.append("prepare")
-        return WorkspaceCreation("workspace", "Owner's Workspace", "key", 123, 0, {})
+        return WorkspaceCreation("workspace", "Owner's Workspace", "key", 0, {})
 
     def bind_owner(_workspace_id: str, _account_id: str) -> None:
         phases.append("bind")
@@ -393,7 +387,7 @@ def _service(
     policy.has_workspace_capacity.return_value = True
     if effects is None:
         prepared = create_autospec(WorkspaceProvisioningEffects, instance=True)
-        prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 123, 0, {})
+        prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 0, {})
         effects = cast(WorkspaceProvisioningEffects, prepared)
     return WorkspaceProvisioningService(
         effects=effects,

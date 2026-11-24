@@ -39,7 +39,7 @@ jobs:
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
         with:
-          # Browser jobs already save this dependency cache; avoid duplicate uploads.
+          # Web test and style jobs already save this pnpm store; avoid duplicate uploads.
           cache-save: 'false'
 
       - name: Restore Next.js build cache

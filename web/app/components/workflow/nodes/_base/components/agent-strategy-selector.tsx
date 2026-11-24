@@ -42,7 +42,7 @@ const NotFoundWarn = (props: { title: string; description: ReactNode }) => {
       <InfotipTrigger
         aria-label={title}
         iconVariant="warning"
-        iconSize="large"
+        size="lg"
         className="text-text-destructive"
       />
       <InfotipContent className="w-45">

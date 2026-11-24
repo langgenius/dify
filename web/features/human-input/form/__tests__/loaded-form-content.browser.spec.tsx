@@ -126,8 +126,8 @@ describe('LoadedFormContent', () => {
     const approve = page.getByRole('button', { name: 'Approve' })
     await expect.element(approve).toBeEnabled()
     await approve.click()
-    expect(onSubmit).not.toHaveBeenCalled()
     await expect.element(page.getByText(/fieldRequired/).nth(1)).toBeVisible()
+    expect(onSubmit).not.toHaveBeenCalled()
 
     const response = page.getByRole('textbox', { name: 'response' })
     await response.clear()

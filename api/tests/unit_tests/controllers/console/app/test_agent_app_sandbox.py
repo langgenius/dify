@@ -14,8 +14,7 @@ from flask_restx import Resource
 from controllers.console import agent_app_sandbox as module
 from machinery.context import RequestContext
 from services.agent.errors import AgentNotFoundError
-from services.app.agent_app_contracts import (
-    AgentAppNotFoundError,
+from services.agent.sandbox_contracts import (
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     AgentSandboxDownload,
@@ -26,6 +25,7 @@ from services.app.agent_app_contracts import (
     WorkflowSandboxAppNotFoundError,
     WorkflowSandboxCaller,
 )
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 

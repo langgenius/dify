@@ -67,7 +67,15 @@ const MetricLabel = ({ metric }: MetricLabelProps) => {
       >
         <span className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
       </span>
-      <span className="min-w-0 flex-1 truncate">{metric.label}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-1">
+        <span className="min-w-0 truncate">{metric.label}</span>
+        {metric.description && (
+          <Infotip>
+            <InfotipTrigger aria-label={metric.label} />
+            <InfotipContent className="max-w-[260px]">{metric.description}</InfotipContent>
+          </Infotip>
+        )}
+      </span>
     </>
   )
 }
@@ -146,16 +154,8 @@ const MetricRow = ({ section, addedMetric, onToggleNode }: MetricRowProps) => {
       <MenuPortal>
         <MenuPositioner sideOffset={4}>
           <MenuPopup className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]">
-            <div className="flex items-center gap-1 px-3 pt-1.5 pb-1">
-              <span className="min-w-0 flex-1 truncate system-xs-medium text-text-tertiary">
-                {t(($) => $['metrics.nodesLabel'])}
-              </span>
-              {metric.description && (
-                <Infotip>
-                  <InfotipTrigger aria-label={metric.label} />
-                  <InfotipContent className="max-w-[260px]">{metric.description}</InfotipContent>
-                </Infotip>
-              )}
+            <div className="truncate px-3 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
+              {t(($) => $['metrics.nodesLabel'])}
             </div>
             {nodes.map((nodeInfo) => (
               <MenuCheckboxItem

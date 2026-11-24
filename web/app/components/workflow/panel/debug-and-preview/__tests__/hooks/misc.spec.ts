@@ -8,16 +8,11 @@ import { useChat } from '../../hooks'
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
-const mockInvalidAllLastRun = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 
 vi.mock('@/service/base', () => ({
   sseGet: (...args: unknown[]) => mockSseGet(...args),
-}))
-
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({

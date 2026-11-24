@@ -14,7 +14,7 @@ const Node: FC<NodeProps<HttpNodeType>> = ({ id, data }) => {
         <div className="flex h-4 shrink-0 items-center rounded-sm bg-components-badge-white-to-dark px-1 text-xs font-semibold text-text-secondary uppercase">
           {method}
         </div>
-        <div className="w-0 grow pt-1 pl-1">
+        <div className="w-0 grow ps-1 pt-1">
           <ReadonlyInputWithSelectVar className="text-text-secondary" value={url} nodeId={id} />
         </div>
       </div>

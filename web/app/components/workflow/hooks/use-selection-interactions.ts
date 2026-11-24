@@ -90,7 +90,7 @@ export const useSelectionInteractions = () => {
 
     store.setState({
       userSelectionRect: null,
-      userSelectionActive: true,
+      userSelectionActive: false,
     })
 
     const nodes = getNodes()

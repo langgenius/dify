@@ -1,45 +1,30 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { ComponentProps } from 'react'
+import type { TestNavigation } from '@/test/next-navigation'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { marketplaceLinks } from '@/features/marketplace/links'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Marketplace from '../index'
 
-const requests = vi.hoisted(() => ({ push: vi.fn() }))
-// boundary: Next routing is unavailable in the standalone browser page.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: requests.push }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': () => ({ plugins: [] }),
-    }),
-  }
-})
+let navigation: TestNavigation
 async function renderMarketplaceOwner(ui: React.ReactElement, canInstall = true) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
     systemFeatures: { rbac_enabled: true },
   })
   const { wrapper: UrlState } = createNuqsTestWrapper()
+  navigation = createTestNavigation({ url: '/tools' })
   return render(
     <Providers>
       <UrlState>{ui}</UrlState>
     </Providers>,
+    { wrapper: navigation.NavigationProvider },
   )
 }
 
@@ -129,11 +114,28 @@ it('navigates to the collection search with its filters', async () => {
     }),
   })
   await userEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.viewMore' }))
-  expect(requests.push).toHaveBeenCalledWith(
+  expect(navigation.router.push).toHaveBeenCalledWith(
     '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
   )
 })
 
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              permission: {
+                fetch: {
+                  get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+                },
+              },
+              list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+            },
+          },
+        },
+      },
+    }),
+  )
 })
