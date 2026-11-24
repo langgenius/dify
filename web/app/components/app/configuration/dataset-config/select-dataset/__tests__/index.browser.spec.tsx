@@ -1,23 +1,13 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SelectDataSet from '../index'
 
-const list = vi.hoisted(() => vi.fn<typeof consoleClient.datasets.get>())
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'datasets.get': list }),
-  }
-})
 const dataset = (id: string, overrides: Partial<DatasetDetailWithPartialMembersResponse> = {}) =>
   createDatasetFixture({ id, name: id, embedding_available: true, ...overrides })
 const response = (data: ReturnType<typeof dataset>[], page = 1, has_more = false) => ({
@@ -66,13 +56,10 @@ async function setup({
     </Providers>,
   )
 }
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  list.mockReset().mockResolvedValue(response([]))
-})
+const fake = setupFakeApi(() => ({ console: { datasets: { get: () => response([]) } } }))
 
 it('adds available knowledge through the real selector and leaves unavailable entries disabled', async () => {
-  list.mockResolvedValue(
+  fake.console.datasets.get.mockResolvedValue(
     response([
       dataset('Available'),
       dataset('Unavailable', { embedding_available: false, provider: 'external' }),
@@ -106,7 +93,7 @@ it.each([true, false])(
 )
 
 it('initializes selection from the caller and cancels an unconfirmed deselection', async () => {
-  list.mockResolvedValue(response([dataset('Existing')]))
+  fake.console.datasets.get.mockResolvedValue(response([dataset('Existing')]))
   const screen = await setup({ selectedIds: ['Existing'] })
   const dialog = screen.getByRole('dialog')
   const count = dialog.getByText('1 appDebug.feature.dataSet.selected')
@@ -125,7 +112,7 @@ it('initializes selection from the caller and cancels an unconfirmed deselection
 
 it('appends the next page after native scrolling while keeping the first page and one pending request', async () => {
   const next = createDeferred<ReturnType<typeof response>>()
-  list
+  fake.console.datasets.get
     .mockResolvedValueOnce(
       response(
         Array.from({ length: 20 }, (_, index) => dataset(`Dataset ${index + 1}`)),
@@ -141,7 +128,7 @@ it('appends the next page after native scrolling while keeping the first page an
     .getByRole('button', { name: /^Dataset 20 / })
     .element()
     .scrollIntoView({ block: 'end' })
-  await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(2))
+  await vi.waitFor(() => expect(fake.console.datasets.get).toHaveBeenCalledTimes(2))
   await expect.element(dialog.getByRole('button', { name: /^Dataset 1 / })).toBeInTheDocument()
   next.resolve(response([dataset('Final dataset')], 2))
   const last = dialog.getByRole('button', { name: /^Final dataset/ })
@@ -152,14 +139,14 @@ it('appends the next page after native scrolling while keeping the first page an
   await expect
     .element(screen.getByRole('list', { name: 'Selected knowledge' }).getByRole('listitem'))
     .toHaveTextContent('Final dataset')
-  expect(list).toHaveBeenCalledTimes(2)
+  expect(fake.console.datasets.get).toHaveBeenCalledTimes(2)
 })
 
 it('does not request knowledge until the user opens the selector', async () => {
   const screen = await setup({ initiallyOpen: false })
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  expect(list).not.toHaveBeenCalled()
+  expect(fake.console.datasets.get).not.toHaveBeenCalled()
   await screen.getByRole('button', { name: 'Select knowledge' }).click()
   await expect.element(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeVisible()
-  expect(list).toHaveBeenCalledOnce()
+  expect(fake.console.datasets.get).toHaveBeenCalledOnce()
 })

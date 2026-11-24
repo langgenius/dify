@@ -304,14 +304,6 @@ export const zAgentSoulLockedError = zErrorResponse.and(
 )
 
 /**
- * AgentBuildDraftApplyResponse
- */
-export const zAgentBuildDraftApplyResponse = z.object({
-  draft: z.record(z.string(), z.unknown()),
-  result: z.string(),
-})
-
-/**
  * InvalidComposerConfigError
  *
  * Invalid agent composer config.
@@ -324,6 +316,14 @@ export const zInvalidComposerConfigError = zErrorResponse.and(
 )
 
 /**
+ * AgentBuildDraftApplyResponse
+ */
+export const zAgentBuildDraftApplyResponse = z.object({
+  draft: z.record(z.string(), z.unknown()),
+  result: z.string(),
+})
+
+/**
  * PlaintextSecretNotAllowedError
  *
  * Plaintext secret values are not allowed in Agent config.
@@ -332,6 +332,18 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('plaintext_secret_not_allowed_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
   }),
 )
 
@@ -1593,6 +1605,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -3956,6 +3969,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**

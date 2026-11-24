@@ -47,6 +47,7 @@ _BUILTIN_WORKSPACE_OWNER_KEYS: list[str] = [
     "tool.manage",
     "mcp.manage",
     "agent.create",
+    "agent.tag.manage",
     "agent.acl.preview",
     "agent.acl.access_point_view",
 ]
@@ -81,6 +82,7 @@ _BUILTIN_WORKSPACE_ADMIN_KEYS: list[str] = [
     "tool.manage",
     "mcp.manage",
     "agent.create",
+    "agent.tag.manage",
     "agent.acl.preview",
     "agent.acl.access_point_view",
 ]
@@ -102,6 +104,7 @@ _BUILTIN_WORKSPACE_EDITOR_KEYS: list[str] = [
     "snippets.create_and_modify",
     "tool.manage",
     "agent.create",
+    "agent.tag.manage",
     "agent.acl.preview",
     "agent.acl.access_point_view",
 ]

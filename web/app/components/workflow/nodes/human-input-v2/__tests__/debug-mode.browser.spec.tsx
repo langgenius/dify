@@ -10,24 +10,20 @@ import { EditorResourceScope } from '@/app/components/workflow/editor-resource/p
 import common from '@/i18n/locales/en-US/common.json'
 import contacts from '@/i18n/locales/en-US/contacts.json'
 import workflow from '@/i18n/locales/en-US/workflow.json'
-import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import DebugMode from '../components/debug-mode'
 import { createChannelsQueryClient } from './channel-fixtures'
 
-const api = vi.hoisted(() => ({ channels: vi.fn() }))
-// boundary: workspace channel reads stop at the generated Console transport.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.humanInput.v2.testChannels.get': api.channels,
-    }),
-  }
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        humanInput: { v2: { testChannels: { get: () => ({ channels: ['email', 'slack'] }) } } },
+      },
+    },
+  },
+}))
 
 vi.unmock('react-i18next')
 const i18n = createInstance().use(initReactI18next)
@@ -92,12 +88,9 @@ const settings = () => page.getByRole('status', { name: 'Debug settings' })
 
 beforeEach(async () => {
   await page.viewport(1100, 700)
-  onTestFinished(guardUnexpectedFetch())
-  api.channels.mockReset()
 })
 
 it('only offers channels configured in the current workspace', async () => {
-  api.channels.mockResolvedValue({ channels: ['email', 'slack'] })
   await renderOwner(
     {},
     undefined,
@@ -108,11 +101,13 @@ it('only offers channels configured in the current workspace', async () => {
   await expect.element(channel('slack')).toBeVisible()
   await expect.element(channel('feishu')).not.toBeInTheDocument()
   expect(page.getByRole('checkbox').all()).toHaveLength(2)
-  expect(api.channels).toHaveBeenCalledTimes(1)
+  expect(fake.console.workspaces.current.humanInput.v2.testChannels.get).toHaveBeenCalledTimes(1)
 })
 
 it('reuses fresh workspace channels when another app editor opens', async () => {
-  api.channels.mockResolvedValue({ channels: ['slack'] })
+  fake.console.workspaces.current.humanInput.v2.testChannels.get.mockReturnValue({
+    channels: ['slack'],
+  })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
   })
@@ -124,7 +119,7 @@ it('reuses fresh workspace channels when another app editor opens', async () => 
   await renderOwner({}, undefined, client, 'another-app')
   await configure().click()
   await expect.element(channel('slack')).toBeVisible()
-  expect(api.channels).toHaveBeenCalledTimes(1)
+  expect(fake.console.workspaces.current.humanInput.v2.testChannels.get).toHaveBeenCalledTimes(1)
 })
 
 it('explains the final channel guard and keeps its selection after pointer and keyboard activation', async () => {
@@ -174,12 +169,9 @@ it('keeps empty workspace configuration unavailable without changing the node', 
 })
 
 it('does not fall back to all channels after a load failure and can retry', async () => {
-  const seeded = createChannelsQueryClient()
-  const response = seeded.getQueryData(
-    consoleQuery.workspaces.current.humanInput.v2.testChannels.get.queryKey(),
+  fake.console.workspaces.current.humanInput.v2.testChannels.get.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' }),
   )
-  seeded.clear()
-  api.channels.mockRejectedValueOnce(new Error('Service unavailable')).mockResolvedValue(response)
   await renderOwner(
     {},
     undefined,
