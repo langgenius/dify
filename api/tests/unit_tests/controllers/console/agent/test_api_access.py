@@ -531,6 +531,52 @@ def test_agent_composer_can_save_incomplete_knowledge_configuration(harness: Har
     assert validated.get_json()["code"] == "invalid_composer_config_error"
 
 
+@pytest.mark.parametrize("operation", ["publish", "copy"])
+@pytest.mark.parametrize(
+    ("source_exists", "error_code"),
+    [
+        pytest.param(False, "agent_not_found_error", id="missing-agent"),
+        pytest.param(True, "agent_version_not_found_error", id="missing-snapshot"),
+    ],
+)
+def test_publish_and_copy_distinguish_missing_agent_and_snapshot(
+    harness: Harness, operation: str, source_exists: bool, error_code: str
+) -> None:
+    """Return the error code for the missing resource through the admitted Console route."""
+    agent_id = harness.create_agent()[0] if source_exists else str(uuid4())
+
+    response = harness.client.post(f"/console/api/agent/{agent_id}/{operation}", headers=harness.headers, json={})
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["code"] == error_code
+
+
+def test_copy_with_duplicate_agent_name_rolls_back_target_app(harness: Harness) -> None:
+    """Copying under an occupied roster name returns a conflict and rolls back the new App."""
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        agent = session.get_one(Agent, agent_id)
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id,
+            agent_id=agent_id,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        session.add(snapshot)
+        agent.active_config_snapshot_id = snapshot.id
+        occupied_name = agent.name
+
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/copy", headers=harness.headers, json={"name": occupied_name}
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.get_json()["code"] == "agent_name_conflict_error"
+    with harness.sessions() as session:
+        assert session.scalars(select(App.id).where(App.tenant_id == harness.tenant_id)).all() == [app_id]
+        assert session.scalars(select(Agent.id).where(Agent.tenant_id == harness.tenant_id)).all() == [agent_id]
+
+
 def test_publish_and_copy_keep_the_source_and_target_publication_histories_separate(harness: Harness) -> None:
     """Exercise real publishing, republishing, and copying through the production resources."""
     agent_id, app_id = harness.create_agent()
