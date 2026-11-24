@@ -503,7 +503,11 @@ def workflow_based_app_execution_task(
 ) -> Mapping[str, Any] | None:
     exec_params = AppExecutionParams.model_validate_json(payload)
 
-    logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
+    logger.info(
+        "Starting workflow execution app_id=%s workflow_run_id=%s",
+        exec_params.app_id,
+        exec_params.workflow_run_id,
+    )
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()

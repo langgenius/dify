@@ -59,6 +59,31 @@ from tasks.app_generate.workflow_execute_task import (
 )
 
 
+def test_workflow_task_logs_identifiers_without_inputs(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
+    params = AppExecutionParams(
+        app_id="example-app",
+        workflow_id="example-workflow",
+        tenant_id="example-tenant",
+        user={"TYPE": "account", "user_id": "example-user"},
+        args={"inputs": {"document": "private-input-marker"}},
+        invoke_from=InvokeFrom.EXPLORE,
+        workflow_run_id="example-run",
+    )
+    monkeypatch.setattr(workflow_execute_task_module, "db", SimpleNamespace(engine=MagicMock()))
+    runner = MagicMock()
+    monkeypatch.setattr(workflow_execute_task_module, "_AppRunner", runner)
+
+    with caplog.at_level(logging.INFO, logger=workflow_execute_task_module.__name__):
+        workflow_execute_task_module.workflow_based_app_execution_task.run(params.model_dump_json())
+
+    assert "app_id=example-app" in caplog.text
+    assert "workflow_run_id=example-run" in caplog.text
+    assert "private-input-marker" not in caplog.text
+    assert runner.call_args.kwargs["exec_params"] == params
+
+
 @pytest.fixture
 def trigger_execution_services(app: Flask, sqlite_session_factory: sessionmaker[Session]) -> Iterator[None]:
     redis = RedisClientWrapper()
