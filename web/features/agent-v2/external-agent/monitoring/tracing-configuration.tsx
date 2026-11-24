@@ -435,6 +435,7 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
         </div>
       </PopoverContent>
       <Dialog
+        disablePointerDismissal
         open={editor?.open ?? false}
         onOpenChange={(open) => {
           if (!open) closeEditor()

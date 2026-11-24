@@ -111,6 +111,17 @@ it('enables verification only while the connection has edits and disables it aga
   expect(requests.save).not.toHaveBeenCalled()
 })
 
+it('keeps an edited connection open when its backdrop is pressed', async () => {
+  await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  const backdrop = document.elementFromPoint(4, 4)
+  if (!(backdrop instanceof HTMLElement))
+    throw new TypeError('Expected the dialog backdrop at the page corner.')
+  await userEvent.click(backdrop, { position: { x: 4, y: 4 } })
+  await expect.element(dialog()).toBeVisible()
+  await expect.element(endpoint()).toHaveValue('https://my-change.example.test/agent')
+})
+
 it.each([
   [
     'an unpunctuated generic server reason',

@@ -322,6 +322,7 @@ export function ExternalAgentActions({
   return (
     <>
       <Dialog
+        disablePointerDismissal
         open={open && action === 'edit'}
         onOpenChange={changeOpen}
         onOpenChangeComplete={reset}

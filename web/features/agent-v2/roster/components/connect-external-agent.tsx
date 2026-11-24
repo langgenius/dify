@@ -137,6 +137,7 @@ export function ConnectExternalAgent() {
 
   return (
     <Dialog
+      disablePointerDismissal
       open={open}
       onOpenChange={(next, eventDetails) => {
         if (pending) eventDetails.cancel()

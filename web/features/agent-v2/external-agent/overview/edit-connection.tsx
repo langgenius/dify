@@ -297,6 +297,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
 
   return (
     <Dialog
+      disablePointerDismissal
       open={open}
       onOpenChange={(next, details) => {
         if (pending) details.cancel()
