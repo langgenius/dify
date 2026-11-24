@@ -32,6 +32,7 @@ from graphon.variables import IntegerVariable, StringVariable, VariableBase
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowType
+from services.workflow_draft_variable_service import WorkflowDraftVariableList
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 from tests.helpers.unit.model_factories import make_workflow
 
@@ -120,9 +121,7 @@ class TestRagPipelineVariableCollectionApi:
         rag_srv = MagicMock()
         rag_srv.is_workflow_exist.return_value = True
 
-        var_list = MagicMock()
-        var_list.variables = list[object]()
-        var_list.total = None
+        var_list = WorkflowDraftVariableList(variables=[], total=None)
 
         draft_srv = MagicMock()
         draft_srv.list_variables_without_values.return_value = var_list
@@ -196,8 +195,7 @@ class TestRagPipelineNodeVariableCollectionApi:
 
         pipeline = _pipeline()
 
-        var_list = MagicMock()
-        var_list.variables = list[object]()
+        var_list = WorkflowDraftVariableList(variables=[])
 
         srv = MagicMock()
         srv.list_node_variables.return_value = var_list
@@ -404,8 +402,7 @@ class TestSystemAndEnvironmentVariablesApi:
 
         pipeline = _pipeline()
 
-        var_list = MagicMock()
-        var_list.variables = list[object]()
+        var_list = WorkflowDraftVariableList(variables=[])
 
         srv = MagicMock()
         srv.list_system_variables.return_value = var_list
