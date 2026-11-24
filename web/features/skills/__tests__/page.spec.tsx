@@ -14,7 +14,7 @@ import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
-import SkillsPage from '../page'
+import SkillsPage from '../list/page'
 
 type SkillResponse = ReturnType<typeof zSkillResponse.parse>
 

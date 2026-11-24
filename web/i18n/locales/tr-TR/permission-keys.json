@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Ajan sürümlerini yayınla ve yönet",
   "agent.acl.test_and_run": "Ajanı test et ve çalıştır",
   "agent.create": "Ajan oluştur",
+  "agent.tag.manage": "Ajan etiketlerini yönet",
   "api_extension.manage": "API uzantısı yapılandırmasını yönet",
   "app.access_config": "Uygulama erişim izinlerini yapılandır",
   "app.acl.access_config": "Erişim izinlerini görüntüle ve yönet",

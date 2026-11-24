@@ -176,7 +176,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               <button
                 type="button"
                 aria-label={`${labelPrefix}-${String(position).padStart(2, '0')} ${t(($) => $['segment.chunkDetail'], { ns: 'datasetDocuments' })}`}
-                className="rounded-sm border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="rounded-sm border-0 bg-transparent p-0 text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={(event) => {
                   event.stopPropagation()
                   handleClickCard()
@@ -212,7 +212,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 textCls="text-text-tertiary system-xs-regular"
               />
               {embeddingAvailable && (
-                <div className="absolute -top-2 -right-2.5 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-focus-within/card:flex group-hover/card:flex">
+                <div className="absolute -inset-e-2.5 -top-2 z-20 hidden items-center gap-x-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-1 shadow-md backdrop-blur-[5px] group-focus-within/card:flex group-hover/card:flex">
                   {!archived && (
                     <>
                       <Tooltip>
@@ -300,7 +300,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       {isFullDocMode ? (
         <button
           type="button"
-          className="mt-0.5 mb-2 border-none bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent"
+          className="mt-0.5 mb-2 border-none bg-transparent p-0 text-start system-xs-semibold-uppercase text-text-accent"
           onClick={() => onClick?.()}
         >
           {t(($) => $['operation.viewMore'], { ns: 'common' })}

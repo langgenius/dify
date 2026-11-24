@@ -101,7 +101,7 @@ const InputFieldPanel = () => {
   }, [ragPipelineVariables])
 
   return (
-    <div className="mr-1 flex h-full w-100 flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
+    <div className="me-1 flex h-full w-100 flex-col rounded-2xl border-y-[0.5px] border-s-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
         <div className="grow system-xl-semibold text-text-primary">
           {t(($) => $['inputFieldPanel.title'], { ns: 'datasetPipeline' })}

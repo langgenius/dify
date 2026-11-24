@@ -19,9 +19,21 @@ import Node from '../node'
 import { createProvider, createStrategy } from './strategy-fixture'
 
 // Plugin installation metadata is external; strategy resolution and node configuration stay real.
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
+
+// Marketplace lookups have no contract yet and go through the legacy marketplace helper.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  postMarketplace: async () => ({ data: { plugins: [] } }),
 }))
 
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>

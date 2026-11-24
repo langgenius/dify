@@ -124,7 +124,7 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className="pointer-events-none absolute top-0 left-0 h-7 w-44.75">
+              <div className="pointer-events-none absolute inset-s-0 top-0 h-7 w-44.75">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="179"
@@ -163,7 +163,7 @@ const LogViewer = ({ logs, className }: Props) => {
             <button
               onClick={() => toggleLogExpansion(logId)}
               className={cn(
-                'flex w-full items-center justify-between px-2 py-1.5 text-left',
+                'flex w-full items-center justify-between px-2 py-1.5 text-start',
                 isExpanded ? 'pt-2 pb-1' : 'min-h-7',
               )}
             >

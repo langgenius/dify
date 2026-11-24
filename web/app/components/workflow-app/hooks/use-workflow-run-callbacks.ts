@@ -64,11 +64,10 @@ type UserCallbackHandlers = {
 type CallbackContext = {
   clientWidth: number
   clientHeight: number
-  runHistoryUrl: string
   isInWorkflowDebug: boolean
   fetchInspectVars: (params: Record<string, never>) => void
   invalidAllLastRun: () => void
-  invalidateRunHistory: (url: string) => void
+  invalidateRunHistory: () => void
   clearAbortController: () => void
   clearListeningState: () => void
   getWorkflowRunningData: () => unknown
@@ -91,7 +90,6 @@ type FinalCallbacksContext = CallbackContext & {
 export const createBaseWorkflowRunCallbacks = ({
   clientWidth,
   clientHeight,
-  runHistoryUrl,
   isInWorkflowDebug,
   fetchInspectVars,
   invalidAllLastRun,
@@ -153,7 +151,7 @@ export const createBaseWorkflowRunCallbacks = ({
     clearAbortController()
     handleWorkflowFailed(params)
     const workflowData = getWorkflowRunningData()
-    invalidateRunHistory(runHistoryUrl)
+    invalidateRunHistory()
     clearListeningState()
 
     if (onError) onError(params, code)
@@ -171,14 +169,14 @@ export const createBaseWorkflowRunCallbacks = ({
     ...restCallback,
     onWorkflowStarted: (params) => {
       handleWorkflowStarted(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowStarted) onWorkflowStarted(params)
     },
     onWorkflowFinished: (params) => {
       clearListeningState()
       handleWorkflowFinished(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
@@ -259,7 +257,7 @@ export const createBaseWorkflowRunCallbacks = ({
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
@@ -289,7 +287,6 @@ export const createBaseWorkflowRunCallbacks = ({
 export const createFinalWorkflowRunCallbacks = ({
   clientWidth,
   clientHeight,
-  runHistoryUrl,
   isInWorkflowDebug,
   fetchInspectVars,
   invalidAllLastRun,
@@ -353,7 +350,7 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onWorkflowFinished: (params) => {
       handleWorkflowFinished(params)
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
 
       if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
@@ -365,7 +362,7 @@ export const createFinalWorkflowRunCallbacks = ({
       clearAbortController()
       handleWorkflowFailed(params)
       const workflowData = getWorkflowRunningData()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       clearListeningState()
 
       if (onError) onError(params, code)
@@ -440,7 +437,7 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
-      invalidateRunHistory(runHistoryUrl)
+      invalidateRunHistory()
       if (onWorkflowPaused) onWorkflowPaused(params)
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true

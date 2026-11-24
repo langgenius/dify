@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
+
+from dify_agent.layers.dify_plugin import DifyModelModality
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelWithProviderEntity
@@ -128,37 +131,43 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
     )
 
 
-def resolve_model_context_window(
+@dataclass(frozen=True)
+class ModelRuntimeProfile:
+    """Credential-bound input capabilities from one authoritative model schema."""
+
+    context_window_tokens: int | None
+    supported_modalities: list[DifyModelModality]
+
+
+def resolve_model_runtime_profile(
     *,
     run_context: DifyRunContext,
     provider_name: str,
     model_name: str,
-) -> int | None:
-    """Return the selected model's credential-bound context-window capability.
+) -> ModelRuntimeProfile:
+    """Resolve context size and input modalities with one schema lookup.
 
-    The ``ModelInstance`` and its schema are resolved with the current
-    tenant/user ``DifyRunContext``. A positive, non-boolean plugin-declared
-    ``CONTEXT_SIZE`` is returned; a missing or invalid value returns ``None``.
-    Model lookup and schema errors propagate. This function does not infer a
-    window from the model name or fall back to a model registry or cache.
+    Requires the current tenant/user context and a configured model. Missing or
+    invalid context size becomes None; absent features become an empty list.
+    Lookup errors propagate, and capabilities are never inferred from names.
     """
     model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
-    context_window = model_instance.get_model_schema().model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+    schema = model_instance.get_model_schema()
+    context_window = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
     if isinstance(context_window, bool) or not isinstance(context_window, int) or context_window <= 0:
-        return None
-    return context_window
-
-
-def resolve_model_supports_vision(
-    *,
-    run_context: DifyRunContext,
-    provider_name: str,
-    model_name: str,
-) -> bool:
-    """Return whether the credential-bound model advertises vision support."""
-
-    model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
-    return ModelFeature.VISION in (model_instance.get_model_schema().features or [])
+        context_window = None
+    modalities: dict[ModelFeature, DifyModelModality] = {
+        ModelFeature.VISION: "vision",
+        ModelFeature.AUDIO: "audio",
+        ModelFeature.VIDEO: "video",
+        ModelFeature.DOCUMENT: "document",
+    }
+    return ModelRuntimeProfile(
+        context_window_tokens=context_window,
+        supported_modalities=[
+            modality for feature, modality in modalities.items() if feature in (schema.features or [])
+        ],
+    )
 
 
 def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:

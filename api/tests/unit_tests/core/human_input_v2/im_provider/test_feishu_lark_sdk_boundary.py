@@ -421,7 +421,7 @@ def _intent() -> ResolvedForm:
         title="Approval",
         parts=(
             MarkdownFragment(text="Rendered **content**"),
-            ParagraphInput(output_variable_name="comment", default_value="Initial"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Initial"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="This value must not be rendered",

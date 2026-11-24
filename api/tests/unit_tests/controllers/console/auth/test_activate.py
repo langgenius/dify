@@ -20,19 +20,31 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import (
     AccountInFreezeError,
     AlreadyActivateError,
+    InvitationWorkspaceMemberLimitError,
 )
 from controllers.console.error import (
     EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
 )
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
-from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
+from extensions.ext_login import (
+    DifyLoginManager,
+    bind_account_loader,
+    bind_account_only_loader,
+    load_user_from_request,
+    unauthorized_handler,
+)
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
-from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
+from services.account_errors import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
+)
 from services.entities.account_activation_entities import ActivationCheckResult, InvitationLookup
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -123,7 +135,11 @@ def bind_application_services(
     )
     previous = app.extensions.get("application_services")
     previous_account_loader = app.extensions.get("account_identity_loader")
+    previous_account_only_loader = app.extensions.get("account_only_identity_loader")
+    # Production wires both loaders; the activate resource is account-scoped, so it resolves
+    # through the account-only loader and must not fall back to workspace admission.
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
     def bind(activation: AccountActivationService) -> None:
         app.extensions["application_services"] = replace(
@@ -141,6 +157,10 @@ def bind_application_services(
             app.extensions.pop("account_identity_loader", None)
         else:
             app.extensions["account_identity_loader"] = previous_account_loader
+        if previous_account_only_loader is None:
+            app.extensions.pop("account_only_identity_loader", None)
+        else:
+            app.extensions["account_only_identity_loader"] = previous_account_only_loader
 
 
 @pytest.fixture
@@ -216,7 +236,11 @@ class TestActivateCheckApi:
         ):
             ActivateCheckApi().get()
 
-        lookup_key = commands.call_args.args[1]
+        lookup_key = next(
+            command.args[1]
+            for command in commands.call_args_list
+            if command.args[0] == "GET" and command.args[1].startswith("member_invite_token:workspace-123, ")
+        )
         assert re.fullmatch(r"member_invite_token:workspace-123, [0-9a-f]{64}:valid-token", lookup_key)
 
     def test_omits_data_for_invalid_invitation(
@@ -383,6 +407,7 @@ class TestActivateApi:
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
+            (InvitationWorkspaceFullError(), InvitationWorkspaceMemberLimitError),
         ],
     )
     def test_translates_application_errors(

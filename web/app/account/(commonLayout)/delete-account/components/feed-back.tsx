@@ -11,11 +11,11 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useLogout } from '@/service/use-common'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { useDeleteAccountFeedback } from '../state'
 
 type DeleteAccountProps = {
@@ -35,7 +35,9 @@ export default function FeedBack(props: DeleteAccountProps) {
   })
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
 
-  const { mutateAsync: logout } = useLogout({ redirectTo: '/signin?account_deleted=true' })
+  const { mutateAsync: logout } = useMutation(
+    logoutMutationOptions({ redirectTo: '/signin?account_deleted=true' }),
+  )
   const handleSuccess = useCallback(async () => {
     try {
       await logout()
@@ -64,6 +66,7 @@ export default function FeedBack(props: DeleteAccountProps) {
   return (
     <Dialog
       open
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) props.onCancel()
       }}

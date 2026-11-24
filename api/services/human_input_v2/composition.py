@@ -19,13 +19,13 @@ from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc
 from models.workflow import WorkflowRun
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 
 from .delivery_service import HumanInputDeliveryService
 from .email_client import build_email_client
 from .form_service import AccountInitiator, EndUserInitiator, FormExecutionContext, HumanInputFormService
 from .node_data_migration import HumanInputNodeDataMigrationService
 from .runtime import DifyHumanInputRuntime
-from .workspace_member_email_lookup import SQLAlchemyWorkspaceMemberEmailLookup
 
 
 def build_human_input_delivery_service(
@@ -41,7 +41,8 @@ def build_human_input_node_data_migration_service() -> HumanInputNodeDataMigrati
     """Compose the read-only migration service for one Console request."""
 
     return HumanInputNodeDataMigrationService(
-        member_email_lookup=SQLAlchemyWorkspaceMemberEmailLookup(session_factory.create_session),
+        session_factory=session_factory.create_session,
+        contact_repository_factory=SQLAlchemyContactRepository,
     )
 
 
@@ -82,7 +83,11 @@ class WorkflowHumanInputRuntime(HumanInputRuntime):
         initiator: AccountInitiator | EndUserInitiator | None = None
         if self._context.user_from == UserFrom.ACCOUNT:
             initiator = AccountInitiator(AccountId(self._context.user_id))
-        elif self._context.invoke_from in (InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API):
+        elif self._context.user_from == UserFrom.END_USER and self._context.invoke_from in (
+            InvokeFrom.WEB_APP,
+            InvokeFrom.SERVICE_API,
+            InvokeFrom.OPENAPI,
+        ):
             initiator = EndUserInitiator(self._context.user_id)
         context = FormExecutionContext(
             tenant_id=TenantId(self._context.tenant_id),

@@ -41,7 +41,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+  fetchAppWorkflowDraft: (appId: string) => mockFetchWorkflowDraft(appId),
 }))
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
@@ -460,6 +460,28 @@ describe('UpdateDSLModal', () => {
     expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     reload.mockRestore()
+  })
+
+  it('does not dismiss a replacement import dialog when the previous dependency check completes', async () => {
+    const user = userEvent.setup()
+    let finishCheck!: () => void
+    mockHandleCheckPluginDependencies.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishCheck = resolve
+      }),
+    )
+    const original = renderModal()
+    await user.upload(
+      screen.getByTestId('dsl-file-input'),
+      new File(['workflow: {}'], 'workflow.yml'),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(mockHandleCheckPluginDependencies).toHaveBeenCalledOnce())
+    original.unmount()
+    renderModal()
+    await act(async () => finishCheck())
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeVisible()
   })
 
   it('keeps the import pending until the committed graph has replaced the canvas', async () => {

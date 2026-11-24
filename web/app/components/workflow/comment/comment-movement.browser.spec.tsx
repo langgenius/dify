@@ -4,7 +4,8 @@ import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
-import { CommentIcon } from './comment-icon'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
+import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 import { CommentInput } from './comment-input'
 import 'reactflow/dist/style.css'
 
@@ -41,13 +42,13 @@ function Fixture({ draft = false }: { draft?: boolean }) {
             position={position}
             onSubmit={() => {}}
             onCancel={() => {}}
-            onPositionChange={(next) => setPosition({ x: next.elementX, y: next.elementY })}
+            onPositionChange={setPosition}
           />
         ) : (
-          <CommentIcon
+          <CommentMarkerFixture
             comment={current}
-            onClick={() => setOpened(true)}
-            onPositionUpdate={(next) =>
+            onOpen={() => setOpened(true)}
+            onPositionUpdate={(_commentId, next) =>
               setCurrent((value) => ({ ...value, position_x: next.x, position_y: next.y }))
             }
           />
@@ -63,9 +64,9 @@ function renderFixture(draft = false) {
   const { queryClient } = createConsoleQueryWrapper({
     accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
   })
+  seedMentionableUsers(queryClient, [])
   return render(<Fixture draft={draft} />, {
     queryClient,
-    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
   })
 }
 
@@ -90,7 +91,9 @@ it('keeps an authored comment focusable and draggable after adding keyboard move
   })
   expect(marker.element().getBoundingClientRect().x).toBeGreaterThan(initial.x + 5)
   await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
-  // Hover reveals the clickable preview over the marker, so open that visible surface.
+  // Hover reveals the clickable preview over the marker, so open that visible surface. The
+  // drag ends with the pointer on the marker, so leave it first to hover it afresh.
+  await screen.getByRole('button', { name: 'Before canvas' }).hover()
   await marker.hover()
   await expect.element(preview).toBeVisible()
   await preview.click()
@@ -120,4 +123,43 @@ it('preserves draft mouse dragging and lets keyboard users move the same handle'
   await expect.poll(() => handle.element().getBoundingClientRect().y).toBe(dragged.y + 20)
   await userEvent.keyboard('{Enter}')
   await expect.element(handle).toHaveAttribute('aria-pressed', 'false')
+})
+
+function SelectableMarker() {
+  const [active, setActive] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setActive((value) => !value)}>
+        Toggle selection
+      </button>
+      <div id="workflow-container" style={{ position: 'relative', width: 800, height: 600 }}>
+        <CommentMarkerFixture comment={comment} isActive={active} />
+        <ReactFlow nodes={[]} />
+      </div>
+    </>
+  )
+}
+
+it('keeps the marker size and its tip on the stored point when it becomes selected', async () => {
+  // Browser-owned: rendered border and padding geometry of the marker bubble.
+  await page.viewport(1000, 800)
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  seedMentionableUsers(queryClient, [])
+  const screen = await render(<SelectableMarker />, {
+    queryClient,
+  })
+  const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
+  await expect.element(marker).toBeVisible()
+  const collapsed = marker.element().firstElementChild!.getBoundingClientRect()
+  await screen.getByRole('button', { name: 'Toggle selection' }).click()
+  await expect
+    .element(marker.element().firstElementChild as HTMLElement)
+    .toHaveAttribute('data-selected')
+  const selected = marker.element().firstElementChild!.getBoundingClientRect()
+  expect(selected.width).toBe(collapsed.width)
+  expect(selected.height).toBe(collapsed.height)
+  expect(selected.left).toBe(collapsed.left)
+  expect(selected.bottom).toBe(collapsed.bottom)
 })

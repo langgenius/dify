@@ -44,6 +44,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
@@ -61,14 +62,25 @@ from core.workflow.nodes.agent_v2.session_store import (
 )
 from graphon.enums import (
     BuiltinNodeTypes,
+    ErrorHandleMode,
     ErrorStrategy,
     NodeExecutionType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState
+from graphon.runtime.container_state import (
+    FrameRuntimeData,
+    IterationFrameState,
+    IterationRunState,
+    LoopFrameState,
+    LoopRunState,
+)
+from graphon.runtime.execution import GraphExecution, NodeExecution
+from graphon.runtime.variable_pool import VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
     Agent,
@@ -89,10 +101,10 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
 @pytest.fixture(autouse=True)
-def _stub_model_context_window(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_model_runtime_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
-        lambda **_kwargs: None,
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(None, []),
     )
 
 
@@ -623,6 +635,9 @@ def _node(
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
     workflow_tool_invocation_id: str | None = None,
     error_strategy: ErrorStrategy | None = None,
+    capture_agent_evaluation_trace: bool = False,
+    continue_agent_session: bool = True,
+    agent_session_generation: str = "",
 ) -> DifyAgentNode:
     graph_init_params = InitParams(
         workflow_id="workflow-1",
@@ -635,6 +650,7 @@ def _node(
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_tool_invocation_id=workflow_tool_invocation_id,
+                capture_agent_evaluation_trace=capture_agent_evaluation_trace,
             )
         },
         call_depth=0,
@@ -664,6 +680,8 @@ def _node(
                 "type": BuiltinNodeTypes.AGENT,
                 "version": "2",
                 "agent_node_kind": "dify_agent",
+                "continue_agent_session": continue_agent_session,
+                "agent_session_generation": agent_session_generation,
                 "agent_output_routes": binding_resolver.binding.node_job_config.output_routes.model_dump(),
                 "error_strategy": error_strategy,
                 "default_value": [{"key": "text", "type": "string", "value": "fallback"}]
@@ -724,6 +742,27 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert "credentials" not in layers["llm"]["config"]
     assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
     assert "output_type_check" not in agent_log
+    assert "evaluation_trace" not in agent_log
+
+
+def test_agent_node_captures_trace_only_for_evaluation_execution() -> None:
+    events = list(
+        _node(
+            agent_backend_client=AgentMessageDeltaBackendClient(),
+            capture_agent_evaluation_trace=True,
+        )._run()
+    )
+
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
+    trace = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["evaluation_trace"]
+    assert trace["schema_version"] == "1.0"
+    assert trace["trajectory"]["source"] == "agent_v2"
+    assert [step["step_type"] for step in trace["trajectory"]["steps"]] == [
+        "agent_message",
+        "final_output",
+    ]
+    assert trace["trajectory"]["steps"][0]["content"] == "hello "
+    assert trace["trajectory"]["steps"][-1]["content"] == "hello agent"
 
 
 def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
@@ -782,6 +821,32 @@ def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() ->
     assert len(store.resolved_scopes) == 1
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_agent_node_uses_graph_frozen_session_policy_instead_of_mutable_binding(enabled: bool) -> None:
+    generation = str(uuid4())
+    resolver = FakeBindingResolver()
+    resolver.binding.node_job_config = WorkflowNodeJobConfig(continue_agent_session=not enabled)
+    store = FakeSessionStore()
+    node = _node(
+        binding_resolver=resolver,
+        session_store=store,
+        continue_agent_session=enabled,
+        agent_session_generation=generation,
+    )
+
+    events = list(node._run())
+
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert resolver.calls[0]["continue_agent_session"] is enabled
+    assert resolver.calls[0]["session_generation"] == generation
+    assert resolver.calls[0]["workflow_run_id"] == "workflow-run-1"
+    assert store.resolved_scopes[0].continue_agent_session is enabled
+    assert store.resolved_scopes[0].session_generation == generation
+    assert result.process_data["continue_agent_session"] is enabled
+    assert result.process_data["agent_session_generation"] == generation
+
+
 def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution() -> None:
     binding_resolver = FakeBindingResolver()
     store = FakeSessionStore()
@@ -811,6 +876,159 @@ def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution(
     assert binding_resolver.calls[0]["binding_id"] == "binding-1"
     assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
     assert binding_resolver.calls[0]["conversation_id"] == "conversation-1"
+
+
+def test_agent_node_resume_keeps_persisted_policy_after_graph_policy_changes() -> None:
+    generation = str(uuid4())
+    resolver = FakeBindingResolver()
+    store = FakeSessionStore()
+    scope = WorkflowAgentSessionScope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="workflow-run-1",
+        node_id="agent-node",
+        node_execution_id="exec-1",
+        workflow_agent_binding_id="binding-1",
+        agent_id="agent-1",
+        agent_config_snapshot_id="snapshot-pinned",
+        conversation_id="conversation-1",
+        continue_agent_session=False,
+        session_generation=generation,
+    )
+    store.loaded_session = StoredWorkflowAgentSession(
+        scope=scope,
+        binding_id="workspace-binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=None,
+    )
+    node = _node(
+        binding_resolver=resolver,
+        session_store=store,
+        continue_agent_session=True,
+        agent_session_generation=str(uuid4()),
+    )
+
+    events = list(node._run())
+
+    result = next(event for event in events if isinstance(event, StreamCompletedEvent)).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert resolver.calls[0]["continue_agent_session"] is False
+    assert resolver.calls[0]["session_generation"] == generation
+    assert store.resolved_scopes == [scope]
+    assert result.process_data["continue_agent_session"] is False
+    assert result.process_data["agent_session_generation"] == generation
+
+
+def _node_with_container_lineage(ancestors: list[tuple[str, str, int, bool]]) -> DifyAgentNode:
+    """Build real public engine ledgers for an outer-to-inner container path."""
+    node = _node()
+    execution = GraphExecution(workflow_id="workflow-1")
+    root = RuntimeState(variable_pool=VariablePool(), start_at=0, graph_execution=execution)
+    parent_frame = "root"
+    graph_nodes: list[dict[str, object]] = []
+    runtime_data = FrameRuntimeData(
+        variable_pool="parent",
+        outputs={},
+        llm_usage=LLMUsage.empty_usage(),
+        node_run_steps=0,
+        graph_node_states={},
+        graph_edge_states={},
+    )
+    for position, (kind, container_id, index, parallel) in enumerate(ancestors):
+        invocation = str(uuid4())
+        frame_id = f"opaque-child-{position}"
+        graph_nodes.append({"id": container_id, "data": {"type": kind, "is_parallel": parallel}})
+        if kind == "iteration":
+            root.put_container_run(
+                IterationRunState(
+                    invocation_id=invocation,
+                    frame_id=parent_frame,
+                    node_id=container_id,
+                    started_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    items=(),
+                    root_node_id="start",
+                    output_selector=("agent-node", "text"),
+                    error_handle_mode=ErrorHandleMode.TERMINATED,
+                    flatten_output=False,
+                    parallel_nums=1,
+                )
+            )
+            root.put_container_frame(
+                IterationFrameState(
+                    frame_id=frame_id,
+                    parent_invocation_id=invocation,
+                    root_node_id="start",
+                    index=index,
+                    started_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    runtime_data=runtime_data,
+                )
+            )
+        else:
+            root.put_container_run(
+                LoopRunState(
+                    invocation_id=invocation,
+                    frame_id=parent_frame,
+                    node_id=container_id,
+                    started_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    inputs={},
+                    outputs={},
+                    loop_count=2,
+                    root_node_id="start",
+                    loop_variable_selectors={},
+                    loop_node_ids=frozenset(),
+                )
+            )
+            root.put_container_frame(
+                LoopFrameState(
+                    frame_id=frame_id,
+                    parent_invocation_id=invocation,
+                    root_node_id="start",
+                    index=index,
+                    started_at=datetime(2026, 1, 1, tzinfo=UTC),
+                    runtime_data=runtime_data,
+                )
+            )
+        parent_frame = frame_id
+    execution.node_executions[(parent_frame, "agent-node")] = NodeExecution(execution_id=node.execution_id)
+    node.runtime_state = RuntimeState(variable_pool=VariablePool(), start_at=0, graph_execution=execution)
+    node._root_runtime_state = root
+    node._root_graph_config = {"nodes": graph_nodes, "edges": []}
+    return node
+
+
+def test_agent_parallel_scope_uses_public_lineage_even_at_parallel_capacity_one() -> None:
+    left = _node_with_container_lineage([("iteration", "parallel", 0, True)])
+    right = _node_with_container_lineage([("iteration", "parallel", 1, True)])
+    next_message = _node_with_container_lineage([("iteration", "parallel", 0, True)])
+    assert len(left._session_branch_id()) == 64
+    assert left._session_branch_id() != right._session_branch_id()
+    assert left._session_branch_id() == next_message._session_branch_id()
+    assert left.init_params.graph_config["nodes"] == []
+    assert left._session_branch_id() == next_message._session_branch_id()
+
+
+def test_agent_parallel_scope_keeps_nested_sequential_loop_session() -> None:
+    first = _node_with_container_lineage([("iteration", "parallel", 0, True), ("loop", "repeat", 0, False)])
+    second = _node_with_container_lineage([("iteration", "parallel", 0, True), ("loop", "repeat", 1, False)])
+    assert first._session_branch_id() == second._session_branch_id()
+    sequential = _node_with_container_lineage([("iteration", "serial", 0, False), ("loop", "repeat", 0, False)])
+    assert sequential._session_branch_id() == ""
+
+
+def test_agent_nested_parallel_scope_includes_every_ancestor_index() -> None:
+    first = _node_with_container_lineage([("iteration", "outer", 0, True), ("iteration", "inner", 0, True)])
+    sibling = _node_with_container_lineage([("iteration", "outer", 1, True), ("iteration", "inner", 0, True)])
+    inner_sibling = _node_with_container_lineage([("iteration", "outer", 0, True), ("iteration", "inner", 1, True)])
+    assert len({first._session_branch_id(), sibling._session_branch_id(), inner_sibling._session_branch_id()}) == 3
+
+
+def test_agent_parallel_scope_rejects_missing_lineage() -> None:
+    node = _node_with_container_lineage([("iteration", "parallel", 0, True)])
+    node._root_runtime_state.pop_container_frame("opaque-child-0")
+    with pytest.raises(ValueError, match="container lineage is unavailable"):
+        node._session_branch_id()
 
 
 def test_agent_node_workflow_tool_does_not_resolve_outer_conversation_participant(sqlite_session: Session) -> None:
@@ -1140,6 +1358,9 @@ def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
         "agent_id": "agent-1",
         "agent_config_snapshot_id": "snapshot-1",
         "workflow_agent_binding_id": "binding-1",
+        "continue_agent_session": True,
+        "agent_session_generation": "",
+        "agent_session_branch": "",
     }
 
 
