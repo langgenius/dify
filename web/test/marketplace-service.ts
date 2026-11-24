@@ -1,12 +1,22 @@
 import type * as MarketplaceService from '@/service/marketplace'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 
-type MarketplaceClient = typeof MarketplaceService.marketplaceClient
-type MarketplaceResponses = {
-  [K in keyof MarketplaceClient]?: MarketplaceClient[K] extends (...args: infer Args) => unknown
+type Responses<T> = {
+  [K in keyof T]?: T[K] extends (...args: infer Args) => unknown
     ? (...args: Args) => unknown
-    : never
+    : Responses<T[K]>
 }
+
+const withResponses = <T extends object>(target: T, responses: Responses<T>): T =>
+  new Proxy(target, {
+    get(current, property, receiver) {
+      const value = Reflect.get(current, property, receiver)
+      if (typeof property !== 'string' || !Object.hasOwn(responses, property)) return value
+      const response = responses[property as keyof T]
+      if (typeof response === 'function') return response
+      return withResponses(value as object, response as Responses<object>)
+    },
+  })
 
 /**
  * Stub selected Marketplace contract routes for `vi.mock('@/service/marketplace')`. Both the
@@ -14,15 +24,9 @@ type MarketplaceResponses = {
  */
 export function withMarketplaceResponses(
   actual: typeof MarketplaceService,
-  responses: MarketplaceResponses,
+  responses: Responses<typeof MarketplaceService.marketplaceClient>,
 ): typeof MarketplaceService {
-  const marketplaceClient = new Proxy(actual.marketplaceClient, {
-    get(target, property, receiver) {
-      if (typeof property === 'string' && Object.hasOwn(responses, property))
-        return responses[property as keyof MarketplaceResponses]
-      return Reflect.get(target, property, receiver)
-    },
-  })
+  const marketplaceClient = withResponses(actual.marketplaceClient, responses)
   return {
     ...actual,
     marketplaceClient,
