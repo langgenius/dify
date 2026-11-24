@@ -2977,7 +2977,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 5
+      "count": 4
     }
   },
   "web/service/console/browser.ts": {
