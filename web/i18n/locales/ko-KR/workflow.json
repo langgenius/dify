@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "마이그레이션된 워크플로를 저장할 수 없습니다. 현재 초안을 확인하고 다시 시도하세요.",
   "nodes.humanInputMigration.incompatibleVersions": "같은 워크플로우에서 이전 버전과 새 버전의 사용자 입력 노드를 함께 사용할 수 없습니다.",
   "nodes.humanInputMigration.oldVersion": "이전 버전",
-  "nodes.humanInputMigration.preview.author": "Dify 팀 제작",
   "nodes.humanInputMigration.preview.description": "새 노드를 추가하기 전에 이전 사람 입력 노드를 마이그레이션하세요.",
   "nodes.humanInputMigration.success": "사람 입력 노드를 마이그레이션했습니다",
   "nodes.humanInputV2.card.configured": "수신자 {{count}}명 설정됨",

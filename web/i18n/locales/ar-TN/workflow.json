@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "تعذر حفظ سير العمل بعد الترحيل. راجع المسودة الحالية وحاول مرة أخرى.",
   "nodes.humanInputMigration.incompatibleVersions": "لا يمكن استخدام عقد الإدخال البشري القديمة والجديدة في سير العمل نفسه.",
   "nodes.humanInputMigration.oldVersion": "إصدار قديم",
-  "nodes.humanInputMigration.preview.author": "بواسطة فريق Dify",
   "nodes.humanInputMigration.preview.description": "رحّل عُقد الإدخال البشري القديمة قبل إضافة عقدة جديدة.",
   "nodes.humanInputMigration.success": "تم ترحيل عُقد الإدخال البشري بنجاح",
   "nodes.humanInputV2.card.configured": "تم إعداد {{count}} من المستلمين",

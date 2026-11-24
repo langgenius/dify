@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "माइग्रेट किए गए वर्कफ़्लो को सहेजा नहीं जा सका। वर्तमान ड्राफ़्ट की जाँच करें और फिर से कोशिश करें।",
   "nodes.humanInputMigration.incompatibleVersions": "एक ही वर्कफ़्लो में पुराने और नए मानव इनपुट नोड का एक साथ उपयोग नहीं किया जा सकता।",
   "nodes.humanInputMigration.oldVersion": "पुराना संस्करण",
-  "nodes.humanInputMigration.preview.author": "Dify टीम द्वारा",
   "nodes.humanInputMigration.preview.description": "नया नोड जोड़ने से पहले पुराने मानव इनपुट नोड माइग्रेट करें।",
   "nodes.humanInputMigration.success": "मानव इनपुट नोड सफलतापूर्वक माइग्रेट किए गए",
   "nodes.humanInputV2.card.configured": "{{count}} प्राप्तकर्ता कॉन्फ़िगर किए गए",

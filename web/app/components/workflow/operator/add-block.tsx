@@ -1,3 +1,4 @@
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { BlockSelectorProps } from '@/app/components/workflow/block-selector'
 import type { Node, OnSelectBlock } from '@/app/components/workflow/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -24,10 +25,10 @@ import {
 
 type AddBlockProps = Pick<
   BlockSelectorProps,
-  'triggerClassName' | 'sideOffset' | 'alignOffset' | 'isolateKeyboardEvents'
+  'triggerClassName' | 'sideOffset' | 'alignOffset' | 'isolateKeyboardEvents' | 'modal'
 > & {
   renderTrigger?: BlockSelectorProps['trigger']
-  onClose?: () => void
+  onClose?: (details?: PopoverChangeEventDetails) => void
 }
 const AddBlock = ({
   renderTrigger,
@@ -36,6 +37,7 @@ const AddBlock = ({
   alignOffset,
   onClose,
   isolateKeyboardEvents,
+  modal,
 }: AddBlockProps) => {
   const { t } = useTranslation(['workflow'] as const)
   const store = useStoreApi()
@@ -50,9 +52,9 @@ const AddBlock = ({
   const showStartTab = resourceKind !== 'knowledge-pipeline' && !isChatflow
 
   const handleOpenChange = useCallback(
-    (open: boolean) => {
+    (open: boolean, details?: PopoverChangeEventDetails) => {
       setOpen(open)
-      if (!open) (onClose ?? handlePaneContextmenuCancel)()
+      if (!open) (onClose ?? handlePaneContextmenuCancel)(details)
     },
     [handlePaneContextmenuCancel, onClose],
   )
@@ -102,6 +104,7 @@ const AddBlock = ({
   return (
     <BlockSelector
       open={open}
+      modal={modal}
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}

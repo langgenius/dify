@@ -152,7 +152,9 @@ it('keeps the original graph without migration UI or requests when the release g
   runtime.releaseEnabled = false
   const view = setup()
   expect(screen.getByText('Original workflow canvas')).toBeInTheDocument()
-  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('note', { name: 'workflow.nodes.humanInputMigration.banner.ariaLabel' }),
+  ).not.toBeInTheDocument()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   expect(view.graph().nodes[0]!.data).toEqual(createLegacyNode().data)
   expect(postMigration).not.toHaveBeenCalled()
@@ -182,7 +184,9 @@ it('migrates the real graph through one shared dialog and updates the insertion 
     },
     { context: { silent: true } },
   )
-  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('note', { name: 'workflow.nodes.humanInputMigration.banner.ariaLabel' }),
+  ).not.toBeInTheDocument()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   await act(async () => vi.advanceTimersByTime(500))
 })

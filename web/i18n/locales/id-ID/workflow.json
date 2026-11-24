@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Alur kerja yang dimigrasikan tidak dapat disimpan. Periksa draf saat ini dan coba lagi.",
   "nodes.humanInputMigration.incompatibleVersions": "Node Input Manusia versi lama dan baru tidak dapat digunakan dalam alur kerja yang sama.",
   "nodes.humanInputMigration.oldVersion": "VERSI LAMA",
-  "nodes.humanInputMigration.preview.author": "Oleh Tim Dify",
   "nodes.humanInputMigration.preview.description": "Migrasikan node Input Manusia lama sebelum menambahkan yang baru.",
   "nodes.humanInputMigration.success": "Node Input Manusia berhasil dimigrasikan",
   "nodes.humanInputV2.card.configured": "{{count}} penerima dikonfigurasi",

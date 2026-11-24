@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Preseljenega delovnega toka ni bilo mogoče shraniti. Preglejte trenutni osnutek in poskusite znova.",
   "nodes.humanInputMigration.incompatibleVersions": "Starih in novih vozlišč za človeški vnos ni mogoče uporabljati v istem delovnem toku.",
   "nodes.humanInputMigration.oldVersion": "STARA RAZLIČICA",
-  "nodes.humanInputMigration.preview.author": "Ekipa Dify",
   "nodes.humanInputMigration.preview.description": "Pred dodajanjem novega vozlišča preselite stara vozlišča človeškega vnosa.",
   "nodes.humanInputMigration.success": "Vozlišča človeškega vnosa so bila uspešno preseljena",
   "nodes.humanInputV2.card.configured": "Nastavljeni prejemniki: {{count}}",

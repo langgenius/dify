@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "The migrated workflow could not be saved. Review the current draft and try again.",
   "nodes.humanInputMigration.incompatibleVersions": "Old and new Human Input nodes cannot be used in the same workflow.",
   "nodes.humanInputMigration.oldVersion": "OLD VERSION",
-  "nodes.humanInputMigration.preview.author": "By Dify Team",
   "nodes.humanInputMigration.preview.description": "Migrate old Human Input nodes before adding a new one.",
   "nodes.humanInputMigration.success": "Human Input nodes migrated successfully",
   "nodes.humanInputV2.card.configured": "{{count}} recipients configured",

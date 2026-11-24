@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Não foi possível salvar o fluxo de trabalho migrado. Revise o rascunho atual e tente novamente.",
   "nodes.humanInputMigration.incompatibleVersions": "Nós antigos e novos de entrada humana não podem ser usados no mesmo fluxo de trabalho.",
   "nodes.humanInputMigration.oldVersion": "VERSÃO ANTIGA",
-  "nodes.humanInputMigration.preview.author": "Pela equipe Dify",
   "nodes.humanInputMigration.preview.description": "Migre os nós antigos de Entrada Humana antes de adicionar um novo.",
   "nodes.humanInputMigration.success": "Nós de Entrada Humana migrados com sucesso",
   "nodes.humanInputV2.card.configured": "{{count}} destinatários configurados",

@@ -1,5 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { MenuContentProps } from '@langgenius/dify-ui/menu'
+import type { MenuContentProps, MenuProps } from '@langgenius/dify-ui/menu'
 import type { ReactNode } from 'react'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
@@ -39,12 +39,15 @@ const SearchTextContext = createContext('')
 // A menu of roster agents. Choosing one is an action for the host, inserting a node or switching a
 // node's binding; the menu holds no selection of its own. Compose `AgentSelectorMenuTrigger` and
 // `AgentSelectorMenuContent` inside it.
-export function AgentSelectorMenu({ children }: { children: ReactNode }) {
+export function AgentSelectorMenu({
+  children,
+  onOpenChange,
+}: { children: ReactNode } & Pick<MenuProps, 'onOpenChange'>) {
   const [searchText, setSearchText] = useState('')
 
   return (
     <MenuFilterProvider filter={null} value={searchText} onValueChange={setSearchText}>
-      <Menu>
+      <Menu onOpenChange={onOpenChange}>
         <SearchTextContext value={searchText}>{children}</SearchTextContext>
       </Menu>
     </MenuFilterProvider>
@@ -246,9 +249,10 @@ function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNod
 
 export function AgentBlockItem({
   block,
+  onOpenChange,
   onSelect,
   onStartFromScratch,
-}: {
+}: Pick<MenuProps, 'onOpenChange'> & {
   block: NodeDefault
   onSelect: (agent: AgentRosterNodeData) => void
   onStartFromScratch: () => void
@@ -256,7 +260,7 @@ export function AgentBlockItem({
   const { t } = useTranslation(['navigation'])
 
   return (
-    <AgentSelectorMenu>
+    <AgentSelectorMenu onOpenChange={onOpenChange}>
       <AgentSelectorMenuTrigger
         openOnHover
         render={

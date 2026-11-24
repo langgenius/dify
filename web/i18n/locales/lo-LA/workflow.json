@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "ບໍ່ສາມາດບັນທຶກຂັ້ນຕອນການເຮັດວຽກທີ່ຍ້າຍແລ້ວໄດ້. ກະລຸນາກວດເບິ່ງສະບັບຮ່າງປັດຈຸບັນ ແລະ ລອງໃໝ່.",
   "nodes.humanInputMigration.incompatibleVersions": "ບໍ່ສາມາດໃຊ້ໂນດການປ້ອນຂໍ້ມູນໂດຍມະນຸດລຸ້ນເກົ່າ ແລະ ລຸ້ນໃໝ່ຮ່ວມກັນໃນຂະບວນວຽກດຽວໄດ້.",
   "nodes.humanInputMigration.oldVersion": "ລຸ້ນເກົ່າ",
-  "nodes.humanInputMigration.preview.author": "ໂດຍທີມ Dify",
   "nodes.humanInputMigration.preview.description": "ກະລຸນາຍ້າຍໂນດການປ້ອນຂໍ້ມູນໂດຍມະນຸດລຸ້ນເກົ່າກ່ອນເພີ່ມໂນດໃໝ່.",
   "nodes.humanInputMigration.success": "ຍ້າຍໂນດການປ້ອນຂໍ້ມູນໂດຍມະນຸດສຳເລັດແລ້ວ",
   "nodes.humanInputV2.card.configured": "ຕັ້ງຄ່າຜູ້ຮັບ {{count}} ຄົນແລ້ວ",

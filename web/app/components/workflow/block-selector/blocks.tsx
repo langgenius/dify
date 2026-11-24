@@ -1,23 +1,25 @@
+import type { PopoverActions } from '@langgenius/dify-ui/popover'
 import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassification } from './types'
-import { Button } from '@langgenius/dify-ui/button'
 import {
   createPreviewCardHandle,
   PreviewCard,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { groupBy } from 'es-toolkit/compat'
-import { Fragment, memo, useCallback, useId, useMemo, useState } from 'react'
+import { Fragment, memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
 import { useHumanInputMigration } from '../nodes/human-input-v2/migration/context'
+import { HumanInputMigrationConfirmation } from '../nodes/human-input-v2/migration/migration-dialog'
 import { getHumanInputCreationPolicy } from '../nodes/human-input-v2/migration/policy'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
+import { HumanInputMigrationItem } from './human-input-migration-item'
 import { BlockSelectorPreviewCardContent } from './preview-card'
 
 type BlocksProps = {
@@ -25,10 +27,6 @@ type BlocksProps = {
   onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
-}
-type BlockPreviewPayload = {
-  block: NodeDefault
-  disabled: boolean
 }
 
 const Blocks = ({
@@ -41,8 +39,13 @@ const Blocks = ({
   const store = useStoreApi()
   const migration = useHumanInputMigration()
   const blocksFromHooks = useBlocks()
-  const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
-  const previewDescriptionBaseId = useId()
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<NodeDefault>())
+  const migrationCardActionsRef = useRef<PopoverActions>(null)
+  const selectorId = useId()
+
+  const closeMigrationCardOnOpen = useCallback((open: boolean) => {
+    if (open) migrationCardActionsRef.current?.close()
+  }, [])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
   const blocks =
@@ -123,6 +126,7 @@ const Blocks = ({
                 <AgentBlockItem
                   key={block.metaData.type}
                   block={block}
+                  onOpenChange={closeMigrationCardOnOpen}
                   onSelect={(agent) =>
                     onSelect(BlockEnum.AgentV2, {
                       agent_binding: {
@@ -146,15 +150,26 @@ const Blocks = ({
               )
             }
 
+            if (
+              block.metaData.type === BlockEnum.HumanInputV2 &&
+              humanInputPolicy.hasLegacyHumanInput
+            ) {
+              return (
+                <HumanInputMigrationItem
+                  key={block.metaData.type}
+                  block={block}
+                  actionsRef={migrationCardActionsRef}
+                  onOpen={() => previewCardHandle.close()}
+                  onMigrate={
+                    migration?.canEdit ? () => migration.openMigrationDialog(selectorId) : undefined
+                  }
+                />
+              )
+            }
+
             const previewDescriptionId = block.metaData.description
-              ? `${previewDescriptionBaseId}-${block.metaData.type}`
+              ? `${selectorId}-${block.metaData.type}`
               : undefined
-            const isHumanInputDisabled =
-              block.metaData.type === BlockEnum.HumanInputV2 && humanInputPolicy.hasLegacyHumanInput
-            const disabledReasonId = isHumanInputDisabled
-              ? `${previewDescriptionBaseId}-${block.metaData.type}-disabled`
-              : undefined
-            const describedBy = [previewDescriptionId, disabledReasonId].filter(Boolean).join(' ')
 
             return (
               <Fragment key={block.metaData.type}>
@@ -162,34 +177,18 @@ const Blocks = ({
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}
-                  payload={{ block, disabled: isHumanInputDisabled }}
+                  payload={block}
                   render={
                     <button
                       type="button"
-                      aria-describedby={describedBy || undefined}
-                      aria-disabled={isHumanInputDisabled}
-                      data-disabled={isHumanInputDisabled || undefined}
-                      className="group/block-row flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent"
-                      onClick={() => {
-                        if (!isHumanInputDisabled) onSelect(block.metaData.type)
-                      }}
+                      aria-describedby={previewDescriptionId}
+                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => onSelect(block.metaData.type)}
                     >
-                      <BlockIcon
-                        className="me-2 shrink-0 group-data-disabled/block-row:opacity-30"
-                        type={block.metaData.type}
-                      />
-                      <span className="min-w-0 grow truncate text-sm text-text-secondary group-data-disabled/block-row:opacity-30">
+                      <BlockIcon className="me-2 shrink-0" type={block.metaData.type} />
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary">
                         {block.metaData.title}
                       </span>
-                      {isHumanInputDisabled && (
-                        <Badge
-                          text={t(($) => $['nodes.humanInputMigration.disabledBadge'], {
-                            ns: 'workflow',
-                          })}
-                          size="xs"
-                          className="ms-2 shrink-0 px-1.25 py-0.75"
-                        />
-                      )}
                       {block.metaData.type === BlockEnum.KnowledgeRetrievalV2 && (
                         <Badge
                           size="xs"
@@ -207,24 +206,9 @@ const Blocks = ({
                     </button>
                   }
                 />
-                {isHumanInputDisabled && migration?.canEdit && (
-                  <Button
-                    className="my-1 ms-3"
-                    size="small"
-                    loading={migration.pending}
-                    onClick={migration.openMigrationDialog}
-                  >
-                    {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
-                  </Button>
-                )}
                 {previewDescriptionId && (
                   <span id={previewDescriptionId} className="sr-only">
                     {block.metaData.description}
-                  </span>
-                )}
-                {disabledReasonId && (
-                  <span id={disabledReasonId} className="sr-only">
-                    {t(($) => $['nodes.humanInputMigration.disabledReason'], { ns: 'workflow' })}
                   </span>
                 )}
               </Fragment>
@@ -233,7 +217,16 @@ const Blocks = ({
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store, migration],
+    [
+      groups,
+      onSelect,
+      previewCardHandle,
+      selectorId,
+      t,
+      store,
+      migration,
+      closeMigrationCardOnOpen,
+    ],
   )
 
   return (
@@ -244,55 +237,15 @@ const Blocks = ({
         </div>
       )}
       {!isEmpty && BLOCK_CLASSIFICATIONS.map(renderGroup)}
-      <PreviewCard handle={previewCardHandle}>
-        {({ payload }) => <BlockPreviewCard payload={payload} />}
+      <PreviewCard handle={previewCardHandle} onOpenChange={closeMigrationCardOnOpen}>
+        {({ payload: block }) => block && <BlockPreviewCard block={block} />}
       </PreviewCard>
+      <HumanInputMigrationConfirmation ownerId={selectorId} />
     </div>
   )
 }
 
-type BlockPreviewCardProps = {
-  payload?: BlockPreviewPayload
-}
-
-function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
-  const { t } = useTranslation(['workflow'])
-  if (!payload) return null
-
-  const { block, disabled } = payload
-
-  if (disabled) {
-    return (
-      <BlockSelectorPreviewCardContent>
-        <div className="-mx-2 -my-1.5 flex flex-col gap-1">
-          <div className="p-2">
-            <div className="flex items-center gap-2">
-              <BlockIcon size="md" className="shrink-0" type={block.metaData.type} />
-              <div className="system-md-medium text-text-primary">{block.metaData.title}</div>
-            </div>
-            <div className="mt-2 system-xs-regular wrap-break-word text-text-tertiary">
-              {block.metaData.description}
-            </div>
-            <div className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['nodes.humanInputMigration.preview.author'], { ns: 'workflow' })}
-            </div>
-          </div>
-          <div className="rounded-lg bg-background-section p-2">
-            <div className="flex items-start gap-2">
-              <span
-                aria-hidden
-                className="mt-0.5 i-ri-loader-2-line size-4 shrink-0 text-text-tertiary"
-              />
-              <div className="system-xs-regular text-text-secondary">
-                {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </BlockSelectorPreviewCardContent>
-    )
-  }
-
+function BlockPreviewCard({ block }: { block: NodeDefault }) {
   return (
     <BlockSelectorPreviewCardContent>
       <BlockIcon size="md" className="mb-2" type={block.metaData.type} />

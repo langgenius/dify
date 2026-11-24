@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Nie udało się zapisać zmigrowanego przepływu pracy. Sprawdź bieżący szkic i spróbuj ponownie.",
   "nodes.humanInputMigration.incompatibleVersions": "Stare i nowe węzły interwencji człowieka nie mogą być używane w tym samym przepływie pracy.",
   "nodes.humanInputMigration.oldVersion": "STARA WERSJA",
-  "nodes.humanInputMigration.preview.author": "Autor: zespół Dify",
   "nodes.humanInputMigration.preview.description": "Przed dodaniem nowego węzła przeprowadź migrację starych węzłów danych wprowadzanych przez człowieka.",
   "nodes.humanInputMigration.success": "Migracja węzłów danych wprowadzanych przez człowieka zakończyła się pomyślnie",
   "nodes.humanInputV2.card.configured": "Skonfigurowani odbiorcy: {{count}}",

@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Köçürülmüş iş axınını yadda saxlamaq mümkün olmadı. Cari qaralamanı nəzərdən keçirin və yenidən cəhd edin.",
   "nodes.humanInputMigration.incompatibleVersions": "Köhnə və yeni İnsan Daxiletməsi qovşaqları eyni iş axınında istifadə edilə bilməz.",
   "nodes.humanInputMigration.oldVersion": "KÖHNƏ VERSİYA",
-  "nodes.humanInputMigration.preview.author": "Dify komandası tərəfindən",
   "nodes.humanInputMigration.preview.description": "Yeni qovşaq əlavə etməzdən əvvəl köhnə İnsan girişi qovşaqlarını köçürün.",
   "nodes.humanInputMigration.success": "İnsan girişi qovşaqları uğurla köçürüldü",
   "nodes.humanInputV2.card.configured": "{{count}} alıcı konfiqurasiya edilib",

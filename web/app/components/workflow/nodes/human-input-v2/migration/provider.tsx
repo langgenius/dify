@@ -1,8 +1,9 @@
 import type { PropsWithChildren } from 'react'
 import type { HumanInputMigrationBlocker } from './types'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { useMutation } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes, useStoreApi } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
@@ -18,7 +19,7 @@ import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { HumanInputMigrationContext } from './context'
 import { createHumanInputMigrationApi, executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
-import HumanInputMigrationDialog from './migration-dialog'
+import { HumanInputMigrationConfirmation } from './migration-dialog'
 import { getHumanInputCreationPolicy, isLegacyHumanInputNodeData } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
@@ -65,7 +66,14 @@ const ActiveHumanInputMigrationProvider = ({
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
   const { nodesMap } = useNodesMetaData()
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const canvasDialogId = useId()
+  const [dialogOwner, setDialogOwner] = useState<string | null>(null)
+  const releaseDialogOwner = useCallback(
+    (ownerId: string) => {
+      setDialogOwner((current) => (current === ownerId ? canvasDialogId : current))
+    },
+    [canvasDialogId],
+  )
   const canApplyRef = useRef(canEdit)
   useEffect(() => {
     canApplyRef.current = canEdit
@@ -90,6 +98,7 @@ const ActiveHumanInputMigrationProvider = ({
   )
 
   const migration = useMutation({
+    onMutate: () => legacyNodeCount,
     mutationFn: () =>
       executeHumanInputV2Migration({
         getGraph: () => {
@@ -106,20 +115,18 @@ const ActiveHumanInputMigrationProvider = ({
           }),
       }),
     onSuccess: (result) => {
-      if (result.status === 'success' || result.status === 'noop') setDialogOpen(false)
+      if (result.status === 'success' || result.status === 'noop') setDialogOwner(null)
     },
   })
-  const { reset, mutate, isPending: pending } = migration
-  const openMigrationDialog = useCallback(() => {
-    if (!canEdit || !policy.hasLegacyHumanInput) return
-    reset()
-    setDialogOpen(true)
-  }, [canEdit, policy.hasLegacyHumanInput, reset])
-  const handleDialogOpenChange = (open: boolean) => {
-    if (pending) return
-    setDialogOpen(open)
-    if (!open) reset()
-  }
+  const { reset, mutate, isPending: pending, context: submittedNodeCount } = migration
+  const openMigrationDialog = useCallback(
+    (ownerId: string) => {
+      if (!canEdit || !policy.hasLegacyHumanInput) return
+      reset()
+      setDialogOwner(ownerId)
+    },
+    [canEdit, policy.hasLegacyHumanInput, reset],
+  )
   const result = migration.data
   const error = migration.isError
     ? t(($) => $['nodes.humanInputMigration.error.preflight'], { ns: 'workflow' })
@@ -148,32 +155,61 @@ const ActiveHumanInputMigrationProvider = ({
           : undefined
 
   const contextValue = useMemo(
-    () => ({ policy, canEdit, pending, helpLink, openMigrationDialog }),
-    [canEdit, helpLink, openMigrationDialog, pending, policy],
+    () => ({
+      policy,
+      canEdit,
+      pending,
+      helpLink,
+      openMigrationDialog,
+      releaseDialogOwner,
+      dialog: {
+        ownerId: policy.hasLegacyHumanInput || pending ? dialogOwner : null,
+        nodeCount: pending ? (submittedNodeCount ?? legacyNodeCount) : legacyNodeCount,
+        error,
+        onOpenChange(open: boolean) {
+          if (pending || open) return
+          setDialogOwner(null)
+          reset()
+        },
+        onConfirm() {
+          if (canEdit && !pending) mutate()
+        },
+      },
+    }),
+    [
+      canEdit,
+      dialogOwner,
+      error,
+      helpLink,
+      legacyNodeCount,
+      mutate,
+      openMigrationDialog,
+      releaseDialogOwner,
+      pending,
+      submittedNodeCount,
+      policy,
+      reset,
+    ],
   )
 
   return (
     <HumanInputMigrationContext value={contextValue}>
-      {children}
-      {policy.hasLegacyHumanInput && (
-        <div className="pointer-events-none absolute inset-s-16 inset-e-1 top-1 z-20">
-          <HumanInputMigrationBanner
-            canEdit={canEdit}
-            helpLink={helpLink}
-            onMigrate={openMigrationDialog}
-          />
-        </div>
-      )}
-      <HumanInputMigrationDialog
-        open={dialogOpen && (policy.hasLegacyHumanInput || pending)}
-        pending={pending}
-        nodeCount={legacyNodeCount}
-        error={error}
-        onOpenChange={handleDialogOpenChange}
-        onConfirm={() => {
-          if (canEdit && !pending) mutate()
-        }}
-      />
+      <div className="flex size-full flex-col">
+        <Collapsible
+          open={policy.hasLegacyHumanInput}
+          className="shrink-0 bg-workflow-canvas-workflow-bg"
+        >
+          <CollapsiblePanel inert={!policy.hasLegacyHumanInput}>
+            <HumanInputMigrationBanner
+              canEdit={canEdit}
+              helpLink={helpLink}
+              onMigrate={() => openMigrationDialog(canvasDialogId)}
+            />
+          </CollapsiblePanel>
+        </Collapsible>
+        {children}
+      </div>
+      <HumanInputMigrationConfirmation ownerId={canvasDialogId} />
     </HumanInputMigrationContext>
   )
 }

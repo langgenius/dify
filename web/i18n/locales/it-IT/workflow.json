@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Impossibile salvare il flusso di lavoro migrato. Controlla la bozza attuale e riprova.",
   "nodes.humanInputMigration.incompatibleVersions": "I nodi di input umano vecchi e nuovi non possono essere usati nello stesso flusso di lavoro.",
   "nodes.humanInputMigration.oldVersion": "VECCHIA VERSIONE",
-  "nodes.humanInputMigration.preview.author": "Dal team Dify",
   "nodes.humanInputMigration.preview.description": "Migra i vecchi nodi di input umano prima di aggiungerne uno nuovo.",
   "nodes.humanInputMigration.success": "Nodi di input umano migrati correttamente",
   "nodes.humanInputV2.card.configured": "{{count}} destinatari configurati",

@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Không thể lưu quy trình đã di chuyển. Hãy kiểm tra bản nháp hiện tại và thử lại.",
   "nodes.humanInputMigration.incompatibleVersions": "Không thể dùng chung các nút Đầu vào của con người phiên bản cũ và mới trong cùng một quy trình.",
   "nodes.humanInputMigration.oldVersion": "PHIÊN BẢN CŨ",
-  "nodes.humanInputMigration.preview.author": "Bởi đội ngũ Dify",
   "nodes.humanInputMigration.preview.description": "Di chuyển các nút Đầu vào của con người cũ trước khi thêm nút mới.",
   "nodes.humanInputMigration.success": "Đã di chuyển thành công các nút Đầu vào của con người",
   "nodes.humanInputV2.card.configured": "Đã cấu hình {{count}} người nhận",

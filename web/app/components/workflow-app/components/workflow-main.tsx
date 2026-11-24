@@ -542,9 +542,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   ])
 
   return (
-    <div ref={containerRef} className="relative size-full">
-      <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
-        <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+    <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
+      <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
+        <div ref={containerRef} className="relative size-full min-h-0 flex-1">
           <Workflow
             nodes={nodes}
             edges={edges}
@@ -601,9 +601,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
                 </div>
               )}
           </Workflow>
-        </HumanInputMigrationProvider>
-      </HooksStoreContextProvider>
-    </div>
+        </div>
+      </HumanInputMigrationProvider>
+    </HooksStoreContextProvider>
   )
 }
 

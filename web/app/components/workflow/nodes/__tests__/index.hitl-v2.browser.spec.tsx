@@ -138,15 +138,18 @@ it('replaces the visible panel configuration on migration and undo without closi
   const panel = page.getByRole('region', { name: 'Approval workflow.panel.nodePanel' })
   const settings = page.getByRole('tab', { name: 'WORKFLOWDEBUG.DEBUG.SETTINGSTAB' })
   const lastRun = page.getByRole('tab', { name: 'WORKFLOWDEBUG.DEBUG.LASTRUNTAB' })
+  const oldVersion = panel.getByText('workflow.nodes.humanInputMigration.oldVersion')
   await expect.element(panel).toBeVisible()
   await expect
     .element(panel.getByRole('textbox', { name: 'workflow.nodes.humanInput.timeout.title' }))
     .toHaveValue('3')
   await lastRun.click()
   await expect.element(lastRun).toHaveAttribute('aria-selected', 'true')
+  await expect.element(oldVersion).toBeVisible()
 
   // Document replacement is a public prop transition, keeping the owner and selection mounted.
   await view.rerender(owner(migrated))
+  await expect.element(oldVersion).not.toBeInTheDocument()
   await expect.element(settings).toHaveAttribute('aria-selected', 'true')
   await expect
     .element(panel.getByRole('textbox', { name: 'workflow.nodes.humanInput.timeout.title' }))
@@ -169,7 +172,5 @@ it('replaces the visible panel configuration on migration and undo without closi
   await expect
     .element(panel.getByRole('button', { name: 'workflow.common.configure' }))
     .not.toBeInTheDocument()
-  await expect
-    .element(panel.getByText('workflow.nodes.humanInputMigration.oldVersion'))
-    .toBeVisible()
+  await expect.element(oldVersion).toBeVisible()
 })

@@ -6,7 +6,7 @@ import type { ReactElement, ReactNode } from 'react'
 import type { Node as FlowNode } from 'reactflow'
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render as baseRender, screen, waitFor } from '@testing-library/react'
+import { render as baseRender, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ReactFlow, { ReactFlowProvider, useNodes } from 'reactflow'
 import { EditorResourceScope } from '../../editor-resource/provider'
@@ -20,6 +20,13 @@ import { BlockClassification } from '../types'
 const runtimeState = vi.hoisted(() => ({
   nodes: [] as FlowNode[],
 }))
+
+const closedMigrationDialog = {
+  ownerId: null,
+  nodeCount: 1,
+  onConfirm: vi.fn(),
+  onOpenChange: vi.fn(),
+}
 
 const queryMocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -186,7 +193,7 @@ describe('Blocks', () => {
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
   })
 
-  it('keeps Human Input searchable but disables it while a legacy node exists', async () => {
+  it('offers migration instead of insertion for Human Input while a legacy node exists', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
     const openMigrationDialog = vi.fn()
@@ -200,6 +207,8 @@ describe('Blocks', () => {
       canEdit: true,
       pending: false,
       openMigrationDialog,
+      releaseDialogOwner: vi.fn(),
+      dialog: closedMigrationDialog,
     }
     runtimeState.nodes = [
       {
@@ -221,7 +230,7 @@ describe('Blocks', () => {
     )
 
     const humanInputButton = screen.getByRole('button', { name: /^Human Input/ })
-    expect(humanInputButton).toHaveAttribute('aria-disabled', 'true')
+    expect(humanInputButton).toHaveAttribute('aria-expanded', 'false')
     expect(humanInputButton).toHaveAccessibleDescription(
       expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
     )
@@ -229,15 +238,12 @@ describe('Blocks', () => {
 
     await user.click(humanInputButton)
     expect(onSelect).not.toHaveBeenCalled()
-    await user.hover(humanInputButton)
-    const migrateNow = await screen.findByRole('button', {
+    const card = await screen.findByRole('dialog', { name: 'Human Input' })
+    const migrateNow = within(card).getByRole('button', {
       name: /workflow.nodes.humanInputMigration.action.migrateNow/,
     })
     expect(
-      await screen.findByText('workflow.nodes.humanInputMigration.preview.author'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('workflow.nodes.humanInputMigration.preview.description'),
+      within(card).getByText('workflow.nodes.humanInputMigration.preview.description'),
     ).toBeInTheDocument()
     await user.click(migrateNow)
     expect(openMigrationDialog).toHaveBeenCalledTimes(1)
@@ -254,7 +260,6 @@ describe('Blocks', () => {
       </HumanInputMigrationContext>,
     )
     const enabledButton = screen.getByRole('button', { name: /^Human Input/ })
-    expect(enabledButton).toHaveAttribute('aria-disabled', 'false')
     await user.click(enabledButton)
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
   })
@@ -281,6 +286,8 @@ describe('Blocks', () => {
           canEdit: false,
           pending: false,
           openMigrationDialog: vi.fn(),
+          releaseDialogOwner: vi.fn(),
+          dialog: closedMigrationDialog,
         }}
       >
         <Blocks

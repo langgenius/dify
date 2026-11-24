@@ -9,10 +9,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useLayoutEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useHumanInputMigration } from './context'
 
-type HumanInputMigrationDialogProps = {
+export type HumanInputMigrationDialogProps = {
   open: boolean
   pending: boolean
   nodeCount: number
@@ -48,21 +49,15 @@ const HumanInputMigrationDialog = ({
               count: nodeCount,
             })}
           </AlertDialogTitle>
-          <div className="mt-3">
-            <AlertDialogDescription>
-              <span>
-                {t(($) => $['nodes.humanInputMigration.dialog.description'], {
-                  ns: 'workflow',
-                })}{' '}
-              </span>
-              <span className="font-medium">
-                {t(($) => $['nodes.humanInputMigration.dialog.review'], { ns: 'workflow' })}
-              </span>
-              <span className="mt-3 block">
-                {t(($) => $['nodes.humanInputMigration.dialog.draftNotice'], { ns: 'workflow' })}
-              </span>
-            </AlertDialogDescription>
-          </div>
+          <AlertDialogDescription>
+            {t(($) => $['nodes.humanInputMigration.dialog.description'], { ns: 'workflow' })}{' '}
+            <span className="font-medium text-text-primary">
+              {t(($) => $['nodes.humanInputMigration.dialog.review'], { ns: 'workflow' })}
+            </span>
+            <span className="mt-2 block">
+              {t(($) => $['nodes.humanInputMigration.dialog.draftNotice'], { ns: 'workflow' })}
+            </span>
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogBody>
           {error && (
@@ -93,3 +88,18 @@ const HumanInputMigrationDialog = ({
 }
 
 export default memo(HumanInputMigrationDialog)
+
+export function HumanInputMigrationConfirmation({ ownerId }: { ownerId: string }) {
+  const migration = useHumanInputMigration()
+  const releaseDialogOwner = migration?.releaseDialogOwner
+  useLayoutEffect(() => () => releaseDialogOwner?.(ownerId), [ownerId, releaseDialogOwner])
+  if (!migration) return null
+  const { ownerId: activeOwner, ...props } = migration.dialog
+  return (
+    <HumanInputMigrationDialog
+      {...props}
+      pending={migration.pending}
+      open={ownerId === activeOwner}
+    />
+  )
+}

@@ -3,6 +3,7 @@ import type {
   PopoverChangeEventDetails,
   PopoverPopupProps,
   PopoverPositionerProps,
+  PopoverProps,
   PopoverTriggerProps,
 } from '@langgenius/dify-ui/popover'
 import type { CSSProperties, KeyboardEvent, MouseEventHandler, Ref } from 'react'
@@ -39,6 +40,7 @@ export type BlockSelectorProps = Pick<
   PopoverPositionerProps,
   'alignOffset' | 'side' | 'align' | 'sideOffset'
 > & {
+  modal?: PopoverProps['modal']
   finalFocus?: PopoverPopupProps['finalFocus']
   triggerRef?: Ref<HTMLButtonElement>
   open?: boolean
@@ -72,6 +74,7 @@ function BlockSelector({
   trigger,
   triggerTooltip,
   triggerRef,
+  modal = 'trap-focus',
   finalFocus,
   side = 'right',
   align,
@@ -173,7 +176,7 @@ function BlockSelector({
   )
 
   return (
-    <Popover modal="trap-focus" open={open} onOpenChange={handleOpenChange}>
+    <Popover modal={modal} open={open} onOpenChange={handleOpenChange}>
       {triggerWithTooltip}
       <PopoverPortal>
         <PopoverPositioner

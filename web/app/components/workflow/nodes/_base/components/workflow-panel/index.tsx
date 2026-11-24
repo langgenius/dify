@@ -44,6 +44,7 @@ import {
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { OldVersionLabel } from '@/app/components/workflow/nodes/human-input/old-version-label'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
@@ -639,6 +640,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         }
       >
         <NodePanelEditingFrame editor={latestEditor} />
+        <OldVersionLabel data={data} compact />
         <div className="shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
             {!isStartPlaceholderPanel && (

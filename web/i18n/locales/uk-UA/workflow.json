@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Не вдалося зберегти перенесений робочий процес. Перегляньте поточну чернетку та спробуйте ще раз.",
   "nodes.humanInputMigration.incompatibleVersions": "Старі та нові вузли введення користувача не можна використовувати в одному робочому процесі.",
   "nodes.humanInputMigration.oldVersion": "СТАРА ВЕРСІЯ",
-  "nodes.humanInputMigration.preview.author": "Від команди Dify",
   "nodes.humanInputMigration.preview.description": "Перенесіть старі вузли введення людини, перш ніж додавати новий.",
   "nodes.humanInputMigration.success": "Вузли введення людини успішно перенесено",
   "nodes.humanInputV2.card.configured": "Налаштовано одержувачів: {{count}}",

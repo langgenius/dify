@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "ไม่สามารถบันทึกเวิร์กโฟลว์ที่ย้ายแล้วได้ โปรดตรวจสอบแบบร่างปัจจุบันแล้วลองอีกครั้ง",
   "nodes.humanInputMigration.incompatibleVersions": "ไม่สามารถใช้โหนดอินพุตจากมนุษย์เวอร์ชันเก่าและใหม่ร่วมกันในเวิร์กโฟลว์เดียวกันได้",
   "nodes.humanInputMigration.oldVersion": "เวอร์ชันเก่า",
-  "nodes.humanInputMigration.preview.author": "โดยทีม Dify",
   "nodes.humanInputMigration.preview.description": "ย้ายโหนดข้อมูลจากมนุษย์รุ่นเก่าก่อนเพิ่มโหนดใหม่",
   "nodes.humanInputMigration.success": "ย้ายโหนดข้อมูลจากมนุษย์สำเร็จแล้ว",
   "nodes.humanInputV2.card.configured": "กำหนดค่าผู้รับแล้ว {{count}} ราย",

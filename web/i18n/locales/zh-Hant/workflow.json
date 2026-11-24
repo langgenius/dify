@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "無法儲存遷移後的工作流程。請檢查目前的草稿後重試。",
   "nodes.humanInputMigration.incompatibleVersions": "同一個工作流中不能混用舊版和新版人工介入節點。",
   "nodes.humanInputMigration.oldVersion": "舊版本",
-  "nodes.humanInputMigration.preview.author": "由 Dify 團隊提供",
   "nodes.humanInputMigration.preview.description": "請先遷移舊版人工輸入節點，再新增節點。",
   "nodes.humanInputMigration.success": "人工輸入節點遷移成功",
   "nodes.humanInputV2.card.configured": "已設定 {{count}} 位收件人",

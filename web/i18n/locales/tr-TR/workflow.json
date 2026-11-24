@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Taşınan iş akışı kaydedilemedi. Mevcut taslağı inceleyip tekrar deneyin.",
   "nodes.humanInputMigration.incompatibleVersions": "Eski ve yeni İnsan Girdisi düğümleri aynı iş akışında kullanılamaz.",
   "nodes.humanInputMigration.oldVersion": "ESKİ SÜRÜM",
-  "nodes.humanInputMigration.preview.author": "Dify Ekibi tarafından",
   "nodes.humanInputMigration.preview.description": "Yeni bir düğüm eklemeden önce eski İnsan Girdisi düğümlerini taşıyın.",
   "nodes.humanInputMigration.success": "İnsan Girdisi düğümleri başarıyla taşındı",
   "nodes.humanInputV2.card.configured": "{{count}} alıcı yapılandırıldı",

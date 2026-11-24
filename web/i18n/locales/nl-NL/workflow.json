@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "De gemigreerde workflow kon niet worden opgeslagen. Controleer het huidige concept en probeer het opnieuw.",
   "nodes.humanInputMigration.incompatibleVersions": "Oude en nieuwe Human Input-knooppunten kunnen niet in dezelfde workflow worden gebruikt.",
   "nodes.humanInputMigration.oldVersion": "OUDE VERSIE",
-  "nodes.humanInputMigration.preview.author": "Door het Dify-team",
   "nodes.humanInputMigration.preview.description": "Migreer oude Human Input-nodes voordat u een nieuwe toevoegt.",
   "nodes.humanInputMigration.success": "Human Input-nodes succesvol gemigreerd",
   "nodes.humanInputV2.card.configured": "{{count}} ontvangers ingesteld",

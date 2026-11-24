@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "گردش کار منتقل‌شده ذخیره نشد. پیش‌نویس فعلی را بررسی کنید و دوباره تلاش کنید.",
   "nodes.humanInputMigration.incompatibleVersions": "گره‌های قدیمی و جدید ورودی انسانی را نمی‌توان در یک گردش کار استفاده کرد.",
   "nodes.humanInputMigration.oldVersion": "نسخه قدیمی",
-  "nodes.humanInputMigration.preview.author": "ساخته تیم Dify",
   "nodes.humanInputMigration.preview.description": "پیش از افزودن گره جدید، گره‌های ورودی انسانی قدیمی را مهاجرت دهید.",
   "nodes.humanInputMigration.success": "گره‌های ورودی انسانی با موفقیت مهاجرت داده شدند",
   "nodes.humanInputV2.card.configured": "{{count}} گیرنده پیکربندی شده است",

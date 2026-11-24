@@ -97,8 +97,11 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
             renderTrigger={addBlockTrigger}
             // The menu row owns the focus treatment, so the trigger adds no ring.
             triggerClassName="focus-visible:ring-0"
-            onClose={onClose}
+            onClose={(details) => {
+              if (details?.reason !== 'outside-press') onClose()
+            }}
             isolateKeyboardEvents
+            modal={false}
             sideOffset={-36}
             alignOffset={-4}
           />

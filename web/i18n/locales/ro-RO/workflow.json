@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Fluxul de lucru migrat nu a putut fi salvat. Verificați schița curentă și încercați din nou.",
   "nodes.humanInputMigration.incompatibleVersions": "Nodurile vechi și noi de intervenție umană nu pot fi folosite în același flux de lucru.",
   "nodes.humanInputMigration.oldVersion": "VERSIUNE VECHE",
-  "nodes.humanInputMigration.preview.author": "De echipa Dify",
   "nodes.humanInputMigration.preview.description": "Migrează nodurile vechi de input uman înainte de a adăuga unul nou.",
   "nodes.humanInputMigration.success": "Nodurile de input uman au fost migrate cu succes",
   "nodes.humanInputV2.card.configured": "{{count}} destinatari configurați",

@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Le workflow migré n’a pas pu être enregistré. Vérifiez le brouillon actuel et réessayez.",
   "nodes.humanInputMigration.incompatibleVersions": "Les anciens et les nouveaux nœuds de saisie humaine ne peuvent pas être utilisés dans le même workflow.",
   "nodes.humanInputMigration.oldVersion": "ANCIENNE VERSION",
-  "nodes.humanInputMigration.preview.author": "Par l’équipe Dify",
   "nodes.humanInputMigration.preview.description": "Migrez les anciens nœuds de saisie humaine avant d’en ajouter un nouveau.",
   "nodes.humanInputMigration.success": "Nœuds de saisie humaine migrés avec succès",
   "nodes.humanInputV2.card.configured": "{{count}} destinataires configurés",

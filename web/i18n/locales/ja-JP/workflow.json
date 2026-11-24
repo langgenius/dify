@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "移行後のワークフローを保存できませんでした。現在の下書きを確認して、再試行してください。",
   "nodes.humanInputMigration.incompatibleVersions": "同じワークフローで旧版と新版のユーザー入力ノードを併用することはできません。",
   "nodes.humanInputMigration.oldVersion": "旧バージョン",
-  "nodes.humanInputMigration.preview.author": "Dify チーム作成",
   "nodes.humanInputMigration.preview.description": "新しいノードを追加する前に、旧バージョンの人間の入力ノードを移行してください。",
   "nodes.humanInputMigration.success": "人間の入力ノードを正常に移行しました",
   "nodes.humanInputV2.card.configured": "{{count}} 件の受信者を設定済み",

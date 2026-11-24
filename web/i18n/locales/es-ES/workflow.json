@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "No se pudo guardar el flujo de trabajo migrado. Revisa el borrador actual e inténtalo de nuevo.",
   "nodes.humanInputMigration.incompatibleVersions": "Los nodos de entrada humana antiguos y nuevos no pueden usarse en el mismo flujo de trabajo.",
   "nodes.humanInputMigration.oldVersion": "VERSIÓN ANTIGUA",
-  "nodes.humanInputMigration.preview.author": "Por el equipo de Dify",
   "nodes.humanInputMigration.preview.description": "Migra los nodos antiguos de Entrada Humana antes de añadir uno nuevo.",
   "nodes.humanInputMigration.success": "Nodos de Entrada Humana migrados correctamente",
   "nodes.humanInputV2.card.configured": "{{count}} destinatarios configurados",

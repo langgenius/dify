@@ -410,7 +410,6 @@
   "nodes.humanInputMigration.error.sync": "Der migrierte Workflow konnte nicht gespeichert werden. Prüfen Sie den aktuellen Entwurf und versuchen Sie es erneut.",
   "nodes.humanInputMigration.incompatibleVersions": "Alte und neue Human-Input-Knoten können nicht im selben Workflow verwendet werden.",
   "nodes.humanInputMigration.oldVersion": "ALTE VERSION",
-  "nodes.humanInputMigration.preview.author": "Vom Dify-Team",
   "nodes.humanInputMigration.preview.description": "Migrieren Sie alte Knoten für menschliche Eingaben, bevor Sie einen neuen hinzufügen.",
   "nodes.humanInputMigration.success": "Knoten für menschliche Eingaben erfolgreich migriert",
   "nodes.humanInputV2.card.configured": "{{count}} Empfänger konfiguriert",
