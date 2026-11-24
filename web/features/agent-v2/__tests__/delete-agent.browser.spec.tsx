@@ -68,7 +68,6 @@ async function setup(initialAgents: AgentAppPartial[]) {
       },
     },
   })
-  onTestFinished(fake)
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -88,6 +87,11 @@ async function setup(initialAgents: AgentAppPartial[]) {
       </NuqsTestingAdapter>
     </QueryClientTestProvider>,
   )
+  // Unmount before the fake API leaves, so a late refetch cannot reach the real network.
+  onTestFinished(async () => {
+    await screen.unmount()
+    await fake()
+  })
   await expect.element(screen.getByRole('list', { name: 'Agent list', exact: true })).toBeVisible()
   await expect
     .element(screen.getByRole('link', { name: 'Learn more about Agent' }))

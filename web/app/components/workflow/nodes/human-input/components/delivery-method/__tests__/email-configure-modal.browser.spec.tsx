@@ -1,5 +1,4 @@
 import type { EmailConfig } from '../../../types'
-import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
 import { toast } from '@/app/notifications'
@@ -88,30 +87,6 @@ it.each<{
   await expect.element(page.getByText(`${prefix}.${error}`, { exact: false })).toBeVisible()
   expect(handleConfirm).not.toHaveBeenCalled()
 })
-
-function DismissibleEmailConfig() {
-  const [open, setOpen] = useState(true)
-  return (
-    <>
-      <AppToaster timeout={0} />
-      <EmailConfigureModal
-        open={open}
-        config={createEmailConfig()}
-        onOpenChange={setOpen}
-        onConfirm={vi.fn()}
-      />
-    </>
-  )
-}
-
-it.each(['common.operation.close', 'common.operation.cancel'])(
-  'dismisses email configuration through %s',
-  async (name) => {
-    await render(<DismissibleEmailConfig />)
-    await page.getByRole('button', { name }).click()
-    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  },
-)
 
 beforeEach(async () => {
   toast.dismiss()

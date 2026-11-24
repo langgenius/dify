@@ -3,9 +3,10 @@ import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { TriggerPluginActionPreviewPayload } from './action-item'
 import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useGetLanguage } from '@/context/i18n'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { TriggerPluginActionPreviewCard } from './action-item'
 import TriggerPluginItem from './item'
 
@@ -23,7 +24,7 @@ const TriggerPluginList = ({
   onContentStateChange,
   disabled = false,
 }: TriggerPluginListProps) => {
-  const { data: triggerPluginsData } = useAllTriggerPlugins()
+  const { data: triggerPluginsData } = useQuery(allTriggerPluginsQueryOptions())
   const language = useGetLanguage()
   const [previewCardHandle] = useState(() =>
     createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),

@@ -170,6 +170,14 @@ const zPlaintextSecretNotAllowedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zAgentVersionConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('agent_version_conflict_error'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zAgentHomeSnapshotTooLargeError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -412,6 +420,7 @@ export const post5Errors = {
   agent_home_snapshot_create_failed: { status: 502, data: zAgentHomeSnapshotCreateFailedError },
   agent_home_snapshot_too_large: { status: 413, data: zAgentHomeSnapshotTooLargeError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
@@ -436,6 +445,7 @@ export const putErrors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
 }
 
 export const get5Errors = {

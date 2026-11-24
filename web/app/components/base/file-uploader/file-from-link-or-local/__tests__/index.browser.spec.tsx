@@ -5,12 +5,11 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import { FileItem } from '../../file-uploader-in-chat-input/file-item'
 import { FileContextProvider, useStore } from '../../store'
 import FileFromLinkOrLocal from '../index'
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 function Files() {
   const files = useStore((s) => s.files)
@@ -48,6 +47,7 @@ async function setup(props: Partial<ComponentProps<typeof FileFromLinkOrLocal>> 
         </div>
       </FileContextProvider>
     </Query>,
+    { wrapper: createTestNavigation({ url: '/apps' }).NavigationProvider },
   )
   await page.getByRole('button', { name: 'Open uploads' }).click()
   return { onChange }

@@ -12,15 +12,10 @@ import time from '@/i18n/locales/en-US/time.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { List } from '../list'
 
 vi.unmock('react-i18next')
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/apps',
-  useSearchParams: () => new URLSearchParams(),
-}))
 const testPageUrl = window.location.href
 const currentUrl = () => `${window.location.pathname}${window.location.search}`
 afterEach(() => window.history.replaceState(null, '', testPageUrl))
@@ -55,16 +50,19 @@ async function setup(listUrl: string) {
     features: {},
     systemFeatures: { rbac_enabled: true, enable_learn_app: false },
   })
+  const { NavigationProvider } = createTestNavigation({ url: listUrl })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsAdapter>
-        <I18nextProvider i18n={i18n}>
-          <div className="flex h-screen flex-col">
-            <List />
-          </div>
-        </I18nextProvider>
-      </NuqsAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsAdapter>
+          <I18nextProvider i18n={i18n}>
+            <div className="flex h-screen flex-col">
+              <List />
+            </div>
+          </I18nextProvider>
+        </NuqsAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const goBack = async (url: string) => {
     window.history.back()

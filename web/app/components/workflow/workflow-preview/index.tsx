@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { EdgeChange, NodeChange, Viewport } from 'reactflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -45,6 +46,7 @@ type WorkflowPreviewProps = {
   viewport: Viewport
   className?: string
   miniMapToRight?: boolean
+  children?: ReactNode
 }
 const WorkflowPreview = ({
   nodes,
@@ -52,6 +54,7 @@ const WorkflowPreview = ({
   viewport,
   className,
   miniMapToRight,
+  children,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
@@ -112,6 +115,7 @@ const WorkflowPreview = ({
           className="bg-workflow-canvas-workflow-bg"
           color="var(--color-workflow-canvas-workflow-dot-color)"
         />
+        {children}
       </ReactFlow>
     </div>
   )

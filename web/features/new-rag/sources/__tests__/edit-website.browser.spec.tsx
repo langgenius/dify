@@ -11,9 +11,6 @@ import {
   sourceResponses,
 } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-
 let fake: SourceApi
 beforeEach(() => {
   fake = resetSourceServer()

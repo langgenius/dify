@@ -1,13 +1,20 @@
+import type { ReactElement } from 'react'
 import type { ImageFile } from '@/types/app'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import Uploader from '../uploader'
 import { imageFile, imageUrl } from './image-fixtures'
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
+// The public web-app upload reads its share token from the real route params.
+const renderWithRoute = (ui: ReactElement) =>
+  render(ui, {
+    wrapper: createTestNavigation({ url: '/chat/shared-app', params: { token: 'shared-app' } })
+      .NavigationProvider,
+  })
 
 function UploaderExample({ disabled = false }: { disabled?: boolean }) {
   const [file, setFile] = useState<ImageFile>()
@@ -46,7 +53,7 @@ beforeEach(() => {
 
 it('reads native file bytes, uploads them to the public endpoint and accepts the same file again', async () => {
   await page.viewport(800, 600)
-  const screen = await render(<UploaderExample />)
+  const screen = await renderWithRoute(<UploaderExample />)
   const input = screen.getByLabelText('Upload image')
   const file = imageFile()
   await input.upload(file)
@@ -81,7 +88,7 @@ it('reads native file bytes, uploads them to the public endpoint and accepts the
 
 it('exposes disabled file selection without publishing or closing', async () => {
   await page.viewport(800, 600)
-  const screen = await render(<UploaderExample disabled />)
+  const screen = await renderWithRoute(<UploaderExample disabled />)
   await expect.element(screen.getByLabelText('Upload image')).toBeDisabled()
   await expect.element(screen.getByRole('status', { name: 'Uploaded image' })).toBeEmptyDOMElement()
   await expect.element(screen.getByLabelText('Image picker')).toBeVisible()

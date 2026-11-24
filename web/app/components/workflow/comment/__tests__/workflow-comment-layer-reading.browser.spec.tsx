@@ -17,10 +17,6 @@ import {
 // Where a thread's message list sits as replies arrive: a reader of earlier messages keeps
 // their place, and replies sent from here or arriving at the newest message come into view.
 
-// boundary: relative times depend on the clock
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({ formatTimeFromNow: () => 'just now' }),
-}))
 // boundary: collaboration runs over a socket to other editors
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,

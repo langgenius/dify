@@ -9,24 +9,15 @@ import {
   renderAudio,
 } from './audio-browser-test-env'
 
-const api = vi.hoisted(() => ({
+const api = {
   stream: vi.fn<(url: string, source: string, body: unknown) => Response | Promise<Response>>(),
-  params: {} as Record<string, string>,
-  pathname: '/',
-}))
+}
 // The agent contract requires a UUID agent id.
 const agentId = '3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e6f'
 vi.unmock('react-i18next')
-// boundary: supply route identity without the Next runtime.
-vi.mock('@/next/navigation', () => ({
-  useParams: () => api.params,
-  usePathname: () => api.pathname,
-}))
 
 beforeEach(async () => {
   await page.viewport(800, 600)
-  api.params = { appId: 'app-1' }
-  api.pathname = '/apps/app-1/chat'
   api.stream.mockReset()
   // Public web apps call the public API; console routes stand for installed-app sources.
   const respond =
@@ -72,8 +63,6 @@ it.each([
 ])(
   'plays the selected voice through the $route HTTP endpoint',
   async ({ params, pathname, url, source, route }) => {
-    api.params = params
-    api.pathname = pathname
     api.stream.mockResolvedValue(audioResponse())
     const id = `route-${route}`
     onTestFinished(() => destroyPlayer(id))
@@ -84,6 +73,7 @@ it.each([
         voice="alloy"
         isAudition={route === 'agent audition'}
       />,
+      { params, pathname },
     )
     await screen.getByRole('button', { name: 'Play', exact: true }).click()
     await expect.element(screen.getByRole('button', { name: 'Playing', exact: true })).toBeEnabled()

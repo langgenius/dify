@@ -2,7 +2,7 @@ import type { WebAppAddress } from './webapp-address'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { ORPCError } from '@orpc/client'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { mutationOptions, queryOptions } from '@tanstack/react-query'
 import {
   AppSourceType,
   fetchAppInfo,
@@ -15,7 +15,6 @@ import {
   getHumanInputForm,
   submitHumanInputForm,
 } from './share'
-import { useInvalid } from './use-base'
 import { resolveWebAppAddress } from './webapp-address'
 
 const NAME_SPACE = 'webapp'
@@ -69,59 +68,40 @@ export const shareQueryKeys = {
   humanInputForm: (token: string) => [NAME_SPACE, 'humanInputForm', token] as const,
 }
 
-export const useGetWebAppAccessModeByCode = (code: string | null) => {
-  const address = resolveWebAppAddress()
-  return useQuery({
-    queryKey: shareQueryKeys.appAccessMode(address, code),
+export const webAppAccessModeQueryOptions = (code: string | null) =>
+  queryOptions({
+    queryKey: shareQueryKeys.appAccessMode(resolveWebAppAddress(), code),
     queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
     staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
     gcTime: 0,
   })
-}
 
-export const useGetWebAppInfo = () => {
-  const address = resolveWebAppAddress()
-  return useQuery({
-    queryKey: shareQueryKeys.appInfo(address),
-    queryFn: () => {
-      return fetchAppInfo()
-    },
+export const webAppInfoQueryOptions = () =>
+  queryOptions({
+    queryKey: shareQueryKeys.appInfo(resolveWebAppAddress()),
+    queryFn: () => fetchAppInfo(),
   })
-}
 
-export const useGetWebAppParams = () => {
-  const address = resolveWebAppAddress()
-  return useQuery({
-    queryKey: shareQueryKeys.appParams(address),
-    queryFn: () => {
-      return fetchAppParams(AppSourceType.webApp)
-    },
+export const webAppParamsQueryOptions = () =>
+  queryOptions({
+    queryKey: shareQueryKeys.appParams(resolveWebAppAddress()),
+    queryFn: () => fetchAppParams(AppSourceType.webApp),
   })
-}
 
-export const useGetWebAppMeta = () => {
-  const address = resolveWebAppAddress()
-  return useQuery({
-    queryKey: shareQueryKeys.appMeta(address),
-    queryFn: () => {
-      return fetchAppMeta(AppSourceType.webApp)
-    },
+export const webAppMetaQueryOptions = () =>
+  queryOptions({
+    queryKey: shareQueryKeys.appMeta(resolveWebAppAddress()),
+    queryFn: () => fetchAppMeta(AppSourceType.webApp),
   })
-}
 
-export const useShareConversations = (
+export const shareConversationsQueryOptions = (
   params: ShareConversationsParams,
   options: ShareQueryOptions = {},
 ) => {
-  const address = resolveWebAppAddress()
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
-  const isEnabled =
-    enabled &&
-    params.appSourceType !== AppSourceType.tryApp &&
-    (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
-  return useQuery<AppConversationData>({
-    queryKey: shareQueryKeys.conversationList(address, params),
+  return queryOptions<AppConversationData>({
+    queryKey: shareQueryKeys.conversationList(resolveWebAppAddress(), params),
     queryFn: () =>
       fetchConversations(
         params.appSourceType,
@@ -130,21 +110,22 @@ export const useShareConversations = (
         params.pinned,
         params.limit,
       ),
-    enabled: isEnabled,
+    enabled:
+      enabled &&
+      params.appSourceType !== AppSourceType.tryApp &&
+      (params.appSourceType !== AppSourceType.installedApp || !!params.appId),
     refetchOnReconnect,
     refetchOnWindowFocus,
   })
 }
 
-export const useShareChatList = (params: ShareChatListParams, options: ShareQueryOptions = {}) => {
+export const shareChatListQueryOptions = (
+  params: ShareChatListParams,
+  options: ShareQueryOptions = {},
+) => {
   const address = resolveWebAppAddress()
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
-  const isEnabled =
-    enabled &&
-    params.appSourceType !== AppSourceType.tryApp &&
-    (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
-    !!params.conversationId
-  return useQuery({
+  return queryOptions({
     queryKey: shareQueryKeys.chatList(address, params),
     queryFn: async () => {
       try {
@@ -157,7 +138,11 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
         throw error
       }
     },
-    enabled: isEnabled,
+    enabled:
+      enabled &&
+      params.appSourceType !== AppSourceType.tryApp &&
+      (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
+      !!params.conversationId,
     refetchOnReconnect,
     refetchOnWindowFocus,
     // Always consider chat list data stale to ensure fresh data when switching
@@ -167,41 +152,31 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
   })
 }
 
-export const useShareConversationName = (
+export const shareConversationNameQueryOptions = (
   params: ShareConversationNameParams,
   options: ShareQueryOptions = {},
 ) => {
-  const address = resolveWebAppAddress()
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
-  const isEnabled =
-    enabled &&
-    (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
-    !!params.conversationId
-  return useQuery<ConversationItem>({
-    queryKey: shareQueryKeys.conversationName(address, params),
+  return queryOptions<ConversationItem>({
+    queryKey: shareQueryKeys.conversationName(resolveWebAppAddress(), params),
     queryFn: () =>
       generationConversationName(params.appSourceType, params.appId, params.conversationId),
-    enabled: isEnabled,
+    enabled:
+      enabled &&
+      (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
+      !!params.conversationId,
     refetchOnReconnect,
     refetchOnWindowFocus,
   })
 }
 
-export const useInvalidateShareConversations = () => {
-  return useInvalid(shareQueryKeys.conversations)
-}
-
-export const useGetHumanInputForm = (token: string, options: ShareQueryOptions = {}) => {
-  const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
-  return useQuery<HumanInputFormData>({
+export const humanInputFormQueryOptions = (token: string) =>
+  queryOptions<HumanInputFormData>({
     queryKey: shareQueryKeys.humanInputForm(token),
     queryFn: () => getHumanInputForm(token),
-    enabled: enabled && !!token,
-    refetchOnReconnect,
-    refetchOnWindowFocus,
+    enabled: !!token,
     retry: false,
   })
-}
 
 type SubmitHumanInputFormParams = {
   token: string
@@ -211,11 +186,8 @@ type SubmitHumanInputFormParams = {
   }
 }
 
-export const useSubmitHumanInputForm = () => {
-  return useMutation({
+export const submitHumanInputFormMutationOptions = () =>
+  mutationOptions({
     mutationKey: [NAME_SPACE, 'submit-human-input-form'],
-    mutationFn: ({ token, data }: SubmitHumanInputFormParams) => {
-      return submitHumanInputForm(token, data)
-    },
+    mutationFn: ({ token, data }: SubmitHumanInputFormParams) => submitHumanInputForm(token, data),
   })
-}

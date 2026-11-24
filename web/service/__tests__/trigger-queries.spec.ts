@@ -1,14 +1,14 @@
 import type { TriggerProviderApiEntity as GeneratedTriggerProvider } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   convertToTriggerWithProvider,
   normalizeTriggerProvider,
-  useVerifyAndUpdateTriggerSubscriptionBuilder,
-} from '../use-triggers'
+  verifyAndUpdateTriggerSubscriptionBuilderMutationOptions,
+} from '../trigger-queries'
 
 const mocks = vi.hoisted(() => ({
   mutationKey: vi.fn(() => ['trigger-builder-verify']),
@@ -122,9 +122,12 @@ describe('trigger provider normalization', () => {
 
 describe('trigger subscription builder verification', () => {
   it('should omit credentials while polling OAuth authorization', async () => {
-    const { result } = renderHook(() => useVerifyAndUpdateTriggerSubscriptionBuilder(), {
-      wrapper: createWrapper(),
-    })
+    const { result } = renderHook(
+      () => useMutation(verifyAndUpdateTriggerSubscriptionBuilderMutationOptions()),
+      {
+        wrapper: createWrapper(),
+      },
+    )
 
     await act(async () => {
       await result.current.mutateAsync({

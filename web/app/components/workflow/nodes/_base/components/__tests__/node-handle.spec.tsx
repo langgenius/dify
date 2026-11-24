@@ -22,17 +22,13 @@ vi.mock('@/service/use-plugins', () => ({
   useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
 }))
 
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'workspaces.current.tools.builtin.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],

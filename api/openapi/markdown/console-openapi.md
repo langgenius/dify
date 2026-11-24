@@ -368,6 +368,25 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /accounts/{account_id}/avatars/{file_id}
+**Serve an account's assigned raster avatar to an authenticated Console account**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
+| 304 | Avatar image has not changed |  |
+| 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
 
@@ -703,6 +722,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
+**Save the admitted account's Build draft and return its committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -720,11 +741,13 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
+**Apply the admitted account's Build draft to the shared draft and return its metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -738,11 +761,14 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
+**Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

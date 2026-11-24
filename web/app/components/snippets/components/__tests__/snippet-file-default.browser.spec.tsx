@@ -7,14 +7,8 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi, route } from '@/test/fake-api'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createTestNavigation } from '@/test/next-navigation'
 import { SnippetSidebarContent } from '../snippet-sidebar'
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ snippetId: 'snippet-1' }),
-  usePathname: () => '/snippets/snippet-1/orchestrate',
-  useRouter: () => ({ replace: vi.fn() }),
-  useSelectedLayoutSegment: () => 'orchestrate',
-}))
 
 const MIB = 1024 * 1024
 const snippet: SnippetDetail = {
@@ -76,6 +70,13 @@ it('adds a default file list from the Snippet sidebar and enforces the configure
       <AppToaster />
       <EditableSnippetInputs />
     </Query>,
+    {
+      wrapper: createTestNavigation({
+        segments: ['orchestrate'],
+        url: '/snippets/snippet-1/orchestrate',
+        params: { snippetId: 'snippet-1' },
+      }).NavigationProvider,
+    },
   )
 
   const sidebar = page.getByRole('complementary', { name: 'Snippet settings' })

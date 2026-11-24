@@ -7,7 +7,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
-import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 
 type UseSnippetPublishOptions = {
   snippetId: string
@@ -18,7 +18,13 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId, { silent: true })
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const resetWorkflowVersionHistory = useCallback(
+    () =>
+      queryClient.resetQueries({
+        queryKey: workflowVersionHistoryKey({ kind: 'snippet', snippetId }),
+      }),
+    [queryClient, snippetId],
+  )
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
 
   const handlePublish = useCallback(async () => {
