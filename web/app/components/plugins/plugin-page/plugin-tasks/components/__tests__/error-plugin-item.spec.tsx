@@ -32,14 +32,14 @@ vi.mock('@/service/console', async (importOriginal) => {
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: createPluginDeclarationFixture(),
       }),
       'workspaces.current.plugin.install.marketplace.post': install,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
     }),
   }
 })

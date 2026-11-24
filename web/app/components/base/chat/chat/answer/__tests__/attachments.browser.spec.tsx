@@ -5,8 +5,6 @@ import { chatItem, renderChatOwner } from '../../__tests__/chat-owner-preset'
 import Answer from '../index'
 
 vi.unmock('react-i18next')
-// boundary: real file owners consume Next params without a running application.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 it('downloads the displayed generated and message files with their actual names and destinations', async () => {
   await page.viewport(1000, 800)
@@ -39,6 +37,8 @@ it('downloads the displayed generated and message files with their actual names 
       index={0}
     />,
   )
+  // Lazy Markdown moves the file cards when it appears, which can end their hover state.
+  await expect.element(page.getByText('An answer', { exact: true })).toBeVisible()
   for (const name of ['generated.pdf', 'message.pdf']) {
     const row = page.getByRole('button', { name, exact: true })
     await row.hover()

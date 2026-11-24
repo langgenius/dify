@@ -15,7 +15,7 @@ export function WorkflowCanvas({
   onNodeDragStart,
   onSelectionStart,
   ...props
-}: ReactFlowProps) {
+}: Omit<ReactFlowProps, 'panOnScroll' | 'zoomOnScroll' | 'zoomOnPinch'>) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['app'])
   const [canvasHasFocus, setCanvasHasFocus] = useState(false)
@@ -37,6 +37,9 @@ export function WorkflowCanvas({
   return (
     <ReactFlow
       {...props}
+      panOnScroll
+      zoomOnScroll={false}
+      zoomOnPinch
       ref={canvasRef}
       tabIndex={0}
       role="region"

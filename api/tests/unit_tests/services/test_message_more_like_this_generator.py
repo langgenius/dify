@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import QuotaUnit
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.workflow.file_reference import resolve_file_record_id
 from extensions import ext_hosting_provider
@@ -255,7 +255,7 @@ def test_stored_input_restoration_reloads_metadata_using_the_admitted_tenant(
     assert mapping["filename"] == "untrusted-name.png"
 
 
-def test_real_provider_initialization_commit_does_not_flush_the_callers_pending_session(
+def test_real_provider_initialization_keeps_the_callers_pending_session(
     runtime: _Runtime, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     provider_name = "langgenius/openai/openai"
@@ -288,14 +288,16 @@ def test_real_provider_initialization_commit_does_not_flush_the_callers_pending_
         assert caller.in_transaction()
         assert pending in caller.dirty
         with sqlite_session_factory() as session:
-            trial = session.scalar(
-                select(Provider).where(
-                    Provider.tenant_id == runtime.tenant_id,
-                    Provider.provider_type == ProviderType.SYSTEM,
-                    Provider.quota_type == ProviderQuotaType.TRIAL,
+            # Hosting initialization writes no provider rows, so nothing was committed for it.
+            assert (
+                session.scalar(
+                    select(Provider).where(
+                        Provider.tenant_id == runtime.tenant_id,
+                        Provider.provider_type == ProviderType.SYSTEM,
+                    )
                 )
+                is None
             )
-            assert trial is not None
             assert session.scalar(select(App.name).where(App.id == runtime.app_id)) == "Completion"
     finally:
         caller.rollback()

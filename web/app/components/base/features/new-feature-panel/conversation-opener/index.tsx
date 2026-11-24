@@ -1,16 +1,19 @@
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiEditLine } from '@remixicon/react'
-import { produce } from 'immer'
+import { lazy, Suspense } from 'react'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import { FeatureEnum } from '@/app/components/base/features/types'
-import { useModalContext } from '@/context/modal-context'
+
+const OpeningSettingModal = lazy(
+  () => import('@/app/components/base/features/new-feature-panel/conversation-opener/modal'),
+)
 
 type Props = Readonly<{
   disabled?: boolean
@@ -28,99 +31,75 @@ const ConversationOpener = ({
   onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation(['appDebug'])
-  const { setShowOpeningModal } = useModalContext()
+  const actionsRef = React.useRef<DialogActions>(null)
   const opening = useFeatures((s) => s.features.opening)
   const featuresStore = useFeaturesStore()
-  const [isHovering, setIsHovering] = useState(false)
-  const handleOpenOpeningModal = useCallback(() => {
-    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
-    if (disabled) return
+  function changeEnabled(enabled: boolean) {
     const { features, setFeatures } = featuresStore!.getState()
-    setShowOpeningModal({
-      payload: {
-        ...opening,
-        promptVariables,
-        workflowVariables,
-        onAutoAddPromptVariable,
-      },
-      onSaveCallback: (newOpening) => {
-        const newFeatures = produce(features, (draft) => {
-          draft.opening = newOpening
-        })
-        setFeatures(newFeatures)
-        if (onChange) onChange()
-      },
-      onCancelCallback: () => {
-        if (onChange) onChange()
-      },
-    })
-  }, [
-    disabled,
-    featuresStore,
-    onAutoAddPromptVariable,
-    onChange,
-    opening,
-    promptVariables,
-    setShowOpeningModal,
-  ])
-
-  const handleChange = useCallback(
-    (type: FeatureEnum, enabled: boolean) => {
-      const { features, setFeatures } = featuresStore!.getState()
-
-      const newFeatures = produce(features, (draft) => {
-        draft[type] = {
-          ...draft[type],
-          enabled,
-        }
-      })
-      setFeatures(newFeatures)
-      if (onChange) onChange()
-    },
-    [featuresStore, onChange],
-  )
+    setFeatures({ ...features, opening: { ...features.opening, enabled } })
+    onChange?.()
+  }
 
   return (
-    <FeatureCard
-      icon={
-        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-          <span
-            aria-hidden
-            className="i-custom-vender-features-love-message size-4 text-text-primary-on-surface"
-          />
-        </div>
-      }
-      title={t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
-      value={!!opening?.enabled}
-      onChange={(state) => handleChange(FeatureEnum.opening, state)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      disabled={disabled}
-    >
-      <>
-        {!opening?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-            {t(($) => $['feature.conversationOpener.description'], { ns: 'appDebug' })}
+    <Dialog actionsRef={actionsRef} disablePointerDismissal>
+      <FeatureCard
+        icon={
+          <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+            <span
+              aria-hidden
+              className="i-custom-vender-features-love-message size-4 text-text-primary-on-surface"
+            />
           </div>
-        )}
-        {!!opening?.enabled && (
-          <>
-            {!isHovering && (
+        }
+        title={t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
+        value={!!opening?.enabled}
+        onChange={changeEnabled}
+        disabled={disabled}
+      >
+        <>
+          {!opening?.enabled && (
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+              {t(($) => $['feature.conversationOpener.description'], { ns: 'appDebug' })}
+            </div>
+          )}
+          {!!opening?.enabled && (
+            <div className="flex items-center justify-between gap-2">
               <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
                 {opening.opening_statement ||
                   t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
               </div>
-            )}
-            {isHovering && (
-              <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
+              <DialogTrigger
+                render={
+                  <Button
+                    className="shrink-0 group-hover/feature-card:opacity-100 focus-visible:opacity-100 pointer-fine:opacity-0"
+                    disabled={disabled}
+                  />
+                }
+              >
                 <RiEditLine className="size-4" />
                 {t(($) => $['openingStatement.writeOpener'], { ns: 'appDebug' })}
-              </Button>
-            )}
-          </>
-        )}
-      </>
-    </FeatureCard>
+              </DialogTrigger>
+            </div>
+          )}
+        </>
+      </FeatureCard>
+      <Suspense fallback={null}>
+        <DialogContent className="w-160">
+          <OpeningSettingModal
+            data={opening ?? {}}
+            promptVariables={promptVariables}
+            workflowVariables={workflowVariables}
+            onAutoAddPromptVariable={onAutoAddPromptVariable}
+            onSave={(value) => {
+              const { features, setFeatures } = featuresStore!.getState()
+              setFeatures({ ...features, opening: value })
+              onChange?.()
+              actionsRef.current?.close()
+            }}
+          />
+        </DialogContent>
+      </Suspense>
+    </Dialog>
   )
 }
 

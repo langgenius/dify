@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetaData } from '../types'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,19 +12,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
-import { useModalContext } from '@/context/modal-context'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfoContent from '../plugin-page/plugin-info'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '../update-plugin/check-github-update'
 
 const i18nPrefix = 'action'
 
@@ -57,38 +60,20 @@ const Action: FC<Props> = ({
   const [isShowPluginInfo, { setTrue: showPluginInfo, setFalse: hidePluginInfo }] =
     useBoolean(false)
   const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
-  const { setShowUpdatePluginModal } = useModalContext()
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
+  const queryClient = useQueryClient()
   const handleFetchNewVersion = async () => {
-    const owner = meta!.repo.split('/')[0] || author
-    const repo = meta!.repo.split('/')[1] || pluginName
-    const fetchedReleases = await fetchReleases(owner, repo).catch(() => {
-      toast.error(t(($) => $['error.fetchReleasesError'], { ns: 'plugin' }))
-      return undefined
-    })
-    if (!fetchedReleases?.length) return
-    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
-    toast(toastProps.message, { type: toastProps.type })
-    if (needUpdate) {
-      setShowUpdatePluginModal({
-        onSaveCallback: () => {
-          invalidateInstalledPluginList(category)
-        },
-        payload: {
-          category,
-          github: {
-            originalPackageInfo: {
-              id: pluginUniqueIdentifier,
-              repo: meta!.repo,
-              version: meta!.version,
-              package: meta!.package,
-              releases: fetchedReleases,
-            },
-          },
-        },
-      })
-    }
+    const update = await checkGitHubPluginUpdate(
+      {
+        meta,
+        plugin_unique_identifier: pluginUniqueIdentifier,
+        declaration: { author, category, name: pluginName },
+      },
+      beginGitHubPluginIntent(queryClient),
+    )
+    if (update) githubDialog.openWithPayload(update)
   }
 
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
@@ -119,6 +104,12 @@ const Action: FC<Props> = ({
   ])
   return (
     <div className="flex space-x-1">
+      {isShowFetchNewVersion && (
+        <GitHubInstallDialog
+          handle={githubDialog}
+          onUpdated={() => invalidateInstalledPluginList(category)}
+        />
+      )}
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion && (
         <Tooltip>

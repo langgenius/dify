@@ -27,6 +27,7 @@ vi.mock('@/service/common', () => ({
   webAppLogin: (...args: unknown[]) => webAppLoginMock(...args),
   webAppEmailLoginWithCode: (...args: unknown[]) => webAppEmailLoginWithCodeMock(...args),
   sendWebAppEMailLoginCode: (...args: unknown[]) => sendWebAppEMailLoginCodeMock(...args),
+  webAppLogout: vi.fn(),
 }))
 
 const fetchAccessTokenMock = vi.fn()
@@ -41,7 +42,6 @@ const setWebAppPassportMock = vi.fn()
 vi.mock('@/service/webapp-auth', () => ({
   setWebAppAccessToken: (...args: unknown[]) => setWebAppAccessTokenMock(...args),
   setWebAppPassport: (...args: unknown[]) => setWebAppPassportMock(...args),
-  webAppLogout: vi.fn(),
 }))
 
 vi.mock('@/app/components/signin/countdown', () => ({

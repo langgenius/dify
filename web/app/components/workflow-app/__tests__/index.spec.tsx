@@ -115,7 +115,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: (...args: unknown[]) => fetchDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => fetchDraft(...args),
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {

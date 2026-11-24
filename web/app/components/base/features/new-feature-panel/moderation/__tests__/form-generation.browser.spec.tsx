@@ -1,5 +1,5 @@
 import type { I18nText } from '@/i18n/language'
-import type { CodeBasedExtensionForm } from '@/models/common'
+import type { CodeBasedExtensionForm } from '@/service/console/code-based-extension-query'
 import { createInstance } from 'i18next'
 import { useState } from 'react'
 import { I18nextProvider } from 'react-i18next'

@@ -365,7 +365,7 @@ function CloudRecommendPluginCard({
       <button
         type="button"
         aria-label={card.display_name}
-        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-start')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
           setOpen(true)
@@ -437,7 +437,7 @@ function CloudRecommendTemplateCard({
       <button
         type="button"
         aria-label={card.display_name}
-        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-left')}
+        className={cn(recommendCardClassName, 'cursor-pointer border-0 text-start')}
         onClick={() => {
           trackRecommendCardClick(banner, card, page, href)
           if (templateDetailRoute) templateDetailRoute.open(template)
@@ -554,7 +554,7 @@ function TrendingRecommendationSlide({
           aria-hidden
           className={cn(
             styles.recommendBackdrop,
-            'absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80',
+            'absolute inset-s-[-990px] top-[-173px] h-[1201px] w-[2135px] max-w-none opacity-80',
           )}
         />
         <div

@@ -31,6 +31,11 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined =>
 const nonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value : undefined
 
+export function getHttpErrorBodyMessage(body: unknown): string | undefined {
+  const data = asRecord(body)
+  return nonEmptyString(data?.message) ?? nonEmptyString(data?.error)
+}
+
 /** Decode the backend envelope without declaring it as a validated contract error. */
 export function createHttpError(
   response: Pick<Response, 'status' | 'statusText' | 'headers'>,
@@ -41,25 +46,12 @@ export function createHttpError(
     // The HTTP status is authoritative even when the response body disagrees.
     status: response.status,
     message:
-      nonEmptyString(data?.message) ??
-      nonEmptyString(data?.error) ??
+      getHttpErrorBodyMessage(data) ??
       nonEmptyString(response.statusText) ??
       `HTTP ${response.status}`,
     data,
     cause: { headers: new Headers(response.headers) },
   })
-}
-
-export function httpErrorFromXhr(xhr: XMLHttpRequest) {
-  const headers = new Headers()
-  for (const line of xhr
-    .getAllResponseHeaders()
-    .trim()
-    .split(/[\r\n]+/)) {
-    const separator = line.indexOf(':')
-    if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
-  }
-  return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
 }
 
 export async function httpErrorFromResponse(response: Response) {

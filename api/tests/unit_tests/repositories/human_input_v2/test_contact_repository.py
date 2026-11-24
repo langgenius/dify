@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from sqlite3 import Connection
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, event, func
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.shared import AccountId, ContactId, TenantId
@@ -17,6 +18,8 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
+from repositories.account.avatar import validated_account_avatar
+from repositories.human_input_v2 import sqlalchemy_contact_repository
 from repositories.human_input_v2.contact import (
     ContactError,
     ContactErrorCode,
@@ -28,10 +31,12 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
     SQLAlchemyContactIMBindingRepository,
     SQLAlchemyContactRepository,
 )
+from tests.helpers.unit.model_factories import make_upload_file
 
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")
 _TENANT_B = TenantId("00000000-0000-0000-0000-000000000102")
+_EMPTY_TENANT = TenantId("00000000-0000-0000-0000-000000000103")
 _ADMIN_ACCOUNT = AccountId("00000000-0000-0000-0000-000000000199")
 _MISSING_CONTACT = ContactId("00000000-0000-0000-0000-000000000999")
 
@@ -215,10 +220,32 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
             "foreign-platform@example.com",
             AccountStatus.ACTIVE,
         ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000291"),
+            ContactId("00000000-0000-0000-0000-000000000391"),
+            "Pending Platform",
+            "pending@example.com",
+            AccountStatus.PENDING,
+        ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000292"),
+            ContactId("00000000-0000-0000-0000-000000000392"),
+            "Uninitialized Member",
+            "uninitialized@example.com",
+            AccountStatus.UNINITIALIZED,
+        ),
+        (
+            AccountId("00000000-0000-0000-0000-000000000293"),
+            ContactId("00000000-0000-0000-0000-000000000393"),
+            "Closed Member",
+            "closed@example.com",
+            AccountStatus.CLOSED,
+        ),
     )
     account_rows: list[object] = [
         _tenant(_TENANT_A, "Tenant A"),
         _tenant(_TENANT_B, "Tenant B"),
+        _tenant(_EMPTY_TENANT, "Empty Tenant"),
         _account(
             _ADMIN_ACCOUNT,
             name="Admin",
@@ -268,6 +295,20 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
             _platform_entry(_TENANT_A, ids.platform_echo, created_at=_NOW + timedelta(minutes=5)),
             _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000207")),
             _platform_entry(_TENANT_B, ids.foreign_platform, created_at=_NOW + timedelta(minutes=9)),
+            _membership(_TENANT_B, AccountId("00000000-0000-0000-0000-000000000202")),
+            _platform_entry(_TENANT_B, ids.workspace_shared, created_at=_NOW),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000391"), created_at=_NOW),
+            _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000292")),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000392"), created_at=_NOW),
+            _membership(_TENANT_A, AccountId("00000000-0000-0000-0000-000000000293")),
+            _membership(_TENANT_A, _ADMIN_ACCOUNT),
+            _platform_entry(_TENANT_A, _MISSING_CONTACT, created_at=_NOW),
+            _account_identity(
+                AccountId("00000000-0000-0000-0000-000000000294"),
+                ContactId("00000000-0000-0000-0000-000000000394"),
+                _NOW,
+            ),
+            _platform_entry(_TENANT_A, ContactId("00000000-0000-0000-0000-000000000394"), created_at=_NOW),
             *external_shared,
             *external_foxtrot,
             *foreign_external,
@@ -281,17 +322,26 @@ def contact_repository_context(sqlite_engine: Engine) -> _RepositoryContext:
 
 
 @pytest.mark.parametrize(
-    ("query", "expected_attribute"),
+    ("tenant_id", "query", "expected_attribute"),
     [
-        (ContactQuery(), "visible"),
-        (ContactQuery(keyword="  SHARED  "), "shared"),
-        (ContactQuery(contact_type=ContactType.WORKSPACE), "workspace"),
-        (ContactQuery(contact_type=ContactType.PLATFORM), "platform"),
-        (ContactQuery(contact_type=ContactType.EXTERNAL), "external"),
+        (_TENANT_A, ContactQuery(), "visible"),
+        (_TENANT_A, ContactQuery(keyword="  SHARED  "), "shared"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.WORKSPACE), "workspace"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.PLATFORM), "platform"),
+        (_TENANT_A, ContactQuery(contact_type=ContactType.EXTERNAL), "external"),
+        (_TENANT_A, ContactQuery(keyword="  "), "visible"),
+        (_TENANT_A, ContactQuery(keyword="  SHARED  ", contact_type=ContactType.WORKSPACE), "shared_workspace"),
+        (_TENANT_A, ContactQuery(keyword="shared", contact_type=ContactType.PLATFORM), "shared_platform"),
+        (_TENANT_A, ContactQuery(keyword="shared", contact_type=ContactType.EXTERNAL), "shared_external"),
+        (_TENANT_A, ContactQuery(keyword="BETA@EXAMPLE.COM"), "email"),
+        (_TENANT_A, ContactQuery(keyword="no-such-contact"), "empty"),
+        (_TENANT_B, ContactQuery(), "foreign_tenant"),
+        (_EMPTY_TENANT, ContactQuery(), "empty"),
     ],
 )
 def test_count_and_list_apply_identical_filters(
     contact_repository_context: _RepositoryContext,
+    tenant_id: TenantId,
     query: ContactQuery,
     expected_attribute: str,
 ) -> None:
@@ -302,14 +352,21 @@ def test_count_and_list_apply_identical_filters(
         "workspace": {ids.workspace_shared, ids.workspace_delta},
         "platform": {ids.platform_beta, ids.platform_echo},
         "external": {ids.external_shared, ids.external_foxtrot},
+        "shared_workspace": {ids.workspace_shared},
+        "shared_platform": {ids.platform_echo},
+        "shared_external": {ids.external_shared},
+        "email": {ids.platform_beta},
+        "empty": set(),
+        "foreign_tenant": {ids.workspace_shared, ids.platform_beta, ids.foreign_platform, ids.foreign_external},
     }
     with contact_repository_context.sessions() as session:
         repository = SQLAlchemyContactRepository(session)
-        contact_page = repository.list_contact(_TENANT_A, page=1, limit=100, query=query)
-        count = repository.count_contact(_TENANT_A, query)
+        contact_page = repository.list_contact(tenant_id, page=1, limit=100, query=query)
+        count = repository.count_contact(tenant_id, query)
 
     expected_ids = expected_by_attribute[expected_attribute]
     assert count == len(expected_ids)
+    assert len(contact_page.items) == len(expected_ids)
     assert {contact.id for contact in contact_page.items} == expected_ids
 
 
@@ -406,6 +463,15 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
     contact_repository_context: _RepositoryContext,
 ) -> None:
     ids = contact_repository_context.contact_ids
+    account_ids = (
+        AccountId("00000000-0000-0000-0000-000000000201"),
+        AccountId("00000000-0000-0000-0000-000000000202"),
+        AccountId("00000000-0000-0000-0000-000000000207"),
+        AccountId("00000000-0000-0000-0000-000000000208"),
+        AccountId("00000000-0000-0000-0000-000000000209"),
+        _ADMIN_ACCOUNT,
+        AccountId("00000000-0000-0000-0000-000000000299"),
+    )
     requested_ids = (
         ids.workspace_shared,
         ids.platform_beta,
@@ -438,6 +504,10 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
             _TENANT_B,
             (ids.foreign_platform, ids.foreign_external),
         )
+        contacts_by_account = repository.get_contacts_by_account_ids(_TENANT_A, (*account_ids, account_ids[0]))
+        assert repository.get_contacts_by_account_ids(_TENANT_A, ()) == {}
+        for account_id in account_ids:
+            assert repository.get_contact_by_account_id(_TENANT_A, account_id) == contacts_by_account.get(account_id)
 
     returned_ids = {contact.id for contact in contacts}
     assert returned_ids == {ids.workspace_shared, ids.platform_beta}
@@ -453,6 +523,10 @@ def test_detail_batch_and_availability_are_tenant_scoped_and_order_agnostic(
     }
     assert {contact.id for contact in foreign_contacts} == {ids.foreign_platform, ids.foreign_external}
     assert foreign_availability == {ids.foreign_platform: True, ids.foreign_external: True}
+    assert {account_id: contact.id for account_id, contact in contacts_by_account.items()} == {
+        account_ids[0]: ids.workspace_shared,
+        account_ids[1]: ids.platform_beta,
+    }
 
 
 def test_account_and_external_contacts_with_one_normalized_email_both_match(
@@ -470,17 +544,152 @@ def test_account_and_external_contacts_with_one_normalized_email_both_match(
     assert len(contacts) == 2
 
 
+@pytest.mark.parametrize(
+    ("tenant_id", "shared_type", "beta_type"),
+    [
+        (_TENANT_A, ContactType.WORKSPACE, ContactType.PLATFORM),
+        (_TENANT_B, ContactType.PLATFORM, ContactType.WORKSPACE),
+    ],
+)
 def test_membership_takes_precedence_over_platform_visibility(
     contact_repository_context: _RepositoryContext,
+    tenant_id: TenantId,
+    shared_type: ContactType,
+    beta_type: ContactType,
 ) -> None:
     contact_id = contact_repository_context.contact_ids.workspace_shared
 
     with contact_repository_context.sessions() as session:
-        contact = SQLAlchemyContactRepository(session).get_contacts_by_id(_TENANT_A, contact_id)
+        repository = SQLAlchemyContactRepository(session)
+        contact = repository.get_contacts_by_id(tenant_id, contact_id)
+        beta = repository.get_contacts_by_id(tenant_id, contact_repository_context.contact_ids.platform_beta)
 
     assert contact is not None
     assert contact.id == contact_id
-    assert contact.type is ContactType.WORKSPACE
+    assert contact.type is shared_type
+    assert beta is not None
+    assert beta.id == contact_repository_context.contact_ids.platform_beta
+    assert beta.type is beta_type
+
+
+def test_account_contact_avatar_projection_rejects_unowned_or_unsafe_legacy_values(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    account_ids = {
+        "workspace": AccountId("00000000-0000-0000-0000-000000000201"),
+        "platform": AccountId("00000000-0000-0000-0000-000000000202"),
+        "wrong_owner": AccountId("00000000-0000-0000-0000-000000000204"),
+        "unsafe_format": AccountId("00000000-0000-0000-0000-000000000205"),
+        "candidate": AccountId("00000000-0000-0000-0000-000000000208"),
+        "blank_candidate": AccountId("00000000-0000-0000-0000-000000000209"),
+    }
+    avatar_ids = {
+        "owned": "10000000-0000-0000-0000-000000000001",
+        "wrong_owner": "10000000-0000-0000-0000-000000000002",
+        "unsafe_format": "10000000-0000-0000-0000-000000000003",
+        "candidate": "10000000-0000-0000-0000-000000000004",
+        "external": "10000000-0000-0000-0000-000000000005",
+    }
+    external_url = "https://avatars.example.com/platform.png"
+
+    with contact_repository_context.sessions.begin() as session:
+        workspace = session.get(Account, str(account_ids["workspace"]))
+        platform = session.get(Account, str(account_ids["platform"]))
+        wrong_owner = session.get(Account, str(account_ids["wrong_owner"]))
+        unsafe_format = session.get(Account, str(account_ids["unsafe_format"]))
+        candidate = session.get(Account, str(account_ids["candidate"]))
+        blank_candidate = session.get(Account, str(account_ids["blank_candidate"]))
+        assert workspace is not None
+        assert platform is not None
+        assert wrong_owner is not None
+        assert unsafe_format is not None
+        assert candidate is not None
+        assert blank_candidate is not None
+        workspace.avatar = avatar_ids["owned"]
+        platform.avatar = external_url
+        wrong_owner.avatar = avatar_ids["wrong_owner"]
+        unsafe_format.avatar = avatar_ids["unsafe_format"]
+        candidate.avatar = avatar_ids["candidate"]
+        blank_candidate.avatar = ""
+        session.add_all(
+            [
+                make_upload_file(
+                    file_id=avatar_ids["owned"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["workspace"]),
+                    extension="png",
+                    mime_type="image/png",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["wrong_owner"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["workspace"]),
+                    extension="jpg",
+                    mime_type="image/jpeg",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["unsafe_format"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["unsafe_format"]),
+                    extension="svg",
+                    mime_type="image/svg+xml",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["candidate"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["candidate"]),
+                    name="avatar.webp",
+                    extension="webp",
+                    mime_type="image/png",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["external"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(_ADMIN_ACCOUNT),
+                    extension="gif",
+                    mime_type="image/gif",
+                    created_at=_NOW,
+                ),
+            ]
+        )
+        session.flush()
+        repository = SQLAlchemyContactRepository(session)
+        current_external = repository.get_contacts_by_id(
+            _TENANT_A,
+            contact_repository_context.contact_ids.external_shared,
+        )
+        assert current_external is not None
+        assert current_external.email is not None
+        repository.save_external_contact(
+            _TENANT_A,
+            ExternalContact(
+                current_external.id,
+                current_external.name,
+                current_external.email,
+                avatar_ids["external"],
+                current_external.created_at,
+            ),
+        )
+
+    with contact_repository_context.sessions() as session:
+        repository = SQLAlchemyContactRepository(session)
+        contacts = {contact.id: contact for contact in repository.list_contact(_TENANT_A, page=1, limit=100).items}
+        candidates = {
+            candidate.id: candidate for candidate in repository.list_organization_candidates(page=1, limit=100)
+        }
+
+    ids = contact_repository_context.contact_ids
+    assert contacts[ids.workspace_shared].avatar_file_id == avatar_ids["owned"]
+    assert contacts[ids.platform_beta].avatar_file_id == external_url
+    assert contacts[ids.workspace_delta].avatar_file_id is None
+    assert contacts[ids.platform_echo].avatar_file_id is None
+    assert contacts[ids.external_shared].avatar_file_id == avatar_ids["external"]
+    assert candidates[ids.unavailable].avatar_file_id == avatar_ids["candidate"]
+    assert candidates[ids.foreign_platform].avatar_file_id is None
 
 
 def test_organization_candidate_count_list_keyword_and_pagination_share_one_candidate_set(
@@ -504,6 +713,48 @@ def test_organization_candidate_count_list_keyword_and_pagination_share_one_cand
     assert out_of_range == ()
     assert keyword_count == len(keyword_page) == 1
     assert {candidate.id for candidate in keyword_page} == {contact_repository_context.contact_ids.unavailable}
+
+
+def test_organization_candidate_pagination_validates_only_returned_avatars(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluated_avatars: list[str | None] = []
+
+    def record_avatar_validation(avatar: str | None) -> str | None:
+        evaluated_avatars.append(avatar)
+        return avatar
+
+    monkeypatch.setattr(
+        sqlalchemy_contact_repository,
+        "validated_account_avatar",
+        lambda: func.record_avatar_validation(validated_account_avatar()),
+    )
+    with Session(sqlite_engine) as session:
+        # Reverse the creation order so the sort replaces candidates while scanning the records.
+        for position in range(10):
+            account_id = AccountId(f"00000000-0000-0000-1000-{position:012d}")
+            contact_id = ContactId(f"00000000-0000-0000-2000-{position:012d}")
+            created_at = _NOW - timedelta(seconds=position)
+            account = _account(
+                account_id,
+                name=f"Candidate {position}",
+                email=f"{position}@example.com",
+                created_at=created_at,
+            )
+            account.avatar = f"https://example.com/{position}.png"
+            session.add_all([account, _account_identity(account_id, contact_id, created_at)])
+        session.flush()
+        connection = session.connection().connection.driver_connection
+        assert isinstance(connection, Connection)
+        connection.create_function("record_avatar_validation", 1, record_avatar_validation)
+
+        candidates = SQLAlchemyContactRepository(session).list_organization_candidates(page=2, limit=2)
+
+    expected_avatars = ["https://example.com/7.png", "https://example.com/6.png"]
+    assert [candidate.avatar_file_id for candidate in candidates] == expected_avatars
+    assert len(evaluated_avatars) == len(expected_avatars)
+    assert set(evaluated_avatars) == set(expected_avatars)
 
 
 def test_candidate_contact_id_round_trips_through_platform_entry_creation(

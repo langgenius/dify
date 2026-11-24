@@ -226,7 +226,7 @@ const EmbeddedContent = ({
     <>
       {supportedHiddenInputs.length > 0 && (
         <Collapsible className="mb-6 rounded-xl border-[0.5px] border-components-panel-border bg-background-section">
-          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left">
+          <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-start">
             <div>
               <div className="system-sm-medium text-text-primary">
                 {t(($) => $[`${prefixEmbedded}.hiddenInputs.title`], { ns: 'appOverview' })}
@@ -309,7 +309,7 @@ const EmbeddedContent = ({
                   'mt-6',
                 )}
               >
-                <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
+                <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 ps-3 pe-1">
                   <div
                     id={`${previewLabelId}-${v}`}
                     className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary"
@@ -366,7 +366,7 @@ const EmbeddedContent = ({
                       </pre>
                     </div>
                   </ScrollAreaViewport>
-                  <ScrollAreaScrollbar orientation="vertical" className="right-0">
+                  <ScrollAreaScrollbar orientation="vertical" className="inset-e-0">
                     <ScrollAreaThumb />
                   </ScrollAreaScrollbar>
                   <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">

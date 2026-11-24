@@ -8,11 +8,11 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
-from typing import Annotated, NoReturn
+from typing import Annotated, NoReturn, assert_never
 
 from flask import Response, request
 from flask_restx import Resource
-from pydantic import ConfigDict, WithJsonSchema
+from pydantic import WithJsonSchema
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
@@ -24,10 +24,26 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    ParagraphInputConfig,
+    SelectInputConfig,
+)
 from extensions.ext_database import db
-from factories.human_input_v2_form_presentation import build_form_presentation
+from factories.human_input_v2_form_presentation import build_service_api_form_presentation
 from fields.base import ResponseModel
+from fields.human_input_v2 import (
+    HumanInputActionResponse,
+    HumanInputFileListResponse,
+    HumanInputFileResponse,
+    HumanInputParagraphResponse,
+    HumanInputResponse,
+    HumanInputSelectResponse,
+    HumanInputStringListSourceResponse,
+    HumanInputStringSourceResponse,
+)
 from libs.external_api import error_responses
 from libs.helper import extract_remote_ip, to_timestamp
 from models.model import App, EndUser
@@ -55,14 +71,14 @@ Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 
 class HumanInputFormDefinitionResponse(ResponseModel):
     form_content: str
-    inputs: list[FormInputConfig]
+    inputs: list[HumanInputResponse]
     resolved_default_values: dict[str, str]
-    user_actions: list[UserActionConfig]
+    user_actions: list[HumanInputActionResponse]
     expiration_time: Int64 | None = None
 
 
 class HumanInputFormSubmitResponse(ResponseModel):
-    model_config = ConfigDict(extra="forbid")
+    pass
 
 
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
@@ -97,13 +113,61 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
         raise NotFound("Form not found")
 
 
+def _form_input_response(form_input: FormInputConfig) -> HumanInputResponse:
+    """Project a trusted input into its response DTO, preserving every wire value."""
+    match form_input:
+        case ParagraphInputConfig():
+            source = form_input.default
+            return HumanInputParagraphResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="paragraph",
+                default=(
+                    HumanInputStringSourceResponse(type=source.type, selector=list(source.selector), value=source.value)
+                    if source is not None
+                    else None
+                ),
+            )
+        case SelectInputConfig():
+            source = form_input.option_source
+            return HumanInputSelectResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="select",
+                option_source=HumanInputStringListSourceResponse(
+                    type=source.type, selector=list(source.selector), value=list(source.value)
+                ),
+            )
+        case FileInputConfig():
+            return HumanInputFileResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="file",
+                allowed_file_types=list(form_input.allowed_file_types),
+                allowed_file_extensions=list(form_input.allowed_file_extensions),
+                allowed_file_upload_methods=list(form_input.allowed_file_upload_methods),
+            )
+        case FileListInputConfig():
+            return HumanInputFileListResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="file-list",
+                allowed_file_types=list(form_input.allowed_file_types),
+                allowed_file_extensions=list(form_input.allowed_file_extensions),
+                allowed_file_upload_methods=list(form_input.allowed_file_upload_methods),
+                number_limits=form_input.number_limits,
+            )
+        case _:
+            assert_never(form_input)
+
+
 def _jsonify_v2_form_definition(form: V2Form) -> Response:
-    presentation = build_form_presentation(form.resolved_form)
+    """Serialize an authorized form using explicitly constructed response DTOs."""
+    presentation = build_service_api_form_presentation(form.resolved_form)
     response = HumanInputFormDefinitionResponse(
         form_content=presentation.form_content,
-        inputs=presentation.inputs,
+        inputs=[_form_input_response(form_input) for form_input in presentation.inputs],
         resolved_default_values=presentation.resolved_default_values,
-        user_actions=presentation.user_actions,
+        user_actions=[
+            HumanInputActionResponse(id=action.id, title=action.title, button_style=action.button_style)
+            for action in presentation.user_actions
+        ],
         expiration_time=to_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
     )
     return Response(response.model_dump_json(), mimetype="application/json")

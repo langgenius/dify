@@ -2,7 +2,7 @@ import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n'
 import type { AppData, ConversationItem } from '@/models/share'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -16,12 +16,12 @@ import { changeLanguage } from '@/i18n/client'
 import { consoleQuery } from '@/service/console'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
-  useInvalidateShareConversations,
-  useShareChatList,
-  useShareConversationName,
-  useShareConversations,
-} from '@/service/use-share'
-import { useGetTryAppParams } from '@/service/use-try-app'
+  shareChatListQueryOptions,
+  shareConversationNameQueryOptions,
+  shareConversationsQueryOptions,
+  shareQueryKeys,
+} from '@/service/share-queries'
+import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
@@ -79,7 +79,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const webAppInfo = useWebAppStore((s) => s.appInfo)
   const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore((s) => s.appMeta)
-  const { data: tryAppParams } = useGetTryAppParams(isTryApp ? tryAppId! : '')
+  const { data: tryAppParams } = useQuery(tryAppParamsQueryOptions(isTryApp ? tryAppId! : ''))
   const webAppParams = useWebAppStore((s) => s.appParams)
   const appParams = isTryApp ? tryAppParams : webAppParams
   const appId = useMemo(() => {
@@ -138,25 +138,33 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useShareConversations({
-    appSourceType,
-    appId,
-    pinned: true,
-    limit: 100,
-  })
-  const { data: appConversationData, isLoading: appConversationDataLoading } =
-    useShareConversations({
+  const { data: appPinnedConversationData } = useQuery(
+    shareConversationsQueryOptions({
+      appSourceType,
+      appId,
+      pinned: true,
+      limit: 100,
+    }),
+  )
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    shareConversationsQueryOptions({
       appSourceType,
       appId,
       pinned: false,
       limit: 100,
-    })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
-    conversationId: chatShouldReloadKey,
-    appSourceType,
-    appId,
-  })
-  const invalidateShareConversations = useInvalidateShareConversations()
+    }),
+  )
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useQuery(
+    shareChatListQueryOptions({
+      conversationId: chatShouldReloadKey,
+      appSourceType,
+      appId,
+    }),
+  )
+  const queryClient = useQueryClient()
+  const invalidateShareConversations = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
+  }, [queryClient])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(
@@ -274,16 +282,18 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useShareConversationName(
-    {
-      conversationId: newConversationId,
-      appSourceType,
-      appId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      enabled: !isTryApp,
-    },
+  const { data: newConversation } = useQuery(
+    shareConversationNameQueryOptions(
+      {
+        conversationId: newConversationId,
+        appSourceType,
+        appId,
+      },
+      {
+        refetchOnWindowFocus: false,
+        enabled: !isTryApp,
+      },
+    ),
   )
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {

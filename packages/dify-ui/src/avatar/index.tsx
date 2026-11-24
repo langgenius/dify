@@ -23,7 +23,7 @@ const avatarSizeVariants = cva('', {
 })
 
 const avatarClassName =
-  'relative inline-flex size-[var(--avatar-size,--spacing(8))] shrink-0 items-center justify-center overflow-hidden rounded-full align-middle text-[length:var(--avatar-font-size,var(--text-xs))] ring-components-panel-bg select-none group-[&]/avatar-group:ring-1'
+  'relative inline-flex size-[var(--avatar-size,--spacing(8))] shrink-0 items-center justify-center overflow-hidden rounded-full align-middle text-[length:var(--avatar-font-size,var(--text-xs))] border-components-panel-bg select-none group-[&]/avatar-group:border'
 
 type AvatarSize = NonNullable<VariantProps<typeof avatarSizeVariants>['size']>
 type AvatarProps = BaseAvatar.Root.Props & { size?: AvatarSize }
@@ -77,7 +77,7 @@ function AvatarGroup({ size, className, ...props }: AvatarGroupProps) {
   return (
     <span
       className={cn(
-        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle',
+        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle *:z-[calc(sibling-count()-sibling-index()+1)]',
         avatarSizeVariants({ size }),
         className,
       )}

@@ -9,6 +9,7 @@ from configs import dify_config
 from constants.languages import languages
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now, utc_now
 from libs.helper import RateLimiter
 from libs.oauth import GitHubOAuth, GoogleOAuth
@@ -87,7 +88,6 @@ from services.account_activation_service import (
     AccountActivationService,
     InvitationTokenStore,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
 from services.account_change_email_service import AccountChangeEmailService
 from services.account_deletion_feedback_service import AccountDeletionFeedbackService
@@ -98,6 +98,7 @@ from services.account_integration_service import AccountIntegrationService
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.workspace.gateways import WorkspaceMemberCapacityGateway
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 
 
@@ -209,6 +210,7 @@ def build_account_services(
         member_access_sync=RBACWorkspaceMemberAccessSync(
             enabled=dify_config.RBAC_ENABLED,
         ),
+        capacity=WorkspaceMemberCapacityGateway(workspaces=workspace_repository, redis=redis),
     )
     return AccountServices(
         lifecycle=lifecycle,
@@ -227,7 +229,6 @@ def build_account_services(
             invitations=AccountActivationConsoleAuthInvitationGateway(
                 tokens=invitation_tokens,
                 accounts=activation_accounts,
-                activation=activation,
             ),
             policies=DeploymentConsoleAuthPolicyGateway(
                 billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
@@ -249,7 +250,9 @@ def build_account_services(
             ),
         ),
         avatar=AccountAvatarService(
-            files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
+            avatars=accounts,
+            sign_file_url=file_helpers.get_signed_file_url,
+            console_api_url=dify_config.CONSOLE_API_URL,
         ),
         change_email=AccountChangeEmailService(
             accounts=accounts,

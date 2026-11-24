@@ -23,7 +23,6 @@ vi.mock('@/service/base', () => ({
     url.endsWith('/account/profile') && options.request.method === 'GET'
       ? mockGet(url, init, options)
       : mockRequest(url, init, options),
-  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({

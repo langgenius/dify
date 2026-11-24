@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { I18nText } from '@/i18n/language'
-import type { CodeBasedExtensionItem } from '@/models/common'
+import type { CodeBasedExtensionItem } from '@/service/console/code-based-extension-query'
 import { LanguagesSupported } from '@/i18n/language'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {

@@ -18,8 +18,8 @@ import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permiss
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
+import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
 import { createCustomCollection } from '@/service/tools'
-import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 
 const ToolBrowser = dynamic(() => import('./tool-browser'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
@@ -90,8 +90,12 @@ export function ToolPickerContent({
     consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
   )
 
-  const { plugins: featuredPlugins = [], isLoading: isFeaturedLoading } =
-    useFeaturedToolsRecommendations(enable_marketplace)
+  const { data: featuredPlugins = [], isLoading: isFeaturedLoading } = useQuery(
+    marketplaceCollectionPluginsQueryOptions({
+      collection: '__recommended-plugins-tools',
+      enabled: enable_marketplace,
+    }),
+  )
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
     if (scope === 'plugins') {

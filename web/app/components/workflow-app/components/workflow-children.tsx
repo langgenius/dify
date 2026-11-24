@@ -26,7 +26,6 @@ import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import WorkflowHeader from './workflow-header'
-import WorkflowPanel from './workflow-panel'
 
 const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,
@@ -196,7 +195,6 @@ const WorkflowChildren = () => {
         />
       )}
       <WorkflowHeader />
-      <WorkflowPanel />
     </>
   )
 }

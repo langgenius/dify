@@ -1,26 +1,11 @@
-import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { EmojiIcon } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
-
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage: vi.fn<() => Promise<PostFilesUploadResponse>>(),
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'files.upload.post': uploadImage }),
-  }
-})
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 const emojis = [
   '😀',
@@ -44,6 +29,20 @@ const emojis = [
   '🤓',
   '😎',
 ]
+const fake = setupFakeApi(() => ({
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
+      },
+    },
+  },
+}))
+
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
 
 function Harness() {
@@ -172,12 +171,7 @@ it('distinguishes keyboard focus from the selected color', async () => {
 })
 
 it('locks image editing during submission and restores it after failure', async () => {
-  let rejectUpload!: (reason: Error) => void
-  uploadImage.mockReturnValueOnce(
-    new Promise((_, reject) => {
-      rejectUpload = reject
-    }),
-  )
+  const upload = hold(fake.console.files.upload.post)
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   await render(
@@ -202,11 +196,12 @@ it('locks image editing during submission and restores it after failure', async 
   await expect.element(crop).toHaveFocus()
   const zoom = page.getByRole('slider', { name: 'app.iconPicker.zoom' })
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
-  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
   await expect.element(zoom).toBeDisabled()
+  // Cropping and encoding take a while on a slow runner; wait for the request itself.
+  await upload.arrived
   cropElement.focus()
   expect(document.activeElement).not.toBe(cropElement)
-  rejectUpload(new Error('Upload failed'))
+  upload.reject(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(zoom).toBeEnabled()
   cropElement.focus()
