@@ -99,7 +99,7 @@ const createCurrentNodeVar = (overrides: Partial<VarInInspect> = {}): currentVar
 
 const renderRight = (
   currentNodeVar: currentVarType,
-  options: { bottomPanelWidth?: number; handleOpenMenu?: () => void } = {},
+  options: { handleOpenMenu?: () => void } = {},
 ) => {
   const handleOpenMenu = options.handleOpenMenu ?? vi.fn()
   const { queryClient } = createConsoleQueryWrapper()
@@ -123,7 +123,6 @@ const renderRight = (
       nodes: [createNode({ id: 'node-1', data: { type: BlockEnum.Code, title: 'Code' } })],
       edges: [],
       initialStoreState: {
-        bottomPanelWidth: options.bottomPanelWidth ?? 560,
         nodesWithInspectVars:
           currentNodeVar.var.type === VarInInspectType.conversation
             ? []
@@ -154,7 +153,7 @@ describe('VariableInspect Right', () => {
 
   it('opens the variable menu from the named narrow-panel command', async () => {
     const user = userEvent.setup()
-    const { handleOpenMenu } = renderRight(createCurrentNodeVar(), { bottomPanelWidth: 400 })
+    const { handleOpenMenu } = renderRight(createCurrentNodeVar())
 
     await user.click(
       screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.title' }),

@@ -3151,14 +3151,6 @@
       "count": 4
     }
   },
-  "web/service/__tests__/sse-generator-post.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/service/__tests__/use-workflow.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2
@@ -3190,10 +3182,10 @@
       "count": 2
     },
     "no-restricted-properties": {
-      "count": 3
+      "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 14
+      "count": 13
     },
     "typescript/no-explicit-any": {
       "count": 2
@@ -3206,14 +3198,6 @@
   },
   "web/service/console/server.ts": {
     "no-restricted-properties": {
-      "count": 1
-    }
-  },
-  "web/service/debug.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -3293,14 +3277,6 @@
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
-    }
-  },
-  "web/service/workflow-generator.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/types/assets.d.ts": {
