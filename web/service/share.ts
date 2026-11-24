@@ -1,8 +1,28 @@
 import type {
   MessageFeedbackPayload,
+  PostInstalledAppsByInstalledAppIdChatMessagesData,
+  PostInstalledAppsByInstalledAppIdCompletionMessagesData,
+  PostInstalledAppsByInstalledAppIdWorkflowsRunData,
   SimpleConversation,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
+import type {
+  PostTrialAppsByAppIdChatMessagesData,
+  PostTrialAppsByAppIdCompletionMessagesData,
+  PostTrialAppsByAppIdWorkflowsRunData,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
+import type {
+  PostChatMessagesData,
+  PostCompletionMessagesData,
+  PostWorkflowsRunData,
+} from '@dify/contracts/api/web/types.gen'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  StreamCallbacks,
+  StreamSender,
+} from './event-stream'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
@@ -27,9 +47,9 @@ import {
   getPublic as get,
   patchPublic as patch,
   postPublic as post,
-  ssePost,
   upload,
 } from './base'
+import { streamEvents } from './event-stream'
 import { resolveWebAppAddress } from './webapp-address'
 import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
 import { webAppClient } from './webapp-client'
@@ -66,7 +86,7 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', appSourceType: AppS
   }
 }
 
-export function getUrl(url: string, appSourceType: AppSourceType, appId: string) {
+function getUrl(url: string, appSourceType: AppSourceType, appId: string) {
   const hasPrefix = appSourceType !== AppSourceType.webApp
   return hasPrefix
     ? `${apiPrefix[appSourceType]}/${appId}/${url.startsWith('/') ? url.slice(1) : url}`
@@ -78,7 +98,7 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
+  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
     return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
@@ -100,6 +120,75 @@ export const stopChatMessageResponding = async (
   )
 }
 
+// The app's input form builds these bodies, so they are passed through as the contract bodies.
+
+/** Streams a chat message for a WebApp, installed app or trial app. */
+export function chatMessagesSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.chatMessages.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdChatMessagesData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.chatMessages.post(
+        { params: { app_id: appId }, body: body as PostTrialAppsByAppIdChatMessagesData['body'] },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.chatMessages.post({ body: body as PostChatMessagesData['body'] }, options)
+}
+
+function completionMessagesSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.completionMessages.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdCompletionMessagesData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.completionMessages.post(
+        {
+          params: { app_id: appId },
+          body: body as PostTrialAppsByAppIdCompletionMessagesData['body'],
+        },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.completionMessages.post(
+      { body: body as PostCompletionMessagesData['body'] },
+      options,
+    )
+}
+
+function workflowRunSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.workflows.run.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdWorkflowsRunData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.workflows.run.post(
+        { params: { app_id: appId }, body: body as PostTrialAppsByAppIdWorkflowsRunData['body'] },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.workflows.run.post({ body: body as PostWorkflowsRunData['body'] }, options)
+}
+
 export const sendCompletionMessage = async (
   body: Record<string, unknown>,
   {
@@ -118,44 +207,28 @@ export const sendCompletionMessage = async (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
-  return ssePost(
-    getUrl('completion-messages', appSourceType, installedAppId),
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
-    {
-      onData,
-      onCompleted,
-      isPublicAPI: getIsPublicAPI(appSourceType),
-      onError,
-      onMessageReplace,
-      getAbortController,
-    },
-  )
+  const send = completionMessagesSender(appSourceType, installedAppId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), {
+    onData,
+    onCompleted,
+    isPublicAPI: getIsPublicAPI(appSourceType),
+    onError,
+    onMessageReplace,
+    getAbortController,
+  })
 }
 
 export const sendWorkflowMessage = async (
   body: Record<string, unknown>,
-  otherOptions: IOtherOptions,
+  otherOptions: StreamCallbacks,
   appSourceType: AppSourceType,
   appId = '',
 ) => {
-  return ssePost(
-    getUrl('workflows/run', appSourceType, appId),
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
-    {
-      ...otherOptions,
-      isPublicAPI: getIsPublicAPI(appSourceType),
-    },
-  )
+  const send = workflowRunSender(appSourceType, appId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), {
+    ...otherOptions,
+    isPublicAPI: getIsPublicAPI(appSourceType),
+  })
 }
 
 export const stopWorkflowMessage = async (
@@ -163,7 +236,7 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
+  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)

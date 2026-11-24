@@ -39,10 +39,24 @@ vi.mock('@/service/base', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/base')>()
   return {
     ...actual,
-    sseGet,
-    ssePost,
   }
 })
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: sseGet })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
 
 vi.mock('@/service/share', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/share')>()
@@ -52,6 +66,7 @@ vi.mock('@/service/share', async (importOriginal) => {
     fetchSuggestedQuestions: vi.fn<typeof actual.fetchSuggestedQuestions>(),
     stopChatMessageResponding: vi.fn<typeof actual.stopChatMessageResponding>(),
     submitHumanInputForm: vi.fn<typeof actual.submitHumanInputForm>(),
+    chatMessagesSender: streams.chatMessagesSender,
   }
 })
 

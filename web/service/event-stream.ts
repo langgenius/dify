@@ -155,6 +155,15 @@ export type StreamRequestOptions = {
  */
 export type StreamRequest = (options: StreamRequestOptions) => Promise<unknown>
 
+/**
+ * Sends a request body built by the stream's owner (e.g. the chat hook) through a generated
+ * client, e.g. `(body, options) => consoleClient.apps.byAppId.chatMessages.post({ params, body }, options)`.
+ */
+export type StreamSender = (
+  body: Record<string, unknown>,
+  options: StreamRequestOptions,
+) => Promise<unknown>
+
 type Frame = Record<string, unknown>
 
 const isRecord = (value: unknown): value is Frame => typeof value === 'object' && value !== null
