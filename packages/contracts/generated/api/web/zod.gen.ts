@@ -2390,6 +2390,10 @@ export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginVerifyPayload
  */
 export const zPostEmailCodeLoginValidityResponse = zAccessTokenResultResponse
 
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * File uploaded successfully
  */
@@ -2503,6 +2507,11 @@ export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
  * Upload token issued successfully
  */
 export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
+
+export const zPostHumanInputFormsFilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
+  url: z.string().optional(),
+})
 
 /**
  * File uploaded successfully
