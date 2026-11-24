@@ -3422,7 +3422,7 @@
       "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 22
+      "count": 11
     },
     "typescript/no-explicit-any": {
       "count": 1
@@ -3472,22 +3472,6 @@
     },
     "typescript/no-deprecated": {
       "count": 4
-    }
-  },
-  "web/service/use-share.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/use-triggers.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/service/use-try-app.ts": {
