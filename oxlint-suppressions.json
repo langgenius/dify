@@ -3275,14 +3275,11 @@
     }
   },
   "web/service/plugins.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/refresh-token.ts": {
