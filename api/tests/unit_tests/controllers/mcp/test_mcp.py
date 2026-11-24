@@ -1023,11 +1023,11 @@ class TestMcpRequestErrorsCases:
 
     @staticmethod
     @pytest.fixture
-    def enterprise_edition(monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(module.dify_config, "DEPLOYMENT_EDITION", module.DeploymentEdition.ENTERPRISE)
+    def identity_forwarding_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(module.FeatureService, "is_mcp_identity_forwarding_enabled", lambda: True)
 
     @staticmethod
-    @pytest.mark.usefixtures("enterprise_edition")
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
     def test_forwarded_identity_runs_tool_as_verified_user(
         client: FlaskClient, published_server: AppMCPServer, sqlite_session: Session
     ) -> None:
@@ -1060,7 +1060,7 @@ class TestMcpRequestErrorsCases:
         assert end_users[0].name == "alice@example.com"
 
     @staticmethod
-    @pytest.mark.usefixtures("enterprise_edition")
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
     def test_rejected_forwarded_identity_does_not_run_tool(client: FlaskClient, sqlite_session: Session) -> None:
         with (
             patch.object(
@@ -1081,7 +1081,7 @@ class TestMcpRequestErrorsCases:
         assert sqlite_session.scalars(select(EndUser)).all() == []
 
     @staticmethod
-    @pytest.mark.usefixtures("enterprise_edition")
+    @pytest.mark.usefixtures("identity_forwarding_enabled")
     def test_forwarded_identity_is_only_verified_for_tool_calls(client: FlaskClient) -> None:
         headers = {module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
         with patch.object(module.EnterpriseService, "verify_mcp_identity_token") as verify:
@@ -1093,10 +1093,10 @@ class TestMcpRequestErrorsCases:
         verify.assert_not_called()
 
     @staticmethod
-    def test_community_edition_ignores_forwarded_identity(
+    def test_forwarded_identity_is_ignored_when_forwarding_is_disabled(
         client: FlaskClient, published_server: AppMCPServer, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(module.dify_config, "DEPLOYMENT_EDITION", module.DeploymentEdition.COMMUNITY)
+        monkeypatch.setattr(module.FeatureService, "is_mcp_identity_forwarding_enabled", lambda: False)
         run_as: list[str] = []
 
         def generate(**kwargs):

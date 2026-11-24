@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from controllers.common.access_response import mcp_server_not_found_response
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.mcp import mcp_ns
@@ -14,7 +13,6 @@ from core.db.session_factory import session_factory
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request, negotiate_protocol_version
 from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
-from enums import DeploymentEdition
 from fields.base import ResponseModel
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
@@ -23,6 +21,7 @@ from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app.mcp_server_service import AppMCPServerStatus
 from services.enterprise.base import MCPTokenError
 from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 
 _MCP_METHODS = frozenset(
     method
@@ -341,7 +340,7 @@ class MCPAppApi(Resource):
         forwarded_identity_token = request.headers.get(FORWARDED_IDENTITY_HEADER)
         if (
             forwarded_identity_token
-            and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+            and FeatureService.is_mcp_identity_forwarding_enabled()
             and isinstance(mcp_request.root, mcp_types.CallToolRequest)
         ):
             try:
