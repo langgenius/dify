@@ -10,45 +10,29 @@ import type {
 // oxlint-disable-next-line no-restricted-imports
 import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
 // oxlint-disable-next-line no-restricted-imports
-import { get, post, ssePost, upload } from '@/service/base'
+import { get, ssePost } from '@/service/base'
+import { consoleClient } from '@/service/console'
 
 export async function uploadSkillFile(
   file: File,
   options?: {
     onProgress?: (progress: number) => void
-    xhr?: XMLHttpRequest
+    signal?: AbortSignal
   },
-) {
-  const body = new FormData()
-  body.append('file', file)
-
-  if (options?.onProgress) {
-    const onProgress = (event: ProgressEvent) => {
-      if (!event.lengthComputable) return
-
-      options.onProgress?.(Math.floor((event.loaded / event.total) * 100))
-    }
-
-    const response = await upload(
-      {
-        xhr: options.xhr ?? new XMLHttpRequest(),
-        data: body,
-        onprogress: onProgress,
-      },
-      false,
-      '/workspaces/current/skills/files/upload',
-    )
-
-    return response as SkillFileUploadResponse
-  }
-
-  return await post<SkillFileUploadResponse>(
-    '/workspaces/current/skills/files/upload',
-    { body },
+): Promise<SkillFileUploadResponse> {
+  const onProgress = options?.onProgress
+  return consoleClient.workspaces.current.skills.files.upload.post(
+    { body: { file } },
     {
-      bodyStringify: false,
-      deleteContentType: true,
-      silent: true,
+      context: {
+        silent: true,
+        ...(onProgress && {
+          onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
+            onProgress(Math.floor((loaded / total) * 100))
+          },
+        }),
+      },
+      signal: options?.signal,
     },
   )
 }

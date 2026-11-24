@@ -5,7 +5,9 @@ import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+// oxlint-disable-next-line no-restricted-imports -- The public WebApp upload contract declares no multipart body yet.
 import { upload } from '@/service/base'
+import { consoleClient } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import { FileAppearanceTypeEnum } from './types'
 
@@ -48,30 +50,43 @@ type FileUploadParams = {
   onSuccessCallback: (res: FileUploadResponse) => void
   onErrorCallback: (error?: unknown) => void
 }
-type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
+type FileUpload = (v: FileUploadParams, isPublic?: boolean, trialAppId?: string) => void
 export const fileUpload: FileUpload = (
   { file, onProgressCallback, onSuccessCallback, onErrorCallback },
   isPublic,
-  url,
+  trialAppId,
 ) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const onProgress = (e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor((e.loaded / e.total) * 100)
-      onProgressCallback(percent)
-    }
+  const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+    onProgressCallback(Math.floor((loaded / total) * 100))
+  }
+  const context = { silent: true, onUploadProgress }
+
+  let uploading: Promise<unknown>
+  if (isPublic) {
+    const formData = new FormData()
+    formData.append('file', file)
+    // oxlint-disable-next-line typescript/no-deprecated -- The public WebApp upload contract declares no multipart body yet.
+    uploading = upload(
+      {
+        // oxlint-disable-next-line no-restricted-globals -- The legacy public upload transport takes the XHR.
+        xhr: new XMLHttpRequest(),
+        data: formData,
+        onprogress: (event) => {
+          if (event.lengthComputable) onUploadProgress(event)
+        },
+      },
+      true,
+    )
+  } else if (trialAppId) {
+    uploading = consoleClient.trialApps.byAppId.files.upload.post(
+      { params: { app_id: trialAppId }, body: { file } },
+      { context },
+    )
+  } else {
+    uploading = consoleClient.files.upload.post({ body: { file } }, { context })
   }
 
-  upload(
-    {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      onprogress: onProgress,
-    },
-    isPublic,
-    url,
-  )
+  uploading
     .then((res) => {
       onSuccessCallback(res as FileUploadResponse)
     })

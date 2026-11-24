@@ -534,7 +534,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/base/file-uploader/file-preview-content.tsx": {
@@ -566,15 +566,6 @@
     }
   },
   "web/app/components/base/file-uploader/utils.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -640,17 +631,6 @@
     },
     "no-restricted-globals": {
       "count": 2
-    }
-  },
-  "web/app/components/base/image-uploader/utils.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/audio-block.tsx": {
@@ -893,11 +873,6 @@
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/custom/custom-web-app-brand/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
@@ -3108,11 +3083,8 @@
     "dify/require-disable-directive-description": {
       "count": 2
     },
-    "no-restricted-globals": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
-      "count": 5
+      "count": 3
     }
   },
   "web/features/skills/detail/files/editor.tsx": {
@@ -3126,11 +3098,6 @@
   "web/features/skills/detail/files/tree-items.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/features/skills/detail/files/tree.tsx": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "web/features/skills/detail/page.tsx": {
