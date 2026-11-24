@@ -18,14 +18,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: PermissionType.everyone,
-        debug_permission: PermissionType.everyone,
-      }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
+      }),
     }),
   }
 })

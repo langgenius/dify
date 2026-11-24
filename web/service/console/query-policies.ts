@@ -732,6 +732,28 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 queryOptions: { context: { silent: true } },
               },
             },
+            autoUpgrade: {
+              fetch: {
+                get: {
+                  queryOptions: { staleTime: 60 * 1000 },
+                },
+              },
+              exclude: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      return context.client.invalidateQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+                            input: { query: { category: variables.body.category } },
+                          }),
+                      })
+                    },
+                  },
+                },
+              },
+            },
           },
           endpoints: {
             post: {

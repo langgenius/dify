@@ -40,7 +40,6 @@ const service = vi.hoisted(() => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: service.credentialInfo,
   getMarketplace: service.getMarketplace,
   postMarketplace: service.postMarketplace,
 }))
@@ -55,6 +54,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.install.marketplace.post': service.installPackage,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get':
+        service.credentialInfo,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get': async () => ({
         schema: [],
@@ -701,12 +702,9 @@ describe('AgentTools', () => {
           team_credentials: {},
         },
       ]
-      service.credentialInfo.mockImplementation(async (url: string) => {
-        if (
-          new URL(url, 'http://localhost').pathname !==
-          '/workspaces/current/tool-provider/builtin/google/credential/info'
-        )
-          throw new Error(`Unexpected credential GET: ${url}`)
+      service.credentialInfo.mockImplementation(async ({ params }) => {
+        if (params.provider !== 'google')
+          throw new Error(`Unexpected credential provider: ${params.provider}`)
         return credentialInfo([
           {
             id: 'workspace-oauth',

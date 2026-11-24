@@ -29,7 +29,6 @@ import {
   useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
-  usePluginAutoUpgradeSettings,
   usePluginTaskList,
   useRemoveFilteredInstalledPluginPageOnUnmount,
 } from '../use-plugins'
@@ -453,7 +452,9 @@ describe('use-plugins mutations', () => {
 
   it('optimistically updates category auto-upgrade cache before the request finishes', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const previousAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 0,
@@ -506,7 +507,7 @@ describe('use-plugins mutations', () => {
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'permission']
+    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
     const previousPermission: Permissions = {
       install_permission: PermissionType.admin,
       debug_permission: PermissionType.admin,
@@ -546,7 +547,9 @@ describe('use-plugins mutations', () => {
 
   it('rolls back category auto-upgrade cache when the request fails', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const previousAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 0,
@@ -596,7 +599,9 @@ describe('use-plugins mutations', () => {
 
   it('clears optimistic category auto-upgrade cache when the request fails without previous cache', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const nextAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 3600,
@@ -635,7 +640,7 @@ describe('use-plugins mutations', () => {
 
   it('rolls back plugin permission cache when the request fails', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'permission']
+    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
     const previousPermission: Permissions = {
       install_permission: PermissionType.admin,
       debug_permission: PermissionType.admin,
@@ -1096,10 +1101,13 @@ describe('usePluginTaskList', () => {
 
   it('adds the task from an install start response to the task list cache', async () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
     mockGet.mockResolvedValue({ tasks: [] })
 
     const startedTask: PluginInstallTask = {
@@ -1153,10 +1161,13 @@ describe('usePluginTaskList', () => {
 
   it('replaces an existing task with the latest start response task data', () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
     queryClient.setQueryData(['plugins', 'pluginTaskList'], {
       tasks: [
         {
@@ -1227,10 +1238,13 @@ describe('usePluginTaskList', () => {
 
   it('keeps a locally started unfinished task when an immediate refetch returns a stale task list', async () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
     const staleTask = {
       id: 'task-old',
       created_at: '2026-06-04T03:34:59.578653Z',
@@ -1300,53 +1314,6 @@ describe('usePluginTaskList', () => {
           },
           staleTask,
         ],
-      })
-    })
-  })
-})
-
-describe('usePluginAutoUpgradeSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('exposes backend settings only after the request resolves', async () => {
-    const queryClient = createQueryClient()
-    const backendAutoUpgrade = {
-      strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-      upgrade_time_of_day: 0,
-      upgrade_mode: AUTO_UPDATE_MODE.exclude,
-      exclude_plugins: [],
-      include_plugins: [],
-    }
-    let resolveSettings!: (value: unknown) => void
-    mockGet.mockReturnValue(
-      new Promise((resolve) => {
-        resolveSettings = resolve
-      }),
-    )
-
-    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.tool), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    expect(result.current.data).toBeUndefined()
-    await waitFor(() =>
-      expect(mockGet).toHaveBeenCalledWith(
-        'http://localhost:5001/console/api/workspaces/current/plugin/auto-upgrade/fetch?category=tool',
-      ),
-    )
-    await act(async () =>
-      resolveSettings({
-        category: PluginCategoryEnum.tool,
-        auto_upgrade: backendAutoUpgrade,
-      }),
-    )
-
-    await waitFor(() => {
-      expect(result.current.data).toEqual({
-        category: PluginCategoryEnum.tool,
-        auto_upgrade: backendAutoUpgrade,
       })
     })
   })

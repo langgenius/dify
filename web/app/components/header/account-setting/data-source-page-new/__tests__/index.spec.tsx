@@ -48,8 +48,7 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
 })
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -59,8 +58,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.byCategory.list.get': api.installed,
       'workspaces.current.plugin.list.latestVersions.post': async () => ({ versions: {} }),
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
