@@ -21,21 +21,18 @@ const { getInstalledIds, search, declaration } = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.installedIds.get': getInstalledIds,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.marketplace.pkg.get': declaration,
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.marketplace.pkg.get': declaration,
     }),
   }
 })

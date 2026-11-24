@@ -106,7 +106,6 @@ const SnippetMainContent = ({
 
   return (
     <SnippetChildren
-      snippetId={snippetId}
       fields={fields}
       canSave={canSave}
       canEdit={canEdit}

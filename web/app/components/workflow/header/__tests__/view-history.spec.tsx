@@ -1,5 +1,9 @@
+import type {
+  GetAppsByAppIdAdvancedChatWorkflowRunsResponse,
+  GetAppsByAppIdWorkflowRunsResponse,
+  WorkflowRunForListResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowRunHistory, WorkflowRunHistoryResponse } from '@/types/workflow'
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -11,22 +15,36 @@ import { ControlMode, WorkflowRunningStatus } from '../../types'
 import ScrollToSelectedNodeButton from '../scroll-to-selected-node-button'
 import ViewHistory from '../view-history'
 
-const fetchHistory = vi.hoisted(() => vi.fn<() => Promise<WorkflowRunHistoryResponse>>())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: fetchHistory,
-}))
+type HistoryInput = { params: { app_id: string } }
+const fetchHistory = vi.hoisted(() =>
+  vi.fn<(input: HistoryInput) => Promise<GetAppsByAppIdWorkflowRunsResponse>>(),
+)
+const fetchChatHistory = vi.hoisted(() =>
+  vi.fn<(input: HistoryInput) => Promise<GetAppsByAppIdAdvancedChatWorkflowRunsResponse>>(),
+)
+// boundary: run history API responses
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflowRuns.get': fetchHistory,
+      'apps.byAppId.advancedChat.workflowRuns.get': fetchChatHistory,
+    }),
+  }
+})
 
-const createHistoryItem = (overrides: Partial<WorkflowRunHistory> = {}): WorkflowRunHistory => ({
+const createHistoryResponse = (
+  data: WorkflowRunForListResponse[] = [],
+): GetAppsByAppIdWorkflowRunsResponse => ({ data, has_more: false, limit: 10 })
+
+const createHistoryItem = (
+  overrides: Partial<WorkflowRunForListResponse> = {},
+): WorkflowRunForListResponse => ({
   id: 'run-1',
   version: 'v1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  inputs: {},
   status: WorkflowRunningStatus.Succeeded,
-  outputs: {},
   elapsed_time: 1,
   total_tokens: 2,
   total_steps: 3,
@@ -51,19 +69,18 @@ function renderHistory(
 }
 
 beforeEach(() => {
-  fetchHistory.mockReset().mockResolvedValue({ data: [] })
+  fetchHistory.mockReset().mockResolvedValue(createHistoryResponse())
+  fetchChatHistory.mockReset().mockResolvedValue(createHistoryResponse())
 })
 
 it('fetches only after opening history and clears log modals when closing it', async () => {
   const user = userEvent.setup()
   const clearModals = vi.fn()
-  renderHistory(
-    <ViewHistory historyUrl="/history" withText onClearLogAndMessageModal={clearModals} />,
-  )
+  renderHistory(<ViewHistory withText onClearLogAndMessageModal={clearModals} />)
   expect(fetchHistory).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
   expect(await screen.findByText('workflow.common.notRunning')).toBeVisible()
-  expect(fetchHistory).toHaveBeenCalledExactlyOnceWith('/history')
+  expect(fetchHistory).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
   await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
   expect(clearModals).toHaveBeenCalledOnce()
   expect(screen.queryByText('workflow.common.runHistory')).not.toBeInTheDocument()
@@ -72,13 +89,13 @@ it('fetches only after opening history and clears log modals when closing it', a
 it('clears log modals on the icon trigger and displays loading until history arrives', async () => {
   const user = userEvent.setup()
   const clearModals = vi.fn()
-  const response = createDeferred<WorkflowRunHistoryResponse>()
+  const response = createDeferred<GetAppsByAppIdWorkflowRunsResponse>()
   fetchHistory.mockReturnValueOnce(response.promise)
-  renderHistory(<ViewHistory historyUrl="/history" onClearLogAndMessageModal={clearModals} />)
+  renderHistory(<ViewHistory onClearLogAndMessageModal={clearModals} />)
   await user.click(screen.getByRole('button', { name: 'workflow.common.viewRunHistory' }))
   expect(clearModals).toHaveBeenCalledOnce()
   expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
-  await act(async () => response.resolve({ data: [createHistoryItem()] }))
+  await act(async () => response.resolve(createHistoryResponse([createHistoryItem()])))
   expect(await screen.findByText(/^Test Run \(/)).toBeVisible()
   expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
 })
@@ -91,10 +108,10 @@ it('backs up the draft, clears node selection and editing panels, and selects th
     status: WorkflowRunningStatus.Paused,
     finished_at: 0,
   })
-  fetchHistory.mockResolvedValue({ data: [run] })
+  fetchHistory.mockResolvedValue(createHistoryResponse([run]))
   const { store } = renderHistory(
     <>
-      <ViewHistory historyUrl="/history" withText />
+      <ViewHistory withText />
       <ScrollToSelectedNodeButton />
     </>,
     {
@@ -112,7 +129,12 @@ it('backs up the draft, clears node selection and editing panels, and selects th
   await user.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
   await user.click(await screen.findByText('Test Run (Paused)'))
   expect(store.getState()).toMatchObject({
-    historyWorkflowData: run,
+    historyWorkflowData: {
+      id: 'run-paused',
+      status: WorkflowRunningStatus.Paused,
+      conversation_id: undefined,
+      finished_at: 0,
+    },
     showInputsPanel: false,
     showEnvPanel: false,
     showDebugAndPreviewPanel: false,
@@ -126,10 +148,12 @@ it('backs up the draft, clears node selection and editing panels, and selects th
 
 it('identifies chatflow history as chat sessions', async () => {
   const user = userEvent.setup()
-  fetchHistory.mockResolvedValue({ data: [createHistoryItem()] })
-  renderHistory(<ViewHistory historyUrl="/history" withText />, {
+  fetchChatHistory.mockResolvedValue(createHistoryResponse([createHistoryItem()]))
+  renderHistory(<ViewHistory withText />, {
     resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
   })
   await user.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
   expect(await screen.findByText(/^Test Chat \(/)).toBeVisible()
+  expect(fetchChatHistory).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
+  expect(fetchHistory).not.toHaveBeenCalled()
 })

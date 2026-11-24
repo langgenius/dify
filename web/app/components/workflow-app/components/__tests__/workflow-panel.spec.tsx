@@ -1,7 +1,11 @@
+import type {
+  GetAppsByAppIdWorkflowsData,
+  GetAppsByAppIdWorkflowsResponse,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { consoleClient } from '@/service/console'
 import type { fetchRunDetail, fetchTracingList } from '@/service/log'
-import type { FetchWorkflowDraftPageResponse, FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -24,7 +28,13 @@ const api = vi.hoisted(() => ({
   externalTrace: vi.fn<typeof consoleClient.apps.byAppId.traceRuns.bySourceKind.bySourceId.get>(),
   run: vi.fn<typeof fetchRunDetail>(),
   tracing: vi.fn<typeof fetchTracingList>(),
-  history: vi.fn<(url: string, options?: unknown) => Promise<FetchWorkflowDraftPageResponse>>(),
+  history:
+    vi.fn<
+      (input: {
+        params: GetAppsByAppIdWorkflowsData['path']
+        query: GetAppsByAppIdWorkflowsData['query']
+      }) => Promise<GetAppsByAppIdWorkflowsResponse>
+    >(),
   update:
     vi.fn<
       typeof import('@/service/console').consoleClient.apps.byAppId.workflows.byWorkflowId.patch
@@ -43,10 +53,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ appId: 'app-123' }),
   usePathname: () => '/app/app-123/workflow',
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: api.history,
-}))
 vi.mock('@/service/log', () => ({
   fetchRunDetail: api.run,
   fetchTracingList: api.tracing,
@@ -58,6 +64,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.get': api.history,
       'apps.byAppId.workflows.byWorkflowId.patch': api.update,
       'apps.byAppId.workflows.byWorkflowId.delete': api.remove,
       'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
@@ -72,22 +79,17 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-const version = (
-  overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  ...createWorkflowResponseFixture(),
-  id: 'release-1',
-  version: '2026-06-01T00:00:00Z',
-  marked_name: 'First release',
-  conversation_variables: [],
-  environment_variables: [],
-  rag_pipeline_variables: [],
-  graph: { nodes: [], edges: [] },
-  created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
-  updated_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
-  ...overrides,
-})
-let versions: FetchWorkflowDraftResponse[]
+const version = (overrides: Partial<WorkflowResponse> = {}): WorkflowResponse =>
+  createWorkflowResponseFixture({
+    id: 'release-1',
+    version: '2026-06-01T00:00:00Z',
+    marked_name: 'First release',
+    graph: { nodes: [], edges: [] },
+    created_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+    updated_by: { id: 'user-1', name: 'Alice', email: 'alice@example.com' },
+    ...overrides,
+  })
+let versions: WorkflowResponse[]
 const nodes = [createStartNode({ id: 'start', data: { title: 'User input', variables: [] } })]
 const logItem = { id: 'log-1', content: 'Answer', isAnswer: true, workflow_run_id: 'run-1' }
 function OpenPanels() {
@@ -185,10 +187,12 @@ beforeEach(() => {
   })
   api.tracing.mockReset().mockResolvedValue({ data: [] })
   api.retireDebugWorkspaces.mockReset().mockResolvedValue(undefined)
-  api.history.mockReset().mockImplementation(async (url) => {
-    if (url !== '/apps/app-123/workflows') throw new Error(`Unexpected GET: ${url}`)
-    return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
-  })
+  api.history.mockReset().mockImplementation(async () => ({
+    items: versions,
+    page: 1,
+    limit: 10,
+    has_more: false,
+  }))
   api.update.mockReset().mockImplementation(async ({ body }) => {
     const updated = version({
       marked_name: body.marked_name ?? '',
@@ -213,8 +217,9 @@ afterEach(() => {
 it('loads this app’s version history and protects the published version from deletion', async () => {
   const { user } = setup({ showWorkflowVersionHistoryPanel: true })
   expect(await screen.findByText('First release')).toBeInTheDocument()
-  expect(api.history).toHaveBeenCalledWith('/apps/app-123/workflows', {
-    params: { page: 1, limit: 10, user_id: '', named_only: false },
+  expect(api.history).toHaveBeenCalledWith({
+    params: { app_id: 'app-123' },
+    query: { page: 1, limit: 10, user_id: undefined, named_only: false },
   })
   expect(screen.getByText('workflowHistory.versionHistory.latest')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.more' }))

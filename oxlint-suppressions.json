@@ -2206,6 +2206,11 @@
       "count": 5
     }
   },
+  "web/app/components/workflow/nodes/_base/components/workflow-panel/__tests__/index.spec.tsx": {
+    "typescript/no-deprecated": {
+      "count": 2
+    }
+  },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 4
@@ -3447,9 +3452,20 @@
       "count": 1
     }
   },
+  "web/service/use-plugins-auth.ts": {
+    "@tanstack/query/prefer-query-options": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "typescript/no-deprecated": {
+      "count": 2
+    }
+  },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 8
+      "count": 4
     },
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3486,14 +3502,6 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
-  "web/service/use-workflow.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "typescript/no-deprecated": {
       "count": 2
     }
   },
@@ -3536,7 +3544,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/utils/clipboard.ts": {
