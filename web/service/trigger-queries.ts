@@ -14,15 +14,12 @@ import type {
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
 import type { ConsoleClientContext } from '@/service/console'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { mutationOptions } from '@tanstack/react-query'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useInvalid } from './use-base'
-
-const NAME_SPACE = 'triggers'
 
 type GeneratedEventParameter =
   import('@dify/contracts/api/console/workspaces/types.gen').EventParameter
@@ -559,57 +556,54 @@ export const convertToTriggerWithProvider = (
   }
 }
 
-export const useAllTriggerPlugins = (enabled = true) => {
-  return useQuery<TriggerWithProvider[]>({
-    queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
-    queryFn: async () => {
-      const response = await consoleClient.workspaces.current.triggers.get({})
-      return response.map(normalizeTriggerProvider).map(convertToTriggerWithProvider)
-    },
+const normalizeTriggerPlugins = (providers: GeneratedTriggerProvider[]): TriggerWithProvider[] => {
+  return providers.map(normalizeTriggerProvider).map(convertToTriggerWithProvider)
+}
+
+const normalizeTriggerSubscriptions = (
+  subscriptions: GeneratedTriggerSubscription[],
+): TriggerSubscription[] => {
+  return subscriptions.map(normalizeTriggerSubscription)
+}
+
+const normalizeTriggerLogsResponse = (response: {
+  logs: GeneratedRequestLog[]
+}): { logs: TriggerLogEntity[] } => {
+  return {
+    logs: response.logs.map(normalizeTriggerLog),
+  }
+}
+
+export function allTriggerPluginsQueryOptions(enabled = true) {
+  return consoleQuery.workspaces.current.triggers.get.queryOptions({
+    input: {},
+    select: normalizeTriggerPlugins,
     enabled,
   })
 }
 
-export const useInvalidateAllTriggerPlugins = () => {
-  return useInvalid(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }))
-}
-
 // ===== Trigger Subscriptions Management =====
 
-export const useTriggerProviderInfo = (provider: string, enabled = true) => {
-  return useQuery<TriggerProviderApiEntity>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({
+export function triggerProviderInfoQueryOptions(provider: string, enabled = true) {
+  return consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryOptions({
+    input: { params: { provider } },
+    select: normalizeTriggerProvider,
+    enabled: enabled && !!provider,
+  })
+}
+
+export function triggerSubscriptionsQueryOptions(provider: string, enabled = true) {
+  return consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryOptions(
+    {
       input: { params: { provider } },
-    }),
-    queryFn: async () =>
-      normalizeTriggerProvider(
-        await consoleClient.workspaces.current.triggerProvider.byProvider.info.get({
-          params: { provider },
-        }),
-      ),
-    enabled: enabled && !!provider,
-  })
-}
-
-export const useTriggerSubscriptions = (provider: string, enabled = true) => {
-  return useQuery<TriggerSubscription[]>({
-    queryKey:
-      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryKey({
-        input: { params: { provider } },
-      }),
-    queryFn: async () => {
-      const response =
-        await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get({
-          params: { provider },
-        })
-      return response.map(normalizeTriggerSubscription)
+      select: normalizeTriggerSubscriptions,
+      enabled: enabled && !!provider,
     },
-    enabled: enabled && !!provider,
-  })
+  )
 }
 
-export const useCreateTriggerSubscriptionBuilder = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function createTriggerSubscriptionBuilderMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post.mutationKey(),
     mutationFn: (payload: { provider: string; credential_type?: string }) => {
@@ -629,8 +623,8 @@ export const useCreateTriggerSubscriptionBuilder = (context?: ConsoleClientConte
   })
 }
 
-export const useUpdateTriggerSubscriptionBuilder = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function updateTriggerSubscriptionBuilderMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
@@ -655,8 +649,8 @@ export const useUpdateTriggerSubscriptionBuilder = (context?: ConsoleClientConte
   })
 }
 
-export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
-  return useMutation({
+export function verifyAndUpdateTriggerSubscriptionBuilderMutationOptions() {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
@@ -678,8 +672,8 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   })
 }
 
-export const useVerifyTriggerSubscription = () => {
-  return useMutation({
+export function verifyTriggerSubscriptionMutationOptions() {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
     mutationFn: (payload: {
@@ -708,8 +702,8 @@ export type BuildTriggerSubscriptionPayload = {
   parameters?: Record<string, unknown>
 }
 
-export const useBuildTriggerSubscription = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function buildTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: BuildTriggerSubscriptionPayload) => {
@@ -725,8 +719,8 @@ export const useBuildTriggerSubscription = (context?: ConsoleClientContext) => {
   })
 }
 
-export const useDeleteTriggerSubscription = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function deleteTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
     mutationFn: (subscriptionId: string) => {
@@ -748,8 +742,8 @@ type UpdateTriggerSubscriptionPayload = {
   credentials?: Record<string, unknown>
 }
 
-export const useUpdateTriggerSubscription = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function updateTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
     mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
@@ -765,51 +759,25 @@ export const useUpdateTriggerSubscription = (context?: ConsoleClientContext) => 
   })
 }
 
-export const useTriggerSubscriptionBuilderLogs = (
+export function triggerSubscriptionBuilderLogsQueryOptions(
   provider: string,
   subscriptionBuilderId: string,
-  options: {
-    enabled?: boolean
-    refetchInterval?: number | false
-  } = {},
-) => {
-  const { enabled = true, refetchInterval = false } = options
-
-  return useQuery<{ logs: TriggerLogEntity[] }>({
-    queryKey:
-      consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get.queryKey(
-        {
-          input: { params: { provider, subscription_builder_id: subscriptionBuilderId } },
-        },
-      ),
-    queryFn: async () => {
-      const response =
-        await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get(
-          {
-            params: { provider, subscription_builder_id: subscriptionBuilderId },
-          },
-        )
-      return {
-        logs: response.logs.map(normalizeTriggerLog),
-      }
+  enabled = true,
+) {
+  return consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get.queryOptions(
+    {
+      input: { params: { provider, subscription_builder_id: subscriptionBuilderId } },
+      select: normalizeTriggerLogsResponse,
+      enabled: enabled && !!provider && !!subscriptionBuilderId,
     },
-    enabled: enabled && !!provider && !!subscriptionBuilderId,
-    refetchInterval,
-  })
+  )
 }
 
 // ===== OAuth Management =====
-export const useTriggerOAuthConfig = (provider: string, enabled = true) => {
-  return useQuery<TriggerOAuthConfig>({
-    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryKey({
-      input: { params: { provider } },
-    }),
-    queryFn: async () =>
-      normalizeTriggerOAuthConfig(
-        await consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.get({
-          params: { provider },
-        }),
-      ),
+export function triggerOAuthConfigQueryOptions(provider: string, enabled = true) {
+  return consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryOptions({
+    input: { params: { provider } },
+    select: normalizeTriggerOAuthConfig,
     enabled: enabled && !!provider,
   })
 }
@@ -820,8 +788,8 @@ export type ConfigureTriggerOAuthPayload = {
   enabled: boolean
 }
 
-export const useConfigureTriggerOAuth = () => {
-  return useMutation({
+export function configureTriggerOAuthMutationOptions() {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.post.mutationKey(),
     mutationFn: (payload: ConfigureTriggerOAuthPayload) => {
@@ -834,8 +802,8 @@ export const useConfigureTriggerOAuth = () => {
   })
 }
 
-export const useDeleteTriggerOAuth = (context?: ConsoleClientContext) => {
-  return useMutation({
+export function deleteTriggerOAuthMutationOptions(context?: ConsoleClientContext) {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
     mutationFn: (provider: string) => {
@@ -849,8 +817,8 @@ export const useDeleteTriggerOAuth = (context?: ConsoleClientContext) => {
   })
 }
 
-export const useInitiateTriggerOAuth = () => {
-  return useMutation({
+export function initiateTriggerOAuthMutationOptions() {
+  return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
     mutationFn: async (provider: string) => {
@@ -872,79 +840,65 @@ export const useInitiateTriggerOAuth = () => {
 }
 
 // ===== Dynamic Options Support =====
-export const useTriggerPluginDynamicOptions = (
-  payload: {
-    plugin_id: string
-    provider: string
-    action: string
-    parameter: string
-    credential_id: string
-    credentials?: Record<string, unknown>
-    extra?: Record<string, unknown>
-  },
-  enabled = true,
-) => {
-  return useQuery<{ options: FormOption[] }>({
-    queryKey: [
-      NAME_SPACE,
-      'dynamic-options',
-      payload.plugin_id,
-      payload.provider,
-      payload.action,
-      payload.parameter,
-      payload.credential_id,
-      payload.credentials,
-      payload.extra,
-    ],
-    queryFn: async () => {
-      if (payload.credentials) {
-        return normalizeDynamicOptionsResponse(
-          await consoleClient.workspaces.current.plugin.parameters.dynamicOptionsWithCredentials.post(
-            {
-              body: {
-                action: payload.action,
-                credential_id: payload.credential_id,
-                credentials: payload.credentials,
-                parameter: payload.parameter,
-                plugin_id: payload.plugin_id,
-                provider: payload.provider,
-              },
-            },
-            {
-              context: { silent: true },
-            },
-          ),
-        )
-      }
+type TriggerPluginDynamicOptionsPayload = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  credential_id: string
+  credentials?: Record<string, unknown>
+  extra?: Record<string, unknown>
+}
 
-      return normalizeDynamicOptionsResponse(
-        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get(
-          {
-            query: {
-              action: payload.action,
-              credential_id: payload.credential_id,
-              parameter: payload.parameter,
-              plugin_id: payload.plugin_id,
-              provider: payload.provider,
-              provider_type: 'trigger',
-            },
+export function triggerPluginDynamicOptionsQueryOptions(
+  payload: TriggerPluginDynamicOptionsPayload,
+  enabled = true,
+) {
+  const isEnabled =
+    enabled &&
+    !!payload.plugin_id &&
+    !!payload.provider &&
+    !!payload.action &&
+    !!payload.parameter &&
+    !!payload.credential_id
+
+  if (payload.credentials) {
+    return consoleQuery.workspaces.current.plugin.parameters.dynamicOptionsWithCredentials.post.queryOptions(
+      {
+        input: {
+          body: {
+            action: payload.action,
+            credential_id: payload.credential_id,
+            credentials: payload.credentials,
+            parameter: payload.parameter,
+            plugin_id: payload.plugin_id,
+            provider: payload.provider,
           },
-          {
-            context: { silent: true },
-          },
-        ),
-      )
+        },
+        context: { silent: true },
+        select: normalizeDynamicOptionsResponse,
+        enabled: isEnabled,
+        retry: 0,
+        staleTime: 0,
+      },
+    )
+  }
+
+  return consoleQuery.workspaces.current.plugin.parameters.dynamicOptions.get.queryOptions({
+    input: {
+      query: {
+        action: payload.action,
+        credential_id: payload.credential_id,
+        parameter: payload.parameter,
+        plugin_id: payload.plugin_id,
+        provider: payload.provider,
+        provider_type: 'trigger',
+      },
     },
-    enabled:
-      enabled &&
-      !!payload.plugin_id &&
-      !!payload.provider &&
-      !!payload.action &&
-      !!payload.parameter &&
-      !!payload.credential_id,
+    context: { silent: true },
+    select: normalizeDynamicOptionsResponse,
+    enabled: isEnabled,
     retry: 0,
     staleTime: 0,
   })
 }
-
-// ===== Cache Invalidation Helpers =====

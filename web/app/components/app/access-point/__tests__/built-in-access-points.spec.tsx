@@ -39,10 +39,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({ data: { result: true }, refetch: vi.fn() }),
 }))
 
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-}))
-
 // These independently tested dialogs do not own card availability or permission state.
 vi.mock('@/app/components/app/overview/customize', () => ({
   CustomizeDialog: ({ disabled }: { disabled?: boolean }) => (
@@ -119,6 +115,7 @@ function render(ui: ReactElement) {
       status: 'inactive',
     },
   )
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.triggers.get.queryKey({
       input: { params: { app_id: 'app-1' } },

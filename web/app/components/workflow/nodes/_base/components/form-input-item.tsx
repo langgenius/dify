@@ -17,7 +17,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -31,7 +31,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
 import { pluginDynamicOptionsMutationOptions } from '@/service/plugin-list-queries'
-import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import {
@@ -143,8 +143,8 @@ const FormInputItem: FC<Props> = ({
   )
 
   // Fetch dynamic options hook for triggers
-  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } =
-    useTriggerPluginDynamicOptions(
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery(
+    triggerPluginDynamicOptionsQueryOptions(
       {
         plugin_id: currentProvider?.plugin_id || '',
         provider: currentProvider?.name || '',
@@ -158,7 +158,8 @@ const FormInputItem: FC<Props> = ({
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
-    )
+    ),
+  )
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options
