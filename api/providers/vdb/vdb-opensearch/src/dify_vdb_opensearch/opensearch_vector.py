@@ -22,6 +22,15 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
+# create_collection maps these metadata fields as keyword. Every other metadata field (app_id,
+# annotation_id, ...) gets OpenSearch's dynamic string mapping: an analyzed text field, which a
+# term query never matches on a whole UUID, plus an exact "<field>.keyword" subfield.
+_KEYWORD_METADATA_FIELDS = frozenset({"doc_id", "document_id"})
+
+# A search returns 10 hits unless told otherwise. Ask for the most a single search may return
+# (OpenSearch's default index.max_result_window) so a metadata lookup does not stop at 10.
+_MAX_SEARCH_HITS = 10_000
+
 
 class _OpenSearchHostDict(TypedDict):
     host: str
@@ -138,7 +147,11 @@ class OpenSearchVector(BaseVector):
 
     @override
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"query": {"term": {f"{Field.METADATA_KEY}.{key}": value}}}
+        """Return the OpenSearch _ids of every document whose metadata[key] equals value."""
+        field = f"{Field.METADATA_KEY}.{key}"
+        if key not in _KEYWORD_METADATA_FIELDS:
+            field = f"{field}.keyword"
+        query = {"size": _MAX_SEARCH_HITS, "query": {"term": {field: value}}}
         response = self._client.search(index=self._collection_name.lower(), body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -147,9 +160,11 @@ class OpenSearchVector(BaseVector):
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        ids = self.get_ids_by_metadata_field(key, value)
-        if ids:
-            self.delete_by_ids(ids)
+        # These are already OpenSearch _ids. delete_by_ids expects metadata doc_ids and would
+        # look each one up again, find nothing and delete nothing.
+        es_ids = self.get_ids_by_metadata_field(key, value)
+        if es_ids:
+            self._bulk_delete(es_ids)
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -169,19 +184,24 @@ class OpenSearchVector(BaseVector):
                 logger.warning("Document with metadata doc_id %s not found for deletion", doc_id)
 
         if actual_ids:
-            actions = [{"_op_type": "delete", "_index": index_name, "_id": es_id} for es_id in actual_ids]
-            try:
-                helpers.bulk(self._client, actions)
-            except BulkIndexError as e:
-                for error in e.errors:
-                    delete_error = error.get("delete", {})
-                    status = delete_error.get("status")
-                    doc_id = delete_error.get("_id")
+            self._bulk_delete(actual_ids)
 
-                    if status == 404:
-                        logger.warning("Document not found for deletion: %s", doc_id)
-                    else:
-                        logger.exception("Error deleting document: %s", error)
+    def _bulk_delete(self, es_ids: list[str]):
+        """Delete documents by their OpenSearch _id."""
+        index_name = self._collection_name.lower()
+        actions = [{"_op_type": "delete", "_index": index_name, "_id": es_id} for es_id in es_ids]
+        try:
+            helpers.bulk(self._client, actions)
+        except BulkIndexError as e:
+            for error in e.errors:
+                delete_error = error.get("delete", {})
+                status = delete_error.get("status")
+                doc_id = delete_error.get("_id")
+
+                if status == 404:
+                    logger.warning("Document not found for deletion: %s", doc_id)
+                else:
+                    logger.exception("Error deleting document: %s", error)
 
     @override
     def delete(self):
