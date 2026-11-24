@@ -13,6 +13,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
+from configs.feature import TokenerSignupBillingCandidate
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
@@ -316,15 +317,23 @@ class BillingService:
 
     @staticmethod
     def _tokener_signup_validation_base(tenant_id: str) -> tuple[str, bool]:
-        """Route only our newly enrolled agent-dev workspaces to the candidate.
+        """Resolve the Billing base and redirect policy for the durable signup intent.
 
         No existing migration receipt, provider or billing route is an enrollment
-        proof. Database failures fail closed rather than fund against another target.
+        proof. In opt-in shared staging mode there is one trusted Billing
+        target for all Tokener operations. Outside that mode, isolated
+        validation still uses the original durable intent and fails closed.
         """
-        configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        configured = dify_config.get_agent_dev_tokener_signup_billing_mode()
         default_base = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return default_base, False
+
+        if configured == TokenerSignupBillingCandidate.SHARED_STAGING:
+            staging_base = dify_config.get_agent_dev_staging_tokener_billing_url()
+            if staging_base is None or staging_base != configured:
+                raise BillingUpstreamUnavailableError
+            return staging_base, True
 
         from core.db.session_factory import session_factory
         from models.tokener import AccountTokenerSignupIntent
@@ -332,9 +341,10 @@ class BillingService:
 
         try:
             if signup_used_staging_package(tenant_id):
-                if configured != CANARY_BILLING_URL:
+                staging_base = dify_config.get_agent_dev_staging_tokener_billing_url()
+                if staging_base is None:
                     raise BillingUpstreamUnavailableError
-                return configured, True
+                return staging_base, True
             if not configured or configured == CANARY_BILLING_URL:
                 return default_base, False
             with session_factory.create_session() as session:

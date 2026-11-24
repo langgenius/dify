@@ -1,7 +1,7 @@
 from configs import dify_config
 from core.model_billing_profile import ModelBillingProfileService
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
-from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL, signup_used_staging_package
+from repositories.tokener_signup_canary_repository import signup_used_staging_package
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -205,7 +205,7 @@ class FeatureService:
         """Return hosted catalog flags without changing quota admission or billing.
 
         Only a Tokener-funded workspace with a consumed staging signup intent
-        and the exact isolated Billing target can see both configured catalogs.
+        and an explicit trusted staging Billing target can see both configured catalogs.
         For all other Cloud workspaces the existing plan filter still applies;
         a failed staging binding read never grants broader visibility.
         """
@@ -214,7 +214,7 @@ class FeatureService:
 
         if (
             tenant_id
-            and dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL == CANARY_BILLING_URL
+            and dify_config.get_agent_dev_staging_tokener_billing_url() is not None
             and signup_used_staging_package(tenant_id)
             and ModelBillingProfileService.resolve(tenant_id).uses_tokener
         ):

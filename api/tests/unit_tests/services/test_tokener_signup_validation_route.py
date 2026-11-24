@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy.orm import Session
 
+from configs.feature import AgentDevTokenerEnvironment, TokenerSignupBillingCandidate
 from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.tokener import AccountTokenerSignupIntent
@@ -12,6 +13,7 @@ from tests.helpers.unit.config_override import config_overrides_context
 
 _CANDIDATE = "http://tokener-signup-billing-candidate:8081"
 _EXISTING = "http://dify-saas-billing:8081"
+_SHARED_UID = "langgenius/tokener-staging:0.4.5-dev2026112203@" + "a" * 64
 
 
 def test_candidate_requires_consumed_signup_intent(sqlite_session: Session) -> None:
@@ -49,7 +51,8 @@ def test_hosted_candidate_does_not_move_existing_signup_or_fall_back_on_disable(
     native_owner = Account(name="older signup", email="older-signup@example.invalid")
     hosted = Tenant(name="hosted signup")
     native = Tenant(name="older native signup")
-    sqlite_session.add_all([owner, native_owner, hosted, native])
+    not_enrolled = Tenant(name="unbound workspace")
+    sqlite_session.add_all([owner, native_owner, hosted, native, not_enrolled])
     sqlite_session.flush()
     now = datetime(2026, 11, 19, 4, 0)
     sqlite_session.add_all(
@@ -84,3 +87,40 @@ def test_hosted_candidate_does_not_move_existing_signup_or_fall_back_on_disable(
     ):
         with pytest.raises(BillingUpstreamUnavailableError):
             BillingService._tokener_signup_validation_base(hosted.id)
+
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_BILLING_API_URL=_EXISTING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=_SHARED_UID,
+    ):
+        # Same persisted staging intent, without re-enrollment or credential rebind.
+        assert BillingService._tokener_signup_validation_base(hosted.id) == (_EXISTING, True)
+        # Shared mode uses the same trusted server regardless of signup provenance.
+        assert BillingService._tokener_signup_validation_base(native.id) == (_EXISTING, True)
+        assert BillingService._tokener_signup_validation_base(not_enrolled.id) == (_EXISTING, True)
+
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_BILLING_API_URL="https://invalid.example",
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=_SHARED_UID,
+    ):
+        with pytest.raises(BillingUpstreamUnavailableError):
+            BillingService._tokener_signup_validation_base(hosted.id)
+
+
+@pytest.mark.parametrize("invalid_guard", ["base", "uid", None])
+def test_staging_environment_uses_one_shared_route_without_isolated_fallback(invalid_guard: str | None) -> None:
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        AGENT_DEV_TOKENER_ENVIRONMENT=AgentDevTokenerEnvironment.STAGING,
+        TOKENER_BILLING_API_URL="https://invalid.example" if invalid_guard == "base" else _EXISTING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.HOSTED_SIGNUP,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER="" if invalid_guard == "uid" else _SHARED_UID,
+    ):
+        if invalid_guard is None:
+            assert BillingService._tokener_signup_validation_base("any-workspace") == (_EXISTING, True)
+        else:
+            with pytest.raises(BillingUpstreamUnavailableError):
+                BillingService._tokener_signup_validation_base("any-workspace")
