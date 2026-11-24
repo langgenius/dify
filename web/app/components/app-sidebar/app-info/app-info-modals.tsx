@@ -6,7 +6,8 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
-import SwitchAppModal from '@/app/components/app/switch-app-modal'
+import { SwitchAppDialogContent } from '@/app/components/app/switch-app-dialog'
+import { useSwitchAppMutation } from '@/app/components/app/switch-app-dialog/use-switch-app-mutation'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -41,6 +42,7 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
+  const switching = useSwitchAppMutation()
   return (
     <>
       <Dialog
@@ -123,7 +125,26 @@ export default function AppInfoModals({ appDetail, activeModal, onClose }: AppIn
           />
         </DialogContent>
       </Dialog>
-      <SwitchAppModal sourceApp={appDetail} open={activeModal === 'switch'} onClose={onClose} />
+      <Dialog
+        open={activeModal === 'switch'}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && switching.isPending) details.cancel()
+          else if (!open) onClose()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) switching.reset()
+        }}
+      >
+        <SwitchAppDialogContent
+          sourceApp={appDetail}
+          isPending={switching.isPending}
+          onSubmit={(body, removeOriginal) => {
+            if (switching.isPending) return
+            switching.mutate({ sourceApp: appDetail, body, removeOriginal }, { onSuccess: onClose })
+          }}
+        />
+      </Dialog>
       <AlertDialog
         open={activeModal === 'delete'}
         onOpenChange={(open, details) => {

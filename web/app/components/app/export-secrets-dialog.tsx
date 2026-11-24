@@ -1,7 +1,6 @@
 'use client'
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
-  AlertDialog,
   AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
@@ -13,38 +12,36 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type AppExportConfirmModalProps = {
+type ExportSecretsDialogContentProps = {
   envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
-  onConfirm: (includeSecret: boolean) => Promise<boolean>
   isExporting: boolean
   errorMessage?: string
-  onClose: () => void
+  onConfirm: (includeSecret: boolean) => void
 }
 
-const AppExportConfirmContent = ({
-  envList,
-  onConfirm,
-  onClose,
-  isExporting,
-  errorMessage,
-}: AppExportConfirmModalProps) => {
-  const { t } = useTranslation(['app', 'workflow', 'common'])
-
-  const [exportSecrets, setExportSecrets] = useState<boolean>(false)
-  const exportButtonLabelId = React.useId()
-
-  const submit = useCallback(async () => {
-    if (isExporting) return
-
-    if (await onConfirm(exportSecrets)) onClose()
-  }, [exportSecrets, isExporting, onClose, onConfirm])
-
+export function ExportSecretsDialogContent(props: ExportSecretsDialogContentProps) {
   return (
     <AlertDialogContent>
+      <ExportSecretsSession {...props} />
+    </AlertDialogContent>
+  )
+}
+
+function ExportSecretsSession({
+  envList,
+  isExporting,
+  errorMessage,
+  onConfirm,
+}: ExportSecretsDialogContentProps) {
+  const { t } = useTranslation(['app', 'workflow', 'common'])
+  const [exportSecrets, setExportSecrets] = useState(false)
+  const exportButtonLabelId = useId()
+
+  return (
+    <>
       <AlertDialogHeader>
         <AlertDialogTitle>{t(($) => $['exportSecret.title'], { ns: 'app' })}</AlertDialogTitle>
         <AlertDialogDescription>
@@ -135,7 +132,7 @@ const AppExportConfirmContent = ({
           tone="default"
           loading={isExporting}
           aria-labelledby={exportButtonLabelId}
-          onClick={submit}
+          onClick={() => onConfirm(exportSecrets)}
         >
           <span id={exportButtonLabelId}>
             {isExporting
@@ -146,28 +143,6 @@ const AppExportConfirmContent = ({
           </span>
         </AlertDialogConfirmButton>
       </AlertDialogFooter>
-    </AlertDialogContent>
+    </>
   )
 }
-
-const AppExportConfirmModal = (props: AppExportConfirmModalProps) => {
-  const { envList, onClose, isExporting } = props
-  const isDialogOpen = envList.length > 0
-
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (open || isExporting) return
-
-      onClose()
-    },
-    [isExporting, onClose],
-  )
-
-  return (
-    <AlertDialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <AppExportConfirmContent {...props} />
-    </AlertDialog>
-  )
-}
-
-export default AppExportConfirmModal

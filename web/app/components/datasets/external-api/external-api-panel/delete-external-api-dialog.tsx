@@ -149,7 +149,6 @@ export default function DeleteExternalApiDialog({
         payload && (
           <AlertDialogContent finalFocus={finalFocusRef}>
             <DeleteExternalApiConfirmation
-              key={payload.id}
               api={payload}
               canManage={canManage}
               deleting={deletion.isPending}
