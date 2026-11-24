@@ -1,10 +1,12 @@
+import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTagNameTooLong, MAX_TAG_NAME_LENGTH } from './tag-name-length'
 import { getTagNameValidationMessage } from './tag-name-validation'
 
 type TagNameFormProps = {
-  initialName?: string
+  tag?: TagResponse
+  tags: readonly TagResponse[]
   label: string
   inputClassName: string
   pending: boolean
@@ -18,7 +20,8 @@ function focusRenameInput(input: HTMLInputElement | null) {
 }
 
 export function TagNameForm({
-  initialName,
+  tag,
+  tags,
   label,
   inputClassName,
   pending,
@@ -27,6 +30,7 @@ export function TagNameForm({
   onFinish,
 }: TagNameFormProps) {
   const { t } = useTranslation(['common'])
+  const initialName = tag?.name
   const [draft, setDraft] = useState(initialName ?? '')
   const [error, setError] = useState('')
   const errorId = useId()
@@ -45,6 +49,10 @@ export function TagNameForm({
     }
     if (name === initialName) {
       onFinish?.()
+      return
+    }
+    if (tags.some((other) => other.id !== tag?.id && other.name.trim() === name)) {
+      setError(t(($) => $['tag.nameAlreadyExists']))
       return
     }
     try {

@@ -32,6 +32,7 @@ const fake = setupFakeApi(() => ({
     tags: {
       get: () => tags,
       post: ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }),
+      byTagId: { patch: ({ params, body }) => ({ id: params.tag_id, ...body }) },
     },
   },
 }))
@@ -114,6 +115,39 @@ it('rejects whitespace-only names and lets the user correct the draft', async ()
   expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
     body: { name: 'NextTag', type: 'app' },
   })
+})
+
+it('checks normalized names against other loaded Agent tags on create and rename', async () => {
+  const research = {
+    id: '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60',
+    type: 'agent',
+    name: '  Research  ',
+  }
+  const finance = { ...research, id: '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071', name: 'Finance' }
+  const catalog = [research, finance]
+  fake.console.tags.get.mockReturnValue(catalog)
+  await renderWithTags(<TagManagementDialog type="agent" show onClose={() => {}} />, catalog, [
+    'agent.tag.manage',
+  ])
+  await input().fill('Research')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameAlreadyExists')
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Finance' }).click()
+  const rename = dialog().getByRole('textbox', { name: 'common.operation.rename Finance' })
+  await rename.fill(' Research ')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(rename).toHaveAccessibleDescription('common.tag.nameAlreadyExists')
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Research' }).click()
+  const ownName = dialog().getByRole('textbox', { name: 'common.operation.rename Research' })
+  await ownName.fill('Research')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .poll(() => fake.console.tags.byTagId.patch.mock.calls)
+    .toEqual([[{ params: { tag_id: research.id }, body: { name: 'Research' } }]])
 })
 
 it.each(['button', 'Escape'])('dismisses management with %s', async (method) => {

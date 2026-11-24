@@ -21,9 +21,10 @@ import { TagNameForm } from './tag-name-form'
 
 type TagItemEditorProps = {
   tag: Tag
+  tags: readonly Tag[]
   onTagsChange?: () => void
 }
-export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
+export const TagItemEditor = ({ tag, tags, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
   const updateTagMutation = useMutation(
     consoleQuery.tags.byTagId.patch.mutationOptions({ context: { silent: true } }),
@@ -104,7 +105,8 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
         )}
         {isEditing && (
           <TagNameForm
-            initialName={tag.name}
+            tag={tag}
+            tags={tags}
             label={`${t(($) => $['operation.rename'])} ${tag.name}`}
             inputClassName="min-w-0 max-w-full appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             pending={updateTagMutation.isPending}

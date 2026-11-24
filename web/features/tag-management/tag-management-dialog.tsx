@@ -59,6 +59,7 @@ export const TagManagementDialog = ({
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
           <TagNameForm
+            tags={tagList}
             label={t(($) => $['tag.addNew'])}
             inputClassName="w-25 max-w-full appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
             pending={createTagMutation.isPending}
@@ -69,7 +70,7 @@ export const TagManagementDialog = ({
             }
           />
           {tagList.map((tag) => (
-            <TagItemEditor key={tag.id} tag={tag} onTagsChange={onTagsChange} />
+            <TagItemEditor key={tag.id} tag={tag} tags={tagList} onTagsChange={onTagsChange} />
           ))}
         </DialogBody>
       </DialogContent>
