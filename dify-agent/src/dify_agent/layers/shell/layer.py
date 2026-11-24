@@ -46,7 +46,6 @@ class _HasErrorCode(Protocol):
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
 _SHELL_OUTPUT_PROMPT_EDGE_BYTES = 4 * 1024
-_SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
 _REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
 _REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
 _SHELL_LAYER_PREFIX_PROMPT = """You can run commands in an isolated shell workspace.
@@ -648,7 +647,9 @@ async def render_prompt_observation_from_result(
     *,
     edge_bytes: int,
 ) -> ShellPromptObservation:
-    output_exceeds_edge_budget = len(result.output.encode("utf-8")) > edge_bytes
+    max_output_bytes = 2 * edge_bytes
+    output_exceeds_budget = len(result.output.encode("utf-8")) > max_output_bytes
+    should_truncate = result.truncated or output_exceeds_budget
     tail: str | None = None
     output_path = result.output_path
     offset = result.offset
@@ -661,14 +662,18 @@ async def render_prompt_observation_from_result(
             tail = utf8_suffix(tail_result.output, edge_bytes)
             output_path = tail_result.output_path or output_path
             offset = tail_result.offset
-    elif output_exceeds_edge_budget:
+    elif output_exceeds_budget:
         tail = utf8_suffix(result.output, edge_bytes)
-    text = normalized_output_text(
-        utf8_prefix(result.output, edge_bytes),
-        tail=tail,
-        output_path=output_path if (result.truncated or output_exceeds_edge_budget) else None,
-        max_output_size_bytes=_SHELLCTL_OUTPUT_LIMIT_BYTES,
-        truncated_in_middle=result.truncated or output_exceeds_edge_budget,
+    text = (
+        normalized_output_text(
+            utf8_prefix(result.output, edge_bytes),
+            tail=tail,
+            output_path=output_path,
+            max_output_size_bytes=max_output_bytes,
+            truncated_in_middle=True,
+        )
+        if should_truncate
+        else result.output
     )
     return ShellPromptObservation(text=text, output_path=output_path, offset=offset)
 
