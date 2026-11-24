@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Vsi poteki dela kot orodje",
   "auth.authorized": "Avtorizirano",
   "auth.setup": "Nastavite avtorizacijo za uporabo",
-  "auth.setupModalTitle": "Nastavi avtorizacijo",
-  "auth.setupModalTitleDescription": "Po konfiguraciji poverilnic bodo vsi člani znotraj delovnega prostora lahko uporabljali to orodje pri orkestraciji aplikacij.",
   "auth.unauthorized": "Nepooblaščeno",
   "author": "Avtor",
   "builtInPromptTitle": "Poziv",

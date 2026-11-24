@@ -1,9 +1,5 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 
-export type CommonResponse = {
-  result: 'success' | 'fail'
-}
-
 export type DataSourceNotionPage = {
   page_icon: null | {
     type: string | null

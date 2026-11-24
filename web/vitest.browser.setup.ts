@@ -9,6 +9,27 @@ document.documentElement.dataset.theme = 'light'
   globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
 ).BASE_UI_ANIMATIONS_DISABLED = true
 
+// boundary: Monaco terminates its editor worker as soon as the last model is disposed, which in a
+// spec is often within milliseconds of creating it. Chromium reports the `importScripts` that the
+// termination cancels as an uncaught window error (`… workerMain.js … failed to load`), and the
+// guard below then fails whichever test is running. Terminate only after the worker has loaded.
+const NativeWorker = window.Worker
+window.Worker = class extends NativeWorker {
+  constructor(url: string | URL, options?: WorkerOptions) {
+    super(url, options)
+    if (options?.name !== 'editorWorkerService') return
+    const loaded = new Promise<void>((resolve) => {
+      this.addEventListener('message', () => resolve(), { once: true })
+      this.addEventListener('error', () => resolve(), { once: true })
+      setTimeout(resolve, 300)
+    })
+    const terminate = this.terminate.bind(this)
+    this.terminate = () => {
+      void loaded.then(terminate)
+    }
+  }
+}
+
 const allowedConsoleErrorFiles = new Set(consoleErrorAllowlist)
 const writeConsoleError = console.error.bind(console)
 let consoleErrors: unknown[][] = []
