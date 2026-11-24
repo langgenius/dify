@@ -59,13 +59,15 @@ it('switches between the restored Cloud and Self-Hosted catalogs', async () => {
   await expect.element(screen.getByText(/\$590/)).toBeVisible()
 })
 
-it('uses the account redemption status for the education offer', async () => {
+it('defaults verified students to annual pricing as before the pricing refresh', async () => {
   const screen = await setup({
     features: { education: { enabled: true } },
     educationStatus: { is_student: true, can_redeem_discount: false },
   })
-  await expect.element(screen.getByRole('switch', { name: /Bill Annually/ })).not.toBeChecked()
-  await expect.element(screen.getByRole('button', { name: 'Start Building' })).toBeEnabled()
+  await expect.element(screen.getByRole('switch', { name: /Bill Annually/ })).toBeChecked()
+  await expect
+    .element(screen.getByRole('button', { name: education.useEducationDiscount }))
+    .toBeEnabled()
 })
 
 it('keeps the catalog visible after a request fails and enables purchases on retry', async () => {
@@ -82,7 +84,7 @@ it('keeps the catalog visible after a request fails and enables purchases on ret
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
 })
 
-it('opens and dismisses a plan explanation with the shared Infotip', async () => {
+it('opens and dismisses a plan explanation from the restored catalog', async () => {
   const screen = await setup()
   const explanation = billing['plansCommon.documentsTooltip']
   const trigger = screen.getByRole('button', { name: explanation }).first()

@@ -48,7 +48,9 @@ it.each([
     fake.console.billing.subscription.get.mockResolvedValue({ url })
     await setup({ features: { billing: { subscription: { plan, interval: currentInterval } } } })
     const annualBilling = page.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ })
+    await expect.element(annualBilling).not.toBeChecked()
     await annualBilling.click()
+    if (selectedInterval === 'month') await annualBilling.click()
     await page.getByRole('button', { name: 'billing.plansCommon.currentPlan' }).click()
     await expect.poll(() => window.location.href).toBe(url)
     await expect

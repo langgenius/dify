@@ -25,36 +25,26 @@ export function PricingContent() {
   const { t } = useTranslation(['appApi', 'billing', 'common'])
   const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
   const { data: features } = featuresQuery
-  const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const currentCloudPlan = features?.billing.subscription.plan
-  const checkEducationEligibility =
-    canManageBilling &&
-    currentCloudPlan === 'sandbox' &&
-    features?.education.enabled === true &&
-    !features.education.activated
+  const educationEnabled = features?.education.enabled ?? false
   const educationQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: checkEducationEligibility,
-      select: ({ can_redeem_discount }) => can_redeem_discount,
+      enabled: educationEnabled,
+      select: ({ is_student }) => is_student,
     }),
   )
-  const isEducationDiscountEligible = checkEducationEligibility ? educationQuery.data : false
+  const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const isEducationDiscountEligible = educationEnabled ? educationQuery.data : false
   const isCheckoutReady = features !== undefined && isEducationDiscountEligible !== undefined
   const pricingError =
     (!features && featuresQuery.isError) ||
-    (checkEducationEligibility && educationQuery.data === undefined && educationQuery.isError)
-  const paidInterval =
-    currentCloudPlan !== 'sandbox' ? features?.billing.subscription.interval : undefined
+    (educationEnabled && educationQuery.data === undefined && educationQuery.isError)
   const defaultBillingInterval: BillingInterval =
-    paidInterval === 'year' || paidInterval === 'month'
-      ? paidInterval
-      : canManageBilling && isEducationDiscountEligible
-        ? 'year'
-        : 'month'
+    canManageBilling && isEducationDiscountEligible ? 'year' : 'month'
+  const [activeCategory, setActiveCategory] = React.useState<'cloud' | 'self-hosted'>('cloud')
   const [selectedBillingInterval, setSelectedBillingInterval] = React.useState<BillingInterval>()
   const billingInterval = selectedBillingInterval ?? defaultBillingInterval
-  const [activeCategory, setActiveCategory] = React.useState<'cloud' | 'self-hosted'>('cloud')
   const isCloud = activeCategory === 'cloud'
+  const currentCloudPlan = features?.billing.subscription.plan
   const billing = currentCloudPlan
     ? {
         currentPlan: currentCloudPlan,
