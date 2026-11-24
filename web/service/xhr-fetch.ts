@@ -34,7 +34,8 @@ export function createXhrFetch(onUploadProgress: OnUploadProgress): typeof fetch
     const { signal } = request
     if (signal.aborted) throw abortReason(signal)
 
-    const body = request.body ? await request.blob() : null
+    // Firefox has no `Request.body`, so read the body for every method that can carry one.
+    const body = request.method === 'GET' || request.method === 'HEAD' ? null : await request.blob()
     if (signal.aborted) throw abortReason(signal)
 
     return new Promise<Response>((resolve, reject) => {
