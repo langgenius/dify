@@ -42,7 +42,6 @@ const { mockGet, mockPost, mockRequest } = vi.hoisted(() => ({
 vi.mock('@/service/base', () => ({
   get: mockGet,
   post: mockPost,
-  postMarketplace: vi.fn(),
   request: mockRequest,
 }))
 
