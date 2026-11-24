@@ -30,6 +30,7 @@ import type {
 import { ORPCError } from '@orpc/client'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
+import { resolveWebAppAddress } from './webapp-address'
 
 type IOnDataMoreInfo = {
   event?: string
@@ -54,6 +55,8 @@ type UnhandledEventError = {
 
 /** Callbacks for Dify's chat, completion, workflow and pipeline event streams. */
 export type StreamCallbacks = {
+  /** The request goes to the public WebApp API, whose sign-in errors redirect instead of reporting. */
+  isPublicAPI?: boolean
   /** Suppresses the default error notification. */
   silent?: boolean
   onData?: IOnData
@@ -189,6 +192,19 @@ const getErrorBody = (error: ORPCError<string, unknown>) => {
   }
 }
 
+/** Sign-in and access errors the request layer answers by redirecting or resetting the passport. */
+const isWebAppAuthorizationError = (data: unknown) => {
+  if (!isRecord(data)) return false
+  if (
+    data.code === 'web_app_access_denied' ||
+    data.code === 'web_sso_auth_required' ||
+    data.code === 'unauthorized' ||
+    data.reason === 'APPDEPLOY_WEB_APP_ACCESS_DENIED'
+  )
+    return true
+  return data.reason === 'APPDEPLOY_UNAUTHORIZED' && resolveWebAppAddress()?.kind === 'environment'
+}
+
 const notify = (callbacks: StreamCallbacks, message: string, code?: string) => {
   if (callbacks.onNotifyError) callbacks.onNotifyError(message, code)
   else toast.error(message)
@@ -210,8 +226,11 @@ const handleRequestError = (error: unknown, callbacks: StreamCallbacks) => {
   }
   if (error instanceof ORPCError && typeof error.status === 'number') {
     const { message, code } = getErrorBody(error)
-    // The request layer already refreshed the session or sent the user to sign in.
-    if (error.status === 401) {
+    if (callbacks.isPublicAPI && (error.status === 401 || error.status === 403)) {
+      // The request layer already sent the user to sign in or reset the WebApp passport.
+      if (isWebAppAuthorizationError(error.data)) return
+    } else if (error.status === 401) {
+      // The request layer already refreshed the session or sent the user to sign in.
       onError?.(message, code)
       return
     }

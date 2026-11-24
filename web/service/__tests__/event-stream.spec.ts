@@ -311,6 +311,40 @@ describe('streamEvents', () => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
+  it('leaves WebApp sign-in errors to the request layer redirect', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    for (const data of [
+      { code: 'web_sso_auth_required', message: 'SSO' },
+      { code: 'unauthorized', message: 'Login' },
+      { code: 'forbidden', reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED', message: 'Denied' },
+    ]) {
+      streamEvents(() => Promise.reject(new ORPCError(data.code, { status: 401, data })), {
+        isPublicAPI: true,
+        onError,
+        onCompleted,
+      })
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onError).not.toHaveBeenCalled()
+    expect(onCompleted).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('reports other WebApp 403 errors with a toast', async () => {
+    const onError = vi.fn()
+    streamEvents(
+      () =>
+        Promise.reject(
+          new ORPCError('forbidden', { status: 403, data: { code: 'forbidden', message: 'No' } }),
+        ),
+      { isPublicAPI: true, onError },
+    )
+
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('No', 'forbidden'))
+    expect(toast.error).toHaveBeenCalledWith('No')
+  })
+
   it('reports network errors and stays quiet about aborts', async () => {
     const onError = vi.fn()
     streamEvents(() => Promise.reject(new TypeError('Failed to fetch')), { onError })
