@@ -1,5 +1,6 @@
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoDialogHandles } from '../app-info-dialogs'
-import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,7 +10,6 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppInfoDialogs } from '../app-info-dialogs'
-import { ExportAppDialogContent } from '../export-app-dialog'
 
 const service = vi.hoisted(() => ({
   request: vi.fn(),
@@ -57,23 +57,20 @@ function OperationsEntry({ operation }: { operation: Operation }) {
     switchApp: createDialogHandle(),
     importDSL: createDialogHandle(),
     delete: createAlertDialogHandle(),
-    export: createAlertDialogHandle(),
+    export: createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
   }))
   return (
     <>
-      <button onClick={() => handles[operation].open(null)}>Open operation</button>
+      <button
+        onClick={() =>
+          operation === 'export'
+            ? handles.export.openWithPayload(null)
+            : handles[operation].open(null)
+        }
+      >
+        Open operation
+      </button>
       <AppInfoDialogs appDetail={app} handles={handles} />
-    </>
-  )
-}
-function ExportEntry() {
-  const [handle] = useState(() => createAlertDialogHandle())
-  return (
-    <>
-      <button onClick={() => handle.open(null)}>Open operation</button>
-      <AlertDialog handle={handle}>
-        <ExportAppDialogContent appDetail={app} onExported={() => handle.close()} />
-      </AlertDialog>
     </>
   )
 }
@@ -210,7 +207,7 @@ it('submits the secret choice and keeps the export confirmation open after a fai
     secretEnvList: [{ name: 'API_TOKEN', value: 'masked', value_type: 'secret' }],
   })
   service.exportApp.mockResolvedValue({ status: 'failed' })
-  render(<ExportEntry />)
+  render(<OperationsEntry operation="export" />)
   await openOperation()
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   const dialog = await screen.findByRole('alertdialog', { name: 'app.exportSecret.title' })
@@ -222,7 +219,6 @@ it('submits the secret choice and keeps the export confirmation open after a fai
       appName: app.name,
       includeSecret: true,
       feedback: 'dialog',
-      signal: expect.any(AbortSignal),
     }),
   )
   expect(dialog).toBeInTheDocument()

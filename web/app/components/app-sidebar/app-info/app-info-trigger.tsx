@@ -62,7 +62,7 @@ export function AppInfoTrigger({ appDetail, expand, handles }: AppInfoTriggerPro
             icon: 'i-ri-file-download-line',
             onClick: () => {
               if (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat')
-                handles.export.open(null)
+                handles.export.openWithPayload(null)
               else void exportAppDsl({ appId: appDetail.id, appName: appDetail.name })
             },
             loading: isExporting,

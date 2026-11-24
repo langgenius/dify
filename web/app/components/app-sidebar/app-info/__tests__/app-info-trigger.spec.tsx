@@ -59,7 +59,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   })
 
 const createHandles = () => {
-  const handle = () => ({ open: vi.fn() })
+  const handle = () => ({ open: vi.fn(), openWithPayload: vi.fn() })
   return {
     edit: handle(),
     duplicate: handle(),
@@ -151,7 +151,7 @@ describe('AppInfoTrigger', () => {
       appId: 'app-1',
       appName: 'Test App',
     })
-    expect(props.handles.export.open).not.toHaveBeenCalled()
+    expect(props.handles.export.openWithPayload).not.toHaveBeenCalled()
   })
 
   it('confirms the export of a workflow app in a dialog', async () => {
@@ -162,7 +162,7 @@ describe('AppInfoTrigger', () => {
     await user.click(getOperationsTrigger())
     await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
-    expect(props.handles.export.open).toHaveBeenCalledWith(null)
+    expect(props.handles.export.openWithPayload).toHaveBeenCalledWith(null)
     expect(mockExport.exportAppDsl).not.toHaveBeenCalled()
   })
 

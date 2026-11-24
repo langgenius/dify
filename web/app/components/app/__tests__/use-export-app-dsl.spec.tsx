@@ -417,7 +417,11 @@ describe('useExportWorkflowAppDsl', () => {
         <>
           <button onClick={() => handle.open(null)}>Reopen</button>
           <AlertDialog handle={handle}>
-            <ExportAppDialogContent appDetail={app} onExported={() => handle.close()} />
+            <ExportAppDialogContent
+              appDetail={app}
+              onSecretsRequired={vi.fn()}
+              onExported={() => handle.close()}
+            />
           </AlertDialog>
         </>
       )

@@ -1,4 +1,7 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,7 +22,7 @@ export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
     switchApp: createDialogHandle(),
     importDSL: createDialogHandle(),
     delete: createAlertDialogHandle(),
-    export: createAlertDialogHandle(),
+    export: createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
   }))
   useEffect(() => {
     let unsubscribe: (() => void) | null = null

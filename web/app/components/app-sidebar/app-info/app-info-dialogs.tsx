@@ -1,4 +1,7 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  EnvironmentVariableItemResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import {
@@ -12,8 +15,10 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
+import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { SwitchAppDialogContent } from '@/app/components/app/switch-app-dialog'
 import { useSwitchAppMutation } from '@/app/components/app/switch-app-dialog/use-switch-app-mutation'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,8 +33,10 @@ export type AppInfoDialogHandles = {
   switchApp: DialogHandle
   importDSL: DialogHandle
   delete: AlertDialogHandle
-  export: AlertDialogHandle
+  export: ExportAppDialogHandle
 }
+
+type ExportAppDialogHandle = AlertDialogHandle<EnvironmentVariableItemResponse[] | null>
 
 type AppInfoDialogsProps = {
   appDetail: AppDetailWithSite
@@ -55,7 +62,36 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
   const switching = useSwitchAppMutation()
-  const [backupDialog] = useState(() => createAlertDialogHandle())
+  const secretExport = useExportAppDsl()
+  const [backupDialog] = useState(() =>
+    createAlertDialogHandle<EnvironmentVariableItemResponse[] | null>(),
+  )
+  const exportSession =
+    (dialog: ExportAppDialogHandle) =>
+    ({ payload }: { payload: EnvironmentVariableItemResponse[] | null | undefined }) =>
+      payload ? (
+        <ExportSecretsDialogContent
+          envList={payload}
+          isExporting={secretExport.isExporting}
+          errorMessage={secretExport.errorMessage}
+          onConfirm={async (includeSecret) => {
+            if (secretExport.isExporting) return
+            const result = await secretExport.exportAppDsl({
+              appId: appDetail.id,
+              appName: appDetail.name,
+              includeSecret,
+              feedback: 'dialog',
+            })
+            if (result.status === 'downloaded') dialog.close()
+          }}
+        />
+      ) : (
+        <ExportAppDialogContent
+          appDetail={appDetail}
+          onSecretsRequired={(envList) => dialog.openWithPayload(envList)}
+          onExported={() => dialog.close()}
+        />
+      )
   return (
     <>
       <Dialog
@@ -198,14 +234,32 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
         handle={handles.importDSL}
         appId={appDetail.id}
         appMode={appDetail.mode}
-        onBackup={() => backupDialog.open(null)}
+        onBackup={() => backupDialog.openWithPayload(null)}
       >
-        <AlertDialog handle={backupDialog}>
-          <ExportAppDialogContent appDetail={appDetail} onExported={() => backupDialog.close()} />
+        <AlertDialog
+          handle={backupDialog}
+          onOpenChange={(open, details) => {
+            if (!open && secretExport.isExporting && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) secretExport.reset()
+          }}
+        >
+          {exportSession(backupDialog)}
         </AlertDialog>
       </UpdateDSLModal>
-      <AlertDialog handle={handles.export}>
-        <ExportAppDialogContent appDetail={appDetail} onExported={() => handles.export.close()} />
+      <AlertDialog
+        handle={handles.export}
+        onOpenChange={(open, details) => {
+          if (!open && secretExport.isExporting && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) secretExport.reset()
+        }}
+      >
+        {exportSession(handles.export)}
       </AlertDialog>
     </>
   )
