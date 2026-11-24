@@ -8,7 +8,7 @@
   "currentSigned": "INLOGGAD SOM",
   "educationPricingConfirm.cancel": "Behåll aktuell plan",
   "educationPricingConfirm.continue": "Byt till Professional årsvis",
-  "educationPricingConfirm.description": "Du har valt {{selected_plan_name}} ({{selected_billing_cycle}}). Utbildningsrabatten gäller endast Professional årsvis. Om du behåller din aktuella plan får du inte rabatten.",
+  "educationPricingConfirm.description": "Utbildningsrabatten gäller endast Professional årsplan. Om du behåller din nuvarande plan får du inte rabatten.",
   "educationPricingConfirm.title": "Din valda plan stöder inte utbildningsrabatten",
   "emailLabel": "Din aktuella e-postadress",
   "form.schoolName.noResults": "Inga matchande skolor hittades. Du kan fortfarande ange skolans officiella namn.",

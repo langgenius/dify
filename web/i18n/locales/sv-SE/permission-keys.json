@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Publicera och hantera agentversioner",
   "agent.acl.test_and_run": "Testa och kör agent",
   "agent.create": "Skapa agenter",
+  "agent.tag.manage": "Manage Agent tags",
   "api_extension.manage": "Hantera API-tilläggskonfiguration",
   "app.access_config": "Konfigurera programmets åtkomstbehörigheter",
   "app.acl.access_config": "Visa och hantera åtkomstbehörigheter",
