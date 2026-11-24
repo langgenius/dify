@@ -55,11 +55,34 @@ const mockStopWorkflowRun = vi
   .fn()
   .mockImplementation(async () => Response.json({ result: 'success' }))
 
-const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: unknown[]) => mockSsePost(...args),
   request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
+
+const mockStreamEvents = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/event-stream').streamEvents>(),
+)
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: mockStreamEvents,
+}))
+
+const mockRunPipelineDraft = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.run.post': mockRunPipelineDraft,
+    }),
+  }
+})
+
+const streamRequestOptions = {
+  signal: new AbortController().signal,
+  context: { silent: true },
+} as const
 
 type PipelineRun = ReturnType<typeof usePipelineRunByCanEdit>
 type IOtherOptions = NonNullable<Parameters<PipelineRun['handleRun']>[1]>
@@ -116,7 +139,7 @@ const startRun = async (run: PipelineRun, callback?: IOtherOptions) => {
   await act(async () => {
     await run.handleRun({ inputs: { query: 'test' } }, callback)
   })
-  return mockSsePost.mock.calls.at(-1)![2] as Required<IOtherOptions>
+  return mockStreamEvents.mock.calls.at(-1)![1] as Required<IOtherOptions>
 }
 
 describe('usePipelineRunByCanEdit', () => {
@@ -276,7 +299,7 @@ describe('usePipelineRunByCanEdit', () => {
         selected: false,
         _runningStatus: undefined,
       })
-      expect(mockSsePost).not.toHaveBeenCalled()
+      expect(mockStreamEvents).not.toHaveBeenCalled()
 
       await act(async () => {
         pending.resolve()
@@ -291,10 +314,14 @@ describe('usePipelineRunByCanEdit', () => {
           resultText: '',
         },
       })
-      expect(mockSsePost).toHaveBeenCalledExactlyOnceWith(
-        '/rag/pipelines/test-pipeline-id/workflows/draft/run',
-        { body: { inputs: { query: 'test' } } },
+      expect(mockStreamEvents).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Function),
         expect.any(Object),
+      )
+      await mockStreamEvents.mock.calls[0]![0](streamRequestOptions)
+      expect(mockRunPipelineDraft).toHaveBeenCalledExactlyOnceWith(
+        { params: { pipeline_id: 'test-pipeline-id' }, body: { inputs: { query: 'test' } } },
+        streamRequestOptions,
       )
     })
 
