@@ -376,11 +376,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat-with-history/__tests__/chat-wrapper.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -1660,12 +1655,6 @@
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 1
     }
@@ -1755,14 +1744,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippets/hooks/use-snippet-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
@@ -1791,38 +1772,9 @@
       "count": 2
     }
   },
-  "web/app/components/workflow-app/hooks/__tests__/use-workflow-run.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run-utils.ts": {
-    "no-restricted-imports": {
-      "count": 3
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow-app/hooks/use-workflow-run.ts": {
-    "no-restricted-imports": {
-      "count": 2
     },
     "typescript/no-deprecated": {
       "count": 1
@@ -1914,9 +1866,6 @@
     }
   },
   "web/app/components/workflow/hooks-store/store.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -2181,12 +2130,6 @@
       "count": 1
     },
     "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 2
     },
     "typescript/no-explicit-any": {
@@ -2761,12 +2704,6 @@
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 6
     }
@@ -3186,7 +3123,7 @@
   },
   "web/service/__tests__/ip-access-denied.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 33
+      "count": 29
     }
   },
   "web/service/__tests__/plugin-credential-commands.spec.ts": {
@@ -3235,7 +3172,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 17
+      "count": 15
     }
   },
   "web/service/base.ts": {
@@ -3243,10 +3180,10 @@
       "count": 2
     },
     "no-restricted-properties": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 13
+      "count": 12
     },
     "typescript/no-explicit-any": {
       "count": 2
