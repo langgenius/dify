@@ -161,7 +161,7 @@ const OnlineDocuments = ({
         credentials={dataSourceAuth?.result || []}
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
-        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3">
+        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 ps-3">
           <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>

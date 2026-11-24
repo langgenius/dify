@@ -26,7 +26,7 @@ const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) =
         onClick={() => setExpanded(!expanded)}
       >
         <RiArrowDownSLine
-          className={`mr-1 size-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
+          className={`me-1 size-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
         />
         {t(($) => $['panel.userInputField'], { ns: 'workflow' }).toLocaleUpperCase()}
       </div>

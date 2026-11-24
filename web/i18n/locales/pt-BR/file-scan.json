@@ -2,7 +2,6 @@
   "dialog.addTitle": "Adicionar scanner",
   "dialog.apiKey": "Chave de API",
   "dialog.apiSecret": "Segredo de API",
-  "dialog.clamavHint": "O ClamAV é executado nesta implantação. O endereço é definido pelo administrador da implantação.",
   "dialog.dataNotice": "O conteúdo dos arquivos é enviado para este serviço.",
   "dialog.editTitle": "Editar scanner",
   "dialog.endpoint": "Endpoint (opcional)",

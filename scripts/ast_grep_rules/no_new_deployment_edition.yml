@@ -1,0 +1,18 @@
+id: no-new-deployment-edition
+language: python
+severity: error
+message: >-
+  Reuse or add a named capability in api/services/feature_service.py,
+  or use api/services/system_feature_service.py for deployment-wide system policies.
+# The guard resolves candidate names and compares complete Git source versions.
+# Keep comparisons broad so existing import aliases and raw-string checks are included.
+rule:
+  any:
+    - kind: import_from_statement
+    - kind: comparison_operator
+    - kind: match_statement
+    - all:
+        - kind: attribute
+        - has:
+            field: attribute
+            regex: '^DeploymentEdition$'

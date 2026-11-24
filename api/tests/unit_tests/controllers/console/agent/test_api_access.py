@@ -89,6 +89,7 @@ from services.agent.knowledge_spaces import authorize_composer_knowledge
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import AppEvent
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -805,7 +806,9 @@ def test_publication_rejects_a_draft_changed_after_preparation(harness: Harness)
     with app.app_context():
         services = application_services()
     composer = AgentAppComposer(
-        store=AgentAppRepository(session_factory=harness.sessions),
+        store=AgentAppRepository(
+            session_factory=harness.sessions, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ),
         authorize_knowledge=partial(authorize_composer_knowledge, session_factory=harness.sessions),
         workspace_tools=list_workspace_dify_tools,
         authorize_publication_bindings=authorize_with_concurrent_save,

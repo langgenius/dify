@@ -18,7 +18,7 @@ import type {
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
+import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-editor/tool-provider-catalog'
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import isDeepEqual from 'fast-deep-equal'
 import { useAtomValue } from 'jotai'
@@ -42,10 +42,10 @@ import {
   createAgentToolProviderCatalog,
   getAgentToolPublishIssues,
   useAgentToolPresentation,
-} from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
+} from '@/features/agent-v2/agent-editor/tool-provider-catalog'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
@@ -222,7 +222,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: strategyProviders } = useQuery(
     consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
   )
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
   const resourceKind = useAtomValue(editorResourceKindAtom)

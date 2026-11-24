@@ -6,7 +6,7 @@ from .test_utils import CodeExecutorTestMixin
 class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
     """Test class for JavaScript code executor functionality."""
 
-    def test_javascript_plain(self):
+    def test_javascript_plain(self) -> None:
         """Test basic JavaScript code execution with console.log output"""
         code_executor, code_language = self.code_executor_imports
 
@@ -14,7 +14,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         result_message = code_executor.execute_code(language=code_language.JAVASCRIPT, preload="", code=code)
         assert result_message == "Hello World\n"
 
-    def test_javascript_json(self):
+    def test_javascript_json(self) -> None:
         """Test JavaScript code execution with JSON output"""
         code_executor, code_language = self.code_executor_imports
 
@@ -25,7 +25,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         result = code_executor.execute_code(language=code_language.JAVASCRIPT, preload="", code=code)
         assert result == '{"Hello":"World"}\n'
 
-    def test_javascript_with_code_template(self):
+    def test_javascript_with_code_template(self) -> None:
         """Test JavaScript workflow code template execution with inputs"""
         code_executor, code_language = self.code_executor_imports
         javascript_code_provider, _ = self.javascript_imports
@@ -37,7 +37,7 @@ class TestJavaScriptCodeExecutor(CodeExecutorTestMixin):
         )
         assert result == {"result": "HelloWorld"}
 
-    def test_javascript_get_runner_script(self):
+    def test_javascript_get_runner_script(self) -> None:
         """Test JavaScript template transformer runner script generation"""
         _, node_js_template_transformer = self.javascript_imports
 

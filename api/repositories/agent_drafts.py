@@ -17,7 +17,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_roster_queries import find_agent_draft
-from services.app.agent_build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
+from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
 
 
 def find_agent_snapshot(

@@ -2,7 +2,6 @@
   "dialog.addTitle": "スキャナーを追加",
   "dialog.apiKey": "API キー",
   "dialog.apiSecret": "API シークレット",
-  "dialog.clamavHint": "ClamAV はこのデプロイ環境内で動作します。アドレスはデプロイ管理者が設定します。",
   "dialog.dataNotice": "ファイルの内容はこのサービスに送信されます。",
   "dialog.editTitle": "スキャナーを編集",
   "dialog.endpoint": "エンドポイント（任意）",

@@ -194,7 +194,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
                 aria-pressed={type === 'secret'}
                 disabled={isTypeChangeDisabled('secret')}
                 className={cn(
-                  'flex w-full min-w-0 cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 pr-5 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                  'flex w-full min-w-0 cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 pe-5 system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                   type === 'secret' &&
                     'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg font-medium text-text-primary shadow-xs hover:border-components-option-card-option-selected-border',
                 )}
@@ -205,7 +205,7 @@ const VariableModal = ({ env, onClose, onSave }: ModalPropsType) => {
               <Infotip>
                 <InfotipTrigger
                   aria-labelledby={secretLabelId}
-                  className="absolute top-1/2 right-1 size-3.5 -translate-y-1/2"
+                  className="absolute inset-e-1 top-1/2 -translate-y-1/2"
                 />
                 <InfotipContent aria-labelledby={secretLabelId} className="w-60">
                   {t(($) => $['env.modal.secretTip'], { ns: 'workflow' })}

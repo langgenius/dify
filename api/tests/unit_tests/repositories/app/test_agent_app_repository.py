@@ -14,6 +14,7 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.entities.app_entities import AppListParams
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.model_factories import make_app
 
 type Resolver = Literal["repository", "roster"]
@@ -21,7 +22,10 @@ type Resolver = Literal["repository", "roster"]
 
 @pytest.mark.usefixtures("_inline_agent")
 def test_tracing_owner_rejects_inline_without_materializing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
-    repository = AgentAppRepository(session_factory=sqlite_session_factory)
+    repository = AgentAppRepository(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
     with pytest.raises(AgentAppNotFoundError):
         repository.resolve_roster_app_id(tenant_id="tenant-1", agent_id="inline-agent")
     with sqlite_session_factory() as session:
@@ -60,9 +64,9 @@ def resolver(request: pytest.FixtureRequest) -> Resolver:
 
 def resolve_runtime_app(factory: sessionmaker[Session], resolver: Resolver) -> str:
     if resolver == "repository":
-        return AgentAppRepository(session_factory=factory).resolve_runtime_app_id(
-            tenant_id="tenant-1", agent_id="inline-agent"
-        )
+        return AgentAppRepository(
+            session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        ).resolve_runtime_app_id(tenant_id="tenant-1", agent_id="inline-agent")
     with factory() as session:
         return AgentRosterService(session).get_agent_runtime_app_model(tenant_id="tenant-1", agent_id="inline-agent").id
 
@@ -180,7 +184,10 @@ def test_list_apps_does_not_create_build_conversation_for_empty_agent_id(
             ]
         )
 
-    repository = AgentAppRepository(session_factory=sqlite_session_factory)
+    repository = AgentAppRepository(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
     context = RequestContext("test", None, "account-1", "tenant-1")
     result = repository.list_apps(context, AppListParams(mode="agent"), accessible_agent_ids=None)
 

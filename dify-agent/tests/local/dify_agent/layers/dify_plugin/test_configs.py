@@ -16,6 +16,7 @@ from dify_agent.layers.dify_plugin import (
 
 def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
     assert dify_plugin_exports.__all__ == [
+        "DifyModelModality",
         "DifyPluginCredentialValue",
         "DifyPluginLLMLayerConfig",
         "DifyPluginToolCredentialType",

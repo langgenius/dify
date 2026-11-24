@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { GoldenQuestionDialog } from '@/features/new-rag/quality/golden-question-dialog'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -58,6 +59,22 @@ describe('GoldenQuestionDialog browser interactions', () => {
     await expect
       .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
       .toBeVisible()
+  })
+
+  it('keeps the draft open when the backdrop is pressed', async () => {
+    const screen = await render(<DialogHarness />)
+
+    await screen.getByRole('button', { name: 'Open dialog' }).click()
+    const question = screen.getByPlaceholder('knowledgeQuality.qualityPage.questionPlaceholder')
+    await question.fill('Edited draft question')
+    // The backdrop has no accessible role, so press the page corner it covers. `force` only skips
+    // the actionability check; the real mouse event still hit-tests onto the backdrop.
+    await userEvent.click(document.body, { force: true, position: { x: 4, y: 4 } })
+
+    await expect
+      .element(screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.editTitle' }))
+      .toBeVisible()
+    await expect.element(question).toHaveValue('Edited draft question')
   })
 })
 

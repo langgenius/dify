@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -29,6 +30,10 @@ from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
+)
+from services.agent.session_policy import (
+    apply_workflow_agent_session_policy_to_node_data,
+    merge_workflow_agent_session_policy,
 )
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -72,6 +77,11 @@ class WorkflowAgentPublishService:
         runtime/publish reads WorkflowAgentNodeBinding. This
         response-only projection keeps reads aligned without writing binding
         details back into the stored graph JSON.
+
+        Preconditions: the caller has admitted the workflow owner and binding
+        version. Postconditions: copied node session fields equal the persisted
+        jobs and cannot come from untrusted graph generation values; the input
+        workflow graph and live session resources are not modified.
         """
         graph = cast(dict[str, Any], copy.deepcopy(draft_workflow.graph_dict))
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
@@ -104,6 +114,7 @@ class WorkflowAgentPublishService:
                     "current_snapshot_id": binding.current_snapshot_id,
                 }
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            apply_workflow_agent_session_policy_to_node_data(node_data=node_data, node_job=node_job)
             if node_job.workflow_prompt is not None:
                 node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
             node_data[cls._AGENT_OUTPUT_ROUTES_KEY] = node_job.output_routes.model_dump(mode="json")
@@ -248,15 +259,27 @@ class WorkflowAgentPublishService:
         draft_workflow: Workflow,
         account_id: str,
     ) -> set[str]:
-        agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
+        """Synchronize admitted graph edits with binding-owned node jobs.
+
+        Preconditions: the caller holds the owning draft row lock, or is creating
+        a new draft in its transaction. Postconditions: each persisted session
+        policy comes from trusted binding state plus an explicitly validated mode;
+        graph generations are server-owned and match the saved node jobs. No
+        working session resource is retired by a mode change. Failures leave
+        commit or rollback to the caller.
+        """
+        graph = draft_workflow.graph_dict
+        agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
         existing_bindings = list(
             session.scalars(
-                select(WorkflowAgentNodeBinding).where(
+                select(WorkflowAgentNodeBinding)
+                .where(
                     WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                     WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                     WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
                     WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
                 )
+                .execution_options(populate_existing=True)
             ).all()
         )
         existing_by_node_id = {binding.node_id: binding for binding in existing_bindings}
@@ -286,7 +309,7 @@ class WorkflowAgentPublishService:
                 and existing_binding.agent_id
                 else None
             )
-            cls._sync_agent_binding_for_node(
+            saved_binding = cls._sync_agent_binding_for_node(
                 session=session,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
@@ -295,6 +318,7 @@ class WorkflowAgentPublishService:
                 existing_binding=existing_binding,
                 account_id=account_id,
             )
+            existing_by_node_id[node_id] = saved_binding
             if (
                 replaced_inline_agent_id
                 and existing_binding is not None
@@ -304,6 +328,16 @@ class WorkflowAgentPublishService:
                 )
             ):
                 retirement_candidates.add(replaced_inline_agent_id)
+        for node_id, node_data in agent_nodes.items():
+            binding = existing_by_node_id.get(node_id)
+            if isinstance(node_data, dict) and binding is not None:
+                apply_workflow_agent_session_policy_to_node_data(
+                    node_data=node_data,
+                    node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+                )
+            elif isinstance(node_data, dict):
+                node_data.pop("agent_session_generation", None)
+        draft_workflow.graph = json.dumps(graph)
         session.flush()
         return retirement_candidates
 
@@ -332,7 +366,14 @@ class WorkflowAgentPublishService:
         node_binding: Mapping[str, Any],
         existing_binding: WorkflowAgentNodeBinding | None,
         account_id: str,
-    ) -> None:
+    ) -> WorkflowAgentNodeBinding:
+        """Persist one graph node's binding and return its trusted node job owner.
+
+        Preconditions: the caller owns the locked draft and has admitted the
+        graph binding payload. Postconditions: the saved binding has a validated
+        node job with a server-owned session generation; unavailable Agent
+        references raise ValueError before the caller commits.
+        """
         binding_type = node_binding.get("binding_type")
         agent_id = node_binding.get("agent_id")
         if not isinstance(agent_id, str) or not agent_id:
@@ -407,6 +448,7 @@ class WorkflowAgentPublishService:
         binding.agent_id = agent.id
         binding.current_snapshot_id = current_snapshot_id
         binding.updated_by = account_id
+        return binding
 
     @classmethod
     def _resolve_existing_inline_binding_agent(
@@ -568,10 +610,19 @@ class WorkflowAgentPublishService:
         existing_binding: WorkflowAgentNodeBinding | None,
         node_data: Mapping[str, Any],
     ) -> WorkflowNodeJobConfig:
+        """Merge graph-owned inputs with a trusted binding's session policy.
+
+        Preconditions: the binding belongs to the caller's locked draft, or is
+        absent for a new node. Postconditions: omitted session mode preserves the
+        saved value, mode changes rotate generation, and incoming generation is
+        ignored. Invalid explicit modes raise ValidationError without mutation
+        of the previous job.
+        """
         if existing_binding and existing_binding.node_job_config:
             node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
         else:
             node_job = WorkflowNodeJobConfig()
+        previous_node_job = node_job.model_copy(deep=True) if existing_binding is not None else None
 
         agent_task = node_data.get(cls._AGENT_TASK_KEY)
         if isinstance(agent_task, str):
@@ -593,7 +644,18 @@ class WorkflowAgentPublishService:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
         node_job.output_routes = WorkflowOutputRoutes.model_validate(node_data.get(cls._AGENT_OUTPUT_ROUTES_KEY, {}))
-        return node_job
+        requested_enabled = (
+            WorkflowNodeJobConfig.model_validate(
+                {"continue_agent_session": node_data["continue_agent_session"]}
+            ).continue_agent_session
+            if "continue_agent_session" in node_data
+            else None
+        )
+        return merge_workflow_agent_session_policy(
+            previous=previous_node_job,
+            node_job=node_job,
+            requested_enabled=requested_enabled,
+        )
 
     @classmethod
     def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:
@@ -613,6 +675,11 @@ class WorkflowAgentPublishService:
         Only copied inline bindings add owners for workflow-only Agents.
         Publishing does not release existing draft or historical inline owners,
         produces no retirement candidates.
+
+        Preconditions: the caller holds the refreshed source draft row lock.
+        Postconditions: fresh source jobs, including mode and generation, are
+        copied into the new version in the caller's transaction; concurrent
+        draft writers cannot change the graph/job pair before it commits.
         """
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
@@ -621,13 +688,15 @@ class WorkflowAgentPublishService:
             return
 
         bindings = session.scalars(
-            select(WorkflowAgentNodeBinding).where(
+            select(WorkflowAgentNodeBinding)
+            .where(
                 WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                 WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                 WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
                 WorkflowAgentNodeBinding.workflow_version == draft_workflow.version,
                 WorkflowAgentNodeBinding.node_id.in_(node_ids),
             )
+            .execution_options(populate_existing=True)
         ).all()
         if not bindings:
             return

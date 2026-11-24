@@ -9,11 +9,14 @@ import { SubscriptionSelectorView } from '../selector-view'
 const requests = vi.hoisted(() => ({ list: vi.fn(), remove: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': requests.list,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post':
         requests.remove,
     }),

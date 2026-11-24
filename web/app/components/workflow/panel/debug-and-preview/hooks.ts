@@ -5,6 +5,7 @@ import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/cha
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
 import type { ReasoningChunkResponse } from '@/types/workflow'
+import { useQueryClient } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -30,8 +31,8 @@ import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { sseGet } from '@/service/base'
-import { useInvalidateAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import { useHooksStore } from '../../hooks-store'
@@ -55,6 +56,7 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  retireDebugWorkspaces?: () => void,
 ) => {
   const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
@@ -67,10 +69,15 @@ export const useChat = (
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
+  const retireDebugWorkspacesRef = useRef(retireDebugWorkspaces)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -150,6 +157,19 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    retireDebugWorkspacesRef.current = retireDebugWorkspaces
+  }, [retireDebugWorkspaces])
+
+  // Closing the panel unmounts this hook and ends the editor's debugging. A page
+  // refresh loses the Conversation id, so the server retires the editor's whole
+  // debug set on this app rather than only the id this mount knows about.
+  useEffect(() => {
+    return () => {
+      retireDebugWorkspacesRef.current?.()
+    }
+  }, [])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -202,6 +222,7 @@ export const useChat = (
 
   const handleRestart = useCallback(() => {
     handleStop()
+    retireDebugWorkspacesRef.current?.()
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)

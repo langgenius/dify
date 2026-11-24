@@ -475,7 +475,9 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
 def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(generated_specs: list[Path]):
     payload = json.loads((generated_specs[0].parent / "console-openapi.json").read_text(encoding="utf-8"))
     audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
+    avatar_path = "/accounts/{account_id}/avatars/{file_id}"
     operations = [
+        (avatar_path, "get", {"image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"}),
         ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
         ("/workspaces/current/plugin/icon", "get", {"*/*"}),
         ("/workspaces/current/skills/{skill_id}/files/content", "get", {"*/*"}),
@@ -491,6 +493,10 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
         assert errors, path
         for status, response in errors.items():
             assert set(response["content"]) == {"application/json"}, (path, status)
+
+    avatar = payload["paths"][avatar_path]
+    assert "head" not in avatar
+    assert "content" not in avatar["get"]["responses"]["304"]
 
 
 def test_system_features_specs_exclude_backend_only_fields(generated_specs: list[Path]):
@@ -725,6 +731,39 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(ge
         "#/components/schemas/AgentKnowledgeSetConfig"
     )
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
+
+
+def test_generate_specs_include_evaluation_console_contract(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+    paths = payload["paths"]
+
+    xlsx_media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    binary_schema = {"format": "binary", "type": "string"}
+    for path in (
+        "/datasets/{dataset_id}/evaluation/template/download",
+        "/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download",
+    ):
+        response_content = paths[path]["post"]["responses"]["200"]["content"]
+        assert response_content == {xlsx_media_type: {"schema": binary_schema}}
+
+    template_download_request = paths["/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download"]["post"][
+        "requestBody"
+    ]
+    assert template_download_request["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/EvaluationConfigPayload"
+    )
+
+    for path in (
+        "/datasets/{dataset_id}/evaluation/runs/{run_id}/retry",
+        "/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry",
+    ):
+        assert _response_schema(paths[path]["post"])["$ref"] == "#/components/schemas/EvaluationRunResponse"
+
+    assert "target_workflow_version_id" in schemas["EvaluationRunResponse"]["properties"]
+    assert "workflow_run_id" in schemas["EvaluationRunItemResponse"]["properties"]
+    assert "node_info" in schemas["EvaluationMetric"]["properties"]
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

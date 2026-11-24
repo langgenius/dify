@@ -72,7 +72,7 @@ const MetadataFilterSelector = ({
               key={option.key}
               value={option.key}
               closeOnClick
-              className="h-auto items-start p-2 pr-3"
+              className="h-auto items-start p-2 pe-3"
             >
               <div className="w-4 shrink-0">
                 <MenuRadioItemIndicator />

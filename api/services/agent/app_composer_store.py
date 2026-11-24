@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from models.agent_config_entities import AgentSoulConfig
-from services.app.agent_build_session_store import AgentDraftSummary
+from services.agent.build_session_store import AgentDraftSummary
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 

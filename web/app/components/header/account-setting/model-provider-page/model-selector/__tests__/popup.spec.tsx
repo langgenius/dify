@@ -7,7 +7,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { ModalContextProvider } from '@/context/modal-context-provider'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
@@ -56,9 +56,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.modelProviders.get': api.providers,
       'workspaces.current.modelProviders.byProvider.credentials.get': api.credential,
       'workspaces.current.models.modelTypes.byModelType.get': api.catalog,
+      'workspaces.current.plugin.install.marketplace.post': api.install,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.install.marketplace.post': api.install,
       'workspaces.current.plugin.tasks.byTaskId.get': api.task,
       'workspaces.current.modelProviders.byProvider.credentials.post': api.addCredential,
       'workspaces.current.modelProviders.byProvider.credentials.put': api.editCredential,
@@ -214,9 +214,10 @@ async function setup(
   await act(async () =>
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
-        <ModalContextProvider>
+        <>
           <Harness modelList={modelList} onSelect={onSelect} onHide={onHide} {...props} />
-        </ModalContextProvider>
+          <ModelCredentialDialog />
+        </>
       </NuqsTestingAdapter>,
       {
         queryClient,

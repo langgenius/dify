@@ -2,7 +2,6 @@ import type {
   AppDetailWithSite,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { AlertDialogActions, AlertDialogProps } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -17,16 +16,17 @@ import {
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useId, useRef, useState } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
-type ExportAppDialogProps = Pick<AlertDialogProps, 'open' | 'onOpenChange'> & {
+type ExportAppDialogProps = {
+  open: boolean
+  onClose: () => void
   appDetail: AppDetailWithSite
 }
 
-export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDialogProps) {
-  const actionsRef = useRef<AlertDialogActions>(null)
+export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogProps) {
   const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const [secrets, setSecrets] = useState<EnvironmentVariableItemResponse[]>([])
@@ -43,33 +43,40 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
     reset: resetExport,
   } = useExportAppDsl()
   const isPending = isChecking || isExporting
-  const check = async () => {
-    if (isPending) return
-    const result = await exportWorkflowAppDsl({
+  const activeExportRef = useRef<AbortController | null>(null)
+  const cancelExport = useCallback(() => {
+    activeExportRef.current?.abort()
+    activeExportRef.current = null
+  }, [])
+  useLayoutEffect(() => cancelExport, [appDetail.id, cancelExport, open])
+
+  const runExport = async (includeSecret?: boolean) => {
+    if (!open || isPending || activeExportRef.current) return
+    const controller = new AbortController()
+    activeExportRef.current = controller
+    const input = {
       appId: appDetail.id,
       appName: appDetail.name,
-      feedback: 'dialog',
-    })
+      feedback: 'dialog' as const,
+      signal: controller.signal,
+    }
+    const result =
+      includeSecret === undefined
+        ? await exportWorkflowAppDsl(input)
+        : await exportAppDsl({ ...input, includeSecret })
+    if (controller.signal.aborted) return
+
+    activeExportRef.current = null
     if (result.status === 'confirmation-required') setSecrets(result.secretEnvList)
-    else if (result.status === 'downloaded') actionsRef.current?.close()
-  }
-  const download = async (includeSecret: boolean) => {
-    if (isPending) return
-    const result = await exportAppDsl({
-      appId: appDetail.id,
-      appName: appDetail.name,
-      includeSecret,
-      feedback: 'dialog',
-    })
-    if (result.status === 'downloaded') actionsRef.current?.close()
+    else if (result.status === 'downloaded') onClose()
   }
   return (
     <AlertDialog
-      actionsRef={actionsRef}
       open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) return
+        cancelExport()
+        onClose()
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
@@ -86,7 +93,7 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
             errorMessage={exportError}
             isPending={isPending}
             onSubmit={(includeSecret) => {
-              void download(includeSecret)
+              void runExport(includeSecret)
             }}
           />
         ) : (
@@ -107,7 +114,7 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
               </AlertDialogBody>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancelButton disabled={isPending}>
+              <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton
@@ -115,7 +122,7 @@ export function ExportAppDialog({ appDetail, open, onOpenChange }: ExportAppDial
                 loading={isPending}
                 aria-labelledby={confirmLabelId}
                 onClick={() => {
-                  void check()
+                  void runExport()
                 }}
               >
                 <span id={confirmLabelId}>
@@ -163,10 +170,10 @@ function ExportSecretsForm({
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
           <thead>
             <tr>
-              <th className="border-r border-b border-divider-regular p-2 text-left">
+              <th className="border-e border-b border-divider-regular p-2 text-start">
                 {t(($) => $['env.export.name'], { ns: 'workflow' })}
               </th>
-              <th className="border-b border-divider-regular p-2 text-left">
+              <th className="border-b border-divider-regular p-2 text-start">
                 {t(($) => $['env.export.value'], { ns: 'workflow' })}
               </th>
             </tr>
@@ -174,7 +181,7 @@ function ExportSecretsForm({
           <tbody>
             {secrets.map((secret) => (
               <tr key={secret.name}>
-                <td className="border-r border-divider-regular p-2 wrap-anywhere">{secret.name}</td>
+                <td className="border-e border-divider-regular p-2 wrap-anywhere">{secret.name}</td>
                 <td className="p-2 wrap-anywhere">
                   {typeof secret.value === 'object'
                     ? JSON.stringify(secret.value)
@@ -201,7 +208,7 @@ function ExportSecretsForm({
         )}
       </AlertDialogBody>
       <AlertDialogFooter>
-        <AlertDialogCancelButton type="button" disabled={isPending}>
+        <AlertDialogCancelButton type="button">
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
         <AlertDialogConfirmButton
