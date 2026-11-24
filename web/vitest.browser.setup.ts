@@ -1,5 +1,6 @@
 import { vi } from 'vite-plus/test'
 import { page, server, userEvent } from 'vite-plus/test/browser'
+import { cleanup } from 'vitest-browser-react'
 import { consoleErrorAllowlist } from './test/console-error-allowlist'
 import './app/styles/globals.css'
 
@@ -8,6 +9,27 @@ document.documentElement.dataset.theme = 'light'
 ;(
   globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
 ).BASE_UI_ANIMATIONS_DISABLED = true
+
+// boundary: Monaco terminates its editor worker as soon as the last model is disposed, which in a
+// spec is often within milliseconds of creating it. Chromium reports the `importScripts` that the
+// termination cancels as an uncaught window error (`… workerMain.js … failed to load`), and the
+// guard below then fails whichever test is running. Terminate only after the worker has loaded.
+const NativeWorker = window.Worker
+window.Worker = class extends NativeWorker {
+  constructor(url: string | URL, options?: WorkerOptions) {
+    super(url, options)
+    if (options?.name !== 'editorWorkerService') return
+    const loaded = new Promise<void>((resolve) => {
+      this.addEventListener('message', () => resolve(), { once: true })
+      this.addEventListener('error', () => resolve(), { once: true })
+      setTimeout(resolve, 300)
+    })
+    const terminate = this.terminate.bind(this)
+    this.terminate = () => {
+      void loaded.then(terminate)
+    }
+  }
+}
 
 const allowedConsoleErrorFiles = new Set(consoleErrorAllowlist)
 const writeConsoleError = console.error.bind(console)
@@ -53,6 +75,14 @@ afterEach(({ task }) => {
   const messages = errors.map((args) => args.map((arg) => String(arg)).join(' ')).join('\n\n')
   throw new Error(`Test logged console.error:\n\n${messages}`)
 })
+
+// Unmount rendered trees when the test ends rather than when the next one starts. A tree left
+// mounted keeps re-rendering after the spec's `onTestFinished` cleanups (such as clearing its query
+// client) and after the fake API restores the real transports, so its refetches reach a missing
+// handler or the real network and fail this or the next test. `afterEach` hooks run in reverse, so
+// this runs before the guard above and its errors stay with this test. Failure screenshots are
+// taken before `afterEach`.
+afterEach(cleanup)
 
 // Tests in one file share a page, so the viewport and pointer position outlive the test that set them.
 beforeEach(async () => {
