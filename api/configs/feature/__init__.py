@@ -1196,7 +1196,7 @@ class AuthConfig(BaseSettings):
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
         "Bucket keyed on sha256(token), shared across api replicas via Redis. "
         "Set to 0 to disable the per-token limit entirely.",
-        default=60,
+        default=500,
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
