@@ -1,8 +1,9 @@
 """In-memory fakes shared by the file transfer tests."""
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from enum import StrEnum
 from itertools import count
 
 from services.file_transfer import StoredFile, Transfer, TransferDirection
@@ -92,24 +93,46 @@ class InMemoryTransfers:
         old = [transfer for transfer in self.rows.values() if transfer.expires_at <= now]
         return sorted(old, key=lambda transfer: transfer.created_at)[:limit]
 
+    def expire(self, *, transfer_ids: Sequence[str], now: datetime) -> None:
+        known = [self.rows[transfer_id] for transfer_id in transfer_ids if transfer_id in self.rows]
+        for transfer in known:
+            if transfer.expires_at > now:
+                self.rows[transfer.id] = replace(transfer, expires_at=now)
+
     def delete(self, *, transfer_ids: Sequence[str]) -> None:
         for transfer_id in transfer_ids:
             self.rows.pop(transfer_id, None)
             self.digests.pop(transfer_id, None)
 
 
+class SavePoint(StrEnum):
+    """When an action set with ``InMemoryBlobs.during_next_save`` runs: before or after the bytes are stored."""
+
+    BEFORE_STORE = "before_store"
+    AFTER_STORE = "after_store"
+
+
 @dataclass
 class InMemoryBlobs:
-    """Implements TransferBlobs; ``fail_next_save`` makes the next save raise OSError."""
+    """Implements TransferBlobs. ``fail_next_save`` and ``fail_next_delete`` make the next call raise OSError;
+    ``during_next_save`` runs an action inside the next save, as another request would.
+    """
 
     files: dict[str, bytes] = field(default_factory=dict)
     _fail_next_save: bool = False
+    _fail_next_delete: bool = False
+    _during_next_save: tuple[SavePoint, Callable[[], object]] | None = None
 
     def save(self, filename: str, data: bytes) -> None:
         if self._fail_next_save:
             self._fail_next_save = False
             raise OSError("storage is down")
+        interleaved, self._during_next_save = self._during_next_save, None
+        if interleaved is not None and interleaved[0] is SavePoint.BEFORE_STORE:
+            interleaved[1]()
         self.files[filename] = data
+        if interleaved is not None and interleaved[0] is SavePoint.AFTER_STORE:
+            interleaved[1]()
 
     def exists(self, filename: str) -> bool:
         return filename in self.files
@@ -118,10 +141,19 @@ class InMemoryBlobs:
         return self.files[filename]
 
     def delete(self, filename: str) -> None:
+        if self._fail_next_delete:
+            self._fail_next_delete = False
+            raise OSError("storage is down")
         del self.files[filename]
 
     def fail_next_save(self) -> None:
         self._fail_next_save = True
+
+    def fail_next_delete(self) -> None:
+        self._fail_next_delete = True
+
+    def during_next_save(self, point: SavePoint, action: Callable[[], object]) -> None:
+        self._during_next_save = (point, action)
 
     def clear(self) -> None:
         self.files.clear()

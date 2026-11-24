@@ -57,6 +57,11 @@ class FileTransferService:
     ``new_token`` returns an unguessable string.
     Postcondition: an owner holds at most ``limits.max_per_owner`` live transfers, and at most
     ``limits.max_active`` slots are taken at once in this process.
+
+    Invariant: no stored bytes outlive their row. A row is written before its bytes. Dropping a transfer ends
+    it, then deletes its bytes, then its row; storing bytes is followed by a check that the transfer is still
+    live, and the writer deletes the bytes when it is not. Whichever of a drop and a store runs first, one of
+    them deletes the bytes; a drop that fails part way leaves an ended row for ``purge_expired``.
     """
 
     def __init__(
@@ -111,7 +116,8 @@ class FileTransferService:
         """Record and store the file of an incoming transfer. First write wins.
 
         Postcondition: the transfer holds this file. The same bytes again return the transfer; different
-        bytes raise ``TransferAlreadyReceivedError``. A failed store leaves the transfer empty.
+        bytes raise ``TransferAlreadyReceivedError``. A failed store leaves the transfer empty. A transfer
+        dropped while its bytes were stored raises ``TransferNotFoundError`` and keeps no bytes.
         """
         transfer = self.open_for_upload(transfer_id, token)
         self._check_size(file.content)
@@ -131,11 +137,13 @@ class FileTransferService:
         except Exception:
             self._transfers.release(transfer_id=transfer_id)
             raise
+        self._confirm_stored(transfer_id)
         return replace(transfer, file=stored)
 
     def park(self, owner_id: str, *, name: str, mime_type: str, content: bytes) -> TransferTicket:
         """Postcondition: an outgoing transfer of the owner holding the file, and the token its download
-        link needs. A failed store leaves no transfer.
+        link needs. A failed store leaves no transfer. A transfer dropped while its bytes were stored raises
+        ``TransferNotFoundError`` and keeps no bytes.
         """
         self._check_size(content)
         now = self._now()
@@ -161,6 +169,7 @@ class FileTransferService:
         except Exception:
             self._transfers.delete(transfer_ids=[transfer.id])
             raise
+        self._confirm_stored(transfer.id)
         return TransferTicket(
             transfer=transfer, token=token, link_expires_at=_link_end(transfer, self._limits.download_link_life)
         )
@@ -278,12 +287,31 @@ class FileTransferService:
         doomed.extend(live[: max(overflow, 0)])
         self._delete(doomed)
 
+    def _confirm_stored(self, transfer_id: str) -> None:
+        """Precondition: the transfer's bytes were just stored.
+
+        Postcondition: returns while the transfer is live; otherwise its bytes are deleted and
+        ``TransferNotFoundError`` is raised.
+        """
+        if self._transfers.get(transfer_id=transfer_id, now=self._now()) is not None:
+            return
+        self._delete_bytes(transfer_id)
+        raise TransferNotFoundError(transfer_id)
+
     def _delete(self, transfers: Sequence[Transfer]) -> None:
-        """Postcondition: the transfers' bytes, then their rows, are gone; bytes already gone are fine."""
+        """Postcondition: the transfers are ended, then their bytes and their rows are gone; bytes already gone
+        are fine. A failure part way leaves the rest of the ended rows to ``purge_expired``.
+        """
         if not transfers:
             return
-        for transfer in transfers:
-            key = _storage_key(transfer.id)
-            if self._blobs.exists(key):
-                self._blobs.delete(key)
-        self._transfers.delete(transfer_ids=[transfer.id for transfer in transfers])
+        transfer_ids = [transfer.id for transfer in transfers]
+        self._transfers.expire(transfer_ids=transfer_ids, now=self._now())
+        for transfer_id in transfer_ids:
+            self._delete_bytes(transfer_id)
+        self._transfers.delete(transfer_ids=transfer_ids)
+
+    def _delete_bytes(self, transfer_id: str) -> None:
+        """Postcondition: no bytes are stored for the transfer."""
+        key = _storage_key(transfer_id)
+        if self._blobs.exists(key):
+            self._blobs.delete(key)

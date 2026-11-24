@@ -114,6 +114,25 @@ def test_expired_returns_oldest_first_up_to_limit(sqlite_session_factory: sessio
     assert [transfer.id for transfer in repository.expired(now=_NOW, limit=1)] == [first.id]
 
 
+def test_expire_ends_live_transfers_and_leaves_ended_ones(sqlite_session_factory: sessionmaker[Session]) -> None:
+    repository = SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory)
+    live = _create(repository)
+    ended = _create(repository, now=_NOW - _LIFE - timedelta(seconds=1))
+    untouched = _create(repository)
+    later = _NOW + timedelta(seconds=5)
+
+    repository.expire(transfer_ids=[live.id, ended.id], now=later)
+
+    assert repository.get(transfer_id=live.id, now=later) is None
+    assert repository.get(transfer_id=untouched.id, now=later) == untouched
+    assert [transfer.id for transfer in repository.expired(now=later, limit=10)] == [ended.id, live.id]
+    assert {transfer.id: transfer.expires_at for transfer in repository.owned(owner_id="owner")} == {
+        live.id: later,
+        ended.id: ended.expires_at,
+        untouched.id: untouched.expires_at,
+    }
+
+
 def test_delete_removes_the_rows(sqlite_session_factory: sessionmaker[Session]) -> None:
     repository = SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory)
     gone = _create(repository)

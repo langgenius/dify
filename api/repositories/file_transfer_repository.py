@@ -157,6 +157,16 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
         return self._all(statement)
 
     @override
+    def expire(self, *, transfer_ids: Sequence[str], now: datetime) -> None:
+        statement = (
+            update(FileTransfer)
+            .where(FileTransfer.id.in_(transfer_ids), FileTransfer.expires_at > now)
+            .values(expires_at=now)
+        )
+        with self._session_factory.begin() as session:
+            session.execute(statement)
+
+    @override
     def delete(self, *, transfer_ids: Sequence[str]) -> None:
         with self._session_factory.begin() as session:
             session.execute(delete(FileTransfer).where(FileTransfer.id.in_(transfer_ids)))

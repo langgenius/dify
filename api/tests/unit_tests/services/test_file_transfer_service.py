@@ -20,7 +20,7 @@ from services.file_transfer import (
     TransferTooLargeError,
 )
 from tests.helpers.unit.libs.zip_builder import zip_bytes
-from tests.unit_tests.services.file_transfer_fakes import InMemoryBlobs, InMemoryTransfers, SettableClock
+from tests.unit_tests.services.file_transfer_fakes import InMemoryBlobs, InMemoryTransfers, SavePoint, SettableClock
 
 _LIMITS = TransferLimits(
     ttl=timedelta(minutes=40),
@@ -308,6 +308,53 @@ def test_expired_transfers_go_first_when_room_is_made() -> None:
 
     assert expired.transfer.id not in transfers.rows
     assert [transfer.id for transfer in transfers.owned(owner_id="owner")] == [live.transfer.id, newest.transfer.id]
+
+
+@pytest.mark.parametrize("point", list(SavePoint))
+def test_an_upload_dropped_to_make_room_while_it_is_stored_keeps_no_bytes(point: SavePoint) -> None:
+    service, transfers, blobs, _ = _service()
+    uploading = service.prepare("owner", folder=False)
+    service.prepare("owner", folder=False)
+    blobs.during_next_save(point, lambda: service.prepare("owner", folder=False))
+
+    with pytest.raises(TransferNotFoundError):
+        service.receive(uploading.transfer.id, uploading.token, _PDF)
+
+    assert uploading.transfer.id not in transfers.rows
+    assert blobs.files == {}
+
+
+@pytest.mark.parametrize("point", list(SavePoint))
+def test_a_parked_file_dropped_to_make_room_while_it_is_stored_keeps_no_bytes(point: SavePoint) -> None:
+    service, transfers, blobs, _ = _service()
+
+    def two_more_transfers() -> None:
+        service.prepare("owner", folder=False)
+        service.prepare("owner", folder=False)
+
+    blobs.during_next_save(point, two_more_transfers)
+
+    with pytest.raises(TransferNotFoundError):
+        service.park("owner", name="out.zip", mime_type="application/zip", content=b"pkg")
+
+    assert len(transfers.owned(owner_id="owner")) == _LIMITS.max_per_owner
+    assert blobs.files == {}
+
+
+def test_a_failed_delete_of_bytes_leaves_the_ended_transfer_to_the_next_purge() -> None:
+    service, transfers, blobs, _ = _service()
+    dropped = service.park("owner", name="1", mime_type="text/plain", content=b"1")
+    service.prepare("owner", folder=False)
+    blobs.fail_next_delete()
+
+    with pytest.raises(OSError, match="storage is down"):
+        service.prepare("owner", folder=False)
+    with pytest.raises(TransferNotFoundError):
+        service.download(dropped.transfer.id, dropped.token)
+
+    assert service.purge_expired(limit=10) == 1
+    assert dropped.transfer.id not in transfers.rows
+    assert blobs.files == {}
 
 
 def test_purge_removes_rows_and_bytes_of_expired_transfers_only() -> None:
