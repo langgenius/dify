@@ -13,8 +13,8 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/quer
 import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
 import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum as BlockEnumValue } from '../types'
 import { ENTRY_NODE_TYPES } from './constants'
@@ -106,8 +106,12 @@ function AllStartBlocks({
   const debouncedMarketplaceFilters = useDebounce(marketplaceFilters, { wait: 500 })
   const isMarketplaceFilterSettled = debouncedMarketplaceFilters === marketplaceFilters
   const isMarketplaceSearchEnabled = enableTriggerPlugin && marketplace !== null && hasFilter
-  const { plugins: featuredPlugins = [], isLoading: featuredLoading } =
-    useFeaturedTriggersRecommendations(enableTriggerPlugin && marketplace !== null && !hasFilter)
+  const { data: featuredPlugins = [], isLoading: featuredLoading } = useQuery(
+    marketplaceCollectionPluginsQueryOptions({
+      collection: '__recommended-plugins-triggers',
+      enabled: enableTriggerPlugin && marketplace !== null && !hasFilter,
+    }),
+  )
   const marketplaceSearchParams = useMemo(
     () =>
       isMarketplaceSearchEnabled && isMarketplaceFilterSettled

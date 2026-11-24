@@ -52,10 +52,6 @@ const renderWorkflowFlowComponent: typeof renderWorkflowFlow = (ui, options) => 
   return renderWorkflowFlow(ui, { ...options, queryClient })
 }
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
 }))

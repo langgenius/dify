@@ -2,14 +2,14 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { TaskStatus } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
 
 type InstallPluginButtonProps = Omit<ButtonProps, 'children' | 'loading'> & {
   uniqueIdentifier: string
@@ -26,10 +26,12 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
     ),
   )
-  const manifest = useCheckInstalled({
-    pluginIds: identifiers,
-    enabled: identifiers.length > 0,
-  })
+  const manifest = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: identifiers,
+      enabled: identifiers.length > 0,
+    }),
+  )
   const install = useMutation(
     consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
   )
