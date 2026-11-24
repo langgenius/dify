@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "ຄືນຄ່າ (Restore)",
   "agentDetail.versionHistory.versionName": "ເວີຊັນ {{version}}",
   "agentDetail.versionHistory.viewOnly": "ເບິ່ງໄດ້ຢ່າງດຽວ",
-  "exportAgent": "ສົ່ງອອກ Agent"
+  "exportAgent": "ສົ່ງອອກ Agent",
+  "toolCallLimit.invalid": "ປ້ອນຈຳນວນເຕັມທີ່ໃຫຍ່ກວ່າ 0.",
+  "toolCallLimit.label": "ຂີດຈຳກັດການເອີ້ນສຳລັບ {{toolName}}",
+  "toolCallLimit.maximum": "ຈຳນວນການເອີ້ນສູງສຸດ",
+  "toolCallLimit.notExecuted": "ບໍ່ໄດ້ດຳເນີນການ",
+  "toolCallLimit.reached": "ຮອດຂີດຈຳກັດການເອີ້ນ ({{limit}} ຄັ້ງຕໍ່ການແລ່ນ). ຄຳຂໍນີ້ບໍ່ໄດ້ດຳເນີນການ.",
+  "toolCallLimit.reason": "ເຫດຜົນ",
+  "toolCallLimit.set": "ຕັ້ງຂີດຈຳກັດ",
+  "toolCallLimit.summary_one": "{{count}} ຄັ້ງ / ການແລ່ນ",
+  "toolCallLimit.summary_other": "{{count}} ຄັ້ງ / ການແລ່ນ",
+  "toolCallLimit.title": "ຂີດຈຳກັດການເອີ້ນຕໍ່ການແລ່ນ",
+  "toolCallLimit.used_one": "ໃຊ້ແລ້ວ {{used}} ຈາກ {{limit}} ຄັ້ງ",
+  "toolCallLimit.used_other": "ໃຊ້ແລ້ວ {{used}} ຈາກ {{limit}} ຄັ້ງ"
 }

@@ -610,6 +610,16 @@ export default interface Resources {
     'agentDetail.versionHistory.versionName': 'Version {{version}}'
     'agentDetail.versionHistory.viewOnly': 'View Only'
     exportAgent: 'Export Agent'
+    'toolCallLimit.invalid': 'Enter a whole number greater than 0.'
+    'toolCallLimit.label': 'Call limit for {{toolName}}'
+    'toolCallLimit.maximum': 'Maximum calls'
+    'toolCallLimit.notExecuted': 'Not executed'
+    'toolCallLimit.reached': 'Call limit reached ({{limit}} per run). This request was not executed.'
+    'toolCallLimit.reason': 'Reason'
+    'toolCallLimit.set': 'Set limit'
+    'toolCallLimit.summary': '{{count}} call / run' | '{{count}} calls / run'
+    'toolCallLimit.title': 'Call limit per run'
+    'toolCallLimit.used': '{{used}} of {{limit}} call used' | '{{used}} of {{limit}} calls used'
   }
   app: {
     'accessControlDialog.accessItems.anyone': 'Anyone with the link'

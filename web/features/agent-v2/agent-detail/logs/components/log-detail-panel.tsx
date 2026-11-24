@@ -9,7 +9,9 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toAgentThoughtItem } from '@/app/components/base/chat/agent-thought'
 import Chat from '@/app/components/base/chat/chat'
+import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ExternalTraceRow } from '@/app/components/workflow/run/external-trace-row'
@@ -162,6 +164,7 @@ export function AgentLogDetailPanel({
                   />
                 </dl>
               )}
+              renderAgentContent={AgentRosterResponseContent}
               noChatInput
               hideProcessDetail
               chatContainerInnerClassName="px-3"
@@ -198,6 +201,9 @@ function formatAgentLogMessages({
       id: message.id,
       content: message.answer || message.error || '',
       conversationId,
+      agent_thoughts: message.agent_thoughts?.map((thought) =>
+        toAgentThoughtItem(thought, conversationId),
+      ),
       feedback: userFeedback,
       adminFeedback,
       feedbackDisabled: !message.feedback_enabled,

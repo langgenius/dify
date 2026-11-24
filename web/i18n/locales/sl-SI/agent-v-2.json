@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "Obnovi",
   "agentDetail.versionHistory.versionName": "Različica {{version}}",
   "agentDetail.versionHistory.viewOnly": "Samo ogled",
-  "exportAgent": "Izvozi agenta"
+  "exportAgent": "Izvozi agenta",
+  "toolCallLimit.invalid": "Vnesite celo število, večje od 0.",
+  "toolCallLimit.label": "Omejitev klicev za {{toolName}}",
+  "toolCallLimit.maximum": "Največ klicev",
+  "toolCallLimit.notExecuted": "Ni izvedeno",
+  "toolCallLimit.reached": "Dosežena je omejitev klicev ({{limit}} na zagon). Ta zahteva ni bila izvedena.",
+  "toolCallLimit.reason": "Razlog",
+  "toolCallLimit.set": "Nastavi omejitev",
+  "toolCallLimit.summary_one": "{{count}} klic / zagon",
+  "toolCallLimit.summary_other": "{{count}} klicev / zagon",
+  "toolCallLimit.title": "Omejitev klicev na zagon",
+  "toolCallLimit.used_one": "Uporabljen {{used}} od {{limit}} klica",
+  "toolCallLimit.used_other": "Uporabljenih {{used}} od {{limit}} klicev"
 }

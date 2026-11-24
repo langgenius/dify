@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "Відновити",
   "agentDetail.versionHistory.versionName": "Версія {{version}}",
   "agentDetail.versionHistory.viewOnly": "Лише перегляд",
-  "exportAgent": "Експортувати агента"
+  "exportAgent": "Експортувати агента",
+  "toolCallLimit.invalid": "Введіть ціле число більше за 0.",
+  "toolCallLimit.label": "Ліміт викликів {{toolName}}",
+  "toolCallLimit.maximum": "Максимальна кількість викликів",
+  "toolCallLimit.notExecuted": "Не виконано",
+  "toolCallLimit.reached": "Досягнуто ліміт викликів ({{limit}} за запуск). Цей запит не виконано.",
+  "toolCallLimit.reason": "Причина",
+  "toolCallLimit.set": "Установити ліміт",
+  "toolCallLimit.summary_one": "{{count}} виклик / запуск",
+  "toolCallLimit.summary_other": "{{count}} викликів / запуск",
+  "toolCallLimit.title": "Ліміт викликів за запуск",
+  "toolCallLimit.used_one": "Використано {{used}} із {{limit}} виклику",
+  "toolCallLimit.used_other": "Використано {{used}} із {{limit}} викликів"
 }
