@@ -376,11 +376,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat-with-history/__tests__/chat-wrapper.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
       "count": 6
@@ -3144,7 +3139,7 @@
   },
   "web/service/__tests__/ip-access-denied.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 33
+      "count": 29
     }
   },
   "web/service/__tests__/plugin-credential-commands.spec.ts": {
@@ -3193,7 +3188,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 17
+      "count": 15
     }
   },
   "web/service/base.ts": {
@@ -3201,10 +3196,10 @@
       "count": 2
     },
     "no-restricted-properties": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 15
+      "count": 14
     },
     "typescript/no-explicit-any": {
       "count": 2

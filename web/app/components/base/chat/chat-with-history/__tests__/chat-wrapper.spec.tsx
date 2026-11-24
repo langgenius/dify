@@ -2,6 +2,7 @@ import type { ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { AppData } from '@/models/share'
+import type { RecordedStreamCall } from '@/test/stream-recorder'
 import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -24,8 +25,8 @@ import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
 
 const { sseGet, ssePost } = vi.hoisted(() => ({
-  sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
-  ssePost: vi.fn<typeof import('@/service/base').ssePost>(),
+  sseGet: vi.fn<RecordedStreamCall>(),
+  ssePost: vi.fn<RecordedStreamCall>(),
 }))
 
 vi.mock('@/next/navigation', () => ({
