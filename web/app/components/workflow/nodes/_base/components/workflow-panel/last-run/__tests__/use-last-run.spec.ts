@@ -1,5 +1,6 @@
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
+import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
 import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
@@ -153,4 +154,88 @@ describe('useLastRun', () => {
         .find((node) => node.id === 'iteration')?.data._singleRunningStatus,
     ).toBe(NodeRunningStatus.Running)
   })
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'marks a paused %s single run as paused instead of staying running',
+    async (containerType) => {
+      const isIteration = containerType === BlockEnum.Iteration
+      const data: IterationNodeType | LoopNodeType = isIteration
+        ? {
+            type: BlockEnum.Iteration,
+            title: 'Iteration',
+            desc: '',
+            start_node_id: 'container-start',
+            iterator_selector: ['source', 'items'],
+            iterator_input_type: VarType.arrayNumber,
+            output_selector: ['source', 'items'],
+            output_type: VarType.arrayNumber,
+            is_parallel: false,
+            parallel_nums: 1,
+            error_handle_mode: ErrorHandleMode.Terminated,
+            flatten_output: false,
+            _children: [],
+            _isShowTips: false,
+          }
+        : {
+            type: BlockEnum.Loop,
+            title: 'Loop',
+            desc: '',
+            start_node_id: 'container-start',
+            loop_count: 2,
+            error_handle_mode: ErrorHandleMode.Terminated,
+            _children: [],
+            _isShowTips: false,
+          }
+      const { result } = renderWorkflowCanvasHook(
+        () => ({
+          ...useLastRun({
+            id: 'container',
+            resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+            data,
+            defaultRunInputData: {},
+            isPaused: false,
+          }),
+          flow: useStoreApi(),
+        }),
+        {
+          resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+          nodes: [
+            createNode({
+              id: 'source',
+              data: {
+                type: BlockEnum.Code,
+                outputs: { items: { type: VarType.arrayNumber } },
+              },
+            }),
+            createNode({ id: 'container', data }),
+          ],
+          edges: [createEdge({ source: 'source', target: 'container' })],
+          hooksStoreProps: {
+            doSyncWorkflowDraft: async (_skip, callbacks) => callbacks?.onSuccess?.(),
+          },
+        },
+      )
+
+      await act(async () => {
+        result.current.handleRun({})
+      })
+      const handlers = request.mock.calls[0]![2] as Record<
+        string,
+        ((params?: unknown) => void) | undefined
+      >
+      expect(handlers.onWorkflowPaused).toBeDefined()
+      await act(async () => {
+        handlers.onWorkflowStarted?.()
+        handlers.onWorkflowPaused?.()
+      })
+
+      expect(
+        result.current.flow
+          .getState()
+          .getNodes()
+          .find((node) => node.id === 'container')?.data._singleRunningStatus,
+      ).toBe(NodeRunningStatus.Paused)
+      expect(result.current.runResult?.status).toBe(NodeRunningStatus.Paused)
+    },
+  )
 })

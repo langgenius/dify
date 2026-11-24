@@ -823,6 +823,21 @@ const useOneStepRun = <T>({
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
+            onWorkflowPaused: () => {
+              if (isPausedRef.current) return
+              handleNodeDataUpdate({
+                id,
+                data: {
+                  ...data,
+                  _isSingleRun: false,
+                  _singleRunningStatus: NodeRunningStatus.Paused,
+                },
+              })
+              doSetRunResult({
+                ..._runResult,
+                status: NodeRunningStatus.Paused,
+              } as NodeTracing)
+            },
             onWorkflowFinished: (params) => {
               if (isPausedRef.current) return
               handleNodeDataUpdate({
@@ -925,6 +940,21 @@ const useOneStepRun = <T>({
           { body: { inputs: submitData } },
           {
             onWorkflowStarted: noop,
+            onWorkflowPaused: () => {
+              if (isPausedRef.current) return
+              handleNodeDataUpdate({
+                id,
+                data: {
+                  ...data,
+                  _isSingleRun: false,
+                  _singleRunningStatus: NodeRunningStatus.Paused,
+                },
+              })
+              doSetRunResult({
+                ..._runResult,
+                status: NodeRunningStatus.Paused,
+              } as NodeTracing)
+            },
             onWorkflowFinished: (params) => {
               if (isPausedRef.current) return
               handleNodeDataUpdate({
