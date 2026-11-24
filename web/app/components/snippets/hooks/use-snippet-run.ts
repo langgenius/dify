@@ -1,4 +1,4 @@
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import type { SnippetDraftRunPayload } from '@/types/snippet'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -17,8 +17,8 @@ import {
   toGraphNodes,
   toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
-import { ssePost } from '@/service/base'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
@@ -98,7 +98,7 @@ export const useSnippetRun = () => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
-    async (params: SnippetDraftRunPayload, callback?: IOtherOptions) => {
+    async (params: SnippetDraftRunPayload, callback?: StreamCallbacks) => {
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
@@ -130,8 +130,6 @@ export const useSnippetRun = () => {
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const url = `/snippets/${snippetId}/workflows/draft/run`
-
       const { setWorkflowRunningData } = workflowStore.getState()
       setWorkflowRunningData({
         result: {
@@ -147,11 +145,12 @@ export const useSnippetRun = () => {
       abortControllerRef.current?.abort()
       abortControllerRef.current = null
 
-      ssePost(
-        url,
-        {
-          body: params,
-        },
+      streamEvents(
+        (options) =>
+          consoleClient.snippets.bySnippetId.workflows.draft.run.post(
+            { params: { snippet_id: snippetId }, body: params },
+            options,
+          ),
         {
           getAbortController: (controller: AbortController) => {
             abortControllerRef.current = controller

@@ -136,12 +136,8 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               </span>
               {selectedCount > 0 ? (
                 <AvatarGroup size="xs">
-                  {selectedAvatarCreators.map((creator, index) => (
-                    <Avatar
-                      key={creator.id}
-                      aria-hidden="true"
-                      style={{ zIndex: selectedAvatarCreators.length - index }}
-                    >
+                  {selectedAvatarCreators.map((creator) => (
+                    <Avatar key={creator.id} aria-hidden="true">
                       <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
                       <AvatarImage src={creator.avatarUrl || undefined} alt="" />
                     </Avatar>
