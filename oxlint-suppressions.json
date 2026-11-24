@@ -2929,14 +2929,6 @@
       "count": 1
     }
   },
-  "web/features/skills/client.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/features/skills/detail/files/editor.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
@@ -3132,14 +3124,11 @@
     }
   },
   "web/service/share.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 9
+      "count": 8
     },
     "typescript/no-explicit-any": {
       "count": 1
