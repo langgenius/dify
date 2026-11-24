@@ -70,11 +70,11 @@ vi.mock('@/service/console', async (importOriginal) => {
         manifest: { ...createPluginEntity().declaration, category: PluginCategoryEnum.trigger },
       }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': api.permission,
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': api.permission,
       'workspaces.current.plugin.permission.change.post': api.savePermission,
-      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
       'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
     }),
   }
