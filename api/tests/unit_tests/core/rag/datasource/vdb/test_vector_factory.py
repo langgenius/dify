@@ -534,11 +534,39 @@ def test_create_logs_batch_count_as_progress_denominator(
     assert [processor.batch_sizes for processor in processors] == [[(1000, 1000), (500, 500)]]
 
 
-def test_create_skips_empty_text_documents_before_embedding(vector_factory_module: types.ModuleType) -> None:
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._embeddings = MagicMock()
-    vector._embeddings.embed_documents.return_value = [[0.1], [0.2]]
-    vector._vector_processor = MagicMock()
+def test_create_skips_empty_text_documents_before_embedding(
+    vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    """Use an initialized Vector and send only nonblank documents to its adapters."""
+    embedded_texts: list[list[str]] = []
+    stored_batches: list[tuple[list[Document], list[list[float]], object]] = []
+
+    class _RecordingEmbeddings(_ProgressEmbeddings):
+        @override
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            """Record the inputs and return a distinct vector for each position."""
+            embedded_texts.append(texts)
+            return [[0.1 * (i + 1)] for i in range(len(texts))]
+
+    class _RecordingVector(_ProgressVector):
+        @override
+        def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> None:
+            """Record the documents, corresponding vectors, and request ID without storing anything remotely."""
+            stored_batches.append((texts, embeddings, kwargs.get("request_id")))
+
+    class _RecordingFactory(vector_factory_module.AbstractVectorFactory):
+        def init_vector(
+            self, dataset: Dataset, attributes: list[str], embeddings: Embeddings, *, session: Session | None
+        ) -> BaseVector:
+            """Construct the test backend from the real Vector's inputs."""
+            return _RecordingVector(dataset, attributes, embeddings, session)
+
+    monkeypatch.setattr(vector_factory_module, "get_vector_factory_class", lambda _: _RecordingFactory)
+    vector = vector_factory_module.Vector(
+        _dataset(index_struct_dict={"type": vector_factory_module.VectorType.CHROMA.value}),
+        session=unbound_session,
+        embeddings=_RecordingEmbeddings(),
+    )
 
     docs = [
         Document(page_content="foo", metadata={"doc_id": "id-1"}),
@@ -549,16 +577,13 @@ def test_create_skips_empty_text_documents_before_embedding(vector_factory_modul
 
     vector.create(texts=docs, request_id="r-1")
 
-    vector._embeddings.embed_documents.assert_called_once_with(["foo", "bar"])
-    vector._vector_processor.create.assert_called_once_with(
-        texts=[docs[0], docs[3]], embeddings=[[0.1], [0.2]], request_id="r-1"
-    )
+    assert embedded_texts == [["foo", "bar"]]
+    assert stored_batches == [([docs[0], docs[3]], [[0.1], [0.2]], "r-1")]
 
-    vector._embeddings.embed_documents.reset_mock()
-    vector._vector_processor.create.reset_mock()
     vector.create(texts=[docs[1], docs[2]])
-    vector._embeddings.embed_documents.assert_not_called()
-    vector._vector_processor.create.assert_not_called()
+
+    assert embedded_texts == [["foo", "bar"]]
+    assert stored_batches == [([docs[0], docs[3]], [[0.1], [0.2]], "r-1")]
 
 
 def test_create_multimodal_filters_missing_uploads(
