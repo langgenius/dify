@@ -37,8 +37,14 @@ from services.workflow_service import WorkflowService
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
+# Other names clients send for the supported formats; Python's mimetypes, for one,
+# labels .mp3 as audio/mpeg (the IANA type) and .wav as audio/x-wav.
 _ASR_MIME_TYPE_ALIASES = {
     "audio/x-m4a": "audio/m4a",
+    "audio/mpeg": "audio/mp3",
+    "audio/x-wav": "audio/wav",
+    "audio/wave": "audio/wav",
+    "audio/vnd.wave": "audio/wav",
 }
 
 logger = logging.getLogger(__name__)
