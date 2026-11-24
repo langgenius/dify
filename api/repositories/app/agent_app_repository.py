@@ -84,6 +84,7 @@ from services.agent.app_composer_store import (
     AgentPublication,
     AgentPublicationChangedError,
     AgentPublicationHomeUnavailableError,
+    AgentPublicationKind,
     AgentPublicationSource,
 )
 from services.agent.build_session_store import (
@@ -721,7 +722,7 @@ class AgentAppRepository:
             snapshot = composer_snapshot(version)
             assert snapshot is not None
             return AgentPublication(
-                publication_kind="update" if access_was_ready else "first",
+                publication_kind=AgentPublicationKind.UPDATE if access_was_ready else AgentPublicationKind.FIRST,
                 active_config_snapshot_id=version.id,
                 active_config_snapshot=snapshot,
                 draft=project_agent_draft_summary(draft),
