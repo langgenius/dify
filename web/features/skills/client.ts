@@ -10,7 +10,7 @@ import type {
 // oxlint-disable-next-line no-restricted-imports
 import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
 // oxlint-disable-next-line no-restricted-imports
-import { get, ssePost } from '@/service/base'
+import { ssePost } from '@/service/base'
 import { consoleClient } from '@/service/console'
 
 export async function uploadSkillFile(
@@ -47,26 +47,25 @@ export async function fetchSkillFileBlob({
   path: string
   skillId: string
   versionId: string | null
-}) {
-  const params = new URLSearchParams({ path })
-  if (versionId) params.set('version_id', versionId)
-  if (download) params.set('download', '1')
-
-  const response = await get<Response>(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/files/content?${params.toString()}`,
-    {},
-    { needAllResponseContent: true, silent: true },
+}): Promise<Blob> {
+  return consoleClient.workspaces.current.skills.bySkillId.files.content.get(
+    {
+      params: { skill_id: skillId },
+      query: {
+        path,
+        ...(versionId && { version_id: versionId }),
+        ...(download && { download: '1' }),
+      },
+    },
+    { context: { silent: true } },
   )
-  return response.blob()
 }
 
-export async function fetchSkillArchiveBlob(skillId: string) {
-  const response = await get<Response>(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/export`,
-    {},
-    { needAllResponseContent: true, silent: true },
+export async function fetchSkillArchiveBlob(skillId: string): Promise<Blob> {
+  return consoleClient.workspaces.current.skills.bySkillId.export.get(
+    { params: { skill_id: skillId } },
+    { context: { silent: true } },
   )
-  return response.blob()
 }
 
 export function sendSkillAssistMessage({

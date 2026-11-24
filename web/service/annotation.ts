@@ -3,7 +3,6 @@ import type {
   EmbeddingModelConfig,
 } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
-import { post } from './base'
 import { consoleClient } from './console'
 
 export const updateAnnotationStatus = (
@@ -24,16 +23,4 @@ export const updateAnnotationStatus = (
       },
     },
     { context: { silent: true } },
-  )
-
-// Multipart uploads are not described by the generated contract yet.
-export const annotationBatchImport = (
-  appId: string,
-  body: FormData,
-  options?: { silent?: boolean },
-) =>
-  post<{ job_id: string; job_status: string }>(
-    `/apps/${appId}/annotations/batch-import`,
-    { body },
-    { bodyStringify: false, deleteContentType: true, ...options },
   )
