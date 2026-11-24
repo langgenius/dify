@@ -1066,7 +1066,7 @@ class TestMcpRequestErrorsCases:
             patch.object(
                 module.EnterpriseService,
                 "verify_mcp_identity_token",
-                side_effect=module.MCPTokenError("user is not allowed to access this app"),
+                side_effect=module.MCPTokenError("forwarded identity token is invalid or expired"),
             ),
             patch("core.mcp.server.streamable_http.AppGenerateService.generate") as generate,
         ):
@@ -1076,7 +1076,7 @@ class TestMcpRequestErrorsCases:
         body = response.get_json()
         assert body["id"] == "call-1"
         assert body["error"]["code"] == module.mcp_types.INVALID_REQUEST
-        assert "user is not allowed to access this app" in body["error"]["message"]
+        assert "forwarded identity token is invalid or expired" in body["error"]["message"]
         generate.assert_not_called()
         assert sqlite_session.scalars(select(EndUser)).all() == []
 
