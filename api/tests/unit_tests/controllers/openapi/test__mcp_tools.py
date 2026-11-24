@@ -294,6 +294,25 @@ def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
     assert tools[FIND_TOOL].inputSchema["additionalProperties"] is False
 
 
+_MAX_DESCRIPTION_WORDS = 70
+
+
+def test_each_tool_description_is_short_and_every_input_is_described() -> None:
+    for tool in tool_list():
+        assert tool.description is not None
+        assert len(tool.description.split()) < _MAX_DESCRIPTION_WORDS
+        assert all(schema.get("description") for schema in tool.inputSchema["properties"].values())
+
+
+def test_each_call_tool_says_what_its_effect_does_to_the_data() -> None:
+    descriptions = {tool: tool.description for tool in CallTool}
+
+    assert "effect is read: it changes nothing." in descriptions[CallTool.READ]
+    assert "effect is write: it creates or updates data." in descriptions[CallTool.WRITE]
+    assert "cannot be undone. Confirm with the human first." in descriptions[CallTool.DESTRUCTIVE]
+    assert all("get.workspace" in description for description in descriptions.values())
+
+
 def test_every_effect_has_exactly_one_call_tool() -> None:
     for effect in Effect:
         assert [tool for tool in CallTool if tool.effect is effect] == [CallTool.for_effect(effect)]

@@ -63,28 +63,30 @@ class CallTool(StrEnum):
     """The tool that calls an op of a given effect."""
 
     effect: Effect
-    caution: str
+    meaning: str
 
-    READ = ("dify_read", Effect.READ, "")
-    WRITE = ("dify_write", Effect.WRITE, "")
+    READ = ("dify_read", Effect.READ, "it changes nothing")
+    WRITE = ("dify_write", Effect.WRITE, "it creates or updates data")
     DESTRUCTIVE = (
         "dify_destructive",
         Effect.DESTRUCTIVE,
-        " These operations cannot be undone: confirm with the human first.",
+        "it removes or overwrites data, or stops a run, and cannot be undone. Confirm with the human first",
     )
 
-    def __new__(cls, value: str, effect: Effect, caution: str) -> CallTool:
-        """Postcondition: a str member whose value is the tool name, carrying its effect and caution text."""
+    def __new__(cls, value: str, effect: Effect, meaning: str) -> CallTool:
+        """Postcondition: a str member whose value is the tool name, carrying its effect and what that effect
+        means for the data."""
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.effect = effect
-        obj.caution = caution
+        obj.meaning = meaning
         return obj
 
     @property
     def description(self) -> str:
-        """Postcondition: the tool description a host may show the model: names the effect and how to call."""
-        return _CALL_DESCRIPTION.format(effect=self.effect.value) + self.caution
+        """Postcondition: the tool description a host may show the model: the effect, what it means, and how to
+        call."""
+        return _CALL_DESCRIPTION.format(effect=self.effect.value, meaning=self.meaning)
 
     @classmethod
     def for_effect(cls, effect: Effect) -> CallTool:
@@ -273,22 +275,39 @@ MCP_INSTRUCTIONS: Final = f"""This server runs operations of a Dify server. Four
 
 FIND_DESCRIPTION: Final = (
     "Search Dify operations by a few words, or pass op to get one operation's input schema and examples. "
-    "Call this before calling an operation; operation ids can change between server versions."
+    "A search returns the best matches first, each with its op id, summary, effect (read, write or destructive) "
+    "and the tool that runs it. Call this before running an operation; operation ids can change between server "
+    "versions."
 )
 _CALL_DESCRIPTION: Final = (
-    "Run a Dify operation whose effect is {effect}. op is an id from dify_find and input is its input object; "
-    "pass workspace_id yourself where the operation takes it."
+    "Run a Dify operation whose effect is {effect}: {meaning}. op is an id from dify_find; input is that "
+    "operation's input object, as dify_find shows it. Operations on a workspace take workspace_id in input: get "
+    "the ids from op get.workspace. If the operation has another effect, the error names the tool to use."
 )
-_STRING: Final = {"type": "string"}
 _CALL_SCHEMA: Final = {
     "type": "object",
-    "properties": {_OP_KEY: _STRING, _INPUT_KEY: {"type": "object"}},
+    "properties": {
+        _OP_KEY: {"type": "string", "description": "An operation id from dify_find, such as get.workspace."},
+        _INPUT_KEY: {
+            "type": "object",
+            "description": "The operation's input object, as dify_find with op shows it; {} when it takes none.",
+        },
+    },
     "required": [_OP_KEY, _INPUT_KEY],
     "additionalProperties": False,
 }
 _FIND_SCHEMA: Final = {
     "type": "object",
-    "properties": {_QUERY_KEY: _STRING, _OP_KEY: _STRING},
+    "properties": {
+        _QUERY_KEY: {
+            "type": "string",
+            "description": "A few words about what you want to do, such as import DSL; empty lists operations by id.",
+        },
+        _OP_KEY: {
+            "type": "string",
+            "description": "An operation id; when given, returns its input schema and examples instead of searching.",
+        },
+    },
     "additionalProperties": False,
 }
 
