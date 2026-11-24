@@ -71,22 +71,17 @@ export function KindSection({
   meta,
 }: {
   children: ReactNode
-  kind: Kind
+  /** Conflicts need a judgement; copies and overlapping documents a choice of which to keep. */
+  kind: 'conflict' | 'overlap'
   meta: string
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
   const heading =
-    kind === 'conflict'
-      ? t(($) => $['tidy.sectionConflict'])
-      : kind === 'duplicate'
-        ? t(($) => $['tidy.sectionDuplicate'])
-        : t(($) => $['tidy.sectionSimilar'])
+    kind === 'conflict' ? t(($) => $['tidy.sectionConflict']) : t(($) => $['tidy.sectionOverlap'])
   const hint =
     kind === 'conflict'
       ? t(($) => $['tidy.sectionConflictHint'])
-      : kind === 'duplicate'
-        ? t(($) => $['tidy.sectionDuplicateHint'])
-        : t(($) => $['tidy.sectionSimilarHint'])
+      : t(($) => $['tidy.sectionOverlapHint'])
   return (
     <section aria-label={heading} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1">
@@ -401,7 +396,7 @@ export function DuplicateGroupCard({
         count: group.documentIds.length,
         title: titleOf(newest),
       })}
-      meter={<MatchMeter value={1} label={t(($) => $['tidy.overlap'], { percent: 100 })} />}
+      meter={<MatchMeter value={1} label={t(($) => $['tidy.identical'])} />}
       stale={stale}
       onDismiss={editable ? dismissAll : undefined}
       aside={
@@ -494,7 +489,11 @@ export function PairCard({
   const editable = canManage && open && !finding.stale
   const titleOf = (evidence: Evidence) => cards[evidence.documentId]?.title ?? evidence.title
   const semantic = finding.reason === 'semantic_overlap'
-  const percent = Math.round((finding.similarity ?? 0) * 100)
+  // Only identical content is 100%: a rounded-up figure would read as "safe to drop one".
+  const percent = Math.min(
+    finding.kind === 'duplicate' || semantic ? 100 : 99,
+    Math.round((finding.similarity ?? 0) * 100),
+  )
   const disable = (evidence: Evidence, kept?: Evidence) =>
     onConfirm({
       title: kept
@@ -567,9 +566,11 @@ export function PairCard({
         <MatchMeter
           value={isDuplicate ? 1 : (finding.similarity ?? 0)}
           label={
-            semantic
-              ? t(($) => $['tidy.semanticCoverage'], { percent })
-              : t(($) => $['tidy.overlap'], { percent: isDuplicate ? 100 : percent })
+            isDuplicate
+              ? t(($) => $['tidy.identical'])
+              : semantic
+                ? t(($) => $['tidy.semanticCoverage'], { percent })
+                : t(($) => $['tidy.overlap'], { percent })
           }
         />
       }
@@ -593,6 +594,9 @@ export function PairCard({
                   ),
                   time: relativeTime(cards[newest]?.publishedAt, i18n.language),
                 }),
+                ...(related.length
+                  ? [t(($) => $['tidy.pairHasConflicts'], { count: related.length })]
+                  : []),
               ]}
             />
             {editable && (
@@ -687,8 +691,9 @@ export function PairGroupCard({
   const newest = newestDocument(group.documentIds, cards)
   const stale = group.findings.some((finding) => finding.stale)
   const editable = canManage && !stale
-  const percent = Math.round((group.similar?.similarity ?? 0) * 100)
   const semantic = group.similar?.reason === 'semantic_overlap'
+  // Documents that disagree are not identical, however much of their text matches.
+  const percent = Math.min(semantic ? 100 : 99, Math.round((group.similar?.similarity ?? 0) * 100))
   const overlapLabel = semantic
     ? t(($) => $['tidy.semanticCoverage'], { percent })
     : t(($) => $['tidy.overlap'], { percent })

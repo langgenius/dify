@@ -31,12 +31,16 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
-import { groupDuplicates, groupPairs, TIDY_KIND_ORDER } from './review'
+import { groupDuplicates, groupPairs } from './review'
 import { DuplicateGroupCard, KindSection, PairCard, PairGroupCard } from './review-cards'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
 const STATUSES = ['open', 'dismissed', 'reviewed', 'disabled'] as const
-const KINDS = ['all', 'conflict', 'duplicate', 'similar'] as const
+// Exact copies and overlapping documents ask the same question (which one to keep), so they
+// share one tab; the API still filters one finding kind at a time.
+const KINDS = ['all', 'conflict', 'overlap'] as const
+/** Cursor value of a list whose last page was already shown. */
+const END = 'end'
 type Status = (typeof STATUSES)[number]
 type Kind = (typeof KINDS)[number]
 
@@ -67,7 +71,11 @@ function countOf(
   kind: Kind = 'all',
 ) {
   return (summary?.findings ?? [])
-    .filter((row) => row.status === status && (kind === 'all' || row.kind === kind))
+    .filter(
+      (row) =>
+        row.status === status &&
+        (kind === 'all' || (kind === 'overlap' ? row.kind !== 'conflict' : row.kind === kind)),
+    )
     .reduce((total, row) => total + row.count, 0)
 }
 
@@ -83,6 +91,7 @@ export function TidyPage() {
   )
   const [kind, setKind] = useQueryState('tidyKind', parseAsStringLiteral(KINDS).withDefault('all'))
   const [cursor, setCursor] = useQueryState('tidyCursor', parseAsString)
+  const [similarCursor, setSimilarCursor] = useQueryState('tidySimilarCursor', parseAsString)
   const [scanCursor, setScanCursor] = useQueryState('tidyScanCursor', parseAsString)
   const [confirmation, setConfirmation] = useState<
     { kind: 'enable' } | { kind: 'conflicts' } | ({ kind: 'plan' } & PlanConfirmation)
@@ -111,12 +120,29 @@ export function TidyPage() {
         params,
         query: {
           status,
-          ...(kind === 'all' ? {} : { kind }),
+          ...(kind === 'all' ? {} : { kind: kind === 'overlap' ? ('duplicate' as const) : kind }),
           ...(cursor ? { cursor } : {}),
         },
       },
       context: { silent: true },
       refetchInterval: 15000,
+      enabled: cursor !== END,
+    }),
+  )
+  // The overlap tab pages through exact copies and overlapping documents side by side.
+  const similarFindings = useQuery(
+    api.findings.get.queryOptions({
+      input: {
+        params,
+        query: {
+          status,
+          kind: 'similar' as const,
+          ...(similarCursor ? { cursor: similarCursor } : {}),
+        },
+      },
+      context: { silent: true },
+      refetchInterval: 15000,
+      enabled: kind === 'overlap' && similarCursor !== END,
     }),
   )
   const scans = useQuery(
@@ -198,8 +224,7 @@ export function TidyPage() {
   const kindLabels = {
     all: t(($) => $['tidy.allKinds']),
     conflict: t(($) => $['tidy.conflict']),
-    duplicate: t(($) => $['tidy.duplicate']),
-    similar: t(($) => $['tidy.similar']),
+    overlap: t(($) => $['tidy.overlapKind']),
   }
   const scanLabels = {
     pending: t(($) => $['tidy.pending']),
@@ -212,14 +237,38 @@ export function TidyPage() {
     model_unavailable: t(($) => $['tidy.pausedModel']),
     scan_failed: t(($) => $['tidy.pausedScan']),
   }
-  const items = findings.data?.items ?? []
-  const cards = findings.data?.documents ?? {}
+  const lists = [
+    ...(cursor !== END ? [findings] : []),
+    ...(kind === 'overlap' && similarCursor !== END ? [similarFindings] : []),
+  ]
+  const items = lists.flatMap((list) => list.data?.items ?? [])
+  const cards = {
+    ...(cursor !== END ? findings.data?.documents : undefined),
+    ...(kind === 'overlap' && similarCursor !== END ? similarFindings.data?.documents : undefined),
+  }
+  const hasNext = lists.some((list) => list.data?.nextCursor)
+  const resetPaging = () => {
+    void setCursor(null)
+    void setSimilarCursor(null)
+  }
   const conflictPairs = groupPairs(
     items.filter((finding) => finding.status === 'open' && finding.kind !== 'duplicate'),
   ).filter((group) => group.conflicts.length > 0)
   /** The open conflicts between the same two documents as an overlap finding. */
   const conflictsBeside = (finding: (typeof items)[number]) =>
     conflictPairs.find((group) => group.similar?.id === finding.id)?.conflicts ?? []
+  const handledConflicts = items.filter(
+    (finding) => finding.kind === 'conflict' && finding.status !== 'open',
+  )
+  const duplicates = items.filter((finding) => finding.kind === 'duplicate')
+  // Identical copies awaiting review read best as one group with a keep-one choice.
+  const copyGroups = duplicates.every((finding) => finding.status === 'open')
+    ? groupDuplicates(duplicates)
+    : null
+  // The closer two documents are, the more likely one of them can go: most overlap first.
+  const similar = items
+    .filter((finding) => finding.kind === 'similar')
+    .sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0))
   const cardProps = {
     busy: pending,
     canManage,
@@ -409,7 +458,7 @@ export function TidyPage() {
               aria-pressed={kind === value}
               onClick={() => {
                 void setKind(value)
-                void setCursor(null)
+                resetPaging()
               }}
               className={cn(
                 'inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 system-sm-medium outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
@@ -433,7 +482,7 @@ export function TidyPage() {
           onValueChange={(value) => {
             if (!value) return
             void setStatus(value as Status)
-            void setCursor(null)
+            resetPaging()
           }}
         >
           <SelectTrigger aria-label={t(($) => $['tidy.statusFilter'])} className="w-auto min-w-36">
@@ -456,65 +505,83 @@ export function TidyPage() {
           </SelectContent>
         </Select>
       </div>
-      {findings.isPending && <p role="status">{common(($) => $.loading)}</p>}
-      {findings.isError && <p role="alert">{t(($) => $['tidy.error'])}</p>}
-      {findings.data?.items.length === 0 && (
+      {lists.some((list) => list.isPending) && <p role="status">{common(($) => $.loading)}</p>}
+      {lists.some((list) => list.isError) && <p role="alert">{t(($) => $['tidy.error'])}</p>}
+      {lists.every((list) => list.data) && items.length === 0 && (
         <p className="rounded-2xl bg-background-section p-6 text-text-tertiary">
           {t(($) => $['tidy.empty'])}
         </p>
       )}
       <div aria-label={t(($) => $['tidy.results'])} className="flex flex-col gap-6">
-        {TIDY_KIND_ORDER.filter((value) => kind === 'all' || kind === value).map((value) => {
-          const ofKind = items.filter((finding) => finding.kind === value)
-          // Identical copies awaiting review read best as one group with a keep-one choice.
-          const groups =
-            value === 'duplicate' && ofKind.every((finding) => finding.status === 'open')
-              ? groupDuplicates(ofKind)
-              : null
-          // What two documents disagree on is reviewed together; their overlap keeps its own card.
-          const pairs = value === 'conflict' ? conflictPairs : null
-          const rest =
-            value === 'conflict' ? ofKind.filter((finding) => finding.status !== 'open') : ofKind
-          const count = groups?.length ?? (pairs?.length ?? 0) + rest.length
-          if (!count) return null
-          return (
-            <KindSection
-              key={value}
-              kind={value}
-              meta={
-                groups
-                  ? t(($) => $['tidy.groupsMeta'], {
-                      count: groups.length,
-                      files: groups.reduce((total, group) => total + group.documentIds.length, 0),
-                    })
-                  : t(($) => $['tidy.pairsMeta'], { count })
-              }
-            >
-              {groups?.map((group) => (
-                <DuplicateGroupCard key={group.key} group={group} {...cardProps} />
-              ))}
-              {pairs?.map((group) => (
-                <PairGroupCard key={group.key} group={group} {...cardProps} />
-              ))}
-              {!groups &&
-                rest.map((finding) => (
-                  <PairCard
-                    key={finding.id}
-                    finding={finding}
-                    related={conflictsBeside(finding)}
-                    {...cardProps}
-                  />
+        {kind !== 'overlap' && conflictPairs.length + handledConflicts.length > 0 && (
+          <KindSection
+            kind="conflict"
+            meta={t(($) => $['tidy.pairsMeta'], {
+              count: conflictPairs.length + handledConflicts.length,
+            })}
+          >
+            {conflictPairs.map((group) => (
+              <PairGroupCard key={group.key} group={group} {...cardProps} />
+            ))}
+            {handledConflicts.map((finding) => (
+              <PairCard key={finding.id} finding={finding} {...cardProps} />
+            ))}
+          </KindSection>
+        )}
+        {kind !== 'conflict' && duplicates.length + similar.length > 0 && (
+          <KindSection
+            kind="overlap"
+            meta={[
+              ...(copyGroups
+                ? [
+                    t(($) => $['tidy.groupsMeta'], {
+                      count: copyGroups.length,
+                      files: copyGroups.reduce(
+                        (total, group) => total + group.documentIds.length,
+                        0,
+                      ),
+                    }),
+                  ]
+                : []),
+              ...((copyGroups ? 0 : duplicates.length) + similar.length > 0
+                ? [
+                    t(($) => $['tidy.pairsMeta'], {
+                      count: (copyGroups ? 0 : duplicates.length) + similar.length,
+                    }),
+                  ]
+                : []),
+            ].join(' · ')}
+          >
+            {copyGroups
+              ? copyGroups.map((group) => (
+                  <DuplicateGroupCard key={group.key} group={group} {...cardProps} />
+                ))
+              : duplicates.map((finding) => (
+                  <PairCard key={finding.id} finding={finding} {...cardProps} />
                 ))}
-            </KindSection>
-          )
-        })}
+            {similar.map((finding) => (
+              <PairCard
+                key={finding.id}
+                finding={finding}
+                related={conflictsBeside(finding)}
+                {...cardProps}
+              />
+            ))}
+          </KindSection>
+        )}
       </div>
       <div className="my-5 flex gap-2">
-        {cursor && (
-          <Button onClick={() => void setCursor(null)}>{common(($) => $['operation.back'])}</Button>
+        {(cursor || similarCursor) && (
+          <Button onClick={resetPaging}>{common(($) => $['operation.back'])}</Button>
         )}
-        {findings.data?.nextCursor && (
-          <Button onClick={() => void setCursor(findings.data?.nextCursor ?? null)}>
+        {hasNext && (
+          <Button
+            onClick={() => {
+              if (cursor !== END) void setCursor(findings.data?.nextCursor ?? END)
+              if (kind === 'overlap' && similarCursor !== END)
+                void setSimilarCursor(similarFindings.data?.nextCursor ?? END)
+            }}
+          >
             {common(($) => $['pagination.next'])}
           </Button>
         )}
