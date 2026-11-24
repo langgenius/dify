@@ -11,7 +11,7 @@ import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 
-function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClientContext> {
+export function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClientContext> {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: () => new URL(API_PREFIX, window.location.origin),
     fetch: async (input, init, options) => {

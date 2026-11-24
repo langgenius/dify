@@ -427,12 +427,6 @@
     }
   },
   "web/app/components/base/chat/chat/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 9
     }
@@ -842,19 +836,6 @@
   },
   "web/app/components/base/prompt-log-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/text-generation/__tests__/hooks.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/text-generation/hooks.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -1719,24 +1700,8 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/result/__tests__/workflow-stream-handlers.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/result/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/share/text-generation/result/workflow-stream-handlers.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -3369,10 +3334,10 @@
       "count": 1
     },
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 11
+      "count": 9
     },
     "typescript/no-explicit-any": {
       "count": 1
