@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "Restaurar",
   "agentDetail.versionHistory.versionName": "Versão {{version}}",
   "agentDetail.versionHistory.viewOnly": "Somente leitura",
-  "exportAgent": "Exportar agente"
+  "exportAgent": "Exportar agente",
+  "toolCallLimit.invalid": "Insira um número inteiro maior que 0.",
+  "toolCallLimit.label": "Limite de chamadas de {{toolName}}",
+  "toolCallLimit.maximum": "Máximo de chamadas",
+  "toolCallLimit.notExecuted": "Não executada",
+  "toolCallLimit.reached": "Limite de chamadas atingido ({{limit}} por execução). Esta solicitação não foi executada.",
+  "toolCallLimit.reason": "Motivo",
+  "toolCallLimit.set": "Definir limite",
+  "toolCallLimit.summary_one": "{{count}} chamada / execução",
+  "toolCallLimit.summary_other": "{{count}} chamadas / execução",
+  "toolCallLimit.title": "Limite de chamadas por execução",
+  "toolCallLimit.used_one": "{{used}} de {{limit}} chamada utilizada",
+  "toolCallLimit.used_other": "{{used}} de {{limit}} chamadas utilizadas"
 }

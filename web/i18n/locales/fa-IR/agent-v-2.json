@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "بازیابی",
   "agentDetail.versionHistory.versionName": "نسخه {{version}}",
   "agentDetail.versionHistory.viewOnly": "فقط نمایش",
-  "exportAgent": "خروجی گرفتن از Agent"
+  "exportAgent": "خروجی گرفتن از Agent",
+  "toolCallLimit.invalid": "یک عدد صحیح بزرگ‌تر از 0 وارد کنید.",
+  "toolCallLimit.label": "محدودیت فراخوانی برای {{toolName}}",
+  "toolCallLimit.maximum": "حداکثر فراخوانی‌ها",
+  "toolCallLimit.notExecuted": "اجرا نشد",
+  "toolCallLimit.reached": "محدودیت فراخوانی ({{limit}} در هر اجرا) رسیده است. این درخواست اجرا نشد.",
+  "toolCallLimit.reason": "دلیل",
+  "toolCallLimit.set": "تنظیم محدودیت",
+  "toolCallLimit.summary_one": "{{count}} فراخوانی / اجرا",
+  "toolCallLimit.summary_other": "{{count}} فراخوانی / اجرا",
+  "toolCallLimit.title": "محدودیت فراخوانی در هر اجرا",
+  "toolCallLimit.used_one": "{{used}} از {{limit}} فراخوانی استفاده شده",
+  "toolCallLimit.used_other": "{{used}} از {{limit}} فراخوانی استفاده شده"
 }

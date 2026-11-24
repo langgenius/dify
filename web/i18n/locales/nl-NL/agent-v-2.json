@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "Herstellen",
   "agentDetail.versionHistory.versionName": "Versie {{version}}",
   "agentDetail.versionHistory.viewOnly": "Alleen bekijken",
-  "exportAgent": "Agent exporteren"
+  "exportAgent": "Agent exporteren",
+  "toolCallLimit.invalid": "Voer een geheel getal groter dan 0 in.",
+  "toolCallLimit.label": "Aanroeplimiet voor {{toolName}}",
+  "toolCallLimit.maximum": "Maximumaantal aanroepen",
+  "toolCallLimit.notExecuted": "Niet uitgevoerd",
+  "toolCallLimit.reached": "Aanroeplimiet bereikt ({{limit}} per uitvoering). Dit verzoek is niet uitgevoerd.",
+  "toolCallLimit.reason": "Reden",
+  "toolCallLimit.set": "Limiet instellen",
+  "toolCallLimit.summary_one": "{{count}} aanroep / uitvoering",
+  "toolCallLimit.summary_other": "{{count}} aanroepen / uitvoering",
+  "toolCallLimit.title": "Aanroeplimiet per uitvoering",
+  "toolCallLimit.used_one": "{{used}} van {{limit}} aanroep gebruikt",
+  "toolCallLimit.used_other": "{{used}} van {{limit}} aanroepen gebruikt"
 }

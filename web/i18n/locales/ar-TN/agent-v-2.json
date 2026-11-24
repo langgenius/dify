@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "استعادة",
   "agentDetail.versionHistory.versionName": "الإصدار {{version}}",
   "agentDetail.versionHistory.viewOnly": "عرض فقط",
-  "exportAgent": "تصدير Agent"
+  "exportAgent": "تصدير Agent",
+  "toolCallLimit.invalid": "أدخل عددًا صحيحًا أكبر من 0.",
+  "toolCallLimit.label": "حد الاستدعاءات لـ {{toolName}}",
+  "toolCallLimit.maximum": "الحد الأقصى للاستدعاءات",
+  "toolCallLimit.notExecuted": "لم يُنفّذ",
+  "toolCallLimit.reached": "تم بلوغ حد الاستدعاءات ({{limit}} لكل تشغيل). لم يُنفّذ هذا الطلب.",
+  "toolCallLimit.reason": "السبب",
+  "toolCallLimit.set": "تعيين الحد",
+  "toolCallLimit.summary_one": "{{count}} استدعاء / تشغيل",
+  "toolCallLimit.summary_other": "{{count}} استدعاءات / تشغيل",
+  "toolCallLimit.title": "حد الاستدعاءات لكل تشغيل",
+  "toolCallLimit.used_one": "استُخدم {{used}} من {{limit}} استدعاء",
+  "toolCallLimit.used_other": "استُخدم {{used}} من {{limit}} استدعاءات"
 }

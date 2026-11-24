@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "Przywróć",
   "agentDetail.versionHistory.versionName": "Wersja {{version}}",
   "agentDetail.versionHistory.viewOnly": "Tylko podgląd",
-  "exportAgent": "Eksportuj agenta"
+  "exportAgent": "Eksportuj agenta",
+  "toolCallLimit.invalid": "Wpisz liczbę całkowitą większą od 0.",
+  "toolCallLimit.label": "Limit wywołań dla {{toolName}}",
+  "toolCallLimit.maximum": "Maksymalna liczba wywołań",
+  "toolCallLimit.notExecuted": "Nie wykonano",
+  "toolCallLimit.reached": "Osiągnięto limit wywołań ({{limit}} na uruchomienie). Nie wykonano tego żądania.",
+  "toolCallLimit.reason": "Powód",
+  "toolCallLimit.set": "Ustaw limit",
+  "toolCallLimit.summary_one": "{{count}} wywołanie / uruchomienie",
+  "toolCallLimit.summary_other": "{{count}} wywołań / uruchomienie",
+  "toolCallLimit.title": "Limit wywołań na uruchomienie",
+  "toolCallLimit.used_one": "Wykorzystano {{used}} z {{limit}} wywołania",
+  "toolCallLimit.used_other": "Wykorzystano {{used}} z {{limit}} wywołań"
 }

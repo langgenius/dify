@@ -2546,6 +2546,70 @@ describe('useChat', () => {
   })
 
   describe('handleStop and handleRestart', () => {
+    it('reloads authoritative Agent activity after stopping the live SSE consumer', async () => {
+      const stopChat = vi.fn().mockResolvedValue(undefined)
+      const toolActivity = {
+        id: 'run:call',
+        run_id: 'run',
+        tool_call_id: 'call',
+        tool_name: 'search',
+        status: 'cancelled',
+        call_limit: {
+          tool_identity: 'operation',
+          limit: 3,
+          used: 1,
+          execution_status: 'unconfirmed',
+        },
+      }
+      const onGetConversationMessages = vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'answer',
+            answer: '',
+            agent_thoughts: [
+              {
+                id: 'thought',
+                tool: 'search',
+                tool_input: '{}',
+                observation: '',
+                thought: '',
+                message_id: 'answer',
+                conversation_id: 'conversation',
+                position: 1,
+                tool_activity: toolActivity,
+              },
+            ],
+          },
+        ],
+      })
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, stopChat, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend('chat-messages', { query: 'test' }, { onGetConversationMessages })
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      const controller = createAbortControllerMock()
+      act(() => {
+        callbacks.onData('', true, { messageId: 'answer', conversationId: 'conversation' })
+        callbacks.onWorkflowStarted({ task_id: 'task' })
+        callbacks.getAbortController(controller)
+      })
+      await act(async () => {
+        await result.current.handleStop()
+      })
+      await act(async () => {
+        await callbacks.onCompleted(true)
+      })
+      expect(stopChat).toHaveBeenCalledWith('task')
+      expect(controller.abort).toHaveBeenCalledOnce()
+      expect(result.current.chatList.at(-1)?.agent_thoughts?.[0]?.tool_activity).toEqual(
+        toolActivity,
+      )
+    })
+
     it.each(['rejection', 'throw'] as const)(
       'should finish stopping locally after a service %s',
       async (failure) => {

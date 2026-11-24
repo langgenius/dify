@@ -373,5 +373,17 @@
   "agentDetail.versionHistory.restore": "복원",
   "agentDetail.versionHistory.versionName": "버전 {{version}}",
   "agentDetail.versionHistory.viewOnly": "보기 전용",
-  "exportAgent": "에이전트 내보내기"
+  "exportAgent": "에이전트 내보내기",
+  "toolCallLimit.invalid": "0보다 큰 정수를 입력하세요.",
+  "toolCallLimit.label": "{{toolName}} 호출 한도",
+  "toolCallLimit.maximum": "최대 호출 횟수",
+  "toolCallLimit.notExecuted": "실행되지 않음",
+  "toolCallLimit.reached": "호출 한도(실행당 {{limit}}회)에 도달했습니다. 이 요청은 실행되지 않았습니다.",
+  "toolCallLimit.reason": "이유",
+  "toolCallLimit.set": "한도 설정",
+  "toolCallLimit.summary_one": "실행당 {{count}}회",
+  "toolCallLimit.summary_other": "실행당 {{count}}회",
+  "toolCallLimit.title": "실행당 호출 한도",
+  "toolCallLimit.used_one": "{{limit}}회 중 {{used}}회 사용",
+  "toolCallLimit.used_other": "{{limit}}회 중 {{used}}회 사용"
 }

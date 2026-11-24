@@ -230,6 +230,7 @@ export const useChat = (
   const isRespondingRef = useRef(false)
   const taskIdRef = useRef('')
   const stopPendingRef = useRef<number | null>(null)
+  const completeStoppedAgentRef = useRef<(() => Promise<void>) | null>(null)
   const pausedStateRef = useRef(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
@@ -548,18 +549,23 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
-  const stopLocalResponse = useCallback(() => {
-    hasStopRespondedRef.current = true
-    handleResponding(false)
-    if (conversationMessagesAbortControllerRef.current)
-      conversationMessagesAbortControllerRef.current.abort()
-    if (suggestedQuestionsAbortControllerRef.current)
-      suggestedQuestionsAbortControllerRef.current.abort()
-    if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-    resetWorkflowEventsSubscription()
-  }, [handleResponding, resetWorkflowEventsSubscription])
+  const stopLocalResponse = useCallback(
+    (preserveAgentRequest = false) => {
+      hasStopRespondedRef.current = true
+      handleResponding(false)
+      if (!preserveAgentRequest) conversationMessagesAbortControllerRef.current?.abort()
+      if (suggestedQuestionsAbortControllerRef.current)
+        suggestedQuestionsAbortControllerRef.current.abort()
+      if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
+      if (!preserveAgentRequest) resetWorkflowEventsSubscription()
+    },
+    [handleResponding, resetWorkflowEventsSubscription],
+  )
 
   const handleStop = useCallback(async () => {
+    const preserveAgentRequest = !!options.isNewAgent && isRespondingRef.current
+    const stoppedStream = conversationMessagesAbortControllerRef.current
+    const completeStoppedAgent = completeStoppedAgentRef.current
     if (options.isNewAgent && isRespondingRef.current) {
       const generation = workflowRequestGenerationRef.current
       if (stopPendingRef.current === generation) return
@@ -592,7 +598,11 @@ export const useChat = (
         }
       })()
     }
-    stopLocalResponse()
+    stopLocalResponse(preserveAgentRequest)
+    if (preserveAgentRequest) {
+      stoppedStream?.abort()
+      await completeStoppedAgent?.()
+    }
     return true
   }, [stopChat, stopLocalResponse, options.isNewAgent, t])
 
@@ -1203,6 +1213,7 @@ export const useChat = (
       let hasSettled = false
       let hasPaused = false
       let hasNotifiedConversationComplete = false
+      let completionStarted = false
       let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
         if (hasSettled || !isCurrentRequest()) return
@@ -1278,7 +1289,8 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          if (!isCurrentRequest()) return
+          if (!isCurrentRequest() || completionStarted) return
+          completionStarted = true
 
           handleResponding(false)
 
@@ -1289,7 +1301,7 @@ export const useChat = (
 
             if (
               conversationIdRef.current &&
-              !hasStopRespondedRef.current &&
+              (!hasStopRespondedRef.current || options.isNewAgent) &&
               onGetConversationMessages
             ) {
               let conversationMessagesResponse: unknown
@@ -1824,6 +1836,11 @@ export const useChat = (
           return otherOptions.onCompleted?.(hasError, errorMessage)
         },
       }
+      completeStoppedAgentRef.current = options.isNewAgent
+        ? async () => {
+            await otherOptions.onCompleted?.(true)
+          }
+        : null
       ssePost(
         url,
         {
