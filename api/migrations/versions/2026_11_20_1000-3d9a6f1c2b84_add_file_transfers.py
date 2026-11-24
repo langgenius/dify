@@ -1,7 +1,7 @@
 """Add the file transfer table.
 
 Revision ID: 3d9a6f1c2b84
-Revises: f8b6e2c4a901
+Revises: 5fc8a1d9b207
 Create Date: 2026-11-20 10:00:00
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 from models.types import StringUUID
 
 revision = "3d9a6f1c2b84"
-down_revision = "f8b6e2c4a901"
+down_revision = "5fc8a1d9b207"
 branch_labels = None
 depends_on = None
 
