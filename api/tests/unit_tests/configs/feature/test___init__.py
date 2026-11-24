@@ -5,7 +5,15 @@ import pytest
 from pydantic import ValidationError
 
 import configs.feature as feature_config
-from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig
+from configs.feature import (
+    AgentDevTokenerEnvironment,
+    AuthConfig,
+    DataSetConfig,
+    FileUploadConfig,
+    LoggingConfig,
+    PluginConfig,
+    TokenerSignupBillingCandidate,
+)
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
@@ -15,6 +23,19 @@ class _IsolatedAuthConfig(InitSettingsOnly, AuthConfig):
 
 class _IsolatedDataSetConfig(InitSettingsOnly, DataSetConfig):
     pass
+
+
+def test_agent_dev_tokener_profile_reads_staging_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_DEV_TOKENER_ENVIRONMENT", "staging")
+    config = PluginConfig(_env_file=None)
+    assert config.AGENT_DEV_TOKENER_ENVIRONMENT == AgentDevTokenerEnvironment.STAGING
+    assert config.get_agent_dev_tokener_signup_billing_mode() == TokenerSignupBillingCandidate.SHARED_STAGING
+
+
+def test_agent_dev_tokener_profile_rejects_production_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_DEV_TOKENER_ENVIRONMENT", "production")
+    with pytest.raises(ValidationError, match="AGENT_DEV_TOKENER_ENVIRONMENT"):
+        PluginConfig(_env_file=None)
 
 
 def test_dataset_description_max_length_defaults_to_400() -> None:

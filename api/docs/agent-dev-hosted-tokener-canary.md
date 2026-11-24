@@ -30,14 +30,16 @@ To use the existing shared agent-dev Billing service for **all future
 self-signups**, configure these values consistently in the API and signup
 worker:
 
-- `TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=http://dify-saas-billing:8081`
+- `AGENT_DEV_TOKENER_ENVIRONMENT=staging`
 - `TOKENER_BILLING_API_URL=http://dify-saas-billing:8081`
 - `TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER` to the exact verified
   signed `langgenius/tokener-staging:<version>@<sha256>` Marketplace UID.
 
-Both new ordinary signups and prior staging intents use the explicit shared
-route for Tokener bootstrap and metering, without redirects. In this mode the
-old exact-email selector is ignored. The package pin is signup-only; do not
+This profile selects the explicit shared route for all Tokener bootstrap and
+metering, including ordinary new signups and prior staging intents, without
+redirects. It takes precedence over the old signup Billing selector and ignores
+the old exact-email selector. Without the environment profile, previous
+selector behavior is unchanged. The package pin is signup-only; do not
 replace the global Tokener plugin or provider. The shared server uses a single
 staging Partner for Tokener; it does not choose the environment by tenant or
 fall back to dev. Existing dev bindings and failed signup rows are not

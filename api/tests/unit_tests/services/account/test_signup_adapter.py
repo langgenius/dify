@@ -5,7 +5,7 @@ from blinker import Signal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs.feature import TokenerSignupBillingCandidate
+from configs.feature import AgentDevTokenerEnvironment, TokenerSignupBillingCandidate
 from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
@@ -64,7 +64,19 @@ def test_signup_canary_only_pins_the_exact_configured_account(monkeypatch: pytes
     assert configured_signup_enrollment("another@example.invalid") == TokenerSignupEnrollment(UID)
 
 
-def test_shared_staging_signup_uses_signup_only_pin_regardless_of_email(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("profile", "validation_route"),
+    [
+        (AgentDevTokenerEnvironment.INHERIT, TokenerSignupBillingCandidate.SHARED_STAGING),
+        (AgentDevTokenerEnvironment.STAGING, TokenerSignupBillingCandidate.DISABLED),
+        (AgentDevTokenerEnvironment.STAGING, TokenerSignupBillingCandidate.HOSTED_SIGNUP),
+    ],
+)
+def test_shared_staging_signup_uses_signup_only_pin_regardless_of_email(
+    monkeypatch: pytest.MonkeyPatch,
+    profile: AgentDevTokenerEnvironment,
+    validation_route: TokenerSignupBillingCandidate,
+) -> None:
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -72,7 +84,8 @@ def test_shared_staging_signup_uses_signup_only_pin_regardless_of_email(monkeypa
         TOKENER_PLUGIN_UNIQUE_IDENTIFIER=UID,
         TOKENER_SIGNUP_VALIDATION_EMAIL="stage-canary@example.invalid",
         TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=SHARED_UID,
-        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        AGENT_DEV_TOKENER_ENVIRONMENT=profile,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=validation_route,
         TOKENER_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING.value,
         TOKENER_ENDPOINT_URL="https://api-dev.tokener.dev",
     )
@@ -171,7 +184,8 @@ def test_shared_staging_ordinary_account_persists_signup_only_package(
     apply_config_overrides(
         monkeypatch,
         TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=SHARED_UID,
-        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        AGENT_DEV_TOKENER_ENVIRONMENT=AgentDevTokenerEnvironment.STAGING,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.DISABLED,
         TOKENER_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING.value,
     )
     account = signup_domain.accounts.create_account_and_tenant(f"{uuid4()}@example.test", "Stage user", "en-US")

@@ -260,6 +260,13 @@ class TokenerSignupBillingCandidate(StrEnum):
     SHARED_STAGING = "http://dify-saas-billing:8081"
 
 
+class AgentDevTokenerEnvironment(StrEnum):
+    """Agent-dev signup profile; an empty value keeps the existing routing settings."""
+
+    INHERIT = ""
+    STAGING = "staging"
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -414,6 +421,11 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    AGENT_DEV_TOKENER_ENVIRONMENT: AgentDevTokenerEnvironment = Field(
+        default=AgentDevTokenerEnvironment.INHERIT,
+        description="Agent dev only: staging selects one shared Billing route for all Tokener signups and metering",
+    )
+
     TOKENER_SIGNUP_VALIDATION_BILLING_API_URL: TokenerSignupBillingCandidate = Field(
         default=TokenerSignupBillingCandidate.DISABLED,
         description="Agent dev only: explicit Billing route for workspaces created by the signup intent flow",
@@ -454,6 +466,12 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    def get_agent_dev_tokener_signup_billing_mode(self) -> TokenerSignupBillingCandidate:
+        """Resolve the profile or old selector without granting permission to use the target."""
+        if self.AGENT_DEV_TOKENER_ENVIRONMENT == AgentDevTokenerEnvironment.STAGING:
+            return TokenerSignupBillingCandidate.SHARED_STAGING
+        return self.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+
     def get_agent_dev_staging_tokener_billing_url(self) -> TokenerSignupBillingCandidate | None:
         """Return an explicitly trusted staging Billing route without network or persistence changes.
 
@@ -461,9 +479,9 @@ class PluginConfig(BaseSettings):
         valid only when the normal Tokener Billing base matches and the
         signup-only package is an exact staging UID. The global data-plane
         endpoint and package remain available to legacy paths unchanged.
-        Invalid configuration grants no fallback to shared Billing.
+        Invalid shared configuration grants no fallback to the isolated route.
         """
-        configured = self.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        configured = self.get_agent_dev_tokener_signup_billing_mode()
         if configured == TokenerSignupBillingCandidate.HOSTED_SIGNUP:
             return TokenerSignupBillingCandidate.HOSTED_SIGNUP
         if (

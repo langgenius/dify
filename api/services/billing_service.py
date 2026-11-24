@@ -324,7 +324,7 @@ class BillingService:
         target for all Tokener operations. Outside that mode, isolated
         validation still uses the original durable intent and fails closed.
         """
-        configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        configured = dify_config.get_agent_dev_tokener_signup_billing_mode()
         default_base = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return default_base, False

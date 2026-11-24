@@ -11,7 +11,7 @@ def configured_signup_enrollment(email: str | None = None) -> TokenerSignupEnrol
     """Freeze the Cloud signup pin; reject a mismatched staging route before creating an intent."""
     if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED:
         default_identifier = dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip()
-        configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        configured = dify_config.get_agent_dev_tokener_signup_billing_mode()
         if configured == TokenerSignupBillingCandidate.SHARED_STAGING:
             if dify_config.get_agent_dev_staging_tokener_billing_url() is None:
                 raise ValueError("The shared staging Tokener signup is not fully configured.")
