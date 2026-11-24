@@ -2107,12 +2107,12 @@ export const permittedExternalApps = {
  *
  * Postcondition: 200 with the parked file as an attachment
  * while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
- * wrong token or an upload, 410 link expired, 429 when every slot is taken.
+ * wrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.
  */
 export const get41 = oc
   .route({
     description:
-      'Postcondition: 200 with the parked file as an attachment\nwhile its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,\nwrong token or an upload, 410 link expired, 429 when every slot is taken.',
+      'Postcondition: 200 with the parked file as an attachment\nwhile its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,\nwrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTransfersByTransferId',
@@ -2129,12 +2129,12 @@ export const get41 = oc
  * Postcondition: 200 with the received file's facts and
  * the next step; the token is checked before the body is read. Refusals: 404 unknown or wrong token,
  * 410 link expired, 409 different bytes already received, 413 too large, 400 not one file part or a
- * folder upload that is not a zip, 429 when every slot is taken.
+ * folder upload that is not a zip, 429 when every slot is taken, 503 while file transfers are off.
  */
 export const post28 = oc
   .route({
     description:
-      "Postcondition: 200 with the received file's facts and\nthe next step; the token is checked before the body is read. Refusals: 404 unknown or wrong token,\n410 link expired, 409 different bytes already received, 413 too large, 400 not one file part or a\nfolder upload that is not a zip, 429 when every slot is taken.",
+      "Postcondition: 200 with the received file's facts and\nthe next step; the token is checked before the body is read. Refusals: 404 unknown or wrong token,\n410 link expired, 409 different bytes already received, 413 too large, 400 not one file part or a\nfolder upload that is not a zip, 429 when every slot is taken, 503 while file transfers are off.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTransfersByTransferId',
@@ -2154,12 +2154,13 @@ export const byTransferId = {
  * Precondition: an admitted caller
  *
  * Postcondition: 201 with a new incoming transfer the caller owns,
- * its upload link and commands. Nothing is stored until a file is sent to the link.
+ * its upload link and commands. Nothing is stored until a file is sent to the link. 503 while file
+ * transfers are off, checked before any other guard.
  */
 export const post29 = oc
   .route({
     description:
-      'Postcondition: 201 with a new incoming transfer the caller owns,\nits upload link and commands. Nothing is stored until a file is sent to the link.',
+      'Postcondition: 201 with a new incoming transfer the caller owns,\nits upload link and commands. Nothing is stored until a file is sent to the link. 503 while file\ntransfers are off, checked before any other guard.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postTransfers',
