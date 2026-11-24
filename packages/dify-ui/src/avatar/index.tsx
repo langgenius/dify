@@ -78,7 +78,6 @@ function observeAvatarGroupItems(group: HTMLSpanElement | null) {
   if (!group) return
 
   const updateLayers = () => {
-    // Read the rendered items so wrappers such as tooltip triggers receive the layer.
     const items = group.querySelectorAll<HTMLElement | SVGElement>(':scope > *')
     items.forEach((item, index) => {
       item.style.setProperty('--avatar-group-layer', String(items.length - index))
