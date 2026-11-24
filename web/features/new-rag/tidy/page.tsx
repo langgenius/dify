@@ -31,8 +31,8 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
-import { groupDuplicates, TIDY_KIND_ORDER } from './review'
-import { DuplicateGroupCard, KindSection, PairCard } from './review-cards'
+import { groupDuplicates, groupPairs, TIDY_KIND_ORDER } from './review'
+import { DuplicateGroupCard, KindSection, PairCard, PairGroupCard } from './review-cards'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
 const STATUSES = ['open', 'dismissed', 'reviewed', 'disabled'] as const
@@ -214,6 +214,12 @@ export function TidyPage() {
   }
   const items = findings.data?.items ?? []
   const cards = findings.data?.documents ?? {}
+  const conflictPairs = groupPairs(
+    items.filter((finding) => finding.status === 'open' && finding.kind !== 'duplicate'),
+  ).filter((group) => group.conflicts.length > 0)
+  const groupedWithConflicts = new Set(
+    conflictPairs.flatMap((group) => group.findings.map((finding) => finding.id)),
+  )
   const cardProps = {
     busy: pending,
     canManage,
@@ -460,12 +466,19 @@ export function TidyPage() {
       <div aria-label={t(($) => $['tidy.results'])} className="flex flex-col gap-6">
         {TIDY_KIND_ORDER.filter((value) => kind === 'all' || kind === value).map((value) => {
           const ofKind = items.filter((finding) => finding.kind === value)
-          if (!ofKind.length) return null
           // Identical copies awaiting review read best as one group with a keep-one choice.
           const groups =
             value === 'duplicate' && ofKind.every((finding) => finding.status === 'open')
               ? groupDuplicates(ofKind)
               : null
+          // What two documents disagree on is reviewed together, with their overlap alongside.
+          const pairs = value === 'conflict' ? conflictPairs : null
+          const rest =
+            value === 'conflict'
+              ? ofKind.filter((finding) => finding.status !== 'open')
+              : ofKind.filter((finding) => !groupedWithConflicts.has(finding.id))
+          const count = groups?.length ?? (pairs?.length ?? 0) + rest.length
+          if (!count) return null
           return (
             <KindSection
               key={value}
@@ -476,16 +489,19 @@ export function TidyPage() {
                       count: groups.length,
                       files: groups.reduce((total, group) => total + group.documentIds.length, 0),
                     })
-                  : t(($) => $['tidy.pairsMeta'], { count: ofKind.length })
+                  : t(($) => $['tidy.pairsMeta'], { count })
               }
             >
-              {groups
-                ? groups.map((group) => (
-                    <DuplicateGroupCard key={group.key} group={group} {...cardProps} />
-                  ))
-                : ofKind.map((finding) => (
-                    <PairCard key={finding.id} finding={finding} {...cardProps} />
-                  ))}
+              {groups?.map((group) => (
+                <DuplicateGroupCard key={group.key} group={group} {...cardProps} />
+              ))}
+              {pairs?.map((group) => (
+                <PairGroupCard key={group.key} group={group} {...cardProps} />
+              ))}
+              {!groups &&
+                rest.map((finding) => (
+                  <PairCard key={finding.id} finding={finding} {...cardProps} />
+                ))}
             </KindSection>
           )
         })}
