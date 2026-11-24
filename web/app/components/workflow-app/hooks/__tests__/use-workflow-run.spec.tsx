@@ -292,7 +292,7 @@ it('saves the graph before running and applies streamed results to the real work
   expect(api.streamEvents).toHaveBeenCalledOnce()
   expect(api.run).toHaveBeenCalledExactlyOnceWith(
     { params: { app_id: 'app-1' }, body: { inputs: { query: 'hello' } } },
-    { signal: expect.any(AbortSignal), context: { silent: true } },
+    { signal: expect.any(AbortSignal), context: { silent: true, stream: true } },
   )
   const callbacks = streamCallbacks()
   assert(callbacks?.onWorkflowStarted && callbacks.onWorkflowFinished)
@@ -387,7 +387,7 @@ it.each([
     await waitFor(() => expect(trigger).toHaveBeenCalledOnce())
     expect(trigger).toHaveBeenCalledWith(
       { params: { app_id: 'app-1' }, body },
-      { signal: expect.any(AbortSignal), context: { silent: true } },
+      { signal: expect.any(AbortSignal), context: { silent: true, stream: true } },
     )
     expect(api.triggerRun.mock.calls.length + api.triggerRunAll.mock.calls.length).toBe(1)
     expect(store.getState().isListening).toBe(true)
@@ -590,7 +590,7 @@ it.each([false, true])(
         params: { workflow_run_id: 'run-1' },
         query: { include_state_snapshot: 'true', continue_on_pause: 'true' },
       },
-      { signal: expect.any(AbortSignal), context: { silent: true } },
+      { signal: expect.any(AbortSignal), context: { silent: true, stream: true } },
     )
     expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Paused)
     const resumed = streamCallbacks()

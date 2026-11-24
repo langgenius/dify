@@ -393,7 +393,10 @@ export const runTriggerDebug = async ({
     try {
       // The endpoint answers with JSON while it waits for a trigger event, then with the run's
       // event stream.
-      const response = await request({ signal: controller.signal, context: { silent: true } })
+      const response = await request({
+        signal: controller.signal,
+        context: { silent: true, stream: true },
+      })
 
       if (controller.signal.aborted) return
 
