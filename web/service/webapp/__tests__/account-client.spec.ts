@@ -5,6 +5,7 @@ import type {
   WebAccountProfileResponse,
   WebSystemFeatureResponse,
 } from '@dify/contracts/api/web/types.gen'
+import { createHash, webcrypto } from 'node:crypto'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -13,6 +14,7 @@ import { captureAppAccessScope } from '@/features/app-access-error/state'
 import { refreshAccessTokenOrReLogin } from '@/service/refresh-token'
 import {
   getWebAppAuthSessionSnapshot,
+  getWebAppLoginMode,
   setWebAppAccessToken,
   setWebAppPassport,
   startWebAppAccountSession,
@@ -20,6 +22,7 @@ import {
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { webAppClient, webAppQuery } from '../index'
+import { completeWebAppPortalLogin } from '../portal-login'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
@@ -119,6 +122,7 @@ describe('generated account Web App client', () => {
     deployment.basePath = ''
     localStorage.clear()
     sessionStorage.clear()
+    vi.stubGlobal('crypto', webcrypto)
     window.history.replaceState({}, '', '/my-apps')
     captureAppAccessScope()
     queryClient = new QueryClient({
@@ -129,6 +133,7 @@ describe('generated account Web App client', () => {
   afterEach(() => {
     queryClient.clear()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
@@ -233,7 +238,76 @@ describe('generated account Web App client', () => {
       '/my-apps?view=starred&q=hello%20world#apps',
     )
     expect(signin.searchParams.has('app_code')).toBe(false)
-    expect(signin.searchParams.has('code_challenge')).toBe(false)
+    expect(signin.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
+    expect(signin.searchParams.has('code_verifier')).toBe(false)
+  })
+
+  it('uses the initiating tab’s verifier to exchange a My Apps code before restoring the original URL', async () => {
+    deployment.basePath = '/web'
+    window.history.replaceState({}, '', '/web/my-apps?view=starred&q=hello%20world#apps')
+    const original = new URL(window.location.href)
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json(systemFeatures))
+      .mockResolvedValueOnce(Response.json({ result: 'success' }))
+      .mockResolvedValueOnce(Response.json(accountProfile))
+
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+    const signin = new URL(replace.mock.calls[0]![0])
+    const callback = new URL(original)
+    callback.searchParams.set('login_code', 'portal-code')
+    window.history.replaceState({}, '', callback)
+    const login = completeWebAppPortalLogin()
+    await expect(Promise.all([login, completeWebAppPortalLogin()])).resolves.toEqual([
+      original.href,
+      original.href,
+    ])
+
+    expect(fetch).toHaveBeenCalledTimes(4)
+    expectAccountRequest(...fetch.mock.calls[2]!, '/account/session', 'POST')
+    expectAccountRequest(...fetch.mock.calls[3]!, '/account/profile', 'GET')
+    const payload = await new Request(...fetch.mock.calls[2]!).json()
+    expect(payload).toEqual({ login_code: 'portal-code', code_verifier: expect.any(String) })
+    expect(createHash('sha256').update(payload.code_verifier).digest('base64url')).toBe(
+      signin.searchParams.get('code_challenge'),
+    )
+    expect(signin.href).not.toContain(payload.code_verifier)
+    expect(sessionStorage.length).toBe(0)
+    expect(getWebAppLoginMode()).toBe('end_user')
+    expect(replace).toHaveBeenCalledOnce()
+  })
+
+  it('does not redeem a callback when its URL differs from the initiating tab’s return path', async () => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json(systemFeatures))
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+
+    window.history.replaceState({}, '', '/my-apps?view=starred&login_code=unexpected-target')
+    await expect(completeWebAppPortalLogin()).rejects.toThrow('login transaction')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(replace).toHaveBeenCalledOnce()
+  })
+
+  it('stops sign-in when the cookie is unavailable after the code exchange', async () => {
+    const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(Response.json(systemFeatures))
+      .mockResolvedValueOnce(Response.json({ result: 'success' }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+    await expect(webAppClient.me.apps.get()).rejects.toMatchObject({ status: 401 })
+
+    window.history.replaceState({}, '', '/my-apps?login_code=missing-cookie')
+    await expect(completeWebAppPortalLogin()).rejects.toMatchObject({ status: 401 })
+    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(replace).toHaveBeenCalledOnce()
+    expect(getWebAppLoginMode()).toBe('console')
   })
 
   it('redirects an unauthorized My Account profile to Web App sign-in', async () => {
@@ -339,7 +413,7 @@ describe('generated account Web App client', () => {
     expect(signin.searchParams.get('is_end_user')).toBe('1')
     expect(signin.searchParams.get('redirect_url')).toBe('/my-apps?view=starred#apps')
     expect(signin.searchParams.has('app_code')).toBe(false)
-    expect(signin.searchParams.has('code_challenge')).toBe(false)
+    expect(signin.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
   })
 
   it.each(['network', 'server'] as const)(

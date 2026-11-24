@@ -129,7 +129,7 @@ it('revalidates the confirmation field as the native password value changes', as
 it.each([
   {
     scenario: 'End User handshake',
-    search: new URLSearchParams({
+    query: new URLSearchParams({
       token: 'reset-token',
       is_end_user: '1',
       redirect_url: 'https://app.example/chat/my-webapp?conversation=existing',

@@ -1,14 +1,15 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { useLogout } from '@/service/use-common'
+import { logoutMutationOptions } from '@/service/common-queries'
 
 export default function SwitchAccount({ redirectTo }: { redirectTo: string }) {
   const { t } = useTranslation(['common'])
-  const { mutate, isError, error } = useLogout({ redirectTo })
+  const { mutate, isError, error } = useMutation(logoutMutationOptions({ redirectTo }))
   const startedRef = useRef(false)
 
   useEffect(() => {

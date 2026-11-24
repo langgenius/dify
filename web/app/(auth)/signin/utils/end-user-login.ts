@@ -1,5 +1,5 @@
 import { zGetLoginQuery } from '@dify/contracts/api/console/login/zod.gen'
-import { parseWebAppRoute } from '@/service/webapp-address'
+import { parseWebAppRoute, withWebAppPortalLoginCode } from '@/service/webapp-address'
 import { basePath } from '@/utils/var'
 
 type LoginSearchParams = Pick<URLSearchParams, 'get'>
@@ -28,17 +28,17 @@ export function getEndUserLoginContext(searchParams: LoginSearchParams, webappUr
     const challenge = searchParams.get('code_challenge')
     // Deployment prefixes belong at the API boundary, outside the public sign-in URL.
     let apiRedirectUrl: string
-    if (appCode || challenge) {
-      if (!appCode || !challenge || address?.kind !== 'default' || address.code !== appCode)
-        return null
+    if (appCode) {
+      if (!challenge || address?.kind !== 'default' || address.code !== appCode) return null
       apiRedirectUrl = new URL(
         `${webappUrl.replace(/\/$/, '')}${redirectUrl}`,
         globalThis.location?.origin ?? RELATIVE_REDIRECT_ORIGIN,
       ).href
     } else {
       const portal = getPersonalPortalUrl(redirectUrl, '')
-      if (!portal) return null
-      apiRedirectUrl = `${basePath.replace(/\/$/, '')}${portal.pathname}${portal.search}${portal.hash}`
+      if (!portal || (challenge !== null && portal.pathname !== '/my-apps')) return null
+      const consolePrefix = challenge === null ? basePath.replace(/\/$/, '') : ''
+      apiRedirectUrl = `${consolePrefix}${portal.pathname}${portal.search}${portal.hash}`
     }
     const input = zGetLoginQuery.safeParse({
       mode: 'end_user',
@@ -73,14 +73,16 @@ export function getEndUserAccountRedirectUrl(
   raw: string | null | undefined,
   context: ReturnType<typeof getEndUserLoginContext>,
   webappUrl: string,
+  portalLoginCode?: string | null,
 ) {
   if (!raw || !context?.redirect_url) return null
   if (context.app_code) return getAccountLoginCallbackUrl(raw, context.redirect_url)
   if (UNSAFE_REDIRECT_CHARACTERS.test(raw) || raw.startsWith('//')) return null
-  const expected = getPersonalPortalUrl(context.redirect_url)
+  const consolePrefix = context.code_challenge ? '' : basePath.replace(/\/$/, '')
+  const expected = getPersonalPortalUrl(context.redirect_url, consolePrefix)
   if (!expected) return null
 
-  const portalPath = expected.pathname.slice(basePath.replace(/\/$/, '').length)
+  const portalPath = expected.pathname.slice(consolePrefix.length)
   try {
     const webappTarget = new URL(
       `${webappUrl.replace(/\/$/, '')}${portalPath}${expected.search}${expected.hash}`,
@@ -93,8 +95,12 @@ export function getEndUserAccountRedirectUrl(
     )
       return null
 
-    // The session API can echo the Console path or return the final Webapp URL.
     const responseTarget = new URL(raw, expected.origin)
+    if (context.code_challenge) {
+      if (!portalLoginCode || responseTarget.href !== webappTarget.href) return null
+      return withWebAppPortalLoginCode(webappTarget, portalLoginCode).href
+    }
+    // Legacy shared-cookie sessions can echo the Console path.
     if (responseTarget.href === expected.href || responseTarget.href === webappTarget.href)
       return webappTarget.href
   } catch {

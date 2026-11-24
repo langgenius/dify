@@ -3418,17 +3418,6 @@
       "count": 4
     }
   },
-  "web/service/use-common.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/service/use-plugins-auth.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
@@ -3449,37 +3438,6 @@
     },
     "typescript/no-deprecated": {
       "count": 4
-    }
-  },
-  "web/service/use-share.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 7
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/use-snippet-workflows.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
-  "web/service/use-snippets.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
-  "web/service/use-triggers.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/use-try-app.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     }
   },
   "web/service/use-workflow.ts": {

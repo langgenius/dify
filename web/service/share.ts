@@ -2,6 +2,7 @@ import type {
   MessageFeedbackPayload,
   SimpleConversation,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type { WebAppParametersResponse } from '@dify/contracts/api/web/types.gen'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
@@ -348,8 +349,19 @@ export const fetchChatList = async (
 //   return get(`variables`)
 // }
 
-// init value. wait for server update
-export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') => {
+export function fetchAppParams(
+  appSourceType: typeof AppSourceType.webApp,
+  appId?: string,
+): Promise<WebAppParametersResponse>
+export function fetchAppParams(
+  appSourceType: Exclude<AppSourceType, typeof AppSourceType.webApp>,
+  appId?: string,
+): Promise<ChatConfig>
+export function fetchAppParams(
+  appSourceType: AppSourceType,
+  appId?: string,
+): Promise<WebAppParametersResponse | ChatConfig>
+export async function fetchAppParams(appSourceType: AppSourceType, appId = '') {
   if (appSourceType !== AppSourceType.webApp) {
     const parameters =
       appSourceType === AppSourceType.installedApp
@@ -359,7 +371,7 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
         : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
     return selectAppParameters(parameters)
   }
-  return webAppClient.parameters.get() as Promise<ChatConfig>
+  return webAppClient.parameters.get()
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {

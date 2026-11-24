@@ -1,0 +1,80 @@
+import { basePath } from '@/utils/var'
+import { WEBAPP_PORTAL_LOGIN_CODE, withWebAppPortalLoginCode } from '../webapp-address'
+import { captureWebAppAuthSession, startWebAppAccountSession } from '../webapp-auth'
+import { webAppClient } from './index'
+import {
+  createWebAppLoginProof,
+  readWebAppLoginTransaction,
+  removeWebAppLoginTransaction,
+  storeWebAppLoginTransaction,
+} from './login-transaction'
+
+const PORTAL_LOGIN_STORAGE_KEY = 'webapp-portal-login'
+
+let pendingLogin: { location: string; promise: Promise<void> } | undefined
+let pendingExchange: { location: string; promise: Promise<string> } | undefined
+
+export function redirectToWebAppPortalSignIn(returnPath: string) {
+  const location = window.location.href
+  if (pendingLogin?.location === location) return pendingLogin.promise
+  const isCurrentSession = captureWebAppAuthSession()
+  const promise = (async () => {
+    const [features, proof] = await Promise.all([
+      webAppClient.systemFeatures.get(undefined, { context: { silent: true } }),
+      createWebAppLoginProof(),
+    ])
+    if (!isCurrentSession() || window.location.href !== location)
+      throw new DOMException('The Web App login changed.', 'AbortError')
+
+    const signin = new URL(`${features.console_web_url.replace(/\/$/, '')}/signin`, location)
+    if (!['http:', 'https:'].includes(signin.protocol) || signin.username || signin.password)
+      throw new Error('Invalid Account sign-in URL.')
+
+    const redirectUrl = new URL(`${basePath.replace(/\/$/, '')}${returnPath}`, location)
+    storeWebAppLoginTransaction(PORTAL_LOGIN_STORAGE_KEY, proof.verifier, redirectUrl.href)
+    signin.searchParams.set('is_end_user', '1')
+    signin.searchParams.set('redirect_url', returnPath)
+    signin.searchParams.set('code_challenge', proof.challenge)
+    signin.searchParams.set('code_challenge_method', 'S256')
+    window.location.replace(signin.href)
+  })()
+  pendingLogin = { location, promise }
+  const clearPendingLogin = () => {
+    if (pendingLogin?.promise === promise) pendingLogin = undefined
+  }
+  void promise.then(clearPendingLogin, clearPendingLogin)
+  return promise
+}
+
+export function completeWebAppPortalLogin() {
+  const location = window.location.href
+  if (pendingExchange?.location === location) return pendingExchange.promise
+  const isCurrentSession = captureWebAppAuthSession()
+  const promise = (async () => {
+    const callback = new URL(location)
+    const loginCode = callback.searchParams.get(WEBAPP_PORTAL_LOGIN_CODE)
+    const transaction = readWebAppLoginTransaction(PORTAL_LOGIN_STORAGE_KEY)
+    if (
+      !loginCode ||
+      !transaction ||
+      withWebAppPortalLoginCode(new URL(transaction.redirectUrl), loginCode).href !== location
+    )
+      throw new Error('Missing or expired Web App portal login transaction.')
+
+    removeWebAppLoginTransaction(PORTAL_LOGIN_STORAGE_KEY)
+    await webAppClient.account.session.post(
+      { body: { login_code: loginCode, code_verifier: transaction.verifier } },
+      { context: { silent: true } },
+    )
+    if (!isCurrentSession() || window.location.href !== location)
+      throw new DOMException('The Web App login changed.', 'AbortError')
+    // Check the Cookie before mounting queries that could start another sign-in.
+    await webAppClient.account.profile.get(undefined, { context: { silent: true } })
+    if (!isCurrentSession() || window.location.href !== location)
+      throw new DOMException('The Web App login changed.', 'AbortError')
+    startWebAppAccountSession()
+    return transaction.redirectUrl
+  })()
+  pendingExchange = { location, promise }
+  return promise
+}

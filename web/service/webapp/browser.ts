@@ -2,12 +2,17 @@ import type { WebAppClientContext } from './index'
 import { contract } from '@dify/contracts/api/web/orpc.gen'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
-import { basePath as appBasePath } from '@/utils/var'
 // oxlint-disable-next-line no-restricted-imports -- The generated Web client preserves the existing public auth and access guard transport.
 import { request } from '../base'
 import { validateDefinedErrors } from '../console/defined-errors'
 import { isUnauthorizedError } from '../http-error'
-import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
+import {
+  getWebAppPublicApiPath,
+  getWebAppScopeKey,
+  removeWebAppBasePath,
+  resolveWebAppAddress,
+  WEBAPP_PORTAL_LOGIN_CODE,
+} from '../webapp-address'
 import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
 
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
@@ -48,34 +53,29 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         silent: options.context.silent,
       }).catch(async (error: unknown) => {
         assertCurrentAccount()
-        const pathname = window.location.pathname.replace(/\/$/, '')
-        const isMyApps = pathname === `${appBasePath}/my-apps`
+        const { pathname, search, hash } = window.location
+        const route = removeWebAppBasePath(pathname).replace(/\/$/, '')
+        const isMyApps = route === '/my-apps'
         const isMyAccountProfile =
-          pathname === `${appBasePath}/my-account` &&
-          path === '/account/profile' &&
-          input.method === 'GET'
-        if (isUnauthorizedError(error) && (isMyApps || isMyAccountProfile)) {
+          route === '/my-account' && path === '/account/profile' && input.method === 'GET'
+        if (
+          isUnauthorizedError(error) &&
+          (isMyApps || isMyAccountProfile) &&
+          path !== '/account/session' &&
+          !new URLSearchParams(search).has(WEBAPP_PORTAL_LOGIN_CODE)
+        ) {
           const returnLocation = window.location.href
-          const { webAppClient } = await import('./index')
-          const features = await webAppClient.systemFeatures
-            .get(undefined, {
-              context: { silent: true },
-            })
-            .catch(() => {
-              assertCurrentAccount()
-              throw error
-            })
+          const { redirectToWebAppPortalSignIn } = await import('./portal-login')
           assertCurrentAccount()
           if (window.location.href !== returnLocation)
             throw new DOMException('The personal portal page changed.', 'AbortError')
-          const consolePrefix = features.console_web_url
-          const signin = new URL(`${consolePrefix}/signin`, window.location.origin)
-          signin.searchParams.set('is_end_user', '1')
-          signin.searchParams.set(
-            'redirect_url',
-            isMyApps ? `/my-apps${window.location.search}${window.location.hash}` : '/my-apps',
-          )
-          window.location.replace(signin.href)
+          try {
+            await redirectToWebAppPortalSignIn(isMyApps ? `/my-apps${search}${hash}` : '/my-apps')
+          } catch (signInError) {
+            if (signInError instanceof DOMException && signInError.name === 'AbortError')
+              throw signInError
+            throw error
+          }
           if (isMyAccountProfile)
             throw new DOMException('Redirecting to Web App sign-in.', 'AbortError')
         }
