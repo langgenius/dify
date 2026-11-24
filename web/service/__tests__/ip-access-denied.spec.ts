@@ -13,7 +13,7 @@ import {
 } from '@/features/app-access-error/state'
 import { markAppDeletionFailed, markAppDeletionStarted } from '../app-deletion'
 // oxlint-disable-next-line no-restricted-imports -- This integration spec exercises public WebApp transport error handling.
-import { request, sseGet, ssePost, upload } from '../base'
+import { request, ssePost, upload } from '../base'
 import { consoleClient } from '../console'
 import * as webAppAuth from '../webapp-auth'
 
@@ -208,8 +208,6 @@ describe('WebApp IP access denial transport', () => {
     it.each([
       { transition: 'denied' as const, stream: ssePost, name: 'POST' },
       { transition: 'navigated' as const, stream: ssePost, name: 'POST' },
-      { transition: 'denied' as const, stream: sseGet, name: 'GET' },
-      { transition: 'navigated' as const, stream: sseGet, name: 'GET' },
     ])(
       'settles a late SSE $name authorization failure after the page is $transition',
       async ({ transition, stream }) => {
@@ -283,10 +281,7 @@ describe('WebApp IP access denial transport', () => {
     },
   )
 
-  it.each([
-    { name: 'POST', stream: ssePost, path: '/chat-messages' },
-    { name: 'GET', stream: sseGet, path: '/workflow/run-id/events' },
-  ])(
+  it.each([{ name: 'POST', stream: ssePost, path: '/chat-messages' }])(
     'settles a denied SSE $name before reading a stream without duplicate notifications',
     async ({ stream, path }) => {
       const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(denial))
@@ -400,10 +395,7 @@ describe('application not-found transport', () => {
     expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
 
-  it.each([
-    { name: 'POST', stream: ssePost, path: '/chat-messages' },
-    { name: 'GET', stream: sseGet, path: '/workflow/run-id/events' },
-  ])(
+  it.each([{ name: 'POST', stream: ssePost, path: '/chat-messages' }])(
     'settles an opaque Gateway 404 before opening an SSE $name stream',
     async ({ stream, path }) => {
       window.history.replaceState({}, '', '/chat/app')
