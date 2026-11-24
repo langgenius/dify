@@ -4491,7 +4491,6 @@ export default interface Resources {
     adminInitPassword: 'Admin initialization password'
     back: 'Back'
     backToLogin: 'Back to login'
-    backToSignIn: 'Return to sign in'
     changePassword: 'Set a password'
     changePasswordBtn: 'Set a password'
     changePasswordTip: 'Please enter a new password for your account'
@@ -4505,7 +4504,6 @@ export default interface Resources {
     'checkCode.verificationCode': 'Verification code'
     'checkCode.verificationCodePlaceholder': 'Enter 6-digit code'
     'checkCode.verify': 'Verify'
-    checkEmailForResetLink: "Please check your email for a link to reset your password. If it doesn't appear within a few minutes, make sure to check your spam folder."
     confirmPasswordPlaceholder: 'Confirm your new password'
     createSample: "Based on this information, we'll create sample application for you"
     dontHave: "Don't have?"
@@ -4523,8 +4521,6 @@ export default interface Resources {
     'error.ssoFailed': 'SSO login failed. Please try again or contact your administrator.'
     explore: 'Explore Dify'
     forget: 'Forgot your password?'
-    forgotPassword: 'Forgot your password?'
-    forgotPasswordDesc: 'Please enter your email address to reset your password. We will send you an email with instructions on how to reset your password.'
     go: 'Go to Dify'
     goToInit: 'If you have not initialized the account, please go to the initialization page'
     installBtn: 'Set up'
@@ -4559,10 +4555,8 @@ export default interface Resources {
     passwordChangedTip: 'Your password has been successfully changed'
     passwordPlaceholder: 'Your password'
     pp: 'Privacy Policy'
-    resetLinkSent: 'Reset link sent'
     resetPassword: 'Reset Password'
     resetPasswordDesc: 'Type the email you used to sign up on Dify and we will send you a password reset email.'
-    sendResetLink: 'Send reset link'
     sendUsMail: "Email us your introduction, and we'll handle the invitation request."
     sendVerificationCode: 'Send Verification Code'
     setAdminAccount: 'Setting up an admin account'
