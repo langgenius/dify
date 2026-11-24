@@ -30,8 +30,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
+// Marketplace lookups have no contract yet and go through the legacy marketplace helper.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  postMarketplace: async () => ({ data: { plugins: [] } }),
 }))
 
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
