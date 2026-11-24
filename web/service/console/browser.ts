@@ -24,6 +24,7 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
         request: normalizedRequest,
         silent: options.context.silent,
         onUploadProgress: options.context.onUploadProgress,
+        timeout: options.context.stream ? false : undefined,
       })
       options.context.onResponseHeaders?.(response.headers)
       return response

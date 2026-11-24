@@ -27,7 +27,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 vi.mock('@/service/base', () => ({
   request: mocks.request,
-  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('../../plan', () => ({

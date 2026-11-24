@@ -11,19 +11,6 @@ export async function* parseSSE(
   signal?: AbortSignal,
 ): AsyncGenerator<SseEvent, void, void> {
   const queue: SseEvent[] = []
-  let resolveNext: (() => void) | undefined
-  let pendingWake = false
-  let done = false
-
-  const wake = (): void => {
-    pendingWake = true
-    if (resolveNext !== undefined) {
-      const r = resolveNext
-      resolveNext = undefined
-      r()
-    }
-  }
-
   const enc = new TextEncoder()
   const parser = createParser({
     onEvent(ev) {
@@ -32,71 +19,39 @@ export async function* parseSSE(
         data: enc.encode(ev.data),
         id: ev.id,
       })
-      wake()
     },
   })
 
   const reader = body.getReader()
   const dec = new TextDecoder('utf-8')
+  let done = false
 
   const onAbort = (): void => {
     reader.cancel().catch(() => {})
   }
-  if (signal !== undefined) {
-    if (signal.aborted) onAbort()
-    else signal.addEventListener('abort', onAbort, { once: true })
-  }
-
-  const pump = (async () => {
-    try {
-      while (true) {
-        if (signal?.aborted) {
-          const e = new Error('aborted')
-          e.name = 'AbortError'
-          throw e
-        }
-        const { value, done: rDone } = await reader.read()
-        if (rDone) break
-        parser.feed(dec.decode(value, { stream: true }))
-      }
-    } finally {
-      done = true
-      wake()
-      try {
-        reader.releaseLock()
-      } catch {}
-    }
-  })()
-
-  // Observe background failures even while a yielded event suspends the consumer.
-  // Awaiting the original pump below still propagates the error after the queue drains.
-  void pump.catch(() => {})
+  signal?.addEventListener('abort', onAbort, { once: true })
 
   try {
     while (true) {
-      while (queue.length > 0) {
-        const ev = queue.shift()
-        if (ev !== undefined) yield ev
-      }
-      if (done) {
-        await pump
+      signal?.throwIfAborted()
+      const next = await reader.read()
+      signal?.throwIfAborted()
+      if (next.done) {
+        done = true
         return
       }
-      if (pendingWake) {
-        pendingWake = false
-        continue
-      }
-      await new Promise<void>((res) => {
-        resolveNext = res
-      })
-      pendingWake = false
+      parser.feed(dec.decode(next.value, { stream: true }))
+      // Drain this chunk before reading more from the response.
+      yield* queue
+      queue.length = 0
     }
   } finally {
-    if (signal !== undefined) signal.removeEventListener('abort', onAbort)
+    signal?.removeEventListener('abort', onAbort)
     if (!done) {
       try {
         await reader.cancel()
       } catch {}
     }
+    reader.releaseLock()
   }
 }
