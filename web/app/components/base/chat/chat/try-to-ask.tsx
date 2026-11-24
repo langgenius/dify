@@ -27,7 +27,7 @@ const TryToAsk: FC<TryToAskProps> = ({ suggestedQuestions, onSend }) => {
             size="small"
             key={index}
             variant="secondary-accent"
-            className="pointer-events-auto mr-1 mb-1 last:mr-0"
+            className="pointer-events-auto me-1 mb-1 last:me-0"
             onClick={() => onSend(suggestQuestion)}
           >
             {suggestQuestion}

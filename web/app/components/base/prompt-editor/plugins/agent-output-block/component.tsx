@@ -207,7 +207,7 @@ const AgentOutputBlockComponent = ({
       contentEditable={false}
       className="inline-flex items-center gap-0.75 rounded-[5px] border border-util-colors-violet-violet-700 bg-util-colors-violet-violet-50 p-px align-middle shadow-xs"
     >
-      <span className="flex min-w-0 items-center gap-0.5 pl-0.5">
+      <span className="flex min-w-0 items-center gap-0.5 ps-0.5">
         <span
           aria-hidden="true"
           className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700"
@@ -289,7 +289,7 @@ const AgentOutputBlockComponent = ({
         </SelectLabel>
         <SelectTrigger
           aria-label={t(($) => $['nodes.agent.outputVars.typeLabel'], { ns: 'workflowAgent' })}
-          className="h-4 min-w-4 rounded bg-util-colors-violet-violet-200 py-0 pr-0.5 pl-1 system-2xs-semibold-uppercase text-util-colors-violet-violet-700 hover:bg-util-colors-violet-violet-200"
+          className="h-4 min-w-4 rounded bg-util-colors-violet-violet-200 py-0 ps-1 pe-0.5 system-2xs-semibold-uppercase text-util-colors-violet-violet-700 hover:bg-util-colors-violet-violet-200"
           onMouseDown={() => {
             skipNextBlurCommitRef.current = true
           }}

@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -94,7 +95,6 @@ from services.account.oauth_adapters import (
     RedisOAuthAccountClaimLock,
     WorkspaceProvisioningOAuthGateway,
 )
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
@@ -737,9 +737,11 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+    assert services.workflow_comments._now is naive_utc_now
 
 
 def test_build_application_services_wires_app_statistic_boundary(
@@ -997,9 +999,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert oauth._sessions is not oauth._workspaces
     assert isinstance(oauth._registration_policy, DeploymentOAuthPolicyGateway)
     assert oauth._workspace_policy is oauth._registration_policy
-    avatar_files = services.accounts.avatar._files
-    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
-    assert avatar_files._session_factory is sqlite_session_factory
+    assert services.accounts.avatar._avatars is accounts
 
 
 def test_build_application_services_requires_invitation_for_cloud_initialization(

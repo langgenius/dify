@@ -2,23 +2,26 @@ import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderBaseField } from './base-field-test-env'
 
-const dynamicOptions = vi.hoisted(() =>
-  vi.fn<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>(),
-)
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.parameters.dynamicOptions.get': dynamicOptions,
-    }),
-  }
-})
+type DynamicOptions = Awaited<
+  ReturnType<typeof consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get>
+>
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        plugin: {
+          parameters: {
+            dynamicOptions: { get: () => ({ options: [] }) },
+          },
+        },
+      },
+    },
+  },
+}))
+const dynamicOptions = () => fake.console.workspaces.current.plugin.parameters.dynamicOptions.get
 
 const dynamicSelectParams = {
   plugin_id: 'plugin-1',
@@ -36,7 +39,7 @@ describe('BaseField dynamic options', () => {
     'focuses the trigger from its label and supports keyboard selection (multiple: $multiple)',
     async ({ type, multiple }) => {
       const options = [{ label: { en_US: 'Primary' }, value: 'primary' }]
-      dynamicOptions.mockResolvedValue({ options })
+      dynamicOptions().mockResolvedValue({ options })
       await renderBaseField({
         formSchema: {
           type,
@@ -72,8 +75,8 @@ describe('BaseField dynamic options', () => {
   )
 
   it('shows loading while the service boundary is pending', async () => {
-    const request = createDeferred<Awaited<ReturnType<typeof dynamicOptions>>>()
-    dynamicOptions.mockReturnValue(request.promise)
+    const request = createDeferred<DynamicOptions>()
+    dynamicOptions().mockReturnValue(request.promise)
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
@@ -93,7 +96,7 @@ describe('BaseField dynamic options', () => {
   })
 
   it('renders translated service options and applies one', async () => {
-    dynamicOptions.mockResolvedValue({
+    dynamicOptions().mockResolvedValue({
       options: [{ label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' }],
     })
     await renderBaseField({
@@ -117,7 +120,7 @@ describe('BaseField dynamic options', () => {
   })
 
   it('preserves and extends multiple service values', async () => {
-    dynamicOptions.mockResolvedValue({
+    dynamicOptions().mockResolvedValue({
       options: [
         { label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' },
         { label: { en_US: 'Option B', zh_Hans: '选项B' }, value: 'b' },
@@ -145,7 +148,9 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows a service error without presenting options', async () => {
-    dynamicOptions.mockRejectedValue(new Error('Failed'))
+    dynamicOptions().mockRejectedValue(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }),
+    )
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
@@ -162,7 +167,7 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows an empty service result without presenting options', async () => {
-    dynamicOptions.mockResolvedValue({ options: [] })
+    dynamicOptions().mockResolvedValue({ options: [] })
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,
@@ -180,7 +185,5 @@ describe('BaseField dynamic options', () => {
 })
 
 beforeEach(async () => {
-  dynamicOptions.mockReset().mockResolvedValue({ options: [] })
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
 })

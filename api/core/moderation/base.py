@@ -1,10 +1,35 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Mapping
 from enum import StrEnum, auto
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
 from core.extension.extensible import Extensible, ExtensionModule
+
+if TYPE_CHECKING:
+    from core.app.app_config.entities import AppConfig
+
+
+@runtime_checkable
+class AppModeration(Protocol):
+    """Stateless app checks and replacement, independent of workflow node error strategies.
+
+    Only a trusted runtime ownership decision can defer an app OpenAI rule.
+    Keywords and API rules are independent of that decision.
+    """
+
+    def evaluate_input(
+        self, app_config: AppConfig, inputs: Mapping[str, object], query: str, *, platform_owned: bool
+    ) -> ModerationInputsResult | None: ...
+
+    def output_evaluator(
+        self, app_config: AppConfig, *, platform_owned: bool
+    ) -> Callable[[str], ModerationOutputsResult | None] | None: ...
+
+    def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None: ...
 
 
 class ModerationAction(StrEnum):

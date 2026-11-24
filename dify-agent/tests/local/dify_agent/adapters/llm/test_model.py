@@ -19,6 +19,7 @@ from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
+    ImageUrl,
     ModelMessage,
     ModelMessagesTypeAdapter,
     ModelRequest,
@@ -41,6 +42,8 @@ from dify_agent.adapters.llm import DifyApiLLMProvider, DifyLLMAdapterModel
 from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.runtime.compaction import build_compaction_capability
 from dify_agent.runtime.context import Deps, Services
+from dify_agent.layers.read_media.layer import Capability as ReadMediaCapability
+from dify_agent.agent_stub.protocol import file_reference
 
 from ._test_support import (
     AssistantPromptMessage,
@@ -55,6 +58,355 @@ from ._test_support import (
 )
 
 _OMIT_ID = object()
+
+
+def media_adapter(client):
+    provider = DifyApiLLMProvider(
+        plugin_id="openai",
+        inner_api_url="http://dify-api",
+        inner_api_key="inner-key",
+        execution_context=DifyExecutionContextLayerConfig(
+            tenant_id="tenant",
+            user_id="user",
+            user_from="account",
+            app_id="app",
+            agent_mode="agent_app",
+            invoke_from="debugger",
+        ),
+        agent_run_id="run",
+        http_client=client,
+    )
+    return DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+
+
+def marked_media_messages(*, marked=True, filename="chart.png"):
+    return [
+        ModelRequest(
+            parts=[
+                UserPromptPart(
+                    content=[
+                        f"Attached vision media from read_media ({filename}):",
+                        ImageUrl(
+                            url=f"https://example.com/{filename}",
+                            media_type="image/png",
+                            vendor_metadata={
+                                "dify_read_media": marked,
+                                "modality": "vision",
+                                "filename": filename,
+                                "mime_type": "image/png",
+                                "locator": {"path": f"./{filename}"},
+                            },
+                        ),
+                    ]
+                )
+            ]
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_prefetched_media_usage_is_retained_when_stream_is_closed_before_iteration():
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: build_stream_response(*single_text_chunk("seen")))
+    ) as client:
+        model = media_adapter(client)
+        async with model.request_stream(marked_media_messages(), None, ModelRequestParameters()):
+            pass
+        assert model.accumulated_usage is not None
+        assert model.accumulated_usage.total_tokens == 8
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("status", [400, 413, 415, 422, "parameter-sse", "dimensions-sse", "wrapped-content-sse"])
+async def test_media_rejection_before_first_chunk_retries_once_with_persistent_text(status):
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if len(requests) == 1:
+            if status == "dimensions-sse":
+                return build_stream_error("InvokeError", "Invalid image dimensions: expected width below 512 pixels")
+            if status == "wrapped-content-sse":
+                return build_stream_error("InvokeError", "Error code: 413 - Image content too large: 512 pixels")
+            return (
+                build_stream_error("InvokeError", "unsupported image format")
+                if status == "parameter-sse"
+                else build_error_response("InvokeBadRequestError", "invalid image", status_code=status)
+            )
+        return build_stream_response(*single_text_chunk("text fallback succeeded"))
+
+    messages = marked_media_messages()
+    original_part = messages[0].parts[0]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        model = media_adapter(client)
+        response = await model.request(messages, None, ModelRequestParameters())
+        assert response.parts[0].content == "text fallback succeeded"
+    assert len(requests) == 2
+    first = requests[0]["target"]["prompt_messages"]
+    assert any(isinstance(m["content"], list) and any(p["type"] == "image" for p in m["content"]) for m in first)
+    assert all(isinstance(m["content"], str) for m in requests[1]["target"]["prompt_messages"])
+    assert "read_media fallback" in str(original_part.content) and "./chart.png" in str(original_part.content)
+    assert not any(isinstance(p, ImageUrl) for p in original_part.content)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "status",
+    [
+        401,
+        403,
+        404,
+        429,
+        500,
+        503,
+        "quota-sse",
+        "connection-sse",
+        "model-missing-sse",
+        "plugin-id-sse",
+        "http-status-sse",
+    ],
+)
+async def test_auth_quota_and_infrastructure_errors_do_not_trigger_media_fallback(status):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if status == "quota-sse":
+            return build_stream_error("UnknownProviderError", "quota exhausted for image model")
+        if status == "connection-sse":
+            return build_stream_error("UnknownProviderError", "image server connection failed")
+        if status == "model-missing-sse":
+            return build_stream_error("ModelNotExistError", "Unknown image model")
+        if status == "plugin-id-sse":
+            return build_stream_error("PluginUniqueIdentifierError", "Invalid plugin identifier for image model")
+        if status == "http-status-sse":
+            return build_stream_error("InvokeError", "HTTP Error 503: invalid upstream image request")
+        return build_error_response("gateway_error", "provider unavailable", status_code=status)
+
+    messages = marked_media_messages()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelAPIError):
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert len(requests) == 1
+    assert isinstance(messages[0].parts[0].content[-1], ImageUrl)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("source", ["http", "InvokeBadRequestError", "PluginDaemonBadRequestError", "InvokeError"])
+@pytest.mark.parametrize(
+    "filename",
+    ["credentials.png", "permissions.pdf", "timeout_chart.png", "connection_diagram.png", "unavailable_chart.png"],
+)
+async def test_media_rejections_with_error_words_in_filenames_retry_as_text(source, filename):
+    requests = []
+    rejection = f"unsupported image format: {filename}"
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if len(requests) == 1:
+            return (
+                build_error_response("InvokeBadRequestError", rejection, status_code=400)
+                if source == "http"
+                else build_stream_error(source, rejection)
+            )
+        return build_stream_response(*single_text_chunk("text fallback succeeded"))
+
+    messages = marked_media_messages(filename=filename)
+    original_part = messages[0].parts[0]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        response = await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert response.parts[0].content == "text fallback succeeded"
+    assert len(requests) == 2
+    assert any(
+        isinstance(message["content"], list) and any(part["type"] == "image" for part in message["content"])
+        for message in requests[0]["target"]["prompt_messages"]
+    )
+    assert all(isinstance(message["content"], str) for message in requests[1]["target"]["prompt_messages"])
+    assert "read_media fallback" in str(original_part.content)
+    assert rejection in str(original_part.content)
+    assert not any(isinstance(part, ImageUrl) for part in original_part.content)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("error_type", ["InvokeError", "InvokeBadRequestError"])
+@pytest.mark.parametrize(
+    "rejection",
+    [
+        "Error code: 503 - {'error': {'message': 'Image service failed', 'type': 'server_error'}}",
+        "error_code=503 - Image service failed",
+        "Image service failed - {'error': {'type': 'server_error'}}",
+        'Image service failed - {"error": {"type": "server_error"}}',
+        "Error code: 400, upstream status_code=503 - Image service failed",
+    ],
+)
+async def test_wrapped_upstream_infrastructure_errors_preserve_media_without_retry(error_type, rejection):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_stream_error(error_type, rejection)
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    expected_type = ModelAPIError if error_type == "InvokeError" else ModelHTTPError
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(expected_type, match="Image service failed") as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert type(exc_info.value) is expected_type
+    if isinstance(exc_info.value, ModelHTTPError):
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.body == {"error_type": error_type, "message": rejection}
+    else:
+        assert str(exc_info.value) == f"{error_type}: {rejection}"
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "rejection",
+    [
+        "Model image-test credentials is not initialized.",
+        "provider token not init",
+        "model is not configured",
+        "model quota has been exceeded",
+        "no permission to use this model",
+        "model is disabled",
+        "model currently not support image-test",
+    ],
+)
+async def test_gateway_model_preparation_errors_preserve_media_without_retry(rejection):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_error_response("invalid_model_request", rejection, status_code=400)
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError) as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.body == rejection
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+async def test_credentials_validation_failure_preserves_media_and_propagates_without_retry():
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return build_stream_error("CredentialsValidateFailedError", "Invalid API key for image model")
+
+    messages = marked_media_messages()
+    original_content = list(messages[0].parts[0].content)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError, match="CredentialsValidateFailedError") as exc_info:
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.body == {
+        "error_type": "CredentialsValidateFailedError",
+        "message": "Invalid API key for image model",
+    }
+    assert len(requests) == 1
+    assert messages[0].parts[0].content == original_content
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("case", ["unmarked", "after-first-chunk", "retry-failed"])
+async def test_media_retry_is_local_to_marked_content_before_first_chunk(case):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if case == "after-first-chunk":
+            body = build_stream_response(*single_text_chunk("partial")).content
+            return httpx.Response(200, content=body + build_stream_error("InvokeBadRequestError", "bad image").content)
+        return build_error_response("InvokeBadRequestError", "bad image", status_code=400)
+
+    messages = marked_media_messages(marked=case != "unmarked")
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ModelHTTPError):
+            await media_adapter(client).request(messages, None, ModelRequestParameters())
+    assert len(requests) == (2 if case == "retry-failed" else 1)
+
+
+@pytest.mark.anyio
+async def test_native_agent_reads_media_handles_and_recovers_from_provider_rejection():
+    """Real Agent + ToolReturn + HTTP/SSE adapter; no provider SDK or media bytes."""
+    requests = []
+    mapping = {"transfer_method": "tool_file", "reference": file_reference("chart")}
+
+    def handler(request):
+        payload = json.loads(request.content)
+        if request.url.path.endswith("/files/download-request"):
+            assert payload["file"] == mapping
+            return httpx.Response(
+                200,
+                json={
+                    "filename": "chart.png",
+                    "mime_type": "image/png",
+                    "size": 42,
+                    "download_uri": "/files/do-not-fetch",
+                },
+            )
+        requests.append(payload["target"]["prompt_messages"])
+        if len(requests) == 1:
+            return build_stream_response(_tool_chunk(_tool_call("read_media", json.dumps({"file": mapping}))))
+        if len(requests) == 2:
+            media = [
+                p
+                for m in requests[-1]
+                if m["role"] == "user" and isinstance(m["content"], list)
+                for p in m["content"]
+                if p["type"] == "image"
+            ]
+            assert len(media) == 1 and media[0]["url"] == f"dify-file://tool_file/{mapping['reference']}"
+            assert media[0]["base64_data"] == ""
+            assert all(isinstance(m["content"], str) for m in requests[-1] if m["role"] == "tool")
+            return build_stream_error("InvokeBadRequestError", "provider cannot accept this image")
+        assert all(isinstance(m["content"], str) for m in requests[-1])
+        return build_stream_response(*single_text_chunk("I can continue using text."))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "read_media": {"config": {}, "state": {}},
+                "llm": {
+                    "config": {
+                        "plugin_id": "openai",
+                        "model_provider": "openai",
+                        "model": "demo-model",
+                        "supported_modalities": ["vision"],
+                    },
+                    "state": {},
+                },
+                "execution_context": {
+                    "config": {
+                        "tenant_id": "tenant",
+                        "user_id": "user",
+                        "user_from": "account",
+                        "agent_mode": "agent_app",
+                        "invoke_from": "debugger",
+                    },
+                    "state": {},
+                },
+            },
+            services=Services(client, client, inner_api_url="http://dify-api"),
+            run_id="run",
+        )
+        result = await Agent(
+            media_adapter(client), deps_type=Deps, capabilities=[ReadMediaCapability("read_media")]
+        ).run(
+            "Inspect chart",
+            deps=deps,
+        )
+    assert result.output == "I can continue using text." and len(requests) == 3
+    assert b"read_media fallback" in ModelMessagesTypeAdapter.dump_json(result.all_messages())
+    assert b"image-url" not in ModelMessagesTypeAdapter.dump_json(result.all_messages())
 
 
 def _tool_call(

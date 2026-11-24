@@ -3,8 +3,8 @@ import type { ModelItem } from '../../declarations'
 import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import {
   createProviderResponseFixture,
   createProviderSummaryFixture,
@@ -53,7 +53,7 @@ export function renderModelList({
   const onCollapse = vi.fn()
   const rendered = renderWithConsoleQuery(
     <NuqsTestingAdapter>
-      <ModalContextProvider>
+      <>
         <ModelList
           provider={currentProvider}
           models={models}
@@ -61,7 +61,8 @@ export function renderModelList({
           onChange={onChange}
         />
         <AppToaster timeout={0} />
-      </ModalContextProvider>
+        <ModelCredentialDialog />
+      </>
     </NuqsTestingAdapter>,
     { features: { model_load_balancing_enabled: true }, workspacePermissionKeys: permissions },
   )

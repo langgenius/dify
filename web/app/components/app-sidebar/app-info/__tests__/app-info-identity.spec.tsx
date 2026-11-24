@@ -1,11 +1,12 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppDetailSection from '../../app-detail-section'
 
-let pathname = '/app/app-1/configuration'
+let pathname = `/app/${TEST_APP_ID}/configuration`
 let currentApp = createAppDetailFixture({ name: 'First app' })
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -36,7 +37,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 
 describe('AppInfoView identity in the app detail sidebar', () => {
   beforeEach(() => {
-    pathname = '/app/app-1/configuration'
+    pathname = `/app/${TEST_APP_ID}/configuration`
     currentApp = createAppDetailFixture({
       name: 'First app',
       permission_keys: ['app.acl.edit', 'app.acl.view_layout'],
@@ -55,6 +56,7 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     const view = renderWithConsoleQuery(<AppDetailSection />, {
       queryClient,
       systemFeatures: { rbac_enabled: false, enable_app_deploy: false },
+      features: {},
     })
 
     await user.click(screen.getByRole('button', { name: /moreActionsFor/ }))

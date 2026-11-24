@@ -2,11 +2,11 @@ import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toFeaturesData, toGraphNodes } from '@/app/components/workflow/utils/published-workflow'
 import { toast } from '@/app/notifications'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
@@ -111,12 +111,6 @@ const createFailedWorkflowState = (error: string) => {
     },
     tracing: [],
   }
-}
-
-export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === 'advanced-chat'
-    ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
-    : `/apps/${appDetail?.id}/workflow-runs`
 }
 
 export const resolveWorkflowRunUrl = (
@@ -292,28 +286,15 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   }
 }
 
-export const mapPublishedWorkflowFeatures = (
-  publishedWorkflow: FetchWorkflowDraftResponse,
-): FeaturesData => {
-  return {
-    opening: {
-      enabled:
-        !!publishedWorkflow.features.opening_statement ||
-        !!publishedWorkflow.features.suggested_questions.length,
-      opening_statement: publishedWorkflow.features.opening_statement,
-      suggested_questions: publishedWorkflow.features.suggested_questions,
-    },
-    suggested: publishedWorkflow.features.suggested_questions_after_answer,
-    text2speech: publishedWorkflow.features.text_to_speech,
-    speech2text: publishedWorkflow.features.speech_to_text,
-    citation: publishedWorkflow.features.retriever_resource,
-    moderation: publishedWorkflow.features.sensitive_word_avoidance,
-    file: publishedWorkflow.features.file_upload,
-  }
-}
+// Published versions store features and graph as free-form JSON; narrow them for the editor.
+export const mapPublishedWorkflowFeatures = (publishedWorkflow: {
+  features: Record<string, unknown>
+}): FeaturesData => toFeaturesData(publishedWorkflow.features)
 
-export const normalizePublishedWorkflowNodes = (publishedWorkflow: FetchWorkflowDraftResponse) => {
-  return publishedWorkflow.graph.nodes.map((node) => ({
+export const normalizePublishedWorkflowNodes = (publishedWorkflow: {
+  graph: Record<string, unknown>
+}) => {
+  return toGraphNodes(publishedWorkflow.graph).map((node) => ({
     ...node,
     selected: false,
     data: {

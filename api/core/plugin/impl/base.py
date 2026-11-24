@@ -312,6 +312,9 @@ class BasePluginClient:
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
+
+        Nonzero codes expect a JSON-encoded daemon error. An invalid error message raises
+        ValueError with the original message and code.
         """
         try:
             response = self._request(method, path, headers, data, params, files)
@@ -344,7 +347,7 @@ class BasePluginClient:
 
         if rep.code != 0:
             try:
-                error = PluginDaemonError.model_validate(json.loads(rep.message))
+                error = PluginDaemonError.model_validate_json(rep.message)
             except Exception as e:
                 raise ValueError(f"{rep.message}, code: {rep.code}") from e
 
@@ -367,6 +370,9 @@ class BasePluginClient:
     ) -> Generator[T]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
+
+        Code -500 expects a JSON-encoded daemon error. An invalid error message raises
+        PluginDaemonInnerError with the original message and code.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
@@ -385,7 +391,7 @@ class BasePluginClient:
             if rep.code != 0:
                 if rep.code == -500:
                     try:
-                        error = PluginDaemonError.model_validate(json.loads(rep.message))
+                        error = PluginDaemonError.model_validate_json(rep.message)
                     except Exception as e:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message) from e
 

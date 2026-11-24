@@ -270,7 +270,7 @@ export async function EmbeddedTemplatesMarketplace({
             {/* The locale filter runs after pagination, so the API total
                 does not describe what is on screen; show the number of
                 templates actually rendered on this page instead. */}
-            <div className="mb-5 text-right text-sm text-text-tertiary">
+            <div className="mb-5 text-end text-sm text-text-tertiary">
               {tExplore(($) => $['apps.resultNum'], { ns: 'explore', num: templates.length })}
             </div>
             {templates.length > 0 ? (

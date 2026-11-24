@@ -13,9 +13,11 @@ import yaml
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.system_variables import build_system_variables
+from graphon.engine_events.node import NodeRunFailedEvent
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
@@ -53,6 +55,10 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from services.knowledge_fs.query_images import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalTestItemResponse
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+)
 from tasks import knowledge_fs_failed_retrieval_tasks as failed_retrieval_dependencies
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -1113,6 +1119,38 @@ def test_automatic_metadata_filter_fails_open_when_the_llm_extraction_breaks() -
         "provider": "openai",
         "reason": "extraction_failed",
     }
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ModerationRejectedInvocationError("input", "Input rejected"),
+        ModerationRejectedInvocationError("output", "Output rejected"),
+        ModerationUnavailableInvocationError(),
+    ],
+)
+def test_automatic_metadata_filter_does_not_retrieve_after_moderation_failure(error: ModerationInvocationError) -> None:
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")},
+        metadata_fields={"space-a": _metadata_fields(("department", "string"))},
+    )
+    extractor = RecordingMetadataFilterExtractor(error)
+    node = _node(
+        service=service,
+        spaces=["space-a"],
+        metadata_filter_extractor=extractor,
+        node_data_overrides={"metadata_filtering_mode": "automatic", "metadata_model_config": AUTOMATIC_MODEL_CONFIG},
+    )
+    node.bind_execution_id("moderation-test-execution")
+    events = list(node.run())
+    assert len(events) == 2
+    failed = events[-1]
+    assert isinstance(failed, NodeRunFailedEvent)
+    assert failed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert failed.node_run_result.error == str(error)
+    assert failed.node_run_result.error_type == type(error).__name__
+    assert len(extractor.calls) == 1
+    assert service.calls == []
 
 
 def test_automatic_metadata_filter_reports_no_conditions_when_the_llm_finds_none() -> None:

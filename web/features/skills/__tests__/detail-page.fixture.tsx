@@ -160,8 +160,8 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
-  TagManagementModal: ({ show }: { show: boolean }) =>
+vi.mock('@/features/tag-management/tag-management-dialog', () => ({
+  TagManagementDialog: ({ show }: { show: boolean }) =>
     show ? <div role="dialog">common.tag.manageTags</div> : null,
 }))
 
@@ -302,7 +302,12 @@ vi.mock('@/service/console', async (importOriginal) => {
                         .queryOptions,
                   },
                   patch: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                    mutationOptions: () =>
+                      actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(
+                        {
+                          mutationFn: mocks.versionPatchMutationFn,
+                        },
+                      ),
                   },
                   delete:
                     actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId

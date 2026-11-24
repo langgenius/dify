@@ -35,7 +35,7 @@ function ParameterLabel({ label, required }: { label: string; required: boolean 
     <>
       {label}
       {required && (
-        <span aria-hidden className="ml-0.5 text-text-destructive">
+        <span aria-hidden className="ms-0.5 text-text-destructive">
           *
         </span>
       )}
@@ -386,14 +386,14 @@ export function WebsiteDatasourceParameterForm({
                 {t(($) => $.crawlOptions, { ns: 'knowledgeSources' })}
               </span>
               {!optionsOpen && usingDefaultOptions && (
-                <span aria-hidden className="ml-auto shrink-0 system-xs-regular text-text-tertiary">
+                <span aria-hidden className="ms-auto shrink-0 system-xs-regular text-text-tertiary">
                   {t(($) => $.usingDefaults, { ns: 'knowledgeSources' })}
                 </span>
               )}
             </CollapsibleTrigger>
             {optionsOpen && (
               <Button
-                className="mr-2"
+                className="me-2"
                 disabled={disabled}
                 size="small"
                 variant="tertiary"

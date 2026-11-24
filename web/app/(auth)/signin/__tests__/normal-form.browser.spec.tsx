@@ -1,26 +1,17 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { DeepPartial } from '@/test/console/system-features'
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import NormalForm from '../normal-form'
 
-const navigation = vi.hoisted(() => ({
-  replace: vi.fn(),
-  search: '',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: navigation.replace }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
-
-vi.mock('@/next/link', () => ({
-  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
-}))
+let search = ''
+let navigation: TestNavigation
 
 type ProfileState =
   | 'pending'
@@ -56,6 +47,8 @@ async function renderForm({
       queryFn: () => new Promise(() => {}),
     })
   } else if (profile === 'signed-out') {
+    // Seed the settled 401 instead of serving it: a served 401 triggers the token refresh, and its
+    // failure redirects the page to /signin, which only an end-to-end run can follow.
     queryClient.setQueryDefaults(profileOptions.queryKey, { retryOnMount: false })
     queryClient
       .getQueryCache()
@@ -72,15 +65,19 @@ async function renderForm({
   }
   if (invitation) queryClient.setQueryData(['signin', 'invite-check', 'invite-token'], invitation)
 
+  navigation = createTestNavigation({ url: `/signin?${search}` })
+  const { NavigationProvider } = navigation
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     queryClient,
     accountProfile: null,
     systemFeatures,
   })
   return render(
-    <ConsoleProvider>
-      <NormalForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <NormalForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -94,8 +91,7 @@ const invitation: InvitationData = {
 }
 
 beforeEach(() => {
-  navigation.replace.mockReset()
-  navigation.search = ''
+  search = ''
 })
 
 it('renders the native sign-in controls while the login probe is pending', async () => {
@@ -107,7 +103,7 @@ it('renders the native sign-in controls while the login probe is pending', async
   await expect.element(email).toHaveAttribute('type', 'email')
   await expect.element(email).toHaveAttribute('autocomplete', 'email')
   await expect.element(password).toHaveAttribute('type', 'password')
-  expect(navigation.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 
   const reveal = screen.getByRole('button', { name: 'login.showPassword' })
   await userEvent.click(reveal)
@@ -116,21 +112,21 @@ it('renders the native sign-in controls while the login probe is pending', async
 })
 
 it.each([
-  { scenario: 'no requested destination', search: '' },
+  { scenario: 'no requested destination', query: '' },
   {
     scenario: 'an external requested destination',
-    search: 'redirect_url=https%3A%2F%2Fgoogle.com',
+    query: 'redirect_url=https%3A%2F%2Fgoogle.com',
   },
-])('redirects a logged-in visitor with $scenario to the console home', async ({ search }) => {
-  navigation.search = search
+])('redirects a logged-in visitor with $scenario to the console home', async ({ query }) => {
+  search = query
 
   await renderForm({ profile: { id: 'account-id', email: 'invitee@example.com' } })
 
-  await vi.waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/'))
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/'))
 })
 
 it('redirects the matching logged-in account to invitation settings case-insensitively', async () => {
-  navigation.search = 'invite_token=invite-token'
+  search = 'invite_token=invite-token'
 
   await renderForm({
     profile: { id: 'account-id', email: 'Invitee@Example.com' },
@@ -138,14 +134,14 @@ it('redirects the matching logged-in account to invitation settings case-insensi
   })
 
   await vi.waitFor(() =>
-    expect(navigation.replace).toHaveBeenCalledWith(
+    expect(navigation.router.replace).toHaveBeenCalledWith(
       '/signin/invite-settings?invite_token=invite-token',
     ),
   )
 })
 
 it('keeps a different logged-in account on the invitation sign-in form', async () => {
-  navigation.search = 'invite_token=invite-token'
+  search = 'invite_token=invite-token'
 
   const screen = await renderForm({
     profile: { id: 'account-id', email: 'current@example.com' },
@@ -153,11 +149,11 @@ it('keeps a different logged-in account on the invitation sign-in form', async (
   })
 
   await expect.element(screen.getByRole('button', { name: 'login.signBtn' })).toBeVisible()
-  expect(navigation.replace).not.toHaveBeenCalled()
+  expect(navigation.router.replace).not.toHaveBeenCalled()
 })
 
 it('preserves the current query when navigating to sign up', async () => {
-  navigation.search = 'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing'
+  search = 'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing'
 
   const screen = await renderForm({
     systemFeatures: {

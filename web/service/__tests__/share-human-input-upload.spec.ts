@@ -1,8 +1,8 @@
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { createHttpError } from '@/service/http-error'
 
-const mockPostPublic = vi.hoisted(() => vi.fn())
-const mockGetPublic = vi.hoisted(() => vi.fn())
+// Receives the contract path, method and JSON body of each generated WebApp client request.
+const mockPublicRequest = vi.hoisted(() => vi.fn())
 const mockUpload = vi.hoisted(() => vi.fn())
 
 vi.mock('../base', () => ({
@@ -11,9 +11,18 @@ vi.mock('../base', () => ({
   patch: vi.fn(),
   post: vi.fn(),
   delPublic: vi.fn(),
-  getPublic: (...args: unknown[]) => mockGetPublic(...args),
+  getPublic: vi.fn(),
   patchPublic: vi.fn(),
-  postPublic: (...args: unknown[]) => mockPostPublic(...args),
+  postPublic: vi.fn(),
+  request: async (url: string, _init: unknown, options: { request: Request }) => {
+    const text = await options.request.text()
+    const result = await mockPublicRequest(
+      url,
+      options.request.method,
+      ...(text ? [JSON.parse(text)] : []),
+    )
+    return Response.json(result ?? {})
+  },
   ssePost: vi.fn(),
   upload: (...args: unknown[]) => mockUpload(...args),
 }))
@@ -25,7 +34,7 @@ vi.mock('../webapp-auth', () => ({
 describe('human input form upload services', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPostPublic.mockReset()
+    mockPublicRequest.mockReset()
     mockUpload.mockReset()
     window.history.replaceState({}, '', '/')
     captureAppAccessScope()
@@ -39,8 +48,9 @@ describe('human input form upload services', () => {
 
   it('should preserve the legacy underscore definition and submit endpoints', async () => {
     const { getHumanInputForm, submitHumanInputForm } = await import('../share')
-    mockGetPublic.mockResolvedValueOnce({ form_content: 'review' })
-    mockPostPublic.mockResolvedValueOnce(undefined)
+    mockPublicRequest
+      .mockResolvedValueOnce({ form_content: 'review' })
+      .mockResolvedValueOnce(undefined)
 
     await getHumanInputForm('legacy-form-token')
     await submitHumanInputForm('legacy-form-token', {
@@ -48,13 +58,14 @@ describe('human input form upload services', () => {
       action: 'approve',
     })
 
-    expect(mockGetPublic).toHaveBeenCalledWith('/form/human_input/legacy-form-token')
-    expect(mockPostPublic).toHaveBeenCalledWith('/form/human_input/legacy-form-token', {
-      body: {
-        inputs: { response: 'approved' },
-        action: 'approve',
-      },
-    })
+    expect(mockPublicRequest.mock.calls).toEqual([
+      ['/form/human_input/legacy-form-token', 'GET'],
+      [
+        '/form/human_input/legacy-form-token',
+        'POST',
+        { inputs: { response: 'approved' }, action: 'approve' },
+      ],
+    ])
   })
 
   it('should fetch upload token before local file upload', async () => {
@@ -64,7 +75,7 @@ describe('human input form upload services', () => {
     const onSuccessCallback = vi.fn()
     const onErrorCallback = vi.fn()
 
-    mockPostPublic.mockResolvedValueOnce({
+    mockPublicRequest.mockResolvedValueOnce({
       upload_token: 'hitl-upload-token',
       expires_at: Math.floor(Date.now() / 1000) + 60,
     })
@@ -88,7 +99,9 @@ describe('human input form upload services', () => {
       onErrorCallback,
     })
 
-    expect(mockPostPublic).toHaveBeenCalledWith('/form/human_input/local-form-token/upload-token')
+    expect(mockPublicRequest.mock.calls).toEqual([
+      ['/form/human_input/local-form-token/upload-token', 'POST'],
+    ])
     expect(mockUpload).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(FormData),
@@ -112,7 +125,7 @@ describe('human input form upload services', () => {
   it('should fetch upload token before remote file upload', async () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
 
-    mockPostPublic.mockResolvedValueOnce({
+    mockPublicRequest.mockResolvedValueOnce({
       upload_token: 'hitl-remote-token',
       expires_at: Math.floor(Date.now() / 1000) + 60,
     })
@@ -132,11 +145,9 @@ describe('human input form upload services', () => {
       'https://example.com/file.txt',
     )
 
-    expect(mockPostPublic).toHaveBeenCalledTimes(1)
-    expect(mockPostPublic).toHaveBeenNthCalledWith(
-      1,
-      '/form/human_input/remote-form-token/upload-token',
-    )
+    expect(mockPublicRequest.mock.calls).toEqual([
+      ['/form/human_input/remote-form-token/upload-token', 'POST'],
+    ])
     expect(mockUpload).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(FormData),
@@ -168,7 +179,7 @@ describe('human input form upload services', () => {
       onErrorCallback,
     })
 
-    expect(mockPostPublic).not.toHaveBeenCalled()
+    expect(mockPublicRequest).not.toHaveBeenCalled()
     expect(mockUpload).not.toHaveBeenCalled()
     expect(onSuccessCallback).not.toHaveBeenCalled()
     expect(onErrorCallback).toHaveBeenCalledWith(expect.objectContaining({ name: 'AbortError' }))
@@ -181,7 +192,7 @@ describe('human input form upload services', () => {
       const formToken = `pending-${interruption}`
       window.history.replaceState({}, '', `/form/${formToken}`)
       let finishToken!: (value: { upload_token: string; expires_at: number }) => void
-      mockPostPublic.mockReturnValueOnce(
+      mockPublicRequest.mockReturnValueOnce(
         new Promise((resolve) => {
           finishToken = resolve
         }),
@@ -191,7 +202,7 @@ describe('human input form upload services', () => {
         formToken,
         'https://example.com/file.txt',
       ).catch((error: unknown) => error)
-      expect(mockPostPublic).toHaveBeenCalledTimes(1)
+      await vi.waitFor(() => expect(mockPublicRequest).toHaveBeenCalledTimes(1))
 
       if (interruption === 'IP denial')
         handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope())
@@ -211,7 +222,7 @@ describe('human input form upload services', () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
     window.history.replaceState({}, '', '/form/failed-token')
     let rejectToken!: (error: Response) => void
-    mockPostPublic.mockReturnValueOnce(
+    mockPublicRequest.mockReturnValueOnce(
       new Promise((_resolve, reject) => {
         rejectToken = reject
       }),
@@ -232,7 +243,7 @@ describe('human input form upload services', () => {
     const { uploadHumanInputFormRemoteFileInfo } = await import('../share')
     window.history.replaceState({}, '', '/form/unavailable-token')
     const tokenError = createHttpError(new Response(null, { status: 503 }))
-    mockPostPublic.mockRejectedValueOnce(tokenError)
+    mockPublicRequest.mockRejectedValueOnce(tokenError)
 
     await expect(
       uploadHumanInputFormRemoteFileInfo('unavailable-token', 'https://example.com/file.txt'),
@@ -246,7 +257,7 @@ describe('human input form upload services', () => {
     const tokenError = createHttpError(new Response(null, { status: 403 }), {
       code: 'ip_access_denied',
     })
-    mockPostPublic.mockImplementationOnce(async () => {
+    mockPublicRequest.mockImplementationOnce(async () => {
       handleAppAccessError(403, { code: 'ip_access_denied' }, captureAppAccessScope(), tokenError)
       throw tokenError
     })

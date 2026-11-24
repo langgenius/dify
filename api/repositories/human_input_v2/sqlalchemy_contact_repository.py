@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Row, RowMapping
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, aliased
+from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMBindingScope
 from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, NormalizedEmail, TenantId
@@ -30,6 +30,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
 )
 from models.model import UploadFile
+from repositories.account.avatar import validated_account_avatar
 from repositories.human_input_v2.contact import (
     CandidateId,
     Contact,
@@ -107,6 +108,27 @@ class SQLAlchemyContactRepository:
             .one_or_none()
         )
         return self._contact_from_row(row) if row is not None else None
+
+    def get_contacts_by_account_ids(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
+        """Return current Contacts for the supplied Accounts without any writes.
+
+        The caller owns the Session. Unavailable identities are omitted; all
+        returned identities are visible in the requested workspace.
+        """
+        if not account_ids:
+            return {}
+        current_contacts = self._current_contacts_subquery(tenant_id)
+        rows = self._session.execute(
+            sa.select(current_contacts, HumanInputContactIdentity.account_id)
+            .join(HumanInputContactIdentity, HumanInputContactIdentity.id == current_contacts.c.contact_id)
+            .where(
+                HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+                HumanInputContactIdentity.account_id.in_(account_ids),
+            )
+        ).mappings()
+        return {AccountId(row["account_id"]): self._contact_from_row(row) for row in rows}
 
     def get_contacts_by_ids(
         self,
@@ -296,17 +318,47 @@ class SQLAlchemyContactRepository:
         limit: int,
         keyword: str = "",
     ) -> Sequence[OrganizationCandidate]:
+        """Filter and page eligible candidates before validating their display avatars."""
         if page < 1:
             raise ValueError("page must be positive")
         if limit < 1:
             raise ValueError("limit must be positive")
-        rows = self._session.execute(
+        candidate_page = (
             self._organization_candidates_query(keyword)
+            .add_columns(
+                HumanInputContactIdentity.account_id,
+                HumanInputContactIdentity.created_at.label("contact_created_at"),
+                Account.created_at.label("account_created_at"),
+            )
             .order_by(Account.created_at, HumanInputContactIdentity.id)
             .offset((page - 1) * limit)
             .limit(limit)
+            .subquery()
+        )
+        rows = self._session.execute(
+            sa.select(
+                candidate_page.c.id,
+                Account.name,
+                Account.email,
+                validated_account_avatar(),
+                candidate_page.c.contact_created_at,
+            )
+            .join(Account, Account.id == candidate_page.c.account_id)
+            .order_by(candidate_page.c.account_created_at, candidate_page.c.id)
         ).all()
         return tuple(self._candidate_from_row(row) for row in rows)
+
+    def get_organization_candidate_avatars(self, contact_ids: Sequence[ContactId]) -> Mapping[ContactId, str | None]:
+        """Read current avatars for the requested active Organization candidates without writing.
+
+        Unavailable identities are omitted. Available candidates without an eligible avatar map to None.
+        """
+        statement = (
+            self._organization_candidates_query("")
+            .where(HumanInputContactIdentity.id.in_(contact_ids))
+            .add_columns(validated_account_avatar())
+        )
+        return {ContactId(contact_id): avatar for contact_id, avatar in self._session.execute(statement).tuples()}
 
     def count_organization_candidates(self, keyword: str = "") -> int:
         candidates = self._organization_candidates_query(keyword).subquery()
@@ -318,12 +370,12 @@ class SQLAlchemyContactRepository:
         candidate_id: ContactId,
         added_by_account_id: AccountId,
     ) -> None:
-        candidate = self._session.execute(
+        matched_id = self._session.scalar(
             self._organization_candidates_query("").where(
                 HumanInputContactIdentity.id == str(candidate_id),
             )
-        ).one_or_none()
-        if candidate is None:
+        )
+        if matched_id is None:
             raise ContactError(ContactErrorCode.NOT_FOUND, "Organization candidate was not found")
         now = naive_utc_now()
         values = {
@@ -424,39 +476,55 @@ class SQLAlchemyContactRepository:
 
     @staticmethod
     def _current_contacts_subquery(tenant_id: TenantId):
-        membership = aliased(TenantAccountJoin)
-        platform_entry = aliased(HumanInputPlatformContactWorkspaceEntry)
-        account_contacts = (
+        """Build a read-only projection of current Contacts for the supplied tenant.
+
+        Each Contact occurs once, with membership taking precedence over a
+        Platform entry. Account subjects must be active; External profiles must
+        belong to the tenant. No query executes until the caller uses the result.
+        """
+        # Start each visibility path from tenant-scoped rows so directory reads
+        # do not scan every Account identity to test membership or Platform access.
+        workspace_contacts = (
             sa.select(
                 HumanInputContactIdentity.id.label(_CONTACT_ID),
-                sa.case(
-                    (membership.id.is_not(None), ContactType.WORKSPACE.value),
-                    else_=ContactType.PLATFORM.value,
-                ).label(_CONTACT_TYPE),
+                sa.literal(ContactType.WORKSPACE.value).label(_CONTACT_TYPE),
                 Account.name.label(_NAME),
                 Account.email.label(_EMAIL),
-                sa.cast(Account.avatar, sa.String(255)).label(_AVATAR_FILE_ID),
+                sa.cast(validated_account_avatar(), sa.String(255)).label(_AVATAR_FILE_ID),
                 HumanInputContactIdentity.created_at.label(_CREATED_AT),
             )
+            .select_from(TenantAccountJoin)
+            .join(HumanInputContactIdentity, HumanInputContactIdentity.account_id == TenantAccountJoin.account_id)
             .join(Account, Account.id == HumanInputContactIdentity.account_id)
-            .outerjoin(
-                membership,
-                sa.and_(
-                    membership.tenant_id == str(tenant_id),
-                    membership.account_id == HumanInputContactIdentity.account_id,
-                ),
-            )
-            .outerjoin(
-                platform_entry,
-                sa.and_(
-                    platform_entry.tenant_id == str(tenant_id),
-                    platform_entry.contact_id == HumanInputContactIdentity.id,
-                ),
-            )
             .where(
+                TenantAccountJoin.tenant_id == str(tenant_id),
                 HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
                 Account.status == AccountStatus.ACTIVE,
-                sa.or_(membership.id.is_not(None), platform_entry.id.is_not(None)),
+            )
+        )
+        platform_contacts = (
+            sa.select(
+                HumanInputContactIdentity.id.label(_CONTACT_ID),
+                sa.literal(ContactType.PLATFORM.value).label(_CONTACT_TYPE),
+                Account.name.label(_NAME),
+                Account.email.label(_EMAIL),
+                sa.cast(validated_account_avatar(), sa.String(255)).label(_AVATAR_FILE_ID),
+                HumanInputContactIdentity.created_at.label(_CREATED_AT),
+            )
+            .select_from(HumanInputPlatformContactWorkspaceEntry)
+            .join(
+                HumanInputContactIdentity,
+                HumanInputContactIdentity.id == HumanInputPlatformContactWorkspaceEntry.contact_id,
+            )
+            .join(Account, Account.id == HumanInputContactIdentity.account_id)
+            .where(
+                HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id),
+                HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+                Account.status == AccountStatus.ACTIVE,
+                ~sa.exists().where(
+                    TenantAccountJoin.tenant_id == str(tenant_id),
+                    TenantAccountJoin.account_id == HumanInputContactIdentity.account_id,
+                ),
             )
         )
         external_contacts = (
@@ -468,9 +536,10 @@ class SQLAlchemyContactRepository:
                 sa.cast(HumanInputExternalContactProfile.avatar_file_id, sa.String(255)).label(_AVATAR_FILE_ID),
                 HumanInputContactIdentity.created_at.label(_CREATED_AT),
             )
+            .select_from(HumanInputExternalContactProfile)
             .join(
-                HumanInputExternalContactProfile,
-                HumanInputExternalContactProfile.contact_id == HumanInputContactIdentity.id,
+                HumanInputContactIdentity,
+                HumanInputContactIdentity.id == HumanInputExternalContactProfile.contact_id,
             )
             .where(
                 HumanInputContactIdentity.subject_type == ContactSubjectType.EXTERNAL,
@@ -478,12 +547,13 @@ class SQLAlchemyContactRepository:
                 HumanInputExternalContactProfile.tenant_id == str(tenant_id),
             )
         )
-        return sa.union_all(account_contacts, external_contacts).subquery("current_contacts")
+        return sa.union_all(workspace_contacts, platform_contacts, external_contacts).subquery("current_contacts")
 
     @staticmethod
-    def _organization_candidates_query(keyword: str):
+    def _organization_candidates_query(keyword: str) -> sa.Select[tuple[str]]:
+        """Select matching active account identity IDs for listing, counting, or creating entries."""
         statement = (
-            sa.select(HumanInputContactIdentity, Account)
+            sa.select(HumanInputContactIdentity.id)
             .join(Account, Account.id == HumanInputContactIdentity.account_id)
             .where(
                 HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
@@ -516,14 +586,16 @@ class SQLAlchemyContactRepository:
         )
 
     @staticmethod
-    def _candidate_from_row(row: Row[tuple[HumanInputContactIdentity, Account]]) -> OrganizationCandidate:
-        identity, account = row
+    def _candidate_from_row(
+        row: Row[tuple[str, str, str, str | None, datetime]],
+    ) -> OrganizationCandidate:
+        contact_id, name, email, avatar_file_id, created_at = row
         return OrganizationCandidate(
-            id=CandidateId(identity.id),
-            name=account.name,
-            email=account.email,
-            avatar_file_id=account.avatar,
-            created_at=ensure_naive_utc(identity.created_at),
+            id=CandidateId(contact_id),
+            name=name,
+            email=email,
+            avatar_file_id=avatar_file_id,
+            created_at=ensure_naive_utc(created_at),
         )
 
 

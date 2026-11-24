@@ -2,7 +2,6 @@
   "dialog.addTitle": "Thêm trình quét",
   "dialog.apiKey": "Khóa API",
   "dialog.apiSecret": "Mã bí mật API",
-  "dialog.clamavHint": "ClamAV chạy ngay trong bản triển khai này. Địa chỉ của nó do quản trị viên triển khai thiết lập.",
   "dialog.dataNotice": "Nội dung tệp sẽ được gửi đến dịch vụ này.",
   "dialog.editTitle": "Chỉnh sửa trình quét",
   "dialog.endpoint": "Điểm cuối (không bắt buộc)",

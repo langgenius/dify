@@ -23,7 +23,7 @@ type AssignRolesContentProps = {
   onSubmit: (roles: Role[]) => void
 }
 
-const AssignRolesContent = ({
+export const AssignRolesContent = ({
   selectedRoles,
   allowMultipleRoles = true,
   searchInputRef,
@@ -63,6 +63,7 @@ const AssignRolesContent = ({
       className="contents"
       onSubmit={(event) => {
         event.preventDefault()
+        event.stopPropagation()
         handleConfirm()
       }}
     >
@@ -105,5 +106,3 @@ const AssignRolesContent = ({
     </form>
   )
 }
-
-export default AssignRolesContent

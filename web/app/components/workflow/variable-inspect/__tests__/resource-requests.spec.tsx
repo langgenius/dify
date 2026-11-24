@@ -3,22 +3,20 @@ import type {
   WorkflowDraftVariableWithoutValueResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '../../editor-resource/resource'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
-import {
-  useConversationVarValues,
-  useDeleteAllInspectorVars,
-  useDeleteInspectVar,
-  useDeleteNodeInspectorVars,
-  useEditInspectorVar,
-  useInvalidateAllLastRun,
-  useInvalidateConversationVarValues,
-  useInvalidateLastRun,
-  useInvalidateSysVarValues,
-  useResetInspectorVar,
-  useSysVarValues,
-} from '@/service/use-workflow'
 import { fetchAllInspectVars, fetchNodeInspectVars } from '@/service/workflow'
+import {
+  conversationVarValuesQueryOptions,
+  deleteAllInspectorVarsMutationOptions,
+  deleteInspectVarMutationOptions,
+  deleteNodeInspectorVarsMutationOptions,
+  editInspectorVarMutationOptions,
+  lastRunQueryKey,
+  resetInspectorVarMutationOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 
@@ -103,11 +101,11 @@ describe.each(hosts)('inspector requests for $prefix', ({ resource, prefix }) =>
     const client = createTestQueryClient()
     const { result } = renderHook(
       () => ({
-        edit: useEditInspectorVar(resource),
-        reset: useResetInspectorVar(resource),
-        remove: useDeleteInspectVar(resource),
-        removeNode: useDeleteNodeInspectorVars(resource),
-        removeAll: useDeleteAllInspectorVars(resource),
+        edit: useMutation(editInspectorVarMutationOptions(resource)),
+        reset: useMutation(resetInspectorVarMutationOptions(resource)),
+        remove: useMutation(deleteInspectVarMutationOptions(resource)),
+        removeNode: useMutation(deleteNodeInspectorVarsMutationOptions(resource)),
+        removeAll: useMutation(deleteAllInspectorVarsMutationOptions(resource)),
       }),
       { wrapper: createQueryClientWrapper(client) },
     )
@@ -137,7 +135,7 @@ describe.each(hosts)('inspector requests for $prefix', ({ resource, prefix }) =>
   })
 })
 
-it('invalidates only the current app variable queries and leaves other editors cached', async () => {
+it('scopes conversation and system variable keys to the current app', async () => {
   request.mockResolvedValue(Response.json({ items: [variable] }))
   const client = createTestQueryClient()
   const current: EditorResource = {
@@ -153,17 +151,10 @@ it('invalidates only the current app variable queries and leaves other editors c
     client.setQueryData(conversation.queryKey(input(appId)), { items: [] })
     client.setQueryData(system.queryKey(input(appId)), { items: [] })
   }
-  const { result } = renderHook(
-    () => ({
-      conversation: useInvalidateConversationVarValues(current),
-      system: useInvalidateSysVarValues(current),
-    }),
-    { wrapper: createQueryClientWrapper(client) },
-  )
-  await act(async () => {
-    await result.current.conversation()
-    await result.current.system()
+  await client.invalidateQueries({
+    queryKey: conversationVarValuesQueryOptions(current).queryKey,
   })
+  await client.invalidateQueries({ queryKey: sysVarValuesQueryOptions(current).queryKey })
   expect(client.getQueryState(conversation.queryKey(input('app-1')))?.isInvalidated).toBe(true)
   expect(client.getQueryState(system.queryKey(input('app-1')))?.isInvalidated).toBe(true)
   expect(client.getQueryState(conversation.queryKey(input('app-2')))?.isInvalidated).toBe(false)
@@ -176,8 +167,8 @@ it.each(hosts.filter(({ resource }) => resource.kind !== 'app'))(
   async ({ resource }) => {
     const { result } = renderHook(
       () => ({
-        conversation: useConversationVarValues(resource),
-        system: useSysVarValues(resource),
+        conversation: useQuery(conversationVarValuesQueryOptions(resource)),
+        system: useQuery(sysVarValuesQueryOptions(resource)),
       }),
       { wrapper: createQueryClientWrapper(createTestQueryClient()) },
     )
@@ -224,7 +215,7 @@ const lastRunTargets = [
 ] satisfies { resource: EditorResource; keyForNode: (nodeId: string) => readonly unknown[] }[]
 
 it.each(lastRunTargets)(
-  'isolates node and whole-resource last-run invalidation for $resource',
+  'scopes node and whole-resource last-run keys to $resource',
   async (target) => {
     const client = createTestQueryClient()
     const cachedRuns = lastRunTargets.flatMap((entry) =>
@@ -237,25 +228,13 @@ it.each(lastRunTargets)(
     for (const { queryKey, nodeId } of cachedRuns)
       client.setQueryData(queryKey, { id: `run-${nodeId}`, node_id: nodeId, status: 'succeeded' })
 
-    const { result } = renderHook(
-      () => ({
-        invalidateNode: useInvalidateLastRun(target.resource, 'node-1'),
-        invalidateResource: useInvalidateAllLastRun(target.resource),
-      }),
-      { wrapper: createQueryClientWrapper(client) },
-    )
-
-    await act(async () => {
-      await result.current.invalidateNode()
-    })
+    await client.invalidateQueries({ queryKey: lastRunQueryKey(target.resource, 'node-1') })
     for (const entry of cachedRuns)
       expect(client.getQueryState(entry.queryKey)?.isInvalidated).toBe(
         entry.target === target && entry.nodeId === 'node-1',
       )
 
-    await act(async () => {
-      await result.current.invalidateResource()
-    })
+    await client.invalidateQueries({ queryKey: lastRunQueryKey(target.resource) })
     for (const entry of cachedRuns)
       expect(client.getQueryState(entry.queryKey)?.isInvalidated).toBe(entry.target === target)
 
