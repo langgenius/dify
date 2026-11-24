@@ -3607,7 +3607,6 @@ export default interface Resources {
   explore: {
     'appCard.try': 'Details'
     'appCustomize.nameRequired': 'App name is required'
-    'appCustomize.subTitle': 'App icon & name'
     'appCustomize.title': 'Create app from {{name}}'
     'apps.allCategories': 'All'
     'apps.description': 'Ready-to-use templates from the community and Dify team.'
