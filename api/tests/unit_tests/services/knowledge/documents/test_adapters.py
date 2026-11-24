@@ -23,6 +23,7 @@ from services.document_indexing_proxy.document_indexing_task_proxy import Docume
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
+from services.file_service import FileService
 from services.knowledge.dataset_service import DatasetService
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError, DocumentTextUpload
@@ -701,8 +702,10 @@ class TestDocumentCreationCases:
         external_calls: list[tuple[str, tuple[str, ...]]],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        files = Mock()
-        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        def unexpected_upload(*_args: object, **_kwargs: object) -> UploadFile:
+            pytest.fail("upload must not run before validating the original document")
+
+        monkeypatch.setattr(FileService, "upload_text", unexpected_upload)
         with pytest.raises(DocumentNotFoundError):
             operations.create_documents(
                 CONTEXT,
@@ -710,7 +713,6 @@ class TestDocumentCreationCases:
                 settings(original_document_id="missing"),
                 text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
             )
-        files.upload_text.assert_not_called()
         assert external_calls == []
 
     @staticmethod
@@ -729,8 +731,11 @@ class TestDocumentCreationCases:
                     indexing_status=IndexingStatus.INDEXING,
                 )
             )
-        files = Mock()
-        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+
+        def unexpected_upload(*_args: object, **_kwargs: object) -> UploadFile:
+            pytest.fail("upload must not run before validating the original document")
+
+        monkeypatch.setattr(FileService, "upload_text", unexpected_upload)
         with pytest.raises(ValueError, match="Document is not available"):
             operations.create_documents(
                 CONTEXT,
@@ -738,7 +743,6 @@ class TestDocumentCreationCases:
                 settings(original_document_id="original-1"),
                 text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
             )
-        files.upload_text.assert_not_called()
         assert external_calls == []
 
     @staticmethod
@@ -748,9 +752,13 @@ class TestDocumentCreationCases:
         sqlite_session_factory: sessionmaker[Session],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        files = Mock()
-        files.upload_text.return_value = make_upload_file(file_id="new-upload", tenant_id="tenant")
-        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        deleted_ids: list[str] = []
+        monkeypatch.setattr(
+            FileService,
+            "upload_text",
+            lambda *_args, **_kwargs: make_upload_file(file_id="new-upload", tenant_id="tenant"),
+        )
+        monkeypatch.setattr(FileService, "delete_file", lambda _self, file_id: deleted_ids.append(file_id))
         with pytest.raises(ValueError, match="Process rule rules is required"):
             operations.create_documents(
                 CONTEXT,
@@ -758,8 +766,7 @@ class TestDocumentCreationCases:
                 settings(process_rule={"mode": "custom"}),
                 text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
             )
-        files.upload_text.assert_called_once()
-        files.delete_file.assert_called_once_with("new-upload")
+        assert deleted_ids == ["new-upload"]
         assert external_calls == []
         with sqlite_session_factory() as session:
             assert session.scalar(select(Document.id)) is None
@@ -775,10 +782,14 @@ class TestDocumentCreationCases:
             saved = session.get(UploadFile, "file")
             assert saved is not None
             session.expunge(saved)
-        files = Mock()
-        files.upload_text.return_value = saved
-        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
-        monkeypatch.setattr(DocumentIndexingTaskProxy, "delay", Mock(side_effect=RuntimeError("dispatch failed")))
+        deleted_ids: list[str] = []
+
+        def fail_dispatch(_proxy: DocumentIndexingTaskProxy) -> None:
+            raise RuntimeError("dispatch failed")
+
+        monkeypatch.setattr(FileService, "upload_text", lambda *_args, **_kwargs: saved)
+        monkeypatch.setattr(FileService, "delete_file", lambda _self, file_id: deleted_ids.append(file_id))
+        monkeypatch.setattr(DocumentIndexingTaskProxy, "delay", fail_dispatch)
         with pytest.raises(RuntimeError, match="dispatch failed"):
             operations.create_documents(
                 CONTEXT,
@@ -786,7 +797,7 @@ class TestDocumentCreationCases:
                 settings(),
                 text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
             )
-        files.delete_file.assert_not_called()
+        assert deleted_ids == []
         with sqlite_session_factory() as session:
             document = session.scalar(select(Document))
             assert document is not None

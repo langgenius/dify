@@ -238,7 +238,7 @@ class CheckKnowledgeRateLimit(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if not FeatureService.has_knowledge_subscription_limits():
             return
         try:
             enforce_knowledge_rate_limit(load_workspace(ctx).id)
@@ -252,7 +252,7 @@ class CheckVectorSpaceQuota(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if not FeatureService.has_knowledge_subscription_limits():
             return
         workspace_id = load_workspace(ctx).id
         vector_space = application_services().feature_queries.get_workspace_vector_space(workspace_id)
@@ -268,7 +268,7 @@ class CheckDocumentsUploadQuota(Requirement):
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if not FeatureService.has_knowledge_subscription_limits():
             return
         documents = FeatureService.get_features(
             load_workspace(ctx).id, exclude_vector_space=True
