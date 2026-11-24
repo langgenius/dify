@@ -14,7 +14,7 @@ import { myAppsQueryParsers } from './query-params'
 import MyAppsToolbar from './toolbar'
 
 export default function MyApps() {
-  const { t, i18n } = useTranslation(['app', 'common'])
+  const { t, i18n } = useTranslation(['app'])
   const [filter, setFilter] = useQueryStates(myAppsQueryParsers)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const name = useDebounce(filter.q.trim(), { wait: 300 })
@@ -76,12 +76,8 @@ export default function MyApps() {
             void setFilter(next)
           }}
         />
-        {failed ? null : loading ? (
-          <p role="status" className="py-8 text-center system-sm-regular text-text-tertiary">
-            {t(($) => $.loading, { ns: 'common' })}
-          </p>
-        ) : apps.length > 0 ? (
-          <AppGrid apps={apps} authSession={authSession} />
+        {failed ? null : loading || apps.length > 0 ? (
+          <AppGrid apps={apps} authSession={authSession} loading={loading} />
         ) : (
           <EmptyState
             title={

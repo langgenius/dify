@@ -84,7 +84,11 @@ function AccountSession({ authSession }: { authSession: number }) {
                 <span className="ps-1 wrap-anywhere">{account.email}</span>
               </div>
               {features.data?.enable_change_email && (
-                <Button variant="tertiary" onClick={() => setShowEmailChange(true)}>
+                <Button
+                  variant="tertiary"
+                  className="cursor-pointer px-3"
+                  onClick={() => setShowEmailChange(true)}
+                >
                   {t(($) => $['operation.change'], { ns: 'common' })}
                 </Button>
               )}

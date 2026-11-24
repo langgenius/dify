@@ -2,6 +2,7 @@
 
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { zAccountProfilePatchPayload } from '@dify/contracts/api/web/zod.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
@@ -41,7 +42,7 @@ export default function EditAccountNameDialog({
           details.cancel()
       }}
     >
-      <DialogTrigger className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text">
+      <DialogTrigger render={<Button variant="tertiary" className="cursor-pointer px-3" />}>
         {t(($) => $['operation.edit'], { ns: 'common' })}
       </DialogTrigger>
       <DialogContent className="w-105">
