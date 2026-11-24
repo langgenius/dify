@@ -960,11 +960,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create/step-one/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1057,11 +1052,6 @@
       "count": 4
     }
   },
-  "web/app/components/datasets/documents/create-from-pipeline/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source-options/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1075,11 +1065,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/create-from-pipeline/data-source/local-file/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
@@ -1616,7 +1601,7 @@
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/__tests__/index.spec.tsx": {
     "typescript/no-deprecated": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/test-run/preparation/document-processing/options.tsx": {

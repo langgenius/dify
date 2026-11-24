@@ -1,7 +1,7 @@
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-// oxlint-disable-next-line no-restricted-imports -- Test the existing datasource SSE and upload transport boundaries without replacing their consumers.
-import type { ssePost, upload } from '@/service/base'
+// oxlint-disable-next-line no-restricted-imports -- Test the existing datasource SSE transport boundary without replacing its consumers.
+import type { ssePost } from '@/service/base'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -22,11 +22,13 @@ import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-confi
 import { createPipelineVariable } from '@/test/pipeline-variables'
 import Preparation from '../index'
 
-const api = vi.hoisted(() => ({ stream: vi.fn<typeof ssePost>(), upload: vi.fn<typeof upload>() }))
+const api = vi.hoisted(() => ({
+  stream: vi.fn<typeof ssePost>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
+}))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: api.stream,
-  upload: api.upload,
 }))
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 // Virtualizer measurement is supplied by the browser in production.
@@ -34,9 +36,13 @@ vi.mock('@tanstack/react-virtual')
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': async () => ({
         variables: [
