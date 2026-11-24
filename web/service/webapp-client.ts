@@ -20,6 +20,20 @@ const getContractPath = (url: URL) => {
   return url.pathname.startsWith(basePath) ? url.pathname.slice(basePath.length) : url.pathname
 }
 
+// `new Request(url, request)` would carry the body over as a stream, which needs `duplex`.
+const withURL = async (input: Request, url: URL) => {
+  if (url.href === input.url) return input
+  return new Request(url, {
+    method: input.method,
+    headers: input.headers,
+    body: input.body ? await input.blob() : undefined,
+    signal: input.signal,
+    credentials: input.credentials,
+    cache: input.cache,
+    redirect: input.redirect,
+  })
+}
+
 /** Generated WebApp API client that reuses the `isPublicAPI` transport of the legacy request helpers. */
 export const webAppClient: JsonifiedClient<
   ContractRouterClient<typeof webAppContract, WebAppClientContext>
@@ -27,7 +41,7 @@ export const webAppClient: JsonifiedClient<
   new OpenAPILink<WebAppClientContext>(webAppContract, {
     url: getPublicApiBaseURL,
     headers: ({ context }) => context.headers ?? {},
-    fetch: (input, init, { context }) => {
+    fetch: async (input, init, { context }) => {
       const contractURL = new URL(input.url)
       const contractPath = getContractPath(contractURL)
       const publicURL = new URL(
@@ -38,7 +52,7 @@ export const webAppClient: JsonifiedClient<
       return request<Response>(`${contractPath}${contractURL.search}`, init, {
         isPublicAPI: true,
         fetchCompat: true,
-        request: new Request(publicURL, input),
+        request: await withURL(input, publicURL),
         silent: context.silent,
       })
     },
