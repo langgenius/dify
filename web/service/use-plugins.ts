@@ -7,12 +7,7 @@ import type {
   PluginInstallTaskStartResponse,
   PluginListResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  PluginInfoFromMarketPlace,
-  PluginsFromMarketplaceByInfoResponse,
-  PluginsFromMarketplaceResponse,
-} from '@dify/contracts/marketplace'
-import type { InfiniteData, QueryOptions } from '@tanstack/react-query'
+import type { InfiniteData } from '@tanstack/react-query'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   Dependency,
@@ -46,10 +41,6 @@ import { upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
 import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
-// oxlint-disable-next-line no-restricted-imports
-import { getMarketplace, postMarketplace } from './base'
-
-const NAME_SPACE = 'plugins'
 
 const getString = (value: unknown) => {
   return typeof value === 'string' ? value : ''
@@ -830,12 +821,6 @@ export const useInstallOrUpdate = ({
   })
 }
 
-type MarketplacePluginInfoRequest = {
-  organization?: string
-  plugin?: string
-  version?: string
-}
-
 const pluginPermissionSettingsQueryKey = () =>
   consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
 const pluginAutoUpgradeSettingsQueryKey = (category: PluginCategoryEnum) =>
@@ -1055,42 +1040,6 @@ export const useMutationReferenceSettings = ({
   })
 }
 
-export const useFetchPluginsInMarketPlaceByIds = (
-  unique_identifiers: string[],
-  options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>,
-) => {
-  return useQuery({
-    ...options,
-    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
-    queryFn: () =>
-      postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
-        body: {
-          unique_identifiers,
-        },
-      }),
-    enabled: unique_identifiers?.filter((i) => !!i).length > 0,
-    retry: 0,
-  })
-}
-
-export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoRequest[]) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
-    queryFn: () =>
-      postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
-        body: {
-          plugin_tuples: infos.map((info) => ({
-            org: info.organization,
-            name: info.plugin,
-            version: info.version,
-          })),
-        },
-      }),
-    enabled: infos?.filter((i) => !!i).length > 0,
-    retry: 0,
-  })
-}
-
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
@@ -1143,16 +1092,4 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     handleRefetch,
     handleInstallTaskStart,
   }
-}
-
-export const usePluginManifestInfo = (pluginUID: string) => {
-  return useQuery({
-    enabled: !!pluginUID,
-    queryKey: [NAME_SPACE, 'manifest', pluginUID],
-    queryFn: () =>
-      getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace; version: { version: string } } }>(
-        `/plugins/${pluginUID}`,
-      ),
-    retry: 0,
-  })
 }
