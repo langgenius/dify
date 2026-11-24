@@ -73,10 +73,8 @@ it.each(['ltr', 'rtl'])('keeps earlier items on top after reordering in %s', asy
 
   await screen.rerender(<AvatarGroup dir={dir}>{[bob, alice, count]}</AvatarGroup>)
 
-  await vi.waitFor(() => {
-    expectOverlapWinner(bobAvatar, aliceButton)
-    expectOverlapWinner(aliceButton, overflowCount)
-  })
+  expectOverlapWinner(bobAvatar, aliceButton)
+  expectOverlapWinner(aliceButton, overflowCount)
 })
 
 it('keeps a failed mounted image from covering the fallback and displays its replacement', async () => {

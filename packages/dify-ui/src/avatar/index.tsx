@@ -6,7 +6,6 @@ import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { useMergedRefs } from '../use-merged-refs'
 
 const avatarSizeVariants = cva('', {
   variants: {
@@ -74,30 +73,11 @@ function AvatarImage({ className, ...props }: AvatarImageProps) {
 
 type AvatarGroupProps = React.ComponentProps<'span'> & { size?: AvatarSize }
 
-function observeAvatarGroupItems(group: HTMLSpanElement | null) {
-  if (!group || CSS.supports('z-index', 'calc(sibling-count() - sibling-index() + 1)')) return
-
-  const updateLayers = () => {
-    const items = group.querySelectorAll<HTMLElement | SVGElement>(':scope > *')
-    items.forEach((item, index) => {
-      item.style.setProperty('--avatar-group-layer', String(items.length - index))
-    })
-  }
-
-  updateLayers()
-  const observer = new MutationObserver(updateLayers)
-  observer.observe(group, { childList: true })
-  return () => observer.disconnect()
-}
-
-function AvatarGroup({ size, className, ref, ...props }: AvatarGroupProps) {
-  const groupRef = useMergedRefs(observeAvatarGroupItems, ref)
+function AvatarGroup({ size, className, ...props }: AvatarGroupProps) {
   return (
     <span
-      ref={groupRef}
       className={cn(
-        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle *:z-(--avatar-group-layer)',
-        'supports-[z-index:calc(sibling-count()_-_sibling-index()_+_1)]:*:z-[calc(sibling-count()-sibling-index()+1)]',
+        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle *:z-[calc(sibling-count()-sibling-index()+1)]',
         avatarSizeVariants({ size }),
         className,
       )}
