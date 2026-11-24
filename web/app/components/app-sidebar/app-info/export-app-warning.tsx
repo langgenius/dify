@@ -6,7 +6,6 @@ import {
   AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
-  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -16,25 +15,17 @@ import { useId, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
-type ExportAppDialogContentProps = {
+type ExportAppWarningProps = {
   appDetail: AppDetailWithSite
   onSecretsRequired: (envList: EnvironmentVariableItemResponse[]) => void
   onExported: () => void
 }
 
-export function ExportAppDialogContent(props: ExportAppDialogContentProps) {
-  return (
-    <AlertDialogContent backdropProps={{ forceRender: true }}>
-      <ExportAppSession {...props} />
-    </AlertDialogContent>
-  )
-}
-
-function ExportAppSession({
+export function ExportAppWarning({
   appDetail,
   onSecretsRequired,
   onExported,
-}: ExportAppDialogContentProps) {
+}: ExportAppWarningProps) {
   const confirmLabelId = useId()
   const { t } = useTranslation(['workflow', 'common'])
   const { exportWorkflowAppDsl, isExporting, errorMessage } = useExportWorkflowAppDsl()

@@ -12,7 +12,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
-import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
+import { ExportSecretsSession } from '@/app/components/app/export-secrets-dialog'
 import { SwitchAppDialogContent } from '@/app/components/app/switch-app-dialog'
 import { useSwitchAppMutation } from '@/app/components/app/switch-app-dialog/use-switch-app-mutation'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
@@ -22,7 +22,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
-import { ExportAppDialogContent } from './export-app-dialog'
+import { ExportAppWarning } from './export-app-warning'
 
 type AppInfoDialogsProps = {
   appDetail: AppDetailWithSite
@@ -52,30 +52,36 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
   const [backupDialog] = useState(() => createAlertDialogHandle<ExportPayload>())
   const exportSession =
     (dialog: AlertDialogHandle<ExportPayload>) =>
-    ({ payload }: { payload: ExportPayload | undefined }) =>
-      payload ? (
-        <ExportSecretsDialogContent
-          envList={payload}
-          isExporting={secretExport.isExporting}
-          errorMessage={secretExport.errorMessage}
-          onConfirm={async (includeSecret) => {
-            if (secretExport.isExporting) return
-            const result = await secretExport.exportAppDsl({
-              appId: appDetail.id,
-              appName: appDetail.name,
-              includeSecret,
-              feedback: 'dialog',
-            })
-            if (result.status === 'downloaded') dialog.close()
-          }}
-        />
-      ) : (
-        <ExportAppDialogContent
-          appDetail={appDetail}
-          onSecretsRequired={(envList) => dialog.openWithPayload(envList)}
-          onExported={() => dialog.close()}
-        />
-      )
+    ({ payload }: { payload: ExportPayload | undefined }) => (
+      <AlertDialogContent backdropProps={{ forceRender: true }}>
+        {payload ? (
+          <ExportSecretsSession
+            envList={payload}
+            isExporting={secretExport.isExporting}
+            errorMessage={secretExport.errorMessage}
+            onConfirm={async (includeSecret) => {
+              if (secretExport.isExporting) return
+              const result = await secretExport.exportAppDsl({
+                appId: appDetail.id,
+                appName: appDetail.name,
+                includeSecret,
+                feedback: 'dialog',
+              })
+              if (result.status === 'downloaded') dialog.close()
+            }}
+          />
+        ) : (
+          <ExportAppWarning
+            appDetail={appDetail}
+            onSecretsRequired={(envList) => {
+              secretExport.reset()
+              dialog.openWithPayload(envList)
+            }}
+            onExported={() => dialog.close()}
+          />
+        )}
+      </AlertDialogContent>
+    )
   return (
     <>
       <Dialog

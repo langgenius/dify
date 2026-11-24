@@ -30,7 +30,7 @@ export function ExportSecretsDialogContent(props: ExportSecretsDialogContentProp
   )
 }
 
-function ExportSecretsSession({
+export function ExportSecretsSession({
   envList,
   isExporting,
   errorMessage,

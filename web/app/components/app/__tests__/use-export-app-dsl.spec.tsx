@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react'
-import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ExportAppDialogContent } from '@/app/components/app-sidebar/app-info/export-app-dialog'
+import { ExportAppWarning } from '@/app/components/app-sidebar/app-info/export-app-warning'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { ExportSecretsDialogContent } from '../export-secrets-dialog'
@@ -417,11 +421,13 @@ describe('useExportWorkflowAppDsl', () => {
         <>
           <button onClick={() => handle.open(null)}>Reopen</button>
           <AlertDialog handle={handle}>
-            <ExportAppDialogContent
-              appDetail={app}
-              onSecretsRequired={vi.fn()}
-              onExported={() => handle.close()}
-            />
+            <AlertDialogContent>
+              <ExportAppWarning
+                appDetail={app}
+                onSecretsRequired={vi.fn()}
+                onExported={() => handle.close()}
+              />
+            </AlertDialogContent>
           </AlertDialog>
         </>
       )

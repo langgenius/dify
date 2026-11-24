@@ -86,13 +86,19 @@ it('lets Escape dismiss a delayed secret check without starting an export', asyn
   expect(downloadBlob).not.toHaveBeenCalled()
 })
 
-it('keeps the secret step open until its download settles and restarts at the warning', async () => {
+it('moves to the secret step without returning focus to the opener, keeps it open until its download settles and restarts at the warning', async () => {
   environmentVariables().mockResolvedValue({ items: [secret] })
   const request = hold(exportDsl())
   const { screen, dialog, trigger } = await setup()
+  const triggerFocus = vi.fn()
+  const triggerElement = [...document.querySelectorAll('button')].find(
+    (button) => button.textContent === 'Export workflow',
+  )!
+  triggerElement.addEventListener('focus', triggerFocus)
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
   const secretDialog = screen.getByRole('alertdialog', { name: secretWarning })
   await expect.element(secretDialog).toBeVisible()
+  expect(triggerFocus).not.toHaveBeenCalled()
   await secretDialog.getByRole('checkbox').click()
   await secretDialog.getByRole('button', { name: secretWarning }).click()
   await request.arrived
