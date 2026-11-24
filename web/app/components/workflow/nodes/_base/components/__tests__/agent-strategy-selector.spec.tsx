@@ -12,9 +12,10 @@ import { AgentStrategySelector } from '../agent-strategy-selector'
 
 const MARKETPLACE_SEARCH_DEBOUNCE_MS = 500
 
-const { request, marketplace, install, manifest } = vi.hoisted(() => ({
+const { request, marketplace, marketplaceLookup, install, manifest } = vi.hoisted(() => ({
   request: vi.fn(),
   marketplace: vi.fn(),
+  marketplaceLookup: vi.fn(),
   install: vi.fn(),
   manifest: vi.fn(),
 }))
@@ -23,6 +24,12 @@ vi.mock('@/service/base', async (importOriginal) => ({
   request,
   postMarketplace: marketplace,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: marketplaceLookup,
+  })
+})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -38,6 +45,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 beforeEach(() => {
   request.mockReset()
   marketplace.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
+  marketplaceLookup.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
   manifest.mockReset().mockResolvedValue({ plugins: [] })
   install.mockReset()
 })
@@ -288,6 +296,7 @@ it('installs a missing saved strategy and refreshes its availability', async () 
   const user = userEvent.setup()
   const installation = createDeferred<{ all_installed: boolean; task_id: string }>()
   marketplace.mockResolvedValue({ data: { plugins: [createPlugin()], total: 1 } })
+  marketplaceLookup.mockResolvedValue({ data: { plugins: [createPlugin()], total: 1 } })
   let installed = false
   const provider = createProvider()
   request.mockImplementation((url: string) => {

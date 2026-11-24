@@ -15,8 +15,13 @@ const { request, marketplaceRequest } = vi.hoisted(() => ({
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
-  postMarketplace: marketplaceRequest,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: marketplaceRequest,
+  })
+})
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -43,7 +48,7 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
 beforeEach(() => {
   vi.clearAllMocks()
   request.mockImplementation(() => Promise.resolve(Response.json(createProvider())))
-  marketplaceRequest.mockResolvedValue({ data: { plugins: [] } })
+  marketplaceRequest.mockResolvedValue({ data: { plugins: [], total: 0 } })
 })
 
 describe('agent strategy query and configuration', () => {

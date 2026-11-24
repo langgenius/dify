@@ -108,7 +108,7 @@
   },
   "web/app/components/app/configuration/__tests__/configuration-flow.spec.tsx": {
     "typescript/no-deprecated": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
@@ -3300,7 +3300,7 @@
       "count": 3
     },
     "typescript/no-deprecated": {
-      "count": 16
+      "count": 15
     },
     "typescript/no-explicit-any": {
       "count": 2
@@ -3378,7 +3378,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
+      "count": 1
     }
   },
   "web/service/refresh-token.ts": {
