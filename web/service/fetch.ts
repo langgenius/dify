@@ -23,7 +23,7 @@ import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
-export const ContentType = {
+const ContentType = {
   json: 'application/json',
   stream: 'text/event-stream',
   audio: 'audio/mpeg',
@@ -33,7 +33,7 @@ export const ContentType = {
   upload: 'multipart/form-data', // for upload
 }
 
-export type FetchOptionType = Omit<RequestInit, 'body'> & {
+type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, string | number | boolean | undefined>
   body?: BodyInit | Record<string, unknown> | null
 }
@@ -96,16 +96,6 @@ const baseClient = ky.create({
   hooks: baseHooks,
   throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
-})
-
-export const getBaseOptions = (): RequestInit => ({
-  method: 'GET',
-  mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
-  redirect: 'follow',
 })
 
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */

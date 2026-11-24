@@ -106,11 +106,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/__tests__/configuration-flow.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -216,16 +211,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/debug/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/debug/debug-with-multiple-model/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/debug/debug-with-multiple-model/chat-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
@@ -239,11 +224,6 @@
   "web/app/components/app/configuration/debug/debug-with-multiple-model/text-generation-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 8
-    }
-  },
-  "web/app/components/app/configuration/debug/debug-with-single-model/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/debug/debug-with-single-model/index.tsx": {
@@ -1581,11 +1561,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/result/__tests__/index.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/result/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -2904,16 +2879,6 @@
       "count": 1
     }
   },
-  "web/features/agent-v2/agent-editor/__tests__/configure-test-env.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-editor/__tests__/workflow-panel.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/features/agent-v2/agent-editor/configuration/skills/use-skill-detail.ts": {
     "no-restricted-properties": {
       "count": 1
@@ -2994,7 +2959,7 @@
   },
   "web/service/__tests__/base-request.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 13
+      "count": 10
     }
   },
   "web/service/__tests__/base.spec.ts": {
@@ -3004,7 +2969,7 @@
   },
   "web/service/__tests__/ip-access-denied.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 29
+      "count": 18
     }
   },
   "web/service/__tests__/plugin-credential-commands.spec.ts": {
@@ -3040,26 +3005,12 @@
       "count": 1
     }
   },
-  "web/service/base.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 15
-    }
-  },
   "web/service/base.ts": {
     "no-restricted-imports": {
-      "count": 2
-    },
-    "no-restricted-properties": {
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 12
-    },
-    "typescript/no-explicit-any": {
-      "count": 2
+      "count": 11
     }
   },
   "web/service/console/browser.ts": {
@@ -3095,7 +3046,7 @@
   },
   "web/service/http-error.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 13
+      "count": 10
     }
   },
   "web/service/log.ts": {
