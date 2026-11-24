@@ -30,8 +30,8 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import { upsertStartedPluginTask } from './plugin-task-cache'
 import {
-  legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
@@ -333,9 +333,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                           }),
                         }),
                         context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
-                        context.client.invalidateQueries({
                           queryKey: consoleQuery.datasets.get.key(),
                         }),
                       ]),
@@ -348,9 +345,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     onSuccess: (_data, variables, _result, context) => {
                       return Promise.all([
                         context.client.invalidateQueries({
-                          queryKey: legacyWorkflowVersionHistoryKey,
-                        }),
-                        context.client.invalidateQueries({
                           queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                             input: { params: { pipeline_id: variables.params.pipeline_id } },
                           }),
@@ -361,12 +355,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
                 delete: {
                   mutationOptions: {
-                    onSuccess: (_data, variables, _result, context) =>
-                      context.client.invalidateQueries({
+                    // Reset the version lists so they reload from the first page: the deleted version is gone
+                    // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                    // callers can close their UI as soon as the version is deleted.
+                    onSuccess: (_data, variables, _result, context) => {
+                      void context.client.resetQueries({
                         queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                          type: 'infinite',
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
-                      }),
+                      })
+                    },
                   },
                 },
               },
@@ -384,6 +383,92 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          customizedSnippets: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.snippets.key(),
+                  })
+                },
+              },
+            },
+            bySnippetId: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              useCount: {
+                increment: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) => {
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                        })
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.snippets.key(),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            imports: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              byImportId: {
+                confirm: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) => {
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                        })
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.snippets.key(),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           humanInput: {
             v2: {
               contacts: {
@@ -730,6 +815,68 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             asset: {
               get: {
                 queryOptions: { context: { silent: true } },
+              },
+            },
+            autoUpgrade: {
+              fetch: {
+                get: {
+                  queryOptions: { staleTime: 60 * 1000 },
+                },
+              },
+              exclude: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      return context.client.invalidateQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+                            input: { query: { category: variables.body.category } },
+                          }),
+                      })
+                    },
+                  },
+                },
+              },
+            },
+            install: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              pkg: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+              github: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
+              },
+            },
+            upgrade: {
+              marketplace: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (response, _variables, _result, context) => {
+                      upsertStartedPluginTask(consoleQuery, context.client, response)
+                    },
+                  },
+                },
               },
             },
           },
@@ -1705,9 +1852,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                         }),
                       }),
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.get.key({
                           input: { params: variables.params },
                         }),
@@ -1739,9 +1883,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     )
                     return Promise.all([
                       context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
-                      context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.workflows.get.key({
                           input: { params: { app_id: variables.params.app_id } },
                         }),
@@ -1753,12 +1894,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Reset the version lists so they reload from the first page: the deleted version is gone
+                  // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                  // callers can close their UI as soon as the version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.resetQueries({
                       queryKey: consoleQuery.apps.byAppId.workflows.get.key({
+                        type: 'infinite',
                         input: { params: { app_id: variables.params.app_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },
@@ -2491,14 +2637,43 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           workflows: {
+            publish: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _onMutateResult, context) =>
+                    Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
+                          type: 'query',
+                          input: { params: { snippet_id: variables.params.snippet_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
+                          type: 'query',
+                          input: { params: { snippet_id: variables.params.snippet_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.get.key({
+                          type: 'query',
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey:
+                          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key(
+                            { type: 'query' },
+                          ),
+                      }),
+                    ]),
+                },
+              },
+            },
             byWorkflowId: {
               patch: {
                 mutationOptions: {
                   onSuccess: (_data, variables, _result, context) => {
                     return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: legacyWorkflowVersionHistoryKey,
-                      }),
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                           input: { params: { snippet_id: variables.params.snippet_id } },
@@ -2510,12 +2685,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    context.client.invalidateQueries({
+                  // Reset the version lists so they reload from the first page: the deleted version is gone
+                  // even if the reload fails, and no stale page can shift the next one. Not awaited, so
+                  // callers can close their UI as soon as the version is deleted.
+                  onSuccess: (_data, variables, _result, context) => {
+                    void context.client.resetQueries({
                       queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
+                        type: 'infinite',
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
-                    }),
+                    })
+                  },
                 },
               },
             },

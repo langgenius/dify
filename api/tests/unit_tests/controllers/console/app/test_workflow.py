@@ -13,6 +13,7 @@ from unittest.mock import ANY, MagicMock, Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, HTTPException, NotFound, UnprocessableEntity
@@ -29,6 +30,7 @@ from controllers.console.app.workflow import (
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -1210,18 +1212,25 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_online_users_filters_inaccessible_workflow(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
     ) -> None:
         app_id_1 = "11111111-1111-1111-1111-111111111111"
         app_id_2 = "22222222-2222-2222-2222-222222222222"
-        signed_avatar_url = "https://files.example.com/signed/avatar-1"
-        signed_ids: list[str] = []
+        current_avatar_urls = {
+            "u-1": "https://console.example.com/accounts/u-1/avatar-1",
+            "u-2": "https://console.example.com/accounts/u-2/avatar-2",
+        }
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            return_value=current_avatar_urls,
+        )
         queries: list[tuple[list[str], str, Session]] = []
         actors: list[tuple[str, str]] = []
-
-        def sign_avatar(file_id: str) -> str:
-            signed_ids.append(file_id)
-            return signed_avatar_url
 
         class WorkflowQueries:
             def get_tenant_app_maintainers(
@@ -1237,7 +1246,7 @@ class TestWorkflowCases:
         monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
         monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
-        monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
         monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
 
         redis_result = [
@@ -1313,12 +1322,12 @@ class TestWorkflowCases:
                         {
                             "user_id": "u-1",
                             "username": "Alice",
-                            "avatar": signed_avatar_url,
+                            "avatar": current_avatar_urls["u-1"],
                         },
                         {
                             "user_id": "u-2",
                             "username": "Bob",
-                            "avatar": None,
+                            "avatar": current_avatar_urls["u-2"],
                         },
                     ],
                 }
@@ -1327,7 +1336,7 @@ class TestWorkflowCases:
         assert pipeline_transactions == [False]
         assert redis_keys == [f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"]
         assert executions == [True]
-        assert signed_ids == ["avatar-file-id"]
+        resolve_current_avatars.assert_called_once_with(account_ids=("u-1", "u-2"))
         assert queries == [([app_id_1, app_id_2], "tenant-1", unbound_session)]
         assert actors == [("tenant-1", "account-1")]
 
@@ -1368,6 +1377,68 @@ class TestWorkflowCases:
         assert redis_pipeline_factory.call_count == 2
         assert first_pipeline.hgetall.call_count == workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
         assert second_pipeline.hgetall.call_count == 1
+
+    @staticmethod
+    def test_workflow_online_users_keeps_all_users_after_avatar_resolution_failure(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        unbound_session: Session,
+        account_application_services: ApplicationServices,
+    ) -> None:
+        app_id = "11111111-1111-1111-1111-111111111111"
+        resolve_current_avatars = mocker.patch.object(
+            account_application_services.accounts.avatar,
+            "resolve_current_for_accounts",
+            side_effect=RuntimeError("avatar lookup failed"),
+        )
+        monkeypatch.setattr(workflow_module, "application_services", lambda: account_application_services)
+
+        class WorkflowQueries:
+            def get_tenant_app_maintainers(
+                self, app_ids: list[str], tenant_id: str, *, session: Session
+            ) -> dict[str, str | None]:
+                assert tenant_id == "tenant-1"
+                assert session is unbound_session
+                return dict.fromkeys(app_ids)
+
+        monkeypatch.setattr(workflow_module, "WorkflowService", WorkflowQueries)
+        apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+        monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(unbound_session))
+
+        pipeline_factory = mocker.patch.object(workflow_module.redis_client, "pipeline")
+        pipeline_factory.return_value.execute.return_value = [
+            {
+                b"sid-1": json.dumps({"user_id": "user-1", "username": "Alice", "avatar": "avatar-file-id-1"}),
+                b"sid-2": json.dumps({"user_id": "user-2", "username": "Bob", "avatar": "avatar-file-id-2"}),
+            }
+        ]
+
+        api = workflow_module.WorkflowOnlineUsersApi()
+        handler = inspect.unwrap(api.post)
+        with app.test_request_context(
+            "/apps/workflows/online-users",
+            method="POST",
+            json={"app_ids": [app_id]},
+        ):
+            args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id]})
+            actor = _account()
+            actor.id = "account-1"
+            response = handler(api, args, "tenant-1", actor)
+
+        assert response == {
+            "data": [
+                {
+                    "app_id": app_id,
+                    "users": [
+                        {"user_id": "user-1", "username": "Alice", "avatar": None},
+                        {"user_id": "user-2", "username": "Bob", "avatar": None},
+                    ],
+                }
+            ]
+        }
+        resolve_current_avatars.assert_called_once_with(account_ids=("user-1", "user-2"))
+        pipeline_factory.assert_called_once_with(transaction=False)
 
     @staticmethod
     def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

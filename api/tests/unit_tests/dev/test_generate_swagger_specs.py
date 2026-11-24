@@ -475,7 +475,9 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
 def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(generated_specs: list[Path]):
     payload = json.loads((generated_specs[0].parent / "console-openapi.json").read_text(encoding="utf-8"))
     audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
+    avatar_path = "/accounts/{account_id}/avatars/{file_id}"
     operations = [
+        (avatar_path, "get", {"image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"}),
         ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
         ("/workspaces/current/plugin/icon", "get", {"*/*"}),
         ("/workspaces/current/skills/{skill_id}/files/content", "get", {"*/*"}),
@@ -491,6 +493,10 @@ def test_console_file_and_audio_responses_declare_binary_success_and_json_errors
         assert errors, path
         for status, response in errors.items():
             assert set(response["content"]) == {"application/json"}, (path, status)
+
+    avatar = payload["paths"][avatar_path]
+    assert "head" not in avatar
+    assert "content" not in avatar["get"]["responses"]["304"]
 
 
 def test_system_features_specs_exclude_backend_only_fields(generated_specs: list[Path]):

@@ -10,7 +10,7 @@ import SignInConfirmation from '@/app/components/share/signin-confirmation'
 import { PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
 import { useParams, useSearchParams } from '@/next/navigation'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useGetWebAppInfo } from '@/service/use-share'
+import { webAppInfoQueryOptions } from '@/service/share-queries'
 import { webAppClient, webAppQuery } from '@/service/webapp'
 import {
   getAnonymousWebAppPassport,
@@ -40,7 +40,7 @@ export default function MigrateConversationsContent() {
   const continueHref =
     resolveWebAppAccountReturn(searchParams.get('redirect_url'))?.url ||
     `${basePath}/chat/${encodeURIComponent(token)}${currentSearch ? `?${currentSearch}` : ''}`
-  const { data: appInfo, error } = useGetWebAppInfo()
+  const { data: appInfo, error } = useQuery(webAppInfoQueryOptions())
   const supportsMigration =
     appInfo?.mode === 'workflow' || appInfo?.mode === 'advanced-chat' || appInfo?.mode === 'chat'
   const authSession = useSyncExternalStore(

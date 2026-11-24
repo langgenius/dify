@@ -20,9 +20,18 @@ vi.mock('@/config', async (importOriginal) => ({
 }))
 
 // Usage accounting is a service boundary; graph insertion and its stores stay real.
-vi.mock('@/service/use-snippets', () => ({
-  useIncrementSnippetUseCountMutation: () => ({ mutate: vi.fn() }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.bySnippetId.useCount.increment.post': async () => ({
+        use_count: 1,
+      }),
+    }),
+  }
+})
 
 const approval = (id: string, version?: '2') =>
   createNode({

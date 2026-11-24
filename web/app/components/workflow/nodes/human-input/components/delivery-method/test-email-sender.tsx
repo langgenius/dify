@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightSFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
@@ -33,7 +33,6 @@ import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
-import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
@@ -143,7 +142,9 @@ const EmailSenderContent = ({
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const appId = useAtomValue(editorAppIdAtom)
-  const { mutateAsync: testEmailSender } = useTestEmailSender()
+  const { mutateAsync: testEmailSender } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.deliveryTest.post.mutationOptions(),
+  )
 
   const debugEnabled = !!config?.debug_mode
   const onlyWholeTeam =
@@ -245,10 +246,8 @@ const EmailSenderContent = ({
     setSendingEmail(true)
     try {
       await testEmailSender({
-        appID: appId,
-        nodeID: nodeId,
-        deliveryID: deliveryId,
-        inputs: formattedValues,
+        params: { app_id: appId, node_id: nodeId },
+        body: { delivery_method_id: deliveryId, inputs: formattedValues },
       })
       setDone(true)
     } finally {
