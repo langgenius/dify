@@ -56,6 +56,25 @@ class ChromaVector(BaseVector):
         self._client_config = config
         self._client = chromadb.HttpClient(**self._client_config.to_chroma_params())
 
+    def _get_or_create_collection(self, collection_name: str):
+        """Return a collection, creating new collections with cosine distance."""
+        return self._client.get_or_create_collection(collection_name, metadata={"hnsw:space": "cosine"})
+
+    @staticmethod
+    def _score_from_distance(collection: Any, distance: float) -> float:
+        """Convert a Chroma distance to a similarity score using the collection's space.
+
+        Preconditions:
+            ``collection.metadata`` contains the Chroma distance space when known.
+        Postconditions:
+            L2 distances are converted under Dify's unit-normalized embedding contract;
+            cosine and inner-product distances use ``1 - distance``.
+        """
+        metadata = collection.metadata or {}
+        if metadata.get("hnsw:space") == "l2":
+            return 1 - distance / 2
+        return 1 - distance
+
     @override
     def get_type(self) -> str:
         return VectorType.CHROMA
@@ -74,7 +93,7 @@ class ChromaVector(BaseVector):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
-            self._client.get_or_create_collection(collection_name)
+            self._get_or_create_collection(collection_name)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     @override
@@ -83,14 +102,14 @@ class ChromaVector(BaseVector):
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._get_or_create_collection(self._collection_name)
         # FIXME: chromadb using numpy array, fix the type error later
         collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
         return uuids
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._get_or_create_collection(self._collection_name)
         # FIXME: fix the type error later
         collection.delete(where={key: {"$eq": value}})  # type: ignore
 
@@ -102,18 +121,18 @@ class ChromaVector(BaseVector):
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._get_or_create_collection(self._collection_name)
         collection.delete(ids=ids)
 
     @override
     def text_exists(self, id: str) -> bool:
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._get_or_create_collection(self._collection_name)
         response = collection.get(ids=[id])
         return len(response) > 0
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        collection = self._client.get_or_create_collection(self._collection_name)
+        collection = self._get_or_create_collection(self._collection_name)
         document_ids_filter = kwargs.get("document_ids_filter")
         results: QueryResult
         if document_ids_filter:
@@ -139,7 +158,7 @@ class ChromaVector(BaseVector):
         for index in range(len(ids)):
             distance = distances[index]
             metadata = dict(metadatas[index])
-            score = 1 - distance
+            score = self._score_from_distance(collection, distance)
             if score >= score_threshold:
                 metadata["score"] = score
                 doc = Document(

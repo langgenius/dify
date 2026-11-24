@@ -27,6 +27,7 @@ def _build_fake_chroma_modules() -> FakeModule:
 
     class _Collection:
         def __init__(self) -> None:
+            self.metadata = {"hnsw:space": "cosine"}
             self.upsert = MagicMock()
             self.delete = MagicMock()
             self.query = MagicMock()
@@ -91,7 +92,7 @@ def test_create_collection_uses_redis_lock_and_cache(
     )
     vector.create_collection("collection_1")
 
-    vector._client.get_or_create_collection.assert_called_once_with("collection_1")
+    vector._client.get_or_create_collection.assert_called_once_with("collection_1", metadata={"hnsw:space": "cosine"})
     chroma_module.redis_client.set.assert_called_once()
 
 
@@ -168,6 +169,25 @@ def test_search_by_vector_applies_score_threshold_and_sorting(chroma_module: Mod
     assert len(docs) == 1
     assert docs[0].page_content == "doc high"
     assert docs[0].metadata["score"] == 0.9
+
+
+def test_search_by_vector_converts_legacy_l2_distance(chroma_module: ModuleType) -> None:
+    vector = chroma_module.ChromaVector(
+        collection_name="collection_1",
+        config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
+    )
+    vector._client.collection.metadata = {"hnsw:space": "l2"}
+    vector._client.collection.query.return_value = {
+        "ids": [["id-1", "id-2"]],
+        "documents": [["doc high", "doc low"]],
+        "metadatas": [[{"doc_id": "id-1"}, {"doc_id": "id-2"}]],
+        "distances": [[0.1, 0.8]],
+    }
+
+    docs = vector.search_by_vector([0.1, 0.2], top_k=2, score_threshold=0.7)
+
+    assert [doc.page_content for doc in docs] == ["doc high"]
+    assert docs[0].metadata["score"] == pytest.approx(0.95)
 
 
 def test_search_by_full_text_returns_empty_list(chroma_module: ModuleType) -> None:
