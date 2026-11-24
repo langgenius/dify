@@ -15,14 +15,15 @@ import {
   PasswordFieldInput,
   PasswordFieldToggle,
 } from '@langgenius/dify-ui/password-field'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
+import { forgotPasswordTokenValidityQueryOptions } from '@/service/common-queries'
 import { consoleClient } from '@/service/console'
-import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import { basePath } from '@/utils/var'
 
 type PasswordFormValues = {
@@ -36,7 +37,9 @@ const ChangePasswordForm = () => {
   const token = searchParams.get('token')
   const isTokenMissing = !token
 
-  const { data: verifyTokenRes, refetch: revalidateToken } = useVerifyForgotPasswordToken(token)
+  const { data: verifyTokenRes, refetch: revalidateToken } = useQuery(
+    forgotPasswordTokenValidityQueryOptions(token),
+  )
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)

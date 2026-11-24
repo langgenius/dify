@@ -21,7 +21,7 @@ import {
   shareConversationsQueryOptions,
   shareQueryKeys,
 } from '@/service/share-queries'
-import { useGetTryAppParams } from '@/service/use-try-app'
+import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
@@ -79,7 +79,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const webAppInfo = useWebAppStore((s) => s.appInfo)
   const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore((s) => s.appMeta)
-  const { data: tryAppParams } = useGetTryAppParams(isTryApp ? tryAppId! : '')
+  const { data: tryAppParams } = useQuery(tryAppParamsQueryOptions(isTryApp ? tryAppId! : ''))
   const webAppParams = useWebAppStore((s) => s.appParams)
   const appParams = isTryApp ? tryAppParams : webAppParams
   const appId = useMemo(() => {
