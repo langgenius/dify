@@ -2281,6 +2281,10 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   limit: z.int(),
 })
 
+export const zPostAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -2660,10 +2664,6 @@ export const zGetSavedMessagesQuery = z.object({
 export const zGetSavedMessagesResponse = zSavedMessageInfiniteScrollPagination
 
 export const zPostSavedMessagesBody = zSavedMessageCreatePayload
-
-export const zPostSavedMessagesQuery = z.object({
-  message_id: z.string(),
-})
 
 /**
  * Message saved successfully
