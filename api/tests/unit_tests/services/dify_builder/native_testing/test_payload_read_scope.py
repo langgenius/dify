@@ -598,9 +598,9 @@ def test_lineage_rechecks_real_sql_after_backend_identity(
     waiting_read_case: WaitingReadCase, state_case: AgentStateCase, monkeypatch: pytest.MonkeyPatch, drift: str | None
 ) -> None:
     c = waiting_read_case
-    # SQLite's DateTime adapter returns naive UTC; the deterministic clock stays
-    # in that representation. No production expiry or validation is substituted.
-    monkeypatch.setattr(store_module, "utc_now", datetime.now)
+    # SQLite's DateTime adapter returns naive UTC, independent of the host timezone.
+    now = datetime.now(UTC).replace(tzinfo=None)
+    monkeypatch.setattr(store_module, "utc_now", lambda: now)
     store = c.api.store
     association_receipt = next(value for value in c.objects if value.logical_key.startswith("agent-bind:"))
     association = AgentNodeAssociation.model_validate(store._read_object(association_receipt))
