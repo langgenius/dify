@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Instrumentele permit agentului să acționeze, precum căutarea pe web sau apelarea aplicațiilor tale",
   "agentDetail.configure.tools.empty.title": "Niciun instrument încă",
   "agentDetail.configure.tools.label": "Instrumente",
-  "agentDetail.configure.tools.moreActions": "Mai multe acțiuni pentru {{name}}",
   "agentDetail.configure.tools.removeAction": "Eliminați {{name}}",
   "agentDetail.configure.tools.removeProvider": "Eliminați toate instrumentele",
   "agentDetail.configure.tools.richTip": "Adăugați instrumente Dify din workspace. <docLink>Aflați mai multe</docLink>\n\nInstrumentele pe care agentul le instalează în sandbox nu vor apărea aici, dar îi vor rămâne disponibile.",

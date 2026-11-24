@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Les outils permettent à l’agent d’agir, comme effectuer des recherches sur le web ou appeler vos applications",
   "agentDetail.configure.tools.empty.title": "Pas encore d’outils",
   "agentDetail.configure.tools.label": "Outils",
-  "agentDetail.configure.tools.moreActions": "Plus d’actions pour {{name}}",
   "agentDetail.configure.tools.removeAction": "Supprimer {{name}}",
   "agentDetail.configure.tools.removeProvider": "Supprimer tous les outils",
   "agentDetail.configure.tools.richTip": "Ajoutez les outils Dify de votre espace de travail. <docLink>En savoir plus</docLink>\n\nLes outils que l'agent installe dans son sandbox n'apparaîtront pas ici, mais resteront disponibles.",

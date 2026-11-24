@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Інструменти дозволяють агенту діяти — наприклад, шукати в інтернеті або викликати ваші застосунки",
   "agentDetail.configure.tools.empty.title": "Поки що немає інструментів",
   "agentDetail.configure.tools.label": "Інструменти",
-  "agentDetail.configure.tools.moreActions": "Більше дій для {{name}}",
   "agentDetail.configure.tools.removeAction": "Видалити {{name}}",
   "agentDetail.configure.tools.removeProvider": "Видалити всі інструменти",
   "agentDetail.configure.tools.richTip": "Додайте інструменти Dify зі свого workspace. <docLink>Докладніше</docLink>\n\nІнструменти, які агент встановлює у своїй sandbox, не з'являться тут, але залишаться йому доступними.",

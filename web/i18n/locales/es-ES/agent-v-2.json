@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Las herramientas permiten al agente actuar, como buscar en la web o invocar tus aplicaciones",
   "agentDetail.configure.tools.empty.title": "Aún no hay herramientas",
   "agentDetail.configure.tools.label": "Herramientas",
-  "agentDetail.configure.tools.moreActions": "Más acciones para {{name}}",
   "agentDetail.configure.tools.removeAction": "Eliminar {{name}}",
   "agentDetail.configure.tools.removeProvider": "Eliminar todas las herramientas",
   "agentDetail.configure.tools.richTip": "Añade herramientas de Dify desde tu espacio de trabajo. <docLink>Más información</docLink>\n\nLas herramientas que el agente instale en su sandbox no aparecerán aquí, pero seguirán disponibles para él.",

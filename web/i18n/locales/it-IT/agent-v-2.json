@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Gli strumenti consentono all’agente di agire, come cercare sul web o chiamare le tue app",
   "agentDetail.configure.tools.empty.title": "Nessuno strumento al momento",
   "agentDetail.configure.tools.label": "Strumenti",
-  "agentDetail.configure.tools.moreActions": "Altre azioni per {{name}}",
   "agentDetail.configure.tools.removeAction": "Rimuovi {{name}}",
   "agentDetail.configure.tools.removeProvider": "Rimuovi tutti gli strumenti",
   "agentDetail.configure.tools.richTip": "Aggiungi strumenti Dify dal tuo workspace. <docLink>Scopri di più</docLink>\n\nGli strumenti che l'agente installa nel suo sandbox non appariranno qui, ma resteranno disponibili.",

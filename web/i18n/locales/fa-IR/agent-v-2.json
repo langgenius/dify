@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "ابزارها به عامل اجازه می‌دهند عمل کند، مانند جستجوی وب یا فراخوانی برنامه‌های شما",
   "agentDetail.configure.tools.empty.title": "هنوز ابزاری وجود ندارد",
   "agentDetail.configure.tools.label": "ابزارها",
-  "agentDetail.configure.tools.moreActions": "اقدامات بیشتر برای {{name}}",
   "agentDetail.configure.tools.removeAction": "حذف {{name}}",
   "agentDetail.configure.tools.removeProvider": "حذف همه ابزارها",
   "agentDetail.configure.tools.richTip": "ابزارهای Dify را از workspace خود اضافه کنید. <docLink>بیشتر بدانید</docLink>\n\nابزارهایی که عامل در sandbox خود نصب می‌کند اینجا نمایش داده نمی‌شوند، اما برای او در دسترس می‌مانند.",

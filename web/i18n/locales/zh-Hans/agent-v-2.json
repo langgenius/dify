@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "工具让 Agent 可以执行操作，例如搜索网页或调用你的应用",
   "agentDetail.configure.tools.empty.title": "暂无工具",
   "agentDetail.configure.tools.label": "工具",
-  "agentDetail.configure.tools.moreActions": "{{name}} 的更多操作",
   "agentDetail.configure.tools.removeAction": "移除 {{name}}",
   "agentDetail.configure.tools.removeProvider": "移除所有工具",
   "agentDetail.configure.tools.richTip": "添加工作空间中的 Dify 工具。<docLink>了解更多</docLink>\n\nAgent 在沙箱中自行安装的工具不会显示在这里，但仍然可用。",

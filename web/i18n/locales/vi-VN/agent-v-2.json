@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Công cụ giúp tác nhân hành động, như tìm kiếm web hoặc gọi ứng dụng của bạn",
   "agentDetail.configure.tools.empty.title": "Chưa có công cụ nào",
   "agentDetail.configure.tools.label": "Công cụ",
-  "agentDetail.configure.tools.moreActions": "Thêm hành động cho {{name}}",
   "agentDetail.configure.tools.removeAction": "Xóa {{name}}",
   "agentDetail.configure.tools.removeProvider": "Xóa tất cả công cụ",
   "agentDetail.configure.tools.richTip": "Thêm công cụ Dify từ workspace của bạn. <docLink>Tìm hiểu thêm</docLink>\n\nNhững công cụ tác nhân cài đặt trong sandbox sẽ không xuất hiện ở đây nhưng vẫn khả dụng cho tác nhân.",

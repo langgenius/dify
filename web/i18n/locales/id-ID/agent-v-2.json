@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Alat memungkinkan agen bertindak, seperti mencari di web atau memanggil aplikasi Anda",
   "agentDetail.configure.tools.empty.title": "Belum ada alat",
   "agentDetail.configure.tools.label": "Alat",
-  "agentDetail.configure.tools.moreActions": "Tindakan lainnya untuk {{name}}",
   "agentDetail.configure.tools.removeAction": "Hapus {{name}}",
   "agentDetail.configure.tools.removeProvider": "Hapus semua alat",
   "agentDetail.configure.tools.richTip": "Tambahkan Dify tools dari workspace Anda. <docLink>Pelajari selengkapnya</docLink>\n\nTools yang diinstal agen di sandbox-nya tidak akan muncul di sini, tetapi tetap tersedia baginya.",
