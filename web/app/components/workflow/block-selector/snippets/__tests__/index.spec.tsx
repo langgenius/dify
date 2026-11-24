@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Edge, Node } from '../../../types'
-import type { SnippetListItem, SnippetListResponse } from '@/types/snippet'
+import type { SnippetListItem } from '@/types/snippet'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -39,6 +39,14 @@ const snippet: SnippetListItem = {
   updated_at: 2,
   updated_by: 'user-1',
 }
+type SnippetListResponse = {
+  data: SnippetListItem[]
+  page: number
+  limit: number
+  total: number
+  has_more: boolean
+}
+
 const page = (data = [snippet]): SnippetListResponse => ({
   data,
   page: 1,

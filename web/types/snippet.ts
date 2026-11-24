@@ -34,14 +34,6 @@ export type Snippet = Omit<SnippetListItem, 'created_by' | 'updated_by' | 'autho
   updated_by: SnippetAccount | null
 }
 
-export type SnippetListResponse = {
-  data: SnippetListItem[]
-  page: number
-  limit: number
-  total: number
-  has_more: boolean
-}
-
 export type SnippetDSLImportResponse = {
   id: string
   status: string
