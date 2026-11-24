@@ -536,10 +536,49 @@ class TestOpensearchVectorCases:
         vector._client.search.return_value = {"hits": {"hits": []}}
         assert vector.get_ids_by_metadata_field("document_id", "doc-1") is None
 
-        vector.get_ids_by_metadata_field = MagicMock(return_value=["id-1"])
-        vector.delete_by_ids = MagicMock()
-        vector.delete_by_metadata_field("document_id", "doc-1")
-        vector.delete_by_ids.assert_called_once_with(["id-1"])
+    @staticmethod
+    def test_metadata_lookup_matches_the_exact_value(opensearch_module):
+        vector = opensearch_module.OpenSearchVector("collection_1", _opensearch_vector_config(opensearch_module))
+
+        def sent_query(key: str) -> dict:
+            vector._client.search.reset_mock()
+            vector.get_ids_by_metadata_field(key, "value")
+            return vector._client.search.call_args.kwargs["body"]
+
+        # doc_id and document_id are mapped as keyword, so the field itself holds the exact value.
+        assert sent_query("document_id")["query"] == {"term": {"metadata.document_id": "value"}}
+        # app_id and annotation_id are dynamically mapped text; only the keyword subfield is exact.
+        assert sent_query("annotation_id")["query"] == {"term": {"metadata.annotation_id.keyword": "value"}}
+        assert sent_query("app_id")["query"] == {"term": {"metadata.app_id.keyword": "value"}}
+        # Without a size the search returns at most 10 hits.
+        assert sent_query("app_id")["size"] == 10_000
+
+    @staticmethod
+    def test_delete_by_metadata_field_deletes_the_matched_documents(opensearch_module):
+        vector = opensearch_module.OpenSearchVector("collection_1", _opensearch_vector_config(opensearch_module))
+        vector._client.search.return_value = {"hits": {"hits": [{"_id": "es-1"}, {"_id": "es-2"}]}}
+        opensearch_module.helpers.bulk.reset_mock()
+
+        vector.delete_by_metadata_field("annotation_id", "annotation-1")
+
+        # The search already returns OpenSearch _ids, so they are deleted as they are. Passing them
+        # to delete_by_ids looked each one up again as a metadata doc_id and deleted nothing.
+        vector._client.search.assert_called_once()
+        actions = opensearch_module.helpers.bulk.call_args.args[1]
+        assert actions == [
+            {"_op_type": "delete", "_index": "collection_1", "_id": "es-1"},
+            {"_op_type": "delete", "_index": "collection_1", "_id": "es-2"},
+        ]
+
+    @staticmethod
+    def test_delete_by_metadata_field_without_matches_deletes_nothing(opensearch_module):
+        vector = opensearch_module.OpenSearchVector("collection_1", _opensearch_vector_config(opensearch_module))
+        vector._client.search.return_value = {"hits": {"hits": []}}
+        opensearch_module.helpers.bulk.reset_mock()
+
+        vector.delete_by_metadata_field("annotation_id", "missing")
+
+        opensearch_module.helpers.bulk.assert_not_called()
 
     @staticmethod
     def test_delete_by_ids_branches_and_bulk_error_handling(opensearch_module):
