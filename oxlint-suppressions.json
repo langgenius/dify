@@ -3492,14 +3492,6 @@
       "count": 1
     }
   },
-  "web/service/use-triggers.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 2
