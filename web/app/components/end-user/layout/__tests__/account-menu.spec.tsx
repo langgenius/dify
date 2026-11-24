@@ -1,4 +1,8 @@
-import type { WebAccountProfileResponse } from '@dify/contracts/api/web/types.gen'
+import type {
+  WebAccountProfileResponse,
+  WebSystemFeatureResponse,
+} from '@dify/contracts/api/web/types.gen'
+import { webcrypto } from 'node:crypto'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -12,6 +16,8 @@ import {
   setWebAppPassport,
   startWebAppAccountSession,
 } from '@/service/webapp-auth'
+import { redirectToWebAppPortalSignIn } from '@/service/webapp/portal-login'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import AccountMenu from '../account-menu'
@@ -38,6 +44,10 @@ const profile: WebAccountProfileResponse = {
   avatar: null,
   avatar_url: 'https://example.com/joel.png',
 }
+const systemFeatures = {
+  ...createSystemFeaturesFixture(),
+  console_web_url: 'https://accounts.example/console',
+} satisfies WebSystemFeatureResponse
 const clients: QueryClient[] = []
 
 function renderAccountMenu() {
@@ -52,6 +62,7 @@ function renderAccountMenu() {
 
 describe('end-user account menu', () => {
   beforeEach(() => {
+    vi.stubGlobal('crypto', webcrypto)
     localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/my-apps')
@@ -61,6 +72,7 @@ describe('end-user account menu', () => {
   afterEach(() => {
     for (const client of clients.splice(0)) client.clear()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
@@ -156,7 +168,7 @@ describe('end-user account menu', () => {
     expect(screen.queryByText('Joel')).not.toBeInTheDocument()
   })
 
-  it('logs out using the account cookie and clears signed-in passports only after success', async () => {
+  it('clears the Web App session and sends the browser to Console sign-out before signing in again', async () => {
     const user = userEvent.setup()
     const app = { kind: 'default', code: 'previous-app' } as const
     setWebAppAccessToken('account-session', 'end_user')
@@ -166,7 +178,10 @@ describe('end-user account menu', () => {
     const requests: Request[] = []
     vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       const request = new Request(input, init)
-      if (new URL(request.url).pathname.endsWith('/logout')) {
+      const { pathname } = new URL(request.url)
+      if (pathname.endsWith('/system-features'))
+        return Promise.resolve(Response.json(systemFeatures))
+      if (pathname.endsWith('/logout')) {
         requests.push(request)
         return pending.promise
       }
@@ -193,15 +208,26 @@ describe('end-user account menu', () => {
     expect(getAuthenticatedWebAppPassport(app)).toBe('signed-in-passport')
     expect(replace).not.toHaveBeenCalled()
 
+    const recovery = redirectToWebAppPortalSignIn('/my-apps?view=starred')
     pending.resolve(Response.json({ result: 'success' }))
+    await recovery
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/my-apps'))
+    await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+    const signin = new URL(replace.mock.calls[0]![0])
+    expect(`${signin.origin}${signin.pathname}`).toBe('https://accounts.example/console/signin')
+    expect(Object.fromEntries(signin.searchParams)).toEqual({
+      is_end_user: '1',
+      redirect_url: '/my-apps',
+      code_challenge: expect.stringMatching(/^[\w-]{43}$/),
+      code_challenge_method: 'S256',
+      switch_account: '1',
+    })
     expect(getWebAppAccessToken()).toBe('')
     expect(getAuthenticatedWebAppPassport(app)).toBe('')
     expect(getAnonymousWebAppPassport(app)).toBe('anonymous-history')
   })
 
-  it('keeps the signed-in session when logout fails and allows retry from the menu', async () => {
+  it.each([401, 503])('allows retry after logout fails with %s', async (status) => {
     const user = userEvent.setup()
     const app = { kind: 'default', code: 'previous-app' } as const
     setWebAppAccessToken('account-session', 'end_user')
@@ -209,14 +235,13 @@ describe('end-user account menu', () => {
     let attempts = 0
     vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
       const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/system-features'))
+        return Promise.resolve(Response.json(systemFeatures))
       if (new URL(request.url).pathname.endsWith('/logout')) {
         attempts += 1
         return Promise.resolve(
           attempts === 1
-            ? Response.json(
-                { code: 'server_error', message: 'Logout unavailable', status: 503 },
-                { status: 503 },
-              )
+            ? Response.json({ message: 'Logout unavailable', status }, { status })
             : Response.json({ result: 'success' }),
         )
       }
@@ -234,7 +259,8 @@ describe('end-user account menu', () => {
     expect(replace).not.toHaveBeenCalled()
     await user.click(screen.getByRole('menuitem', { name: 'Log out' }))
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/my-apps'))
+    await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+    expect(new URL(replace.mock.calls[0]![0]).searchParams.get('switch_account')).toBe('1')
     expect(attempts).toBe(2)
     expect(getWebAppAccessToken()).toBe('')
   })
