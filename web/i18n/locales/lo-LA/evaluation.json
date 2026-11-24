@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "ເລືອກໄລບຣາຣີທີ່ໃຊ້ຄຳນວນຕົວວັດແທກໃນຕົວ. ແຕ່ລະເຟຣມເວີກຮອງຮັບຕົວວັດແທກທີ່ແຕກຕ່າງກັນ.",
   "judgeFramework.title": "ກອບການປະເມີນ",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

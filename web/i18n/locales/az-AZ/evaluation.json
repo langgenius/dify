@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "Daxili metrikləri hesablayan kitabxananı seçin. Hər framework fərqli metrik dəstini dəstəkləyir.",
   "judgeFramework.title": "Qiymətləndirmə çərçivəsi",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "اختر المكتبة التي تحسب المقاييس المدمجة. يدعم كل إطار عمل مجموعة مختلفة من المقاييس.",
   "judgeFramework.title": "إطار التقييم",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

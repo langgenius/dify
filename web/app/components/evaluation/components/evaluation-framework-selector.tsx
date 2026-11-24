@@ -1,6 +1,7 @@
 'use client'
 
 import type { EvaluationFramework, EvaluationResourceProps } from '../types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { useEvaluationResource, useEvaluationStore } from '../store'
+import DocLearnMoreLink from './doc-learn-more-link'
 
 const FRAMEWORK_OPTIONS: Array<{ value: EvaluationFramework; label: string }> = [
   { value: 'ragas', label: 'Ragas' },
@@ -32,9 +34,18 @@ const EvaluationFrameworkSelector = ({ resourceType, resourceId }: EvaluationRes
       }}
     >
       {/* Match the judge model header height beside it. */}
-      <SelectLabel className="flex min-h-6 items-center system-md-semibold text-text-primary">
-        {t(($) => $['judgeFramework.title'])}
-      </SelectLabel>
+      <div className="flex min-h-6 items-center gap-1">
+        <SelectLabel className="system-md-semibold text-text-primary">
+          {t(($) => $['judgeFramework.title'])}
+        </SelectLabel>
+        <Infotip>
+          <InfotipTrigger aria-label={t(($) => $['judgeFramework.title'])} />
+          <InfotipContent aria-label={t(($) => $['judgeFramework.title'])} className="max-w-72">
+            {t(($) => $['judgeFramework.description'])}{' '}
+            <DocLearnMoreLink path="/use-dify/evaluate/metrics#choose-a-framework" />
+          </InfotipContent>
+        </Infotip>
+      </div>
       <SelectTrigger aria-label={t(($) => $['judgeFramework.title'])} className="mt-1.5 w-full">
         <SelectValue<EvaluationFramework>>
           {(value) => FRAMEWORK_OPTIONS.find((option) => option.value === value)?.label}

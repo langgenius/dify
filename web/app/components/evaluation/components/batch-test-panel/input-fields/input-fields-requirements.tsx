@@ -4,6 +4,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEvaluationResource } from '../../../store'
+import DocLearnMoreLink from '../../doc-learn-more-link'
 
 type InputFieldsRequirementsProps = EvaluationResourceProps & {
   inputFields: InputField[]
@@ -87,7 +88,8 @@ const InputFieldsRequirements = ({
         {t(($) => $['batch.requirementsTitle'])}
       </div>
       <div className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['batch.requirementsDescription'])}
+        {t(($) => $['batch.requirementsDescription'])}{' '}
+        <DocLearnMoreLink path="/use-dify/evaluate/run-evaluations#prepare-a-test-set" />
       </div>
       <div className="mt-3 rounded-xl bg-background-section p-3">
         {/* Placeholder rows keep the buttons below from jumping when the columns load. */}

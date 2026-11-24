@@ -2,7 +2,9 @@ import type { InputField } from '../input-fields-utils'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
+import common from '@/i18n/locales/en-US/common.json'
 import evaluation from '@/i18n/locales/en-US/evaluation.json'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { useEvaluationStore } from '../../../../store'
 import InputFieldsRequirements from '../input-fields-requirements'
 
@@ -14,19 +16,24 @@ async function renderRequirements(
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { evaluation } },
+    resources: { 'en-US': { common, evaluation } },
     keySeparator: false,
     interpolation: { escapeValue: false },
   })
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
   return render(
-    <I18nextProvider i18n={i18n}>
-      <InputFieldsRequirements
-        resourceType={resourceType}
-        resourceId={resourceId}
-        inputFields={inputFields}
-        isLoading={false}
-      />
-    </I18nextProvider>,
+    <ConsoleProvider>
+      <I18nextProvider i18n={i18n}>
+        <InputFieldsRequirements
+          resourceType={resourceType}
+          resourceId={resourceId}
+          inputFields={inputFields}
+          isLoading={false}
+        />
+      </I18nextProvider>
+    </ConsoleProvider>,
   )
 }
 
@@ -46,6 +53,12 @@ it('explains each workflow input and expected result through its named help butt
   )
 
   await expect.element(screen.getByText('Data requirements')).toBeVisible()
+  await expect
+    .element(screen.getByRole('link', { name: 'Learn more' }))
+    .toHaveAttribute(
+      'href',
+      expect.stringContaining('/cloud/use-dify/evaluate/run-evaluations#prepare-a-test-set'),
+    )
   for (const [name, description] of fields) {
     await screen.getByRole('button', { name }).click()
     await expect.element(screen.getByRole('dialog', { name })).toHaveTextContent(description)

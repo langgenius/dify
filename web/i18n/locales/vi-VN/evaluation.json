@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "Chọn thư viện dùng để tính các chỉ số tích hợp sẵn. Mỗi framework hỗ trợ một nhóm chỉ số khác nhau.",
   "judgeFramework.title": "Khung đánh giá",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

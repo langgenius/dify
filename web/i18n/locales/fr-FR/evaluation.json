@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "Choisissez la bibliothèque qui calcule les métriques intégrées. Chaque framework prend en charge des métriques différentes.",
   "judgeFramework.title": "Cadre d’évaluation",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

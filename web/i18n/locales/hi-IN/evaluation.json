@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "वह लाइब्रेरी चुनें जो बिल्ट-इन मेट्रिक्स की गणना करती है। हर फ्रेमवर्क अलग-अलग मेट्रिक्स का समर्थन करता है।",
   "judgeFramework.title": "मूल्यांकन फ्रेमवर्क",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

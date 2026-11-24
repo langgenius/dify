@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 
 type WorkflowKindChangeDialogProps = {
   /** The kind the workflow switches to; null keeps the dialog closed. */
@@ -25,6 +26,7 @@ export function WorkflowKindChangeDialog({
   onConfirm,
 }: WorkflowKindChangeDialogProps) {
   const { t } = useTranslation(['common', 'workflow'])
+  const docLink = useDocLink()
   const toStandard = targetKind === 'standard'
   const title = toStandard
     ? t(($) => $['common.switchToStandardWorkflow'], { ns: 'workflow' })
@@ -41,9 +43,23 @@ export function WorkflowKindChangeDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            {toStandard
-              ? t(($) => $['common.switchToStandardWorkflowDescription'], { ns: 'workflow' })
-              : t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}
+            {toStandard ? (
+              t(($) => $['common.switchToStandardWorkflowDescription'], { ns: 'workflow' })
+            ) : (
+              <>
+                {t(($) => $['common.evaluationWorkflowDescription'], { ns: 'workflow' })}{' '}
+                <a
+                  className="rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  href={docLink(
+                    '/use-dify/evaluate/custom-evaluators#publish-it-as-an-evaluation-workflow',
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t(($) => $['operation.learnMore'])}
+                </a>
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

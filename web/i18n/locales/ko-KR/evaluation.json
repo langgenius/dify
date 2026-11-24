@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "기본 제공 지표를 계산할 라이브러리를 선택하세요. 프레임워크마다 지원하는 지표가 다릅니다.",
   "judgeFramework.title": "평가 프레임워크",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

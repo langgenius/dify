@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "Izberite knjižnico, ki izračuna vgrajene metrike. Vsako ogrodje podpira drugačen nabor metrik.",
   "judgeFramework.title": "Ogrodje za vrednotenje",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

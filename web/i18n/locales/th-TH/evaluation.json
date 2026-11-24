@@ -103,6 +103,7 @@
   "history.status.pending": "Pending",
   "history.status.running": "Running",
   "history.title": "Test History",
+  "judgeFramework.description": "เลือกไลบรารีที่ใช้คำนวณเมตริกในตัว แต่ละเฟรมเวิร์กรองรับเมตริกต่างกัน",
   "judgeFramework.title": "เฟรมเวิร์กการประเมิน",
   "judgeModel.description": "Choose the model used to score your evaluation results.",
   "judgeModel.title": "Judge Model",

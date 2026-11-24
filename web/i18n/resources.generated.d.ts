@@ -3581,6 +3581,7 @@ export default interface Resources {
     'history.status.pending': 'Pending'
     'history.status.running': 'Running'
     'history.title': 'Test History'
+    'judgeFramework.description': 'Choose the library that calculates built-in metrics. Each framework supports a different set of metrics.'
     'judgeFramework.title': 'Evaluation Framework'
     'judgeModel.description': 'Choose the model used to score your evaluation results.'
     'judgeModel.title': 'Judge Model'
