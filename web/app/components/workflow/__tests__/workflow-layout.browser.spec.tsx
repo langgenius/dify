@@ -9,14 +9,6 @@ import Panel from '../panel'
 import { ControlMode } from '../types'
 import { renderWorkflowBrowserComponent } from './workflow-browser-test-env'
 
-// boundary: Browser Mode runs without the Next.js router.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  ...createTestNavigation(),
-}))
-
-const { NavigationProvider } = createTestNavigation({ url: '/app/test/workflow' })
-
 setupFakeApi({
   console: {
     apps: {
@@ -31,7 +23,8 @@ setupFakeApi({
 })
 
 async function renderEditor() {
-  await page.viewport(1200, 760)
+  const { NavigationProvider } = createTestNavigation({ url: `/app/${TEST_APP_ID}/workflow` })
+  await page.viewport(1400, 760)
   return renderWorkflowBrowserComponent(
     <NavigationProvider>
       <NuqsTestingAdapter>
@@ -41,7 +34,11 @@ async function renderEditor() {
               nodes={[]}
               edges={[]}
               viewport={{ x: 0, y: 0, zoom: 1 }}
-              sidePanel={<Panel components={{ right: <aside style={{ width: 530 }} /> }} />}
+              sidePanel={
+                <Panel
+                  components={{ right: <aside style={{ width: 'clamp(520px, 45vw, 540px)' }} /> }}
+                />
+              }
             />
           </div>
         </EventEmitterContextProvider>
@@ -66,13 +63,21 @@ async function renderEditor() {
   )
 }
 
-it('keeps a mode button clickable over a draft marker', async () => {
+it('places comments in bottom-bar padding and keeps a mode button clickable over the draft', async () => {
   const screen = await renderEditor()
   const pointer = screen.getByRole('button', { name: 'workflow.common.pointerMode' })
   const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
-  await pane.click({ position: { x: 180, y: 300 } })
+  const canvas = pane.element().getBoundingClientRect()
+  await pane.click({ position: { x: 180, y: canvas.height - 4 } })
 
   const marker = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+  await expect.element(marker).toBeVisible()
+  const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
+  await expect.element(composer).toHaveFocus()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(marker).not.toBeInTheDocument()
+
+  await pane.click({ position: { x: 180, y: 300 } })
   await expect.element(marker).toBeVisible()
   await userEvent.dragAndDrop(marker, pointer, {
     sourcePosition: { x: 12, y: 12 },
@@ -124,4 +129,20 @@ it('centers the toolbar above the inspector and adapts the inspector to its avai
   await expect.element(variable).not.toBeInTheDocument()
   await menu.click()
   await expect.element(variable).toBeVisible()
+})
+
+it('keeps reporting the side-panel width after leaving version restore', async () => {
+  const { store } = await renderEditor()
+  await expect.poll(() => store.getState().rightPanelWidth).toBe(540)
+
+  store.getState().setIsRestoring(true)
+  const pointer = page.getByRole('button', { name: 'workflow.common.pointerMode' })
+  await expect.element(pointer).toBeDisabled()
+  store.getState().setIsRestoring(false)
+  await expect.element(pointer).toBeEnabled()
+
+  await page.viewport(960, 760)
+  await expect
+    .poll(() => [store.getState().rightPanelWidth, store.getState().otherPanelWidth])
+    .toEqual([520, 520])
 })

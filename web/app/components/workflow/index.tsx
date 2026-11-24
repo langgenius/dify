@@ -612,7 +612,8 @@ export const Workflow: FC<WorkflowProps> = memo(
         <HelpLine />
         <CandidateNode />
         <CommentManager />
-        <div className="pointer-events-none absolute inset-0 isolate">
+        {/* Comments use canvas coordinates and only their visible controls receive clicks. */}
+        <div className="absolute inset-x-0 top-0 isolate h-0">
           {controlMode === ControlMode.Comment && isMouseOverCanvas && <CommentCursor />}
           <WorkflowCommentLayer />
         </div>

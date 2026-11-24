@@ -79,7 +79,7 @@ export function CommentInput({
     <>
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Escape bubbling from the marker after it handles its own keys. */}
       <div
-        className="pointer-events-auto absolute z-3 data-disabled:pointer-events-none data-disabled:opacity-80"
+        className="absolute z-3 data-disabled:pointer-events-none data-disabled:opacity-80"
         style={{ left: canvasPosition.x, top: canvasPosition.y }}
         data-comment-input
         data-disabled={disabled || undefined}

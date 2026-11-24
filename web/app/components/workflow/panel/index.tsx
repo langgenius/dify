@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
 import dynamic from 'next/dynamic'
-import { memo, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect } from 'react'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import NodePanel from '../nodes/panel'
@@ -35,48 +35,40 @@ const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number
   return element.getBoundingClientRect().width
 }
 
-const useResizeObserver = (callback: (width: number) => void) => {
-  const elementRef = useRef<HTMLDivElement>(null)
-  const widthRef = useRef<number | undefined>(undefined)
-  const animationFrameRef = useRef<number | undefined>(undefined)
+const useResizeObserver = (callback: (width: number) => void) =>
+  useCallback(
+    (element: HTMLDivElement | null) => {
+      if (!element) return
 
-  useEffect(() => {
-    const element = elementRef.current
-    if (!element) return
+      let lastWidth: number | undefined
+      let animationFrame: number | undefined
 
-    widthRef.current = undefined
+      const updateWidth = (width: number) => {
+        if (lastWidth === width) return
 
-    const updateWidth = (width: number) => {
-      if (widthRef.current === width) return
+        lastWidth = width
+        if (animationFrame !== undefined) cancelAnimationFrame(animationFrame)
 
-      widthRef.current = width
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
-
-      animationFrameRef.current = requestAnimationFrame(() => {
-        animationFrameRef.current = undefined
-        callback(width)
-      })
-    }
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) updateWidth(getEntryWidth(entry, element))
-    })
-
-    resizeObserver.observe(element)
-
-    const initialWidth = element.getBoundingClientRect().width
-    updateWidth(initialWidth)
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = undefined
+        animationFrame = requestAnimationFrame(() => {
+          animationFrame = undefined
+          callback(width)
+        })
       }
-      resizeObserver.disconnect()
-    }
-  }, [callback])
-  return elementRef
-}
+
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) updateWidth(getEntryWidth(entry, element))
+      })
+
+      resizeObserver.observe(element)
+      updateWidth(element.getBoundingClientRect().width)
+
+      return () => {
+        if (animationFrame !== undefined) cancelAnimationFrame(animationFrame)
+        resizeObserver.disconnect()
+      }
+    },
+    [callback],
+  )
 
 const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const selectedNode = useReactflow(

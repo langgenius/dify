@@ -61,7 +61,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { t } = useTranslation(['workflow'] as const)
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
-  const rightPanelWidth = useStore((state) => state.rightPanelWidth)
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
@@ -108,6 +107,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     isConnected,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId || '', appACLCapabilities.canEdit, reactFlowStore)
+  const isCollaborationGraphLoading =
+    isCollaborationEnabled &&
+    (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady)
+  const loadingPanelInset = useStore((state) =>
+    isCollaborationGraphLoading ? state.rightPanelWidth : undefined,
+  )
   const myUserId = useMemo(
     () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
     [isCollaborationEnabled, isConnected],
@@ -558,50 +563,49 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             sidePanel={<WorkflowPanel />}
           >
             <WorkflowChildren />
-            {isCollaborationEnabled &&
-              (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
+            {isCollaborationGraphLoading && (
+              <div
+                data-testid="collaboration-graph-loading"
+                className={cn(
+                  'absolute inset-0 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
+                  !joinFailure && 'cursor-wait',
+                )}
+                style={{ paddingInlineEnd: loadingPanelInset }}
+              >
                 <div
-                  data-testid="collaboration-graph-loading"
-                  className={cn(
-                    'absolute inset-0 flex items-start justify-center pt-16 transition-[opacity,visibility] delay-300 duration-150 motion-reduce:duration-0 starting:invisible starting:opacity-0',
-                    !joinFailure && 'cursor-wait',
-                  )}
-                  style={{ paddingInlineEnd: rightPanelWidth }}
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
                 >
-                  <div
-                    role="status"
-                    aria-live="polite"
-                    className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
-                  >
-                    {joinFailure ? (
-                      <>
-                        <span>
-                          {joinFailure === 'denied'
-                            ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
-                            : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
-                        </span>
-                        {joinFailure !== 'session_unavailable' && (
-                          <Button
-                            size="small"
-                            variant="secondary"
-                            onClick={() => window.location.reload()}
-                          >
-                            {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          aria-hidden="true"
-                          className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
-                        />
-                        <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
-                      </>
-                    )}
-                  </div>
+                  {joinFailure ? (
+                    <>
+                      <span>
+                        {joinFailure === 'denied'
+                          ? t(($) => $['collaboration.joinDenied'], { ns: 'workflow' })
+                          : t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}
+                      </span>
+                      {joinFailure !== 'session_unavailable' && (
+                        <Button
+                          size="small"
+                          variant="secondary"
+                          onClick={() => window.location.reload()}
+                        >
+                          {t(($) => $['collaboration.reloadPage'], { ns: 'workflow' })}
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+                      />
+                      <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
           </Workflow>
         </HumanInputMigrationProvider>
       </HooksStoreContextProvider>
