@@ -23,8 +23,6 @@ import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
-const ONLINE_USER_AVATAR_REFRESH_INTERVAL_MS = 60_000
-
 const OnlineUsers = () => {
   const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments', 'workflow'])
   const appId = useAtomValue(editorAppIdAtom)
@@ -59,8 +57,6 @@ const OnlineUsers = () => {
         : skipToken,
       gcTime: 0,
       retry: false,
-      refetchInterval: avatarAppId ? ONLINE_USER_AVATAR_REFRESH_INTERVAL_MS : false,
-      refetchIntervalInBackground: false,
     }),
   )
 

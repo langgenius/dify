@@ -63,10 +63,6 @@ it('keeps the last visible avatars when a room refresh fails', async () => {
     .spyOn(collaborationManager, 'getOnlineUserAvatars')
     .mockResolvedValue({ 'sid-bob': avatarUrl })
   onTestFinished(() => getOnlineUserAvatars.mockRestore())
-  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
-  onTestFinished(() => {
-    vi.useRealTimers()
-  })
 
   const screen = await renderWorkflowBrowserComponent(
     <TooltipProvider>
@@ -74,28 +70,18 @@ it('keeps the last visible avatars when a room refresh fails', async () => {
     </TooltipProvider>,
     { resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true } },
   )
-  await vi.advanceTimersByTimeAsync(0)
-  const bobAvatar = screen
-    .getByRole('button', { name: 'workflow.collaboration.viewCollaborators:{"count":4}' })
-    .getByAltText('')
-    .first()
-  await expect.element(bobAvatar).toBeVisible()
-
-  vi.clearAllTimers()
   const trigger = screen.getByRole('button', {
     name: 'workflow.collaboration.viewCollaborators:{"count":4}',
   })
+  const bobAvatar = trigger.getByAltText('').first()
+  await expect.element(bobAvatar).toBeVisible()
+
   const callsBeforeOpen = getOnlineUserAvatars.mock.calls.length
+  getOnlineUserAvatars.mockRejectedValueOnce(new Error('avatar acknowledgement timed out'))
   await trigger.click()
   await expect.poll(() => getOnlineUserAvatars.mock.calls.length).toBe(callsBeforeOpen + 1)
-  const callsBeforeRefresh = getOnlineUserAvatars.mock.calls.length
-  getOnlineUserAvatars.mockRejectedValueOnce(new Error('avatar acknowledgement timed out'))
-  expect(vi.getTimerCount()).toBe(1)
-  await vi.advanceTimersToNextTimerAsync()
-  expect(getOnlineUserAvatars).toHaveBeenCalledTimes(callsBeforeRefresh + 1)
   await expect(getOnlineUserAvatars.mock.results.at(-1)?.value).rejects.toThrow(
     'avatar acknowledgement timed out',
   )
-  await vi.advanceTimersByTimeAsync(0)
   await expect.element(bobAvatar).toBeVisible()
 })
