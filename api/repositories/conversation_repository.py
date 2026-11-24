@@ -462,12 +462,11 @@ class ConversationRepository:
             )
             candidates = candidates.where(Conversation.created_at < end_before)
             if cursor is not None:
+                cursor_at, cursor_id = cursor
+                # Give the app and time index an explicit bound and use IDs to break ties.
                 candidates = candidates.where(
-                    tuple_(Conversation.created_at, Conversation.id)
-                    > tuple_(
-                        literal(cursor[0], type_=Conversation.created_at.type),
-                        literal(cursor[1], type_=Conversation.id.type),
-                    )
+                    Conversation.created_at >= cursor_at,
+                    or_(Conversation.created_at != cursor_at, Conversation.id > cursor_id),
                 )
             page = (
                 session.execute(

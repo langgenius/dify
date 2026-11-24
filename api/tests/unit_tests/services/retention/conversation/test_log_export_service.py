@@ -219,7 +219,7 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         invoke_from=InvokeFrom.SERVICE_API,
     )
     account_conversation = make_conversation(
-        conversation_id="conversation-2",
+        conversation_id="account-conversation",
         mode=app.mode,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account.id,
@@ -286,8 +286,12 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         from_source=FeedbackFromSource.ADMIN,
     )
     conversations = [unmatched, conversation, account_conversation, debug]
-    for item in conversations:
-        item.created_at = datetime(2026, 1, 15, 6)
+    start = datetime(2026, 1, 15, 6)
+    end = datetime(2026, 1, 15, 6, 1)
+    for item in (unmatched, conversation, debug):
+        item.created_at = start
+    # The later page must include this conversation even though its ID sorts earlier.
+    account_conversation.created_at = end
     with sqlite_session_factory.begin() as session:
         session.add_all([account, app, end_user, *conversations, *runs, *messages])
         session.add_all([feedback, admin_feedback])
@@ -295,8 +299,8 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     context = RequestContext(request_id="test", trace_id=None, account_id=account.id, active_workspace_id=app.tenant_id)
     filters = ConsoleConversationLogFilters(
         keyword="needle",
-        start=datetime(2026, 1, 15, 6),
-        end=datetime(2026, 1, 15, 6),
+        start=start,
+        end=end,
         annotation_status="all",
         sort_by="-created_at",
         end_user_ids=(end_user.id,),
