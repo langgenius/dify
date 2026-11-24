@@ -3465,7 +3465,7 @@
   },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 9
+      "count": 5
     },
     "dify/require-disable-directive-description": {
       "count": 1
@@ -3502,14 +3502,6 @@
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
-  "web/service/use-workflow.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "typescript/no-deprecated": {
       "count": 2
     }
   },
@@ -3552,7 +3544,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/utils/clipboard.ts": {

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type {
-  FetchWorkflowDraftResponse,
   WorkflowFinishedResponse,
   WorkflowPausedResponse,
   WorkflowStartedResponse,
@@ -39,6 +38,8 @@ import {
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { useWorkflowRun } from '../use-workflow-run'
 
 const api = vi.hoisted(() => ({
@@ -476,12 +477,12 @@ it('aborts the run transport when stopped before a task identifier arrives', asy
 
 it.each([
   { name: 'published variables', variables: [{ ...environment, value: 'eu-west-1' }] },
-  { name: 'no published variables', variables: undefined },
+  { name: 'no published variables', variables: [] },
 ])(
   'restores a published graph and replaces the draft environment with $name',
   async ({ variables }) => {
     const { result, store, features, canvasUpdate } = await setup()
-    const published: FetchWorkflowDraftResponse = {
+    const published = createWorkflowResponseFixture({
       id: 'published-1',
       version: '2026-10-18T00:00:00Z',
       hash: 'published-hash',
@@ -514,7 +515,10 @@ it.each([
         file_upload: features.getState().features.file,
       },
       environment_variables: variables,
-    }
+    })
+    // The saved version carries no upload config; restoring keeps the server's current limits.
+    const uploadConfig = createFileUploadConfigFixture({ file_size_limit: 50 })
+    store.getState().setFileUploadConfig(uploadConfig)
     act(() => result.current.run.handleRestoreFromPublishedWorkflow(published))
     expect(canvasUpdate).toHaveBeenCalledWith({
       type: WORKFLOW_DATA_UPDATE,
@@ -529,11 +533,12 @@ it.each([
         edges: [],
       },
     })
-    expect(store.getState().environmentVariables).toEqual(variables ?? [])
+    expect(store.getState().environmentVariables).toEqual(variables)
     expect(features.getState().features).toMatchObject({
       opening: { enabled: true, opening_statement: 'Welcome', suggested_questions: ['Help'] },
       suggested: { enabled: true },
     })
+    expect(features.getState().features.file?.fileUploadConfig).toEqual(uploadConfig)
   },
 )
 

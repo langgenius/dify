@@ -85,6 +85,9 @@ beforeEach(() => {
 })
 
 const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+const pluginTaskListKey = consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+  input: { query: { page: 1, page_size: 100 } },
+})
 
 const createQueryClient = () =>
   new QueryClient({
@@ -1136,8 +1139,9 @@ describe('usePluginTaskList', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
-      tasks: [
+    expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({ tasks: [startedTask] })
+    await waitFor(() =>
+      expect(result.current.pluginTasks).toEqual([
         {
           ...startedTask,
           plugins: [
@@ -1147,8 +1151,8 @@ describe('usePluginTaskList', () => {
             },
           ],
         },
-      ],
-    })
+      ]),
+    )
   })
 
   it('replaces an existing task with the latest start response task data', () => {
@@ -1157,7 +1161,7 @@ describe('usePluginTaskList', () => {
       install_permission: PermissionType.admin,
       debug_permission: PermissionType.admin,
     })
-    queryClient.setQueryData(['plugins', 'pluginTaskList'], {
+    queryClient.setQueryData(pluginTaskListKey, {
       tasks: [
         {
           id: 'task-new',
@@ -1201,7 +1205,7 @@ describe('usePluginTaskList', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+    expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
       tasks: [
         {
           id: 'task-new',
@@ -1268,7 +1272,7 @@ describe('usePluginTaskList', () => {
     })
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+      expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
         tasks: [staleTask],
       })
     })
@@ -1283,23 +1287,12 @@ describe('usePluginTaskList', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledTimes(2)
-      expect(queryClient.isFetching({ queryKey: ['plugins', 'pluginTaskList'] })).toBe(0)
+      expect(queryClient.isFetching({ queryKey: pluginTaskListKey })).toBe(0)
     })
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
-        tasks: [
-          {
-            ...startedTask,
-            plugins: [
-              {
-                ...startedTask.plugins[0],
-                taskId: 'task-new',
-              },
-            ],
-          },
-          staleTask,
-        ],
+      expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
+        tasks: [startedTask, staleTask],
       })
     })
   })
