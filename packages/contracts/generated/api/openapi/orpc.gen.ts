@@ -2105,14 +2105,15 @@ export const permittedExternalApps = {
 /**
  * Precondition: ``token`` in the query string
  *
- * Postcondition: 200 with the parked file as an attachment
- * while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
+ * Postcondition: 200 with the parked file as an attachment,
+ * streamed from storage with its stored size as ``Content-Length``, while its download link works; the token
+ * is checked before a slot is taken, and the slot is held until the response closes. Refusals: 404 unknown,
  * wrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.
  */
 export const get41 = oc
   .route({
     description:
-      'Postcondition: 200 with the parked file as an attachment\nwhile its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,\nwrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.',
+      'Postcondition: 200 with the parked file as an attachment,\nstreamed from storage with its stored size as ``Content-Length``, while its download link works; the token\nis checked before a slot is taken, and the slot is held until the response closes. Refusals: 404 unknown,\nwrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTransfersByTransferId',
