@@ -133,6 +133,18 @@ def test_expire_ends_live_transfers_and_leaves_ended_ones(sqlite_session_factory
     }
 
 
+def test_known_names_the_ids_with_a_row_ended_or_not(sqlite_session_factory: sessionmaker[Session]) -> None:
+    repository = SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory)
+    live = _create(repository)
+    ended = _create(repository, now=_NOW - _LIFE - timedelta(seconds=1))
+    gone = _create(repository)
+    repository.delete(transfer_ids=[gone.id])
+
+    known = repository.known(transfer_ids=[live.id, ended.id, gone.id, "not-a-uuid"])
+
+    assert known == {live.id, ended.id}
+
+
 def test_delete_removes_the_rows(sqlite_session_factory: sessionmaker[Session]) -> None:
     repository = SQLAlchemyFileTransferRepository(session_factory=sqlite_session_factory)
     gone = _create(repository)

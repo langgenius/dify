@@ -9,6 +9,7 @@ from libs.archive_writer import ArchiveLimitKind, ArchiveTooLargeError
 from services.file_transfer import (
     FileTransferService,
     IncomingFile,
+    PurgeResult,
     TransferAlreadyReceivedError,
     TransferArchiveError,
     TransferDirection,
@@ -34,6 +35,7 @@ _LIMITS = TransferLimits(
     busy_retry_after=timedelta(seconds=7),
 )
 _START = datetime(2026, 11, 20, 10, 0)
+_WORKERS = 4
 _PDF = IncomingFile(name="r.pdf", mime_type="application/pdf", content=b"%PDF")
 
 
@@ -352,7 +354,7 @@ def test_a_failed_delete_of_bytes_leaves_the_ended_transfer_to_the_next_purge() 
     with pytest.raises(TransferNotFoundError):
         service.download(dropped.transfer.id, dropped.token)
 
-    assert service.purge_expired(limit=10) == 1
+    assert service.purge_expired(limit=10, workers=_WORKERS).removed == 1
     assert dropped.transfer.id not in transfers.rows
     assert blobs.files == {}
 
@@ -364,7 +366,7 @@ def test_purge_removes_rows_and_bytes_of_expired_transfers_only() -> None:
     clock.advance(_LIMITS.ttl)
     fresh = service.park("third", name="new", mime_type="text/plain", content=b"new")
 
-    assert service.purge_expired(limit=10) == 2
+    assert service.purge_expired(limit=10, workers=_WORKERS).removed == 2
 
     assert set(transfers.rows) == {fresh.transfer.id}
     assert set(blobs.files) == {f"file_transfers/{fresh.transfer.id}"}
@@ -379,10 +381,62 @@ def test_purge_stops_at_its_limit_oldest_first() -> None:
     second = service.prepare("b", folder=False)
     clock.advance(_LIMITS.ttl)
 
-    assert service.purge_expired(limit=1) == 1
+    assert service.purge_expired(limit=1, workers=_WORKERS).removed == 1
 
     assert set(transfers.rows) == {second.transfer.id}
     assert first.transfer.id not in transfers.rows
+
+
+def test_purge_says_how_overdue_the_most_overdue_transfer_was() -> None:
+    service, _, _, clock = _service()
+    service.prepare("a", folder=False)
+    clock.advance(timedelta(seconds=1))
+    service.prepare("b", folder=False)
+    clock.advance(_LIMITS.ttl + timedelta(seconds=30))
+
+    result = service.purge_expired(limit=10, workers=_WORKERS)
+
+    assert (result.removed, result.longest_overdue) == (2, timedelta(seconds=31))
+    assert service.purge_expired(limit=10, workers=_WORKERS) == PurgeResult(removed=0, longest_overdue=timedelta(0))
+
+
+def test_purge_deletes_many_transfers_bytes_at_once() -> None:
+    service, transfers, blobs, clock = _service(replace(_LIMITS, max_per_owner=50))
+    for index in range(30):
+        service.park("owner", name=str(index), mime_type="text/plain", content=b"x")
+    clock.advance(_LIMITS.ttl)
+
+    assert service.purge_expired(limit=50, workers=_WORKERS).removed == 30
+
+    assert (transfers.rows, blobs.files) == ({}, {})
+
+
+def test_the_sweep_deletes_stored_bytes_without_a_row_and_keeps_the_rest() -> None:
+    service, _, blobs, clock = _service()
+    ended = service.park("other", name="ended", mime_type="text/plain", content=b"ended")
+    clock.advance(_LIMITS.ttl)
+    live = service.park("owner", name="live", mime_type="text/plain", content=b"live")
+    blobs.files["file_transfers/left-behind"] = b"orphan"
+    blobs.files["elsewhere/kept"] = b"not ours"
+
+    assert service.sweep_orphans(workers=_WORKERS) == 1
+
+    assert set(blobs.files) == {
+        f"file_transfers/{live.transfer.id}",
+        f"file_transfers/{ended.transfer.id}",
+        "elsewhere/kept",
+    }
+
+
+def test_the_sweep_of_storage_that_never_held_a_transfer_deletes_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    service, _, blobs, _ = _service()
+
+    def no_folder(path: str) -> list[str]:
+        raise FileNotFoundError(path)
+
+    monkeypatch.setattr(blobs, "scan", no_folder)
+
+    assert service.sweep_orphans(workers=_WORKERS) == 0
 
 
 def test_only_the_digest_of_the_token_reaches_the_repository() -> None:

@@ -18,6 +18,8 @@ from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handl
 logger = logging.getLogger(__name__)
 
 FILE_TRANSFER_CLEAN_INTERVAL: Final = timedelta(minutes=10)
+# Lists every stored transfer file, so it runs rarely; it only catches bytes a failed write left behind.
+FILE_TRANSFER_SWEEP_INTERVAL: Final = timedelta(days=1)
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -388,6 +390,10 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["clean_file_transfers_task"] = {
             "task": "schedule.clean_file_transfers_task.clean_file_transfers_task",
             "schedule": FILE_TRANSFER_CLEAN_INTERVAL,
+        }
+        beat_schedule["sweep_file_transfers_task"] = {
+            "task": "schedule.clean_file_transfers_task.sweep_file_transfers_task",
+            "schedule": FILE_TRANSFER_SWEEP_INTERVAL,
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")

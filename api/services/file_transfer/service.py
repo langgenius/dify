@@ -1,4 +1,4 @@
-"""The file transfer service: prepare, receive, park, load, download, purge, and a slot counter."""
+"""The file transfer service: prepare, receive, park, load, download, purge, sweep, and a slot counter."""
 
 from __future__ import annotations
 
@@ -7,8 +7,10 @@ import hmac
 import posixpath
 import threading
 from collections.abc import Callable, Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta
+from functools import partial
 from typing import Final
 
 from libs.archive_reader import is_zip, read_archive
@@ -16,6 +18,7 @@ from libs.archive_writer import ArchiveError, ArchiveLimits
 from services.file_transfer.contracts import (
     IncomingFile,
     LoadedTransfer,
+    PurgeResult,
     StoredFile,
     Transfer,
     TransferAlreadyReceivedError,
@@ -211,13 +214,28 @@ class FileTransferService:
         key = self._existing_key(transfer_id)
         return transfer, self._blobs.load_stream(key)
 
-    def purge_expired(self, *, limit: int) -> int:
-        """Postcondition: up to ``limit`` expired transfers, oldest first, are gone with their bytes.
-        Returns how many were removed.
+    def purge_expired(self, *, limit: int, workers: int) -> PurgeResult:
+        """Postcondition: up to ``limit`` expired transfers, oldest first, are gone with their bytes; up to
+        ``workers`` byte deletions run at once. A failure leaves the rest for the next purge.
         """
-        expired = self._transfers.expired(now=self._now(), limit=limit)
-        self._delete(expired)
-        return len(expired)
+        now = self._now()
+        expired = self._transfers.expired(now=now, limit=limit)
+        self._delete(expired, delete_bytes=partial(self._delete_bytes_at_once, workers=workers))
+        overdue = (now - transfer.expires_at for transfer in expired)
+        return PurgeResult(removed=len(expired), longest_overdue=max(overdue, default=timedelta(0)))
+
+    def sweep_orphans(self, *, workers: int) -> int:
+        """Delete stored bytes whose transfer has no row; returns how many were deleted.
+
+        Precondition: the storage prefix belongs to this module alone. Postcondition: every key under it that
+        names no row is gone; up to ``workers`` deletions run at once. Safe beside live transfers, because a row
+        is written before its bytes: bytes with no row belong to a transfer that was dropped.
+        """
+        stored = [key.removeprefix(_STORAGE_PREFIX) for key in self._stored_keys()]
+        known = self._transfers.known(transfer_ids=stored)
+        orphans = [transfer_id for transfer_id in stored if transfer_id not in known]
+        self._delete_bytes_at_once(orphans, workers=workers)
+        return len(orphans)
 
     def take_slot(self) -> bool:
         """Postcondition: True when this caller now holds one of ``limits.max_active`` slots."""
@@ -291,7 +309,7 @@ class FileTransferService:
         live = [transfer for transfer in owned if transfer.expires_at > now]
         overflow = len(live) - self._limits.max_per_owner + 1
         doomed.extend(live[: max(overflow, 0)])
-        self._delete(doomed)
+        self._delete(doomed, delete_bytes=self._delete_bytes_in_turn)
 
     def _confirm_stored(self, transfer_id: str) -> None:
         """Precondition: the transfer's bytes were just stored.
@@ -304,17 +322,38 @@ class FileTransferService:
         self._delete_bytes(transfer_id)
         raise TransferNotFoundError(transfer_id)
 
-    def _delete(self, transfers: Sequence[Transfer]) -> None:
-        """Postcondition: the transfers are ended, then their bytes and their rows are gone; bytes already gone
-        are fine. A failure part way leaves the rest of the ended rows to ``purge_expired``.
+    def _delete(self, transfers: Sequence[Transfer], *, delete_bytes: Callable[[Sequence[str]], None]) -> None:
+        """Postcondition: the transfers are ended, then their bytes (through ``delete_bytes``) and their rows
+        are gone; bytes already gone are fine. A failure part way leaves the rest of the ended rows to
+        ``purge_expired``.
         """
         if not transfers:
             return
         transfer_ids = [transfer.id for transfer in transfers]
         self._transfers.expire(transfer_ids=transfer_ids, now=self._now())
+        delete_bytes(transfer_ids)
+        self._transfers.delete(transfer_ids=transfer_ids)
+
+    def _delete_bytes_in_turn(self, transfer_ids: Sequence[str]) -> None:
+        """Postcondition: no bytes are stored for the transfers; deleted one after another."""
         for transfer_id in transfer_ids:
             self._delete_bytes(transfer_id)
-        self._transfers.delete(transfer_ids=transfer_ids)
+
+    def _delete_bytes_at_once(self, transfer_ids: Sequence[str], *, workers: int) -> None:
+        """Postcondition: no bytes are stored for the transfers; up to ``workers`` deletions run at once, and
+        the first failure is raised once the others have finished.
+        """
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(self._delete_bytes, transfer_ids))
+
+    def _stored_keys(self) -> list[str]:
+        """Postcondition: every storage key under the module's prefix."""
+        try:
+            keys = self._blobs.scan(_STORAGE_PREFIX)
+        except FileNotFoundError:
+            # OpenDAL refuses to list a folder that does not exist yet: nothing was ever stored.
+            return []
+        return [key for key in keys if key.startswith(_STORAGE_PREFIX)]
 
     def _delete_bytes(self, transfer_id: str) -> None:
         """Postcondition: no bytes are stored for the transfer."""

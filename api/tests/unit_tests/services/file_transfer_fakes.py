@@ -99,6 +99,9 @@ class InMemoryTransfers:
             if transfer.expires_at > now:
                 self.rows[transfer.id] = replace(transfer, expires_at=now)
 
+    def known(self, *, transfer_ids: Sequence[str]) -> set[str]:
+        return {transfer_id for transfer_id in transfer_ids if transfer_id in self.rows}
+
     def delete(self, *, transfer_ids: Sequence[str]) -> None:
         for transfer_id in transfer_ids:
             self.rows.pop(transfer_id, None)
@@ -150,6 +153,9 @@ class InMemoryBlobs:
             self._fail_next_delete = False
             raise OSError("storage is down")
         del self.files[filename]
+
+    def scan(self, path: str) -> list[str]:
+        return [filename for filename in self.files if filename.startswith(path)]
 
     def fail_next_save(self) -> None:
         self._fail_next_save = True

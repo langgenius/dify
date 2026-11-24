@@ -104,6 +104,16 @@ class TransferFile:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class PurgeResult:
+    """What one purge removed. ``longest_overdue`` is how long the most overdue of them had been expired;
+    zero when it removed nothing.
+    """
+
+    removed: int
+    longest_overdue: timedelta
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class LoadedTransfer:
     transfer: Transfer
     files: tuple[TransferFile, ...]
@@ -116,6 +126,7 @@ class TransferBlobs(Protocol):
     def exists(self, filename: str) -> bool: ...
     def load_once(self, filename: str) -> bytes: ...
     def load_stream(self, filename: str) -> Iterator[bytes]: ...
+    def scan(self, path: str) -> list[str]: ...
     def delete(self, filename: str) -> Any: ...
 
 
@@ -125,7 +136,7 @@ class TransferRepository(Protocol):
     Owner scope: ``find`` and ``owned`` filter by owner. ``get``, ``token_digest``, ``claim`` and ``release``
     work by id alone, for callers that prove the right to a transfer with its token.
     Expiry: ``find``, ``get`` and ``token_digest`` see only transfers whose ``expires_at`` is after ``now``.
-    ``expire`` ends live transfers at ``now`` and leaves ended ones as they are.
+    ``expire`` ends live transfers at ``now`` and leaves ended ones as they are. ``known`` sees ended ones too.
     First write wins: ``claim`` is one conditional write that records the file only while none is recorded,
     so of two concurrent claims exactly one returns True.
     Stored text: ``create`` and ``claim`` refuse a file whose name or MIME type is longer than the table holds
@@ -151,6 +162,7 @@ class TransferRepository(Protocol):
     def owned(self, *, owner_id: str) -> Sequence[Transfer]: ...
     def expired(self, *, now: datetime, limit: int) -> Sequence[Transfer]: ...
     def expire(self, *, transfer_ids: Sequence[str], now: datetime) -> None: ...
+    def known(self, *, transfer_ids: Sequence[str]) -> set[str]: ...
     def delete(self, *, transfer_ids: Sequence[str]) -> None: ...
 
 

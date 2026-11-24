@@ -2,7 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import override
+from typing import Final, override
 from uuid import UUID
 
 from sqlalchemy import CursorResult, Select, delete, select, update
@@ -48,6 +48,10 @@ def _stored_file(row: FileTransfer) -> StoredFile | None:
     return StoredFile(
         name=row.name, mime_type=row.mime_type, size=row.size, sha256=row.sha256, received_at=row.received_at
     )
+
+
+# Ids per query when checking which transfers still have a row; keeps each IN list short.
+_KNOWN_CHUNK: Final = 1000
 
 
 class SQLAlchemyFileTransferRepository(TransferRepository):
@@ -165,6 +169,20 @@ class SQLAlchemyFileTransferRepository(TransferRepository):
         )
         with self._session_factory.begin() as session:
             session.execute(statement)
+
+    @override
+    def known(self, *, transfer_ids: Sequence[str]) -> set[str]:
+        """Postcondition: the ids among ``transfer_ids`` that have a row, ended or not; an id that is not a UUID
+        has none. Queried in chunks of ``_KNOWN_CHUNK`` ids.
+        """
+        ids = [transfer_id for transfer_id in transfer_ids if _is_uuid(transfer_id)]
+        chunks = [ids[start : start + _KNOWN_CHUNK] for start in range(0, len(ids), _KNOWN_CHUNK)]
+        with self._session_factory() as session:
+            return {
+                str(found)
+                for chunk in chunks
+                for found in session.scalars(select(FileTransfer.id).where(FileTransfer.id.in_(chunk)))
+            }
 
     @override
     def delete(self, *, transfer_ids: Sequence[str]) -> None:
