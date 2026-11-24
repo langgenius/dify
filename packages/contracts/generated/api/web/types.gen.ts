@@ -1857,7 +1857,9 @@ export type PostEmailCodeLoginValidityResponse =
   PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/files/upload'
@@ -2204,7 +2206,10 @@ export type PostFormHumanInputByFormTokenUploadTokenResponse =
   PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostHumanInputFormsFilesData = {
-  body?: never
+  body?: {
+    file?: Blob | File
+    url?: string
+  }
   path?: never
   query?: never
   url: '/human-input-forms/files'
