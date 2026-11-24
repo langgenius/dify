@@ -207,6 +207,13 @@ class HumanInputFileUploadApi(Resource):
         TooManyFilesError,
         UnsupportedFileTypeError,
     )
+    @web_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "file": {"description": "Local file to upload", "in": "formData", "type": "file", "required": False},
+            "url": {"description": "Remote file URL to fetch", "in": "formData", "type": "string", "required": False},
+        },
+    )
     def post(self) -> JsonResponseWithStatus:
         """Upload one local file or remote URL file for a HITL human input form."""
 

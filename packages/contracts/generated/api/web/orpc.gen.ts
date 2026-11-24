@@ -126,6 +126,7 @@ import {
   zPostEmailCodeLoginResponse,
   zPostEmailCodeLoginValidityBody,
   zPostEmailCodeLoginValidityResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
   zPostForgotPasswordBody,
   zPostForgotPasswordResetsBody,
@@ -148,6 +149,7 @@ import {
   zPostFormHumanInputV2PublicByFormTokenResponse,
   zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
   zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
+  zPostHumanInputFormsFilesBody,
   zPostHumanInputFormsFilesResponse,
   zPostHumanInputV2FilesBody,
   zPostHumanInputV2FilesHeaders,
@@ -534,6 +536,7 @@ export const post9 = oc
     summary: 'Upload a file for use in web applications',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
   .errors({
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
@@ -913,6 +916,7 @@ export const post19 = oc
     summary: 'Upload one local file or remote URL file for a HITL human input form',
     tags: ['web'],
   })
+  .input(z.object({ body: zPostHumanInputFormsFilesBody.optional() }).optional())
   .output(zPostHumanInputFormsFilesResponse)
   .errors({
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
