@@ -26,12 +26,13 @@ const getContractPath = (url: URL) => {
 }
 
 // `new Request(url, request)` would carry the body over as a stream, which needs `duplex`.
+// Firefox has no `Request.body`, so read the body for every method that can carry one.
 const withURL = async (input: Request, url: URL) => {
   if (url.href === input.url) return input
   return new Request(url, {
     method: input.method,
     headers: input.headers,
-    body: input.body ? await input.blob() : undefined,
+    body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.blob(),
     signal: input.signal,
     credentials: input.credentials,
     cache: input.cache,
