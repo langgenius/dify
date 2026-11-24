@@ -6,7 +6,7 @@ import type {
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
-import type { DuplicateGroup, PlannedAction } from './review'
+import type { DuplicateGroup, PairGroup, PlannedAction } from './review'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -15,7 +15,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { newKnowledgeDocumentDetailPath } from '../routes'
-import { fileTypeLabel, mergePlan, newestDocument, relativeTime } from './review'
+import {
+  disablePlan,
+  evidenceOf,
+  fileTypeLabel,
+  mergePlan,
+  newestDocument,
+  relativeTime,
+} from './review'
 
 type Finding = KnowledgeFsTidyFindingResponse
 type Evidence = KnowledgeFsTidyEvidenceResponse
@@ -303,6 +310,38 @@ function Passage({ evidence }: { evidence: Evidence }) {
   )
 }
 
+/** One document above its quoted passage: type, a link to the passage, and the revision. */
+function DocumentHeading({
+  card,
+  evidence,
+  spaceId,
+  title,
+}: {
+  card: KnowledgeFsTidyDocumentCardResponse | undefined
+  evidence: Evidence
+  spaceId: string
+  title: string
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0 rounded-sm bg-background-section px-1.5 py-0.5 font-mono system-2xs-medium-uppercase text-text-tertiary">
+        {fileTypeLabel(card?.mimeType, title)}
+      </span>
+      <Link
+        href={newKnowledgeDocumentDetailPath(spaceId, evidence.documentId, {
+          revision: evidence.revision,
+          chunkId: evidence.chunkId,
+        })}
+        title={title}
+        className="min-w-0 truncate system-sm-semibold text-text-primary hover:text-text-accent"
+      >
+        {title}
+      </Link>
+      <span className="shrink-0 system-xs-regular text-text-quaternary">v{evidence.revision}</span>
+    </div>
+  )
+}
+
 /** Findings already handled: their review state and an undo. */
 function StatusAside({
   busy,
@@ -321,7 +360,7 @@ function StatusAside({
   return (
     <>
       <p className="system-sm-medium text-text-secondary">{labels[finding.status]}</p>
-      {canManage && finding.status !== 'outdated' && (
+      {canManage && finding.status !== 'outdated' && finding.status !== 'open' && (
         <Button
           className="mt-auto w-full"
           disabled={busy || finding.stale}
@@ -462,73 +501,33 @@ export function PairCard({
   const dismiss = () => onRun([{ finding, action: 'dismiss' }])
   const review = (
     <Button
-      variant={finding.kind === 'conflict' ? 'primary' : 'secondary'}
       className="w-full"
       disabled={busy}
       onClick={() => onRun([{ finding, action: 'review' }])}
     >
       <span aria-hidden className="i-ri-check-line size-4" />
-      {t(($) => $['tidy.review'])}
+      {finding.kind === 'similar' ? t(($) => $['tidy.keepBoth']) : t(($) => $['tidy.review'])}
     </Button>
   )
 
+  // Open conflicts are reviewed per document pair (PairGroupCard); this is their handled state.
   if (finding.kind === 'conflict') {
     return (
       <FindingShell
         kind="conflict"
         title={finding.reason}
         stale={finding.stale}
-        onDismiss={editable ? dismiss : undefined}
-        aside={
-          open ? (
-            <>
-              <p className="body-sm-regular text-text-secondary">
-                {t(($) => $['tidy.conflictExplain'])}
-              </p>
-              {editable && (
-                <div className="mt-auto flex flex-col gap-2 pt-1">
-                  {review}
-                  {sides.map((evidence) => (
-                    <Button
-                      key={evidence.documentId}
-                      className="w-full"
-                      disabled={busy}
-                      onClick={() => disable(evidence)}
-                    >
-                      <span aria-hidden className="i-ri-forbid-line size-3.5" />
-                      <span className="truncate">
-                        {t(($) => $['tidy.disableOne'], { title: titleOf(evidence) })}
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <StatusAside busy={busy} canManage={canManage} finding={finding} onRun={onRun} />
-          )
-        }
+        aside={<StatusAside busy={busy} canManage={canManage} finding={finding} onRun={onRun} />}
       >
         <div className="grid gap-3 md:grid-cols-2">
           {sides.map((evidence) => (
             <div key={evidence.documentId} className="flex min-w-0 flex-col gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 rounded-sm bg-background-section px-1.5 py-0.5 font-mono system-2xs-medium-uppercase text-text-tertiary">
-                  {fileTypeLabel(cards[evidence.documentId]?.mimeType, titleOf(evidence))}
-                </span>
-                <Link
-                  href={newKnowledgeDocumentDetailPath(spaceId, evidence.documentId, {
-                    revision: evidence.revision,
-                    chunkId: evidence.chunkId,
-                  })}
-                  className="min-w-0 truncate system-sm-semibold text-text-primary hover:text-text-accent"
-                >
-                  {titleOf(evidence)}
-                </Link>
-                <span className="shrink-0 system-xs-regular text-text-quaternary">
-                  v{evidence.revision}
-                </span>
-              </div>
+              <DocumentHeading
+                card={cards[evidence.documentId]}
+                evidence={evidence}
+                spaceId={spaceId}
+                title={titleOf(evidence)}
+              />
               <Passage evidence={evidence} />
             </div>
           ))}
@@ -585,16 +584,29 @@ export function PairCard({
             />
             {editable && (
               <div className="mt-auto flex flex-col gap-2 pt-1">
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  disabled={busy}
-                  onClick={() => disable(other, kept)}
-                >
-                  <span aria-hidden className="i-ri-check-line size-4" />
-                  {t(($) => $['tidy.keepSelectedDisableOther'])}
-                </Button>
-                {review}
+                {isDuplicate ? (
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    disabled={busy}
+                    onClick={() => disable(other, kept)}
+                  >
+                    <span aria-hidden className="i-ri-check-line size-4" />
+                    {t(($) => $['tidy.keepSelectedDisableOther'])}
+                  </Button>
+                ) : (
+                  review
+                )}
+                {isDuplicate ? (
+                  review
+                ) : (
+                  // Overlapping documents usually both hold something unique: keeping both is as
+                  // likely the right call as dropping one, so neither is the highlighted default.
+                  <Button className="w-full" disabled={busy} onClick={() => disable(other, kept)}>
+                    <span aria-hidden className="i-ri-forbid-line size-3.5" />
+                    {t(($) => $['tidy.keepSelectedDisableOther'])}
+                  </Button>
+                )}
               </div>
             )}
           </>
@@ -636,6 +648,168 @@ export function PairCard({
             ))}
           </div>
         )}
+      </div>
+    </FindingShell>
+  )
+}
+
+/**
+ * Everything two documents disagree on, in one card. Each difference is settled on its own (the
+ * source was corrected, or both statements hold); taking a whole document out of retrieval is the
+ * exception, offered apart from the per-difference choices.
+ */
+export function PairGroupCard({
+  busy,
+  canManage,
+  cards,
+  group,
+  onConfirm,
+  onRun,
+  spaceId,
+}: CardProps & { group: PairGroup }) {
+  const { t, i18n } = useTranslation(['knowledgeSpace'])
+  const first = group.findings[0] as Finding
+  const titleOf = (id: string) => cards[id]?.title ?? evidenceOf(first, id).title
+  const [leftId, rightId] = group.documentIds
+  const newest = newestDocument(group.documentIds, cards)
+  const stale = group.findings.some((finding) => finding.stale)
+  const editable = canManage && !stale
+  const percent = Math.round((group.similar?.similarity ?? 0) * 100)
+  const semantic = group.similar?.reason === 'semantic_overlap'
+  const overlapLabel = semantic
+    ? t(($) => $['tidy.semanticCoverage'], { percent })
+    : t(($) => $['tidy.overlap'], { percent })
+  const disable = (documentId: string) => {
+    const plan = disablePlan(group, documentId)
+    onConfirm({
+      title: t(($) => $['tidy.disableOne'], { title: titleOf(documentId) }),
+      description:
+        plan.length > 1
+          ? `${t(($) => $['tidy.disableNotice'])} ${t(($) => $['tidy.disableAlsoResolves'], { count: plan.length - 1 })}`
+          : t(($) => $['tidy.disableNotice']),
+      plan,
+    })
+  }
+  return (
+    <FindingShell
+      kind="conflict"
+      title={t(($) => $['tidy.pairConflictTitle'], {
+        count: group.conflicts.length,
+        left: titleOf(leftId),
+        right: titleOf(rightId),
+      })}
+      meter={
+        group.similar ? (
+          <MatchMeter value={group.similar.similarity ?? 0} label={overlapLabel} />
+        ) : undefined
+      }
+      stale={stale}
+      onDismiss={
+        editable
+          ? () => onRun(group.findings.map((finding) => ({ finding, action: 'dismiss' })))
+          : undefined
+      }
+      aside={
+        <>
+          <p className="body-sm-regular text-text-secondary">
+            {t(($) => $['tidy.conflictExplain'])}
+          </p>
+          <Checklist
+            items={[
+              t(($) => $['tidy.newestIs'], {
+                title: titleOf(newest),
+                time: relativeTime(cards[newest]?.publishedAt, i18n.language),
+              }),
+              ...(group.similar ? [t(($) => $['tidy.pairAlsoSimilar'], { percent })] : []),
+            ]}
+          />
+          {editable && (
+            <div className="mt-auto flex flex-col gap-2 border-t border-divider-subtle pt-3">
+              <p className="system-xs-medium text-text-tertiary">
+                {t(($) => $['tidy.wholeOutdated'])}
+              </p>
+              {group.documentIds.map((id) => (
+                <Button
+                  key={id}
+                  size="small"
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() => disable(id)}
+                >
+                  <span aria-hidden className="i-ri-forbid-line size-3.5" />
+                  <span className="truncate">
+                    {t(($) => $['tidy.disableOne'], { title: titleOf(id) })}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          )}
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="hidden gap-3 md:grid md:grid-cols-2">
+          {group.documentIds.map((id) => (
+            <DocumentHeading
+              key={id}
+              card={cards[id]}
+              evidence={evidenceOf(first, id)}
+              spaceId={spaceId}
+              title={titleOf(id)}
+            />
+          ))}
+        </div>
+        <ol className="flex flex-col gap-4">
+          {group.conflicts.map((finding) => (
+            <li
+              key={finding.id}
+              aria-label={finding.reason}
+              className="flex flex-col gap-2 border-t border-divider-subtle pt-4 first:border-t-0 first:pt-0"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                <h4 className="min-w-0 flex-1 system-sm-semibold wrap-break-word text-text-primary">
+                  {finding.reason}
+                </h4>
+                {editable && (
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      size="small"
+                      variant="primary"
+                      disabled={busy}
+                      onClick={() => onRun([{ finding, action: 'review' }])}
+                    >
+                      <span aria-hidden className="i-ri-check-line size-3.5" />
+                      {t(($) => $['tidy.fixed'])}
+                    </Button>
+                    <Button
+                      size="small"
+                      disabled={busy}
+                      onClick={() => onRun([{ finding, action: 'dismiss' }])}
+                    >
+                      {t(($) => $['tidy.notConflict'])}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {group.documentIds.map((id) => (
+                  <div key={id} className="flex min-w-0 flex-col gap-2">
+                    {/* Side by side the column headings above name the documents; stacked, each passage does. */}
+                    <div className="md:hidden">
+                      <DocumentHeading
+                        card={cards[id]}
+                        evidence={evidenceOf(finding, id)}
+                        spaceId={spaceId}
+                        title={titleOf(id)}
+                      />
+                    </div>
+                    <Passage evidence={evidenceOf(finding, id)} />
+                  </div>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </FindingShell>
   )

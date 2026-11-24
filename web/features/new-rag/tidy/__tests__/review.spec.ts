@@ -1,5 +1,14 @@
 import type { KnowledgeFsTidyFindingResponse as TidyFinding } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { fileTypeLabel, groupDuplicates, mergePlan, newestDocument, relativeTime } from '../review'
+import {
+  disablePlan,
+  evidenceOf,
+  fileTypeLabel,
+  groupDuplicates,
+  groupPairs,
+  mergePlan,
+  newestDocument,
+  relativeTime,
+} from '../review'
 
 const evidence = (documentId: string) => ({
   documentId,
@@ -62,6 +71,40 @@ describe('Tidy review helpers', () => {
         ['review', null],
       ],
     )
+  })
+
+  it('groups the conflicts and overlap of one document pair, whichever way round it is quoted', () => {
+    const of = (id: string, kind: TidyFinding['kind'], left: string, right: string) => ({
+      ...duplicate(id, left, right),
+      kind,
+    })
+    const groups = groupPairs([
+      of('c1', 'conflict', 'a', 'b'),
+      of('s1', 'similar', 'b', 'a'),
+      of('c2', 'conflict', 'b', 'a'),
+      of('s2', 'similar', 'a', 'c'),
+    ])
+    expect(
+      groups.map((group) => [
+        group.documentIds,
+        group.conflicts.map((finding) => finding.id),
+        group.similar?.id ?? null,
+      ]),
+    ).toEqual([
+      [['a', 'b'], ['c1', 'c2'], 's1'],
+      [['a', 'c'], [], 's2'],
+    ])
+    const [pair] = groups
+    expect(evidenceOf(pair!.conflicts[1]!, 'a').documentId).toBe('a')
+
+    // The overlap finding carries the disable; the conflicts have nothing left to decide.
+    expect(
+      disablePlan(pair!, 'b').map((step) => [step.finding.id, step.action, step.documentId]),
+    ).toEqual([
+      ['s1', 'disable_document', 'b'],
+      ['c1', 'review', undefined],
+      ['c2', 'review', undefined],
+    ])
   })
 
   it('picks the newest copy and labels file types', () => {

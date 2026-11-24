@@ -392,8 +392,129 @@ describe('Tidy', () => {
       nextCursor: null,
     })
     renderPage(false)
-    const card = await screen.findByRole('article', { name: '期限不一致' })
-    expect(card).toHaveTextContent('七天退款')
+    const card = await screen.findByRole('article', {
+      name: /pairConflictTitle.*Policy A.*Policy B/,
+    })
+    expect(within(card).getByRole('listitem', { name: '期限不一致' })).toHaveTextContent('七天退款')
     expect(within(card).queryByRole('button')).not.toBeInTheDocument()
+  })
+  it('reviews everything two documents disagree on in one card, settling each difference on its own', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    const finding = (id: string, kind: string, extra: object) => ({
+      id,
+      kind,
+      left: { ...evidence, documentId: 'a', title: 'Policy A', text: `${id} A` },
+      right: { ...evidence, documentId: 'b', title: 'Policy B', text: `${id} B` },
+      reason: id,
+      similarity: null,
+      status: 'open',
+      revision: 1,
+      actionId: null,
+      createdAt: '2026-11-03',
+      stale: false,
+      ...extra,
+    })
+    service.findings.mockResolvedValue({
+      items: [
+        finding('amount', 'conflict', {}),
+        // The scanner may quote the same pair the other way round.
+        finding('duration', 'conflict', {
+          left: { ...evidence, documentId: 'b', title: 'Policy B', text: 'duration B' },
+          right: { ...evidence, documentId: 'a', title: 'Policy A', text: 'duration A' },
+        }),
+        finding('overlap', 'similar', { reason: 'text_overlap', similarity: 0.9 }),
+        finding('elsewhere', 'similar', {
+          reason: 'text_overlap',
+          similarity: 0.8,
+          right: { ...evidence, documentId: 'c', title: 'Policy C', text: 'elsewhere C' },
+        }),
+      ],
+      nextCursor: null,
+    })
+    service.act.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+
+    // One card for the pair; its overlap is not listed a second time under "similar".
+    const card = await screen.findByRole('article', { name: /pairConflictTitle.*"count":2/ })
+    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(card).toHaveTextContent('knowledgeSpace.tidy.pairAlsoSimilar')
+    const duration = within(card).getByRole('listitem', { name: 'duration' })
+    const passages = within(duration).getAllByText(/duration [AB]/)
+    expect(passages.map((node) => node.textContent)).toEqual(['duration A', 'duration B'])
+
+    await user.click(
+      within(duration).getByRole('button', { name: 'knowledgeSpace.tidy.notConflict' }),
+    )
+    await waitFor(() =>
+      expect(service.act).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ finding_id: 'duration' }),
+          body: { expectedRevision: 1, action: 'dismiss' },
+        }),
+      ),
+    )
+    await user.click(
+      within(within(card).getByRole('listitem', { name: 'amount' })).getByRole('button', {
+        name: 'knowledgeSpace.tidy.fixed',
+      }),
+    )
+    await waitFor(() =>
+      expect(service.act).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ finding_id: 'amount' }),
+          body: { expectedRevision: 1, action: 'review' },
+        }),
+      ),
+    )
+
+    // Disabling a whole document settles the pair's other findings in the same run.
+    service.act.mockClear()
+    await user.click(within(card).getByRole('button', { name: /tidy\.disableOne.*Policy B/ }))
+    expect(screen.getByRole('dialog').textContent).toMatch(/disableAlsoResolves.*"count":2/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(3))
+    expect(
+      service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body.action]),
+    ).toEqual([
+      ['overlap', 'disable_document'],
+      ['amount', 'review'],
+      ['duration', 'review'],
+    ])
+    expect(service.act.mock.calls[0]?.[0].body.documentId).toBe('b')
+  })
+  it('offers keeping both overlapping documents on equal footing with disabling one', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    service.findings.mockResolvedValue({
+      items: [
+        {
+          id: 'f',
+          kind: 'similar',
+          left: { ...evidence, documentId: 'a', title: 'Guide A', text: 'shared A' },
+          right: { ...evidence, documentId: 'b', title: 'Guide B', text: 'shared B' },
+          reason: 'text_overlap',
+          similarity: 0.7,
+          status: 'open',
+          revision: 1,
+          actionId: null,
+          createdAt: '2026-11-03',
+          stale: false,
+        },
+      ],
+      nextCursor: null,
+    })
+    service.act.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+    const card = await screen.findByRole('article')
+    expect(
+      within(card).getByRole('button', { name: 'knowledgeSpace.tidy.keepSelectedDisableOther' }),
+    ).toBeVisible()
+    await user.click(within(card).getByRole('button', { name: 'knowledgeSpace.tidy.keepBoth' }))
+    await waitFor(() =>
+      expect(service.act).toHaveBeenCalledWith(
+        expect.objectContaining({ body: { expectedRevision: 1, action: 'review' } }),
+      ),
+    )
   })
 })

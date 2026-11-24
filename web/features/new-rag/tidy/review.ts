@@ -1,6 +1,6 @@
 /**
- * Pure helpers behind the Tidy review cards: grouping identical documents, planning a "keep one"
- * merge, and the labels shown on document tiles.
+ * Pure helpers behind the Tidy review cards: grouping identical documents and document pairs,
+ * planning the actions a choice implies, and the labels shown on document tiles.
  */
 import type {
   KnowledgeFsTidyDocumentCardResponse,
@@ -91,6 +91,56 @@ export function mergePlan(group: DuplicateGroup, keepId: string): PlannedAction[
   for (const finding of group.findings)
     if (!used.has(finding.id)) plan.push({ finding, action: 'review' })
   return plan
+}
+
+/**
+ * The open conflicts and overlap between one pair of documents. A reviewer first decides how the
+ * two documents relate, so several findings about the same pair read as one card.
+ */
+export type PairGroup = {
+  key: string
+  /** In the order of the first finding; later findings may list the pair the other way round. */
+  documentIds: [string, string]
+  findings: TidyFinding[]
+  conflicts: TidyFinding[]
+  similar: TidyFinding | null
+}
+
+export function groupPairs(findings: readonly TidyFinding[]): PairGroup[] {
+  const groups = new Map<string, PairGroup>()
+  for (const finding of findings) {
+    const ids: [string, string] = [finding.left.documentId, finding.right.documentId]
+    const pair = [...ids].sort().join('\u0000')
+    let group = groups.get(pair)
+    if (!group) {
+      group = { key: finding.id, documentIds: ids, findings: [], conflicts: [], similar: null }
+      groups.set(pair, group)
+    }
+    group.findings.push(finding)
+    if (finding.kind === 'conflict') group.conflicts.push(finding)
+    else group.similar ??= finding
+  }
+  return [...groups.values()]
+}
+
+/** The evidence a finding quotes from `documentId`. */
+export function evidenceOf(finding: TidyFinding, documentId: string) {
+  return finding.left.documentId === documentId ? finding.left : finding.right
+}
+
+/**
+ * Disable one document of the pair. With it out of retrieval, the pair's other findings have
+ * nothing left to decide, so they are marked reviewed in the same run.
+ */
+export function disablePlan(group: PairGroup, documentId: string): PlannedAction[] {
+  const anchor = group.similar ?? group.findings[0]
+  if (!anchor) return []
+  return [
+    { finding: anchor, action: 'disable_document', documentId },
+    ...group.findings
+      .filter((finding) => finding !== anchor)
+      .map((finding): PlannedAction => ({ finding, action: 'review' })),
+  ]
 }
 
 /** The most recently published of `ids` (by card), or the first one when cards are missing. */

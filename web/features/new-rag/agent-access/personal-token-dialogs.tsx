@@ -58,6 +58,7 @@ import {
   PERSONAL_TOKEN_EXPIRY_OPTIONS,
   personalTokenSnippets,
 } from './agent-access'
+import { AgentIcon } from './agent-icon'
 import { grantName, useGrantError, useInvalidateAgentAccess } from './grants'
 import { KnowledgeBasePicker } from './knowledge-base-picker'
 
@@ -77,6 +78,7 @@ export function GrantIdentity({ grant }: { grant: KnowledgeAgentGrantResponse })
   const { t } = useTranslation(['knowledgeSpace'])
   return (
     <span className="flex min-w-0 items-center gap-2">
+      <AgentIcon name={grantName(grant)} personal={grant.kind === 'personal'} />
       <span className="truncate system-sm-medium text-text-primary">{grantName(grant)}</span>
       <span className="shrink-0 text-[11px]/4 text-text-tertiary" translate="no">
         {grant.kind === 'personal'
@@ -323,6 +325,7 @@ function CodeBlock({ code, file, title }: { code: string; file: string; title: s
     <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-[10px] bg-components-input-bg-normal">
       <div className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-divider-subtle ps-2 pe-1">
         <span className="flex min-w-0 items-center gap-2">
+          <AgentIcon name={title} />
           <span className="shrink-0 system-sm-medium text-text-primary">{title}</span>
           <code
             className="truncate font-mono text-xs text-text-tertiary"
