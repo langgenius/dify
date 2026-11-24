@@ -22,7 +22,7 @@ import { createDeferred } from '@/test/deferred'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
 const { fetchDraft } = vi.hoisted(() => ({
-  fetchDraft: vi.fn<(url: string) => Promise<FetchWorkflowDraftResponse>>(),
+  fetchDraft: vi.fn<(appId: string) => Promise<FetchWorkflowDraftResponse>>(),
 }))
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -34,7 +34,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: fetchDraft,
+  fetchAppWorkflowDraft: fetchDraft,
   fetchAllInspectVars: async () => [],
 }))
 
@@ -179,7 +179,7 @@ describe('useWorkflowRefreshDraft', () => {
         expect(await refresh.current!.handleRefreshWorkflowDraft(notUpdateCanvas)).toBe(true)
       })
 
-      expect(fetchDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      expect(fetchDraft).toHaveBeenCalledWith('app-1')
       await expectGraph(
         flow,
         notUpdateCanvas ? ['local-start', 'local-code'] : ['saved-start', 'saved-code'],

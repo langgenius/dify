@@ -45,7 +45,7 @@ import {
 } from '@/features/agent-v2/agent-editor/tool-provider-catalog'
 import { consoleQuery } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
@@ -222,7 +222,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: strategyProviders } = useQuery(
     consoleQuery.workspaces.current.agentProviders.get.queryOptions(),
   )
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
   const resourceKind = useAtomValue(editorResourceKindAtom)

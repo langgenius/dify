@@ -10,6 +10,7 @@ import {
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 
 const { getSettings, saveSettings } = vi.hoisted(() => ({
@@ -116,7 +117,9 @@ it('starts a draft when settings arrive and preserves it across a background ref
     auto_upgrade: { ...savedConfig, strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly },
   })
   await act(async () => {
-    await client.refetchQueries({ predicate: (query) => query.queryKey.includes('autoUpgrade') })
+    await client.refetchQueries({
+      queryKey: consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.key(),
+    })
   })
   expect(strategy('latest')).toBeChecked()
   await waitFor(() => expect(trigger).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name'))

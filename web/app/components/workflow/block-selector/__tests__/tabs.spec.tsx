@@ -26,13 +26,6 @@ const { mockToolsState } = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -44,6 +37,23 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.workflow.get': async () => mockToolsState.workflowTools,
       'workspaces.current.tools.mcp.get': async () => mockToolsState.mcpTools,
     }),
+  }
+})
+
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  const stubs: Record<string, unknown> = {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+  }
+  const marketplaceClient = new Proxy(actual.marketplaceClient, {
+    get: (target, key, receiver) =>
+      typeof key === 'string' && key in stubs ? stubs[key] : Reflect.get(target, key, receiver),
+  })
+  return {
+    ...actual,
+    marketplaceClient,
+    marketplaceQuery: createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] }),
   }
 })
 

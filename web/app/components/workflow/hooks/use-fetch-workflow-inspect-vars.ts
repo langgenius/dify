@@ -1,7 +1,7 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -9,11 +9,11 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateConversationVarValues,
-  useInvalidateSysVarValues,
-} from '@/service/use-workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
+import {
+  conversationVarValuesQueryOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
@@ -22,8 +22,18 @@ export const useSetWorkflowVarsWithValue = () => {
   const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(resource)
-  const invalidateSysVarValues = useInvalidateSysVarValues(resource)
+  const queryClient = useQueryClient()
+  const invalidateConversationVarValues = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: conversationVarValuesQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
+  const invalidateSysVarValues = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: sysVarValuesQueryOptions(resource).queryKey }),
+    [queryClient, resource],
+  )
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
   const { data: buildInTools } = useQuery(
