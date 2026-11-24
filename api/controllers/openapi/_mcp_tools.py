@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -47,7 +48,14 @@ _QUERY_KEY: Final = "query"
 _OPS_KEY: Final = "ops"
 _INPUT_KEY: Final = "input"
 _HIDDEN_KINDS: Final = frozenset({Kind.SSE.value, Kind.FILE.value})
-_ID_SEPARATOR: Final = "."
+# A word is a run of letters or digits; everything else separates words.
+_WORD: Final = re.compile(r"[^\W_]+")
+_PLURAL_IES: Final = "ies"
+_SINGULAR_Y: Final = "y"
+_PLURAL_S: Final = "s"
+_DOUBLE_S: Final = "ss"
+# The shortest word that matches longer words it begins, so "plugin" finds "plugins" but "app" does not find "apply".
+MIN_PREFIX_LETTERS: Final = 4
 _ABSENT_OP_VALUES: Final = (None, "")
 
 
@@ -158,23 +166,60 @@ def _tool_for(entry: CatalogOp) -> str:
     return CallTool.for_effect(Effect(entry["effect"])).value
 
 
-def _matches(words: list[str], op: str, entry: CatalogOp) -> bool:
-    """Postcondition: True when every lowercase word is in the op id (dots as spaces) or the summary."""
-    haystack = f"{op.replace(_ID_SEPARATOR, ' ')} {entry['summary']}".lower()
-    return all(word in haystack for word in words)
+def _singular(word: str) -> str:
+    """Postcondition: ``word`` without a plural ending: a final "ies" becomes "y", else a final "s" is dropped
+    unless the word ends in "ss"."""
+    if word.endswith(_PLURAL_IES):
+        return word.removesuffix(_PLURAL_IES) + _SINGULAR_Y
+    if word.endswith(_DOUBLE_S):
+        return word
+    return word.removesuffix(_PLURAL_S)
+
+
+def _words(text: str) -> frozenset[str]:
+    """Postcondition: the distinct lowercase words of ``text``, split on anything that is not a letter or digit,
+    each without its plural ending; never an empty word."""
+    singulars = (_singular(word) for word in _WORD.findall(text.lower()))
+    return frozenset(word for word in singulars if word)
+
+
+def _words_match(one: str, other: str) -> bool:
+    """Postcondition: True when the words are equal, or the shorter has at least ``MIN_PREFIX_LETTERS``
+    letters and the longer begins with it."""
+    if one == other:
+        return True
+    shorter, longer = sorted((one, other), key=len)
+    if len(shorter) < MIN_PREFIX_LETTERS:
+        return False
+    return longer.startswith(shorter)
+
+
+def _score(query_words: frozenset[str], op: str, entry: CatalogOp) -> int:
+    """Postcondition: how many of ``query_words`` match a word of the op id or summary."""
+    op_words = _words(f"{op} {entry['summary']}")
+    return sum(any(_words_match(word, op_word) for op_word in op_words) for word in query_words)
+
+
+def _ranked(query_words: frozenset[str], entries: Mapping[str, CatalogOp]) -> list[str]:
+    """Postcondition: the op ids with a score above 0, highest score first, then by op id; with no query
+    words, every op id by id."""
+    if not query_words:
+        return sorted(entries)
+    scores = {op: _score(query_words, op, entry) for op, entry in entries.items()}
+    return sorted((op for op, score in scores.items() if score), key=lambda op: (-scores[op], op))
 
 
 def find_ops(query: str, *, token: str | None) -> dict[str, Any]:
-    """The ops the token can call whose id or summary holds every word of ``query``.
+    """The ops the token can call that best match the words of ``query``.
 
     Precondition: inside a Flask request. Postcondition: ``{"total", "ops"}``, each op ``{"op", "summary",
-    "effect", "tool"}`` where "tool" is the call tool for that effect; matching is case-insensitive and an empty
-    query matches all; ops are sorted by op id and cut to ``FIND_LIMIT``; ``total`` counts the matches before
-    the cut.
+    "effect", "tool"}`` where "tool" is the call tool for that effect. An op's score is how many distinct query
+    words match a word of its id or summary (see ``_words`` and ``_words_match``); ops scoring 0 are left out.
+    Ops come highest score first, then by op id; a query with no words lists every op by id. The list is cut to
+    ``FIND_LIMIT``; ``total`` counts the matches before the cut.
     """
-    words = query.lower().split()
     entries = callable_ops(token)
-    matched = sorted(op for op, entry in entries.items() if _matches(words, op, entry))
+    matched = _ranked(_words(query), entries)
     ops = [
         {
             _OP_KEY: op,

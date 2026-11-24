@@ -52,6 +52,8 @@ _LIST_APPS = "get.console_app"
 _FILE_REQUIRED = "upload.console_app.file"
 _SUBMIT_FORM_OP = "submit.run.form"
 _WAIT_JOB_OP = "wait.job"
+_CHECK_DSL = "check.console_app.dsl"
+_CHECK_DEPENDENCY = "check.console_app.dependency"
 
 
 @pytest.fixture
@@ -115,7 +117,86 @@ def test_find_matches_words_in_id_or_summary_and_reports_the_total() -> None:
     assert found["total"] == len(found["ops"])
     by_id_words = find_ops("describe account", token=_ACCOUNT)
     assert _ACCOUNT_ONLY in _ids(by_id_words)
-    assert find_ops("current nonexistentword", token=_ACCOUNT) == {"total": 0, "ops": []}
+
+
+@pytest.mark.usefixtures("in_request")
+def test_a_word_that_matches_nothing_does_not_empty_the_result() -> None:
+    assert _ACCOUNT_ONLY in _ids(find_ops("current nonexistentword", token=_ACCOUNT))
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("query", ["nonexistentword", "nonexistentword zzzz", "工作流"])
+def test_a_query_with_no_matching_word_finds_nothing(query: str) -> None:
+    assert find_ops(query, token=_ACCOUNT) == {"total": 0, "ops": []}
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("query", ["", "   ", "?!-"])
+def test_a_query_without_words_lists_every_op_by_id(query: str) -> None:
+    assert find_ops(query, token=_ACCOUNT) == find_ops("", token=_ACCOUNT)
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize(
+    ("query", "first"),
+    [
+        ("check DSL before import validate import operation inputs", _CHECK_DSL),
+        ("DSL import check validate", _CHECK_DSL),
+        ("import DSL", _CHECK_DSL),
+        ("read-only checks before importing DSL what does each check", _CHECK_DSL),
+        ("dependencies plugins operation", _CHECK_DEPENDENCY),
+        ("list app plugins dependency", _CHECK_DEPENDENCY),
+        ("plugin dependencies operation app dependencies what information does it take", _CHECK_DEPENDENCY),
+    ],
+)
+def test_a_natural_question_finds_its_op_first(query: str, first: str) -> None:
+    assert _ids(find_ops(query, token=_ACCOUNT))[0] == first
+
+
+@pytest.mark.usefixtures("in_request")
+def test_a_question_lists_every_op_it_is_about() -> None:
+    found = _ids(find_ops("read-only checks before importing DSL what does each check", token=_ACCOUNT))
+    assert {_CHECK_DSL, _CHECK_DEPENDENCY} <= set(found)
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("query", ["list app plugins dependency", "current account", "run a workflow app"])
+def test_find_orders_by_score_then_op_id(query: str) -> None:
+    entries = callable_ops(_ACCOUNT)
+    words = _mcp_tools._words(query)
+    keys = [(-_mcp_tools._score(words, op, entries[op]), op) for op in _ids(find_ops(query, token=_ACCOUNT))]
+    assert keys == sorted(keys)
+    assert all(score < 0 for score, _ in keys)
+
+
+@pytest.mark.parametrize(
+    ("text", "words"),
+    [
+        ("Check plugin dependencies", {"check", "plugin", "dependency"}),
+        ("check.console_app.dsl", {"check", "console", "app", "dsl"}),
+        ("access address class", {"access", "address", "class"}),
+        ("apps and runs; s", {"app", "and", "run"}),
+        ("", set()),
+    ],
+)
+def test_words_split_on_non_letters_and_drop_plural_endings(text: str, words: set[str]) -> None:
+    assert _mcp_tools._words(text) == words
+
+
+@pytest.mark.parametrize(
+    ("one", "other", "matches"),
+    [
+        ("plugin", "plugin", True),
+        ("depend", "dependency", True),
+        ("dependency", "depend", True),
+        ("impo", "import", True),
+        ("app", "apply", False),
+        ("dsl", "dsls", False),
+        ("import", "export", False),
+    ],
+)
+def test_words_match_when_equal_or_one_begins_the_other(one: str, other: str, matches: bool) -> None:
+    assert _mcp_tools._words_match(one, other) is matches
 
 
 @pytest.mark.usefixtures("in_request")
