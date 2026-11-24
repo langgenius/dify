@@ -3,7 +3,7 @@ import type { WebAppAddress } from '@/service/webapp-address'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useWebAppStore } from '@/context/web-app-context'
-import { webAppLogout } from '@/service/webapp-auth'
+import { webAppLogout } from '@/service/common'
 import AuthenticatedLayout from '../authenticated-layout'
 
 type QueryState<TData> = {
@@ -89,7 +89,7 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => userCanAccessAppQueryState,
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/common', () => ({
   webAppLogout: vi.fn(),
 }))
 
