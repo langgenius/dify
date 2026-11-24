@@ -217,9 +217,9 @@ export function TidyPage() {
   const conflictPairs = groupPairs(
     items.filter((finding) => finding.status === 'open' && finding.kind !== 'duplicate'),
   ).filter((group) => group.conflicts.length > 0)
-  const groupedWithConflicts = new Set(
-    conflictPairs.flatMap((group) => group.findings.map((finding) => finding.id)),
-  )
+  /** The open conflicts between the same two documents as an overlap finding. */
+  const conflictsBeside = (finding: (typeof items)[number]) =>
+    conflictPairs.find((group) => group.similar?.id === finding.id)?.conflicts ?? []
   const cardProps = {
     busy: pending,
     canManage,
@@ -471,12 +471,10 @@ export function TidyPage() {
             value === 'duplicate' && ofKind.every((finding) => finding.status === 'open')
               ? groupDuplicates(ofKind)
               : null
-          // What two documents disagree on is reviewed together, with their overlap alongside.
+          // What two documents disagree on is reviewed together; their overlap keeps its own card.
           const pairs = value === 'conflict' ? conflictPairs : null
           const rest =
-            value === 'conflict'
-              ? ofKind.filter((finding) => finding.status !== 'open')
-              : ofKind.filter((finding) => !groupedWithConflicts.has(finding.id))
+            value === 'conflict' ? ofKind.filter((finding) => finding.status !== 'open') : ofKind
           const count = groups?.length ?? (pairs?.length ?? 0) + rest.length
           if (!count) return null
           return (
@@ -500,7 +498,12 @@ export function TidyPage() {
               ))}
               {!groups &&
                 rest.map((finding) => (
-                  <PairCard key={finding.id} finding={finding} {...cardProps} />
+                  <PairCard
+                    key={finding.id}
+                    finding={finding}
+                    related={conflictsBeside(finding)}
+                    {...cardProps}
+                  />
                 ))}
             </KindSection>
           )

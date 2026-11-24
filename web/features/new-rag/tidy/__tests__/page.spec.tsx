@@ -435,9 +435,9 @@ describe('Tidy', () => {
     const user = userEvent.setup()
     renderPage()
 
-    // One card for the pair; its overlap is not listed a second time under "similar".
+    // One card for the pair's conflicts; every overlap finding keeps its own card under "similar".
     const card = await screen.findByRole('article', { name: /pairConflictTitle.*"count":2/ })
-    expect(screen.getAllByRole('article')).toHaveLength(2)
+    expect(screen.getAllByRole('article')).toHaveLength(3)
     expect(card).toHaveTextContent('knowledgeSpace.tidy.pairAlsoSimilar')
     const duration = within(card).getByRole('listitem', { name: 'duration' })
     const passages = within(duration).getAllByText(/duration [AB]/)
@@ -482,6 +482,23 @@ describe('Tidy', () => {
       ['duration', 'review'],
     ])
     expect(service.act.mock.calls[0]?.[0].body.documentId).toBe('b')
+
+    // The same holds when the document is disabled from the pair's overlap card.
+    service.act.mockClear()
+    const overlap = screen.getByRole('article', { name: /similarTitle.*Policy A.*Policy B/ })
+    await user.click(
+      within(overlap).getByRole('button', { name: 'knowledgeSpace.tidy.keepSelectedDisableOther' }),
+    )
+    expect(screen.getByRole('dialog').textContent).toMatch(/disableAlsoResolves.*"count":2/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(3))
+    expect(
+      service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body.action]),
+    ).toEqual([
+      ['overlap', 'disable_document'],
+      ['amount', 'review'],
+      ['duration', 'review'],
+    ])
   })
   it('offers keeping both overlapping documents on equal footing with disabling one', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }

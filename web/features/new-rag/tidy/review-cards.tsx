@@ -476,8 +476,13 @@ export function PairCard({
   finding,
   onConfirm,
   onRun,
+  related = [],
   spaceId,
-}: CardProps & { finding: Finding }) {
+}: CardProps & {
+  finding: Finding
+  /** Open conflicts between the same two documents: disabling one settles them too. */
+  related?: readonly Finding[]
+}) {
   const { t, i18n } = useTranslation(['knowledgeSpace'])
   const sides = [finding.left, finding.right]
   const newest = newestDocument(
@@ -495,8 +500,16 @@ export function PairCard({
       title: kept
         ? t(($) => $['tidy.mergeTitle'], { title: titleOf(kept) })
         : t(($) => $['tidy.disableOne'], { title: titleOf(evidence) }),
-      description: kept ? t(($) => $['tidy.mergeDescription']) : t(($) => $['tidy.disableNotice']),
-      plan: [{ finding, action: 'disable_document', documentId: evidence.documentId }],
+      description: [
+        kept ? t(($) => $['tidy.mergeDescription']) : t(($) => $['tidy.disableNotice']),
+        ...(related.length
+          ? [t(($) => $['tidy.disableAlsoResolves'], { count: related.length })]
+          : []),
+      ].join(' '),
+      plan: [
+        { finding, action: 'disable_document', documentId: evidence.documentId },
+        ...related.map((other): PlannedAction => ({ finding: other, action: 'review' })),
+      ],
     })
   const dismiss = () => onRun([{ finding, action: 'dismiss' }])
   const review = (
