@@ -12,6 +12,7 @@ describe('createXhrFetch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it('sends the serialized request and resolves the response', async () => {
@@ -48,6 +49,48 @@ describe('createXhrFetch', () => {
     expect(response.status).toBe(201)
     expect(response.headers.get('x-request-id')).toBe('req')
     expect(await response.json()).toEqual({ id: 'file-1' })
+  })
+
+  it('sends the body when the browser has no Request.body, as in Firefox', async () => {
+    const NativeRequest = Request
+    // Firefox's Request has no `body` property; everything else delegates to the native Request.
+    class RequestWithoutBody {
+      readonly method: string
+      readonly url: string
+      readonly headers: Headers
+      readonly signal: AbortSignal
+      readonly credentials: RequestCredentials
+      readonly blob: () => Promise<Blob>
+      constructor(input: RequestInfo | URL, init?: RequestInit) {
+        const request = new NativeRequest(input, init)
+        this.method = request.method
+        this.url = request.url
+        this.headers = request.headers
+        this.signal = request.signal
+        this.credentials = request.credentials
+        this.blob = () => request.blob()
+      }
+    }
+    vi.stubGlobal('Request', RequestWithoutBody)
+    const body = new FormData()
+    body.append('file', new File(['content'], 'notes.txt', { type: 'text/plain' }))
+
+    const pending = createXhrFetch(vi.fn())('https://dify.test/upload', { method: 'POST', body })
+    await waitForSend()
+
+    expect(await (FakeXMLHttpRequest.latest().body as Blob).text()).toContain(
+      'filename="notes.txt"',
+    )
+    FakeXMLHttpRequest.latest().respond({ status: 201, body: { id: 'file-1' } })
+    await expect(pending).resolves.toMatchObject({ status: 201 })
+  })
+
+  it('sends no body for GET requests', async () => {
+    const pending = createXhrFetch(vi.fn())('https://dify.test/files')
+    await vi.waitFor(() => expect(FakeXMLHttpRequest.latest().method).toBe('GET'))
+    expect(FakeXMLHttpRequest.latest().body).toBeNull()
+    FakeXMLHttpRequest.latest().respond({ status: 200, body: {} })
+    await pending
   })
 
   it('resolves error statuses as responses for the request layer to decode', async () => {
