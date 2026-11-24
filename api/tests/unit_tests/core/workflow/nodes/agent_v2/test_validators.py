@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
+from pydantic import JsonValue
 from sqlalchemy.orm import Session
 
 from core.workflow.graph_topology import WorkflowGraph, WorkflowGraphEdge
@@ -115,7 +116,7 @@ def _graph(edges: list[WorkflowGraphEdge]) -> WorkflowGraph:
     }
 
 
-def _tool_graph(tool_data: dict[str, object]) -> WorkflowGraph:
+def _tool_graph(tool_data: dict[str, JsonValue]) -> WorkflowGraph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},

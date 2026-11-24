@@ -17,6 +17,8 @@ from collections import defaultdict, deque
 from collections.abc import Mapping, Sequence
 from typing import TypedDict
 
+from pydantic import JsonValue
+
 
 class WorkflowGraphEdge(TypedDict):
     """One ``source -> target`` edge of a ``Workflow.graph`` payload."""
@@ -29,7 +31,7 @@ class WorkflowGraphNode(TypedDict):
     """One node of a ``Workflow.graph`` payload."""
 
     id: str
-    data: dict[str, object]
+    data: dict[str, JsonValue]
 
 
 class WorkflowGraph(TypedDict):
@@ -39,12 +41,12 @@ class WorkflowGraph(TypedDict):
     edges: list[WorkflowGraphEdge]
 
 
-def parse_workflow_graph(raw: Mapping[str, object]) -> WorkflowGraph:
+def parse_workflow_graph(raw: Mapping[str, JsonValue]) -> WorkflowGraph:
     """Read the persisted ``Workflow.graph`` JSON into a ``WorkflowGraph``."""
     return WorkflowGraph(nodes=_parse_nodes(raw.get("nodes")), edges=_parse_edges(raw.get("edges")))
 
 
-def _parse_nodes(raw_nodes: object) -> list[WorkflowGraphNode]:
+def _parse_nodes(raw_nodes: JsonValue) -> list[WorkflowGraphNode]:
     if not isinstance(raw_nodes, list):
         return []
     nodes: list[WorkflowGraphNode] = []
@@ -56,13 +58,13 @@ def _parse_nodes(raw_nodes: object) -> list[WorkflowGraphNode]:
     return nodes
 
 
-def _parse_node_data(raw_data: object) -> dict[str, object]:
+def _parse_node_data(raw_data: JsonValue) -> dict[str, JsonValue]:
     if not isinstance(raw_data, Mapping):
         return {}
     return {str(key): value for key, value in raw_data.items()}
 
 
-def _parse_edges(raw_edges: object) -> list[WorkflowGraphEdge]:
+def _parse_edges(raw_edges: JsonValue) -> list[WorkflowGraphEdge]:
     if not isinstance(raw_edges, list):
         return []
     edges: list[WorkflowGraphEdge] = []
