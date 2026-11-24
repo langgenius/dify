@@ -6,6 +6,7 @@ import type {
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -16,7 +17,6 @@ import { BuiltInAccessPoints } from '../built-in-access-points'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
-vi.mock('@/service/use-triggers', () => ({ useAllTriggerPlugins: () => ({ data: [] }) }))
 vi.mock('@/app/components/app/overview/customize', () => ({
   default: () => null,
   CustomizeDialog: () => null,
@@ -103,6 +103,7 @@ function renderAccessPoints({
     throw new Error(`Unexpected request: ${request.method} ${path}`)
   })
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   seedAppDetail(
     queryClient,
     createAppDetailFixture({

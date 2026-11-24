@@ -14,15 +14,22 @@ import { AuthCategory, CredentialTypeEnum } from '../types'
 
 const requests = vi.hoisted(() => ({ credentials: vi.fn() }))
 const mockConsoleCall = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: requests.credentials,
-}))
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (...args: unknown[]) => mockConsoleCall(...args),
   },
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get':
+        requests.credentials,
+    }),
+  }
+})
 
 const defaultPayload = { category: AuthCategory.tool, provider: 'test-provider' }
 const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
@@ -80,9 +87,7 @@ describe('PluginAuth', () => {
   it('offers API authorization when the provider has no saved credentials', async () => {
     renderAuth()
     expect(await screen.findByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
-    expect(requests.credentials).toHaveBeenCalledWith(
-      '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
-    )
+    expect(requests.credentials).toHaveBeenCalledWith({ params: { provider: 'test-provider' } })
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /plugin.auth.authorization$/ }),
@@ -156,9 +161,10 @@ describe('PluginAuth', () => {
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
     expect(await screen.findByRole('button', { name: /Selected API key/ })).toBeVisible()
-    expect(requests.credentials).toHaveBeenLastCalledWith(
-      '/workspaces/current/tool-provider/builtin/test-provider/credential/info?include_credential_ids=2',
-    )
+    expect(requests.credentials).toHaveBeenLastCalledWith({
+      params: { provider: defaultPayload.provider },
+      query: { include_credential_ids: ['2'] },
+    })
   })
 
   it('requests provider schemas only after entering App user from Reuse', async () => {
@@ -445,9 +451,10 @@ describe('PluginAuth', () => {
     expect(
       screen.getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
     ).toHaveValue('Use your own connection')
-    expect(requests.credentials).toHaveBeenLastCalledWith(
-      '/workspaces/current/tool-provider/builtin/test-provider/credential/info?include_credential_ids=workspace-selected&include_credential_ids=workspace-default',
-    )
+    expect(requests.credentials).toHaveBeenLastCalledWith({
+      params: { provider: defaultPayload.provider },
+      query: { include_credential_ids: ['workspace-selected', 'workspace-default'] },
+    })
   })
 
   it('enforces Workspace use permission for test credential selection', async () => {

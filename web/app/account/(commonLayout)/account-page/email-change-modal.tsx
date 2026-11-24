@@ -1,8 +1,9 @@
 'use client'
 
+import { useMutation } from '@tanstack/react-query'
 import ChangeEmailDialog from '@/app/components/account/change-email-dialog'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleClient } from '@/service/console'
-import { useLogout } from '@/service/use-common'
 
 type Props = {
   onClose: () => void
@@ -10,7 +11,7 @@ type Props = {
 }
 
 export default function EmailChangeModal({ email, onClose }: Props) {
-  const { mutateAsync: logout } = useLogout()
+  const { mutateAsync: logout } = useMutation(logoutMutationOptions())
   return (
     <ChangeEmailDialog
       email={email}

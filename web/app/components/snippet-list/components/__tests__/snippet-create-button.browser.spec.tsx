@@ -1,15 +1,14 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { hold, setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture } from '@/test/fixtures/snippet'
+import { createTestNavigation } from '@/test/next-navigation'
 import SnippetCreateButton from '../snippet-create-button'
 
-const router = vi.hoisted(() => ({ push: vi.fn() }))
-
-// boundary: routing out of this component is supplied by Next.js.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: router.push }) }))
+let navigation: TestNavigation
 // Snippet routes take UUID ids.
 const snippetId = '00000000-0000-4000-8000-000000000123'
 
@@ -17,10 +16,12 @@ async function setup(permissions = ['snippets.create_and_modify']) {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     workspacePermissionKeys: permissions,
   })
+  navigation = createTestNavigation({ url: '/snippets' })
   const screen = await render(
     <Providers>
       <SnippetCreateButton />
     </Providers>,
+    { wrapper: navigation.NavigationProvider },
   )
   return screen
 }
@@ -94,11 +95,13 @@ it('creates trimmed values and saves the draft before navigating, blocking dupli
     body: { graph },
   })
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
-  expect(createSnippet).toHaveBeenCalledOnce()
-  expect(router.push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   sync.resolve({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
+  expect(createSnippet).toHaveBeenCalledOnce()
+  expect(navigation.router.push).toHaveBeenCalledExactlyOnceWith(
+    `/snippets/${snippetId}/orchestrate`,
+  )
 })
 
 it('discards a cancelled draft and accepts the first shortcut after reopening', async () => {
@@ -121,5 +124,7 @@ it('discards a cancelled draft and accepts the first shortcut after reopening', 
   const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${snippetId}/orchestrate`)
+  expect(navigation.router.push).toHaveBeenCalledExactlyOnceWith(
+    `/snippets/${snippetId}/orchestrate`,
+  )
 })

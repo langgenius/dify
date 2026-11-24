@@ -11,17 +11,11 @@ import pluginMessages from '@/i18n/locales/en-US/plugin.json'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
-const boundary = vi.hoisted(() => ({ push: vi.fn() }))
-
 vi.unmock('react-i18next')
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: boundary.push }),
-}))
 
 // boundary: remote Marketplace documents stay local while preserving their real query parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
@@ -75,14 +69,17 @@ async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLO
     systemFeatures: { deployment_edition: edition },
   })
   seedModelProviderQueries(queryClient)
+  const { NavigationProvider } = createTestNavigation({ url: '/marketplace' })
   const screen = await render(
-    <ConsoleProvider>
-      <I18nextProvider i18n={i18n}>
-        <UrlState>
-          <EmbeddedMarketplaceSearch />
-        </UrlState>
-      </I18nextProvider>
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <I18nextProvider i18n={i18n}>
+          <UrlState>
+            <EmbeddedMarketplaceSearch />
+          </UrlState>
+        </I18nextProvider>
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
   return { onUrlUpdate, screen }
 }

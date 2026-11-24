@@ -1,9 +1,8 @@
 import { Suspense } from 'react'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import WebAppsSection from '../web-apps-section'
-
-vi.mock('@/next/navigation', () => ({ usePathname: () => '/published-apps' }))
 
 async function renderSection(permissions = ['app_library.access']) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
@@ -15,6 +14,7 @@ async function renderSection(permissions = ['app_library.access']) {
         <WebAppsSection />
       </Suspense>
     </Wrapper>,
+    { wrapper: createTestNavigation({ url: '/published-apps' }).NavigationProvider },
   )
 }
 

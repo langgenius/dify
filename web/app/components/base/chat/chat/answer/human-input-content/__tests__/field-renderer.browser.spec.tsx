@@ -8,10 +8,9 @@ import { render } from 'vitest-browser-react'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import HumanInputFieldRenderer from '../field-renderer'
-
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const fileField = {
   output_variable_name: 'attachments',
@@ -55,10 +54,13 @@ function Field({
 
 async function renderField(field: FormInputItem, initialValue?: HumanInputFieldValue) {
   const { wrapper: Query } = createConsoleQueryWrapper()
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
   await render(
-    <Query>
-      <Field field={field} initialValue={initialValue} />
-    </Query>,
+    <NavigationProvider>
+      <Query>
+        <Field field={field} initialValue={initialValue} />
+      </Query>
+    </NavigationProvider>,
   )
 }
 

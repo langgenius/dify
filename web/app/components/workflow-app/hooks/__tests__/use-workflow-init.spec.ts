@@ -88,7 +88,7 @@ vi.mock('@/service/workflow-queries', async (importOriginal) => {
 const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 const notExistError = () =>

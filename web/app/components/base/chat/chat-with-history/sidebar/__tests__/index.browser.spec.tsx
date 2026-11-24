@@ -17,6 +17,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
 import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
@@ -25,12 +26,6 @@ import Header from '../../header'
 import { useChatWithHistory } from '../../hooks'
 import Sidebar from '../index'
 
-// boundary: Browser Mode does not provide the application's Next.js router.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/chat/app-1',
-  useSearchParams: () => new URLSearchParams(),
-}))
 // boundary: use the actual warning copy to verify readable wrapping in the narrow sidebar.
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -159,26 +154,29 @@ async function renderSidebar(
     )
   }
   const HistoryOwner = installedAppInfo ? InstalledOwner : Owner
+  const { NavigationProvider } = createTestNavigation({ url: '/chat/app-1' })
   const view = (displayProps = options.ownerProps) => (
-    <QueryProvider>
-      <HistoryOwner displayProps={displayProps}>
-        {showCurrentConversation && (
-          <section aria-label="Current conversation">
-            <Header />
-          </section>
-        )}
-        <aside
-          aria-label="Conversation history"
-          style={{ display: 'flex', height: 600, width: 320 }}
-        >
-          <WebAppEntryContext value={entry}>
-            <ConnectionsContext value={connections}>
-              <Sidebar />
-            </ConnectionsContext>
-          </WebAppEntryContext>
-        </aside>
-      </HistoryOwner>
-    </QueryProvider>
+    <NavigationProvider>
+      <QueryProvider>
+        <HistoryOwner displayProps={displayProps}>
+          {showCurrentConversation && (
+            <section aria-label="Current conversation">
+              <Header />
+            </section>
+          )}
+          <aside
+            aria-label="Conversation history"
+            style={{ display: 'flex', height: 600, width: 320 }}
+          >
+            <WebAppEntryContext value={entry}>
+              <ConnectionsContext value={connections}>
+                <Sidebar />
+              </ConnectionsContext>
+            </WebAppEntryContext>
+          </aside>
+        </HistoryOwner>
+      </QueryProvider>
+    </NavigationProvider>
   )
   const rendered = await render(view())
   return {

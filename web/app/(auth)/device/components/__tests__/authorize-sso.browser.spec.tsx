@@ -2,17 +2,8 @@ import { userEvent } from 'vite-plus/test/browser'
 import { apiError, hold, route, setupFakeApi } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
-const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
-// boundary: Next routing supplies and scrubs the external SSO return URL.
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => api.search,
-  useRouter: () => ({
-    replace: () => {
-      api.search = new URLSearchParams()
-    },
-  }),
-  usePathname: () => '/device',
-}))
+const landingUrl = '/device?sso_verified=1'
+
 const context = {
   subject_email: 'gareth@company.com',
   subject_issuer: 'Okta (okta.company.com)',
@@ -39,12 +30,9 @@ const fake = setupFakeApi(() => ({
     route('POST', 'origin', approveExternalPath, () => ({})),
   ],
 }))
-beforeEach(() => {
-  api.search = new URLSearchParams({ sso_verified: '1' })
-})
 
 it('authorizes the displayed SSO identity with its server context and reaches success', async () => {
-  const { screen } = await renderDevicePage()
+  const { screen } = await renderDevicePage({ url: landingUrl })
   await expect.element(screen.getByText(context.subject_email)).toBeVisible()
   await expect.element(screen.getByText(context.subject_issuer)).toBeVisible()
   await screen.getByRole('button', { name: 'deviceFlow.authorize.approve' }).click()
@@ -67,7 +55,7 @@ it('shows an invalid session when the server cannot supply an approval identity'
       details: { error: 'server_error' },
     }),
   )
-  const { screen } = await renderDevicePage()
+  const { screen } = await renderDevicePage({ url: landingUrl })
   await expect
     .element(screen.getByRole('heading', { name: 'deviceFlow.authorize.sessionInvalidTitle' }))
     .toBeVisible()
@@ -85,7 +73,7 @@ it('retains the SSO identity on approval failure and succeeds after retry', asyn
       details: { error: 'unexpected' },
     }),
   )
-  const { screen } = await renderDevicePage()
+  const { screen } = await renderDevicePage({ url: landingUrl })
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
   await approve.click()
   await expect.element(screen.getByText('deviceFlow.approveError.default')).toBeVisible()
@@ -100,7 +88,7 @@ it('retains the SSO identity on approval failure and succeeds after retry', asyn
 it('keeps focus on the pending approval so a keyboard retry works after failure', async () => {
   const request = fake.route('POST', 'origin', approveExternalPath)
   const pending = hold(request)
-  const { screen } = await renderDevicePage()
+  const { screen } = await renderDevicePage({ url: landingUrl })
   await expect.element(screen.getByText(context.subject_email)).toBeVisible()
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
   await approve.click()

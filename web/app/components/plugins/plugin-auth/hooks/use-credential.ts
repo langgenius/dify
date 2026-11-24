@@ -1,37 +1,36 @@
 import type { InvalidateOptions } from '@tanstack/react-query'
 import type { CredentialTypeEnum, PluginPayload } from '../types'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
+import { consoleQuery } from '@/service/console'
+import {
+  pluginCredentialInfoQueryOptions,
+  pluginCredentialSchemaQueryOptions,
+  pluginOAuthClientSchemaQueryOptions,
+} from '@/service/plugin-credential-queries'
 import {
   useAddPluginCredential,
   useDeletePluginCredential,
   useDeletePluginOAuthCustomClient,
-  useGetPluginCredentialInfo,
-  useGetPluginCredentialSchema,
-  useGetPluginOAuthClientSchema,
   useGetPluginOAuthUrl,
-  useInvalidPluginCredentialInfo,
-  useInvalidPluginOAuthClientSchema,
   useSetPluginDefaultCredential,
   useSetPluginOAuthCustomClient,
   useUpdatePluginCredential,
 } from '@/service/use-plugins-auth'
-import { getApi } from './get-api'
+import { AuthCategory } from '../types'
 
 export const useGetPluginCredentialInfoHook = (
   pluginPayload: PluginPayload,
   enable?: boolean,
   includeCredentialIds?: string[],
 ) => {
-  const apiMap = getApi(pluginPayload)
-  const ids = (includeCredentialIds ?? []).filter(Boolean)
-  let url = enable ? apiMap.getCredentialInfo : ''
-  if (url && ids.length > 0) {
-    const qs = new URLSearchParams()
-    for (const id of ids) qs.append('include_credential_ids', id)
-    url = url + (url.includes('?') ? '&' : '?') + qs.toString()
-  }
-  return useGetPluginCredentialInfo(url)
+  return useQuery(
+    pluginCredentialInfoQueryOptions(pluginPayload, {
+      enabled: !!enable,
+      includeCredentialIds: (includeCredentialIds ?? []).filter(Boolean),
+    }),
+  )
 }
 
 export const useDeletePluginCredentialHook = (pluginPayload: PluginPayload) => {
@@ -39,15 +38,22 @@ export const useDeletePluginCredentialHook = (pluginPayload: PluginPayload) => {
 }
 
 export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload) => {
-  const apiMap = getApi(pluginPayload)
-  const invalidPluginCredentialInfo = useInvalidPluginCredentialInfo(apiMap.getCredentialInfo)
+  const { category = AuthCategory.tool, provider, providerType } = pluginPayload
   const queryClient = useQueryClient()
-  const toolListQueryKey = getToolListQueryKey(pluginPayload.providerType)
+  const toolListQueryKey = getToolListQueryKey(providerType)
 
-  return (options?: InvalidateOptions): void | Promise<void> => {
-    const refreshed = invalidPluginCredentialInfo(options)
+  return (options?: InvalidateOptions) => {
     if (toolListQueryKey) void queryClient.invalidateQueries({ queryKey: toolListQueryKey })
-    return refreshed
+    if (category !== AuthCategory.tool) return
+    return queryClient.invalidateQueries(
+      {
+        queryKey:
+          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key({
+            input: { params: { provider } },
+          }),
+      },
+      options,
+    )
   }
 }
 
@@ -59,7 +65,7 @@ export const useGetPluginCredentialSchemaHook = (
   pluginPayload: PluginPayload,
   credentialType: CredentialTypeEnum,
 ) => {
-  return useGetPluginCredentialSchema(pluginPayload, credentialType)
+  return useQuery(pluginCredentialSchemaQueryOptions(pluginPayload, credentialType))
 }
 
 export const useAddPluginCredentialHook = (pluginPayload: PluginPayload) => {
@@ -75,11 +81,21 @@ export const useGetPluginOAuthUrlHook = (pluginPayload: PluginPayload) => {
 }
 
 export const useGetPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload, enabled = true) => {
-  return useGetPluginOAuthClientSchema(pluginPayload, enabled)
+  return useQuery(pluginOAuthClientSchemaQueryOptions(pluginPayload, enabled))
 }
 
 export const useInvalidPluginOAuthClientSchemaHook = (pluginPayload: PluginPayload) => {
-  return useInvalidPluginOAuthClientSchema(pluginPayload)
+  const { category, provider } = pluginPayload
+  const queryClient = useQueryClient()
+  return useCallback(() => {
+    if (category !== AuthCategory.tool || !provider) return Promise.resolve()
+    return queryClient.invalidateQueries({
+      queryKey:
+        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key({
+          input: { params: { provider } },
+        }),
+    })
+  }, [queryClient, category, provider])
 }
 
 export const useSetPluginOAuthCustomClientHook = (pluginPayload: PluginPayload) => {

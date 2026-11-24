@@ -109,11 +109,21 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/service/use-share', () => ({
-  useGetWebAppInfo: () => appInfoQueryState,
+const webAppQueryStates: Record<string, QueryState<unknown>> = {
+  appInfo: appInfoQueryState,
+  appMeta: appMetaQueryState,
+}
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: { queryKey: readonly string[] }) => webAppQueryStates[options.queryKey[0]!],
+}))
+
+vi.mock('@/service/share-queries', () => ({
+  webAppInfoQueryOptions: () => ({ queryKey: ['appInfo'] }),
   useGetWebAppParams: () => appParamsQueryState,
-  useGetWebAppMeta: () => appMetaQueryState,
   useGetWebAppAccountStatus: () => accountStatusQueryState,
+  webAppMetaQueryOptions: () => ({ queryKey: ['appMeta'] }),
 }))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({

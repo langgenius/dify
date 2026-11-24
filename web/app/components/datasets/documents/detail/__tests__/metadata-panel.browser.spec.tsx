@@ -14,6 +14,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import { DataType } from '../../../metadata/types'
 import DocumentDetail from '../index'
@@ -37,15 +38,6 @@ const fields = [
   },
 ]
 const DOCUMENT_ID = '9f1e3b5d-6c3d-4e4f-8a5b-3c4d5e6f7081'
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => ({ datasetId: TEST_DATASET_ID, documentId: DOCUMENT_ID }),
-  usePathname: () => `/datasets/${TEST_DATASET_ID}/documents/${DOCUMENT_ID}`,
-  useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 const documentDetail = zDocumentDetailResponse.parse({
   id: DOCUMENT_ID,
@@ -99,19 +91,25 @@ const renderDocumentDetail = async () => {
     embedding_available: true,
     permission_keys: [DatasetACLPermission.Edit],
   })
+  const { NavigationProvider } = createTestNavigation({
+    url: `/datasets/${TEST_DATASET_ID}/documents/${DOCUMENT_ID}`,
+    params: { datasetId: TEST_DATASET_ID, documentId: DOCUMENT_ID },
+  })
   return render(
-    <Wrapper>
-      <I18nextProvider i18n={i18n}>
-        {/* oxlint-disable-next-line eslint-react/no-context-provider -- This use-context-selector context requires its Provider. */}
-        <DatasetDetailContext.Provider value={{ dataset }}>
-          <EventEmitterContextProvider>
-            <div className="isolate h-screen">
-              <DocumentDetail datasetId={TEST_DATASET_ID} documentId={DOCUMENT_ID} />
-            </div>
-          </EventEmitterContextProvider>
-        </DatasetDetailContext.Provider>
-      </I18nextProvider>
-    </Wrapper>,
+    <NavigationProvider>
+      <Wrapper>
+        <I18nextProvider i18n={i18n}>
+          {/* oxlint-disable-next-line eslint-react/no-context-provider -- This use-context-selector context requires its Provider. */}
+          <DatasetDetailContext.Provider value={{ dataset }}>
+            <EventEmitterContextProvider>
+              <div className="isolate h-screen">
+                <DocumentDetail datasetId={TEST_DATASET_ID} documentId={DOCUMENT_ID} />
+              </div>
+            </EventEmitterContextProvider>
+          </DatasetDetailContext.Provider>
+        </I18nextProvider>
+      </Wrapper>
+    </NavigationProvider>,
   )
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import type { WebAppAddress } from '@/service/webapp-address'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +14,10 @@ import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import {
   useGetWebAppAccountStatus,
-  useGetWebAppInfo,
-  useGetWebAppMeta,
   useGetWebAppParams,
-} from '@/service/use-share'
+  webAppInfoQueryOptions,
+  webAppMetaQueryOptions,
+} from '@/service/share-queries'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
 import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
 
@@ -42,8 +43,16 @@ const AuthenticatedApp = ({
     if (loginStatus?.logged_in === false && getWebAppLoginMode() === 'end_user')
       expireWebAppAccountSession()
   }, [loginStatus])
-  const { isLoading: isLoadingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
-  const { isLoading: isLoadingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
+  const {
+    isLoading: isLoadingAppInfo,
+    data: appInfo,
+    error: appInfoError,
+  } = useQuery(webAppInfoQueryOptions())
+  const {
+    isLoading: isLoadingAppMeta,
+    data: appMeta,
+    error: appMetaError,
+  } = useQuery(webAppMetaQueryOptions())
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({
     appId: appInfo?.app_id,
     isInstalledApp: false,

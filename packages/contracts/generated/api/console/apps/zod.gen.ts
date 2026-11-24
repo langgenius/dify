@@ -6097,6 +6097,7 @@ export const zDeclaredOutputConfig = z.object({
  * WorkflowNodeJobConfig
  */
 export const zWorkflowNodeJobConfig = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
   declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
@@ -6104,6 +6105,13 @@ export const zWorkflowNodeJobConfig = z.object({
   output_routes: zWorkflowOutputRoutes.optional(),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
   schema_version: z.int().optional().default(1),
+  session_generation: z
+    .string()
+    .max(36)
+    .regex(/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/)
+    .readonly()
+    .optional()
+    .default(''),
   workflow_prompt: z.string().optional().default(''),
 })
 
@@ -6718,6 +6726,68 @@ export const zWorkflowCommentDetailWritable = z.object({
   resolved_by: z.string().nullish(),
   resolved_by_account: zWorkflowCommentAccountWritable.nullish(),
   updated_at: z.int().nullish(),
+})
+
+/**
+ * WorkflowNodeJobConfig
+ */
+export const zWorkflowNodeJobConfigWritable = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
+  declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  human_contacts: z.array(zAgentHumanContactConfig).optional(),
+  metadata: zWorkflowNodeJobMetadata.optional(),
+  mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
+  output_routes: zWorkflowOutputRoutes.optional(),
+  previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
+  schema_version: z.int().optional().default(1),
+  workflow_prompt: z.string().optional().default(''),
+})
+
+/**
+ * WorkflowAgentComposerResponse
+ */
+export const zWorkflowAgentComposerResponseWritable = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
+  agent: zAgentComposerAgentResponse.nullish(),
+  agent_soul: zAgentSoulConfig,
+  app_id: z.string().nullish(),
+  backing_app_id: z.string().nullish(),
+  binding: zAgentComposerBindingResponse.nullish(),
+  chat_endpoint: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
+  debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
+  effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  hidden_app_backed: z.boolean().optional().default(false),
+  impact_summary: zAgentComposerImpactResponse.nullish(),
+  node_id: z.string().nullish(),
+  node_job: zWorkflowNodeJobConfigWritable,
+  save_options: z.array(zComposerSaveStrategy),
+  soul_lock: zAgentComposerSoulLockResponse,
+  validation: zComposerValidationFindingsResponse.nullish(),
+  variant: z.literal('workflow'),
+  workflow_id: z.string().nullish(),
+})
+
+/**
+ * ComposerSavePayload
+ */
+export const zComposerSavePayloadWritable = z.object({
+  agent_soul: zAgentSoulConfig.nullish(),
+  binding: zComposerBindingPayload.nullish(),
+  client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  idempotency_key: z.string().nullish(),
+  new_agent_name: z.string().min(1).max(255).nullish(),
+  node_job: zWorkflowNodeJobConfigWritable.nullish(),
+  role: z.string().max(255).nullish(),
+  save_strategy: zComposerSaveStrategy,
+  soul_lock: zComposerSoulLockPayload.optional(),
+  variant: zComposerVariant,
+  version_note: z.string().nullish(),
 })
 
 export const zRecursiveJsonValueWritable = z
@@ -8653,7 +8723,8 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerQuery = z.ob
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse =
   zWorkflowAgentComposerResponse
 
-export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerBody = zComposerSavePayload
+export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerBody =
+  zComposerSavePayloadWritable
 
 export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.object({
   app_id: z.uuid(),
@@ -8692,7 +8763,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRos
   zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody =
-  zComposerSavePayload
+  zComposerSavePayloadWritable
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath = z.object({
   app_id: z.uuid(),
@@ -8706,7 +8777,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactRespo
   zAgentComposerImpactResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterBody =
-  zComposerSavePayload
+  zComposerSavePayloadWritable
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterPath = z.object({
   app_id: z.uuid(),
@@ -8720,7 +8791,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoste
   zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateBody =
-  zComposerSavePayload
+  zComposerSavePayloadWritable
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidatePath = z.object({
   app_id: z.uuid(),

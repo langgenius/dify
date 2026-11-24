@@ -247,7 +247,7 @@ beforeEach(() => {
   vi.mocked(fetchSuggestedQuestions)
     .mockReset()
     .mockResolvedValue({ data: ['Next question'] })
-  vi.mocked(stopChatMessageResponding).mockReset().mockResolvedValue({})
+  vi.mocked(stopChatMessageResponding).mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(submitHumanInputForm).mockReset().mockResolvedValue({})
   vi.mocked(submitInstalledForm).mockReset().mockResolvedValue({})
   unregisterTracker = registerWebAppEventTracker(trackEvent)

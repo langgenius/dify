@@ -1,12 +1,15 @@
 import type { NavLinkProps } from '..'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderComponent } from 'vitest-browser-react'
+import { createTestNavigation } from '@/test/next-navigation'
 import NavLink from '..'
 
-vi.mock('@/next/navigation', () => ({
-  useSelectedLayoutSegment: () => 'overview',
-}))
+const render = (ui: Parameters<typeof renderComponent>[0]) =>
+  renderComponent(ui, {
+    wrapper: createTestNavigation({ url: '/app/123/overview', segments: ['overview'] })
+      .NavigationProvider,
+  })
 
 function ButtonOwner() {
   const [activated, setActivated] = useState(false)

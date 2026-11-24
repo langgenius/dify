@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { WebAppAddress } from './webapp-address'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
-import { useGetWebAppAccountStatus, useGetWebAppParams } from './use-share'
+import { useGetWebAppAccountStatus, useGetWebAppParams } from './share-queries'
 import { selectWebAppParameters } from './webapp-parameters'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
