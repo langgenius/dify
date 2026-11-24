@@ -8,7 +8,7 @@ from io import StringIO
 from typing import override
 
 import pytest
-from sqlalchemy import Engine
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -314,7 +314,27 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
 
     output = Output(newline="")
 
-    assert export.write_csv(context, app.id, filters=filters, output=output) == 3
+    message_queries = 0
+
+    def count_message_queries(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        nonlocal message_queries
+        if "FROM messages JOIN conversations" in statement:
+            message_queries += 1
+
+    event.listen(sqlite_engine, "before_cursor_execute", count_message_queries)
+    try:
+        assert export.write_csv(context, app.id, filters=filters, output=output) == 3
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", count_message_queries)
+
+    assert message_queries == 3
     scope = repository.get_console_scope(context, app.id, kind="chat")
     counts = repository.get_console_log_export_counts(scope=scope, filters=filters)
     assert counts is not None

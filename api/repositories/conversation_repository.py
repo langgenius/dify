@@ -408,6 +408,7 @@ class ConversationRepository:
 
         Exclude new conversations and messages using the export start time. Release the read
         session before yielding each batch so the caller can write it outside a transaction.
+        Use a lookahead row to decide whether to continue after the last emitted message.
         """
         end_before = naive_utc_now()
         conversation_cursor: tuple[datetime, str] | None = None
@@ -427,10 +428,11 @@ class ConversationRepository:
                     end_before=end_before,
                     cursor=message_cursor,
                 )
-                yield from rows
-                has_more_messages = len(rows) == _LOG_EXPORT_BATCH_SIZE
+                batch = rows[:_LOG_EXPORT_BATCH_SIZE]
+                has_more_messages = len(rows) > _LOG_EXPORT_BATCH_SIZE
+                yield from batch
                 if has_more_messages:
-                    last = rows[-1]
+                    last = batch[-1]
                     message_cursor = (last.created_at, last.message_id)
 
     def _console_log_export_selection(
@@ -506,7 +508,7 @@ class ConversationRepository:
         end_before: datetime,
         cursor: tuple[datetime, str] | None,
     ) -> list[ConversationLogExportRow]:
-        """Read a bounded message batch for the selected conversations of the admitted app."""
+        """Read an ordered message page plus one lookahead row for the admitted app's selected conversations."""
         with self._session_factory() as session:
             app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
             if app is None or app.mode != scope.app_mode:
@@ -553,7 +555,7 @@ class ConversationRepository:
                     Message.created_at < end_before,
                 )
                 .order_by(Message.created_at, Message.id)
-                .limit(_LOG_EXPORT_BATCH_SIZE)
+                .limit(_LOG_EXPORT_BATCH_SIZE + 1)
             )
             if cursor is not None:
                 statement = statement.where(
