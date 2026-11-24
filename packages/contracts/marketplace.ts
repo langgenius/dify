@@ -198,6 +198,79 @@ export type PluginsFromMarketplaceByInfoResponse = {
   }>
 }
 
+// Shapes for the single-plugin and bundle lookups below mirror the web callers'
+// `PluginManifestInMarket` and `GitHubItemAndMarketPlaceDependency` types in
+// `web/app/components/plugins/types.ts`. They only list fields those callers use.
+export type MarketplacePluginManifest = {
+  plugin_unique_identifier: string
+  name: string
+  org: string
+  icon: string
+  label: Record<string, string>
+  category: MarketplacePluginCategory
+  version: string
+  latest_version: string
+  brief: Record<string, string>
+  introduction: string
+  verified: boolean
+  install_count: number
+  badges: string[] | null
+  verification: {
+    authorized_category: 'langgenius' | 'partner' | 'community'
+  }
+  from: MarketplacePluginDependencySource
+}
+
+export type MarketplaceBundleDependency = {
+  type: MarketplacePluginDependencySource
+  value: {
+    repo?: string
+    organization?: string
+    plugin?: string
+    version?: string
+    package?: string
+    release?: string
+    packages?: string
+    github_plugin_unique_identifier?: string
+    marketplace_plugin_unique_identifier?: string
+    plugin_unique_identifier?: string
+  }
+}
+
+export type PluginDetailResponse = {
+  data: {
+    plugin: PluginInfoFromMarketPlace
+    version: {
+      version: string
+    }
+  }
+}
+
+export type PluginByIdentifierResponse = {
+  data: {
+    plugin: MarketplacePluginManifest
+    version: {
+      version: string
+    }
+  }
+}
+
+export type BundleDetailResponse = {
+  data: {
+    version: {
+      dependencies: MarketplaceBundleDependency[]
+    }
+  }
+}
+
+export type PluginsByIdentifiersResponse = {
+  data: PluginsFromMarketplaceResponse
+}
+
+export type PluginsByVersionsResponse = {
+  data: PluginsFromMarketplaceByInfoResponse
+}
+
 export type CollectionsResponse = {
   data?: {
     collections?: MarketplaceCollection[]
@@ -580,6 +653,83 @@ const publisherTemplatesContract = base
   )
   .output(type<PublisherTemplatesResponse>())
 
+const pluginDetailContract = base
+  .route({
+    path: '/plugins/{organization}/{pluginName}',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      params: {
+        organization: string
+        pluginName: string
+      }
+    }>(),
+  )
+  .output(type<PluginDetailResponse>())
+
+const pluginByIdentifierContract = base
+  .route({
+    path: '/plugins/identifier',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      query: {
+        unique_identifier: string
+      }
+    }>(),
+  )
+  .output(type<PluginByIdentifierResponse>())
+
+const pluginsByIdentifiersContract = base
+  .route({
+    path: '/plugins/identifier/batch',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      body: {
+        unique_identifiers: string[]
+      }
+    }>(),
+  )
+  .output(type<PluginsByIdentifiersResponse>())
+
+const pluginsByVersionsContract = base
+  .route({
+    path: '/plugins/versions/batch',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      body: {
+        plugin_tuples: Array<{
+          org?: string
+          name?: string
+          version?: string
+        }>
+      }
+    }>(),
+  )
+  .output(type<PluginsByVersionsResponse>())
+
+const bundleDetailContract = base
+  .route({
+    path: '/bundles/{organization}/{bundleName}/{version}',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      params: {
+        organization: string
+        bundleName: string
+        version: string
+      }
+    }>(),
+  )
+  .output(type<BundleDetailResponse>())
+
 export const marketplaceRouterContract = {
   banners: {
     list: bannerListContract,
@@ -593,6 +743,11 @@ export const marketplaceRouterContract = {
   templateSearch: templateSearchContract,
   downloadPlugin: downloadPluginContract,
   pluginVersions: pluginVersionsContract,
+  pluginDetail: pluginDetailContract,
+  pluginByIdentifier: pluginByIdentifierContract,
+  pluginsByIdentifiers: pluginsByIdentifiersContract,
+  pluginsByVersions: pluginsByVersionsContract,
+  bundleDetail: bundleDetailContract,
   creatorDetail: creatorDetailContract,
   organizationDetail: organizationDetailContract,
   publisherPlugins: publisherPluginsContract,

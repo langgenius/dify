@@ -152,27 +152,25 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
-// Marketplace lookups have no contract yet and go through the legacy marketplace helper.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: async (
-    _url: string,
-    { body }: { body: { plugin_tuples: Array<{ org: string; name: string }> } },
-  ) => ({
-    data: {
-      list: marketplacePluginState.label
-        ? body.plugin_tuples.map(({ org, name }) => ({
-            plugin: {
-              label: marketplacePluginState.label,
-              labels: marketplacePluginState.label,
-              name,
-              plugin_id: `${org}/${name}`,
-            },
-          }))
-        : [],
-    },
-  }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByVersions: async ({ body }) => ({
+      data: {
+        list: marketplacePluginState.label
+          ? body.plugin_tuples.map(({ org, name }) => ({
+              plugin: {
+                label: marketplacePluginState.label,
+                labels: marketplacePluginState.label,
+                name,
+                plugin_id: `${org}/${name}`,
+              },
+            }))
+          : [],
+      },
+    }),
+  })
+})
 
 vi.mock('@/service/console', async () => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
