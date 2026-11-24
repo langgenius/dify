@@ -26,7 +26,6 @@ from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
     FOLDER_UPLOAD_ID_SCHEMA,
-    MCP_INSTRUCTIONS,
     UPLOAD_ID_EXAMPLE,
     UPLOAD_ID_SCHEMA,
     CallTool,
@@ -35,6 +34,7 @@ from controllers.openapi._mcp_tools import (
     callable_ops,
     describe_op,
     find_ops,
+    mcp_instructions,
     run_tool,
     tool_list,
 )
@@ -395,9 +395,13 @@ def test_every_effect_has_exactly_one_call_tool() -> None:
 _NAMED_OP = re.compile(r"\b[a-z_]+(?:\.[a-z_]+)+\b")
 
 
-def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(openapi_app: Flask) -> None:
+@pytest.mark.parametrize("transfers", [True, False], ids=["transfers on", "transfers off"])
+def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(
+    openapi_app: Flask, config_overrides: Callable[..., None], transfers: bool
+) -> None:
+    config_overrides(FILE_TRANSFER_ENABLED=transfers)
     ops = set(build_catalog(openapi_app)["ops"])
-    named = set(_NAMED_OP.findall(MCP_INSTRUCTIONS))
+    named = set(_NAMED_OP.findall(mcp_instructions()))
     hinted = {jobs.WAIT_JOB_OP, jobs.STOP_JOB_OP, op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)}
 
     assert named - ops == set()
@@ -626,7 +630,7 @@ def test_find_with_an_empty_op_searches_by_query(arguments: dict[str, object]) -
 
 
 def test_the_instructions_say_what_to_do_when_the_workspace_list_is_empty() -> None:
-    step_one = next(line for line in MCP_INSTRUCTIONS.splitlines() if line.startswith("1."))
+    step_one = next(line for line in mcp_instructions().splitlines() if line.startswith("1."))
 
     assert "get.workspace" in step_one
     assert "If the list is empty" in step_one
@@ -679,3 +683,109 @@ def test_send_use_and_fetch_through_the_four_tools(
     assert used.isError is False
     assert json.loads(_text(used))["name"] == "r.pdf"
     assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
+
+
+# With file transfers off (either switch), no tool offers a transfer id.
+
+_TRANSFERS_OFF = pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+_EXPORT_SKILL = "export.skill"
+_IMPORT_SKILL = "import.skill"
+_FILE_OPS = {PREPARE_UPLOAD_OP, _UPLOAD, _EXPORT_SKILL, _IMPORT_SKILL}
+
+
+def _file_step() -> str:
+    return next(line for line in mcp_instructions().splitlines() if line.startswith("7."))
+
+
+@pytest.mark.usefixtures("in_request")
+@_TRANSFERS_OFF
+def test_with_transfers_off_no_op_that_needs_a_transfer_is_listed(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    listed = callable_ops(_ACCOUNT)
+
+    assert not _FILE_OPS & set(listed)
+    assert not [op for op, entry in listed.items() if entry["kind"] == Kind.FILE]
+    assert _START_WORKFLOW in listed
+
+
+@pytest.mark.usefixtures("in_request")
+def test_with_transfers_on_the_file_ops_are_listed(config_overrides: Callable[..., None]) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=True, FILE_TRANSFER_ENABLED=True)
+
+    assert set(callable_ops(_ACCOUNT)) >= _FILE_OPS
+
+
+@pytest.mark.usefixtures("in_request")
+@_TRANSFERS_OFF
+def test_with_transfers_off_describe_leaves_out_the_file_fields(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+    entry = op_registry()[_START_WORKFLOW].entry
+    file_names = {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
+    before = copy.deepcopy(entry)
+
+    described = describe_op(_START_WORKFLOW, token=_ACCOUNT)
+
+    assert not file_names & set(described["input"]["properties"])
+    assert not file_names & set(described["input"]["required"])
+    assert set(entry["input"]["properties"]) - file_names == set(described["input"]["properties"])
+    assert all(not file_names & set(example["input"]) for example in described["examples"])
+    assert UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
+    assert op_registry()[_START_WORKFLOW].entry == before
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_a_file_input_is_refused_and_nothing_runs(
+    openapi_app: Flask,
+    world: TransferWorld,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    def must_not_run(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("nothing may run")
+
+    monkeypatch.setattr("controllers.openapi._mcp_call._run", must_not_run)
+    arguments = {
+        "op": _START_WORKFLOW,
+        "input": {"app_id": world.caller.app_id, "files": {"doc": "some-id"}},
+    }
+
+    with openapi_app.test_request_context(base_url=_HOST):
+        result = _run(CallTool.WRITE, arguments)
+
+    assert result.isError is True
+    assert _text(result) == "Nothing ran: file transfers are off on this server, so a file field cannot be filled."
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_the_instructions_send_files_by_url_only(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    step = _file_step()
+
+    assert PREPARE_UPLOAD_OP not in mcp_instructions()
+    assert '"transfer_method": "remote_url"' in step
+    assert "Local files cannot be sent to or fetched from this server." in step
+
+
+def test_with_transfers_on_the_instructions_explain_transfers(config_overrides: Callable[..., None]) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=True, FILE_TRANSFER_ENABLED=True)
+
+    step = _file_step()
+
+    assert PREPARE_UPLOAD_OP in step
+    assert '"files": {"<variable name>": "<id>"}' in step

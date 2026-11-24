@@ -8,6 +8,7 @@ so a refused call can be shown to have run nothing.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 
@@ -19,6 +20,7 @@ from controllers.openapi import _mcp_call, _transfer
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for, op_registry
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._mcp_call import (
+    FileInputUnsupported,
     OpCall,
     RouteMismatch,
     UnknownOp,
@@ -287,3 +289,45 @@ def test_the_inner_request_keeps_the_callers_scheme_and_host(
     assert outer_host_url == _OUTER_HOST_URL
     assert inner_requests[0].host_url == outer_host_url
     assert inner_requests[0].path == "/openapi/v1/workspaces"
+
+
+_TRANSFERS_OFF = pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+@_TRANSFERS_OFF
+def test_with_transfers_off_the_inner_request_does_not_ask_for_a_transfer(
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    config_overrides: Callable[..., None],
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    with openapi_app.test_request_context():
+        result = _call("get.workspace", {})
+
+    assert result.status == 200
+    assert HEADER_NAME_FILE_RESULT not in inner_requests[0].headers
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_a_file_bound_key_is_refused_before_anything_runs(
+    admitted_bearer: AdmittedWorld,
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    config_overrides: Callable[..., None],
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    with openapi_app.test_request_context(), pytest.raises(FileInputUnsupported):
+        _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": _UNKNOWN_UPLOAD})
+
+    assert inner_requests == []

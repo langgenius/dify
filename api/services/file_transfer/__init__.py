@@ -11,6 +11,10 @@ knows no HTTP, login, workspace or operation, and reads no configuration: its ho
 """
 
 from services.file_transfer.contracts import (
+    BUSY_RETRY_AFTER,
+    DOWNLOAD_LINK_LIFE,
+    MAX_UNPACKED_FILES,
+    UPLOAD_LINK_LIFE,
     FileTransferError,
     IncomingFile,
     LoadedTransfer,
@@ -34,6 +38,10 @@ from services.file_transfer.contracts import (
 from services.file_transfer.service import FileTransferService
 
 __all__ = [
+    "BUSY_RETRY_AFTER",
+    "DOWNLOAD_LINK_LIFE",
+    "MAX_UNPACKED_FILES",
+    "UPLOAD_LINK_LIFE",
     "FileTransferError",
     "FileTransferService",
     "IncomingFile",

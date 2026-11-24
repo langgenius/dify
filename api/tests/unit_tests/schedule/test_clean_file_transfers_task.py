@@ -1,12 +1,12 @@
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import timedelta
 
 import pytest
 from celery.contrib.testing.app import setup_default_app
 
 from dify_app import DifyApp
 from extensions import ext_celery
+from extensions.ext_celery import FILE_TRANSFER_CLEAN_INTERVAL
 from schedule import clean_file_transfers_task as task_module
 from schedule.clean_file_transfers_task import PURGE_BATCH, clean_file_transfers_task
 from tests.helpers.unit.config_override import config_overrides_context
@@ -45,22 +45,21 @@ def test_the_task_drains_in_batches_until_a_short_batch(monkeypatch: pytest.Monk
     assert transfers.removed_per_call == []
 
 
-@pytest.mark.parametrize("enabled", [True, False])
-def test_the_task_is_scheduled_only_when_enabled_and_at_the_configured_interval(
-    enabled: bool, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("mcp", "transfers", "scheduled"),
+    [(True, True, True), (True, False, False), (False, True, False), (False, False, False)],
+    ids=["both on", "transfers off", "mcp off, transfers on", "both off"],
+)
+def test_the_task_is_scheduled_only_while_file_transfers_are_on(
+    mcp: bool, transfers: bool, scheduled: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    interval_minutes = 7
     monkeypatch.setattr(ext_celery, "setup_workflow_warm_shutdown_handler", lambda: None)
-    with config_overrides_context(
-        ENABLE_CLEAN_FILE_TRANSFERS_TASK=enabled,
-        FILE_TRANSFER_CLEAN_INTERVAL_MINUTES=interval_minutes,
-        DISABLE_TELEMETRY=True,
-    ):
+    with config_overrides_context(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers, DISABLE_TELEMETRY=True):
         celery = ext_celery.init_app(DifyApp(__name__))
         try:
             schedule = celery.conf.beat_schedule.get("clean_file_transfers_task")
-            if enabled:
-                assert schedule == {"task": _TASK_NAME, "schedule": timedelta(minutes=interval_minutes)}
+            if scheduled:
+                assert schedule == {"task": _TASK_NAME, "schedule": FILE_TRANSFER_CLEAN_INTERVAL}
                 assert celery.tasks[_TASK_NAME].queue == "retention"
             else:
                 assert schedule is None

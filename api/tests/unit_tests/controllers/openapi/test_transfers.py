@@ -644,3 +644,83 @@ def test_a_file_name_longer_than_its_column_answers_400(world: TransferWorld) ->
         f"The file name is longer than {NAME_MAX_LENGTH} characters. Send the file under a shorter one."
     )
     assert world.blobs.files == {}
+
+
+# The switches: file transfers are on only while OPENAPI_MCP_ENABLED and FILE_TRANSFER_ENABLED are both true.
+
+_OFF = pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+
+
+def _switches(config_overrides: Callable[..., None], *, mcp: bool, transfers: bool) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+
+def _is_disabled(response: TestResponse) -> bool:
+    return (response.status_code, response.get_json()["code"]) == (503, OpenApiErrorCode.FILE_TRANSFERS_DISABLED)
+
+
+@_OFF
+def test_with_transfers_off_prepare_answers_503_and_creates_nothing(
+    world: TransferWorld, config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    _switches(config_overrides, mcp=mcp, transfers=transfers)
+
+    response = world.prepare()
+
+    assert _is_disabled(response)
+    assert world.repository.owned(owner_id=world.caller.member_id) == []
+
+
+@_OFF
+def test_with_transfers_off_the_byte_route_answers_503_and_moves_no_bytes(
+    world: TransferWorld, config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    incoming = world.service.prepare("owner", folder=False)
+    parked = world.park()
+    stored = dict(world.blobs.files)
+    _switches(config_overrides, mcp=mcp, transfers=transfers)
+
+    upload = world.upload(world.link(incoming))
+    download = world.get(world.link(parked))
+
+    assert _is_disabled(upload)
+    assert _is_disabled(download)
+    assert world.blobs.files == stored
+    assert world.service.take_slot()
+    world.service.free_slot()
+
+
+@_OFF
+def test_with_transfers_off_an_id_in_a_file_field_answers_503_and_the_operation_does_not_run(
+    world: TransferWorld,
+    recording_files: _RecordingFiles,
+    config_overrides: Callable[..., None],
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    prepared = world.prepare().get_json()
+    world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+    _switches(config_overrides, mcp=mcp, transfers=transfers)
+
+    response = _uploaded_with_json(world, {"file": prepared["id"]})
+
+    assert _is_disabled(response)
+    assert recording_files.received == []
+
+
+def test_with_both_switches_on_transfers_work(
+    world: TransferWorld, recording_files: _RecordingFiles, config_overrides: Callable[..., None]
+) -> None:
+    _switches(config_overrides, mcp=True, transfers=True)
+    prepared = world.prepare().get_json()
+
+    received = world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+    used = _uploaded_with_json(world, {"file": prepared["id"]})
+
+    assert received.status_code == 200
+    assert used.status_code == 201
+    assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]

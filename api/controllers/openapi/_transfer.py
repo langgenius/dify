@@ -17,9 +17,11 @@ from flask import Response, after_this_request, current_app, g, request, url_for
 from werkzeug.datastructures import FileStorage
 from werkzeug.http import parse_options_header
 
+from configs import dify_config
 from constants import BYTES_PER_MIB, HEADER_NAME_FILE_RESULT
 from controllers.openapi._errors import (
     DownloadLinkExpired,
+    FileTransfersDisabled,
     OpenApiError,
     TransfersBusy,
     UploadAlreadyReceived,
@@ -65,6 +67,12 @@ _FILENAME_OPTION: Final = "filename"
 _SLOT_HELD: Final = "file_transfer_slot_held"
 
 
+def require_file_transfers() -> None:
+    """Postcondition: returns while file transfers are on; raises ``FileTransfersDisabled`` (503) otherwise."""
+    if not dify_config.file_transfers_on:
+        raise FileTransfersDisabled()
+
+
 def transfer_owner_id() -> str:
     """Precondition: inside an admitted request. Postcondition: the caller's owner id, the value
     ``RequestContext.account_id`` carries: the account id, or the token id for SSO and workspace tokens.
@@ -101,7 +109,8 @@ def hold_slot() -> None:
 def answers_file_as_transfer(view: Callable[..., Any]) -> Callable[..., Any]:
     """Wrap a file operation so a request with ``X-Dify-File-Result: transfer`` gets its file parked.
 
-    Postcondition: without that header value, the view's result untouched. With it, a result of status 300 or
+    Postcondition: without that header value, the view's result untouched. With it while file transfers are off,
+    503 ``FileTransfersDisabled`` and the view does not run. With it otherwise, a result of status 300 or
     above untouched; any other is read whole, its response closed (so its close callbacks run), and the file
     parked for the caller: 200 with ``FileResultResponse``. Holds this request's slot while the bytes are held;
     a file above the transfer limit is refused with that limit.
@@ -109,9 +118,10 @@ def answers_file_as_transfer(view: Callable[..., Any]) -> Callable[..., Any]:
 
     @wraps(view)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        result = view(*args, **kwargs)
         if request.headers.get(HEADER_NAME_FILE_RESULT) != FileResult.TRANSFER:
-            return result
+            return view(*args, **kwargs)
+        require_file_transfers()
+        result = view(*args, **kwargs)
         response = current_app.make_response(result)
         if response.status_code >= HTTPStatus.MULTIPLE_CHOICES:
             return response
@@ -155,8 +165,9 @@ def parts_of(transfer_id: str, *, field: str) -> FileStorage | dict[str, FileSto
 
     Postcondition: the same file parts a multipart request gives: one part for a file, a path-to-part mapping
     in the zip's order for a folder. Holds this request's slot before anything is loaded. A refusal names
-    ``field`` and the next step.
+    ``field`` and the next step; while file transfers are off, 503 ``FileTransfersDisabled``.
     """
+    require_file_transfers()
     hold_slot()
     try:
         loaded = application_services().file_transfers.load(transfer_owner_id(), transfer_id)

@@ -37,6 +37,7 @@ from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi._contract import CapRequestBody, op_of
 from controllers.openapi._errors import (
+    FileTransfersDisabled,
     OpenApiErrorCode,
     OpenApiErrorFormatter,
     ServiceApiDisabled,
@@ -53,6 +54,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppMode,
     CheckAppQuota,
     CheckDocumentsUploadQuota,
+    CheckFileTransfersEnabled,
     CheckKnowledgeRateLimit,
     CheckPluginInstallSetting,
     CheckRBACPermission,
@@ -205,6 +207,25 @@ class TestRequirementsCases:
         config_overrides(ENABLE_SKILL=False)
         with pytest.raises(SkillsDisabled):
             CheckSkillEnabled().run(subject, ctx, sqlite_session)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("mcp", "transfers", "on"),
+        [(True, True, True), (True, False, False), (False, True, False), (False, False, False)],
+        ids=["both on", "transfers off", "mcp off, transfers on", "both off"],
+    )
+    def test_check_file_transfers_enabled_follows_both_switches(
+        sqlite_session: Session, config_overrides: Callable[..., None], mcp: bool, transfers: bool, on: bool
+    ) -> None:
+        subject = account_subject()
+        ctx = make_ctx(sqlite_session, subject=subject)
+        config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+        if on:
+            CheckFileTransfersEnabled().run(subject, ctx, sqlite_session)
+            return
+        with pytest.raises(FileTransfersDisabled):
+            CheckFileTransfersEnabled().run(subject, ctx, sqlite_session)
 
     class TestCheckRBACPermission:
         @staticmethod
@@ -1857,7 +1878,10 @@ def _draft_req(mode: _auth_matrix_AppMode) -> tuple[Requirement, ...]:
 
 
 _REQ_NODE_TYPES: tuple[Requirement, ...] = ()
-_REQ_TRANSFER_PREPARE = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),)
+_REQ_TRANSFER_PREPARE = (
+    CheckFileTransfersEnabled(),
+    CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),
+)
 _REQ_APP_CREATE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckScope(Scope.WORKSPACE_WRITE),

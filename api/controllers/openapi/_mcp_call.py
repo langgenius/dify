@@ -32,6 +32,7 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Response
 
+from configs import dify_config
 from constants import HEADER_NAME_FILE_RESULT
 from controllers.openapi._catalog import (
     _QUERY_METHODS,
@@ -87,6 +88,10 @@ class UnsafePathValue(Exception):  # noqa: N818
     path or query text does not encode as UTF-8, so it cannot be placed in the URL."""
 
 
+class FileInputUnsupported(Exception):  # noqa: N818
+    """The input fills a field the op binds as a file, while file transfers are off: there is no transfer id."""
+
+
 class RouteMismatch(Exception):  # noqa: N818
     """The built path does not resolve to the op's own rule."""
 
@@ -105,8 +110,9 @@ def call_op(call: OpCall) -> OpResult:
 
     Precondition: runs inside a Flask request. Postcondition: the operation ran
     exactly as for an outside HTTP request, or one of ``UnknownOp``,
-    ``UnsafePathValue`` and ``RouteMismatch`` was raised and nothing ran. The outer
-    request's context variables and ``flask.g`` are untouched either way.
+    ``FileInputUnsupported``, ``UnsafePathValue`` and ``RouteMismatch`` was raised and
+    nothing ran. The outer request's context variables and ``flask.g`` are untouched
+    either way.
     """
     registered = op_registry().get(call.op)
     if registered is None:
@@ -126,11 +132,14 @@ def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any])
     path, the query and, for body-bound methods, the JSON body. A file-bound key
     goes to the body, where it holds a transfer id. Keys the bind table does not
     list go to the body for body-bound methods and to the query otherwise, so the
-    op's own validation answers them. Raises ``UnsafePathValue`` for a bad path value.
+    op's own validation answers them. Raises ``FileInputUnsupported`` for a file-bound
+    key while file transfers are off, and ``UnsafePathValue`` for a bad path value.
     """
     body_bound = method not in _QUERY_METHODS
     default = Bind.BODY if body_bound else Bind.QUERY
     bind = entry["bind"]
+    if not dify_config.file_transfers_on:
+        _refuse_file_input(input, bind)
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
         kind = Bind(bind.get(name, default))
@@ -140,6 +149,13 @@ def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any])
     _check_query_text(parts[Bind.QUERY])
     body = parts[Bind.BODY] if body_bound else None
     return _Request(path=path, query=parts[Bind.QUERY], body=body)
+
+
+def _refuse_file_input(input: Mapping[str, Any], bind: Mapping[str, Bind]) -> None:
+    """Raises ``FileInputUnsupported`` when the input fills any file-bound field."""
+    names = sorted(name for name in input if bind.get(name) == Bind.FILE)
+    if names:
+        raise FileInputUnsupported(names)
 
 
 def _safe_path_value(name: str, values: Mapping[str, Any]) -> str:
@@ -211,17 +227,13 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
     The inner request carries the outer request's scheme and host, so links an op builds
     from ``request.url_root`` point at the server the caller reached.
     Headers: the caller's Authorization and trace id when given, the current
-    catalog fingerprint, ``Accept: application/json``, and the file-result header,
-    so a file operation answers JSON with a transfer instead of bytes.
+    catalog fingerprint, ``Accept: application/json``, and, while file transfers are on,
+    the file-result header, so a file operation answers JSON with a transfer instead of bytes.
     """
     _, fingerprint = current_catalog()
-    headers = Headers(
-        {
-            CATALOG_HEADER: fingerprint,
-            ACCEPT_HEADER: JSON_CONTENT_TYPE,
-            HEADER_NAME_FILE_RESULT: FileResult.TRANSFER,
-        }
-    )
+    headers = Headers({CATALOG_HEADER: fingerprint, ACCEPT_HEADER: JSON_CONTENT_TYPE})
+    if dify_config.file_transfers_on:
+        headers[HEADER_NAME_FILE_RESULT] = FileResult.TRANSFER
     if call.authorization is not None:
         headers[AUTHORIZATION_HEADER] = call.authorization
     if call.trace_id is not None:

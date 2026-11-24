@@ -175,7 +175,14 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
-from services.file_transfer import FileTransferService, TransferLimits
+from services.file_transfer import (
+    BUSY_RETRY_AFTER,
+    DOWNLOAD_LINK_LIFE,
+    MAX_UNPACKED_FILES,
+    UPLOAD_LINK_LIFE,
+    FileTransferService,
+    TransferLimits,
+)
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -452,14 +459,14 @@ def _build_file_transfer_service(*, database_client: sessionmaker[Session]) -> F
         blobs=storage,
         limits=TransferLimits(
             ttl=timedelta(seconds=dify_config.FILE_TRANSFER_TTL_SECONDS),
-            upload_link_life=timedelta(seconds=dify_config.FILE_TRANSFER_UPLOAD_LINK_SECONDS),
-            download_link_life=timedelta(seconds=dify_config.FILE_TRANSFER_DOWNLOAD_LINK_SECONDS),
+            upload_link_life=UPLOAD_LINK_LIFE,
+            download_link_life=DOWNLOAD_LINK_LIFE,
             max_bytes=dify_config.FILE_TRANSFER_MAX_BYTES,
-            max_unpacked_bytes=dify_config.FILE_TRANSFER_MAX_UNPACKED_BYTES,
-            max_unpacked_files=dify_config.FILE_TRANSFER_MAX_UNPACKED_FILES,
+            max_unpacked_bytes=dify_config.FILE_TRANSFER_MAX_BYTES,
+            max_unpacked_files=MAX_UNPACKED_FILES,
             max_per_owner=dify_config.FILE_TRANSFER_MAX_PER_OWNER,
             max_active=dify_config.FILE_TRANSFER_MAX_ACTIVE,
-            busy_retry_after=timedelta(seconds=dify_config.FILE_TRANSFER_BUSY_RETRY_AFTER_SECONDS),
+            busy_retry_after=BUSY_RETRY_AFTER,
         ),
         now=naive_utc_now,
         new_token=lambda: secrets.token_urlsafe(_TRANSFER_TOKEN_BYTES),

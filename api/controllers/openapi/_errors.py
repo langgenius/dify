@@ -129,6 +129,7 @@ class OpenApiErrorCode(StrEnum):
     UPLOAD_FIELD_TOO_LONG = "upload_field_too_long"
     UPLOAD_ARCHIVE_INVALID = "upload_archive_invalid"
     TRANSFERS_BUSY = "transfers_busy"
+    FILE_TRANSFERS_DISABLED = "file_transfers_disabled"
 
 
 class ErrorDetail(BaseModel):
@@ -730,6 +731,13 @@ class TransfersBusy(OpenApiError):  # noqa: N818
     def __init__(self, *, retry_after_seconds: int) -> None:
         super().__init__(f"{self.description} Retry after {retry_after_seconds} seconds.")
         self.headers = {"Retry-After": str(retry_after_seconds)}
+
+
+class FileTransfersDisabled(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.FILE_TRANSFERS_DISABLED
+    description = "File transfers are turned off on this server."
+    hint = "Ask an admin to turn on FILE_TRANSFER_ENABLED and OPENAPI_MCP_ENABLED."
 
 
 def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:

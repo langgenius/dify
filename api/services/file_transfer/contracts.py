@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Final, Protocol
 
 from libs.archive_writer import ArchiveError
 
@@ -31,6 +31,13 @@ class StoredText(StrEnum):
         member._value_ = value
         member.label = label
         return member
+
+
+# Fixed bounds a host passes in ``TransferLimits``; tests may pass others.
+UPLOAD_LINK_LIFE: Final = timedelta(seconds=300)
+DOWNLOAD_LINK_LIFE: Final = timedelta(seconds=300)
+MAX_UNPACKED_FILES: Final = 1000
+BUSY_RETRY_AFTER: Final = timedelta(seconds=5)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -23,7 +23,7 @@ from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, JSON_CONTENT_TYPE, TRACE_ID_HEADER
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
-from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, McpCaller, Unauthenticated, run_tool, tool_list
+from controllers.openapi._mcp_tools import McpCaller, Unauthenticated, mcp_instructions, run_tool, tool_list
 from controllers.openapi.auth.router import admit_bearer
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_initialize, handle_ping, negotiate_protocol_version
@@ -94,7 +94,7 @@ def _initialize(call: _Call) -> dict[str, Any]:
     instructions; raises as ``_admit`` does.
     """
     _admit()
-    return success(call.request_id, handle_initialize(MCP_INSTRUCTIONS, call.message.params.protocolVersion))
+    return success(call.request_id, handle_initialize(mcp_instructions(), call.message.params.protocolVersion))
 
 
 def _list_tools(call: _Call) -> dict[str, Any]:

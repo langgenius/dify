@@ -28,10 +28,11 @@ from controllers.openapi._transfer import (
     TRANSFER_BYTES_ENDPOINT,
     hold_slot,
     refusal_of,
+    require_file_transfers,
     transfer_owner_id,
     transfer_url,
 )
-from controllers.openapi.auth.requirements import CheckSubject
+from controllers.openapi.auth.requirements import CheckFileTransfersEnabled, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from services.file_transfer import FileTransferError, IncomingFile, StoredFile, Transfer, TransferTooLargeError
@@ -75,14 +76,18 @@ class UploadPrepareApi(Resource):
             Example(title="Prepare to send a folder as one zip", input={"folder": True}),
         ),
         pat_policy=PersonalAccessTokenPolicy.IDENTITY_DISCOVERY,
-        requirements=(CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),),
+        requirements=(
+            CheckFileTransfersEnabled(),
+            CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
+        ),
         body=UploadPreparePayload,
         returns=(HTTPStatus.CREATED, UploadPrepared, "Upload prepared"),
         context=None,
     )
     def post(self, *, body: UploadPreparePayload):
         """Precondition: an admitted caller. Postcondition: 201 with a new incoming transfer the caller owns,
-        its upload link and commands. Nothing is stored until a file is sent to the link.
+        its upload link and commands. Nothing is stored until a file is sent to the link. 503 while file
+        transfers are off, checked before any other guard.
         """
         transfers = application_services().file_transfers
         ticket = transfers.prepare(transfer_owner_id(), folder=body.folder)
@@ -105,8 +110,9 @@ class TransferBytesApi(Resource):
         """Precondition: ``token`` in the query string. Postcondition: 200 with the received file's facts and
         the next step; the token is checked before the body is read. Refusals: 404 unknown or wrong token,
         410 link expired, 409 different bytes already received, 413 too large, 400 not one file part or a
-        folder upload that is not a zip, 429 when every slot is taken.
+        folder upload that is not a zip, 429 when every slot is taken, 503 while file transfers are off.
         """
+        require_file_transfers()
         transfers = application_services().file_transfers
         token = request.args.get(TOKEN_PARAM, "")
         try:
@@ -136,8 +142,9 @@ class TransferBytesApi(Resource):
     def get(self, transfer_id: str):
         """Precondition: ``token`` in the query string. Postcondition: 200 with the parked file as an attachment
         while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
-        wrong token or an upload, 410 link expired, 429 when every slot is taken.
+        wrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.
         """
+        require_file_transfers()
         transfers = application_services().file_transfers
         token = request.args.get(TOKEN_PARAM, "")
         try:

@@ -159,3 +159,38 @@ def test_a_file_above_the_limit_is_refused_with_the_limit(
     assert error.value.error_code == OpenApiErrorCode.UPLOAD_TOO_LARGE
     assert f"{_LIMITS.max_bytes / 1024 / 1024:g} MiB" in str(error.value.description)
     assert world.blobs.files == {}
+
+
+@pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+def test_with_transfers_off_the_header_answers_503_and_the_operation_does_not_run(
+    export_skill: Callable[[dict[str, str]], TestResponse],
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    def must_not_run(_service: SkillManagementService, **_kwargs: object) -> PublishedSkillArchive:
+        raise AssertionError("the operation must not run while file transfers are off")
+
+    monkeypatch.setattr(SkillManagementService, "export_draft_archive", must_not_run)
+
+    response = export_skill(_ASK_FOR_TRANSFER)
+
+    assert (response.status_code, response.get_json()["code"]) == (503, OpenApiErrorCode.FILE_TRANSFERS_DISABLED)
+
+
+def test_with_transfers_off_a_call_without_the_header_still_gets_the_file(
+    export_skill: Callable[[dict[str, str]], TestResponse], config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(FILE_TRANSFER_ENABLED=False)
+
+    response = export_skill({})
+
+    assert response.status_code == 200
+    assert response.data == _ZIP

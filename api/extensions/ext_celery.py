@@ -1,7 +1,7 @@
 import logging
 import ssl
 from datetime import timedelta
-from typing import Any, NotRequired
+from typing import Any, Final, NotRequired
 from zoneinfo import ZoneInfo
 
 from celery import Celery, Task
@@ -16,6 +16,8 @@ from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 logger = logging.getLogger(__name__)
+
+FILE_TRANSFER_CLEAN_INTERVAL: Final = timedelta(minutes=10)
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -381,11 +383,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
             "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
         }
-    if dify_config.ENABLE_CLEAN_FILE_TRANSFERS_TASK:
+    if dify_config.file_transfers_on:
         imports.append("schedule.clean_file_transfers_task")
         beat_schedule["clean_file_transfers_task"] = {
             "task": "schedule.clean_file_transfers_task.clean_file_transfers_task",
-            "schedule": timedelta(minutes=dify_config.FILE_TRANSFER_CLEAN_INTERVAL_MINUTES),
+            "schedule": FILE_TRANSFER_CLEAN_INTERVAL,
         }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
