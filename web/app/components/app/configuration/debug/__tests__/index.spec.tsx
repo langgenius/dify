@@ -42,9 +42,21 @@ const api = vi.hoisted(() => ({
   message: vi.fn<typeof consoleClient.apps.byAppId.messages.byMessageId.get>(),
   agentLog: vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 // Completion requests use the generated client stream; record them with the chat stream calls.
 vi.mock('@/service/debug', async (importOriginal) => ({
@@ -59,6 +71,7 @@ vi.mock('@/service/debug', async (importOriginal) => ({
       { body: { ...body, response_mode: 'streaming' } },
       handlers,
     ),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()

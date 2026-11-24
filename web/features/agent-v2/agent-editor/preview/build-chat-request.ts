@@ -1,4 +1,5 @@
 import type { AgentChatMessageRequest } from './chat-conversation'
+import { agentChatMessagesSender } from '@/service/console-chat-messages'
 
 export function sendBuildChatMessage({
   agentId,
@@ -6,5 +7,5 @@ export function sendBuildChatMessage({
   data,
   handleSend,
 }: AgentChatMessageRequest) {
-  return handleSend(`agent/${agentId}/chat-messages`, data, callbacks)
+  return handleSend(agentChatMessagesSender(agentId), data, callbacks)
 }

@@ -18,6 +18,7 @@ import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { appChatMessagesSender } from '@/service/console-chat-messages'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -116,7 +117,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
 
       if ((config.file_upload as any).enabled && files?.length && supportVision) data.files = files
 
-      handleSend(`apps/${appId}/chat-messages`, data, {
+      handleSend(appChatMessagesSender(appId), data, {
         onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),

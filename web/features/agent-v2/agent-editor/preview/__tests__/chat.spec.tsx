@@ -38,9 +38,25 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ agentId: 'agent-1' }),
   usePathname: () => '/agents/agent-1/configure',
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 // Audio capture/encoding is a platform boundary; keep VoiceInput and its service routing real.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: api.record }))
