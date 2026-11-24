@@ -20,6 +20,20 @@ export const LLMModelIssueCode = {
 export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>
   modelSelector != null && (modelSelector.length === 0 || modelSelector[0] === 'env')
 
+export const getModelSelectionKey = (
+  source: 'direct' | 'env',
+  provider: string,
+  modelName: string,
+  completionParams: ModelConfig['completion_params'] = {},
+  environmentVariableName = '',
+) => {
+  // Collaborative snapshots can change the order of parameter keys.
+  const parameters = Object.entries(completionParams).sort(([left], [right]) =>
+    left.localeCompare(right),
+  )
+  return JSON.stringify([source, environmentVariableName, provider, modelName, parameters])
+}
+
 export const getLLMEnvironmentModel = (
   modelSelector: ValueSelector | undefined,
   environmentVariables: readonly EnvironmentVariable[],

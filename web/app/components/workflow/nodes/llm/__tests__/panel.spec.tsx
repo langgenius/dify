@@ -35,6 +35,13 @@ const rules = {
     },
   ],
 }
+const topPRule = {
+  name: 'top_p',
+  label: { en_US: 'Top P' },
+  type: 'float',
+  min: 0,
+  max: 1,
+}
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -152,7 +159,11 @@ const chooseDirectModel = async (user: ReturnType<typeof userEvent.setup>) => {
     await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
   )
   await user.click(picker.getByRole('button', { name: /^Claude 3.5 Sonnet/ }))
-  await waitFor(() => expect(getParameterRules).toHaveBeenCalledOnce())
+  await waitFor(() =>
+    expect(getParameterRules).toHaveBeenCalledWith(
+      expect.objectContaining({ query: { model: 'claude-3-5-sonnet' } }),
+    ),
+  )
 }
 const chooseEnvironmentModel = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('combobox', { name: 'workflowModels.nodes.llm.model' }))
@@ -254,12 +265,41 @@ describe('LLM Panel', () => {
     expect(getNodeData().model).toEqual(createData().model)
   })
 
-  it('preserves parameter edits made while another model rules request is pending', async () => {
+  it('ignores a pending selection when the target environment model changes', async () => {
     const user = userEvent.setup()
     const pending = createDeferred<typeof rules>()
     getParameterRules.mockReturnValueOnce(pending.promise)
+    const { getNodeData, store } = renderPanel({ data: createData({ model_selector: [] }) })
+    await chooseEnvironmentModel(user)
+    act(() => {
+      store.getState().setEnvironmentVariables([
+        {
+          ...sharedModel,
+          value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+        },
+      ])
+    })
+    await act(async () => {
+      pending.resolve(rules)
+      await pending.promise
+    })
+    expect(getNodeData().model_selector).toEqual([])
+    expect(getNodeData().model).toEqual(createData().model)
+  })
+
+  it('preserves parameter edits made while checking the previous model rules', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<typeof rules>()
+    getParameterRules
+      .mockResolvedValueOnce({ data: [topPRule] })
+      .mockReturnValueOnce(pending.promise)
     const { getNodeData } = renderPanel()
     await chooseDirectModel(user)
+    await waitFor(() =>
+      expect(getParameterRules).toHaveBeenCalledWith(
+        expect.objectContaining({ query: { model: 'gpt-4o' } }),
+      ),
+    )
     await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
     const temperature = screen.getByRole('spinbutton', { name: 'Temperature' })
     await user.clear(temperature)
@@ -275,19 +315,30 @@ describe('LLM Panel', () => {
       ...createData().model,
       completion_params: { temperature: 0.9 },
     })
+    expect(toast.warning).not.toHaveBeenCalled()
   })
 
-  it('commits the direct model and its supported parameters together', async () => {
+  it('warns when switching removes a parameter enabled in settings', async () => {
     const user = userEvent.setup()
-    const pending = createDeferred<typeof rules>()
+    const targetRules = { data: [topPRule] }
+    const pending = createDeferred<typeof targetRules>()
     getParameterRules.mockReturnValueOnce(pending.promise)
     const data = createData()
-    data.model.completion_params.top_p = 0.9
+    data.model.completion_params = { top_p: 0.9 }
     const { getNodeData } = renderPanel({ data })
+
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    const temperatureSwitch = screen.getByRole('switch', { name: 'Temperature' })
+    expect(temperatureSwitch).not.toBeChecked()
+    await user.click(temperatureSwitch)
+    expect(temperatureSwitch).toBeChecked()
+    expect(getNodeData().model.completion_params).toEqual({ top_p: 0.9, temperature: 0.7 })
+    await user.keyboard('{Escape}')
+
     await chooseDirectModel(user)
-    expect(getNodeData().model).toEqual(data.model)
+    expect(getNodeData().model.name).toBe('gpt-4o')
     await act(async () => {
-      pending.resolve(rules)
+      pending.resolve(targetRules)
       await pending.promise
     })
     expect(screen.getByRole('button', { name: /^Claude 3.5 Sonnet/ })).toBeEnabled()
@@ -295,9 +346,23 @@ describe('LLM Panel', () => {
       provider: 'anthropic',
       name: 'claude-3-5-sonnet',
       mode: 'chat',
-      completion_params: { temperature: 0.7 },
+      completion_params: { top_p: 0.9 },
     })
-    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('top_p'))
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
+      'modelProvider.modelProvider.parametersInvalidRemoved:{"parameters":"temperature"}',
+    )
+  })
+
+  it('silently removes a legacy parameter unsupported by both models', async () => {
+    const user = userEvent.setup()
+    getParameterRules.mockResolvedValue({ data: [topPRule] })
+    const { getNodeData } = renderPanel()
+
+    await chooseDirectModel(user)
+
+    expect(await screen.findByRole('button', { name: /^Claude 3.5 Sonnet/ })).toBeEnabled()
+    expect(getNodeData().model.completion_params).toEqual({})
+    expect(toast.warning).not.toHaveBeenCalled()
   })
 
   it('preserves the current model and parameters when the rules request fails', async () => {

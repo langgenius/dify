@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Tətbiqləri işə salmaq üçün standart sistem modelini konfiqurasiya et",
   "modelProvider.pageDesc": "Yaratdığın hər tətbiqi gücləndirmək üçün dünyanın aparıcı model provayderlərini qoş.",
   "modelProvider.parameters": "Parametrlər",
-  "modelProvider.parametersInvalidRemoved": "Bəzi parametrlər etibarsızdır və çıxarılıb",
+  "modelProvider.parametersInvalidRemoved": "Seçilmiş model bu parametrləri saxlaya bilmədi: {{parameters}}",
   "modelProvider.providerManaged": "Provayder tərəfindən idarə olunur",
   "modelProvider.quotaLabel": "Süni intellekt kreditləri",
   "modelProvider.ranOutDate": "{{date}} tarixində tükənib",

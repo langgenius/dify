@@ -357,7 +357,9 @@ it('selects another model and publishes only parameters supported by that model'
   await user.click(screen.getByRole('button', { name: /^GPT-4 CHAT$/ }))
   const chooser = await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
   await user.click(within(chooser).getByRole('button', { name: /^GPT-4.1/ }))
-  await screen.findByText(/modelProvider.modelProvider.parametersInvalidRemoved/)
+  await screen.findByText(
+    'modelProvider.modelProvider.parametersInvalidRemoved:{"parameters":"temperature"}',
+  )
   await publish(user)
   expect(api.publish.mock.lastCall![0]).toMatchObject({
     body: { model: { name: 'gpt-4.1' } },

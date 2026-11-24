@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "یک مدل سیستم پیش‌فرض برای اجرای برنامه‌ها پیکربندی کنید",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "پارامترها",
-  "modelProvider.parametersInvalidRemoved": "برخی پارامترها نامعتبر هستند و حذف شده‌اند",
+  "modelProvider.parametersInvalidRemoved": "مدل انتخاب‌شده نتوانست این پارامترها را حفظ کند: {{parameters}}",
   "modelProvider.providerManaged": "مدیریت شده توسط ارائه‌دهنده",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "در {{date}} تمام شد",

@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Configurez un modèle système par défaut pour exécuter les applications",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "PARAMÈTRES",
-  "modelProvider.parametersInvalidRemoved": "Certains paramètres sont invalides et ont été supprimés.",
+  "modelProvider.parametersInvalidRemoved": "Les paramètres suivants n’ont pas été conservés pour le modèle sélectionné : {{parameters}}",
   "modelProvider.providerManaged": "Géré par le fournisseur",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Épuisé le {{date}}",

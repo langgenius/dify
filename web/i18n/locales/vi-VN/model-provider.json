@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Cấu hình mô hình hệ thống mặc định để chạy ứng dụng",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "THAM SỐ",
-  "modelProvider.parametersInvalidRemoved": "Một số tham số không hợp lệ và đã được loại bỏ",
+  "modelProvider.parametersInvalidRemoved": "Không thể giữ lại các tham số sau cho mô hình đã chọn: {{parameters}}",
   "modelProvider.providerManaged": "Nhà cung cấp được quản lý",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Hết vào {{date}}",

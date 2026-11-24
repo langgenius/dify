@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Настройте системную модель по умолчанию для запуска приложений",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "ПАРАМЕТРЫ",
-  "modelProvider.parametersInvalidRemoved": "Некоторые параметры недействительны и были удалены",
+  "modelProvider.parametersInvalidRemoved": "Для выбранной модели не удалось сохранить следующие параметры: {{parameters}}",
   "modelProvider.providerManaged": "Управляется поставщиком",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Исчерпано {{date}}",

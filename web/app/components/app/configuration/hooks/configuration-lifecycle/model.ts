@@ -7,7 +7,10 @@ import { produce } from 'immer'
 import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { ModelModeType } from '@/types/app'
-import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import {
+  fetchAndMergeValidCompletionParams,
+  formatRemovedCompletionParams,
+} from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
 
 type ModelChangeHandlerOptions = {
@@ -102,13 +105,13 @@ export const createModelChangeHandler =
         isAdvancedMode,
       )
 
-      if (Object.keys(removedDetails).length)
+      const removed = Object.entries(removedDetails)
+      if (removed.length)
         toast.warning(
-          `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${Object.entries(
-            removedDetails,
-          )
-            .map(([key, reason]) => `${key} (${reason})`)
-            .join(', ')}`,
+          t(($) => $['modelProvider.parametersInvalidRemoved'], {
+            ns: 'modelProvider',
+            parameters: formatRemovedCompletionParams(removed),
+          }),
         )
 
       setCompletionParams(filtered)

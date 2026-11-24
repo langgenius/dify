@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "قم بتكوين نموذج نظام افتراضي لتشغيل التطبيقات",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "المعلمات",
-  "modelProvider.parametersInvalidRemoved": "بعض المعلمات غير صالحة وتمت إزالتها",
+  "modelProvider.parametersInvalidRemoved": "لم يحتفظ النموذج المحدد بهذه المعلمات: {{parameters}}",
   "modelProvider.providerManaged": "مدار من قبل المزود",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "نفد في {{date}}",

@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Konfigurasikan model sistem default untuk menjalankan aplikasi",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "PARAMETER",
-  "modelProvider.parametersInvalidRemoved": "Beberapa parameter tidak valid dan telah dihapus",
+  "modelProvider.parametersInvalidRemoved": "Model yang dipilih tidak dapat mempertahankan parameter ini: {{parameters}}",
   "modelProvider.providerManaged": "Penyedia dikelola",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Habis pada {{date}}",

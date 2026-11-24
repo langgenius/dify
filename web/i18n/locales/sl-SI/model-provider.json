@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Konfigurirajte privzeti sistemski model za zaganjanje aplikacij",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "PARAMETRI",
-  "modelProvider.parametersInvalidRemoved": "Nekateri parametri so neveljavni in so bili odstranjeni.",
+  "modelProvider.parametersInvalidRemoved": "Izbrani model ni mogel ohraniti teh parametrov: {{parameters}}",
   "modelProvider.providerManaged": "Upravljano s strani ponudnika",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Porabljeno {{date}}",

@@ -127,7 +127,7 @@ _CHATFLOW_STARTER_GRAPH: Final[dict[str, Any]] = {
             {
                 "type": BuiltinNodeTypes.LLM,
                 "title": "LLM",
-                "model": {"provider": "", "name": "", "mode": LLMMode.CHAT, "completion_params": {"temperature": 0.7}},
+                "model": {"provider": "", "name": "", "mode": LLMMode.CHAT, "completion_params": {}},
                 "prompt_template": [{"role": PromptMessageRole.SYSTEM, "text": ""}],
                 "context": {"enabled": False, "variable_selector": []},
                 "vision": {"enabled": False},

@@ -84,6 +84,11 @@ export const mergeValidCompletionParams = (
   return { params: nextParams, removedDetails }
 }
 
+export const formatRemovedCompletionParams = (removed: readonly [name: string, reason: string][]) =>
+  removed
+    .map(([name, reason]) => (reason === 'unsupported' ? name : `${name} (${reason})`))
+    .join(', ')
+
 export const fetchModelParameterRulesForModel = async (
   provider: string,
   modelId: string,

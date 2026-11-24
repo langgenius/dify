@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "配置預設系統模型以執行應用",
   "modelProvider.pageDesc": "選擇一個語言模型為你的應用提供能力。在 Studio 中構建應用前，至少需要配置一個模型。",
   "modelProvider.parameters": "引數",
-  "modelProvider.parametersInvalidRemoved": "一些參數無效，已被移除",
+  "modelProvider.parametersInvalidRemoved": "切換後未保留這些參數：{{parameters}}",
   "modelProvider.providerManaged": "提供者管理",
   "modelProvider.quotaLabel": "AI CREDITS",
   "modelProvider.ranOutDate": "{{date}}用盡",

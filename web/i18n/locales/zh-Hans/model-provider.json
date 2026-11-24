@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "配置默认系统模型以运行应用",
   "modelProvider.pageDesc": "选择一个为应用提供能力的语言模型。在工作室中开始构建前，至少需要配置一个。",
   "modelProvider.parameters": "参数",
-  "modelProvider.parametersInvalidRemoved": "部分参数无效，已移除",
+  "modelProvider.parametersInvalidRemoved": "切换后未保留这些参数：{{parameters}}",
   "modelProvider.providerManaged": "由模型供应商管理",
   "modelProvider.quotaLabel": "AI 消息额度",
   "modelProvider.ranOutDate": "{{date}}用尽",

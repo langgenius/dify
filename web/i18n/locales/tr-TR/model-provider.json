@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Uygulamaları çalıştırmak için varsayılan bir sistem modeli yapılandırın",
   "modelProvider.pageDesc": "Oluşturduğunuz her uygulamaya güç vermek için dünyanın önde gelen model sağlayıcılarını bağlayın.",
   "modelProvider.parameters": "PARAMETRELER",
-  "modelProvider.parametersInvalidRemoved": "Bazı parametreler geçersizdir ve kaldırılmıştır.",
+  "modelProvider.parametersInvalidRemoved": "Seçilen model bu parametreleri koruyamadı: {{parameters}}",
   "modelProvider.providerManaged": "Sağlayıcı tarafından yönetilen",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "{{date}} tarihinde tükendi",

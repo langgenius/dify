@@ -4721,7 +4721,7 @@ export default interface Resources {
     'modelProvider.noneConfigured': 'Configure a default system model to run applications'
     'modelProvider.pageDesc': "Connect the world's leading model providers to power every app you build."
     'modelProvider.parameters': 'PARAMETERS'
-    'modelProvider.parametersInvalidRemoved': 'Some parameters are invalid and have been removed'
+    'modelProvider.parametersInvalidRemoved': 'These parameters weren’t retained after switching models: {{parameters}}'
     'modelProvider.providerManaged': 'Provider managed'
     'modelProvider.quotaLabel': 'AI CREDITS'
     'modelProvider.ranOutDate': 'Ran out on {{date}}'

@@ -6,6 +6,7 @@ import type {
 import {
   getLLMEnvironmentModel,
   getLLMModelIssue,
+  getModelSelectionKey,
   isEnvironmentModelSource,
   isLLMModelProviderInstalled,
   LLMModelIssueCode,
@@ -13,6 +14,25 @@ import {
 } from '../utils'
 
 describe('llm utils', () => {
+  it('keeps a model selection stable when collaboration reorders parameter keys', () => {
+    const key = getModelSelectionKey('direct', 'openai', 'gpt-4o-mini', {
+      max_tokens: 1024,
+      temperature: 0.7,
+    })
+    expect(
+      getModelSelectionKey('direct', 'openai', 'gpt-4o-mini', {
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    ).toBe(key)
+    expect(
+      getModelSelectionKey('direct', 'openai', 'gpt-4o-mini', {
+        max_tokens: 1024,
+        temperature: 0.9,
+      }),
+    ).not.toBe(key)
+  })
+
   describe('getLLMModelIssue', () => {
     it('returns provider-required when the model provider is missing', () => {
       expect(getLLMModelIssue({ modelProvider: undefined })).toBe(

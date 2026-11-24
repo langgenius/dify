@@ -853,6 +853,7 @@ def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> 
         ("llm-answer", "llm", "source", "answer", "target"),
     ]
     assert graph["nodes"][2]["data"]["answer"] == "{{#llm.text#}}"
+    assert graph["nodes"][1]["data"]["model"]["completion_params"] == {}
     assert json.loads(json.dumps(graph))["nodes"][1]["data"]["model"]["mode"] == "chat"
 
 

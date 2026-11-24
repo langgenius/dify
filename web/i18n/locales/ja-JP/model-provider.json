@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "アプリケーションを実行するためにデフォルトのシステムモデルを設定してください",
   "modelProvider.pageDesc": "アプリを動かす言語モデルを選択します。スタジオで構築を始める前に、少なくとも 1 つ設定が必要です。",
   "modelProvider.parameters": "パラメータ",
-  "modelProvider.parametersInvalidRemoved": "いくつかのパラメータが無効であり、削除されました。",
+  "modelProvider.parametersInvalidRemoved": "選択したモデルには次のパラメーターが引き継がれませんでした：{{parameters}}",
   "modelProvider.providerManaged": "プロバイダ管理",
   "modelProvider.quotaLabel": "AI クレジット",
   "modelProvider.ranOutDate": "{{date}}に使い切りました",
