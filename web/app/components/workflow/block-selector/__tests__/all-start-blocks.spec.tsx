@@ -9,7 +9,6 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/quer
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNode } from '../../__tests__/fixtures'
@@ -37,9 +36,23 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: vi.fn(),
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedTriggersRecommendations: vi.fn(),
-}))
+// Featured triggers are not under test here; keep the collection request offline.
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  const stubs: Record<string, unknown> = {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+  }
+  const marketplaceClient = new Proxy(actual.marketplaceClient, {
+    get: (target, key, receiver) =>
+      typeof key === 'string' && key in stubs ? stubs[key] : Reflect.get(target, key, receiver),
+  })
+  return {
+    ...actual,
+    marketplaceClient,
+    marketplaceQuery: createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] }),
+  }
+})
 
 vi.mock('@/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/env')>()
@@ -57,13 +70,9 @@ const mockUseLocale = vi.mocked(useLocale)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 const mockUseInvalidateAllTriggerPlugins = vi.mocked(useInvalidateAllTriggerPlugins)
-const mockUseFeaturedTriggersRecommendations = vi.mocked(useFeaturedTriggersRecommendations)
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 type UseAllTriggerPluginsReturn = ReturnType<typeof useAllTriggerPlugins>
-type UseFeaturedTriggersRecommendationsReturn = ReturnType<
-  typeof useFeaturedTriggersRecommendations
->
 
 const createTriggerProvider = (
   overrides: Partial<TriggerWithProvider> = {},
@@ -133,14 +142,6 @@ const createTriggerPluginsQueryResult = (
   }).getCurrentResult()
 }
 
-const createFeaturedTriggersRecommendationsMock = (
-  overrides: Partial<UseFeaturedTriggersRecommendationsReturn> = {},
-): UseFeaturedTriggersRecommendationsReturn => ({
-  plugins: [],
-  isLoading: false,
-  ...overrides,
-})
-
 describe('AllStartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -152,9 +153,6 @@ describe('AllStartBlocks', () => {
       createTriggerPluginsQueryResult([createTriggerProvider()]),
     )
     mockUseInvalidateAllTriggerPlugins.mockReturnValue(vi.fn())
-    mockUseFeaturedTriggersRecommendations.mockReturnValue(
-      createFeaturedTriggersRecommendationsMock(),
-    )
     workflowNodes = []
   })
 

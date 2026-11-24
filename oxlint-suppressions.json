@@ -3465,13 +3465,13 @@
   },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 10
+      "count": 9
     },
     "dify/require-disable-directive-description": {
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/use-share.ts": {

@@ -5,13 +5,14 @@ import type { ListRef } from './marketplace-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
+import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum as BlockEnumValue } from '../types'
@@ -97,8 +98,12 @@ function AllStartBlocks({
   const debouncedMarketplaceFilters = useDebounce(marketplaceFilters, { wait: 500 })
   const isMarketplaceFilterSettled = debouncedMarketplaceFilters === marketplaceFilters
   const isMarketplaceSearchEnabled = enableTriggerPlugin && marketplace !== null && hasFilter
-  const { plugins: featuredPlugins = [], isLoading: featuredLoading } =
-    useFeaturedTriggersRecommendations(enableTriggerPlugin && marketplace !== null && !hasFilter)
+  const { data: featuredPlugins = [], isLoading: featuredLoading } = useQuery(
+    marketplaceCollectionPluginsQueryOptions({
+      collection: '__recommended-plugins-triggers',
+      enabled: enableTriggerPlugin && marketplace !== null && !hasFilter,
+    }),
+  )
   const marketplaceSearchParams = useMemo(
     () =>
       isMarketplaceSearchEnabled && isMarketplaceFilterSettled

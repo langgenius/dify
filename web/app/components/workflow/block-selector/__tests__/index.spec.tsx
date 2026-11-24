@@ -10,17 +10,6 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { BlockClassification, TabType } from '../types'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-  useFeaturedTriggersRecommendations: () => ({
-    plugins: [],
-    isLoading: false,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
 }))

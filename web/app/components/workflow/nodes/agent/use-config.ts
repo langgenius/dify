@@ -13,7 +13,8 @@ import {
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
-import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
+import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -92,10 +93,12 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     strategyProvider,
   } = useStrategyInfo(inputs.agent_strategy_provider_name, inputs.agent_strategy_name)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
-  const pluginDetail = useCheckInstalled({
-    pluginIds: pluginId ? [pluginId] : [],
-    enabled: Boolean(pluginId),
-  })
+  const pluginDetail = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: pluginId ? [pluginId] : [],
+      enabled: Boolean(pluginId),
+    }),
+  )
   const formData = useMemo(() => {
     const paramNameList = (currentStrategy?.parameters || []).map((item) => item.name)
     const res = Object.fromEntries(

@@ -8,7 +8,6 @@ import type {
   PluginInstallTask,
   PluginInstallTaskStartResponse,
   PluginListResponse,
-  PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   PluginInfoFromMarketPlace,
@@ -16,7 +15,6 @@ import type {
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
 import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
-import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   Dependency,
@@ -44,7 +42,6 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -525,88 +522,6 @@ const preserveLocalUnfinishedPluginTasks = (
   return {
     ...nextData,
     tasks: [...missingUnfinishedTasks, ...nextData.tasks],
-  }
-}
-
-export const useCheckInstalled = ({
-  pluginIds,
-  enabled,
-}: {
-  pluginIds: string[]
-  enabled: boolean
-}) => {
-  return useQuery(
-    consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
-      input: { body: { plugin_ids: pluginIds } },
-      enabled,
-      staleTime: 0,
-      select: (response) => ({
-        plugins: response.plugins.map(normalizeInstalledPluginDetail),
-      }),
-    }),
-  )
-}
-
-export const useInvalidateCheckInstalled = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
-    })
-  }
-}
-
-const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
-const useRecommendedMarketplacePlugins = ({
-  collection = '__recommended-plugins-tools',
-  enabled = true,
-  limit = 15,
-}: {
-  collection?: string
-  enabled?: boolean
-  limit?: number
-} = {}) => {
-  return useQuery<Plugin[]>({
-    queryKey: [...useRecommendedMarketplacePluginsKey, collection, limit],
-    queryFn: async () => {
-      const response = await postMarketplace<{ data: { plugins: Plugin[] } }>(
-        `/collections/${collection}/plugins`,
-        {
-          body: {
-            limit,
-          },
-        },
-      )
-      return response.data.plugins.map((plugin) => toPluginCard(plugin))
-    },
-    enabled,
-    staleTime: 60 * 1000,
-  })
-}
-
-export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) => {
-  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
-    collection: '__recommended-plugins-tools',
-    enabled,
-    limit,
-  })
-
-  return {
-    plugins,
-    isLoading,
-  }
-}
-
-export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15) => {
-  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
-    collection: '__recommended-plugins-triggers',
-    enabled,
-    limit,
-  })
-
-  return {
-    plugins,
-    isLoading,
   }
 }
 
@@ -1479,45 +1394,5 @@ export const usePluginManifestInfo = (pluginUID: string) => {
         `/plugins/${pluginUID}`,
       ),
     retry: 0,
-  })
-}
-
-// Untranslated labels fall back to en_US, matching renderI18nObject. Dynamic options have no
-// display conditions.
-const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOption => ({
-  value,
-  label: {
-    en_US: label.en_US,
-    zh_Hans: label.zh_Hans ?? label.en_US,
-    ...(label.ja_JP != null && { ja_JP: label.ja_JP }),
-    ...(label.pt_BR != null && { pt_BR: label.pt_BR }),
-  },
-  icon: icon ?? undefined,
-  show_on: [],
-})
-
-export const useFetchDynamicOptions = (
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  // The backend requires a provider type; callers without one render tool options.
-  provider_type: 'tool' | 'trigger' = 'tool',
-  extra?: Record<string, unknown>,
-) => {
-  return useMutation({
-    mutationFn: () =>
-      consoleClient.workspaces.current.plugin.parameters.dynamicOptions
-        .get({
-          query: {
-            plugin_id,
-            provider,
-            action,
-            parameter,
-            provider_type,
-            ...extra,
-          },
-        })
-        .then(({ options }) => ({ options: options.map(toDynamicOption) })),
   })
 }

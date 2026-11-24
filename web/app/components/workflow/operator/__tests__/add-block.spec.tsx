@@ -6,11 +6,6 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({ data: [] }),
   useInvalidateAllTriggerPlugins: () => vi.fn(),

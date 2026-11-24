@@ -17,11 +17,6 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({ data: [] }),
   useInvalidateAllTriggerPlugins: () => vi.fn(),
