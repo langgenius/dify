@@ -30,14 +30,14 @@ type ExportSecretsDialogPayload = {
   envList: EnvironmentVariableItemResponse[]
 }
 
-export type AppCardDialogHandles = {
+export type AppListDialogHandles = {
   edit: DialogHandle<AppPartial>
   duplicate: DialogHandle<AppPartial>
   switchApp: DialogHandle<AppPartial>
   exportSecrets: AlertDialogHandle<ExportSecretsDialogPayload>
 }
 
-export function AppCardDialogs({ handles }: { handles: AppCardDialogHandles }) {
+export function AppListDialogs({ handles }: { handles: AppListDialogHandles }) {
   const { t } = useTranslation(['app'])
   const { push } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

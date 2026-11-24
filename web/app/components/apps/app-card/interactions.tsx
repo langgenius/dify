@@ -2,7 +2,7 @@
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEvent, ReactElement } from 'react'
-import type { AppCardDialogHandles } from './dialogs'
+import type { AppListDialogHandles } from '../app-list-dialogs'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -221,7 +221,7 @@ function AppCardOperationsMenuItems({
 type AppCardInteractionsProps = {
   app: AppPartial
   children: ReactElement
-  dialogs: AppCardDialogHandles
+  dialogs: AppListDialogHandles
   onDelete: () => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourActionMenuHighlightPart?: string

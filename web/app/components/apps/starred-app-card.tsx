@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppCardDialogHandles } from './app-card/dialogs'
+import type { AppListDialogHandles } from './app-list-dialogs'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -21,7 +21,7 @@ import { StudioListLink } from './list-navigation'
 
 type StarredAppCardProps = {
   app: AppPartial
-  dialogs: AppCardDialogHandles
+  dialogs: AppListDialogHandles
   onDelete: (item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string

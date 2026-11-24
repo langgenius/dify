@@ -8,7 +8,7 @@ import type {
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { AppCardDialogHandles } from './app-card/dialogs'
+import type { AppListDialogHandles } from './app-list-dialogs'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -34,7 +34,7 @@ import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { AppCardDialogs } from './app-card/dialogs'
+import { AppListDialogs } from './app-list-dialogs'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import Empty from './empty'
 import FirstEmptyState from './first-empty-state'
@@ -122,7 +122,7 @@ function AppListCatalogContent({
 }: AppListCatalogContentProps) {
   const { t } = useTranslation(['app', 'common'])
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAppDialogPayload>())
-  const [appCardDialogs] = useState<AppCardDialogHandles>(() => ({
+  const [appListDialogs] = useState<AppListDialogHandles>(() => ({
     edit: createDialogHandle(),
     duplicate: createDialogHandle(),
     switchApp: createDialogHandle(),
@@ -195,7 +195,7 @@ function AppListCatalogContent({
           {starredApps.length > 0 && (
             <StarredAppList
               apps={starredApps}
-              dialogs={appCardDialogs}
+              dialogs={appListDialogs}
               onDelete={openDeleteDialog}
               stepByStepTourCardTarget={
                 shouldHighlightStarredAppRow
@@ -239,7 +239,7 @@ function AppListCatalogContent({
                   <AppCard
                     key={app.id}
                     app={app}
-                    dialogs={appCardDialogs}
+                    dialogs={appListDialogs}
                     onDelete={(item) => openDeleteDialog(app, item)}
                     onlineUsers={workflowOnlineUsersMap[app.id]}
                     onOpenTagManagement={onOpenTagManagement}
@@ -324,7 +324,7 @@ function AppListCatalogContent({
           </span>
         </div>
       )}
-      <AppCardDialogs handles={appCardDialogs} />
+      <AppListDialogs handles={appListDialogs} />
       <AlertDialog
         handle={deleteDialog}
         onOpenChange={(open, details) => {

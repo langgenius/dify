@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ComponentProps, ReactElement } from 'react'
-import type { AppCardDialogHandles } from '../app-card/dialogs'
+import type { AppListDialogHandles } from '../app-list-dialogs'
 import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
@@ -19,7 +19,7 @@ import { captureDownloads } from '@/test/download'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { AppCard } from '../app-card'
-import { AppCardDialogs } from '../app-card/dialogs'
+import { AppListDialogs } from '../app-list-dialogs'
 import { StarredAppCard } from '../starred-app-card'
 
 const api = vi.hoisted(() => ({
@@ -78,7 +78,7 @@ const mockConsoleState = {
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }
-const createDialogHandles = (): AppCardDialogHandles => ({
+const createDialogHandles = (): AppListDialogHandles => ({
   edit: createDialogHandle(),
   duplicate: createDialogHandle(),
   switchApp: createDialogHandle(),
@@ -89,7 +89,7 @@ const render = (ui: ReactElement) =>
   renderWithConsoleQuery(
     <>
       {ui}
-      <AppCardDialogs handles={dialogs} />
+      <AppListDialogs handles={dialogs} />
     </>,
     {
       accountProfile: mockConsoleState.userProfile,

@@ -1,14 +1,14 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppCardDialogHandles } from './app-card/dialogs'
+import type { AppListDialogHandles } from './app-list-dialogs'
 import { useTranslation } from 'react-i18next'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: AppPartial[]
-  dialogs: AppCardDialogHandles
+  dialogs: AppListDialogHandles
   onDelete: (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string

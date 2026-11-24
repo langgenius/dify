@@ -15,6 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -105,7 +106,7 @@ function SwitchAppSession({
   )
 
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmRemoveDialog] = useState(() => createAlertDialogHandle())
   const submit = (name: string) => {
     if (isPending || isAppQuotaUnavailable || isAppsFull || !name.trim()) return
     onSubmit(
@@ -117,13 +118,6 @@ function SwitchAppSession({
       },
       removeOriginal,
     )
-  }
-
-  const handleConfirmDeleteOpenChange = (open: boolean) => {
-    if (open) return
-
-    setShowConfirmDelete(false)
-    setRemoveOriginal(false)
   }
 
   return (
@@ -203,7 +197,7 @@ function SwitchAppSession({
                 checked={removeOriginal}
                 onCheckedChange={(checked) => {
                   setRemoveOriginal(checked)
-                  if (checked) setShowConfirmDelete(true)
+                  if (checked) confirmRemoveDialog.open(null)
                 }}
               />
               <span className="ms-2 text-start text-sm/5 text-text-secondary">
@@ -226,7 +220,12 @@ function SwitchAppSession({
           </Button>
         </DialogFooter>
       </Form>
-      <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
+      <AlertDialog
+        handle={confirmRemoveDialog}
+        onOpenChange={(open, details) => {
+          if (!open && details.reason !== 'imperative-action') setRemoveOriginal(false)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}</AlertDialogTitle>
@@ -238,7 +237,7 @@ function SwitchAppSession({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
+            <AlertDialogConfirmButton onClick={() => confirmRemoveDialog.close()}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
