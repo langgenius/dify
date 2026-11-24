@@ -5,6 +5,7 @@ import type {
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { page as browserPage, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -139,7 +140,31 @@ beforeEach(() => {
   })
 })
 
-it('opens the selected installed app in a dialog and restores focus to its card on close', async () => {
+it('shows a single card focus ring and moves the focus indicator to the star on Tab', async () => {
+  const screen = await renderPublished()
+  const card = screen.getByRole('button', { name: 'Assistant first', exact: true })
+  const star = screen.getByRole('button', {
+    name: 'app.endUser.starApp:{"name":"Assistant first"}',
+  })
+  await expect.element(card).toBeVisible()
+  screen.getByRole('combobox', { name: 'app.studio.sort.sortBy' }).element().focus()
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(card).toHaveFocus()
+  expect(getComputedStyle(card.element()).boxShadow).not.toContain('0px 0px 0px 2px')
+  expect(getComputedStyle(card.element(), '::after').boxShadow).toContain('inset')
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(star).toHaveFocus()
+  expect(getComputedStyle(card.element(), '::after').boxShadow).toBe('none')
+  expect(getComputedStyle(star.element()).boxShadow).not.toBe('none')
+})
+
+it.each([
+  { viewport: 'desktop', width: 1440, height: 900 },
+  { viewport: 'narrow', width: 390, height: 660 },
+])('opens a full-screen app dialog on $viewport', async ({ width, height }) => {
+  await browserPage.viewport(width, height)
   const screen = await renderPublished()
   const card = screen.getByRole('button', { name: 'Assistant second', exact: true })
   await expect.element(card).toBeVisible()
@@ -153,6 +178,15 @@ it('opens the selected installed app in a dialog and restores focus to its card 
   expect(service.detail).toHaveBeenCalledExactlyOnceWith('second')
   expect(service.parameters).toHaveBeenCalledExactlyOnceWith('second')
   expect(service.metadata).toHaveBeenCalledExactlyOnceWith('second')
+
+  const bounds = dialog.element().getBoundingClientRect()
+  expect(bounds.width).toBeGreaterThan(width * 0.9)
+  expect(bounds.height).toBeGreaterThan(height * 0.9)
+  expect(bounds.left).toBeGreaterThanOrEqual(0)
+  expect(bounds.top).toBeGreaterThanOrEqual(0)
+  expect(bounds.right).toBeLessThanOrEqual(width)
+  expect(bounds.bottom).toBeLessThanOrEqual(height)
+
   await dialog.getByRole('button', { name: 'common.operation.close' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(card).toHaveFocus()

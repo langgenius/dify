@@ -61,6 +61,7 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         if (
           isUnauthorizedError(error) &&
           (isMyApps || isMyAccountProfile) &&
+          path !== '/logout' &&
           path !== '/account/session' &&
           !new URLSearchParams(search).has(WEBAPP_PORTAL_LOGIN_CODE)
         ) {
