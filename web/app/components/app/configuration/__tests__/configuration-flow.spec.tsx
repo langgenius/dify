@@ -64,7 +64,7 @@ const api = vi.hoisted(() => ({
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
   stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  marketplace: vi.fn<typeof import('@/service/base').postMarketplace>(),
+  marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
@@ -89,15 +89,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
         api.rules(input),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'ruleGenerate.post': (input) => api.generate(input),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'ruleGenerate.post': (input) => api.generate(input),
       'apps.byAppId.get': (input) => api.app(input),
       'apps.byAppId.modelConfig.post': (input) => api.publish(input),
       'workspaces.current.toolProviders.get': (input) => api.tools(input),
@@ -110,8 +110,11 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: api.stream,
-  postMarketplace: api.marketplace,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: api.marketplace })
+})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),

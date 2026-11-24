@@ -46,6 +46,9 @@ async function expectActivePage(screen: Awaited<ReturnType<typeof setup>>, page:
     })
     .toBe(true)
 }
+// Autoplay is the contract; reduced-motion cases switch back inside the test.
+beforeEach(() => emulateReducedMotion(false))
+
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
@@ -202,7 +205,6 @@ it.each([false, true])(
   async (pauseWhenOffscreen) => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     await emulateReducedMotion(true)
-    onTestFinished(() => emulateReducedMotion(false))
     const screen = await setup({ autoPlay: true, autoPlayInterval: 1000, pauseWhenOffscreen })
     await expectActivePage(screen, 1)
     await new Promise(requestAnimationFrame)

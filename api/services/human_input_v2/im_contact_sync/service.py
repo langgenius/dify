@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from pydantic import NaiveDatetime
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,12 +17,13 @@ from core.human_input_v2.im_integration import (
     SyncResultPage,
 )
 from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator, IMSyncInitiator
-from core.human_input_v2.shared import DirectoryScope, IMSyncRunId
+from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputIMSyncRun
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.im_integration import SQLAlchemyIMControlPlaneRepository
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.account_ports import AccountSnapshotQuery
@@ -139,12 +140,45 @@ class IMSyncService:
         latest_run = self._load_latest_run(owner_scope)
         with self._session_factory() as session:
             channel = self._require_channel(session, owner_scope)
-            return SQLAlchemyIMControlPlaneRepository(session, channel).page_sync_results(
+            result_page = SQLAlchemyIMControlPlaneRepository(session, channel).page_sync_results(
                 latest_run.id,
                 result_type,
                 page=page,
                 limit=limit,
             )
+            return self._filter_result_avatars(session, owner_scope, result_page)
+
+    @staticmethod
+    def _filter_result_avatars(
+        session: Session, owner_scope: DirectoryScope, result_page: SyncResultPage
+    ) -> SyncResultPage:
+        """Verify frozen uploads against the current contacts visible in the run's directory scope."""
+        uploads = {
+            result.id: snapshot
+            for result in result_page.items
+            if (snapshot := result.contact_snapshot) is not None
+            and snapshot.avatar_file_id
+            and not snapshot.avatar_file_id.startswith(("http://", "https://"))
+        }
+        if not uploads:
+            return result_page
+
+        contact_ids = [snapshot.contact_id for snapshot in uploads.values()]
+        contacts = SQLAlchemyContactRepository(session)
+        if isinstance(owner_scope, DeploymentScope):
+            avatars_by_contact = contacts.get_organization_candidate_avatars(contact_ids)
+        else:
+            avatars_by_contact = {
+                contact.id: contact.avatar_file_id
+                for contact in contacts.get_contacts_by_ids(owner_scope.id, contact_ids)
+            }
+        items = []
+        for result in result_page.items:
+            snapshot = uploads.get(result.id)
+            if snapshot is not None and avatars_by_contact.get(snapshot.contact_id) != snapshot.avatar_file_id:
+                result = replace(result, contact_snapshot=replace(snapshot, avatar_file_id=None))
+            items.append(result)
+        return replace(result_page, items=tuple(items))
 
     def search_identities(
         self,

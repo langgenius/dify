@@ -33,7 +33,7 @@ export function CommentThreadPopup({
   return (
     <PopoverPopup
       className={cn(
-        'relative flex max-h-100 w-90 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px]',
+        'relative flex max-h-100 w-90 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-[5px] transition-none',
         className,
       )}
       {...props}

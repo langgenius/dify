@@ -1,23 +1,14 @@
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { CollaboratorAvatar } from '../collaborator-avatar'
 
-const signed = (nonce: string) => `/logo/logo.svg?timestamp=1&nonce=${nonce}`
-
-it('keeps the loaded image when only the signature of its URL changes', async () => {
-  // Avatars keep one URL per picture in the query cache.
+it('uses the URL supplied for the collaborator and updates when their picture changes', async () => {
+  const avatarUrl = '/logo/logo.svg'
   const screen = await render(
-    <CollaboratorAvatar collaborator={{ id: 'ann', name: 'Ann', avatarUrl: signed('first') }} />,
-    { wrapper: createConsoleQueryWrapper().wrapper },
+    <CollaboratorAvatar collaborator={{ id: 'ann', name: 'Ann', avatarUrl }} />,
   )
   await expect
     .poll(() => screen.container.querySelector('img')?.getAttribute('src'))
-    .toBe(signed('first'))
-
-  await screen.rerender(
-    <CollaboratorAvatar collaborator={{ id: 'ann', name: 'Ann', avatarUrl: signed('second') }} />,
-  )
-  expect(screen.container.querySelector('img')?.getAttribute('src')).toBe(signed('first'))
+    .toBe(avatarUrl)
 
   await screen.rerender(
     <CollaboratorAvatar

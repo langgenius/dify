@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedTags } from '@/test/console/tags'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
@@ -54,10 +55,16 @@ const renderToolbar = ({
   const { queryClient, wrapper: ConsoleQueryProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: deploymentEdition },
   })
+  seedTags(queryClient, [])
 
   const result = renderWithNuqs(
     <ConsoleQueryProvider>
-      <RosterToolbar publicationCounts={publicationCounts} />
+      <RosterToolbar
+        publicationCounts={publicationCounts}
+        tagIds={[]}
+        onTagIdsChange={vi.fn()}
+        onOpenTagManagement={vi.fn()}
+      />
     </ConsoleQueryProvider>,
     { searchParams },
   )

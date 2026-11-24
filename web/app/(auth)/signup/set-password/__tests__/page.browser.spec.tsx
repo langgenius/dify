@@ -1,7 +1,8 @@
 import type { TestNavigation } from '@/test/next-navigation'
 import Cookies from 'js-cookie'
-import { cdp, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateTimezone } from '@/test/browser-media-emulation'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -55,10 +56,7 @@ const fake = setupFakeApi(() => ({
 
 beforeEach(async () => {
   // Pin the browser's own timezone so the submitted profile is deterministic.
-  await cdp().send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Shanghai' })
-  onTestFinished(async () => {
-    await cdp().send('Emulation.setTimezoneOverride', { timezoneId: '' })
-  })
+  await emulateTimezone('Asia/Shanghai')
   tracking.rememberCreateAppExternalAttribution.mockReset()
   tracking.rememberRegistrationSuccess.mockReset()
   tracking.sendGAEvent.mockReset()

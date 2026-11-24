@@ -42,10 +42,7 @@ const OnlineUsers = () => {
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarAppId =
-    isConnected &&
-    isCollaborationEnabled &&
-    !upgradeDialog &&
-    onlineUsers.some((user) => user.avatar)
+    isConnected && isCollaborationEnabled && !upgradeDialog && onlineUsers.length > 0
       ? appId
       : undefined
   const { data: avatarUrls, refetch: refetchAvatars } = useQuery(

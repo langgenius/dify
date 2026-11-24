@@ -2,6 +2,7 @@
 
 import { contract as enterpriseContract } from '../../enterprise/orpc.gen.ts'
 import { account } from './account/orpc.gen.ts'
+import { accounts } from './accounts/orpc.gen.ts'
 import { activate } from './activate/orpc.gen.ts'
 import { agent } from './agent/orpc.gen.ts'
 import { allWorkspaces } from './all-workspaces/orpc.gen.ts'
@@ -63,6 +64,7 @@ import { workspaces } from './workspaces/orpc.gen.ts'
 const communityContract = {
   byEvaluateTargetType,
   account,
+  accounts,
   activate,
   agent,
   allWorkspaces,

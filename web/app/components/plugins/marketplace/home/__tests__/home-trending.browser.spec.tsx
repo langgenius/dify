@@ -206,6 +206,8 @@ function getCarousel(screen: Awaited<ReturnType<typeof renderTrending>>) {
 
 describe('Marketplace home trending carousel', () => {
   beforeEach(async () => {
+    // Autoplay is the contract; reduced-motion cases switch back inside the test.
+    await emulateReducedMotion(false)
     await page.viewport(1200, 800)
     i18n = createInstance()
     await i18n.init({
@@ -314,7 +316,6 @@ describe('Marketplace home trending carousel', () => {
 
   it('keeps reduced-motion autoplay stopped until the user explicitly starts it', async () => {
     await emulateReducedMotion(true)
-    onTestFinished(() => emulateReducedMotion(false))
     const screen = await renderTrending()
     const carousel = getCarousel(screen)
     const track = carousel.element().querySelector('[aria-live]')!
