@@ -7,17 +7,10 @@ import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
-
-// boundary: Next.js pathname/router context is not mounted in a focused Browser Mode render.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/logs',
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-  useSelectedLayoutSegment: () => 'logs',
-}))
 
 async function renderSection({
   mode = 'chat',
@@ -53,10 +46,16 @@ async function renderSection({
       workflow: publishedWorkflow ? { id: 'workflow-1', type: 'workflow' } : null,
     }),
   )
+  const { NavigationProvider } = createTestNavigation({
+    url: '/app/app-1/logs',
+    segments: ['logs'],
+  })
   return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <AppDetailSection />
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <AppDetailSection />
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 }
 

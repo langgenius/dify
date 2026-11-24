@@ -39,16 +39,16 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.uninstall.post': api.uninstall,
       'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
       'workspaces.current.modelProviders.summary.get': async () => ({ data: [], plugins: {} }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.uninstall.post': api.uninstall,
-      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
       }),
       'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.uninstall.post': api.uninstall,
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
     }),
   }
 })

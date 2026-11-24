@@ -5,10 +5,8 @@ import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import WebAppsSection from '../web-apps-section'
-
-// boundary: Browser Mode has no Next App Router; the list consumes the current pathname.
-vi.mock('@/next/navigation', () => ({ usePathname: () => '/' }))
 
 function createApp(index: number): InstalledAppResponse {
   return {
@@ -58,6 +56,7 @@ async function renderSection(count = 40) {
       </div>
       <button type="button">After apps</button>
     </QueryClientTestProvider>,
+    { wrapper: createTestNavigation().NavigationProvider },
   )
   await expect
     .element(

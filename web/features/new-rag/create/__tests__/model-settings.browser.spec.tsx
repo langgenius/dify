@@ -15,14 +15,9 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { CreateKnowledgePage } from '../page'
-
-// boundary: the Next router is unavailable in the isolated Browser test runtime.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 vi.unmock('react-i18next')
 
@@ -88,14 +83,17 @@ it('keeps model menus usable inside the scrolling creation form on a small viewp
   queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
     accounts: [],
   })
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/new/create' })
   const screen = await render(
-    <QueryProvider>
-      <I18nextProvider i18n={i18n}>
-        <QueryTestingAdapter>
-          <CreateKnowledgePage />
-        </QueryTestingAdapter>
-      </I18nextProvider>
-    </QueryProvider>,
+    <NavigationProvider>
+      <QueryProvider>
+        <I18nextProvider i18n={i18n}>
+          <QueryTestingAdapter>
+            <CreateKnowledgePage />
+          </QueryTestingAdapter>
+        </I18nextProvider>
+      </QueryProvider>
+    </NavigationProvider>,
   )
   const settings = screen.getByRole('button', { name: 'Model settings', exact: true })
   const submit = screen.getByRole('button', { name: 'Create Agent Knowledge Base', exact: true })

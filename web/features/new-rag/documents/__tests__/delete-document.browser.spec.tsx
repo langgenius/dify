@@ -10,14 +10,11 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentResultsSurface } from '../results/surface'
 import { DocumentsStateBoundary } from '../state/boundary'
 
-// boundary: the readiness banner needs model-provider queries outside the delete flow and has its own spec.
-vi.mock('../../components/knowledge-model-readiness-banner', () => ({
-  KnowledgeModelReadinessBanner: () => null,
-}))
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -64,6 +61,25 @@ async function setup(ids: string[]) {
             },
             sources: { get: () => ({ data: [], next_cursor: null }) },
             backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
+            settings: {
+              get: () => ({
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
+              }),
+            },
           },
         },
       },
@@ -75,17 +91,20 @@ async function setup(ids: string[]) {
     features: { enable_knowledge_fs: true },
     knowledgeFsFeatures: { upload_enabled: true },
   })
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/new/space-1/documents' })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <QueryTestingAdapter>
-        <KnowledgeSpaceTestProvider>
-          <DocumentsStateBoundary knowledgeSpaceId="space-1">
-            <DocumentResultsSurface />
-            <AppToaster />
-          </DocumentsStateBoundary>
-        </KnowledgeSpaceTestProvider>
-      </QueryTestingAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <QueryTestingAdapter>
+          <KnowledgeSpaceTestProvider>
+            <DocumentsStateBoundary knowledgeSpaceId="space-1">
+              <DocumentResultsSurface />
+              <AppToaster />
+            </DocumentsStateBoundary>
+          </KnowledgeSpaceTestProvider>
+        </QueryTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const actions = (id: string) =>
     screen.getByRole('button', { name: `knowledgeDocuments.documentActions:{"name":"${id}"}` })

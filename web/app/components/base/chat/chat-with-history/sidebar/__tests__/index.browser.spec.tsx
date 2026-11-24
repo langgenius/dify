@@ -6,16 +6,11 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
 import Header from '../../header'
 import Sidebar from '../index'
-
-// boundary: Browser Mode does not provide the application's Next.js router.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/chat/app-1',
-}))
 
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
 const conversations = [
@@ -100,22 +95,25 @@ async function renderSidebar(
     queryClient,
     systemFeatures: { branding },
   })
+  const { NavigationProvider } = createTestNavigation({ url: '/chat/app-1' })
   const view = (displayProps = options.ownerProps) => (
-    <QueryProvider>
-      <Owner displayProps={displayProps}>
-        {showCurrentConversation && (
-          <section aria-label="Current conversation">
-            <Header />
-          </section>
-        )}
-        <aside
-          aria-label="Conversation history"
-          style={{ display: 'flex', height: 600, width: 320 }}
-        >
-          <Sidebar />
-        </aside>
-      </Owner>
-    </QueryProvider>
+    <NavigationProvider>
+      <QueryProvider>
+        <Owner displayProps={displayProps}>
+          {showCurrentConversation && (
+            <section aria-label="Current conversation">
+              <Header />
+            </section>
+          )}
+          <aside
+            aria-label="Conversation history"
+            style={{ display: 'flex', height: 600, width: 320 }}
+          >
+            <Sidebar />
+          </aside>
+        </Owner>
+      </QueryProvider>
+    </NavigationProvider>
   )
   const rendered = await render(view())
   return {

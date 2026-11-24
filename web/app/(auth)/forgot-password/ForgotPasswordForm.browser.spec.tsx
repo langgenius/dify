@@ -1,17 +1,13 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-const navigation = vi.hoisted(() => ({
-  replace: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: navigation.replace }),
-}))
+let navigation: TestNavigation
 
 const fake = setupFakeApi(() => ({
   console: {
@@ -22,16 +18,16 @@ const fake = setupFakeApi(() => ({
 
 async function renderForm() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/forgot-password' })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <ForgotPasswordForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ForgotPasswordForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
-
-beforeEach(() => {
-  navigation.replace.mockReset()
-})
 
 it('renders the labelled native email form without waiting for the init query', async () => {
   fake.console.init.get.mockReturnValue(new Promise(() => {}))
@@ -127,5 +123,5 @@ it('redirects an instance that still needs its initial password', async () => {
 
   await renderForm()
 
-  await vi.waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/init'))
+  await vi.waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith('/init'))
 })

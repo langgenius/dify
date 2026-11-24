@@ -6,9 +6,6 @@ import { clearSourceClients, renderSources as render } from './source-browser-en
 import { source } from './source-fixtures'
 import { resetSourceServer, sourceResponses } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-
 let fake: SourceApi
 beforeEach(() => {
   fake = resetSourceServer()
@@ -30,10 +27,12 @@ describe('Source removal confirmation', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.removeSource' }).click()
 
+    const confirm = page.getByRole('button', { name: 'knowledgeSources.removeSource' })
+    await expect.element(confirm).toBeVisible()
     expect(
       fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,
     ).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: 'knowledgeSources.removeSource' }).click()
+    await confirm.click()
     await vi.waitFor(async () =>
       expect(
         fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,

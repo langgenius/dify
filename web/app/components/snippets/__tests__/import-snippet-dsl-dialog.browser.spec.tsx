@@ -1,3 +1,4 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { Toaster } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { onTestFinished } from 'vite-plus/test'
@@ -9,11 +10,10 @@ import { TEST_SNIPPET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { createSnippetImportResponseFixture } from '@/test/fixtures/snippet'
+import { createTestNavigation } from '@/test/next-navigation'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
-const router = vi.hoisted(() => ({ push: vi.fn() }))
-// boundary: Next.js owns navigation after importing a snippet.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: router.push }) }))
+let navigation: TestNavigation
 
 function DirectDialog() {
   const [open, setOpen] = useState(true)
@@ -22,11 +22,13 @@ function DirectDialog() {
 
 async function setup({ permissions = ['snippets.create_and_modify'], direct = false } = {}) {
   const { wrapper: Providers } = createConsoleQueryWrapper({ workspacePermissionKeys: permissions })
+  navigation = createTestNavigation({ url: '/snippets' })
   await render(
     <Providers>
       <Toaster toastManager={manager} />
       {direct ? <DirectDialog /> : <SnippetCreateButton />}
     </Providers>,
+    { wrapper: navigation.NavigationProvider },
   )
   if (!direct) {
     await page.getByRole('button', { name: 'snippet.create', exact: true }).click()
@@ -82,7 +84,9 @@ it('imports a DSL URL from the creation menu and navigates after the dialog clos
       body: { mode: 'yaml-url', yaml_url: 'https://example.com/snippet.yml' },
     }),
   )
-  expect(router.push).toHaveBeenCalledExactlyOnceWith(`/snippets/${TEST_SNIPPET_ID}/orchestrate`)
+  expect(navigation.router.push).toHaveBeenCalledExactlyOnceWith(
+    `/snippets/${TEST_SNIPPET_ID}/orchestrate`,
+  )
 })
 
 it('reads the uploaded YAML and waits for version confirmation before navigating', async () => {
@@ -109,14 +113,14 @@ it('reads the uploaded YAML and waits for version confirmation before navigating
   expect(imports.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ body: { mode: 'yaml-content', yaml_content: 'name: snippet' } }),
   )
-  expect(router.push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   await confirmation.getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(confirmation).not.toBeInTheDocument()
   expect(imports.byImportId.confirm.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ params: { import_id: 'import-1' } }),
   )
-  expect(router.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-2/orchestrate')
+  expect(navigation.router.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-2/orchestrate')
 })
 
 it.each(['import', 'confirm'])(
@@ -145,7 +149,7 @@ it.each(['import', 'confirm'])(
       await expect.element(confirmation).not.toBeInTheDocument()
     }
     await expect.element(dialog.getByRole('group', { name: 'snippet.yml' })).toBeVisible()
-    expect(router.push).not.toHaveBeenCalled()
+    expect(navigation.router.push).not.toHaveBeenCalled()
   },
 )
 

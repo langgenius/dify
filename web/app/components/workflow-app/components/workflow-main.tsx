@@ -31,7 +31,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
@@ -265,7 +265,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         const updateGeneration = ++varsUpdateGenerationRef.current
         const syncRequest = varsUpdateSyncRequestRef.current
         try {
-          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+          const response = await fetchAppWorkflowDraft(appId)
           const snapshot = { generation: updateGeneration, response, syncRequest }
           if (
             !varsUpdateLatestSuccessfulRef.current ||
@@ -300,7 +300,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
           }
 
           try {
-            const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+            const response = await fetchAppWorkflowDraft(appId)
             const snapshot = { generation: updateGeneration, response, syncRequest }
             if (
               !varsUpdateLatestSuccessfulRef.current ||
@@ -333,7 +333,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        const response = await fetchAppWorkflowDraft(appId)
 
         if (response.hash)
           workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)

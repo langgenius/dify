@@ -6,14 +6,13 @@ import type {
   AppPublisherPublishParams,
 } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useQueryClient } from '@tanstack/react-query'
-import { use, useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { use, useCallback, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { consoleQuery } from '@/service/console'
-import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
@@ -65,7 +64,13 @@ export function usePublishController({
   const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const invalidateAppWorkflow = useCallback(
+    (workflowAppId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
+      }),
+    [queryClient],
+  )
   const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
   const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
@@ -73,7 +78,7 @@ export function usePublishController({
     isError: isPublishedWorkflowError,
     isLoading: isPublishedWorkflowLoading,
     isSuccess: isPublishedWorkflowSuccess,
-  } = useAppWorkflow(isWorkflowApp ? (appId ?? '') : '')
+  } = useQuery(appWorkflowQueryOptions(isWorkflowApp ? (appId ?? '') : ''))
   const currentPublishedAt =
     isWorkflowApp && isPublishedWorkflowSuccess
       ? publishedWorkflow?.created_at
