@@ -193,6 +193,22 @@ class EnterpriseService:
         return token, int(expires_at)
 
     @classmethod
+    def verify_mcp_identity_token(cls, token: str, app_id: str) -> str:
+        try:
+            response = EnterpriseRequest.send_request(
+                "POST",
+                "/mcp/verify-token",
+                json={"token": token, "app_id": app_id},
+            )
+        except EnterpriseServiceError as e:
+            raise MCPTokenError(str(e) or "forwarded identity verification failed") from e
+
+        email = response.get("email") if isinstance(response, dict) else None
+        if not isinstance(email, str) or not email:
+            raise MCPTokenError("invalid response shape from enterprise /mcp/verify-token")
+        return email
+
+    @classmethod
     def initiate_device_flow_sso(cls, signed_state: str) -> dict:
         return EnterpriseRequest.send_request(
             "POST",
