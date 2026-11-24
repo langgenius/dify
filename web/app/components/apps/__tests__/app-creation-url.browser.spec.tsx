@@ -216,7 +216,13 @@ it('opens the Builder starter from the app list and switches to the original men
   await expect.element(starter.getByRole('textbox')).toBeVisible()
   expect(api.create).not.toHaveBeenCalled()
 
-  api.features.mockRejectedValue(apiError({ status: 500, message: 'Features unavailable' }))
+  const message = 'Features unavailable'
+  const reportError = console.error.bind(console)
+  const consoleError = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    if (!args.some((arg) => arg instanceof Error && arg.message === message)) reportError(...args)
+  })
+  onTestFinished(() => consoleError.mockRestore())
+  api.features.mockRejectedValue(apiError({ status: 500, message }))
   await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
 
   await expect.element(starter).not.toBeInTheDocument()
