@@ -177,11 +177,8 @@ class ConsumerAppsStore(Protocol):
         """Validate the complete Browser identity chain and atomically record accepted use.
 
         Only CONSUMER_APP_MODES qualify; invalid owners and modes are no-ops.
-        Lock the personal App state to preserve its latest use. A conditional
-        Account update preserves the earliest event across Apps and out-of-order
-        writes; a non-matching update means an equal or earlier event is recorded.
-        Both timestamps commit in one transaction. A null first_app_used_at means
-        no qualifying use is known.
+        Lock the personal App state to preserve its latest use and explicit removal
+        ordering. WebApp execution does not change Account onboarding.
         """
         ...
 

@@ -7,6 +7,21 @@ import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 
 const providerPayload = { category: AuthCategory.tool, provider: 'github' }
+const credentialInfo = (names: string[]) => ({
+  credentials: names.map((name, index) => ({
+    id: `cred-${index}`,
+    name,
+    provider: 'github',
+    credential_type: 'api-key' as const,
+    is_default: index === 0,
+    created_by: 'user-1',
+    from_other_member: false,
+    visibility: 'workspace',
+  })),
+  supported_credential_types: ['api-key' as const],
+  is_oauth_custom_client_enabled: false,
+})
+type CredentialInfoData = ReturnType<typeof credentialInfo>
 const key = (provider: string, includeCredentialIds?: string[]) =>
   consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.queryKey({
     input: {
@@ -22,10 +37,10 @@ it('waits for every active provider credential list, including explicitly includ
 }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   onTestFinished(() => client.clear())
-  const requests = [createDeferred<string[]>(), createDeferred<string[]>()]
+  const requests = [createDeferred<CredentialInfoData>(), createDeferred<CredentialInfoData>()]
   const queryKeys = [key('github'), key('github', ['previous-id'])]
   queryKeys.forEach((queryKey, index) => {
-    client.setQueryData(queryKey, ['existing'])
+    client.setQueryData(queryKey, credentialInfo(['existing']))
     const load = vi.fn().mockReturnValue(requests[index]!.promise)
     const observer = new QueryObserver(client, {
       queryKey,
@@ -35,22 +50,21 @@ it('waits for every active provider credential list, including explicitly includ
     onTestFinished(observer.subscribe(() => {}))
   })
   const unrelatedKey = key('slack')
-  client.setQueryData(unrelatedKey, ['unrelated'])
+  client.setQueryData(unrelatedKey, credentialInfo(['unrelated']))
   const { result } = renderHook(() => useInvalidPluginCredentialInfoHook(providerPayload), {
     wrapper: ({ children }) => createElement(QueryClientProvider, { client }, children),
   })
   const completed = vi.fn()
   const refresh = Promise.resolve(result.current({ throwOnError: true })).then(completed)
 
-  requests[0]!.resolve(['existing', 'created'])
+  const updated = credentialInfo(['existing', 'created'])
+  requests[0]!.resolve(updated)
   await requests[0]!.promise
   expect(completed).not.toHaveBeenCalled()
-  requests[1]!.resolve(['existing', 'created'])
+  requests[1]!.resolve(updated)
   await refresh
 
-  queryKeys.forEach((queryKey) =>
-    expect(client.getQueryData(queryKey)).toEqual(['existing', 'created']),
-  )
+  queryKeys.forEach((queryKey) => expect(client.getQueryData(queryKey)).toEqual(updated))
   expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false)
   expect(completed).toHaveBeenCalledOnce()
 })
@@ -63,7 +77,8 @@ it('lets the creation owner handle a failed refresh without replacing cached cre
   const failure = new Error('Unable to load connections')
   const load = vi.fn().mockRejectedValue(failure)
   const providerKey = key('github')
-  client.setQueryData(providerKey, ['existing'])
+  const initial = credentialInfo(['existing'])
+  client.setQueryData(providerKey, initial)
   const observer = new QueryObserver(client, {
     queryKey: providerKey,
     queryFn: load,
@@ -75,5 +90,5 @@ it('lets the creation owner handle a failed refresh without replacing cached cre
   })
 
   await expect(result.current({ throwOnError: true })).rejects.toBe(failure)
-  expect(client.getQueryData(providerKey)).toEqual(['existing'])
+  expect(client.getQueryData(providerKey)).toEqual(initial)
 })

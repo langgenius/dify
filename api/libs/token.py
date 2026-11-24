@@ -2,6 +2,7 @@ import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from flask import Request
 from werkzeug.exceptions import Unauthorized
@@ -142,14 +143,26 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
     )
 
 
-def set_webapp_access_token_to_cookie(response: Response, token: str, *, expires_at: int) -> None:
+def set_webapp_access_token_to_cookie(
+    request: Request, response: Response, token: str, *, expires_at: int, samesite: str = "Lax"
+) -> None:
+    """Set or expire the Web proof on the issuing host, sharing only a configured, applicable domain.
+
+    Browsers discard the entire Set-Cookie if a separate Web API uses the Console's unrelated Domain.
+    The request host can only narrow the configured scope to host-only, never select a new domain.
+    """
+    domain = _cookie_domain()
+    if domain:
+        host = urlsplit(request.host_url).hostname
+        if host is None or (host != domain.lower() and not host.endswith(f".{domain.lower()}")):
+            domain = None
     response.set_cookie(
         _real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN),
         value=token,
         httponly=True,
-        domain=_cookie_domain(),
+        domain=domain,
         secure=is_secure(),
-        samesite="Lax",
+        samesite=samesite,
         expires=expires_at,
         path="/",
     )
@@ -190,8 +203,9 @@ def clear_access_token_from_cookie(response: Response, samesite: str = "Lax"):
     _clear_cookie(response, COOKIE_NAME_ACCESS_TOKEN, samesite)
 
 
-def clear_webapp_access_token_from_cookie(response: Response, samesite: str = "Lax"):
-    _clear_cookie(response, COOKIE_NAME_WEBAPP_ACCESS_TOKEN, samesite)
+def clear_webapp_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax") -> None:
+    """Expire the Web proof with its original cookie scope; leave Console credentials untouched."""
+    set_webapp_access_token_to_cookie(request, response, "", expires_at=0, samesite=samesite)
 
 
 def clear_refresh_token_from_cookie(response: Response):

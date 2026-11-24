@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from http.cookies import SimpleCookie
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -79,6 +80,28 @@ def test_set_csrf_cookie_includes_domain_when_configured(config_overrides: Calla
     assert any("csrf_token=abc123" in c for c in cookies)
     assert any("Domain=example.com" in c for c in cookies)
     assert all("__Host-" not in c for c in cookies)
+
+
+@pytest.mark.parametrize(("host", "domain"), [("apps.example.com", "example.com"), ("apps.notexample.com", "")])
+def test_webapp_login_and_logout_only_share_an_applicable_cookie_domain(
+    app: Flask, config_overrides: Callable[..., None], host: str, domain: str
+) -> None:
+    config_overrides(
+        COOKIE_DOMAIN=".example.com",
+        CONSOLE_API_URL="https://api.example.com",
+        CONSOLE_WEB_URL="https://console.example.com",
+    )
+    response = Response()
+    with app.test_request_context("/api/account/session", base_url=f"https://{host}"):
+        token.set_webapp_access_token_to_cookie(flask_request, response, "proof", expires_at=2_000_000_000)
+        token.clear_webapp_access_token_from_cookie(flask_request, response)
+    issued, cleared = response.headers.getlist("Set-Cookie")
+    for header, value in [(issued, "proof"), (cleared, "")]:
+        cookie = SimpleCookie(header)[COOKIE_NAME_WEBAPP_ACCESS_TOKEN]
+        assert cookie.value == value
+        assert cookie["domain"] == domain
+        assert cookie["secure"]
+        assert cookie["httponly"]
 
 
 def test_workflow_run_archive_download_file_bypasses_csrf() -> None:

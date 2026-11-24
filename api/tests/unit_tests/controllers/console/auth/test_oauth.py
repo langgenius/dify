@@ -324,6 +324,31 @@ def test_oauth_admission_rejects_disabled_social_login(
     assert service.authorization_calls == []
 
 
+@pytest.mark.parametrize(
+    ("mode", "target"),
+    [
+        ("console", "/my-apps"),
+        ("end_user", "https://console.example.com/my-apps"),
+        ("end_user", "/chatbot/app-code"),
+        ("end_user", "/signin"),
+    ],
+)
+def test_portal_pkce_requires_an_end_user_web_portal_target(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], mode: str, target: str
+) -> None:
+    config_overrides(WEBAPP_ACCOUNT_PASSPORT_ENABLED=True, APP_WEB_URL="https://apps.example.net")
+    service = FakeOAuthService()
+    _install_service(monkeypatch, service)
+    with (
+        app.test_request_context(
+            "/oauth/login/github", query_string={"mode": mode, "redirect_url": target, "code_challenge": "a" * 43}
+        ),
+        pytest.raises(UnprocessableEntity, match="portal"),
+    ):
+        OAuthLogin().get("github")
+    assert service.authorization_calls == []
+
+
 def _end_user_state(target: str) -> str:
     return encode_account_oauth_state(
         AccountOAuthState(mode="end_user", provider="github", nonce="browser-nonce", context={"redirect_url": target})

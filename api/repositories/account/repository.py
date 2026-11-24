@@ -5,12 +5,13 @@ from datetime import datetime
 from typing import override
 from uuid import UUID
 
-from sqlalchemy import case, delete, func, select, update
+from sqlalchemy import case, delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
 from core.human_input_v2.shared import AccountId
 from enums.account import TenantAccountRole
+from libs.datetime_utils import ensure_naive_utc
 from models.account import (
     Account,
     AccountIntegrate,
@@ -169,6 +170,20 @@ class SQLAlchemyAccountRepository(
                 values["updated_at"] = func.current_timestamp()
             session.execute(
                 update(Account).where(Account.id == account_id, Account.last_active_at < before).values(**values)
+            )
+
+    def record_end_user_handoff(self, account_id: str, *, occurred_at: datetime) -> None:
+        """For an admitted Account, persist the minimum event time as naive UTC, even on reordered writes."""
+        at = ensure_naive_utc(occurred_at)
+        with self._session_factory.begin() as session:
+            session.execute(
+                update(Account)
+                .where(
+                    Account.id == account_id,
+                    Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+                    or_(Account.be_end_user_at.is_(None), Account.be_end_user_at > at),
+                )
+                .values(be_end_user_at=at)
             )
 
     @override

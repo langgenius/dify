@@ -359,7 +359,7 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
         : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
     return selectAppParameters(parameters)
   }
-  return webAppClient.parameters.get() as Promise<ChatConfig>
+  return webAppClient.parameters.get() as unknown as Promise<ChatConfig>
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {

@@ -335,7 +335,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         """Persist accepted supported WebApp use for the complete Browser owner chain.
 
         Invalid owners and modes are no-ops. A bounded transaction preserves the
-        latest App use, earliest Account use and explicit removal ordering.
+        latest App use and explicit removal ordering.
         """
         with self._session_factory.begin() as session:
             if not self._active_consumer_account(session, identity):
@@ -360,14 +360,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             # A request accepted before removal must not resurrect a hidden entry.
             if state.removed_at is not None and used_at > state.removed_at:
                 state.removed_at = None
-            session.execute(
-                sa.update(Account)
-                .where(
-                    Account.id == identity.account_id,
-                    sa.or_(Account.first_app_used_at.is_(None), Account.first_app_used_at > used_at),
-                )
-                .values(first_app_used_at=used_at)
-            )
 
     def remove(self, identity: ConsumerIdentity, app_id: str) -> None:
         """Hide an active Account's personal entry without deleting execution data.

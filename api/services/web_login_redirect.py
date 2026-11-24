@@ -107,11 +107,18 @@ def resolve_personal_login_redirect(redirect_url: str | None, *, app_web_url: st
     for invalid input; never admit generic Console routes or App routes without PKCE.
     """
     frontend_url = app_web_url or console_web_url
-    target = redirect_url if redirect_url is not None else f"{frontend_url.rstrip('/')}/my-apps"
+    if (resolved := resolve_web_portal_login_redirect(redirect_url, webapp_url=frontend_url)) is not None:
+        return resolved
     # Only explicit absolute URLs may keep a legacy Console portal destination.
-    bases = (frontend_url, console_web_url) if app_web_url and not target.startswith("/") else (frontend_url,)
-    for base in bases:
-        resolved = _resolve_frontend_redirect(target, base)
-        if resolved is not None and resolved[1] is not None and _PERSONAL_ROUTE.fullmatch(resolved[1]):
-            return resolved[0].geturl()
+    if app_web_url and redirect_url and not redirect_url.startswith("/"):
+        return resolve_web_portal_login_redirect(redirect_url, webapp_url=console_web_url)
     return None
+
+
+def resolve_web_portal_login_redirect(redirect_url: str | None, *, webapp_url: str) -> str | None:
+    """Resolve a portal return (default: My Apps) on the WebApp base only; reject any other target."""
+    target = redirect_url if redirect_url is not None else f"{webapp_url.rstrip('/')}/my-apps"
+    resolved = _resolve_frontend_redirect(target, webapp_url)
+    if resolved is None or (route := resolved[1]) is None or not _PERSONAL_ROUTE.fullmatch(route):
+        return None
+    return resolved[0].geturl()
