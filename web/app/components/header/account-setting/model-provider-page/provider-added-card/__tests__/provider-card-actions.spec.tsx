@@ -55,18 +55,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    ...actual,
-    marketplaceQuery: createTanstackQueryUtils(
-      {
-        ...actual.marketplaceClient,
-        pluginVersions: api.versions,
-      },
-      { path: ['marketplace'] },
-    ),
-  }
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginVersions: api.versions })
 })
 
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
