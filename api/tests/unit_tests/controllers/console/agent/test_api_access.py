@@ -70,6 +70,7 @@ from models.engine import db
 from models.enums import ApiTokenType
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
+    KnowledgeFSAppSpaceJoinStatus,
     KnowledgeFSAppSpaceJoinType,
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSControlSpace,
@@ -770,6 +771,63 @@ def test_publication_commits_knowledge_binding_with_the_snapshot(harness: Harnes
             assert skill_snapshot.config_snapshot_id == published_snapshot.id
             assert draft is not None
             assert draft.base_snapshot_id == published_snapshot.id
+
+
+@pytest.mark.parametrize(
+    ("join_type", "base_url", "expected_status"),
+    [
+        (KnowledgeFSAppSpaceJoinType.AGENT, "https://knowledge-fs.example.test", KnowledgeFSAppSpaceJoinStatus.REVOKED),
+        (KnowledgeFSAppSpaceJoinType.WORKFLOW, None, KnowledgeFSAppSpaceJoinStatus.ACTIVE),
+    ],
+    ids=["revoke-agent-binding", "skip-unconfigured-knowledge-fs"],
+)
+def test_publication_with_no_spaces_only_clears_agent_bindings(
+    harness: Harness,
+    join_type: KnowledgeFSAppSpaceJoinType,
+    base_url: str | None,
+    expected_status: KnowledgeFSAppSpaceJoinStatus,
+) -> None:
+    """Publish an empty space list and reconcile existing bindings for the Agent channel only."""
+    agent_id, app_id = harness.create_agent()
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai", model_provider="langgenius/openai/openai", model="gpt-4o"
+        )
+    )
+    with harness.sessions.begin() as session:
+        space = KnowledgeFSControlSpace(
+            tenant_id=harness.tenant_id,
+            owner_account_id=harness.account_id,
+            provisioning_key=str(uuid4()),
+            knowledge_space_id=str(uuid4()),
+            state=KnowledgeFSControlSpaceState.ACTIVE,
+        )
+        session.add(space)
+        session.flush()
+        binding = AppKnowledgeFSSpaceJoin(
+            tenant_id=harness.tenant_id, app_id=app_id, control_space_id=space.id, join_type=join_type
+        )
+        session.add_all(
+            [
+                binding,
+                KnowledgeFSAuthorizationRevision(tenant_id=harness.tenant_id, control_space_id=space.id),
+                AgentConfigDraft(
+                    tenant_id=harness.tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    config_snapshot=soul,
+                ),
+            ]
+        )
+        binding_id = binding.id
+
+    with config_overrides_context(KNOWLEDGE_FS_BASE_URL=base_url, KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=False):
+        response = harness.client.post(f"/console/api/agent/{agent_id}/publish", json={}, headers=harness.headers)
+    assert response.status_code == HTTPStatus.OK, response.get_json()
+    with harness.sessions() as session:
+        assert session.get_one(AppKnowledgeFSSpaceJoin, binding_id).status is expected_status
+        snapshot = session.get_one(AgentConfigSnapshot, response.get_json()["active_config_snapshot_id"])
+        assert snapshot.config_snapshot_dict["knowledge"]["spaces"] == []
 
 
 def test_publication_rejects_a_draft_changed_after_preparation(harness: Harness) -> None:

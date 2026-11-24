@@ -14,6 +14,7 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.knowledge_fs_app_bindings import stage_published_agent_knowledge_bindings
 from services.agent.app_composer import AgentAppComposer
 from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
@@ -24,7 +25,6 @@ from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
     authorize_composer_knowledge,
     authorize_published_agent_knowledge_bindings,
-    stage_published_agent_knowledge_bindings,
 )
 from services.agent.observability_contracts import AgentObservability
 from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
@@ -50,6 +50,7 @@ from services.app_service import AppService
 from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
+from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.model_provider.service import ModelProviderService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
@@ -83,7 +84,10 @@ def build_agent_app_services(
     apps = AgentAppRepository(
         session_factory=database_client,
         stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
-        stage_publication_bindings=partial(stage_published_agent_knowledge_bindings, session_maker=database_client),
+        stage_publication_bindings=partial(
+            stage_published_agent_knowledge_bindings,
+            load_stager=lambda: get_knowledge_fs_runtime(database_client).app_bindings,
+        ),
     )
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
