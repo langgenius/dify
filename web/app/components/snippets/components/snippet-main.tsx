@@ -32,6 +32,7 @@ import { useSnippetDSL } from './hooks/use-snippet-dsl'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
+import SnippetWorkflowPanel from './workflow-panel'
 
 type SnippetMainProps = {
   payload: SnippetDetailPayload
@@ -45,7 +46,6 @@ type SnippetMainProps = {
 
 type SnippetMainContentProps = {
   snippetId: string
-  fields: InputVar[]
   canSave: boolean
   canEdit: boolean
   onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
@@ -78,7 +78,6 @@ const hasSnippetDraftNodes = (payload?: Omit<SnippetDraftSyncPayload, 'hash'> | 
 
 const SnippetMainContent = ({
   snippetId,
-  fields,
   canSave,
   canEdit,
   onBeforePublish,
@@ -106,7 +105,6 @@ const SnippetMainContent = ({
 
   return (
     <SnippetChildren
-      fields={fields}
       canSave={canSave}
       canEdit={canEdit}
       isPublishing={isPublishing}
@@ -382,10 +380,10 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
           edges={effectiveDraftEdges}
           viewport={effectiveDraftViewport ?? graph.viewport}
           hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+          sidePanel={<SnippetWorkflowPanel fields={fields} />}
         >
           <SnippetMainContent
             snippetId={snippetId}
-            fields={fields}
             canSave={canSave}
             canEdit={canEditSnippet}
             onBeforePublish={() => doSyncWorkflowDraft(true)}

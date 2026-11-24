@@ -48,7 +48,7 @@ const VariableInspectPanel: FC = () => {
   if (!showVariableInspectPanel) return null
 
   return (
-    <div className={cn('relative pb-1')}>
+    <div className={cn('pointer-events-auto relative pb-1')}>
       <ResizeHandle
         ref={triggerRef}
         side="top"
