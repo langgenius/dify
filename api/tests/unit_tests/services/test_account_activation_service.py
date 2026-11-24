@@ -159,6 +159,7 @@ class TestCheckInvitation:
         assert result.data is not None
         assert result.data.requires_setup is True
         assert result.data.account_status == "pending"
+        assert result.data.is_current_account is False
         assert boundaries["find"].call_args_list == [
             call(_lookup("Invitee@Example.com")),
             call(_lookup("invitee@example.com")),
@@ -167,6 +168,28 @@ class TestCheckInvitation:
             call(InvitationToken(account_id="account-1", email=email, workspace_id="workspace-1"))
             for email in ("Invitee@Example.com", "invitee@example.com")
         ]
+        boundaries["policy"].assert_called_once_with("workspace-1")
+
+    @pytest.mark.parametrize(
+        ("authenticated_account_id", "expected_match"),
+        [
+            ("account-1", True),
+            ("other-account", False),
+            (None, False),
+        ],
+    )
+    def test_reports_whether_authenticated_account_matches_invitation(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        authenticated_account_id: str | None,
+        expected_match: bool,
+    ) -> None:
+        result = service.check(_lookup(), authenticated_account_id=authenticated_account_id)
+
+        assert result.is_valid is True
+        assert result.data is not None
+        assert result.data.is_current_account is expected_match
         boundaries["policy"].assert_called_once_with("workspace-1")
 
 

@@ -188,19 +188,6 @@ Get account avatar url
 | 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
-### [GET] /account/end_user_profile
-**Read private profile data for the admitted Account without provisioning a workspace**
-
-Get the signed-in Account profile without workspace admission.
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Account profile | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
 ### [POST] /account/init
 #### Request Body
 
@@ -11865,14 +11852,16 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /login
-Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
+**Resolve a trusted return target and reuse a Console account without workspace admission**
+
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal portal requests set an HttpOnly Webapp cookie on the Console API origin; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_code | query |  | No | string |
-| code_challenge | query | S256 PKCE challenge required only when returning to an App | No | string |
+| code_challenge | query | S256 PKCE challenge for a published App or Webapp personal portal handoff | No | string |
 | mode | query |  | No | string, <br>**Default:** end_user |
 | redirect_url | query | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No | string |
 
@@ -12085,6 +12074,8 @@ Sync data from OAuth data source
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/login/{provider}
+**Start provider login with a browser-bound return target; reject ambiguous PKCE context**
+
 Initiate OAuth login process
 
 #### Parameters
@@ -12092,10 +12083,11 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
+| code_challenge | query | Web-origin S256 challenge for an End User personal portal return; omit for /signin resume URLs. | No | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
 | mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
-| redirect_url | query | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No | string |
+| redirect_url | query | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete a PKCE handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -20341,6 +20333,7 @@ Account not link tenant.
 | ---- | ---- | ----------- | -------- |
 | account_status | string |  | No |
 | email | string |  | Yes |
+| is_current_account | boolean |  | No |
 | requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
@@ -27357,6 +27350,7 @@ Too many emails have been sent from this IP address recently. Please try again l
 | expires_at | integer |  | Yes |
 | id | string |  | Yes |
 | last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
 | name | string |  | Yes |
 | provider | string |  | Yes |
 | updated_at | integer |  | Yes |
@@ -33866,10 +33860,11 @@ Only support workflow app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| code_challenge | string | Web-origin S256 challenge for an End User personal portal return; omit for /signin resume URLs. | No |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
 | mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
-| redirect_url | string | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No |
+| redirect_url | string | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete a PKCE handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -39102,7 +39097,7 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_code | string |  | No |
-| code_challenge | string | S256 PKCE challenge required only when returning to an App | No |
+| code_challenge | string | S256 PKCE challenge for a published App or Webapp personal portal handoff | No |
 | mode | string, <br>**Default:** end_user |  | No |
 | redirect_url | string | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No |
 
@@ -39111,6 +39106,7 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | logged_in | boolean |  | Yes |
+| login_code | string | One-use portal code to exchange on the Webapp API using the matching PKCE verifier. | No |
 | redirect_url | string |  | Yes |
 
 #### WebAppAuthModel

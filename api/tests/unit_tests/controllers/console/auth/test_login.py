@@ -596,12 +596,14 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
     app.register_blueprint(console_bp)
     ext_login.init_app(app)
     ext_login.bind_account_loader(app, identity.load_user)
+    ext_login.bind_account_only_loader(app, identity.load_account)
     monkeypatch.setattr(ext_login.session_factory, "create_session", sqlite_session_factory)
     monkeypatch.setattr(
         login, "application_services", lambda: SimpleNamespace(accounts=SimpleNamespace(authentication=authentication))
     )
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
-    loaded = identity.load_user(account.id)
+    assert identity.load_user(account.id) is None
+    loaded = identity.load_account(account.id)
     assert loaded is not None
     assert loaded.current_tenant_id is None
     initial = sessions.issue(account.id)
@@ -615,11 +617,12 @@ def test_logout_revokes_workspace_less_account_session_even_with_expired_access(
     client.set_cookie("__Host-access_token", access, domain="console.example.com", secure=True)
     client.set_cookie("__Host-refresh_token", tokens.refresh_token, domain="console.example.com", secure=True)
     client.set_cookie("__Host-csrf_token", tokens.csrf_token, domain="console.example.com", secure=True)
+    client.set_cookie("__Host-webapp_access_token", "legacy-portal-session", domain="console.example.com", secure=True)
     # A later login must survive revocation of the older refresh token.
     later = sessions.issue(account.id)
     response = client.post("/console/api/logout", base_url="https://console.example.com")
     assert response.status_code == 200
-    for cookie in ("__Host-access_token", "__Host-refresh_token", "__Host-csrf_token"):
+    for cookie in ("__Host-access_token", "__Host-refresh_token", "__Host-csrf_token", "__Host-webapp_access_token"):
         assert client.get_cookie(cookie, domain="console.example.com") is None
     with pytest.raises(account_errors.InvalidRefreshTokenError):
         authentication.refresh(tokens.refresh_token, mode=LoginMode.END_USER)

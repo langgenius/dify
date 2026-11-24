@@ -12,7 +12,7 @@ from typing import override
 import pytest
 from yarl import URL
 
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
 from core.plugin.impl import base as plugin_transport
 from core.plugin.impl.trigger import PluginTriggerClient
 from extensions.ext_redis import redis_client
@@ -212,7 +212,7 @@ def test_subscribe_transport_preserves_explicit_plugin_rejection(harness: _Harne
     daemon.response_data = None
     client = PluginTriggerClient(plugin_unique_identifier="langgenius/github:1.0.0@package-hash")
 
-    with pytest.raises(ValueError, match="^plugin daemon: subscription rejected, code: 1$"):
+    with pytest.raises(PluginDaemonInnerError) as caught:
         client.subscribe(
             tenant_id=harness.tenant_id,
             user_id=harness.account_id,
@@ -223,5 +223,8 @@ def test_subscribe_transport_preserves_explicit_plugin_rejection(harness: _Harne
             parameters={},
         )
 
+    assert caught.value.code == 1
+    assert caught.value.message == "subscription rejected"
+    assert "subscription rejected" not in str(caught.value)
     assert len(daemon.requests) == 1
     assert daemon.requests[0].path.endswith("/dispatch/trigger/subscribe")

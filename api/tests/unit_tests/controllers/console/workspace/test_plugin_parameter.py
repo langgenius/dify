@@ -201,8 +201,22 @@ def test_dynamic_option_rejection_preserves_plugin_message(harness: _Harness, da
     response = Context().run(harness.call, "GET", url=_url("GET"))
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
-    assert response.get_json()["code"] == "invalid_param"
+    assert response.get_json()["code"] == "plugin_error"
     assert response.get_json()["message"] == "plugin daemon: branch permission denied, code: 1"
+    assert [request.method for request in daemon.requests] == ["GET", "POST"]
+    assert all(not request.open_transactions for request in daemon.requests)
+
+
+def test_dynamic_option_internal_error_keeps_500_without_leaking_message(harness: _Harness, daemon: _Daemon) -> None:
+    daemon.provider = _tool_provider()
+    daemon.response_code = -500
+    daemon.response_message = "secret-token-leak"
+    daemon.response_data = None
+
+    response = Context().run(harness.call, "GET", url=_url("GET"))
+
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "secret-token-leak" not in str(response.get_json())
     assert [request.method for request in daemon.requests] == ["GET", "POST"]
     assert all(not request.open_transactions for request in daemon.requests)
 

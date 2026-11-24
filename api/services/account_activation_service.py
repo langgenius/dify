@@ -1,5 +1,6 @@
 """Application service for checking and accepting account invitations."""
 
+import logging
 from contextlib import AbstractContextManager
 from typing import Protocol
 
@@ -20,6 +21,8 @@ from services.entities.account_activation_entities import (
     InvitationLookup,
     InvitationToken,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_ROLE = "normal"
 _NON_OWNER_ROLES = frozenset({"admin", "editor", "normal", "dataset_operator"})
@@ -69,6 +72,12 @@ class WorkspaceMemberCapacity(Protocol):
     def can_join(self, workspace_id: str, account_id: str) -> bool: ...
 
 
+class InvitationWorkspaceProvisioning(Protocol):
+    def provision_first_workspace_after_invitation(self, account_id: str, *, joined_workspace_id: str) -> None:
+        """After acceptance commits, attempt first owned creation without switching workspaces."""
+        ...
+
+
 class AccountActivationService:
     def __init__(
         self,
@@ -80,6 +89,7 @@ class AccountActivationService:
         membership_cache: WorkspaceMembershipCache,
         member_access_sync: WorkspaceMemberAccessSync,
         capacity: WorkspaceMemberCapacity,
+        first_workspace_provisioning: InvitationWorkspaceProvisioning | None = None,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
@@ -88,8 +98,11 @@ class AccountActivationService:
         self._membership_cache = membership_cache
         self._member_access_sync = member_access_sync
         self._capacity = capacity
+        self._first_workspace_provisioning = first_workspace_provisioning
 
-    def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
+    def check(
+        self, invitation: InvitationLookup, *, authenticated_account_id: str | None = None
+    ) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
         if resolved is None:
             return ActivationCheckResult(is_valid=False)
@@ -103,6 +116,9 @@ class AccountActivationService:
                 email=resolved.account_email,
                 account_status=resolved.account_status,
                 requires_setup=self._requires_setup(resolved),
+                is_current_account=(
+                    authenticated_account_id is not None and authenticated_account_id == resolved.account_id
+                ),
             ),
         )
 
@@ -110,7 +126,9 @@ class AccountActivationService:
         """Accept an invitation, creating the membership when the workspace still has room.
 
         On success the membership exists and is the account's current workspace, then the link
-        is retired. A failed write leaves the link valid for a retry.
+        is retired. A failed membership write leaves the link valid for a retry.
+        For a matching signed-in invitee, configured deployments may then provision
+        a first personal workspace. A provisioning failure cannot undo acceptance.
 
         Raises:
             InvalidInvitationError: The invitation is missing, stale, or lacks setup data.
@@ -161,6 +179,18 @@ class AccountActivationService:
         if result.membership_created:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
+        if self._first_workspace_provisioning is not None and authenticated_account_id is not None:
+            try:
+                self._first_workspace_provisioning.provision_first_workspace_after_invitation(
+                    authenticated_account_id, joined_workspace_id=invitation.workspace_id
+                )
+            except Exception:
+                # Membership and token consumption have already succeeded.
+                logger.exception(
+                    "Could not provision a first workspace for account %s after joining workspace %s",
+                    authenticated_account_id,
+                    invitation.workspace_id,
+                )
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)

@@ -7,6 +7,7 @@ import * as z from 'zod'
  */
 export const zWebAppAccountSessionResponse = z.object({
   logged_in: z.boolean(),
+  login_code: z.string().nullish(),
   redirect_url: z.string().nullable(),
 })
 

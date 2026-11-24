@@ -2,11 +2,13 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from threading import Barrier
+from datetime import datetime, timedelta
+from threading import Barrier, Event
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -19,6 +21,7 @@ from repositories.conversation_access import ConversationAccessDeniedError, requ
 from repositories.end_user_execution_lock import lock_end_user
 from repositories.entities.web_execution import EndUserBusyError
 from repositories.web_migration_repository import WebMigrationRepository
+from services.end_user_connections.management import StoredConnection
 from services.web_migration_service import MigrationCounts
 from tests.helpers.end_user_api_key import PROVIDER, make_harness
 from tests.helpers.unit.model_factories import make_upload_file
@@ -140,6 +143,95 @@ def test_concurrent_passport_claims_transfer_all_resources_once(
         assert stored.from_end_user_id == winner.id
         assert session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id)) == winner.id
         assert session.scalar(sa.select(ToolFile.user_id).where(ToolFile.id == tool_id)) == winner.id
+
+
+@pytest.mark.parametrize("winner", ["claim", "cleanup"])
+@pytest.mark.timeout(40)
+def test_inactive_connection_cleanup_and_claim_use_the_same_identity_fence(
+    db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, winner: str
+) -> None:
+    """Pause the winner before commit and prove the competing operation cannot take the grant."""
+    engine = db_session_with_containers.get_bind()
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+    harness = make_harness(sessions)
+    account = harness.context
+    code = f"cleanup-race-{uuid4()}"
+    with sessions.begin() as session:
+        guest = EndUser(
+            tenant_id=account.tenant_id, app_id=account.app_id, type=EndUserType.BROWSER, session_id=str(uuid4())
+        )
+        session.add_all(
+            [
+                guest,
+                Site(
+                    app_id=account.app_id,
+                    code=code,
+                    title="Guest retention",
+                    default_language="en-US",
+                    customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+                ),
+            ]
+        )
+    context = replace(account, end_user_id=guest.id, account_id=None)
+    monkeypatch.setattr(dify_config, "END_USER_AUTH_ALLOW_ANONYMOUS", True)
+    connection = harness.service.create_api_key(context, harness.command())
+    cutoff = datetime(2026, 1, 1)
+    with sessions.begin() as session:
+        session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.id == connection.id)
+            .values(last_active_at=cutoff - timedelta(days=1))
+        )
+    migration = WebMigrationRepository(session_factory=sessions)
+    source = migration.get_claim_source(app_code=code, app_id=context.app_id, end_user_id=context.end_user_id)
+    assert source is not None
+    (candidate,) = harness.repository.inactive_guests(before=cutoff, after=None, limit=1)
+    assert candidate.connection_id == connection.id
+
+    reached_write = Event()
+    release = Event()
+    write = "UPDATE end_user_connections" if winner == "claim" else "DELETE FROM end_user_connections"
+
+    def pause_write(_conn: object, _cursor: object, statement: str, _params: object, _ctx: object, _many: bool) -> None:
+        if statement.startswith(write):
+            reached_write.set()
+            assert release.wait(timeout=10)
+
+    def claim() -> MigrationCounts:
+        return migration.claim_guest(source, account_end_user_id=account.end_user_id)
+
+    def cleanup() -> StoredConnection | None:
+        return harness.repository.expire_guest(candidate, before=cutoff)
+
+    event.listen(engine, "after_cursor_execute", pause_write)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            first = pool.submit(claim if winner == "claim" else cleanup)
+            try:
+                assert reached_write.wait(timeout=10)
+                if winner == "claim":
+                    assert cleanup() is None
+                else:
+                    with pytest.raises(EndUserBusyError):
+                        claim()
+            finally:
+                release.set()
+            outcome = first.result(timeout=10)
+            if winner == "claim":
+                assert outcome == MigrationCounts(1, 0)
+            else:
+                assert isinstance(outcome, StoredConnection)
+    finally:
+        event.remove(engine, "after_cursor_execute", pause_write)
+
+    if winner == "claim":
+        assert cleanup() is None
+        claimed = harness.repository.find(account, connection.id)
+        assert claimed is not None
+        assert claimed.access.owner.account_id == account.account_id
+    else:
+        assert claim() == MigrationCounts(0, 0)
+        assert harness.repository.find(context, connection.id) is None
 
 
 @pytest.mark.timeout(30)

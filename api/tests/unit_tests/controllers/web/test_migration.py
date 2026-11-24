@@ -171,9 +171,8 @@ def harness(
         guest_id, guest_session = guest.id, guest.session_id
     oauth.base.context = replace(account, end_user_id=guest_id, account_id=None)
     signer = PassportService()
-    identity = WebIdentityService(
-        accounts=SQLAlchemyAccountRepository(sqlite_session_factory), allow_console_login=True, allow_webapp_login=False
-    )
+    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
+    identity = WebIdentityService(accounts=accounts, allow_console_login=True, allow_webapp_login=False)
     tokens = PassportTokenGateway(passport=signer)
     passports = WebPassportService(
         passports=WebPassportRepository(
@@ -204,6 +203,7 @@ def harness(
         ),
         web_login_handoff=WebLoginHandoffService(
             grants=RedisWebLoginGrantStore(redis=redis_client),
+            onboarding=accounts,
             apps=WebPassportRepository(
                 session_factory=sqlite_session_factory, generate_session_id=lambda: str(uuid4())
             ),
@@ -534,6 +534,7 @@ def test_login_is_exchanged_before_delayed_claim_confirmation(
     clock = [datetime.now(UTC)]
     services.web_login_handoff = WebLoginHandoffService(
         grants=RedisWebLoginGrantStore(redis=redis),
+        onboarding=SQLAlchemyAccountRepository(harness.oauth.base.sessions),
         apps=WebPassportRepository(
             session_factory=harness.oauth.base.sessions, generate_session_id=lambda: str(uuid4())
         ),

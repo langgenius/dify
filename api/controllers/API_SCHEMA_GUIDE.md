@@ -95,6 +95,61 @@ query failure behavior stay unchanged. A missing field or failed request must no
 be interpreted as confirmed same-origin configuration. WebApp availability is
 independent of whether Account login is enabled; this URL grants no access.
 
+### Console login return targets
+
+`GET /console/api/login` and `GET /console/api/oauth/login/{provider}` accept
+root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
+`is_end_user` is a frontend navigation hint; clients select the existing
+`mode=end_user` API contract to request End User login.
+
+Issuing a PKCE grant for an App or the personal portal records the earliest known End User event in
+`accounts.be_end_user_at`; redeeming the grant does not. Issuing a legacy direct portal session records
+that same event. This includes handoffs that reuse an existing Account session.
+An unauthenticated probe, ordinary Console sign-in, and App execution do not record onboarding.
+Previously recorded first App use is retained as a historical baseline; `NULL` means no event is known.
+
+Both relative paths and absolute URLs are untrusted input. Absolute targets must
+match the configured origin exactly: same scheme, host, and effective port. The
+resolver rejects credentials in the authority, protocol-relative references,
+backslashes, control characters, and dot segments (including percent-encoded
+ones), and it rebuilds the response URL from the configured origin instead of
+echoing the supplied host. Route restrictions then apply to the resolved path.
+
+Console OAuth resolves relative returns against `CONSOLE_WEB_URL`. End User
+portal and App returns use `APP_WEB_URL`, falling back to `CONSOLE_WEB_URL` when
+unset. OAuth resume URLs for `/signin` still use the Console base so clients can
+finish the handoff after sign-in. These bases come from deployment configuration,
+not the API request host. Relative targets can omit the deployment prefix or
+include it once, and query strings and fragments are preserved.
+
+End User admission and route restrictions still apply. App returns require a
+PKCE-bound handoff. Previously allowed absolute portal URLs on Console continue
+to work for legacy cookie-sharing deployments.
+
+#### Personal portal login across sites
+
+1. On the WebApp origin, keep a fresh PKCE verifier in the initiating tab and
+   send only its S256 `code_challenge` and the personal `redirect_url` to Console
+   sign-in. Do not send an `app_code`. OAuth may resume the same Console `/signin`
+   URL as a published App, or take a portal return and challenge directly.
+2. On Console, call `GET /console/api/login?mode=end_user` with the return URL
+   and challenge. With no Account session it returns `logged_in: false`. After
+   sign-in (including OAuth or silent refresh), it returns `logged_in: true`,
+   the validated WebApp portal `redirect_url`, and an opaque `login_code`.
+   Return the code to that destination, never a Console token or the verifier.
+3. From the WebApp page, match the return to the tab's pending login and POST
+   `{login_code, code_verifier}` to `/api/account/session` on the Web API. The
+   endpoint requires the WebApp Origin and returns only `{"result":"success"}`.
+   Its HttpOnly cookie authenticates `GET /api/account/profile` without App or
+   workspace scope. Discard the transaction and remove the code from the address bar.
+
+Portal and App codes are not interchangeable. Each can be redeemed once and
+expires within 60 seconds or at the Console login expiry, whichever comes first.
+A wrong verifier does not consume a valid code. Neither a broader cookie domain
+nor third-party cookies are required. If the Web API host is outside the configured
+Console `COOKIE_DOMAIN`, the Web cookie is host-only. Requests without a challenge
+retain the legacy direct-cookie behavior; do not use that flow across unrelated sites.
+
 ### Agent tracing deployment discovery exception
 
 `agent_tracing_api_collection_enabled` is an explicit deployment-discovery exception to the pre-authentication

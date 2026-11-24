@@ -121,12 +121,9 @@ class AccountIdentityGateway:
         return self._accounts.find_identity(email, case_fallback=case_fallback)
 
     def load_user(self, account_id: str) -> Account | None:
-        """Load an admitted identity and its workspace, allowing Cloud accounts without one."""
+        """Load a session identity that has an active workspace; ``None`` when it has none."""
         now = naive_utc_now()
-        account = self._accounts.load_identity(
-            account_id, now=now, require_workspace=dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-        )
-        return self._admit(account, now)
+        return self._admit(self._accounts.load_identity(account_id, now=now), now)
 
     def load_account(self, account_id: str) -> Account | None:
         """Load a session identity for account-scoped resources without resolving a workspace.

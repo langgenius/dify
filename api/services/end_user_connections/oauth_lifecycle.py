@@ -272,6 +272,12 @@ class OAuthConnectionLifecycleService:
         )
 
     def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
+        """Attempt one best-effort revocation after deletion has committed.
+
+        Only the deleted grant's pinned Client and artifact are used, outside any
+        write transaction. Missing provenance, missing artifacts and transport
+        errors are terminal outcomes; never restore local state or log provider text.
+        """
         reference = record.access.oauth_client
         if (
             reference is None

@@ -130,6 +130,27 @@ Get personal Account settings using the WebApp Account cookie, without App or wo
 | 200 | Updated Account settings | **application/json**: [WebAccountResponse](#webaccountresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /account/session
+**Require the WebApp Origin and a portal code bound to this verifier**
+
+Success sets only the Web Account cookie, never a Console token or App Passport.
+Rejected origins, invalid proofs, and replays do not set any cookies.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebLoginExchangePayload](#webloginexchangepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account session established | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /audio-to-text
 **Convert audio to text**
 
@@ -2555,6 +2576,7 @@ This Web App identity is being updated. Please retry.
 | expires_at | integer |  | Yes |
 | id | string |  | Yes |
 | last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
 | name | string |  | Yes |
 | provider | string |  | Yes |
 | updated_at | integer |  | Yes |
@@ -3819,6 +3841,15 @@ Too many form requests. Please try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WebFormRateLimitExceededError |  | Too many form requests. Please try again later. |  |
+
+#### WebLoginExchangePayload
+
+Redeem an opaque one-use grant with the original browser's S256 verifier.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code_verifier | string |  | Yes |
+| login_code | string |  | Yes |
 
 #### WebLoginUnavailableError
 

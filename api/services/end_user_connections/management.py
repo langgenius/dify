@@ -230,6 +230,11 @@ class ConnectionService:
     def update_connection(
         self, context: WebConnectionContext, connection_id: str, command: UpdateConnectionInput
     ) -> ConnectionSummary:
+        """Apply an owned name or credential update and record successful activity.
+
+        Rejected updates do not advance activity. Credential checks outside a
+        user update use their own path and never count as activity.
+        """
         record = self._load(context, connection_id)
         guard = connection_mutation_guard(context, record.access)
         ciphertext = None
@@ -266,7 +271,7 @@ class ConnectionService:
                 name=command.name,
                 encrypted_credentials=ciphertext,
                 credential_status=status,
-                touch_activity=ciphertext is not None,
+                touch_activity=True,
                 revision_acceptance=acceptance,
             ),
         )

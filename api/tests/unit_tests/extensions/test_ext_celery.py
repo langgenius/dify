@@ -13,7 +13,7 @@ from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
 from celery.exceptions import Retry
 
-from configs.feature import LoggingConfig
+from configs.feature import CeleryScheduleTasksConfig, LoggingConfig
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.ext_celery import (
@@ -100,6 +100,47 @@ def test_init_app_uses_validated_logging_timezone(configured: str, iana_name: st
                 )
         finally:
             celery_app.close()
+
+
+@pytest.mark.parametrize(
+    ("enabled", "override_minutes", "expected_minutes"),
+    [(False, None, 60), (True, None, 60), (True, 17, 17)],
+)
+def test_guest_connection_cleanup_schedule_and_worker_queue(
+    monkeypatch: pytest.MonkeyPatch, enabled: bool, override_minutes: int | None, expected_minutes: int
+) -> None:
+    """Check that opt-in Beat uses the hourly default or a supplied override on the retention queue."""
+    monkeypatch.delenv("GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES", raising=False)
+    interval = (
+        CeleryScheduleTasksConfig().GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES
+        if override_minutes is None
+        else override_minutes
+    )
+    module = "tasks.guest_connection_cleanup_task"
+    task_name = f"{module}.cleanup_guest_connections"
+    import_module(module)
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            ENABLE_GUEST_CONNECTION_CLEANUP_TASK=enabled,
+            GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES=interval,
+            DISABLE_TELEMETRY=True,
+        ),
+        init_app(DifyApp(__name__)) as celery_app,
+    ):
+        assert module in celery_app.conf.imports
+        assert celery_app.tasks[task_name].queue == "retention"
+        schedule = celery_app.conf.beat_schedule
+        if enabled:
+            assert schedule["guest_connection_cleanup"] == {
+                "task": task_name,
+                "schedule": timedelta(minutes=expected_minutes),
+                "options": {"expires": expected_minutes * 60},
+            }
+        else:
+            assert "guest_connection_cleanup" not in schedule
 
 
 @pytest.fixture

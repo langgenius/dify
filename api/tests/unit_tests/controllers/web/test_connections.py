@@ -73,6 +73,7 @@ def test_http_api_key_management_round_trip(
     data = response.get_json()
     assert data["name"] == (name or "API KEY 1")
     assert data["credential_status"] == "connected"
+    assert data["manual_revocation_required_on_expiry"] is anonymous
     assert isinstance(data["created_at"], int)
     assert "original-secret" not in response.get_data(as_text=True)
     assert "encrypted_credentials" not in data
