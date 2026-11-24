@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Запросите разрешение на просмотр контактов в этом рабочем пространстве.",
   "directory.removalCountTitle": "Удалить контакты ({{count}})?",
   "directory.removalDescription": "Выбранные контакты будут навсегда удалены из этого рабочего пространства. Это действие нельзя отменить.",
   "directory.removalSingleDescription": "Контакт {{name}} будет навсегда удалён из этого рабочего пространства. Это действие нельзя отменить.",
   "directory.removalSingleFailed": "Не удалось удалить контакт. Повторите попытку.",
   "directory.removalSingleTitle": "Удалить {{name}}?",
   "directory.resultCount": "Результаты: {{count}}",
+  "directory.viewOnly": "Контакты доступны вам только для чтения.",
   "imPlatform.action.configure": "Настроить",
   "imPlatform.action.configureChannel": "Настроить {{provider}}",
   "imPlatform.action.connect": "Подключить",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Проблема с разрешениями",
   "imPlatform.sync.latestSynced": "Последняя синхронизация: {{date}}",
   "imPlatform.sync.loading": "Проверка наличия активной синхронизации.",
-  "imPlatform.sync.noPermission": "Только владельцы и администраторы рабочей области могут запускать синхронизацию каталога.",
+  "imPlatform.sync.noPermission": "Для запуска синхронизации каталога нужно разрешение на управление каналами.",
   "imPlatform.sync.noRuns": "Синхронизация каталога ещё не выполнялась.",
   "imPlatform.sync.notConnected": "Перед запуском синхронизации каталога подключите и проверьте провайдера.",
   "imPlatform.sync.startFailed": "Не удалось запустить или обновить синхронизацию каталога. Повторите попытку.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "В очереди",
   "imPlatform.sync.status.running": "Выполняется",
   "imPlatform.sync.status.success": "Успешно",
-  "imPlatform.title": "Каналы"
+  "imPlatform.title": "Каналы",
+  "platformPicker.addForbidden": "Для добавления контактов платформы нужны централизованное управление мессенджерами и разрешение на управление контактами."
 }

@@ -8,6 +8,7 @@ import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createWorkspacePermissionsFixture } from '@/test/console/workspace-permissions'
 import { ContactsManagementRuntimeProvider } from '../composition'
 import { useContactsFeatureContext } from '../composition-context'
 
@@ -24,6 +25,7 @@ vi.mock('@/service/console', async () => {
       systemFeatures: { get: async () => createSystemFeaturesFixture() },
       workspaces: {
         current: {
+          rbac: { myPermissions: { get: async () => createWorkspacePermissionsFixture() } },
           summary: {
             get: () => service.getWorkspace(),
           },

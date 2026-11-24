@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "इस कार्यक्षेत्र के संपर्क देखने की अनुमति का अनुरोध करें।",
   "directory.removalCountTitle": "संपर्क हटाएँ ({{count}})?",
   "directory.removalDescription": "चुने गए संपर्क इस कार्यक्षेत्र से स्थायी रूप से हटा दिए जाएँगे। इस कार्रवाई को पूर्ववत नहीं किया जा सकता।",
   "directory.removalSingleDescription": "{{name}} को इस कार्यक्षेत्र से स्थायी रूप से हटा दिया जाएगा। इस कार्रवाई को वापस नहीं लिया जा सकता।",
   "directory.removalSingleFailed": "संपर्क हटाया नहीं जा सका। फिर से प्रयास करें।",
   "directory.removalSingleTitle": "{{name}} को हटाएँ?",
   "directory.resultCount": "परिणाम: {{count}}",
+  "directory.viewOnly": "आपके पास संपर्कों को केवल देखने की अनुमति है।",
   "imPlatform.action.configure": "कॉन्फ़िगर करें",
   "imPlatform.action.configureChannel": "{{provider}} कॉन्फ़िगर करें",
   "imPlatform.action.connect": "कनेक्ट करें",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "अनुमति में समस्या",
   "imPlatform.sync.latestSynced": "पिछला सिंक: {{date}}",
   "imPlatform.sync.loading": "सक्रिय सिंक की जाँच हो रही है।",
-  "imPlatform.sync.noPermission": "केवल वर्कस्पेस के मालिक और व्यवस्थापक डायरेक्टरी सिंक शुरू कर सकते हैं।",
+  "imPlatform.sync.noPermission": "डायरेक्टरी सिंक शुरू करने के लिए चैनल प्रबंधित करने की अनुमति चाहिए।",
   "imPlatform.sync.noRuns": "अभी तक कोई डायरेक्टरी सिंक नहीं चला है।",
   "imPlatform.sync.notConnected": "डायरेक्टरी सिंक शुरू करने से पहले किसी प्रदाता को कनेक्ट करके जाँचें।",
   "imPlatform.sync.startFailed": "डायरेक्टरी सिंक शुरू या रीफ़्रेश नहीं हो सका। फिर से कोशिश करें।",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "कतार में",
   "imPlatform.sync.status.running": "चल रहा है",
   "imPlatform.sync.status.success": "सफल",
-  "imPlatform.title": "चैनल"
+  "imPlatform.title": "चैनल",
+  "platformPicker.addForbidden": "प्लेटफ़ॉर्म के संपर्क जोड़ने के लिए इंस्टेंट मैसेजिंग का केंद्रीकृत प्रबंधन और संपर्क प्रबंधित करने की अनुमति चाहिए।"
 }

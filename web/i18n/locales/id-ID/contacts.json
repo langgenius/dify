@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Minta izin untuk melihat kontak di ruang kerja ini.",
   "directory.removalCountTitle": "Hapus kontak ({{count}})?",
   "directory.removalDescription": "Kontak yang dipilih akan dihapus secara permanen dari ruang kerja ini. Tindakan ini tidak dapat dibatalkan.",
   "directory.removalSingleDescription": "{{name}} akan dihapus secara permanen dari ruang kerja ini. Tindakan ini tidak dapat dibatalkan.",
   "directory.removalSingleFailed": "Kontak tidak dapat dihapus. Coba lagi.",
   "directory.removalSingleTitle": "Hapus {{name}}?",
   "directory.resultCount": "Hasil: {{count}}",
+  "directory.viewOnly": "Anda memiliki akses baca saja ke kontak.",
   "imPlatform.action.configure": "Konfigurasikan",
   "imPlatform.action.configureChannel": "Konfigurasikan {{provider}}",
   "imPlatform.action.connect": "Sambung",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Masalah izin",
   "imPlatform.sync.latestSynced": "Terakhir disinkronkan {{date}}",
   "imPlatform.sync.loading": "Memeriksa sinkronisasi yang sedang aktif.",
-  "imPlatform.sync.noPermission": "Hanya pemilik dan admin ruang kerja yang dapat memulai sinkronisasi direktori.",
+  "imPlatform.sync.noPermission": "Untuk memulai sinkronisasi direktori, Anda memerlukan izin untuk mengelola saluran.",
   "imPlatform.sync.noRuns": "Belum ada sinkronisasi direktori yang dijalankan.",
   "imPlatform.sync.notConnected": "Hubungkan dan uji penyedia sebelum memulai sinkronisasi direktori.",
   "imPlatform.sync.startFailed": "Sinkronisasi direktori tidak dapat dimulai atau dimuat ulang. Coba lagi.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "Dalam antrean",
   "imPlatform.sync.status.running": "Berjalan",
   "imPlatform.sync.status.success": "Berhasil",
-  "imPlatform.title": "Saluran"
+  "imPlatform.title": "Saluran",
+  "platformPicker.addForbidden": "Untuk menambahkan kontak platform, pengelolaan pesan instan harus terpusat dan Anda harus memiliki izin untuk mengelola kontak."
 }

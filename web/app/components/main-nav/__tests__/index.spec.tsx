@@ -187,6 +187,7 @@ function stubScrollRootIntersectionObserver() {
 }
 
 const ownerWorkspacePermissionKeys = [
+  'contact.view',
   'workspace.member.manage',
   'workspace.role.manage',
   'app_library.access',
@@ -486,6 +487,21 @@ describe('MainNav', () => {
       '/integrations/model-provider',
       '/marketplace',
     ])
+  })
+
+  it('shows the Contacts link to a directory reader with a custom workspace role', () => {
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: { ...consoleState.currentWorkspace, role: 'normal' },
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: ['contact.view'],
+    }
+    renderMainNav()
+    expect(screen.getByRole('link', { name: /contacts.directory.title/ })).toHaveAttribute(
+      'href',
+      '/contacts',
+    )
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {

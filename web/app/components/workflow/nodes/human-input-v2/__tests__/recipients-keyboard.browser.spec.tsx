@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { ReactFlowProvider, useKeyPress } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { WorkflowContext } from '../../../context'
@@ -78,6 +79,7 @@ async function renderRecipients(initial?: HumanInputV2Recipient[]) {
     }),
   )
   const client = createTestQueryClient()
+  seedWorkspacePermissionsQuery(client)
   const store = createStore()
   store.set(queryClientAtom, client)
   const observe = vi.fn()

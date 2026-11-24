@@ -689,7 +689,6 @@ function ContactIMChannels({
 
 export function ContactDetailsPanel({
   contact,
-  canManage = true,
   removing = false,
   onEdit,
   onClose,
@@ -700,13 +699,13 @@ export function ContactDetailsPanel({
   id?: string
   headingRef?: Ref<HTMLHeadingElement>
   contact: ContactView
-  canManage?: boolean
   removing?: boolean
   onEdit: () => void
   onClose: () => void
   onRemove: () => void
 }) {
   const { i18n, t } = useTranslation(['contacts'])
+  const canManage = useContactsFeatureContext().permissions.canManageContacts
   const headingId = useId()
 
   return (

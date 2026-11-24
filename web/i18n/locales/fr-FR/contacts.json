@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Demandez l’autorisation de consulter les contacts de cet espace de travail.",
   "directory.removalCountTitle": "Supprimer les contacts ({{count}}) ?",
   "directory.removalDescription": "Les contacts sélectionnés seront définitivement supprimés de cet espace de travail. Cette action est irréversible.",
   "directory.removalSingleDescription": "{{name}} sera définitivement supprimé de cet espace de travail. Cette action est irréversible.",
   "directory.removalSingleFailed": "Impossible de supprimer ce contact. Réessayez.",
   "directory.removalSingleTitle": "Supprimer {{name}} ?",
   "directory.resultCount": "Résultats : {{count}}",
+  "directory.viewOnly": "Vous avez accès aux contacts en lecture seule.",
   "imPlatform.action.configure": "Configurer",
   "imPlatform.action.configureChannel": "Configurer {{provider}}",
   "imPlatform.action.connect": "Connecter",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problème d’autorisation",
   "imPlatform.sync.latestSynced": "Dernière synchronisation le {{date}}",
   "imPlatform.sync.loading": "Vérification d’une synchronisation en cours.",
-  "imPlatform.sync.noPermission": "Seuls les propriétaires et les administrateurs de l’espace de travail peuvent lancer la synchronisation de l’annuaire.",
+  "imPlatform.sync.noPermission": "Pour lancer la synchronisation de l’annuaire, vous devez avoir l’autorisation de gérer les canaux.",
   "imPlatform.sync.noRuns": "Aucune synchronisation de l’annuaire n’a encore été exécutée.",
   "imPlatform.sync.notConnected": "Connectez un fournisseur et testez la connexion avant de lancer la synchronisation de l’annuaire.",
   "imPlatform.sync.startFailed": "Impossible de lancer ou d’actualiser la synchronisation de l’annuaire. Réessayez.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "En attente",
   "imPlatform.sync.status.running": "En cours",
   "imPlatform.sync.status.success": "Réussi",
-  "imPlatform.title": "Canaux"
+  "imPlatform.title": "Canaux",
+  "platformPicker.addForbidden": "L’ajout de contacts de la plateforme nécessite une gestion centralisée de la messagerie instantanée et l’autorisation de gérer les contacts."
 }

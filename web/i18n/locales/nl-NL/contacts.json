@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Vraag toestemming om de contacten in deze werkruimte te bekijken.",
   "directory.removalCountTitle": "Contacten verwijderen ({{count}})?",
   "directory.removalDescription": "De geselecteerde contacten worden permanent uit deze werkruimte verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
   "directory.removalSingleDescription": "{{name}} wordt definitief uit deze werkruimte verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
   "directory.removalSingleFailed": "Het contact kon niet worden verwijderd. Probeer het opnieuw.",
   "directory.removalSingleTitle": "{{name}} verwijderen?",
   "directory.resultCount": "Resultaten: {{count}}",
+  "directory.viewOnly": "Je hebt alleen leestoegang tot contacten.",
   "imPlatform.action.configure": "Config",
   "imPlatform.action.configureChannel": "{{provider}} configureren",
   "imPlatform.action.connect": "Verbinden",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Machtigingsprobleem",
   "imPlatform.sync.latestSynced": "Laatst gesynchroniseerd op {{date}}",
   "imPlatform.sync.loading": "Controleren of er een actieve synchronisatie is.",
-  "imPlatform.sync.noPermission": "Alleen eigenaren en beheerders van de werkruimte kunnen een adresboeksynchronisatie starten.",
+  "imPlatform.sync.noPermission": "Om de adresboeksynchronisatie te starten heb je toestemming nodig om kanalen te beheren.",
   "imPlatform.sync.noRuns": "Er is nog geen adresboeksynchronisatie uitgevoerd.",
   "imPlatform.sync.notConnected": "Verbind een provider en test de verbinding voordat je de adresboeksynchronisatie start.",
   "imPlatform.sync.startFailed": "De adresboeksynchronisatie kon niet worden gestart of vernieuwd. Probeer het opnieuw.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "In wachtrij",
   "imPlatform.sync.status.running": "Wordt uitgevoerd",
   "imPlatform.sync.status.success": "Geslaagd",
-  "imPlatform.title": "Kanalen"
+  "imPlatform.title": "Kanalen",
+  "platformPicker.addForbidden": "Om platformcontacten toe te voegen zijn centraal IM-beheer en toestemming om contacten te beheren vereist."
 }

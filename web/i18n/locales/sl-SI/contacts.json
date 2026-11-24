@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Zaprosite za dovoljenje za ogled stikov v tem delovnem prostoru.",
   "directory.removalCountTitle": "Odstranim stike ({{count}})?",
   "directory.removalDescription": "Izbrani stiki bodo trajno odstranjeni iz tega delovnega prostora. Tega dejanja ni mogoče razveljaviti.",
   "directory.removalSingleDescription": "Stik {{name}} bo trajno odstranjen iz tega delovnega prostora. Tega dejanja ni mogoče razveljaviti.",
   "directory.removalSingleFailed": "Stika ni bilo mogoče odstraniti. Poskusite znova.",
   "directory.removalSingleTitle": "Odstranim {{name}}?",
   "directory.resultCount": "Rezultati: {{count}}",
+  "directory.viewOnly": "Stike lahko samo berete.",
   "imPlatform.action.configure": "Konfiguriraj",
   "imPlatform.action.configureChannel": "Konfigurirajte {{provider}}",
   "imPlatform.action.connect": "Poveži",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Težava z dovoljenji",
   "imPlatform.sync.latestSynced": "Nazadnje sinhronizirano: {{date}}",
   "imPlatform.sync.loading": "Preverjanje aktivne sinhronizacije.",
-  "imPlatform.sync.noPermission": "Sinhronizacijo imenika lahko zaženejo samo lastniki in skrbniki delovnega prostora.",
+  "imPlatform.sync.noPermission": "Za začetek sinhronizacije imenika potrebujete dovoljenje za upravljanje kanalov.",
   "imPlatform.sync.noRuns": "Sinhronizacija imenika še ni bila izvedena.",
   "imPlatform.sync.notConnected": "Pred začetkom sinhronizacije imenika povežite ponudnika in preizkusite povezavo.",
   "imPlatform.sync.startFailed": "Sinhronizacije imenika ni bilo mogoče zagnati ali osvežiti. Poskusite znova.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "V čakalni vrsti",
   "imPlatform.sync.status.running": "Se izvaja",
   "imPlatform.sync.status.success": "Uspešno",
-  "imPlatform.title": "Kanali"
+  "imPlatform.title": "Kanali",
+  "platformPicker.addForbidden": "Za dodajanje stikov s platforme potrebujete centralizirano upravljanje neposrednega sporočanja in dovoljenje za upravljanje stikov."
 }

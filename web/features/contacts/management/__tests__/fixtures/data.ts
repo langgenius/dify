@@ -5,6 +5,7 @@ export const managerContext: ContactsFeatureContextValue = {
   deployment: 'ce',
   imCentrallyManaged: false,
   workspaceId: 'workspace-1',
+  permissionsLoading: false,
   permissions: { canViewContacts: true, canManageContacts: true, canManageMembers: true },
 }
 

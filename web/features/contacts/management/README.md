@@ -2,9 +2,9 @@
 
 This feature owns the `/contacts` directory, contact details, external-contact
 creation and editing, platform-directory imports, and removable-contact selection.
-Only workspace managers may access it. The runtime provider reads the current
-workspace permissions and the authoritative `im_centrally_managed` capability;
-it does not own a repository or synthetic API state.
+Members with `contact.view` or `contact.manage` can browse the directory.
+Contact changes require `contact.manage`. The runtime provider reads these
+workspace permissions and the `im_centrally_managed` capability.
 
 Components use generated `consoleQuery` query and mutation options directly.
 Shared mutation policies own cache invalidation. Contact and directory data keep

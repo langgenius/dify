@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Solicita permiso para ver los contactos de este espacio de trabajo.",
   "directory.removalCountTitle": "¿Eliminar contactos ({{count}})?",
   "directory.removalDescription": "Los contactos seleccionados se eliminarán permanentemente de este espacio de trabajo. Esta acción no se puede deshacer.",
   "directory.removalSingleDescription": "{{name}} se eliminará permanentemente de este espacio de trabajo. Esta acción no se puede deshacer.",
   "directory.removalSingleFailed": "No se pudo eliminar el contacto. Inténtalo de nuevo.",
   "directory.removalSingleTitle": "¿Eliminar a {{name}}?",
   "directory.resultCount": "Resultados: {{count}}",
+  "directory.viewOnly": "Tienes acceso de solo lectura a los contactos.",
   "imPlatform.action.configure": "Configurar",
   "imPlatform.action.configureChannel": "Configurar {{provider}}",
   "imPlatform.action.connect": "Conectar",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problema de permisos",
   "imPlatform.sync.latestSynced": "Última sincronización: {{date}}",
   "imPlatform.sync.loading": "Buscando una sincronización activa.",
-  "imPlatform.sync.noPermission": "Solo los propietarios y administradores del espacio de trabajo pueden iniciar la sincronización del directorio.",
+  "imPlatform.sync.noPermission": "Para iniciar la sincronización del directorio necesitas permiso para gestionar canales.",
   "imPlatform.sync.noRuns": "Todavía no se ha ejecutado ninguna sincronización del directorio.",
   "imPlatform.sync.notConnected": "Conecta un proveedor y prueba la conexión antes de iniciar la sincronización del directorio.",
   "imPlatform.sync.startFailed": "No se pudo iniciar o actualizar la sincronización del directorio. Inténtalo de nuevo.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "En cola",
   "imPlatform.sync.status.running": "En ejecución",
   "imPlatform.sync.status.success": "Correcto",
-  "imPlatform.title": "Canales"
+  "imPlatform.title": "Canales",
+  "platformPicker.addForbidden": "Para añadir contactos de la plataforma se requieren la gestión centralizada de la mensajería instantánea y el permiso para gestionar contactos."
 }

@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Solicite permissão para ver os contatos deste espaço de trabalho.",
   "directory.removalCountTitle": "Remover contatos ({{count}})?",
   "directory.removalDescription": "Os contatos selecionados serão removidos permanentemente deste espaço de trabalho. Esta ação não pode ser desfeita.",
   "directory.removalSingleDescription": "{{name}} será removido permanentemente deste espaço de trabalho. Esta ação não pode ser desfeita.",
   "directory.removalSingleFailed": "Não foi possível remover o contato. Tente novamente.",
   "directory.removalSingleTitle": "Remover {{name}}?",
   "directory.resultCount": "Resultados: {{count}}",
+  "directory.viewOnly": "Você tem acesso somente de leitura aos contatos.",
   "imPlatform.action.configure": "Configurar",
   "imPlatform.action.configureChannel": "Configurar {{provider}}",
   "imPlatform.action.connect": "Conectar",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problema de permissão",
   "imPlatform.sync.latestSynced": "Última sincronização: {{date}}",
   "imPlatform.sync.loading": "Verificando se há uma sincronização ativa.",
-  "imPlatform.sync.noPermission": "Somente proprietários e administradores do espaço de trabalho podem iniciar a sincronização do diretório.",
+  "imPlatform.sync.noPermission": "Para iniciar a sincronização do diretório, é preciso ter permissão para gerenciar canais.",
   "imPlatform.sync.noRuns": "Nenhuma sincronização de diretório foi executada ainda.",
   "imPlatform.sync.notConnected": "Conecte um provedor e teste a conexão antes de iniciar a sincronização do diretório.",
   "imPlatform.sync.startFailed": "Não foi possível iniciar ou atualizar a sincronização do diretório. Tente novamente.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "Na fila",
   "imPlatform.sync.status.running": "Em execução",
   "imPlatform.sync.status.success": "Sucesso",
-  "imPlatform.title": "Canais"
+  "imPlatform.title": "Canais",
+  "platformPicker.addForbidden": "Para adicionar contatos da plataforma, é preciso ter gerenciamento centralizado das mensagens instantâneas e permissão para gerenciar contatos."
 }

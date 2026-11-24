@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "ກະລຸນາຂໍສິດເບິ່ງລາຍຊື່ຕິດຕໍ່ໃນພື້ນທີ່ເຮັດວຽກນີ້.",
   "directory.removalCountTitle": "ລຶບຜູ້ຕິດຕໍ່ ({{count}}) ຫຼືບໍ່?",
   "directory.removalDescription": "ຜູ້ຕິດຕໍ່ທີ່ເລືອກຈະຖືກລຶບອອກຈາກພື້ນທີ່ເຮັດວຽກນີ້ຢ່າງຖາວອນ. ບໍ່ສາມາດຍົກເລີກການດຳເນີນການນີ້ໄດ້.",
   "directory.removalSingleDescription": "{{name}} ຈະຖືກລຶບອອກຈາກພື້ນທີ່ເຮັດວຽກນີ້ຢ່າງຖາວອນ. ບໍ່ສາມາດຍົກເລີກການກະທຳນີ້ໄດ້.",
   "directory.removalSingleFailed": "ບໍ່ສາມາດລຶບຜູ້ຕິດຕໍ່ໄດ້. ກະລຸນາລອງໃໝ່.",
   "directory.removalSingleTitle": "ລຶບ {{name}} ຫຼືບໍ່?",
   "directory.resultCount": "ຜົນລັບ: {{count}}",
+  "directory.viewOnly": "ທ່ານມີສິດອ່ານລາຍຊື່ຕິດຕໍ່ເທົ່ານັ້ນ.",
   "imPlatform.action.configure": "ຕັ້ງຄ່າ",
   "imPlatform.action.configureChannel": "ຕັ້ງຄ່າ {{provider}}",
   "imPlatform.action.connect": "ເຊື່ອມຕໍ່",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "ບັນຫາສິດ",
   "imPlatform.sync.latestSynced": "ຊິງຄ໌ຄັ້ງຫຼ້າສຸດ {{date}}",
   "imPlatform.sync.loading": "ກຳລັງກວດສອບການຊິງຄ໌ທີ່ກຳລັງເຮັດວຽກ.",
-  "imPlatform.sync.noPermission": "ມີພຽງເຈົ້າຂອງ ແລະ ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກທີ່ເລີ່ມຊິງຄ໌ລາຍຊື່ໄດ້.",
+  "imPlatform.sync.noPermission": "ຕ້ອງມີສິດຈັດການຊ່ອງທາງຈຶ່ງຈະເລີ່ມຊິງຄ໌ລາຍຊື່ໄດ້.",
   "imPlatform.sync.noRuns": "ຍັງບໍ່ເຄີຍຊິງຄ໌ລາຍຊື່.",
   "imPlatform.sync.notConnected": "ເຊື່ອມຕໍ່ ແລະ ທົດສອບຜູ້ໃຫ້ບໍລິການກ່ອນເລີ່ມຊິງຄ໌ລາຍຊື່.",
   "imPlatform.sync.startFailed": "ເລີ່ມ ຫຼື ໂຫຼດການຊິງຄ໌ລາຍຊື່ໃໝ່ບໍ່ໄດ້. ລອງໃໝ່.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "ຢູ່ໃນຄິວ",
   "imPlatform.sync.status.running": "ກຳລັງດຳເນີນ",
   "imPlatform.sync.status.success": "ສຳເລັດ",
-  "imPlatform.title": "ຊ່ອງທາງ"
+  "imPlatform.title": "ຊ່ອງທາງ",
+  "platformPicker.addForbidden": "ການເພີ່ມລາຍຊື່ຕິດຕໍ່ຈາກແພລດຟອມຕ້ອງເປີດໃຊ້ການຈັດການ IM ແບບລວມສູນ ແລະ ມີສິດຈັດການລາຍຊື່ຕິດຕໍ່."
 }

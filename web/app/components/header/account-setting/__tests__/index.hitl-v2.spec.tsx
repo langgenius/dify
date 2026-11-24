@@ -57,7 +57,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/features/contacts/im-platform/account-setting-page', () => ({
-  ContactsImPlatformAccountSettingPage: () => <div data-testid="contacts-im-platform-page" />,
+  ContactsImPlatformAccountSettingPage: ({ canManage }: { canManage: boolean }) =>
+    canManage && <h2>Channel configuration</h2>,
 }))
 
 vi.mock('next-themes', () => ({
@@ -183,6 +184,7 @@ const baseConsoleState: ConsoleStateFixture = {
   refreshCurrentWorkspace: vi.fn(),
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
+    'channel.manage',
     'workspace.member.manage',
     'workspace.role.manage',
     'data_source.manage',
@@ -269,21 +271,28 @@ describe('AccountSetting', () => {
   })
 
   describe('Rendering', () => {
-    it.each(['editor', 'normal', 'dataset_operator'])(
-      'hides Channels and rejects its deep link for the %s role',
-      (role) => {
+    it('rejects the Channels deep link for a contact manager without channel.manage', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        workspacePermissionKeys: ['contact.manage'],
+      }
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
+      expect(screen.queryByRole('button', { name: 'contacts.imPlatform.title' })).toBeNull()
+      expect(screen.queryByRole('heading', { name: 'Channel configuration' })).toBeNull()
+    })
+
+    it.each([true, false])(
+      'opens Channels with channel.manage alone when RBAC is %s',
+      async (rbacEnabled) => {
         mockConsoleState.current = {
           ...baseConsoleState,
-          currentWorkspace: { ...baseConsoleState.currentWorkspace, role },
+          currentWorkspace: { ...baseConsoleState.currentWorkspace, role: 'normal' },
           isCurrentWorkspaceManager: false,
           isCurrentWorkspaceOwner: false,
-          isCurrentWorkspaceDatasetOperator: role === 'dataset_operator',
+          workspacePermissionKeys: ['channel.manage'],
         }
-        renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
-        expect(
-          screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
-        ).not.toBeInTheDocument()
-        expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+        renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM, rbacEnabled })
+        expect(await screen.findByRole('heading', { name: 'Channel configuration' })).toBeVisible()
       },
     )
 
@@ -303,7 +312,9 @@ describe('AccountSetting', () => {
       })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
-      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Channel configuration' }),
+      ).toBeInTheDocument()
     })
 
     it('keeps workspace channels available for older successful features responses', () => {
@@ -321,12 +332,16 @@ describe('AccountSetting', () => {
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Channel configuration' }),
+      ).not.toBeInTheDocument()
     })
 
     it('closes workspace channels if the features request becomes unavailable', async () => {
       const { queryClient } = renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
-      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Channel configuration' }),
+      ).toBeInTheDocument()
 
       await act(async () => {
         mockConfig.getFeatures.mockRejectedValue(new Error('features unavailable'))
@@ -334,7 +349,9 @@ describe('AccountSetting', () => {
       })
 
       await waitFor(() =>
-        expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument(),
+        expect(
+          screen.queryByRole('heading', { name: 'Channel configuration' }),
+        ).not.toBeInTheDocument(),
       )
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
@@ -349,7 +366,9 @@ describe('AccountSetting', () => {
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Channel configuration' }),
+      ).not.toBeInTheDocument()
       expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
@@ -359,7 +378,9 @@ describe('AccountSetting', () => {
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
 
       expect(screen.getByRole('button', { name: 'contacts.imPlatform.title' })).toBeInTheDocument()
-      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Channel configuration' }),
+      ).toBeInTheDocument()
     })
 
     it('rejects centrally managed workspace channels deep links', () => {
@@ -369,7 +390,9 @@ describe('AccountSetting', () => {
         imCentrallyManaged: true,
       })
 
-      expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: 'Channel configuration' }),
+      ).not.toBeInTheDocument()
       expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
   })
@@ -380,7 +403,9 @@ describe('AccountSetting', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'contacts.imPlatform.title' }))
 
-      expect(await screen.findByTestId('contacts-im-platform-page')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Channel configuration' }),
+      ).toBeInTheDocument()
     })
   })
 })

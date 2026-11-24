@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Запитайте дозвіл на перегляд контактів у цьому робочому просторі.",
   "directory.removalCountTitle": "Видалити контакти ({{count}})?",
   "directory.removalDescription": "Вибрані контакти буде назавжди видалено з цього робочого простору. Цю дію неможливо скасувати.",
   "directory.removalSingleDescription": "Контакт {{name}} буде назавжди видалено з цього робочого простору. Цю дію неможливо скасувати.",
   "directory.removalSingleFailed": "Не вдалося видалити контакт. Спробуйте ще раз.",
   "directory.removalSingleTitle": "Видалити {{name}}?",
   "directory.resultCount": "Результати: {{count}}",
+  "directory.viewOnly": "Ви маєте доступ до контактів лише для читання.",
   "imPlatform.action.configure": "Налаштувати",
   "imPlatform.action.configureChannel": "Налаштувати {{provider}}",
   "imPlatform.action.connect": "Підключити",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Проблема з дозволами",
   "imPlatform.sync.latestSynced": "Остання синхронізація: {{date}}",
   "imPlatform.sync.loading": "Перевірка наявності активної синхронізації.",
-  "imPlatform.sync.noPermission": "Лише власники та адміністратори робочого простору можуть запускати синхронізацію каталогу.",
+  "imPlatform.sync.noPermission": "Для запуску синхронізації каталогу потрібен дозвіл на керування каналами.",
   "imPlatform.sync.noRuns": "Синхронізація каталогу ще не виконувалася.",
   "imPlatform.sync.notConnected": "Перед запуском синхронізації каталогу підключіть і перевірте провайдера.",
   "imPlatform.sync.startFailed": "Не вдалося запустити або оновити синхронізацію каталогу. Повторіть спробу.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "У черзі",
   "imPlatform.sync.status.running": "Виконується",
   "imPlatform.sync.status.success": "Успішно",
-  "imPlatform.title": "Канали"
+  "imPlatform.title": "Канали",
+  "platformPicker.addForbidden": "Для додавання контактів платформи потрібні централізоване керування месенджерами та дозвіл на керування контактами."
 }

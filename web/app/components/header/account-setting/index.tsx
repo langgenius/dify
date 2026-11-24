@@ -98,8 +98,9 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canManageChannels = hasPermission(workspacePermissionKeys, 'channel.manage')
   const canViewContactsImPlatform =
-    isCurrentWorkspaceManager &&
+    canManageChannels &&
     featuresQuery.isSuccess &&
     isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
   const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
@@ -337,7 +338,7 @@ export default function AccountSetting({
                     {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM && (
                       <ContactsImPlatformAccountSettingPage
-                        canManage={isCurrentWorkspaceManager}
+                        canManage={canManageChannels}
                         organizationId={currentWorkspace.id}
                       />
                     )}

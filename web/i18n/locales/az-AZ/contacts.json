@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Bu iş sahəsindəki kontaktlara baxmaq üçün icazə istəyin.",
   "directory.removalCountTitle": "Əlaqələr silinsin ({{count}})?",
   "directory.removalDescription": "Seçilmiş kontaktlar bu iş sahəsindən həmişəlik silinəcək. Bu əməliyyatı geri qaytarmaq mümkün deyil.",
   "directory.removalSingleDescription": "{{name}} bu iş sahəsindən həmişəlik silinəcək. Bu əməliyyatı geri qaytarmaq mümkün deyil.",
   "directory.removalSingleFailed": "Əlaqəni silmək mümkün olmadı. Yenidən cəhd edin.",
   "directory.removalSingleTitle": "{{name}} silinsin?",
   "directory.resultCount": "Nəticələr: {{count}}",
+  "directory.viewOnly": "Kontaktlara yalnız oxumaq üçün girişiniz var.",
   "imPlatform.action.configure": "Konfiqurasiya et",
   "imPlatform.action.configureChannel": "{{provider}} konfiqurasiyasını qur",
   "imPlatform.action.connect": "Qoş",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "İcazə problemi",
   "imPlatform.sync.latestSynced": "Son sinxronizasiya: {{date}}",
   "imPlatform.sync.loading": "Aktiv sinxronizasiya yoxlanılır.",
-  "imPlatform.sync.noPermission": "Yalnız iş sahəsinin sahibləri və administratorları kataloq sinxronizasiyasını başlada bilər.",
+  "imPlatform.sync.noPermission": "Kataloqun sinxronlaşdırılmasını başlatmaq üçün kanalları idarə etmək icazəsi tələb olunur.",
   "imPlatform.sync.noRuns": "Hələ heç bir kataloq sinxronizasiyası icra edilməyib.",
   "imPlatform.sync.notConnected": "Kataloq sinxronizasiyasına başlamazdan əvvəl provayder qoşun və bağlantını yoxlayın.",
   "imPlatform.sync.startFailed": "Kataloq sinxronizasiyasını başlatmaq və ya yeniləmək mümkün olmadı. Yenidən cəhd edin.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "Növbədədir",
   "imPlatform.sync.status.running": "İcra olunur",
   "imPlatform.sync.status.success": "Uğurlu",
-  "imPlatform.title": "Kanallar"
+  "imPlatform.title": "Kanallar",
+  "platformPicker.addForbidden": "Platforma kontaktlarını əlavə etmək üçün ani mesajlaşmanın mərkəzləşdirilmiş idarə edilməsi və kontaktları idarə etmək icazəsi tələb olunur."
 }

@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Poproś o uprawnienie do wyświetlania kontaktów w tym obszarze roboczym.",
   "directory.removalCountTitle": "Usunąć kontakty ({{count}})?",
   "directory.removalDescription": "Wybrane kontakty zostaną trwale usunięte z tego obszaru roboczego. Tej czynności nie można cofnąć.",
   "directory.removalSingleDescription": "Kontakt {{name}} zostanie trwale usunięty z tego obszaru roboczego. Tej czynności nie można cofnąć.",
   "directory.removalSingleFailed": "Nie udało się usunąć kontaktu. Spróbuj ponownie.",
   "directory.removalSingleTitle": "Usunąć {{name}}?",
   "directory.resultCount": "Wyniki: {{count}}",
+  "directory.viewOnly": "Masz dostęp do kontaktów tylko do odczytu.",
   "imPlatform.action.configure": "Skonfiguruj",
   "imPlatform.action.configureChannel": "Skonfiguruj {{provider}}",
   "imPlatform.action.connect": "Połącz",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problem z uprawnieniami",
   "imPlatform.sync.latestSynced": "Ostatnia synchronizacja: {{date}}",
   "imPlatform.sync.loading": "Sprawdzanie aktywnej synchronizacji.",
-  "imPlatform.sync.noPermission": "Tylko właściciele i administratorzy obszaru roboczego mogą uruchamiać synchronizację katalogu.",
+  "imPlatform.sync.noPermission": "Rozpoczęcie synchronizacji katalogu wymaga uprawnienia do zarządzania kanałami.",
   "imPlatform.sync.noRuns": "Nie wykonano jeszcze synchronizacji katalogu.",
   "imPlatform.sync.notConnected": "Połącz dostawcę i przetestuj połączenie przed rozpoczęciem synchronizacji katalogu.",
   "imPlatform.sync.startFailed": "Nie udało się uruchomić lub odświeżyć synchronizacji katalogu. Spróbuj ponownie.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "W kolejce",
   "imPlatform.sync.status.running": "W toku",
   "imPlatform.sync.status.success": "Sukces",
-  "imPlatform.title": "Kanały"
+  "imPlatform.title": "Kanały",
+  "platformPicker.addForbidden": "Dodawanie kontaktów z platformy wymaga centralnego zarządzania komunikatorami i uprawnienia do zarządzania kontaktami."
 }
