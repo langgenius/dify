@@ -8,7 +8,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { legacyWorkflowVersionHistoryKey } from '@/service/console/workflow-version-cache'
+import { workflowVersionHistoryInfiniteOptions } from '@/service/workflow-queries'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -36,7 +36,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const historyKey = [...legacyWorkflowVersionHistoryKey, '/snippets/snippet-1/workflows']
+const historyKey = workflowVersionHistoryInfiniteOptions(
+  { kind: 'snippet', snippetId: 'snippet-1' },
+  { limit: 10 },
+).queryKey
+const historyData = {
+  pages: [{ has_more: false, items: [], limit: 10, page: 1 }],
+  pageParams: [1],
+}
 
 const renderPublish = (code = 'def main():\n    return {"answer": "hello"}') => {
   const { queryClient } = createConsoleQueryWrapper()
@@ -49,7 +56,7 @@ const renderPublish = (code = 'def main():\n    return {"answer": "hello"}') => 
   })
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
-  queryClient.setQueryData(historyKey, { pages: [{ data: [{ id: 'old-version' }] }] })
+  queryClient.setQueryData(historyKey, historyData)
   const nodes = [
     createNode({
       id: 'code',
@@ -151,9 +158,7 @@ describe('useSnippetPublish', () => {
       expect(mockMutateAsync).not.toHaveBeenCalled()
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('[Code]'))
       expect(store.getState().publishedAt).toBe(0)
-      expect(queryClient.getQueryData(historyKey)).toEqual({
-        pages: [{ data: [{ id: 'old-version' }] }],
-      })
+      expect(queryClient.getQueryData(historyKey)).toEqual(historyData)
       expect(toast.success).not.toHaveBeenCalled()
     })
 
@@ -168,9 +173,7 @@ describe('useSnippetPublish', () => {
 
       expect(toast.error).toHaveBeenCalledWith('publish failed')
       expect(store.getState().publishedAt).toBe(0)
-      expect(queryClient.getQueryData(historyKey)).toEqual({
-        pages: [{ data: [{ id: 'old-version' }] }],
-      })
+      expect(queryClient.getQueryData(historyKey)).toEqual(historyData)
       expect(toast.success).not.toHaveBeenCalled()
     })
   })
