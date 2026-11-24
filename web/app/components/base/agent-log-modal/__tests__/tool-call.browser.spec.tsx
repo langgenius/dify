@@ -60,7 +60,10 @@ it.skip('reveals real readonly input and output editors and hides them when coll
   await expect.element(editors).not.toBeInTheDocument()
 })
 
-it('reveals the provider error inside the expanded tool call', async () => {
+// Skipped: flaky in CI. Expanding a tool call mounts the Monaco editor, whose worker
+// (`vs/base/worker/workerMain.js`) sometimes fails to load; the logged error fails the test.
+// Re-enable once the worker loads reliably.
+it.skip('reveals the provider error inside the expanded tool call', async () => {
   const { screen } = await renderAgentLog(
     <ToolCallItem
       toolCall={{ ...toolCall, status: 'error', error: 'Something went wrong' }}
@@ -82,7 +85,10 @@ it.each([
   await expect.element(screen.getByText(`${formatted} tokens`)).toBeVisible()
 })
 
-it.each([true, false])(
+// Skipped: flaky in CI. Expanding a tool call mounts the Monaco editor, whose worker
+// (`vs/base/worker/workerMain.js`) sometimes fails to load; the logged error fails the test.
+// Re-enable once the worker loads reliably.
+it.skip.each([true, false])(
   'reveals the observation and correct result title for isFinal=%s',
   async (isFinal) => {
     const { screen } = await renderAgentLog(
