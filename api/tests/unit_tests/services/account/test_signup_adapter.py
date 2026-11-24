@@ -5,6 +5,7 @@ from blinker import Signal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs.feature import TokenerSignupBillingCandidate
 from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
@@ -22,6 +23,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 
 UID = "langgenius/tokener:0.4.4@signup-test"
 CANARY_UID = "langgenius/tokener-staging:0.4.4@signup-test"
+SHARED_UID = "langgenius/tokener-staging:0.4.5-dev2026112203@" + "a" * 64
 
 
 @pytest.mark.parametrize(
@@ -62,6 +64,46 @@ def test_signup_canary_only_pins_the_exact_configured_account(monkeypatch: pytes
     assert configured_signup_enrollment("another@example.invalid") == TokenerSignupEnrollment(UID)
 
 
+def test_shared_staging_signup_uses_signup_only_pin_regardless_of_email(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_NEW_TENANT_COHORT_ENABLED=True,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER=UID,
+        TOKENER_SIGNUP_VALIDATION_EMAIL="stage-canary@example.invalid",
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=SHARED_UID,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        TOKENER_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING.value,
+        TOKENER_ENDPOINT_URL="https://api-dev.tokener.dev",
+    )
+    assert configured_signup_enrollment("another@example.invalid") == TokenerSignupEnrollment(SHARED_UID)
+    assert configured_signup_enrollment("stage-canary@example.invalid") == TokenerSignupEnrollment(SHARED_UID)
+
+
+@pytest.mark.parametrize(
+    ("billing_base", "signup_pin"),
+    [
+        ("https://invalid.example", SHARED_UID),
+        (TokenerSignupBillingCandidate.SHARED_STAGING.value, CANARY_UID),
+        (TokenerSignupBillingCandidate.SHARED_STAGING.value, UID),
+    ],
+)
+def test_shared_staging_signup_rejects_invalid_base_or_uid(
+    monkeypatch: pytest.MonkeyPatch, billing_base: str, signup_pin: str
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TOKENER_NEW_TENANT_COHORT_ENABLED=True,
+        TOKENER_PLUGIN_UNIQUE_IDENTIFIER=UID,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=signup_pin,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        TOKENER_BILLING_API_URL=billing_base,
+    )
+    with pytest.raises(ValueError, match="shared staging"):
+        configured_signup_enrollment("ordinary@example.invalid")
+
+
 @pytest.fixture
 def signup_domain(account_domain: AccountDomain, monkeypatch: pytest.MonkeyPatch) -> AccountDomain:
     apply_config_overrides(
@@ -88,11 +130,12 @@ def signup_domain(account_domain: AccountDomain, monkeypatch: pytest.MonkeyPatch
     return account_domain
 
 
-def _assert_native(sessions: sessionmaker[Session], account: str, tenant: str) -> None:
+def _assert_native(sessions: sessionmaker[Session], account: str, tenant: str, *, expected_uid: str = UID) -> None:
     with sessions() as session:
         intent = session.get(AccountTokenerSignupIntent, account)
         profile = session.get(TenantModelBillingProfile, tenant)
         assert intent is not None
+        assert intent.plugin_unique_identifier == expected_uid
         assert intent.consumed_tenant_id == tenant
         assert intent.consumed_at is not None
         assert profile is not None
@@ -101,7 +144,7 @@ def _assert_native(sessions: sessionmaker[Session], account: str, tenant: str) -
             select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == tenant)
         )
         assert integration is not None
-        assert integration.plugin_unique_identifier == UID
+        assert integration.plugin_unique_identifier == expected_uid
         assert session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == tenant)) is None
 
 
@@ -118,6 +161,23 @@ def test_verified_email_registration_producer_persists_intent_and_only_first_wor
         assert session.scalar(select(func.count()).select_from(TenantModelBillingProfile)) == 1
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 1
         assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1
+
+
+def test_shared_staging_ordinary_account_persists_signup_only_package(
+    signup_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER=SHARED_UID,
+        TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING,
+        TOKENER_BILLING_API_URL=TokenerSignupBillingCandidate.SHARED_STAGING.value,
+    )
+    account = signup_domain.accounts.create_account_and_tenant(f"{uuid4()}@example.test", "Stage user", "en-US")
+    tenants = signup_domain.workspaces.list_ids_for_account(account.id)
+    assert len(tenants) == 1
+    _assert_native(sqlite_session_factory, account.id, tenants[0], expected_uid=SHARED_UID)
 
 
 def test_verified_email_code_atomic_account_workspace_producer(

@@ -8,6 +8,7 @@ from pydantic import TypeAdapter
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from configs.feature import TokenerSignupBillingCandidate
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from models.account import Account, Tenant
 from models.model_billing import TenantModelBillingProfile
@@ -551,12 +552,24 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
         (
             "langgenius/tokener-staging:0.4.4@fixture",
             "tokener",
+            TokenerSignupBillingCandidate.SHARED_STAGING.value,
+            True,
+        ),
+        (
+            "langgenius/tokener:0.4.4@fixture",
+            "tokener",
+            TokenerSignupBillingCandidate.SHARED_STAGING.value,
+            False,
+        ),
+        (
+            "langgenius/tokener-staging:0.4.4@fixture",
+            "tokener",
             "http://tokener-signup-billing-candidate:8081",
             False,
         ),
     ],
 )
-def test_get_trial_models_opens_paid_catalog_only_for_isolated_staging_signup(
+def test_get_trial_models_opens_paid_catalog_only_for_trusted_staging_signup(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -593,7 +606,11 @@ def test_get_trial_models_opens_paid_catalog_only_for_isolated_staging_signup(
             env
             | {
                 "DEPLOYMENT_EDITION": DeploymentEdition.CLOUD,
+                "TOKENER_BILLING_API_URL": TokenerSignupBillingCandidate.SHARED_STAGING.value,
                 "TOKENER_SIGNUP_VALIDATION_BILLING_API_URL": billing_url,
+                "TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER": (
+                    "langgenius/tokener-staging:0.4.5-dev2026112203@" + "a" * 64
+                ),
                 "HOSTED_OPENAI_TRIAL_ENABLED": True,
                 "HOSTED_ANTHROPIC_PAID_ENABLED": True,
             }

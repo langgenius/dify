@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timedelta
 from enum import StrEnum
 from functools import cache
@@ -256,6 +257,7 @@ class TokenerSignupBillingCandidate(StrEnum):
     DISABLED = ""
     SIGNUP = "http://tokener-signup-billing-candidate:8081"
     HOSTED_SIGNUP = "http://tokener-hosted-billing-candidate:8081"
+    SHARED_STAGING = "http://dify-saas-billing:8081"
 
 
 class PluginConfig(BaseSettings):
@@ -414,7 +416,7 @@ class PluginConfig(BaseSettings):
 
     TOKENER_SIGNUP_VALIDATION_BILLING_API_URL: TokenerSignupBillingCandidate = Field(
         default=TokenerSignupBillingCandidate.DISABLED,
-        description="Agent dev only: private Billing candidate for workspaces created by the signup intent flow",
+        description="Agent dev only: explicit Billing route for workspaces created by the signup intent flow",
     )
 
     TOKENER_SIGNUP_VALIDATION_EMAIL: str = Field(
@@ -424,7 +426,7 @@ class PluginConfig(BaseSettings):
 
     TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
         default="",
-        description="Agent dev only: signed staging package pinned on that account's signup intent",
+        description="Agent dev only: exact signed staging package pinned by the configured signup mode",
     )
 
     TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(
@@ -451,6 +453,29 @@ class PluginConfig(BaseSettings):
         description="Optional allowlisted Tokener data-plane endpoint passed to a compatible plugin package",
         default="",
     )
+
+    def get_agent_dev_staging_tokener_billing_url(self) -> TokenerSignupBillingCandidate | None:
+        """Return an explicitly trusted staging Billing route without network or persistence changes.
+
+        The original isolated target is always explicit. The shared target is
+        valid only when the normal Tokener Billing base matches and the
+        signup-only package is an exact staging UID. The global data-plane
+        endpoint and package remain available to legacy paths unchanged.
+        Invalid configuration grants no fallback to shared Billing.
+        """
+        configured = self.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
+        if configured == TokenerSignupBillingCandidate.HOSTED_SIGNUP:
+            return TokenerSignupBillingCandidate.HOSTED_SIGNUP
+        if (
+            configured == TokenerSignupBillingCandidate.SHARED_STAGING
+            and self.TOKENER_BILLING_API_URL.strip().rstrip("/") == TokenerSignupBillingCandidate.SHARED_STAGING
+            and re.fullmatch(
+                r"langgenius/tokener-staging:[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}@[0-9a-f]{64}",
+                self.TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER.strip(),
+            )
+        ):
+            return TokenerSignupBillingCandidate.SHARED_STAGING
+        return None
 
     @property
     def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:

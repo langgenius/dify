@@ -24,6 +24,30 @@ should be `langgenius/openai/openai`
 and the same request should debit only the canary's staging org. The
 existing BYOK and legacy paths must not pick up the canary.
 
+## Shared staging Billing (agent dev)
+
+To use the existing shared agent-dev Billing service for **all future
+self-signups**, configure these values consistently in the API and signup
+worker:
+
+- `TOKENER_SIGNUP_VALIDATION_BILLING_API_URL=http://dify-saas-billing:8081`
+- `TOKENER_BILLING_API_URL=http://dify-saas-billing:8081`
+- `TOKENER_SIGNUP_VALIDATION_PLUGIN_UNIQUE_IDENTIFIER` to the exact verified
+  signed `langgenius/tokener-staging:<version>@<sha256>` Marketplace UID.
+
+Both new ordinary signups and prior staging intents use the explicit shared
+route for Tokener bootstrap and metering, without redirects. In this mode the
+old exact-email selector is ignored. The package pin is signup-only; do not
+replace the global Tokener plugin, provider, endpoint or legacy settings. The
+shared server selects its staging Partner only for consumed staging intents;
+old non-staging intents retain the original Partner. Signup package signature
+checks and persisted identity are unchanged.
+
+Before enabling this mode, verify the shared Billing instance actually uses
+the approved Tokener staging partner and base for native bootstrap/metering.
+Keep unrelated Billing routes and all migration and Stripe behavior outside
+this cutover.
+
 ## Runtime backport
 
 This branch replays the signup-intent prerequisites and hosted canary over

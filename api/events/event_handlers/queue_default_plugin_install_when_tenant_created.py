@@ -4,7 +4,7 @@ import logging
 
 from configs import dify_config
 from events.tenant_event import tenant_was_created
-from repositories.tokener_signup_canary_repository import CANARY_BILLING_URL, signup_used_staging_package
+from repositories.tokener_signup_canary_repository import signup_used_staging_package
 from tasks.install_default_plugins_task import install_default_plugins_task
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ def handle(sender, **kwargs) -> None:
     plugin_ids = dify_config.NEW_USER_DEFAULT_PLUGIN_ID_LIST
     try:
         if (
-            dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL == CANARY_BILLING_URL
+            dify_config.get_agent_dev_staging_tokener_billing_url() is not None
             and "langgenius/openai" not in plugin_ids
             and signup_used_staging_package(sender.id)
         ):
