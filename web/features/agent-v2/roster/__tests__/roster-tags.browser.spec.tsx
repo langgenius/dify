@@ -215,7 +215,7 @@ it('restores loaded roster pages when returning from another route with the same
   expect(listAgents).toHaveBeenCalledTimes(2)
 })
 
-it('reconciles a bookmarked tag filter with the catalog and keeps the remaining selection after deletion', async () => {
+it('ignores malformed bookmarked tags immediately and reconciles deleted tags with the loaded catalog', async () => {
   const catalog = hold(fake.console.tags.get)
   const listAgents = fake.console.agent.get
   listAgents.mockImplementation((input) =>
@@ -223,9 +223,14 @@ it('reconciles a bookmarked tag filter with the catalog and keeps the remaining 
   )
   const { onUrlUpdate } = await renderRoster(
     ['agent.tag.manage'],
-    `?tag_ids=${deletedTagId};${research.id};${finance.id}&sort_by=earliest_created`,
+    `?tag_ids=${deletedTagId};bad-id;${research.id};${finance.id}&sort_by=earliest_created`,
   )
   await expect.element(page.getByRole('listitem', { name: 'Analyst' })).toBeVisible()
+  expect(listAgents.mock.calls[0]?.[0]?.query?.tag_ids).toEqual([
+    deletedTagId,
+    research.id,
+    finance.id,
+  ])
   expect(onUrlUpdate).not.toHaveBeenCalled()
   await catalog.arrived
   catalog.release()

@@ -1,5 +1,6 @@
 import { zGetAgentQuery } from '@dify/contracts/api/console/agent/zod.gen'
 import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral } from 'nuqs'
+import { validate as isUuid } from 'uuid'
 import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 
 export const rosterQueryParamNames = {
@@ -16,7 +17,10 @@ export const rosterKeywordQueryParser = parseAsString.withDefault('').withOption
 
 export const rosterFilterQueryParser = parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all')
 
-export const rosterTagIdsQueryParser = parseAsArrayOf(parseAsString, ';').withDefault([])
+export const rosterTagIdsQueryParser = parseAsArrayOf(
+  { parse: (id) => (isUuid(id) ? id.toLowerCase() : null) },
+  ';',
+).withDefault([])
 
 export const rosterCreatedByMeQueryParser = parseAsBoolean.withDefault(false)
 

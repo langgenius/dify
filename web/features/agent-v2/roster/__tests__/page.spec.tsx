@@ -6,6 +6,8 @@ import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/
 import { createDeferred } from '@/test/deferred'
 import RosterPage from '../page'
 
+const researchTagId = '00000000-0000-4000-8000-000000000011'
+const financeTagId = '00000000-0000-4000-8000-000000000012'
 const listAgents = vi.hoisted(() => vi.fn())
 const queryValues = vi.hoisted(() => ({
   created_by_me: false,
@@ -22,8 +24,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.get': listAgents,
       'tags.get': () => [
-        { id: 'research', name: 'Research', type: 'agent' },
-        { id: 'finance', name: 'Finance', type: 'agent' },
+        { id: researchTagId, name: 'Research', type: 'agent' },
+        { id: financeTagId, name: 'Finance', type: 'agent' },
       ],
     }),
   }
@@ -84,7 +86,7 @@ describe('RosterPage', () => {
     queryValues.filter = 'drafts'
     queryValues.keyword = 'Analyst'
     queryValues.created_by_me = true
-    queryValues.tag_ids = 'research;finance'
+    queryValues.tag_ids = `${researchTagId};${financeTagId}`
     render(<RosterPage />)
     expect(
       await screen.findByRole('radio', { name: 'agentRoster.roster.filters.published 1' }),
@@ -99,7 +101,7 @@ describe('RosterPage', () => {
         publication_status: 'drafts',
         name: 'Analyst',
         is_created_by_me: true,
-        tag_ids: ['research', 'finance'],
+        tag_ids: [researchTagId, financeTagId],
         sort_by: 'last_modified',
       },
     })
