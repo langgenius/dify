@@ -675,18 +675,19 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
+    """Reject an unavailable dataset after one lookup scoped to the workflow tenant."""
     dataset_id = "550e8400-e29b-41d4-a716-446655440000"
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot_with_knowledge_dataset(dataset_id)
     _persist_validation_scope(sqlite_session, node_job=node_job, snapshot=snapshot)
 
-    captured: dict[str, object] = {}
+    lookups: list[tuple[list[str] | None, str]] = []
 
     def fake_get_datasets_by_ids(
         ids: list[str] | None, tenant_id: str, *, session: Session
     ) -> tuple[list[Dataset], int]:
-        captured["ids"] = ids
-        captured["tenant_id"] = tenant_id
+        """Record the lookup key and represent an unavailable dataset."""
+        lookups.append((ids, tenant_id))
         return list[Dataset](), 0
 
     import services.knowledge.dataset_service as dataset_service_module
@@ -699,7 +700,7 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
         )
 
-    assert captured == {"ids": [dataset_id], "tenant_id": "tenant-1"}
+    assert lookups == [([dataset_id], "tenant-1")]
 
 
 def test_publish_validation_accepts_tool_node_agentic_manual_mode(unbound_session: Session) -> None:
