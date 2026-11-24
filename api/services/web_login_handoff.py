@@ -59,11 +59,22 @@ class WebLoginGrantStore(Protocol):
     def consume(self, key: str) -> WebLoginGrant | None: ...
 
 
+class EndUserOnboardingStore(Protocol):
+    def record_end_user_handoff(self, account_id: str, *, occurred_at: datetime) -> None:
+        """Keep the earliest known End User event for the verified Account in one conditional write.
+
+        A missing or ineligible Account, or an equal or earlier stored time, is a no-op.
+        This does not activate the Account or require a workspace.
+        """
+        ...
+
+
 class WebLoginHandoffService:
     def __init__(
         self,
         *,
         grants: WebLoginGrantStore,
+        onboarding: EndUserOnboardingStore,
         apps: WebPassportRepository,
         identities: WebIdentityService,
         tokens: WebPassportTokenGateway,
@@ -73,6 +84,7 @@ class WebLoginHandoffService:
         now: Callable[[], datetime],
     ) -> None:
         self._grants = grants
+        self._onboarding = onboarding
         self._apps = apps
         self._identities = identities
         self._tokens = tokens
@@ -92,6 +104,7 @@ class WebLoginHandoffService:
         return redirect_url
 
     def authorize(self, target: WebLoginTarget, access_token: str) -> str:
+        """Return the App callback and record onboarding only after issuing a verified Account's grant."""
         redirect_url = self.validate_target(target)
         claims = self._console_identity(access_token)
         assert claims.account_id is not None
@@ -100,6 +113,7 @@ class WebLoginHandoffService:
         if app is None:
             raise WebPassportNotFoundError()
         code = secrets.token_urlsafe(32)
+        occurred_at = self._now()
         self._grants.put(
             self._key(code),
             WebLoginGrant(
@@ -107,11 +121,12 @@ class WebLoginHandoffService:
                 app_id=app.app_id,
                 app_code=app.app_code,
                 account_id=claims.account_id,
-                expires_at=min(claims.exp, int(self._now().timestamp()) + HANDOFF_TTL_SECONDS),
+                expires_at=min(claims.exp, int(occurred_at.timestamp()) + HANDOFF_TTL_SECONDS),
                 login_expires_at=claims.exp,
                 code_challenge=target.code_challenge,
             ),
         )
+        self._onboarding.record_end_user_handoff(claims.account_id, occurred_at=occurred_at)
         base = urlsplit(self._app_web_url or self._console_web_url)
         return urlunsplit(
             (
@@ -124,13 +139,15 @@ class WebLoginHandoffService:
         )
 
     def personal_session(self, access_token: str) -> WebLoginSession:
-        """Exchange a verified Console identity for a same-origin personal portal cookie."""
+        """Issue a personal portal session for a verified Console identity, then record its handoff."""
         if not self._enabled:
             raise WebPassportAccountExchangeDisabledError()
         claims = self._console_identity(access_token)
         assert claims.account_id is not None
         assert claims.exp is not None
-        return self._issue_login_session(account_id=claims.account_id, expires_at=claims.exp)
+        session = self._issue_login_session(account_id=claims.account_id, expires_at=claims.exp)
+        self._onboarding.record_end_user_handoff(claims.account_id, occurred_at=self._now())
+        return session
 
     def _console_identity(self, access_token: str) -> WebAppLoginClaims:
         try:

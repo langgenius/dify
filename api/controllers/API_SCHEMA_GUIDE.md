@@ -102,6 +102,11 @@ root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
 `is_end_user` is a frontend navigation hint; clients select the existing
 `mode=end_user` API contract to request End User login.
 
+A successful personal portal session or App-bound login redirect records the earliest known
+End User event in `accounts.be_end_user_at`, including when an existing Account session is reused.
+An unauthenticated probe, ordinary Console sign-in, and App execution do not record onboarding.
+Previously recorded first App use is retained as a historical baseline; `NULL` means no event is known.
+
 Both relative paths and absolute URLs are untrusted input. Absolute targets must
 match the configured origin exactly: same scheme, host, and effective port. The
 resolver rejects credentials in the authority, protocol-relative references,

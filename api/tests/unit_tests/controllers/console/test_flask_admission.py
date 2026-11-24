@@ -134,7 +134,11 @@ def test_cloud_refresh_cannot_return_an_end_user_to_an_inadmissible_console(
     ],
 )
 def test_password_login_prepares_workspace_only_for_console(
-    cloud_console: tuple[DifyApp, AccountDomain], mode: LoginMode, account_status: AccountStatus, profile_status: int
+    cloud_console: tuple[DifyApp, AccountDomain],
+    mode: LoginMode,
+    account_status: AccountStatus,
+    profile_status: int,
+    sqlite_session: Session,
 ) -> None:
     """The first profile probe after explicit Console login does not depend on other Console GETs."""
     app, account_domain = cloud_console
@@ -150,6 +154,7 @@ def test_password_login_prepares_workspace_only_for_console(
     expected_names = ["End User's Workspace"] if mode == LoginMode.CONSOLE else []
     assert [workspace.name for workspace in workspaces] == expected_names
     assert browser.get(PROFILE_PATH).status_code == profile_status
+    assert sqlite_session.get_one(Account, account.id).be_end_user_at is None
 
 
 @pytest.mark.parametrize(
@@ -276,6 +281,7 @@ def test_accepting_invitation_can_provision_first_cloud_workspace_without_anothe
     with sqlite_session_factory() as session:
         owner = session.get(Account, invitee.id)
         assert owner is not None
+        assert owner.be_end_user_at is None
         memberships = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == invitee.id)).all()
         assert [row.tenant_id for row in memberships if row.current] == [team_id]
         assert next(row for row in memberships if row.tenant_id == team_id).role == TenantAccountRole.NORMAL
