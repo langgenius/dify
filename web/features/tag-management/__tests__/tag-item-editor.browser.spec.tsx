@@ -108,6 +108,16 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
   expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
 })
 
+it('preserves an existing padded tag name when the user leaves without editing', async () => {
+  const name = '  Frontend  '
+  await renderEditor('3', [name, 'Backend'])
+  await edit().click()
+  await expect.element(input()).toHaveValue(name)
+  await userEvent.tab()
+  await expect.element(edit()).toBeVisible()
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+})
+
 it('shows a rename failure and restores the original name for editing again', async () => {
   fake.console.tags.byTagId.patch.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Update failed' }),
